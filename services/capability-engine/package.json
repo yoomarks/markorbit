@@ -1,0 +1,26 @@
+{
+  "name": "@markorbit/capability-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Capability registry, composition, context compilation and invocation boundary.",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup src/index.ts src/main.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@markorbit/service-kit": "workspace:*"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}
