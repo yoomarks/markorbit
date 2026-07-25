@@ -46,6 +46,11 @@ describe('independent service runtime', () => {
 
     const missing = await fetch(`http://127.0.0.1:${port}/missing`);
     expect(missing.status).toBe(404);
-    expect(await missing.json()).toEqual({ code: 'NOT_FOUND', message: 'Route not found.' });
+    expect(await missing.json()).toEqual({
+      code: 'NOT_FOUND',
+      message: 'Route not found.',
+      correlationId: 'correlation_unknown',
+      retryable: false
+    });
   });
 });
