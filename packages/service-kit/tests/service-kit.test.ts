@@ -38,7 +38,11 @@ describe('independent service runtime', () => {
 
     const health = await fetch(`http://127.0.0.1:${port}/health`);
     expect(health.status).toBe(200);
-    expect(await health.json()).toEqual({ status: 'ok', service: 'test-service', version: '0.1.0' });
+    expect(await health.json()).toEqual({
+      status: 'ok',
+      service: 'test-service',
+      version: '0.1.0'
+    });
 
     const missing = await fetch(`http://127.0.0.1:${port}/missing`);
     expect(missing.status).toBe(404);

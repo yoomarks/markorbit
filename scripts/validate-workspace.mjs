@@ -37,7 +37,8 @@ for (const [folder, expectedName] of runtimes) {
   if (manifest.name !== expectedName) failures.push(`${folder}: unexpected package name`);
   for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
     for (const dependency of Object.keys(manifest[section] ?? {})) {
-      if (runtimeNames.has(dependency)) failures.push(`${folder}: illegal runtime dependency ${dependency}`);
+      if (runtimeNames.has(dependency))
+        failures.push(`${folder}: illegal runtime dependency ${dependency}`);
     }
   }
 }

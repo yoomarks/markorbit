@@ -67,7 +67,8 @@ export function createServiceRuntime(manifest: ServiceManifest): ServiceRuntime 
 
       server = nextServer;
       const address = server.address();
-      listeningPort = typeof address === 'object' && address ? (address as AddressInfo).port : manifest.port;
+      listeningPort =
+        typeof address === 'object' && address ? (address as AddressInfo).port : manifest.port;
     },
     async stop() {
       const activeServer = server;
