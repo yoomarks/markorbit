@@ -1,0 +1,9 @@
+{
+  "task": "MO-MVP-TASK-001",
+  "status": "implementation-ready-network-validation-pending",
+  "architecture": "monorepo-independent-services",
+  "products": ["lite-web", "markreg-web", "operations-console"],
+  "services": ["core", "knowledge", "capability-engine", "execution", "markreg", "mgsn"],
+  "nextTask": "MO-MVP-TASK-002",
+  "audit": "docs/architecture/ENGINEERING-BASELINE-AUDIT.md"
+}
