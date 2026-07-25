@@ -13,6 +13,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@markorbit/*": ["packages/*/src", "services/*/src", "apps/*/src"]
+    }
   }
 }

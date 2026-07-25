@@ -1,5 +1,4 @@
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 
 export interface ServiceManifest {
   name: string;
@@ -67,8 +66,11 @@ export function createServiceRuntime(manifest: ServiceManifest): ServiceRuntime 
 
       server = nextServer;
       const address = server.address();
-      listeningPort =
-        typeof address === 'object' && address ? (address as AddressInfo).port : manifest.port;
+      if (typeof address === 'object' && address) {
+        listeningPort = address.port;
+      } else {
+        listeningPort = manifest.port;
+      }
     },
     async stop() {
       const activeServer = server;
