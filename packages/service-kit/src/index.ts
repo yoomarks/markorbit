@@ -118,6 +118,12 @@ export function createServiceRuntime(
           if (pathRoutes.length === 0) throw new HttpError(404, 'NOT_FOUND', 'Route not found.');
           const route = pathRoutes.find((candidate) => candidate.method === request.method);
           if (!route) throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+          const contentType = request.headers['content-type'];
+          if (
+            typeof contentType !== 'string' ||
+            contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json'
+          )
+            throw new HttpError(400, 'INVALID_REQUEST', 'Content-Type must be application/json.');
           const body = await readBody(request, limit);
           const headers: Record<string, string | undefined> = {};
           for (const [key, value] of Object.entries(request.headers))

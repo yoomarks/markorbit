@@ -6,7 +6,7 @@ import {
   type ExecutionRecord
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
-import { createServiceRuntime, HttpError, json } from '@markorbit/service-kit';
+import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
 export const serviceManifest = Object.freeze({
   name: 'execution',
   port: Number(process.env.PORT ?? '4104'),
@@ -38,6 +38,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
   const repository = options.repository ?? new InMemoryExecutionRepository();
   const publisher = options.publisher ?? new InMemoryEventPublisher();
   const now = options.now ?? (() => new Date().toISOString());
+  const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -74,27 +75,45 @@ export function createRuntime(options: ExecutionOptions = {}) {
                 );
               return json(200, existing.record);
             }
-            const record: ExecutionRecord = {
-              executionId: `execution_${randomUUID()}`,
-              capabilityRequestId: command.capabilityRequestId,
-              executionType: 'CAPABILITY_INVOCATION',
-              status: 'RECORDED',
-              correlationId: command.correlationId,
-              createdAt: now()
-            };
-            const event: EventEnvelope<'execution.recorded.v1', ExecutionRecord> = {
-              eventId: `event_${randomUUID()}`,
-              eventType: 'execution.recorded.v1',
-              occurredAt: now(),
-              correlationId: command.correlationId,
-              causationId: command.capabilityRequestId,
-              actor: command.actor,
-              schemaVersion: 1,
-              payload: record
-            };
-            await publisher.publish(event);
-            repository.save(header, { fingerprint, record });
-            return json(201, record);
+            const pending = inFlight.get(header);
+            if (pending) {
+              if (pending.fingerprint !== fingerprint)
+                throw new HttpError(
+                  409,
+                  'IDEMPOTENCY_CONFLICT',
+                  'Idempotency key is in use with a different payload.'
+                );
+              return pending.result;
+            }
+            const result = (async (): Promise<JsonResult> => {
+              const record: ExecutionRecord = {
+                executionId: `execution_${randomUUID()}`,
+                capabilityRequestId: command.capabilityRequestId,
+                executionType: 'CAPABILITY_INVOCATION',
+                status: 'RECORDED',
+                correlationId: command.correlationId,
+                createdAt: now()
+              };
+              const event: EventEnvelope<'execution.recorded.v1', ExecutionRecord> = {
+                eventId: `event_${randomUUID()}`,
+                eventType: 'execution.recorded.v1',
+                occurredAt: now(),
+                correlationId: command.correlationId,
+                causationId: command.capabilityRequestId,
+                actor: command.actor,
+                schemaVersion: 1,
+                payload: record
+              };
+              await publisher.publish(event);
+              repository.save(header, { fingerprint, record });
+              return json(201, record);
+            })();
+            inFlight.set(header, { fingerprint, result });
+            try {
+              return await result;
+            } finally {
+              inFlight.delete(header);
+            }
           }
         }
       ]

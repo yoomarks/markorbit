@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ServiceRuntime } from '@markorbit/service-kit';
+import type { EventEnvelope } from '@markorbit/contracts';
 import {
   createRuntime as createCapability,
   InMemoryCapabilityRequestRepository
@@ -15,6 +16,23 @@ import {
 import { createRuntime as createGateway } from '../src/index.js';
 
 const active: ServiceRuntime[] = [];
+class RecordingPublisher {
+  readonly events: EventEnvelope<string, unknown>[] = [];
+  publish(event: EventEnvelope<string, unknown>): Promise<void> {
+    this.events.push(event);
+    return Promise.resolve();
+  }
+}
+class FailOncePublisher extends RecordingPublisher {
+  private shouldFail = true;
+  override async publish(event: EventEnvelope<string, unknown>): Promise<void> {
+    if (this.shouldFail) {
+      this.shouldFail = false;
+      throw new Error('private publisher failure');
+    }
+    await super.publish(event);
+  }
+}
 afterEach(async () => {
   await Promise.all(
     active
@@ -48,22 +66,44 @@ async function stack(executionEnabled = true) {
   const capabilityRepository = new InMemoryCapabilityRequestRepository();
   const executionRepository = new InMemoryExecutionRepository();
   const markRegRepository = new InMemoryMarkRegRepository();
+  const capabilityPublisher = new RecordingPublisher();
+  const executionPublisher = new RecordingPublisher();
+  const markRegPublisher = new RecordingPublisher();
   const capabilityUrl = await start(
-    createCapability({ port: 0, repository: capabilityRepository })
+    createCapability({
+      port: 0,
+      repository: capabilityRepository,
+      publisher: capabilityPublisher
+    })
   );
   let executionUrl = 'http://127.0.0.1:1';
   if (executionEnabled)
-    executionUrl = await start(createExecution({ port: 0, repository: executionRepository }));
+    executionUrl = await start(
+      createExecution({
+        port: 0,
+        repository: executionRepository,
+        publisher: executionPublisher
+      })
+    );
   const markRegUrl = await start(
     createMarkReg({
       port: 0,
       capabilityEngineUrl: capabilityUrl,
       executionUrl,
-      repository: markRegRepository
+      repository: markRegRepository,
+      publisher: markRegPublisher
     })
   );
   const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
-  return { gatewayUrl, capabilityRepository, executionRepository, markRegRepository };
+  return {
+    gatewayUrl,
+    capabilityRepository,
+    executionRepository,
+    markRegRepository,
+    capabilityPublisher,
+    executionPublisher,
+    markRegPublisher
+  };
 }
 async function submit(url: string, key: string, body: unknown = payload) {
   return fetch(`${url}/v1/markreg/intakes`, {
@@ -103,12 +143,41 @@ describe('first intake-to-recommendation HTTP slice', () => {
     expect(state.markRegRepository.size).toBe(1);
     expect(state.capabilityRepository.size).toBe(1);
     expect(state.executionRepository.size).toBe(1);
+    expect(state.capabilityPublisher.events).toHaveLength(1);
+    expect(state.executionPublisher.events).toHaveLength(1);
+    expect(state.markRegPublisher.events.map((event) => event.eventType)).toEqual([
+      'markreg.intake.created.v1',
+      'markreg.recommendation.ready.v1'
+    ]);
     const duplicate = await submit(state.gatewayUrl, 'same-key');
     expect(duplicate.status).toBe(200);
     expect(await duplicate.json()).toEqual(body);
     expect(state.markRegRepository.size).toBe(1);
     expect(state.capabilityRepository.size).toBe(1);
     expect(state.executionRepository.size).toBe(1);
+    expect(state.capabilityPublisher.events).toHaveLength(1);
+    expect(state.executionPublisher.events).toHaveLength(1);
+    expect(state.markRegPublisher.events).toHaveLength(2);
+  });
+  it('coalesces concurrent identical commands without duplicate objects or events', async () => {
+    const state = await stack();
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () => submit(state.gatewayUrl, 'concurrent-key'))
+    );
+    expect(responses.every((response) => response.status === 200 || response.status === 201)).toBe(
+      true
+    );
+    expect(responses.some((response) => response.status === 201)).toBe(true);
+    const bodies = await Promise.all(
+      responses.map(async (response): Promise<unknown> => response.json() as Promise<unknown>)
+    );
+    expect(bodies.every((body) => JSON.stringify(body) === JSON.stringify(bodies[0]))).toBe(true);
+    expect(state.markRegRepository.size).toBe(1);
+    expect(state.capabilityRepository.size).toBe(1);
+    expect(state.executionRepository.size).toBe(1);
+    expect(state.capabilityPublisher.events).toHaveLength(1);
+    expect(state.executionPublisher.events).toHaveLength(1);
+    expect(state.markRegPublisher.events).toHaveLength(2);
   });
   it('returns 409 when a key is reused for a different payload', async () => {
     const state = await stack();
@@ -156,5 +225,93 @@ describe('first intake-to-recommendation HTTP slice', () => {
     expect(state.markRegRepository.all()[0]?.intake.status).toBe('FAILED');
     expect(state.capabilityRepository.size).toBe(1);
     expect(state.executionRepository.size).toBe(0);
+  });
+  it('retries a failed Intake without replaying already-published business events', async () => {
+    const capabilityRepository = new InMemoryCapabilityRequestRepository();
+    const executionRepository = new InMemoryExecutionRepository();
+    const markRegRepository = new InMemoryMarkRegRepository();
+    const capabilityPublisher = new RecordingPublisher();
+    const executionPublisher = new RecordingPublisher();
+    const markRegPublisher = new RecordingPublisher();
+    const capabilityUrl = await start(
+      createCapability({
+        port: 0,
+        repository: capabilityRepository,
+        publisher: capabilityPublisher
+      })
+    );
+    const reservation = createExecution({ port: 0 });
+    const reservedUrl = await start(reservation);
+    const executionPort = Number(new URL(reservedUrl).port);
+    await reservation.stop();
+    const markRegUrl = await start(
+      createMarkReg({
+        port: 0,
+        capabilityEngineUrl: capabilityUrl,
+        executionUrl: reservedUrl,
+        repository: markRegRepository,
+        publisher: markRegPublisher
+      })
+    );
+    const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+
+    expect((await submit(gatewayUrl, 'retry-key')).status).toBe(502);
+    expect(markRegRepository.all()[0]?.intake.status).toBe('FAILED');
+    await start(
+      createExecution({
+        port: executionPort,
+        repository: executionRepository,
+        publisher: executionPublisher
+      })
+    );
+    const retry = await submit(gatewayUrl, 'retry-key');
+    expect(retry.status).toBe(201);
+    expect(await retry.json()).toMatchObject({ intake: { status: 'RECOMMENDATION_READY' } });
+    expect(markRegRepository.size).toBe(1);
+    expect(capabilityRepository.size).toBe(1);
+    expect(executionRepository.size).toBe(1);
+    expect(capabilityPublisher.events).toHaveLength(1);
+    expect(executionPublisher.events).toHaveLength(1);
+    expect(markRegPublisher.events.map((event) => event.eventType)).toEqual([
+      'markreg.intake.created.v1',
+      'markreg.recommendation.ready.v1'
+    ]);
+  });
+  it('retries an event publication failure without caching success or losing the event', async () => {
+    const capabilityRepository = new InMemoryCapabilityRequestRepository();
+    const executionRepository = new InMemoryExecutionRepository();
+    const markRegRepository = new InMemoryMarkRegRepository();
+    const capabilityUrl = await start(
+      createCapability({ port: 0, repository: capabilityRepository })
+    );
+    const executionUrl = await start(createExecution({ port: 0, repository: executionRepository }));
+    const publisher = new FailOncePublisher();
+    const markRegUrl = await start(
+      createMarkReg({
+        port: 0,
+        capabilityEngineUrl: capabilityUrl,
+        executionUrl,
+        repository: markRegRepository,
+        publisher
+      })
+    );
+    const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+
+    const failed = await submit(gatewayUrl, 'event-retry-key');
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).toEqual({
+      code: 'INTERNAL_ERROR',
+      message: 'An internal error occurred.',
+      correlationId: 'correlation_integration',
+      retryable: false
+    });
+    expect(markRegRepository.all()[0]?.intake.status).not.toBe('RECOMMENDATION_READY');
+    const retry = await submit(gatewayUrl, 'event-retry-key');
+    expect(retry.status).toBe(201);
+    expect(await retry.json()).toMatchObject({ intake: { status: 'RECOMMENDATION_READY' } });
+    expect(publisher.events.map((event) => event.eventType)).toEqual([
+      'markreg.intake.created.v1',
+      'markreg.recommendation.ready.v1'
+    ]);
   });
 });

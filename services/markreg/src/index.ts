@@ -11,7 +11,7 @@ import {
   type RecommendationPackage
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
-import { createServiceRuntime, HttpError, json } from '@markorbit/service-kit';
+import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -20,6 +20,7 @@ export const serviceManifest = Object.freeze({
 interface Entry {
   fingerprint: string;
   intake: Intake;
+  intakeCreatedPublished: boolean;
   result?: IntakeRecommendationResponse;
 }
 export class InMemoryMarkRegRepository {
@@ -116,6 +117,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const capabilityUrl =
     options.capabilityEngineUrl ?? process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -151,7 +153,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 'Idempotency-Key header is required and must match the command.'
               );
             const fingerprint = JSON.stringify({ ...command, idempotencyKey: undefined });
-            let entry = repository.get(key);
+            const entry = repository.get(key);
             if (entry && entry.fingerprint !== fingerprint)
               throw new HttpError(
                 409,
@@ -159,70 +161,92 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 'Idempotency key was already used with a different payload.'
               );
             if (entry?.result) return json(200, entry.result);
-            if (!entry) {
-              const intake: Intake = {
-                intakeId: `intake_${randomUUID()}`,
-                channel: command.channel,
-                relationshipModel: command.relationshipModel,
-                status: 'RECEIVED',
-                customerIntent: command.customerIntent,
-                createdAt: now(),
-                correlationId: command.correlationId
-              };
-              entry = { fingerprint, intake };
-              repository.save(key, entry);
-              const event: EventEnvelope<'markreg.intake.created.v1', Intake> = {
-                eventId: `event_${randomUUID()}`,
-                eventType: 'markreg.intake.created.v1',
-                occurredAt: now(),
-                correlationId: command.correlationId,
-                actor: command.actor,
-                schemaVersion: 1,
-                payload: intake
-              };
-              await publisher.publish(event);
+            const pending = inFlight.get(key);
+            if (pending) {
+              if (pending.fingerprint !== fingerprint)
+                throw new HttpError(
+                  409,
+                  'IDEMPOTENCY_CONFLICT',
+                  'Idempotency key is in use with a different payload.'
+                );
+              return pending.result;
             }
-            try {
-              const capability = await post<CapabilityRequest>(
-                `${capabilityUrl}/v1/capability-requests`,
-                {
-                  inputRef: entry.intake.intakeId,
-                  actor: command.actor,
-                  idempotencyKey: `${key}:capability`,
+            const result = (async (): Promise<JsonResult> => {
+              let workingEntry = entry;
+              if (!workingEntry) {
+                const intake: Intake = {
+                  intakeId: `intake_${randomUUID()}`,
+                  channel: command.channel,
+                  relationshipModel: command.relationshipModel,
+                  status: 'RECEIVED',
+                  customerIntent: command.customerIntent,
+                  createdAt: now(),
                   correlationId: command.correlationId
-                },
-                `${key}:capability`,
-                command.correlationId
-              );
-              const execution = await post<ExecutionRecord>(
-                `${executionUrl}/v1/executions`,
-                {
-                  capabilityRequestId: capability.capabilityRequestId,
-                  actor: command.actor,
-                  idempotencyKey: `${key}:execution`,
-                  correlationId: command.correlationId
-                },
-                `${key}:execution`,
-                command.correlationId
-              );
-              const packageValue = recommendation(
-                entry.intake,
-                [capability.capabilityRequestId, execution.executionId],
-                now()
-              );
-              entry.intake = { ...entry.intake, status: 'RECOMMENDATION_READY' };
-              entry.result = {
-                intake: entry.intake,
-                recommendation: packageValue,
-                trace: {
+                };
+                workingEntry = { fingerprint, intake, intakeCreatedPublished: false };
+                repository.save(key, workingEntry);
+              }
+              if (!workingEntry.intakeCreatedPublished) {
+                const event: EventEnvelope<'markreg.intake.created.v1', Intake> = {
+                  eventId: `event_${randomUUID()}`,
+                  eventType: 'markreg.intake.created.v1',
+                  occurredAt: now(),
                   correlationId: command.correlationId,
-                  capabilityRequestId: capability.capabilityRequestId,
-                  executionId: execution.executionId,
-                  provenanceRefs: packageValue.provenance
-                }
-              };
-              const event: EventEnvelope<'markreg.recommendation.ready.v1', RecommendationPackage> =
-                {
+                  actor: command.actor,
+                  schemaVersion: 1,
+                  payload: workingEntry.intake
+                };
+                await publisher.publish(event);
+                workingEntry.intakeCreatedPublished = true;
+                repository.save(key, workingEntry);
+              }
+              const ownedEntry = workingEntry;
+              try {
+                const capability = await post<CapabilityRequest>(
+                  `${capabilityUrl}/v1/capability-requests`,
+                  {
+                    inputRef: ownedEntry.intake.intakeId,
+                    actor: command.actor,
+                    idempotencyKey: `${key}:capability`,
+                    correlationId: command.correlationId
+                  },
+                  `${key}:capability`,
+                  command.correlationId
+                );
+                const execution = await post<ExecutionRecord>(
+                  `${executionUrl}/v1/executions`,
+                  {
+                    capabilityRequestId: capability.capabilityRequestId,
+                    actor: command.actor,
+                    idempotencyKey: `${key}:execution`,
+                    correlationId: command.correlationId
+                  },
+                  `${key}:execution`,
+                  command.correlationId
+                );
+                const packageValue = recommendation(
+                  ownedEntry.intake,
+                  [capability.capabilityRequestId, execution.executionId],
+                  now()
+                );
+                const readyIntake: Intake = {
+                  ...ownedEntry.intake,
+                  status: 'RECOMMENDATION_READY'
+                };
+                const completedResult: IntakeRecommendationResponse = {
+                  intake: readyIntake,
+                  recommendation: packageValue,
+                  trace: {
+                    correlationId: command.correlationId,
+                    capabilityRequestId: capability.capabilityRequestId,
+                    executionId: execution.executionId,
+                    provenanceRefs: packageValue.provenance
+                  }
+                };
+                const event: EventEnvelope<
+                  'markreg.recommendation.ready.v1',
+                  RecommendationPackage
+                > = {
                   eventId: `event_${randomUUID()}`,
                   eventType: 'markreg.recommendation.ready.v1',
                   occurredAt: now(),
@@ -232,13 +256,23 @@ export function createRuntime(options: MarkRegOptions = {}) {
                   schemaVersion: 1,
                   payload: packageValue
                 };
-              await publisher.publish(event);
-              repository.save(key, entry);
-              return json(201, entry.result);
-            } catch (error) {
-              entry.intake = { ...entry.intake, status: 'FAILED' };
-              repository.save(key, entry);
-              throw error;
+                await publisher.publish(event);
+                ownedEntry.intake = readyIntake;
+                ownedEntry.result = completedResult;
+                repository.save(key, ownedEntry);
+                return json(201, completedResult);
+              } catch (error) {
+                ownedEntry.intake = { ...ownedEntry.intake, status: 'FAILED' };
+                delete ownedEntry.result;
+                repository.save(key, ownedEntry);
+                throw error;
+              }
+            })();
+            inFlight.set(key, { fingerprint, result });
+            try {
+              return await result;
+            } finally {
+              inFlight.delete(key);
             }
           }
         }

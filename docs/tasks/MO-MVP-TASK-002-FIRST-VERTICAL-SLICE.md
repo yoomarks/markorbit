@@ -140,3 +140,22 @@ outages, non-ready failed Intakes, repository isolation, and listener shutdown.
   Capability verification, canon mutation, and formal-state mutation remain out of scope.
 - A next task should introduce durable service-owned persistence and an outbox-backed event transport
   without changing the contracts or ownership boundaries established here.
+
+## PR audit corrections
+
+The PR #2 audit was run with Node.js 22.x and pnpm 10.28.1. It corrected the initial lockfile
+rewrite by restoring the main-line optional dependency graph and retaining only the workspace importer
+links required by the package manifests. The earlier large deletion was pnpm's host compatibility
+pruning of optional platform packages, not a real dependency removal.
+
+The audit also added per-idempotency-key in-flight request coalescing to MarkReg, Capability Engine,
+and Execution. Concurrent identical commands now share one result and one event sequence, while a
+different payload conflicts immediately. Failed downstream work and failed event publication are not
+cached as successful results, so the same command can be retried. An Intake-created event that failed
+publication is retried before processing resumes, while events that were already published are not
+published again.
+
+The service runtime now requires an `application/json` media type for JSON POST routes. Regression
+coverage verifies accepted charset parameters, invalid media types, malformed and oversized bodies,
+safe 404/405/500 envelopes, removal of private exception details, repeatable lifecycle operations,
+concurrent command coalescing, failure recovery, and event replay behavior.
