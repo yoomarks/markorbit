@@ -9,3 +9,20 @@ coverage/
 *.log
 
 .turbo/
+
+# Build / temp artifacts
+storybook-static/
+.vite/
+.pnpm-store/
+coverage/
+dist/
+.cache/
+.eslintcache
+.turbo/
+.node22/
+npm-debug.log*
+pnpm-debug.log*
+*.log
+
+# Ignore nested storybook build outputs
+**/storybook-static/
