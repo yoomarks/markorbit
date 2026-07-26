@@ -2,3 +2,14 @@ packages:
   - apps/*
   - services/*
   - packages/*
+
+# Keep platform-specific optional packages in the shared lockfile when installs
+# are generated on a single development or CI host.
+supportedArchitectures:
+  os:
+    - darwin
+    - linux
+    - win32
+  cpu:
+    - arm64
+    - x64
