@@ -4,8 +4,17 @@
   "private": true,
   "type": "module",
   "description": "Direct-customer international trademark filing and lifecycle product.",
+  "dependencies": {
+    "@markorbit/ui": "workspace:*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.tsx --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"

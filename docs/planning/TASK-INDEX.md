@@ -4,7 +4,7 @@
 
 - MO-MVP-TASK-001 — Repository Constitution and Monorepo Bootstrap
 - MO-MVP-TASK-002 — First Vertical Slice Contracts and Service Runtime
-- MO-MVP-TASK-003 — UI Skill Verification and Product UI Briefs
+- MO-MVP-TASK-003 — UI Foundation and Product UI Briefs (implemented: shared tokens, accessible primitives, Storybook and fixture shells)
 - MO-MVP-TASK-004 — Local Infrastructure and Persistence Baseline
 - MO-MVP-TASK-005 — Authentication, Workplace and Channel Context
 
@@ -50,3 +50,9 @@
 - MO-MVP-TASK-075 — Customer Portal and Actions
 - MO-MVP-TASK-076 — Matter Timeline, Documents and Messages
 - MO-MVP-TASK-077 — Lifecycle and Recommended Actions
+
+## Operations Console
+
+- MO-MVP-TASK-080 — Operational Read Contracts and Permissions
+- MO-MVP-TASK-081 — Health, Events and Failure Investigation
+- MO-MVP-TASK-082 — Manual Review and Audited Intervention
