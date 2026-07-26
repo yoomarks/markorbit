@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Event publication and subscription abstractions.",
+  "dependencies": {
+    "@markorbit/contracts": "workspace:*"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

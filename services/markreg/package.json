@@ -13,6 +13,8 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@markorbit/contracts": "workspace:*",
+    "@markorbit/events": "workspace:*",
     "@markorbit/service-kit": "workspace:*"
   },
   "main": "./dist/index.js",

@@ -44,6 +44,9 @@ importers:
 
   apps/gateway:
     dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@markorbit/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
@@ -60,7 +63,11 @@ importers:
 
   packages/contracts: {}
 
-  packages/events: {}
+  packages/events:
+    dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/service-kit: {}
 
@@ -70,6 +77,12 @@ importers:
 
   services/capability-engine:
     dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@markorbit/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@markorbit/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
@@ -82,6 +95,12 @@ importers:
 
   services/execution:
     dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@markorbit/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@markorbit/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
@@ -94,6 +113,12 @@ importers:
 
   services/markreg:
     dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@markorbit/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@markorbit/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
