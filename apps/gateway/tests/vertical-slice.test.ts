@@ -46,8 +46,8 @@ afterEach(async () => {
   );
 });
 const payload = {
-  channel: 'MARKREG_DIRECT',
-  relationshipModel: 'DIRECT',
+  channel: 'MARKREG_DIRECT' as const,
+  relationshipModel: 'DIRECT' as const,
   customerIntent: {
     brandName: 'Orbit',
     applicantCountry: 'GB',
@@ -55,9 +55,9 @@ const payload = {
     goodsServicesDescription: 'Software services'
   },
   actor: {
-    actorId: 'actor_fixture',
-    workplaceId: 'workplace_fixture',
-    product: 'MARKREG_COM',
+    actorId: 'actor_fixture' as const,
+    workplaceId: 'workplace_fixture' as const,
+    product: 'MARKREG_COM' as const,
     purpose: 'fixture recommendation'
   }
 };

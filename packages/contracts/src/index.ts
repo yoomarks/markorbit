@@ -151,7 +151,7 @@ export interface PlanSelection {
   selectedOptionCode: PlanOptionCode;
   selectedAt: string;
 }
-export interface QuoteCreateCommand extends PlanSelectionCommand {}
+export type QuoteCreateCommand = PlanSelectionCommand;
 export const quoteStatuses = ['DRAFT', 'READY', 'CONFIRMED', 'EXPIRED', 'SUPERSEDED'] as const;
 export type QuoteStatus = (typeof quoteStatuses)[number];
 export interface Quote {
