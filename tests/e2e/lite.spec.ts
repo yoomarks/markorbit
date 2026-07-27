@@ -73,5 +73,10 @@ test('Lite retains opportunity filters after detail return', async ({ page }, te
   await expect(page.getByLabel('Country / region')).toHaveValue('Canada');
   await expect(page.getByLabel('Status')).toHaveValue('NEW');
   await expect(page.getByRole('button', { name: /Canada expansion/ })).toBeFocused();
+  await expect(page.getByRole('alert')).toContainText('Demonstration only');
+  await expectNoHorizontalOverflow(page);
+  await expectVisibleFocus(page);
+  const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
+  await capture(page, `lite-today-${viewport}`);
   assertHealthy();
 });
