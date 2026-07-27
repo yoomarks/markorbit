@@ -4,9 +4,12 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@markorbit/ui': fileURLToPath(new URL('../../packages/ui/src/index.ts', import.meta.url))
-    }
+    alias: [
+      {
+        find: /^@markorbit\/ui$/,
+        replacement: fileURLToPath(new URL('../../packages/ui/src/index.ts', import.meta.url))
+      }
+    ]
   },
   test: { environment: 'jsdom', setupFiles: ['./tests/setup.ts'] }
 });

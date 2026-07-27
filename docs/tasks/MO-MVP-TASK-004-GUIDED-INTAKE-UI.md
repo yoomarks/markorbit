@@ -25,3 +25,11 @@ The richer guided fields are encoded into the existing Task 002 customer-intent 
 ## Next task recommendation
 
 Add the governed quote boundary and explicit plan confirmation only after the intake contract has a reviewed evolution path and the recommendation can distinguish evidence-backed professional review from fixture output.
+
+## Final acceptance audit
+
+Final acceptance ran with Node.js `v22.22.2` and pnpm `10.28.1`. A frozen install, format/write and format check, workspace lint, typecheck, test, and build, the UI package build and Storybook static build, the markreg-web production build, the Gateway integration suite, the aggregate `pnpm -w check`, and `git diff --check` all completed successfully. The workspace test run contains 59 passing tests; markreg-web contributes 14 and the Gateway suite contributes 10. The real-client HTTP test starts Gateway, MarkReg, Capability Engine, and Execution on dynamic ports, verifies the correlated A/B/C `FIXTURE_ONLY` response, and the shared `afterEach` shuts every runtime down. A post-test process/listener audit found no residual product runtime or known development port.
+
+The three former web-app `tests/manifest.test.ts` files were removed by Task 003, before this task. They imported the deleted bootstrap `productManifest` module and therefore are no longer valid tests to restore. Their UI-skill flag assertion is superseded by the repository `AGENTS.md` rule, the Task 003 UI foundation documentation, shared UI behavior/axe tests, fixture-backed Storybook builds, and—for markreg-web—the journey, accessibility, fixture-integrity, session-storage, idempotency, and safe-error tests added here. Task 004 does not remove any Task 003 test.
+
+Automated browser tooling and a browser executable are not available in this container, so screenshot evidence could not be produced. **Manual visual review pending:** desktop 1440px and mobile 390px review of Consultation Start, a middle intake step, Review, Loading, A/B/C Recommendation, Recoverable Error, and Blocking Error must be completed before the Draft PR is marked ready. Storybook and production builds prove compilation only and are not represented as completed visual acceptance.
