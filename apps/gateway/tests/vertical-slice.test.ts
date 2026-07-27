@@ -14,6 +14,8 @@ import {
   InMemoryMarkRegRepository
 } from '../../../services/markreg/src/index.js';
 import { createRuntime as createGateway } from '../src/index.js';
+import { createApiClient } from '../../markreg-web/src/api/client.js';
+import { createMarkregClient } from '../../markreg-web/src/api/markreg.js';
 
 const active: ServiceRuntime[] = [];
 class RecordingPublisher {
@@ -118,6 +120,27 @@ async function submit(url: string, key: string, body: unknown = payload) {
 }
 
 describe('first intake-to-recommendation HTTP slice', () => {
+  it('accepts a real markreg-web API client request through every runtime', async () => {
+    const state = await stack();
+    const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const body = await client.createIntake({
+      channel: 'MARKREG_DIRECT',
+      relationshipModel: 'DIRECT',
+      customerIntent: payload.customerIntent,
+      actor: {
+        actorId: 'actor_web-client',
+        workplaceId: 'workplace_web-client',
+        product: 'MARKREG_COM',
+        purpose: payload.actor.purpose
+      },
+      idempotencyKey: 'web-client-key',
+      correlationId: 'correlation_web_client'
+    });
+    expect(body.intake.status).toBe('RECOMMENDATION_READY');
+    expect(body.recommendation.status).toBe('FIXTURE_ONLY');
+    expect(body.recommendation.options.map((option) => option.tier)).toEqual(['A', 'B', 'C']);
+    expect(body.trace.correlationId).toBe('correlation_web_client');
+  });
   it('returns a correlated A/B/C fixture and owns one record per service', async () => {
     const state = await stack();
     const response = await submit(state.gatewayUrl, 'same-key');

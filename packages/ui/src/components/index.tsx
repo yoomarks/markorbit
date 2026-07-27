@@ -17,7 +17,7 @@ export function Button({ variant = 'primary', className, ...props }: ButtonProps
 export function IconButton({ label, className, ...props }: ButtonProps & { label: string }) {
   return <button aria-label={label} className={cx('mo-icon-button', className)} {...props} />;
 }
-type FieldBase = { label: string; error?: string; hint?: string };
+type FieldBase = { label: string; error?: string | undefined; hint?: string | undefined };
 export function TextInput({
   label,
   error,
