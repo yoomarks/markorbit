@@ -11,3 +11,8 @@ coverage/
 .turbo/
 
 storybook-static/
+
+playwright-report/
+playwright-screenshots/
+test-results/
+blob-report/
