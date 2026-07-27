@@ -28,3 +28,11 @@ Landmarks, labelled search/select controls, textual status, visible focus, nativ
 - No automatic contact, bulk outreach, order creation, protected action, formal-state mutation, production API, local storage, contract change, or backend work.
 
 The required `ui-design` skill was not present in the available skill registry or filesystem; the repository UI design standard and product briefs were followed directly instead.
+
+## Hardening audit
+
+Repository results are readonly and defensively cloned. Fixture startup validates every opportunity customer reference, while missing related collections render an explicit empty state. Pages consume only `LiteWorkspaceRepository`, so a future API-backed implementation can replace fixtures without rewriting list or detail components. No fixture is embedded in JSX, mutated by the UI, persisted locally, or presented as live network data.
+
+Customer and opportunity filters are independent. Returning from detail restores the originating filters and focus; unknown fixture IDs render a safe Not Found state through the same application component. Strict TypeScript includes product and TypeScript test sources without `allowJs`, `checkJs`, `skipLibCheck`, exclusions, weakened strictness, or lint suppressions.
+
+Following TASK 007 integration, Playwright covers the 1440 × 900 customer/opportunity lists, 390 × 844 customer/opportunity details, filter and focus retention, fixture visibility, disabled suggested action, overflow, console errors, and failed static resources. Screenshots are generated only in the ignored artifact directory and are not committed.

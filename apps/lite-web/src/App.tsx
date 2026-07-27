@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AppShell,
@@ -13,7 +13,12 @@ import {
   Select,
   TopBar
 } from '@markorbit/ui';
-import { customers, opportunities } from './features/shared/fixture-repository.js';
+import {
+  fixtureRepository,
+  type LiteWorkspaceRepository
+} from './features/shared/fixture-repository.js';
+import type { CustomerDetail } from './features/customers/view-models.js';
+import type { OpportunityDetail } from './features/opportunities/view-models.js';
 import type { FixtureState } from './features/shared/view-models.js';
 import type { OpportunityStatus } from './features/opportunities/view-models.js';
 import './lite.css';
@@ -25,18 +30,41 @@ export interface LiteAppProps {
   initialItemId?: string;
   fixtureState?: FixtureState;
   longText?: boolean;
+  repository?: LiteWorkspaceRepository;
 }
 export function LiteApp({
   initialSurface = 'customers',
   initialItemId,
   fixtureState = 'ready',
-  longText = false
+  longText = false,
+  repository = fixtureRepository
 }: LiteAppProps) {
+  const [customers, setCustomers] = useState<readonly CustomerDetail[]>([]);
+  const [opportunities, setOpportunities] = useState<readonly OpportunityDetail[]>([]);
+  const [repositoryState, setRepositoryState] = useState<FixtureState>('loading');
   const [surface, setSurface] = useState<Surface>(initialSurface),
     [itemId, setItemId] = useState(initialItemId),
-    [query, setQuery] = useState(''),
-    [status, setStatus] = useState<OpportunityStatus | 'ALL'>('ALL'),
-    [country, setCountry] = useState('ALL');
+    [customerQuery, setCustomerQuery] = useState(''),
+    [customerCountry, setCustomerCountry] = useState('ALL'),
+    [opportunityQuery, setOpportunityQuery] = useState(''),
+    [opportunityStatus, setOpportunityStatus] = useState<OpportunityStatus | 'ALL'>('ALL'),
+    [opportunityCountry, setOpportunityCountry] = useState('ALL');
+  const originRef = useRef<string | null>(null);
+  const load = useCallback(() => {
+    setRepositoryState('loading');
+    void Promise.all([repository.listCustomers(), repository.listOpportunities()]).then(
+      ([nextCustomers, nextOpportunities]) => {
+        setCustomers(nextCustomers);
+        setOpportunities(nextOpportunities);
+        setRepositoryState('ready');
+      },
+      () => setRepositoryState('error')
+    );
+  }, [repository]);
+  useEffect(load, [repository]);
+  const query = surface === 'customers' ? customerQuery : opportunityQuery;
+  const country = surface === 'customers' ? customerCountry : opportunityCountry;
+  const status = opportunityStatus;
   const list = surface === 'customers' ? customers : opportunities;
   const filtered = useMemo(
     () =>
@@ -60,6 +88,18 @@ export function LiteApp({
     setSurface(next);
     setItemId(undefined);
   };
+  const openDetail = (id: string) => {
+    originRef.current = id;
+    setItemId(id);
+  };
+  const returnToList = () => {
+    setItemId(undefined);
+    requestAnimationFrame(() => {
+      if (originRef.current)
+        document.querySelector<HTMLElement>(`[data-item-id="${originRef.current}"]`)?.focus();
+    });
+  };
+  const renderedState = fixtureState === 'ready' ? repositoryState : fixtureState;
   return (
     <AppShell
       brand="MarkOrbit Lite"
@@ -103,7 +143,9 @@ export function LiteApp({
         </div>
       )}
       {active ? (
-        <Detail item={active} back={() => setItemId(undefined)} longText={longText} />
+        <Detail item={active} back={returnToList} longText={longText} />
+      ) : itemId && renderedState === 'ready' ? (
+        <NotFound surface={surface} back={() => setItemId(undefined)} />
       ) : (
         <>
           <PageHeader
@@ -118,12 +160,23 @@ export function LiteApp({
           <div className="lite-filters" role="search">
             <label>
               Search
-              <input value={query} onChange={(e) => setQuery(e.target.value)} />
+              <input
+                value={query}
+                onChange={(e) =>
+                  surface === 'customers'
+                    ? setCustomerQuery(e.target.value)
+                    : setOpportunityQuery(e.target.value)
+                }
+              />
             </label>
             <Select
               label="Country / region"
               value={country}
-              onChange={(e) => setCountry(e.target.value)}
+              onChange={(e) =>
+                surface === 'customers'
+                  ? setCustomerCountry(e.target.value)
+                  : setOpportunityCountry(e.target.value)
+              }
             >
               <option value="ALL">All countries / regions</option>
               {[...new Set(list.map((x) => x.countryRegion))].map((x) => (
@@ -133,8 +186,8 @@ export function LiteApp({
             {surface === 'opportunities' && (
               <Select
                 label="Status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as typeof status)}
+                value={opportunityStatus}
+                onChange={(e) => setOpportunityStatus(e.target.value as typeof opportunityStatus)}
               >
                 <option value="ALL">All statuses</option>
                 {['NEW', 'REVIEWING', 'QUALIFIED', 'DEFERRED', 'DISMISSED'].map((x) => (
@@ -143,11 +196,16 @@ export function LiteApp({
               </Select>
             )}
           </div>
-          <State state={fixtureState} retry={() => undefined}>
+          <State state={renderedState} retry={load}>
             {filtered.length ? (
               <div className="lite-list">
                 {filtered.map((item) => (
-                  <button className="lite-row" key={item.id} onClick={() => setItemId(item.id)}>
+                  <button
+                    className="lite-row"
+                    key={item.id}
+                    data-item-id={item.id}
+                    onClick={() => openDetail(item.id)}
+                  >
                     <span>
                       <strong>{'name' in item ? item.name : item.title}</strong>
                       <small>
@@ -171,9 +229,14 @@ export function LiteApp({
                 action={
                   <Button
                     onClick={() => {
-                      setQuery('');
-                      setCountry('ALL');
-                      setStatus('ALL');
+                      if (surface === 'customers') {
+                        setCustomerQuery('');
+                        setCustomerCountry('ALL');
+                      } else {
+                        setOpportunityQuery('');
+                        setOpportunityCountry('ALL');
+                        setOpportunityStatus('ALL');
+                      }
                     }}
                   >
                     Clear filters
@@ -223,6 +286,15 @@ function State({
     </>
   );
 }
+function NotFound({ surface, back }: { surface: Surface; back: () => void }) {
+  return (
+    <EmptyState
+      title={`${surface === 'customers' ? 'Customer' : 'Opportunity'} not found`}
+      description="This fixture record does not exist or is no longer available."
+      action={<Button onClick={back}>Return to {surface}</Button>}
+    />
+  );
+}
 function Safety() {
   return (
     <Alert title="Interpretation boundaries">
@@ -236,7 +308,7 @@ function Detail({
   back,
   longText
 }: {
-  item: (typeof customers)[number] | (typeof opportunities)[number];
+  item: CustomerDetail | OpportunityDetail;
   back: () => void;
   longText: boolean;
 }) {
@@ -326,7 +398,7 @@ function Detail({
     </>
   );
 }
-function Related({ title, values }: { title: string; values: string[] }) {
+function Related({ title, values }: { title: string; values: readonly string[] }) {
   return (
     <Card>
       <h2>{title}</h2>

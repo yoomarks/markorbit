@@ -1,19 +1,19 @@
 export interface CustomerSummary {
-  id: string;
-  name: string;
-  countryRegion: string;
-  activityAt: string;
+  readonly id: string;
+  readonly name: string;
+  readonly countryRegion: string;
+  readonly activityAt: string;
 }
 export interface CustomerActivityItem {
-  id: string;
-  occurredAt: string;
-  title: string;
-  detail: string;
+  readonly id: string;
+  readonly occurredAt: string;
+  readonly title: string;
+  readonly detail: string;
 }
 export interface CustomerDetail extends CustomerSummary {
-  contact: string;
-  activity: CustomerActivityItem[];
-  relatedIntakes: string[];
-  relatedRecommendations: string[];
-  relatedOpportunities: string[];
+  readonly contact: string;
+  readonly activity: readonly CustomerActivityItem[];
+  readonly relatedIntakes: readonly string[];
+  readonly relatedRecommendations: readonly string[];
+  readonly relatedOpportunities: readonly string[];
 }

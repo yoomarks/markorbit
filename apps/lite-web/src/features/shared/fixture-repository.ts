@@ -2,8 +2,8 @@ import type { CustomerDetail } from '../customers/view-models.js';
 import type { OpportunityDetail } from '../opportunities/view-models.js';
 
 export interface LiteWorkspaceRepository {
-  listCustomers(): Promise<CustomerDetail[]>;
-  listOpportunities(): Promise<OpportunityDetail[]>;
+  listCustomers(): Promise<readonly CustomerDetail[]>;
+  listOpportunities(): Promise<readonly OpportunityDetail[]>;
 }
 export const customers: CustomerDetail[] = [
   {
@@ -122,9 +122,13 @@ export const opportunities: OpportunityDetail[] = [
 ];
 export const fixtureRepository: LiteWorkspaceRepository = {
   listCustomers() {
-    return Promise.resolve(customers);
+    return Promise.resolve(structuredClone(customers));
   },
   listOpportunities() {
-    return Promise.resolve(opportunities);
+    return Promise.resolve(structuredClone(opportunities));
   }
 };
+
+if (opportunities.some(({ customerId }) => !customers.some(({ id }) => id === customerId))) {
+  throw new Error('Fixture opportunity references an unknown customer');
+}
