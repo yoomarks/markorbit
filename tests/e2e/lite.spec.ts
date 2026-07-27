@@ -75,7 +75,9 @@ test('Lite Customer detail is healthy on mobile @visual', async ({ page }, testI
 
   await page.getByRole('button', { name: /Aurora Foods/ }).click();
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Aurora Foods Ltd' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Aurora Foods Ltd' })
+  ).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   await capture(page, 'lite-customer-detail-mobile');
@@ -90,7 +92,9 @@ test('Lite Opportunities list is healthy on desktop @visual', async ({ page }, t
 
   await page.getByRole('link', { name: 'Opportunities' }).click();
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Opportunities' })
+  ).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   await capture(page, 'lite-opportunities-list-desktop');
@@ -112,7 +116,9 @@ test('Lite Opportunity detail is safe on mobile @visual', async ({ page }, testI
   await opportunityRow.focus();
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('button', { name: /Review and approve/ })).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: /Review and approve/ })
+  ).toBeDisabled();
 
   await expectNoHorizontalOverflow(page);
   await capture(page, 'lite-opportunity-detail-mobile');
@@ -121,7 +127,10 @@ test('Lite Opportunity detail is safe on mobile @visual', async ({ page }, testI
 });
 
 test('Lite retains opportunity filters after detail return', async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.startsWith('desktop'), 'single browser acceptance path');
+  test.skip(
+    !testInfo.project.name.startsWith('desktop'),
+    'single browser acceptance path'
+  );
 
   const assertHealthy = await openLite(page);
 
@@ -153,7 +162,9 @@ test('Lite retains opportunity filters after detail return', async ({ page }, te
   await expect(originatingRow.locator(':scope:focus-visible')).toBeVisible();
 
   expect(
-    await originatingRow.evaluate((element) => getComputedStyle(element).outlineStyle)
+    await originatingRow.evaluate(
+      (element) => getComputedStyle(element).outlineStyle
+    )
   ).not.toBe('none');
 
   assertHealthy();
