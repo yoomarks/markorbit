@@ -8,7 +8,7 @@ export default tseslint.config(
   ...tseslint.configs.recommendedTypeChecked,
   {
     languageOptions: {
-      globals: globals.node,
+      globals: { ...globals.node, ...globals.browser },
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname
