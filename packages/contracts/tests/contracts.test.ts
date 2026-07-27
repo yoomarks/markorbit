@@ -11,7 +11,9 @@ import {
 import {
   assertDirectIntake,
   parseIntakeCreateCommand,
-  parseRecommendationPackage
+  parseRecommendationPackage,
+  parseMoney,
+  parseQuoteCreateCommand
 } from '../src/index.js';
 
 const valid = {
@@ -84,5 +86,32 @@ describe('shared transport contracts', () => {
 
   it('requires fixture recommendations to be explicitly marked', () => {
     expect(() => parseRecommendationPackage({ status: 'FINAL', options: [] })).toThrow();
+  });
+  it('validates integral minor-unit money and A/B/C quote commands', () => {
+    expect(parseMoney({ amountMinor: 12345, currency: 'USD' })).toEqual({
+      amountMinor: 12345,
+      currency: 'USD'
+    });
+    expect(() => parseMoney({ amountMinor: 12.34, currency: 'USD' })).toThrow();
+    expect(
+      parseQuoteCreateCommand({
+        intakeId: 'intake_test',
+        recommendationId: 'recommendation_test',
+        selectedOptionCode: 'B',
+        actor: valid.actor,
+        idempotencyKey: 'quote-key',
+        correlationId: 'correlation_test'
+      }).selectedOptionCode
+    ).toBe('B');
+    expect(() =>
+      parseQuoteCreateCommand({
+        intakeId: 'intake_test',
+        recommendationId: 'recommendation_test',
+        selectedOptionCode: 'D',
+        actor: valid.actor,
+        idempotencyKey: 'quote-key',
+        correlationId: 'correlation_test'
+      })
+    ).toThrow();
   });
 });

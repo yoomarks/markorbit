@@ -120,6 +120,80 @@ export interface SafeError {
   retryable: boolean;
 }
 
+/** Monetary values are always integral minor units; never JavaScript decimal amounts. */
+export interface Money {
+  amountMinor: number;
+  currency: string;
+}
+export type PlanOptionCode = 'A' | 'B' | 'C';
+export interface QuoteLine {
+  code: string;
+  description: string;
+  category: 'OFFICIAL_FEE' | 'SERVICE_FEE' | 'DISBURSEMENT' | 'TAX';
+  amount: Money;
+}
+export interface QuoteAssumption {
+  code: string;
+  text: string;
+}
+export interface PlanSelectionCommand {
+  intakeId: MarkOrbitId;
+  recommendationId: MarkOrbitId;
+  selectedOptionCode: PlanOptionCode;
+  actor: ActorContext;
+  idempotencyKey: string;
+  correlationId: MarkOrbitId;
+}
+export interface PlanSelection {
+  planSelectionId: MarkOrbitId;
+  intakeId: MarkOrbitId;
+  recommendationId: MarkOrbitId;
+  selectedOptionCode: PlanOptionCode;
+  selectedAt: string;
+}
+export interface QuoteCreateCommand extends PlanSelectionCommand {}
+export const quoteStatuses = ['DRAFT', 'READY', 'CONFIRMED', 'EXPIRED', 'SUPERSEDED'] as const;
+export type QuoteStatus = (typeof quoteStatuses)[number];
+export interface Quote {
+  quoteId: MarkOrbitId;
+  intakeId: MarkOrbitId;
+  recommendationId: MarkOrbitId;
+  selectedOptionCode: PlanOptionCode;
+  status: QuoteStatus;
+  currency: string;
+  lines: QuoteLine[];
+  subtotal: Money;
+  estimatedOfficialFees: Money;
+  estimatedServiceFees: Money;
+  estimatedDisbursements: Money;
+  estimatedTaxes: Money;
+  total: Money;
+  assumptions: QuoteAssumption[];
+  limitations: string[];
+  validUntil: string;
+  fixtureOnly: true;
+  createdAt: string;
+}
+export interface QuoteConfirmationCommand {
+  quoteId: MarkOrbitId;
+  actor: ActorContext;
+  idempotencyKey: string;
+  correlationId: MarkOrbitId;
+}
+export interface QuoteConfirmation {
+  quoteId: MarkOrbitId;
+  status: 'CONFIRMED';
+  confirmedAt: string;
+  pendingProfessionalReview: true;
+  orderCreated: false;
+  paymentMade: false;
+  filingStarted: false;
+}
+export interface PlanQuoteResponse {
+  planSelection: PlanSelection;
+  quote: Quote;
+}
+
 export class ContractValidationError extends TypeError {
   constructor(message: string) {
     super(message);
@@ -163,6 +237,40 @@ function country(value: unknown, name: string): string {
   if (!/^[A-Z]{2}$/.test(result))
     throw new ContractValidationError(`${name} must be an ISO 3166-1 alpha-2 code.`);
   return result;
+}
+function option(value: unknown): PlanOptionCode {
+  if (value !== 'A' && value !== 'B' && value !== 'C')
+    throw new ContractValidationError('selectedOptionCode must be A, B, or C.');
+  return value;
+}
+export function parseQuoteCreateCommand(value: unknown): QuoteCreateCommand {
+  const v = object(value, 'command');
+  return {
+    intakeId: id(v.intakeId, 'intakeId'),
+    recommendationId: id(v.recommendationId, 'recommendationId'),
+    selectedOptionCode: option(v.selectedOptionCode),
+    actor: parseActorContext(v.actor),
+    idempotencyKey: text(v.idempotencyKey, 'idempotencyKey'),
+    correlationId: id(v.correlationId, 'correlationId')
+  };
+}
+export function parseQuoteConfirmationCommand(value: unknown): QuoteConfirmationCommand {
+  const v = object(value, 'command');
+  return {
+    quoteId: id(v.quoteId, 'quoteId'),
+    actor: parseActorContext(v.actor),
+    idempotencyKey: text(v.idempotencyKey, 'idempotencyKey'),
+    correlationId: id(v.correlationId, 'correlationId')
+  };
+}
+export function parseMoney(value: unknown): Money {
+  const v = object(value, 'money');
+  if (!Number.isSafeInteger(v.amountMinor) || (v.amountMinor as number) < 0)
+    throw new ContractValidationError('money.amountMinor must be a non-negative safe integer.');
+  const currency = text(v.currency, 'money.currency');
+  if (!/^[A-Z]{3}$/.test(currency))
+    throw new ContractValidationError('money.currency must be an ISO 4217 code.');
+  return { amountMinor: v.amountMinor as number, currency };
 }
 export function parseActorContext(value: unknown): ActorContext {
   const v = object(value, 'actor');

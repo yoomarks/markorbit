@@ -338,3 +338,50 @@ describe('first intake-to-recommendation HTTP slice', () => {
     ]);
   });
 });
+
+describe('plan and quote HTTP slice', () => {
+  it('runs markreg-web client through Gateway and MarkReg to READY and CONFIRMED', async () => {
+    const state = await stack();
+    const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const command = {
+      intakeId: 'intake_quote-fixture' as const,
+      recommendationId: 'recommendation_quote-fixture' as const,
+      selectedOptionCode: 'B' as const,
+      actor: {
+        actorId: 'actor_web-client' as const,
+        workplaceId: 'workplace_web-client' as const,
+        product: 'MARKREG_COM' as const,
+        purpose: 'fixture quote'
+      },
+      idempotencyKey: 'quote-web-key',
+      correlationId: 'correlation_quote-web' as const
+    };
+    const first = await client.createQuote!(command);
+    const duplicate = await client.createQuote!(command);
+    expect(duplicate).toEqual(first);
+    expect(first.quote.status).toBe('READY');
+    expect(first.quote.fixtureOnly).toBe(true);
+    expect(first.quote.lines.every((line) => Number.isSafeInteger(line.amount.amountMinor))).toBe(
+      true
+    );
+    expect(first.quote.total.amountMinor).toBe(
+      first.quote.subtotal.amountMinor + first.quote.estimatedTaxes.amountMinor
+    );
+    const confirmationCommand = {
+      quoteId: first.quote.quoteId,
+      actor: command.actor,
+      idempotencyKey: 'confirmation-web-key',
+      correlationId: 'correlation_confirmation-web' as const
+    };
+    const confirmation = await client.confirmQuote!(confirmationCommand);
+    const repeated = await client.confirmQuote!(confirmationCommand);
+    expect(repeated).toEqual(confirmation);
+    expect(confirmation).toMatchObject({
+      status: 'CONFIRMED',
+      pendingProfessionalReview: true,
+      orderCreated: false,
+      paymentMade: false,
+      filingStarted: false
+    });
+  });
+});

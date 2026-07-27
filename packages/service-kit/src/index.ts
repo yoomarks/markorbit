@@ -16,6 +16,7 @@ export interface JsonRequest {
   headers: Readonly<Record<string, string | undefined>>;
   method: string;
   path: string;
+  params: Readonly<Record<string, string>>;
 }
 export interface JsonResult {
   status: number;
@@ -114,10 +115,26 @@ export function createServiceRuntime(
             send(response, json(200, createHealthResponse(manifest)));
             return;
           }
-          const pathRoutes = routes.filter((route) => route.path === path);
+          const matches = (template: string) => {
+            const names: string[] = [];
+            const expression = template.replace(/:[^/]+/g, (part) => {
+              names.push(part.slice(1));
+              return '([^/]+)';
+            });
+            const match = path.match(new RegExp(`^${expression}$`));
+            return match
+              ? Object.fromEntries(
+                  names.map((name, index) => [name, decodeURIComponent(match[index + 1]!)])
+                )
+              : undefined;
+          };
+          const pathRoutes = routes.flatMap((route) => {
+            const params = matches(route.path);
+            return params ? [{ route, params }] : [];
+          });
           if (pathRoutes.length === 0) throw new HttpError(404, 'NOT_FOUND', 'Route not found.');
-          const route = pathRoutes.find((candidate) => candidate.method === request.method);
-          if (!route) throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+          const matched = pathRoutes.find((candidate) => candidate.route.method === request.method);
+          if (!matched) throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
           const contentType = request.headers['content-type'];
           if (
             typeof contentType !== 'string' ||
@@ -128,7 +145,16 @@ export function createServiceRuntime(
           const headers: Record<string, string | undefined> = {};
           for (const [key, value] of Object.entries(request.headers))
             headers[key] = Array.isArray(value) ? value[0] : value;
-          send(response, await route.handle({ body, headers, method: request.method ?? '', path }));
+          send(
+            response,
+            await matched.route.handle({
+              body,
+              headers,
+              method: request.method ?? '',
+              path,
+              params: matched.params
+            })
+          );
         })().catch((error: unknown) => {
           if (response.headersSent) return;
           const safe =

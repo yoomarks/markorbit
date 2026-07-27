@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 import {
   assertDirectIntake,
   parseIntakeCreateCommand,
+  parseQuoteCreateCommand,
+  parseQuoteConfirmationCommand,
+  type QuoteCreateCommand,
+  type QuoteConfirmationCommand,
   type IntakeCreateCommand
 } from '@markorbit/contracts';
 import { createServiceRuntime, HttpError, json } from '@markorbit/service-kit';
@@ -25,6 +29,102 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/v1/markreg/quotes',
+          async handle(request) {
+            const key = request.headers['idempotency-key'];
+            if (!key)
+              throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+            const correlationId =
+              request.headers['x-correlation-id'] || `correlation_${randomUUID()}`;
+            let command: QuoteCreateCommand;
+            try {
+              command = parseQuoteCreateCommand({
+                ...record(request.body),
+                idempotencyKey: key,
+                correlationId
+              });
+            } catch (error) {
+              throw new HttpError(
+                422,
+                'INVALID_QUOTE_REQUEST',
+                error instanceof Error ? error.message : 'Invalid quote request.'
+              );
+            }
+            try {
+              const downstream = await fetch(`${markRegUrl}/v1/quotes`, {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/json',
+                  'idempotency-key': key,
+                  'x-correlation-id': correlationId
+                },
+                body: JSON.stringify(command)
+              });
+              return json(downstream.status, await downstream.json(), {
+                'x-correlation-id': correlationId
+              });
+            } catch {
+              throw new HttpError(
+                502,
+                'DOWNSTREAM_UNAVAILABLE',
+                'Quote service is unavailable.',
+                true
+              );
+            }
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/markreg/quotes/:quoteId/confirm',
+          async handle(request) {
+            const key = request.headers['idempotency-key'];
+            if (!key)
+              throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+            const correlationId =
+              request.headers['x-correlation-id'] || `correlation_${randomUUID()}`;
+            let command: QuoteConfirmationCommand;
+            try {
+              command = parseQuoteConfirmationCommand({
+                ...record(request.body),
+                quoteId: request.params.quoteId,
+                idempotencyKey: key,
+                correlationId
+              });
+            } catch (error) {
+              throw new HttpError(
+                422,
+                'INVALID_CONFIRMATION_REQUEST',
+                error instanceof Error ? error.message : 'Invalid confirmation request.'
+              );
+            }
+            try {
+              const downstream = await fetch(
+                `${markRegUrl}/v1/quotes/${encodeURIComponent(command.quoteId)}/confirm`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'content-type': 'application/json',
+                    'idempotency-key': key,
+                    'x-correlation-id': correlationId
+                  },
+                  body: JSON.stringify(command)
+                }
+              );
+              return json(downstream.status, await downstream.json(), {
+                'x-correlation-id': correlationId
+              });
+            } catch {
+              throw new HttpError(
+                502,
+                'DOWNSTREAM_UNAVAILABLE',
+                'Quote confirmation is unavailable.',
+                true
+              );
+            }
+          }
+        },
         {
           method: 'POST',
           path: '/v1/markreg/intakes',

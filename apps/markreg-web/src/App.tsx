@@ -1,7 +1,9 @@
 import type {
   IntakeCreateCommand,
   IntakeRecommendationResponse,
-  MarkOrbitId
+  MarkOrbitId,
+  PlanQuoteResponse,
+  PlanOptionCode
 } from '@markorbit/contracts';
 import {
   Alert,
@@ -215,7 +217,13 @@ export function MarkregApp({ client = createMarkregClient() }: { client?: Markre
     );
   if (status === 'ready' && result)
     return (
-      <Recommendation result={result} draft={draft} selected={selected} onSelect={setSelected} />
+      <Recommendation
+        result={result}
+        draft={draft}
+        selected={selected}
+        onSelect={setSelected}
+        client={client}
+      />
     );
 
   return (
@@ -403,14 +411,179 @@ function Recommendation({
   result,
   draft,
   selected,
-  onSelect
+  onSelect,
+  client
 }: {
   result: IntakeRecommendationResponse;
   draft: IntakeDraft;
   selected: string | undefined;
   onSelect: (v: string) => void;
+  client: MarkregClient;
 }) {
   const recommended = 'B';
+  const [quote, setQuote] = useState<PlanQuoteResponse | undefined>(() => load('markreg-quote-v1'));
+  const [quoteState, setQuoteState] = useState<
+    'plan' | 'submitting' | 'ready' | 'confirming' | 'confirmed' | 'recoverable' | 'blocking'
+  >(quote ? 'ready' : 'plan');
+  const [quoteMessage, setQuoteMessage] = useState('');
+  const quoteRequest = useRef<{ option: string; key: string; correlation: MarkOrbitId }>();
+  const confirming = useRef(false);
+  const requestQuote = async () => {
+    if (!selected || quoteState === 'submitting') return;
+    if (!quoteRequest.current || quoteRequest.current.option !== selected)
+      quoteRequest.current = {
+        option: selected,
+        key: crypto.randomUUID(),
+        correlation: makeId('correlation')
+      };
+    setQuoteState('submitting');
+    try {
+      const value = await client.createQuote!({
+        intakeId: result.intake.intakeId,
+        recommendationId: result.recommendation.recommendationId,
+        selectedOptionCode: selected as PlanOptionCode,
+        actor: {
+          actorId: makeId('actor'),
+          workplaceId: makeId('workplace'),
+          product: 'MARKREG_COM',
+          purpose: 'Request fixture quote'
+        },
+        idempotencyKey: quoteRequest.current.key,
+        correlationId: quoteRequest.current.correlation
+      });
+      setQuote(value);
+      sessionStorage.setItem('markreg-quote-v1', JSON.stringify(value));
+      setQuoteState('ready');
+    } catch (error) {
+      const safe =
+        error instanceof MarkregApiError
+          ? error
+          : new MarkregApiError('blocking', 'We could not complete this request safely.');
+      setQuoteMessage(safe.message);
+      setQuoteState(safe.kind === 'blocking' ? 'blocking' : 'recoverable');
+    }
+  };
+  const confirm = async () => {
+    if (!quote || confirming.current) return;
+    confirming.current = true;
+    setQuoteState('confirming');
+    try {
+      await client.confirmQuote!({
+        quoteId: quote.quote.quoteId,
+        actor: {
+          actorId: makeId('actor'),
+          workplaceId: makeId('workplace'),
+          product: 'MARKREG_COM',
+          purpose: 'Confirm quote intent'
+        },
+        idempotencyKey: `confirm-${quote.quote.quoteId}`,
+        correlationId: makeId('correlation')
+      });
+      setQuoteState('confirmed');
+    } catch (error) {
+      const safe =
+        error instanceof MarkregApiError
+          ? error
+          : new MarkregApiError('blocking', 'We could not confirm this quote safely.');
+      setQuoteMessage(safe.message);
+      setQuoteState(safe.kind === 'blocking' ? 'blocking' : 'recoverable');
+    } finally {
+      confirming.current = false;
+    }
+  };
+  const format = (amountMinor: number, currency: string) =>
+    new Intl.NumberFormat('en', { style: 'currency', currency }).format(amountMinor / 100);
+  if (quoteState === 'submitting' || quoteState === 'confirming')
+    return (
+      <main className="markreg-page">
+        <FixtureBanner />
+        <LoadingState
+          label={
+            quoteState === 'submitting'
+              ? 'Preparing your fixture quote'
+              : 'Recording your quote confirmation'
+          }
+        />
+      </main>
+    );
+  if (quoteState === 'blocking')
+    return (
+      <main className="markreg-page">
+        <FixtureBanner />
+        <ErrorState title="Quote cannot continue" description={quoteMessage} />
+      </main>
+    );
+  if (quoteState === 'recoverable')
+    return (
+      <main className="markreg-page">
+        <FixtureBanner />
+        <ErrorState
+          title="Your plan selection is safe"
+          description={quoteMessage}
+          onRetry={() => void (quote ? confirm() : requestQuote())}
+        />
+      </main>
+    );
+  if (quoteState === 'confirmed')
+    return (
+      <main className="markreg-page">
+        <FixtureBanner />
+        <PageHeader title="Quote confirmed" description="Pending professional review" />
+        <Alert tone="warning" title="Confirmation records intent only">
+          No order has been created. No payment has been made. No filing has started.
+        </Alert>
+      </main>
+    );
+  if (quote)
+    return (
+      <main className="markreg-page">
+        <FixtureBanner />
+        <Stepper current={3} steps={['Your goal', 'Recommendation', 'Plan', 'Quote']} />
+        <PageHeader
+          title="Review your fixture quote"
+          description={`Selected plan ${quote.quote.selectedOptionCode}`}
+        />
+        <Alert tone="warning" title="Estimate only">
+          Estimate only — official fees, professional fees and disbursements require review before
+          filing.
+        </Alert>
+        <Alert tone="warning" title="Demonstration only">
+          Demonstration only — not legal advice or an official filing recommendation.
+        </Alert>
+        <Card>
+          <h2>Fee breakdown</h2>
+          <KeyValueList
+            items={[
+              ...quote.quote.lines.map((line) => ({
+                key: line.description,
+                value: format(line.amount.amountMinor, line.amount.currency)
+              })),
+              {
+                key: 'Subtotal',
+                value: format(quote.quote.subtotal.amountMinor, quote.quote.currency)
+              },
+              { key: 'Total', value: format(quote.quote.total.amountMinor, quote.quote.currency) },
+              { key: 'Currency', value: quote.quote.currency },
+              { key: 'Valid until', value: quote.quote.validUntil },
+              { key: 'Fixture only', value: quote.quote.fixtureOnly ? 'Yes' : 'No' }
+            ]}
+          />
+          <h3>Assumptions</h3>
+          <ul>
+            {quote.quote.assumptions.map((a) => (
+              <li key={a.code}>{a.text}</li>
+            ))}
+          </ul>
+          <h3>Limitations</h3>
+          <ul>
+            {quote.quote.limitations.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+          <Button onClick={() => void confirm()}>Confirm quote</Button>
+        </Card>
+      </main>
+    );
   return (
     <main className="markreg-page">
       <FixtureBanner />
@@ -454,7 +627,9 @@ function Recommendation({
         ))}
       </div>
       <div className="markreg-actions">
-        <Button disabled={!selected}>Select plan {selected ?? ''}</Button>
+        <Button disabled={!selected} onClick={() => void requestQuote()}>
+          Select plan {selected ?? ''} and request quote
+        </Button>
       </div>
     </main>
   );
