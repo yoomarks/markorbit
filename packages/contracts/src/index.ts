@@ -159,6 +159,7 @@ export interface Quote {
   intakeId: MarkOrbitId;
   recommendationId: MarkOrbitId;
   selectedOptionCode: PlanOptionCode;
+  pricingRuleVersion: string;
   status: QuoteStatus;
   currency: string;
   lines: QuoteLine[];
@@ -271,6 +272,49 @@ export function parseMoney(value: unknown): Money {
   if (!/^[A-Z]{3}$/.test(currency))
     throw new ContractValidationError('money.currency must be an ISO 4217 code.');
   return { amountMinor: v.amountMinor as number, currency };
+}
+export function parseFixtureMoney(value: unknown): Money {
+  const result = parseMoney(value);
+  if (result.currency !== 'USD')
+    throw new ContractValidationError('Fixture money currently supports USD only.');
+  return result;
+}
+export function assertQuoteMoneyInvariants(quote: Quote): void {
+  const amounts = [
+    quote.subtotal,
+    quote.estimatedOfficialFees,
+    quote.estimatedServiceFees,
+    quote.estimatedDisbursements,
+    quote.estimatedTaxes,
+    quote.total,
+    ...quote.lines.map((line) => line.amount)
+  ];
+  for (const amount of amounts) {
+    parseFixtureMoney(amount);
+    if (amount.currency !== quote.currency)
+      throw new ContractValidationError('All Quote money must use the Quote currency.');
+  }
+  if (quote.currency !== 'USD')
+    throw new ContractValidationError('Fixture Quote currency must be USD.');
+  const category = (name: QuoteLine['category']) =>
+    quote.lines
+      .filter((line) => line.category === name)
+      .reduce((sum, line) => sum + line.amount.amountMinor, 0);
+  const official = category('OFFICIAL_FEE');
+  const service = category('SERVICE_FEE');
+  const disbursements = category('DISBURSEMENT');
+  const taxes = category('TAX');
+  if (
+    official !== quote.estimatedOfficialFees.amountMinor ||
+    service !== quote.estimatedServiceFees.amountMinor ||
+    disbursements !== quote.estimatedDisbursements.amountMinor ||
+    taxes !== quote.estimatedTaxes.amountMinor
+  )
+    throw new ContractValidationError('Quote category totals do not reconcile.');
+  if (quote.subtotal.amountMinor !== official + service + disbursements)
+    throw new ContractValidationError('Quote subtotal does not reconcile.');
+  if (quote.total.amountMinor !== quote.subtotal.amountMinor + taxes)
+    throw new ContractValidationError('Quote total does not reconcile.');
 }
 export function parseActorContext(value: unknown): ActorContext {
   const v = object(value, 'actor');

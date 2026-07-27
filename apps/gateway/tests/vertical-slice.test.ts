@@ -11,7 +11,9 @@ import {
 } from '../../../services/execution/src/index.js';
 import {
   createRuntime as createMarkReg,
-  InMemoryMarkRegRepository
+  InMemoryMarkRegRepository,
+  type MarkRegOptions,
+  fixtureQuoteId
 } from '../../../services/markreg/src/index.js';
 import { createRuntime as createGateway } from '../src/index.js';
 import { createApiClient } from '../../markreg-web/src/api/client.js';
@@ -64,7 +66,10 @@ async function start(runtime: ServiceRuntime) {
   await runtime.start();
   return `http://127.0.0.1:${runtime.listeningPort}`;
 }
-async function stack(executionEnabled = true) {
+async function stack(
+  executionEnabled = true,
+  markRegOptions: Pick<MarkRegOptions, 'now' | 'pricingRuleVersion' | 'beforeQuotePersist'> = {}
+) {
   const capabilityRepository = new InMemoryCapabilityRequestRepository();
   const executionRepository = new InMemoryExecutionRepository();
   const markRegRepository = new InMemoryMarkRegRepository();
@@ -93,7 +98,8 @@ async function stack(executionEnabled = true) {
       capabilityEngineUrl: capabilityUrl,
       executionUrl,
       repository: markRegRepository,
-      publisher: markRegPublisher
+      publisher: markRegPublisher,
+      ...markRegOptions
     })
   );
   const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
@@ -343,9 +349,19 @@ describe('plan and quote HTTP slice', () => {
   it('runs markreg-web client through Gateway and MarkReg to READY and CONFIRMED', async () => {
     const state = await stack();
     const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const recommendation = await client.createIntake({
+      ...payload,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_quote-client',
+        workplaceId: 'workplace_quote-client'
+      },
+      idempotencyKey: 'quote-intake-key',
+      correlationId: 'correlation_quote-intake'
+    });
     const command = {
-      intakeId: 'intake_quote-fixture' as const,
-      recommendationId: 'recommendation_quote-fixture' as const,
+      intakeId: recommendation.intake.intakeId,
+      recommendationId: recommendation.recommendation.recommendationId,
       selectedOptionCode: 'B' as const,
       actor: {
         actorId: 'actor_web-client' as const,
@@ -383,5 +399,217 @@ describe('plan and quote HTTP slice', () => {
       paymentMade: false,
       filingStarted: false
     });
+  });
+
+  it('binds quote identity to business identifiers, option, and pricing rule version', () => {
+    const command = {
+      intakeId: 'intake_identity' as const,
+      recommendationId: 'recommendation_identity' as const,
+      selectedOptionCode: 'A' as const,
+      actor: payload.actor,
+      idempotencyKey: 'identity-key',
+      correlationId: 'correlation_identity' as const
+    };
+    const original = fixtureQuoteId(command, 'fixture-usd-v1');
+    expect(fixtureQuoteId(command, 'fixture-usd-v1')).toBe(original);
+    expect(fixtureQuoteId({ ...command, selectedOptionCode: 'B' }, 'fixture-usd-v1')).not.toBe(
+      original
+    );
+    expect(fixtureQuoteId(command, 'fixture-usd-v2')).not.toBe(original);
+  });
+
+  it('rejects unrelated Intake and Recommendation identifiers safely', async () => {
+    const state = await stack();
+    const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const ready = await client.createIntake({
+      ...payload,
+      actor: { ...payload.actor, actorId: 'actor_relation', workplaceId: 'workplace_relation' },
+      idempotencyKey: 'relation-intake',
+      correlationId: 'correlation_relation-intake'
+    });
+    const error = await client.createQuote!({
+      intakeId: 'intake_unrelated',
+      recommendationId: ready.recommendation.recommendationId,
+      selectedOptionCode: 'A',
+      actor:
+        ready.intake.channel === 'MARKREG_DIRECT'
+          ? { ...payload.actor, actorId: 'actor_relation', workplaceId: 'workplace_relation' }
+          : payload.actor,
+      idempotencyKey: 'relation-quote',
+      correlationId: 'correlation_relation-quote'
+    }).catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ kind: 'validation' });
+    expect(String((error as Error).message)).not.toMatch(/markreg|stack|http:\/\//i);
+  });
+
+  it('conflicts on a changed quote payload using the same key', async () => {
+    const state = await stack();
+    const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const ready = await client.createIntake({
+      ...payload,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_conflict-quote',
+        workplaceId: 'workplace_conflict-quote'
+      },
+      idempotencyKey: 'conflict-quote-intake',
+      correlationId: 'correlation_conflict-quote-intake'
+    });
+    const base = {
+      intakeId: ready.intake.intakeId,
+      recommendationId: ready.recommendation.recommendationId,
+      selectedOptionCode: 'A' as const,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_conflict-quote' as const,
+        workplaceId: 'workplace_conflict-quote' as const
+      },
+      idempotencyKey: 'same-quote-key',
+      correlationId: 'correlation_conflict-quote' as const
+    };
+    await client.createQuote!(base);
+    const error = await client.createQuote!({ ...base, selectedOptionCode: 'B' }).catch(
+      (reason: unknown) => reason
+    );
+    expect(error).toMatchObject({ kind: 'conflict' });
+  });
+
+  it('coalesces concurrent quote creation and permits retry after failure', async () => {
+    let release!: () => void;
+    let attempts = 0;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const state = await stack(true, {
+      beforeQuotePersist: async () => {
+        attempts++;
+        if (attempts === 1) await gate;
+      }
+    });
+    const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const ready = await client.createIntake({
+      ...payload,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_concurrent-quote',
+        workplaceId: 'workplace_concurrent-quote'
+      },
+      idempotencyKey: 'concurrent-quote-intake',
+      correlationId: 'correlation_concurrent-quote-intake'
+    });
+    const command = {
+      intakeId: ready.intake.intakeId,
+      recommendationId: ready.recommendation.recommendationId,
+      selectedOptionCode: 'C' as const,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_concurrent-quote' as const,
+        workplaceId: 'workplace_concurrent-quote' as const
+      },
+      idempotencyKey: 'concurrent-quote-key',
+      correlationId: 'correlation_concurrent-quote' as const
+    };
+    const requests = [client.createQuote!(command), client.createQuote!(command)];
+    release();
+    const [first, second] = await Promise.all(requests);
+    expect(second).toEqual(first);
+    expect(attempts).toBe(1);
+
+    let fail = true;
+    const retryState = await stack(true, {
+      beforeQuotePersist: () => {
+        if (fail) {
+          fail = false;
+          throw new Error('private storage failure');
+        }
+      }
+    });
+    const retryClient = createMarkregClient(createApiClient(retryState.gatewayUrl));
+    const retryReady = await retryClient.createIntake({
+      ...payload,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_retry-quote',
+        workplaceId: 'workplace_retry-quote'
+      },
+      idempotencyKey: 'retry-quote-intake',
+      correlationId: 'correlation_retry-quote-intake'
+    });
+    const retryCommand = {
+      ...command,
+      intakeId: retryReady.intake.intakeId,
+      recommendationId: retryReady.recommendation.recommendationId,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_retry-quote' as const,
+        workplaceId: 'workplace_retry-quote' as const
+      },
+      idempotencyKey: 'retry-quote-key',
+      correlationId: 'correlation_retry-quote' as const
+    };
+    await expect(retryClient.createQuote!(retryCommand)).rejects.toThrow();
+    await expect(retryClient.createQuote!(retryCommand)).resolves.toMatchObject({
+      quote: { status: 'READY' }
+    });
+  });
+
+  it('rejects expired, superseded, and unknown Quotes without side effects', async () => {
+    let current = '2026-07-27T00:00:00.000Z';
+    const state = await stack(true, { now: () => current });
+    const client = createMarkregClient(createApiClient(state.gatewayUrl));
+    const ready = await client.createIntake({
+      ...payload,
+      actor: { ...payload.actor, actorId: 'actor_lifecycle', workplaceId: 'workplace_lifecycle' },
+      idempotencyKey: 'lifecycle-intake',
+      correlationId: 'correlation_lifecycle-intake'
+    });
+    const base = {
+      intakeId: ready.intake.intakeId,
+      recommendationId: ready.recommendation.recommendationId,
+      actor: {
+        ...payload.actor,
+        actorId: 'actor_lifecycle' as const,
+        workplaceId: 'workplace_lifecycle' as const
+      },
+      correlationId: 'correlation_lifecycle' as const
+    };
+    const a = await client.createQuote!({
+      ...base,
+      selectedOptionCode: 'A',
+      idempotencyKey: 'lifecycle-a'
+    });
+    await client.createQuote!({ ...base, selectedOptionCode: 'B', idempotencyKey: 'lifecycle-b' });
+    await expect(
+      client.confirmQuote!({
+        quoteId: a.quote.quoteId,
+        actor: base.actor,
+        idempotencyKey: 'confirm-superseded',
+        correlationId: base.correlationId
+      })
+    ).rejects.toMatchObject({ kind: 'conflict' });
+    const c = await client.createQuote!({
+      ...base,
+      selectedOptionCode: 'C',
+      idempotencyKey: 'lifecycle-c'
+    });
+    current = c.quote.validUntil;
+    await expect(
+      client.confirmQuote!({
+        quoteId: c.quote.quoteId,
+        actor: base.actor,
+        idempotencyKey: 'confirm-expired',
+        correlationId: base.correlationId
+      })
+    ).rejects.toMatchObject({ kind: 'conflict' });
+    await expect(
+      client.confirmQuote!({
+        quoteId: 'quote_unknown',
+        actor: base.actor,
+        idempotencyKey: 'confirm-unknown',
+        correlationId: base.correlationId
+      })
+    ).rejects.toThrow();
+    expect(state.markRegRepository.getQuote(c.quote.quoteId)?.selectedOptionCode).toBe('C');
+    expect(state.markRegRepository.getQuote(c.quote.quoteId)?.total).toEqual(c.quote.total);
   });
 });

@@ -6,13 +6,16 @@ import {
   isRelationshipModel,
   parseChannel,
   parseRelationshipModel,
-  relationshipModels
+  relationshipModels,
+  type Quote
 } from '../src/index.js';
 import {
   assertDirectIntake,
   parseIntakeCreateCommand,
   parseRecommendationPackage,
   parseMoney,
+  parseFixtureMoney,
+  assertQuoteMoneyInvariants,
   parseQuoteCreateCommand
 } from '../src/index.js';
 
@@ -93,6 +96,8 @@ describe('shared transport contracts', () => {
       currency: 'USD'
     });
     expect(() => parseMoney({ amountMinor: 12.34, currency: 'USD' })).toThrow();
+    expect(() => parseMoney({ amountMinor: -1, currency: 'USD' })).toThrow();
+    expect(() => parseFixtureMoney({ amountMinor: 1, currency: 'EUR' })).toThrow();
     expect(
       parseQuoteCreateCommand({
         intakeId: 'intake_test',
@@ -113,5 +118,67 @@ describe('shared transport contracts', () => {
         correlationId: 'correlation_test'
       })
     ).toThrow();
+  });
+
+  it('rejects mixed currencies and non-reconciling Quote totals', () => {
+    const quote = {
+      quoteId: 'quote_test',
+      intakeId: 'intake_test',
+      recommendationId: 'recommendation_test',
+      selectedOptionCode: 'A',
+      pricingRuleVersion: 'fixture-usd-v1',
+      status: 'READY',
+      currency: 'USD',
+      lines: [
+        {
+          code: 'official',
+          description: 'Official',
+          category: 'OFFICIAL_FEE',
+          amount: { amountMinor: 100, currency: 'USD' }
+        },
+        {
+          code: 'service',
+          description: 'Service',
+          category: 'SERVICE_FEE',
+          amount: { amountMinor: 200, currency: 'USD' }
+        },
+        {
+          code: 'disbursement',
+          description: 'Disbursement',
+          category: 'DISBURSEMENT',
+          amount: { amountMinor: 30, currency: 'USD' }
+        },
+        {
+          code: 'tax',
+          description: 'Tax',
+          category: 'TAX',
+          amount: { amountMinor: 20, currency: 'USD' }
+        }
+      ],
+      subtotal: { amountMinor: 330, currency: 'USD' },
+      estimatedOfficialFees: { amountMinor: 100, currency: 'USD' },
+      estimatedServiceFees: { amountMinor: 200, currency: 'USD' },
+      estimatedDisbursements: { amountMinor: 30, currency: 'USD' },
+      estimatedTaxes: { amountMinor: 20, currency: 'USD' },
+      total: { amountMinor: 350, currency: 'USD' },
+      assumptions: [],
+      limitations: [],
+      validUntil: '2026-08-10T00:00:00.000Z',
+      fixtureOnly: true,
+      createdAt: '2026-07-27T00:00:00.000Z'
+    } as Quote;
+    expect(() => assertQuoteMoneyInvariants(quote)).not.toThrow();
+    expect(() =>
+      assertQuoteMoneyInvariants({ ...quote, total: { amountMinor: 351, currency: 'USD' } })
+    ).toThrow(/total/);
+    expect(() =>
+      assertQuoteMoneyInvariants({
+        ...quote,
+        lines: [
+          { ...quote.lines[0]!, amount: { amountMinor: 100, currency: 'EUR' } },
+          ...quote.lines.slice(1)
+        ]
+      })
+    ).toThrow(/currency|USD/);
   });
 });

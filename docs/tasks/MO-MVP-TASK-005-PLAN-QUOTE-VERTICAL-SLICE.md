@@ -13,11 +13,11 @@ MarkReg owns Plan Selection, Quote, and Quote Confirmation in its in-memory repo
 
 ## Lifecycle and idempotency
 
-The lifecycle is `DRAFT → READY → CONFIRMED`, with `EXPIRED` and `SUPERSEDED` terminal alternatives. It deliberately has no paid, performing, or filed state. The same key and semantic payload reuses a result; a different payload produces 409. Failed transport attempts can safely retry. The web client retains the key for the same selection and creates a new key when A/B/C changes; in-flight actions are coalesced.
+Allowed transitions are `DRAFT → READY → CONFIRMED`, `DRAFT|READY → SUPERSEDED`, and `READY → EXPIRED`; only `READY` can be confirmed. It deliberately has no paid, performing, or filed state. The same key and semantic payload reuses a result; a different payload produces 409. Failed transport attempts can safely retry. The web client retains the key for the same selection and creates a new key when A/B/C changes; in-flight actions are coalesced.
 
 ## Fixture rules and safety locks
 
-A/B/C apply fixed integer multipliers to estimated official fees, service fees, disbursements, and taxes. Identical quote inputs yield the same identifier and amounts. Every result is `fixtureOnly: true`; it uses no production fee source, tax engine, or currency conversion. Recommendation is not appointment; confirmation is not Order; Quote is not Payment; Payment is not performance; fixture fees are not Official Fees; confirmation is not professional acceptance. External protected actions still require explicit review and approval.
+Pricing rule `fixture-usd-v1` is part of Quote identity together with `intakeId`, `recommendationId`, and `selectedOptionCode`. A/B/C apply fixed integer multipliers to estimated official fees, service fees, disbursements, and taxes. Identical quote inputs yield the same identifier and amounts. Every result is `fixtureOnly: true`; it uses no production fee source, tax engine, or currency conversion. Recommendation is not appointment; confirmation is not Order; Quote is not Payment; Payment is not performance; fixture fees are not Official Fees; confirmation is not professional acceptance. External protected actions still require explicit review and approval.
 
 ## UI design and states
 
@@ -30,3 +30,9 @@ Contract tests cover integer money and A/B/C validation. Service and real dynami
 ## Limitations, non-goals, next recommendation
 
 There is no database persistence, production pricing/tax engine, official fee source, conversion, Payment, Order, Matter, document upload, professional assignment, MGSN allocation, Filing, Invoice, Refund, or fulfillment. Confirmation records customer intent only. Next, add the separately governed professional review boundary before any Order/Matter proposal; do not infer acceptance from confirmation.
+
+## Shared-boundary audit
+
+`service-kit` contains only generic exact-route and decoded path-parameter dispatch; it contains no Quote, idempotency, storage, or lifecycle behavior. Exact routes remain compatible. TASK 002/004 idempotency remains service-owned and its regression suite continues to cover same-payload reuse, changed-payload conflict, in-flight coalescing, and retry after failure. Quote creation applies those same locks in MarkReg without expanding the shared runtime API beyond generic route parameters.
+
+Money validation accepts only non-negative safe-integer minor units and USD for the current fixture. Every line must match the Quote currency, category totals reconcile to their named aggregates, subtotal is official plus service plus disbursements, and total is subtotal plus taxes. No conversion is performed.

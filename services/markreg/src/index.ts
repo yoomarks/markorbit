@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   assertDirectIntake,
+  assertQuoteMoneyInvariants,
   parseIntakeCreateCommand,
   type CapabilityRequest,
   type EventEnvelope,
@@ -65,6 +66,16 @@ export class InMemoryMarkRegRepository {
   getConfirmation(key: string) {
     return this.confirmations.get(key);
   }
+  findConfirmationByQuote(quoteId: string) {
+    return [...this.confirmations.values()].find((entry) => entry.quoteId === quoteId)?.value;
+  }
+  findRecommendation(intakeId: string, recommendationId: string) {
+    return this.all().find(
+      (entry) =>
+        entry.result?.intake.intakeId === intakeId &&
+        entry.result.recommendation.recommendationId === recommendationId
+    )?.result;
+  }
   saveConfirmation(key: string, value: QuoteConfirmation) {
     this.confirmations.set(key, { quoteId: value.quoteId, value });
   }
@@ -81,17 +92,29 @@ export class InMemoryMarkRegRepository {
 }
 
 const money = (amountMinor: number, currency = 'USD') => ({ amountMinor, currency });
-function fixtureQuote(command: QuoteCreateCommand, timestamp: string): PlanQuoteResponse {
+export const fixturePricingRuleVersion = 'fixture-usd-v1';
+export function fixtureQuoteId(command: QuoteCreateCommand, pricingRuleVersion: string) {
+  const stable = createHash('sha256')
+    .update(
+      `${command.intakeId}:${command.recommendationId}:${command.selectedOptionCode}:${pricingRuleVersion}`
+    )
+    .digest('hex')
+    .slice(0, 20);
+  return `quote_${stable}` as const;
+}
+function fixtureQuote(
+  command: QuoteCreateCommand,
+  timestamp: string,
+  pricingRuleVersion: string
+): PlanQuoteResponse {
   const factor = { A: 1, B: 2, C: 3 }[command.selectedOptionCode];
   const official = 35000 * factor,
     service = 50000 * factor,
     disbursement = 5000 * factor;
   const taxes = Math.trunc(service / 10),
     subtotal = official + service + disbursement;
-  const stable = createHash('sha256')
-    .update(`${command.intakeId}:${command.recommendationId}:${command.selectedOptionCode}`)
-    .digest('hex')
-    .slice(0, 20);
+  const quoteId = fixtureQuoteId(command, pricingRuleVersion);
+  const stable = quoteId.slice(6);
   const lines = [
     {
       code: 'EST_OFFICIAL',
@@ -119,10 +142,11 @@ function fixtureQuote(command: QuoteCreateCommand, timestamp: string): PlanQuote
     }
   ];
   const quote: Quote = {
-    quoteId: `quote_${stable}`,
+    quoteId,
     intakeId: command.intakeId,
     recommendationId: command.recommendationId,
     selectedOptionCode: command.selectedOptionCode,
+    pricingRuleVersion,
     status: 'READY',
     currency: 'USD',
     lines,
@@ -139,12 +163,14 @@ function fixtureQuote(command: QuoteCreateCommand, timestamp: string): PlanQuote
       }
     ],
     limitations: [
-      'Estimate only; official fees, professional fees and disbursements require review before filing.'
+      'Estimate only — official fees, professional fees and disbursements require review before filing.',
+      'Demonstration only — not legal advice or an official filing recommendation.'
     ],
     validUntil: new Date(Date.parse(timestamp) + 14 * 86400000).toISOString(),
     fixtureOnly: true,
     createdAt: timestamp
   };
+  assertQuoteMoneyInvariants(quote);
   return {
     planSelection: {
       planSelectionId: `plan-selection_${stable}`,
@@ -163,6 +189,8 @@ export interface MarkRegOptions {
   repository?: InMemoryMarkRegRepository;
   publisher?: EventPublisher;
   now?: () => string;
+  pricingRuleVersion?: string;
+  beforeQuotePersist?: (command: QuoteCreateCommand) => void | Promise<void>;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -232,10 +260,12 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const repository = options.repository ?? new InMemoryMarkRegRepository();
   const publisher = options.publisher ?? new InMemoryEventPublisher();
   const now = options.now ?? (() => new Date().toISOString());
+  const pricingRuleVersion = options.pricingRuleVersion ?? fixturePricingRuleVersion;
   const capabilityUrl =
     options.capabilityEngineUrl ?? process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
+  const quoteInFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -243,7 +273,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
         {
           method: 'POST',
           path: '/v1/quotes',
-          handle(request) {
+          async handle(request) {
             let command: QuoteCreateCommand;
             try {
               command = parseQuoteCreateCommand(request.body);
@@ -274,14 +304,54 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 'Idempotency key was already used with a different payload.'
               );
             if (prior) return json(200, prior.result);
-            const result = fixtureQuote(command, now());
-            repository.supersedeQuotes(
-              command.intakeId,
-              command.recommendationId,
-              result.quote.quoteId
-            );
-            repository.saveQuoteEntry(key, { fingerprint, result });
-            return json(201, result);
+            const pending = quoteInFlight.get(key);
+            if (pending) {
+              if (pending.fingerprint !== fingerprint)
+                throw new HttpError(
+                  409,
+                  'IDEMPOTENCY_CONFLICT',
+                  'Idempotency key is in use with a different payload.'
+                );
+              return pending.result;
+            }
+            const work = (async () => {
+              const recommendation = repository.findRecommendation(
+                command.intakeId,
+                command.recommendationId
+              );
+              if (!recommendation)
+                throw new HttpError(
+                  422,
+                  'QUOTE_RELATIONSHIP_INVALID',
+                  'The Intake and Recommendation cannot be quoted together.'
+                );
+              if (
+                recommendation.recommendation.status !== 'FIXTURE_ONLY' ||
+                !recommendation.recommendation.options.some(
+                  (option) => option.tier === command.selectedOptionCode
+                )
+              )
+                throw new HttpError(
+                  422,
+                  'QUOTE_OPTION_INVALID',
+                  'The selected option is not eligible for fixture quotation.'
+                );
+              await options.beforeQuotePersist?.(command);
+              const result = fixtureQuote(command, now(), pricingRuleVersion);
+              repository.supersedeQuotes(
+                command.intakeId,
+                command.recommendationId,
+                result.quote.quoteId
+              );
+              repository.saveQuoteEntry(key, { fingerprint, result });
+              return json(201, result);
+            })();
+            quoteInFlight.set(key, { fingerprint, result: work });
+            try {
+              return await work;
+            } finally {
+              quoteInFlight.delete(key);
+            }
           }
         },
         {
@@ -321,10 +391,19 @@ export function createRuntime(options: MarkRegOptions = {}) {
             if (prior) return json(200, prior.value);
             const quote = repository.getQuote(command.quoteId);
             if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
-            if (Date.parse(quote.validUntil) <= Date.parse(now())) {
+            const existingConfirmation = repository.findConfirmationByQuote(command.quoteId);
+            if (existingConfirmation) {
+              repository.saveConfirmation(key, existingConfirmation);
+              return json(200, existingConfirmation);
+            }
+            if (quote.status === 'SUPERSEDED')
+              throw new HttpError(409, 'QUOTE_SUPERSEDED', 'This quote is no longer current.');
+            if (quote.status === 'EXPIRED' || Date.parse(quote.validUntil) <= Date.parse(now())) {
               repository.saveQuote({ ...quote, status: 'EXPIRED' });
               throw new HttpError(409, 'QUOTE_EXPIRED', 'This quote has expired.');
             }
+            if (quote.status !== 'READY')
+              throw new HttpError(409, 'QUOTE_NOT_READY', 'This quote cannot be confirmed.');
             const confirmation: QuoteConfirmation = {
               quoteId: quote.quoteId,
               status: 'CONFIRMED',
