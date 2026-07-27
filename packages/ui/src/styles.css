@@ -333,3 +333,54 @@ p {
     overflow: auto;
   }
 }
+.markreg-page {
+  max-width: 75rem;
+  margin: auto;
+  padding: var(--mo-space-xxl) var(--mo-space-lg);
+  display: grid;
+  gap: var(--mo-space-xl);
+}
+.markreg-form {
+  display: grid;
+  gap: var(--mo-space-xl);
+  max-width: 42rem;
+}
+.markreg-form textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+.markreg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mo-space-lg);
+  margin-top: var(--mo-space-xl);
+}
+.markreg-review {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--mo-space-lg);
+  padding: var(--mo-space-lg) 0;
+  border-bottom: 1px solid var(--mo-border);
+}
+.markreg-options {
+  margin-top: 0;
+}
+.mo-center {
+  text-align: center;
+}
+@media (max-width: 760px) {
+  .markreg-page {
+    padding: var(--mo-space-lg) var(--mo-space-md);
+  }
+  .markreg-review {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .markreg-actions {
+    flex-wrap: wrap;
+  }
+  .markreg-actions .mo-button {
+    flex: 1;
+  }
+}
