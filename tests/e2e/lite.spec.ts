@@ -7,12 +7,12 @@ import {
   watchPage
 } from './helpers/page.js';
 
-test('Lite customer workspace provides fixed navigation and responsive fixture states @visual', async ({
+test('Lite Today provides its fixed semantic navigation and responsive workspace @visual', async ({
   page
 }, testInfo) => {
   const assertHealthy = watchPage(page);
   await page.goto(urls.lite);
-  await expect(page.getByRole('heading', { level: 1, name: 'Customers' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
   const navigation = page.getByRole('navigation', { name: 'Primary' });
   await expect(navigation).toBeVisible();
   await expect(navigation.getByRole('link')).toHaveText([
@@ -28,7 +28,7 @@ test('Lite customer workspace provides fixed navigation and responsive fixture s
   await expectNoHorizontalOverflow(page);
   await expectVisibleFocus(page);
   const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
-  await capture(page, `lite-customers-${viewport}`);
+  await capture(page, `lite-today-${viewport}`);
   assertHealthy();
 });
 
@@ -36,7 +36,7 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   page
 }) => {
   const assertHealthy = watchPage(page);
-  await page.goto(urls.lite);
+  await page.goto(`${urls.lite}#work-customers`);
   await page.getByLabel('Search customers').fill('Northwind');
   await page.getByLabel('Customer status').selectOption('Active');
   await page.getByLabel('Country / region').selectOption('US');

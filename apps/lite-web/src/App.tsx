@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   AppShell,
   Badge,
   Button,
   Card,
+  DataList,
   EmptyState,
   ErrorState,
   FixtureBanner,
@@ -33,7 +34,7 @@ const nav = [
   'Capability',
   'Guide'
 ] as const;
-type Surface = 'customers' | 'opportunities';
+type Surface = 'today' | 'customers' | 'opportunities';
 export interface LiteAppProps {
   initialSurface?: Surface;
   initialState?: FixtureState;
@@ -449,13 +450,23 @@ function Opportunities({
   );
 }
 export function LiteApp({
-  initialSurface = 'customers',
+  initialSurface = 'today',
   initialState = 'ready',
   initialCustomerId,
   initialOpportunityId
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(initialSurface);
   const [state, setState] = useState<FixtureState>(initialState);
+  useEffect(() => {
+    const followHash = () => {
+      if (window.location.hash === '#work-customers') setSurface('customers');
+      else if (window.location.hash === '#opportunities') setSurface('opportunities');
+      else if (window.location.hash === '#today') setSurface('today');
+    };
+    followHash();
+    window.addEventListener('hashchange', followHash);
+    return () => window.removeEventListener('hashchange', followHash);
+  }, []);
   return (
     <AppShell
       brand="MarkOrbit Lite"
@@ -464,7 +475,12 @@ export function LiteApp({
           items={nav.map((label) => ({
             label,
             href: label === 'Work' ? '#work-customers' : `#${label.toLowerCase()}`,
-            active: surface === 'customers' ? label === 'Work' : label === 'Opportunities'
+            active:
+              surface === 'customers'
+                ? label === 'Work'
+                : surface === 'opportunities'
+                  ? label === 'Opportunities'
+                  : label === 'Today'
           }))}
         />
       }
@@ -473,21 +489,49 @@ export function LiteApp({
       }
     >
       <FixtureBanner />
-      <div className="lite-subnav" aria-label="Workspace view">
-        <Button
-          variant={surface === 'customers' ? 'primary' : 'secondary'}
-          onClick={() => setSurface('customers')}
-        >
-          Work / Customers
-        </Button>
-        <Button
-          variant={surface === 'opportunities' ? 'primary' : 'secondary'}
-          onClick={() => setSurface('opportunities')}
-        >
-          Opportunities
-        </Button>
-      </div>
-      {surface === 'customers' ? (
+      {surface !== 'today' && (
+        <div className="lite-subnav" aria-label="Workspace view">
+          <Button
+            variant={surface === 'customers' ? 'primary' : 'secondary'}
+            onClick={() => setSurface('customers')}
+          >
+            Work / Customers
+          </Button>
+          <Button
+            variant={surface === 'opportunities' ? 'primary' : 'secondary'}
+            onClick={() => setSurface('opportunities')}
+          >
+            Opportunities
+          </Button>
+        </div>
+      )}
+      {surface === 'today' ? (
+        <>
+          <PageHeader
+            title="Today"
+            description="A calm view of the work that needs professional attention."
+          />
+          <div className="mo-grid">
+            <Card>
+              <h2>Pending attention</h2>
+              <DataList
+                items={[
+                  { label: 'Client intake review', value: '4', status: 'Due today' },
+                  { label: 'Draft publish packages', value: '2', status: 'Awaiting approval' }
+                ]}
+              />
+            </Card>
+            <Card>
+              <h2>Opportunities</h2>
+              <DataList items={[{ label: 'Evidence observations', value: '3' }]} />
+            </Card>
+            <Card>
+              <h2>Work</h2>
+              <DataList items={[{ label: 'Customers needing review', value: '1' }]} />
+            </Card>
+          </div>
+        </>
+      ) : surface === 'customers' ? (
         <Customers
           key={initialCustomerId}
           state={state}
