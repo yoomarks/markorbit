@@ -31,3 +31,35 @@ test('Lite Today provides its fixed semantic navigation and responsive workspace
   await capture(page, `lite-today-${viewport}`);
   assertHealthy();
 });
+
+test('Lite filters survive customer detail and suggested actions do not execute', async ({
+  page
+}) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.lite}#work-customers`);
+  await page.getByLabel('Search customers').fill('Northwind');
+  await page.getByLabel('Customer status').selectOption('Active');
+  await page.getByLabel('Country / region').selectOption('US');
+  await page.getByRole('button', { name: 'View customer details' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Northwind Outdoor' })).toBeVisible();
+  await expect(page.getByText('Customer Record ≠ Verified Legal Identity')).toBeVisible();
+  await page.getByRole('button', { name: 'Back to customers' }).click();
+  await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
+  await expect(page.getByLabel('Customer status')).toHaveValue('Active');
+
+  await page.getByRole('button', { name: 'Opportunities', exact: true }).click();
+  await page.getByLabel('Opportunity status').selectOption('REVIEWING');
+  await page.getByRole('button', { name: 'View opportunity details' }).click();
+  await expect(page.getByText('Opportunity ≠ Confirmed Demand')).toBeVisible();
+  await page.getByRole('button', { name: 'Mark suggestion as reviewed' }).click();
+  const reviewAcknowledgement = page
+    .getByRole('status')
+    .filter({ hasText: 'Review acknowledgement saved' });
+  await expect(reviewAcknowledgement).toContainText('No contact, order, appointment, filing');
+  await page.getByRole('button', { name: 'Back to opportunities' }).click();
+  await expect(page.getByLabel('Opportunity status')).toHaveValue('REVIEWING');
+  const reviewingStatus = page.locator('strong').filter({ hasText: /^REVIEWING$/ });
+  await expect(reviewingStatus).toHaveCount(1);
+  await expect(reviewingStatus).toBeVisible();
+  assertHealthy();
+});
