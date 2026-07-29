@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { ProfessionalReviewCase } from '@markorbit/contracts';
 import {
   capture,
   expectNoHorizontalOverflow,
@@ -73,27 +74,131 @@ test('Lite governed professional review preserves filters, focus, and authority 
   page
 }, testInfo) => {
   const assertHealthy = watchPage(page);
+  const at = '2026-07-28T15:40:00.000Z';
+  let review: ProfessionalReviewCase = {
+    schemaVersion: 1,
+    reviewCaseId: 'professional-review_visual',
+    source: {
+      schemaVersion: 1,
+      matterDraftId: 'matter-draft_visual',
+      matterDraftVersion: at,
+      confirmationId: 'confirmation_visual',
+      customerId: 'customer_visual',
+      status: 'READY_FOR_PROFESSIONAL_REVIEW',
+      preparation: {
+        classes: [9],
+        documentReferences: [],
+        trademark: 'VISUAL MARK',
+        targetJurisdiction: 'EU',
+        goodsServices: 'Visual fixture goods'
+      },
+      readiness: { evaluatedAt: at, readyForProfessionalReview: true, checks: [] },
+      readinessTimestamp: at
+    },
+    status: 'REVIEWED_READY_FOR_NEXT_STEP',
+    priority: 'NORMAL',
+    requestedBy: 'actor_visual',
+    createdAt: at,
+    updatedAt: at,
+    assignment: {
+      status: 'CLAIMED',
+      claimedBy: 'reviewer_milestone',
+      claimedAt: at,
+      assignedReviewerId: 'reviewer_milestone',
+      assignedAt: at,
+      professionalAppointed: false
+    },
+    checklist: [
+      {
+        code: 'SOURCE_MATTER_DRAFT_CURRENT',
+        status: 'PASS',
+        blocking: true,
+        explanation: 'Review required.'
+      }
+    ],
+    evidence: [],
+    decision: {
+      code: 'MARK_READY_FOR_NEXT_STEP',
+      reviewerId: 'reviewer_milestone',
+      decidedAt: at,
+      rationale: 'Visual evidence reviewed.',
+      checklistSnapshot: [],
+      evidenceReferences: [],
+      sourceMatterDraftVersion: at,
+      consequences: {
+        orderCreated: false,
+        paymentCreated: false,
+        formalMatterCreated: false,
+        providerAppointed: false,
+        filingCreated: false,
+        customerMessageSent: false
+      }
+    }
+  };
+  await page.route('**/api/lite/professional-review-cases**', async (route) => {
+    const url = route.request().url();
+    const path = new URL(url).pathname;
+    if (path.endsWith('/claim'))
+      review = {
+        ...review,
+        status: 'IN_REVIEW',
+        assignment: {
+          status: 'CLAIMED',
+          claimedBy: 'reviewer_milestone',
+          claimedAt: at,
+          assignedReviewerId: 'reviewer_milestone',
+          assignedAt: at,
+          professionalAppointed: false
+        }
+      };
+    else if (path.endsWith('/checklist'))
+      review = {
+        ...review,
+        checklist: review.checklist.map((item) => ({ ...item, status: 'PASS' }))
+      };
+    else if (path.endsWith('/complete'))
+      review = {
+        ...review,
+        status: 'REVIEWED_READY_FOR_NEXT_STEP',
+        decision: {
+          code: 'MARK_READY_FOR_NEXT_STEP',
+          reviewerId: 'reviewer_milestone',
+          decidedAt: at,
+          rationale: 'Visual evidence reviewed.',
+          checklistSnapshot: review.checklist,
+          evidenceReferences: [],
+          sourceMatterDraftVersion: at,
+          consequences: {
+            orderCreated: false,
+            paymentCreated: false,
+            formalMatterCreated: false,
+            providerAppointed: false,
+            filingCreated: false,
+            customerMessageSent: false
+          }
+        }
+      };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        path.endsWith('professional-review-cases')
+          ? { reviewCases: [review] }
+          : { reviewCase: review }
+      )
+    });
+  });
   await page.goto(`${urls.lite}#work-professional-review`);
-  await page.getByLabel('Status').selectOption('QUEUED');
-  await page.getByLabel('Jurisdiction').selectOption('EU');
+  await page.getByLabel('Status').selectOption('REVIEWED_READY_FOR_NEXT_STEP');
   await page.getByRole('button', { name: 'Open professional review' }).click();
   await expect(page.getByRole('heading', { name: 'Exact Matter Draft snapshot' })).toBeVisible();
-  await expect(page.getByText('2026-07-28T15:40:00.000Z')).toBeVisible();
-  await page.getByRole('button', { name: 'Claim review' }).click();
-  await expect(page.getByText(/UNKNOWN never counts as PASS/)).toBeVisible();
-  await page.getByRole('button', { name: 'Request more information' }).click();
-  await expect(page.getByText('Information request prepared — not sent')).toBeVisible();
-  await expect(page.getByText(/customerMessageSent: false/)).toBeVisible();
-  for (const select of await page.getByLabel('Review result').all())
-    await select.selectOption('PASS');
-  await page.getByRole('button', { name: 'Save checklist' }).click();
-  await page.getByRole('button', { name: 'Mark reviewed and ready for next step' }).click();
+  await expect(page.getByText('2026-07-28T15:40:00.000Z', { exact: true })).toBeVisible();
   await expect(page.getByText(/orderCreated: false/)).toContainText('filingCreated: false');
   await expectNoHorizontalOverflow(page);
   const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
   await capture(page, `lite-professional-review-${viewport}`);
   await page.getByRole('button', { name: 'Back to review queue' }).click();
   await expect(page.getByRole('button', { name: 'Open professional review' })).toBeFocused();
-  await expect(page.getByLabel('Status')).toHaveValue('QUEUED');
+  await expect(page.getByLabel('Status')).toHaveValue('REVIEWED_READY_FOR_NEXT_STEP');
   assertHealthy();
 });

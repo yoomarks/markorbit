@@ -64,9 +64,24 @@ function correlation(request: IncomingMessage): string {
   const value = request.headers['x-correlation-id'];
   return typeof value === 'string' && value.length > 0 ? value : 'correlation_unknown';
 }
-function send(response: ServerResponse, result: JsonResult): void {
+function corsOrigin(request: IncomingMessage): string | undefined {
+  const origin = request.headers.origin;
+  if (!origin) return undefined;
+  const allowed = (process.env['WEB_ORIGINS'] ?? '').split(',').filter(Boolean);
+  return allowed.includes(origin) ? origin : undefined;
+}
+function send(request: IncomingMessage, response: ServerResponse, result: JsonResult): void {
+  const origin = corsOrigin(request);
   response.writeHead(result.status, {
     'content-type': 'application/json; charset=utf-8',
+    ...(origin
+      ? {
+          'access-control-allow-origin': origin,
+          vary: 'Origin',
+          'access-control-allow-headers': 'content-type, idempotency-key, x-correlation-id',
+          'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
+        }
+      : {}),
     ...result.headers
   });
   response.end(JSON.stringify(result.body));
@@ -109,10 +124,22 @@ export function createServiceRuntime(
       const nextServer = createServer((request, response) => {
         void (async () => {
           const path = new URL(request.url ?? '/', 'http://localhost').pathname;
+          if (request.method === 'OPTIONS') {
+            const origin = corsOrigin(request);
+            if (!origin) throw new HttpError(403, 'ORIGIN_NOT_ALLOWED', 'Origin is not allowed.');
+            response.writeHead(204, {
+              'access-control-allow-origin': origin,
+              vary: 'Origin',
+              'access-control-allow-headers': 'content-type, idempotency-key, x-correlation-id',
+              'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
+            });
+            response.end();
+            return;
+          }
           if (path === '/health') {
             if (request.method !== 'GET')
               throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
-            send(response, json(200, createHealthResponse(manifest)));
+            send(request, response, json(200, createHealthResponse(manifest)));
             return;
           }
           const matches = (template: string) => {
@@ -147,6 +174,7 @@ export function createServiceRuntime(
           for (const [key, value] of Object.entries(request.headers))
             headers[key] = Array.isArray(value) ? value[0] : value;
           send(
+            request,
             response,
             await matched.route.handle({
               body,
@@ -163,6 +191,7 @@ export function createServiceRuntime(
               ? error
               : new HttpError(500, 'INTERNAL_ERROR', 'An internal error occurred.', false);
           send(
+            request,
             response,
             json(safe.status, {
               code: safe.code,

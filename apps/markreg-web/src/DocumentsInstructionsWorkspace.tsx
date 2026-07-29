@@ -1,6 +1,5 @@
 import { Alert, Button, Card, Checkbox, LoadingState } from '@markorbit/ui';
 import { useState } from 'react';
-import { useEffect } from 'react';
 import type {
   DocumentPackage,
   CustomerInstructionLedger,
@@ -242,9 +241,9 @@ export function ConnectedDocumentsInstructionsWorkspace({
   const [authorizationOpen, setAuthorizationOpen] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
   const [error, setError] = useState('');
-  useEffect(() => {
+  const createPackage = async () => {
     if (!review.decision) return;
-    void client.createDocumentPackage!({
+    await client.createDocumentPackage!({
       professionalReviewCaseId: review.reviewCaseId,
       professionalReviewDecisionVersion: review.decision.decidedAt,
       matterDraftVersion: review.source.matterDraftVersion,
@@ -254,14 +253,20 @@ export function ConnectedDocumentsInstructionsWorkspace({
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : 'Preparation could not start.')
       );
-  }, [client, review]);
+  };
   if (error)
     return (
       <Alert tone="danger" title="Preparation could not continue">
         {error}
       </Alert>
     );
-  if (!pkg) return <LoadingState label="Creating governed Document Package" />;
+  if (!pkg)
+    return (
+      <main className="preparation-workspace">
+        <h1>Documents and Instructions</h1>
+        <Button onClick={() => void createPackage()}>Create Document Package</Button>
+      </main>
+    );
   if (lock && authorizationOpen)
     return <FilingAuthorizationView client={client} preparationLock={lock} />;
   if (lock)
@@ -449,6 +454,9 @@ export function ConnectedDocumentsInstructionsWorkspace({
         <section aria-labelledby="connected-ledger">
           <Card>
             <h2 id="connected-ledger">Customer Instruction Ledger</h2>
+            <p>
+              {ledger.instructionLedgerId} · version {ledger.version}
+            </p>
             <ol>
               {ledger.entries.map((e) => (
                 <li key={e.instructionEntryId}>

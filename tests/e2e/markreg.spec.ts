@@ -187,6 +187,7 @@ test('Completed Professional Review reaches an immutable Preparation Lock @visua
   await expect(page.getByText('matter-v11')).toBeVisible();
   await page.getByRole('button', { name: 'Open Documents and Instructions' }).click();
   await expect(page.getByRole('heading', { name: 'Documents and Instructions' })).toBeVisible();
+  await page.getByRole('button', { name: 'Create Document Package' }).click();
   await expect(page.getByText('Required · Missing').first()).toBeVisible();
   await capture(page, `markreg-documents-missing-${testInfo.project.name}`);
   await page.getByRole('button', { name: 'Record fixture document metadata' }).click();

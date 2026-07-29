@@ -5,6 +5,7 @@ const inCI = Boolean(process.env['CI']);
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testIgnore: /milestone-001-real-runtime\.spec\.ts/,
   outputDir: 'test-results',
   fullyParallel: true,
   forbidOnly: inCI,

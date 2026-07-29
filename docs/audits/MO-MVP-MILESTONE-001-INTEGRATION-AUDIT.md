@@ -1,5 +1,7 @@
 # MO MVP Milestone 1 — TASK 001–012 Integration Audit
 
+> Remediation reference (TASK 013): see `docs/tasks/MO-MVP-TASK-013-REAL-RUNTIME-GOLDEN-PATH.md`. This does not alter the original FAIL; remote Node 22 CI and the complete real-runtime browser journey must be green before the blockers can close.
+
 ## Executive result
 
 **Result: FAIL. Freeze recommendation: DO NOT FREEZE.**
@@ -220,3 +222,5 @@ None. The audit adds only this Markdown report and its machine-readable JSON com
 ## Milestone freeze recommendation
 
 **DO NOT FREEZE.** Resolve B-001 and B-002, add the missing state/deep-link matrices, run the complete quality gate on Node 22, run desktop/mobile golden and visual suites sequentially against real runtimes, then obtain green remote CI. A later audit may recommend freeze only after those facts are evidenced; this report does not claim milestone freeze.
+
+> TASK 013 remediation: implementation head `f657cdaee6035651f8bd313f93ae108bedd5df03`; desktop real-runtime PASS; mobile 390px real-runtime PASS; complete exact lineage PASS; governed API interception false; B-002 RESOLVED. Node 22 remote CI remains OPEN, therefore B-001 remains OPEN. The original audit result and freeze recommendation remain unchanged.

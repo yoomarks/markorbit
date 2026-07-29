@@ -43,6 +43,12 @@ export interface MarkregClient {
   ): Promise<MatterDraftResponse>;
   evaluateMatterDraft?(id: string): Promise<MatterDraftResponse>;
   getProfessionalReview?(id: string): Promise<{ reviewCase: ProfessionalReviewCase }>;
+  createProfessionalReview?(command: {
+    matterDraftId: string;
+    matterDraftVersion: string;
+    requestedBy: MarkOrbitId;
+    idempotencyKey: string;
+  }): Promise<{ reviewCase: ProfessionalReviewCase }>;
   createDocumentPackage?(command: {
     professionalReviewCaseId: string;
     professionalReviewDecisionVersion: string;
@@ -150,9 +156,8 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
       );
     },
     createCustomerConfirmation(command) {
-      const { idempotencyKey, ...body } = command;
-      return api.post('/api/markreg/customer-confirmations', body, {
-        'Idempotency-Key': idempotencyKey
+      return api.post('/api/markreg/customer-confirmations', command, {
+        'Idempotency-Key': command.idempotencyKey
       });
     },
     getCustomerConfirmation(id) {
@@ -183,6 +188,12 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
     },
     getProfessionalReview(id) {
       return api.get(`/api/lite/professional-review-cases/${encodeURIComponent(id)}`);
+    },
+    createProfessionalReview(command) {
+      const { idempotencyKey, ...body } = command;
+      return api.post('/api/lite/professional-review-cases', body, {
+        'Idempotency-Key': idempotencyKey
+      });
     },
     createDocumentPackage(command) {
       const { idempotencyKey, ...body } = command;

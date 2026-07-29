@@ -73,7 +73,8 @@ const load = <T,>(key: string): T | undefined => {
 };
 const fingerprint = (draft: IntakeDraft) => JSON.stringify(draft);
 
-export function MarkregApp({ client = createMarkregClient() }: { client?: MarkregClient }) {
+const defaultMarkregClient = createMarkregClient();
+export function MarkregApp({ client = defaultMarkregClient }: { client?: MarkregClient }) {
   const reviewCaseId = new URLSearchParams(window.location.search).get('professionalReviewCaseId');
   const preparationLockId = new URLSearchParams(window.location.search).get('preparationLockId');
   const [authorizationLock, setAuthorizationLock] = useState<PreparationLock>();

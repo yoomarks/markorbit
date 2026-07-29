@@ -3,7 +3,8 @@ import type {
   CustomerConfirmation,
   MatterDraft,
   MatterDraftPreparation,
-  PlanQuoteResponse
+  PlanQuoteResponse,
+  ProfessionalReviewCase
 } from '@markorbit/contracts';
 import {
   Alert,
@@ -61,6 +62,7 @@ export function ConfirmationMatterFlow({
   const [message, setMessage] = useState(
     fixture?.message ?? 'Your saved records are unchanged. Try again.'
   );
+  const [reviewCase, setReviewCase] = useState<ProfessionalReviewCase>();
   const [form, setForm] = useState<MatterDraftPreparation>(
     () => fixture?.draft?.preparation ?? { classes: [], documentReferences: [] }
   );
@@ -162,7 +164,7 @@ export function ConfirmationMatterFlow({
     );
   if (state === 'QUOTE_REVIEW')
     return (
-      <Card>
+      <Card className="customer-confirmation-card">
         <h2>Customer Confirmation</h2>
         <KeyValueList items={quoteItems} />
         <fieldset>
@@ -249,6 +251,12 @@ export function ConfirmationMatterFlow({
         <p>
           Status: <strong>{matter.status}</strong>
         </p>
+        <KeyValueList
+          items={[
+            { key: 'Matter Draft ID', value: matter.matterDraftId },
+            { key: 'Matter Draft version', value: matter.updatedAt }
+          ]}
+        />
         <div className="markreg-form">
           <TextInput
             label="Applicant / Owner"
@@ -347,10 +355,32 @@ export function ConfirmationMatterFlow({
           ))}
         </section>
         {state === 'READY_FOR_PROFESSIONAL_REVIEW' ? (
-          <Alert tone="success" title="Ready for professional review">
-            Readiness is not approval, authority, an Order, or a filing. Order created: No · Payment
-            created: No · Professional appointed: No · Filing created: No
-          </Alert>
+          <>
+            <Alert tone="success" title="Ready for professional review">
+              Readiness is not approval, authority, an Order, or a filing. Order created: No ·
+              Payment created: No · Professional appointed: No · Filing created: No
+            </Alert>
+            {!reviewCase ? (
+              <Button
+                onClick={() =>
+                  void client.createProfessionalReview!({
+                    matterDraftId: matter.matterDraftId,
+                    matterDraftVersion: matter.updatedAt,
+                    requestedBy: 'actor_markreg',
+                    idempotencyKey: `review:${matter.matterDraftId}:${matter.updatedAt}`
+                  }).then((response) => setReviewCase(response.reviewCase))
+                }
+              >
+                Send to Professional Review
+              </Button>
+            ) : (
+              <a
+                href={`http://127.0.0.1:4371/?professionalReviewCaseId=${encodeURIComponent(reviewCase.reviewCaseId)}#work-professional-review`}
+              >
+                Open exact Professional Review in Lite
+              </a>
+            )}
+          </>
         ) : (
           <div className="markreg-actions matter-draft-actions">
             <Button onClick={() => void evaluate()}>Prepare for professional review</Button>

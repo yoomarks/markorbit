@@ -16,3 +16,5 @@ playwright-report/
 playwright-screenshots/
 test-results/
 blob-report/
+.artifacts/
+.artifacts/
