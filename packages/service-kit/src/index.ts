@@ -24,7 +24,7 @@ export interface JsonResult {
   headers?: Readonly<Record<string, string>>;
 }
 export interface JsonRoute {
-  method: 'POST';
+  method: 'GET' | 'POST' | 'PATCH';
   path: string;
   handle(request: JsonRequest): Promise<JsonResult> | JsonResult;
 }
@@ -137,11 +137,12 @@ export function createServiceRuntime(
           if (!matched) throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
           const contentType = request.headers['content-type'];
           if (
-            typeof contentType !== 'string' ||
-            contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json'
+            request.method !== 'GET' &&
+            (typeof contentType !== 'string' ||
+              contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
           )
             throw new HttpError(400, 'INVALID_REQUEST', 'Content-Type must be application/json.');
-          const body = await readBody(request, limit);
+          const body = request.method === 'GET' ? undefined : await readBody(request, limit);
           const headers: Record<string, string | undefined> = {};
           for (const [key, value] of Object.entries(request.headers))
             headers[key] = Array.isArray(value) ? value[0] : value;

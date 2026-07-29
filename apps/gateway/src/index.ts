@@ -8,7 +8,7 @@ import {
   type QuoteConfirmationCommand,
   type IntakeCreateCommand
 } from '@markorbit/contracts';
-import { createServiceRuntime, HttpError, json } from '@markorbit/service-kit';
+import { createServiceRuntime, HttpError, json, type JsonRequest } from '@markorbit/service-kit';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -25,10 +25,78 @@ function record(value: unknown): Record<string, unknown> {
 }
 export function createRuntime(options: GatewayOptions = {}) {
   const markRegUrl = options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
+  const forward = async (request: JsonRequest, path: string) => {
+    try {
+      const response = await fetch(`${markRegUrl}${path}`, {
+        method: request.method,
+        headers: {
+          'content-type': 'application/json',
+          ...(request.headers['idempotency-key']
+            ? { 'idempotency-key': request.headers['idempotency-key'] }
+            : {})
+        },
+        ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
+      });
+      return json(response.status, await response.json());
+    } catch {
+      throw new HttpError(
+        502,
+        'DOWNSTREAM_UNAVAILABLE',
+        'Matter preparation service is unavailable.',
+        true
+      );
+    }
+  };
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/api/markreg/customer-confirmations',
+          handle: (r) => forward(r, '/v1/customer-confirmations')
+        },
+        {
+          method: 'GET',
+          path: '/api/markreg/customer-confirmations/:confirmationId',
+          handle: (r) =>
+            forward(r, `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}`)
+        },
+        {
+          method: 'POST',
+          path: '/api/markreg/customer-confirmations/:confirmationId/withdraw',
+          handle: (r) =>
+            forward(
+              r,
+              `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}/withdraw`
+            )
+        },
+        {
+          method: 'POST',
+          path: '/api/markreg/matter-drafts',
+          handle: (r) => forward(r, '/v1/matter-drafts')
+        },
+        {
+          method: 'GET',
+          path: '/api/markreg/matter-drafts/:matterDraftId',
+          handle: (r) =>
+            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`)
+        },
+        {
+          method: 'PATCH',
+          path: '/api/markreg/matter-drafts/:matterDraftId',
+          handle: (r) =>
+            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`)
+        },
+        {
+          method: 'POST',
+          path: '/api/markreg/matter-drafts/:matterDraftId/evaluate-readiness',
+          handle: (r) =>
+            forward(
+              r,
+              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/evaluate-readiness`
+            )
+        },
         {
           method: 'POST',
           path: '/v1/markreg/quotes',

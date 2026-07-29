@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { intakeDraft, seedMarkreg } from './helpers/markreg.js';
+import { intakeDraft, installMatterGatewayFixture, seedMarkreg } from './helpers/markreg.js';
 import {
   capture,
   expectNoHorizontalOverflow,
@@ -94,5 +94,79 @@ test('Recoverable and blocking errors render safe states', async ({ page }) => {
   await page.getByRole('button', { name: 'Submit intake' }).click();
   await expect(page.getByRole('heading', { name: 'Consultation cannot continue' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  assertHealthy();
+});
+
+test('Customer Confirmation to ready Matter Draft remains preparatory @visual', async ({
+  page
+}, testInfo) => {
+  const assertHealthy = watchPage(page);
+  await seedMarkreg(page, 'recommendation');
+  await installMatterGatewayFixture(page);
+  await page.goto(urls.markreg);
+  await page.getByRole('button', { name: 'Choose this option' }).nth(1).click();
+  await page.getByRole('button', { name: 'Select plan B and request quote' }).click();
+  await expect(page.getByRole('heading', { name: 'Customer Confirmation' })).toBeVisible();
+  await expect(page.getByText('quote_e2e', { exact: true })).toBeVisible();
+  const confirmations = page
+    .getByRole('group', { name: 'Required acknowledgements' })
+    .getByRole('checkbox');
+  await expect(confirmations).toHaveCount(4);
+  for (const checkbox of await confirmations.all()) await expect(checkbox).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Confirm selected Quote' })).toBeDisabled();
+  await confirmations.first().focus();
+  for (const checkbox of await confirmations.all()) await checkbox.check();
+  await expect(page.getByRole('button', { name: 'Confirm selected Quote' })).toBeEnabled();
+  await expectVisibleFocus(page);
+  if (testInfo.project.name.startsWith('desktop'))
+    await capture(page, 'markreg-confirmation-acknowledgements');
+  await page.getByRole('button', { name: 'Confirm selected Quote' }).click();
+  const confirmationReceipt = page.getByRole('region', { name: 'Confirmation receipt' });
+  await expect(confirmationReceipt).toBeVisible();
+  for (const label of [
+    'Order created',
+    'Payment created',
+    'Professional appointed',
+    'Filing created'
+  ]) {
+    const consequence = confirmationReceipt.getByRole('listitem').filter({ hasText: label });
+    await expect(consequence).toHaveCount(1);
+    await expect(consequence.getByText('No', { exact: true })).toBeVisible();
+  }
+  await capture(page, `markreg-confirmation-receipt-${testInfo.project.name}`);
+  await page.getByRole('button', { name: 'Prepare Matter Draft' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Matter Draft preparation workspace' })
+  ).toBeVisible();
+  await expect(page.getByText('APPLICANT_IDENTITY_PRESENT', { exact: true }).first()).toBeVisible();
+  if (testInfo.project.name.startsWith('desktop'))
+    await capture(page, 'markreg-matter-draft-incomplete');
+  await page.getByLabel('Applicant / Owner').fill('Northstar Ltd');
+  await page.getByLabel('Applicant address').fill('1 Orbit Way');
+  await page.getByLabel('Trademark representation').fill('NORTHSTAR ORBIT');
+  await page.getByLabel('Target jurisdiction').selectOption('US');
+  await page.getByLabel('Classes').fill('9, 42');
+  await page
+    .getByLabel('Goods / services')
+    .fill(`${intakeDraft.goodsServicesSummary} ${'Long governed description '.repeat(15)}`);
+  await page.getByLabel('Filing basis').fill('INTENT_TO_USE');
+  await page.getByLabel('Representative requirement').selectOption('true');
+  await page.getByLabel('Required documents').fill('document_e2e');
+  await page.getByLabel('Commercial scope remains unchanged').check();
+  const readinessRegion = page.getByRole('region', { name: 'Readiness checks' });
+  const prepareButton = page.getByRole('button', { name: 'Prepare for professional review' });
+  await expect(prepareButton).toBeVisible();
+  await prepareButton.scrollIntoViewIfNeeded();
+  await expect(prepareButton).toBeInViewport();
+  const readinessBox = await readinessRegion.boundingBox();
+  const actionBox = await prepareButton.boundingBox();
+  if (readinessBox === null || actionBox === null)
+    throw new Error('Readiness or action layout is unavailable.');
+  expect(actionBox.y).toBeGreaterThanOrEqual(readinessBox.y + readinessBox.height);
+  await prepareButton.click();
+  await expect(page.getByText('Ready for professional review', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Readiness is not approval/)).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `markreg-matter-draft-ready-${testInfo.project.name}`);
   assertHealthy();
 });
