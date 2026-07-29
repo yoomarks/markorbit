@@ -1,6 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   assertDirectIntake,
+  assertQuoteMoneyInvariants,
   parseIntakeCreateCommand,
   type CapabilityRequest,
   type EventEnvelope,
@@ -8,7 +9,13 @@ import {
   type Intake,
   type IntakeCreateCommand,
   type IntakeRecommendationResponse,
-  type RecommendationPackage
+  type RecommendationPackage,
+  parseQuoteCreateCommand,
+  parseQuoteConfirmationCommand,
+  type PlanQuoteResponse,
+  type Quote,
+  type QuoteConfirmation,
+  type QuoteCreateCommand
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
@@ -25,6 +32,12 @@ interface Entry {
 }
 export class InMemoryMarkRegRepository {
   private readonly entries = new Map<string, Entry>();
+  private readonly quoteEntries = new Map<
+    string,
+    { fingerprint: string; result: PlanQuoteResponse }
+  >();
+  private readonly quotes = new Map<string, Quote>();
+  private readonly confirmations = new Map<string, { quoteId: string; value: QuoteConfirmation }>();
   get size() {
     return this.entries.size;
   }
@@ -37,6 +50,137 @@ export class InMemoryMarkRegRepository {
   all() {
     return [...this.entries.values()];
   }
+  getQuoteEntry(key: string) {
+    return this.quoteEntries.get(key);
+  }
+  saveQuoteEntry(key: string, value: { fingerprint: string; result: PlanQuoteResponse }) {
+    this.quoteEntries.set(key, value);
+    this.quotes.set(value.result.quote.quoteId, value.result.quote);
+  }
+  getQuote(id: string) {
+    return this.quotes.get(id);
+  }
+  saveQuote(quote: Quote) {
+    this.quotes.set(quote.quoteId, quote);
+  }
+  getConfirmation(key: string) {
+    return this.confirmations.get(key);
+  }
+  findConfirmationByQuote(quoteId: string) {
+    return [...this.confirmations.values()].find((entry) => entry.quoteId === quoteId)?.value;
+  }
+  findRecommendation(intakeId: string, recommendationId: string) {
+    return this.all().find(
+      (entry) =>
+        entry.result?.intake.intakeId === intakeId &&
+        entry.result.recommendation.recommendationId === recommendationId
+    )?.result;
+  }
+  saveConfirmation(key: string, value: QuoteConfirmation) {
+    this.confirmations.set(key, { quoteId: value.quoteId, value });
+  }
+  supersedeQuotes(intakeId: string, recommendationId: string, exceptId: string) {
+    for (const [id, quote] of this.quotes)
+      if (
+        id !== exceptId &&
+        quote.intakeId === intakeId &&
+        quote.recommendationId === recommendationId &&
+        quote.status === 'READY'
+      )
+        this.quotes.set(id, { ...quote, status: 'SUPERSEDED' });
+  }
+}
+
+const money = (amountMinor: number, currency = 'USD') => ({ amountMinor, currency });
+export const fixturePricingRuleVersion = 'fixture-usd-v1';
+export function fixtureQuoteId(command: QuoteCreateCommand, pricingRuleVersion: string) {
+  const stable = createHash('sha256')
+    .update(
+      `${command.intakeId}:${command.recommendationId}:${command.selectedOptionCode}:${pricingRuleVersion}`
+    )
+    .digest('hex')
+    .slice(0, 20);
+  return `quote_${stable}` as const;
+}
+function fixtureQuote(
+  command: QuoteCreateCommand,
+  timestamp: string,
+  pricingRuleVersion: string
+): PlanQuoteResponse {
+  const factor = { A: 1, B: 2, C: 3 }[command.selectedOptionCode];
+  const official = 35000 * factor,
+    service = 50000 * factor,
+    disbursement = 5000 * factor;
+  const taxes = Math.trunc(service / 10),
+    subtotal = official + service + disbursement;
+  const quoteId = fixtureQuoteId(command, pricingRuleVersion);
+  const stable = quoteId.slice(6);
+  const lines = [
+    {
+      code: 'EST_OFFICIAL',
+      description: 'Estimated official fees',
+      category: 'OFFICIAL_FEE' as const,
+      amount: money(official)
+    },
+    {
+      code: 'EST_SERVICE',
+      description: 'Estimated service fees',
+      category: 'SERVICE_FEE' as const,
+      amount: money(service)
+    },
+    {
+      code: 'EST_DISBURSEMENT',
+      description: 'Estimated disbursements',
+      category: 'DISBURSEMENT' as const,
+      amount: money(disbursement)
+    },
+    {
+      code: 'EST_TAX',
+      description: 'Estimated taxes',
+      category: 'TAX' as const,
+      amount: money(taxes)
+    }
+  ];
+  const quote: Quote = {
+    quoteId,
+    intakeId: command.intakeId,
+    recommendationId: command.recommendationId,
+    selectedOptionCode: command.selectedOptionCode,
+    pricingRuleVersion,
+    status: 'READY',
+    currency: 'USD',
+    lines,
+    subtotal: money(subtotal),
+    estimatedOfficialFees: money(official),
+    estimatedServiceFees: money(service),
+    estimatedDisbursements: money(disbursement),
+    estimatedTaxes: money(taxes),
+    total: money(subtotal + taxes),
+    assumptions: [
+      {
+        code: 'FIXTURE_SCOPE',
+        text: 'The selected fixture plan and supplied intake remain unchanged.'
+      }
+    ],
+    limitations: [
+      'Estimate only — official fees, professional fees and disbursements require review before filing.',
+      'Demonstration only — not legal advice or an official filing recommendation.'
+    ],
+    validUntil: new Date(Date.parse(timestamp) + 14 * 86400000).toISOString(),
+    fixtureOnly: true,
+    createdAt: timestamp
+  };
+  assertQuoteMoneyInvariants(quote);
+  return {
+    planSelection: {
+      planSelectionId: `plan-selection_${stable}`,
+      intakeId: command.intakeId,
+      recommendationId: command.recommendationId,
+      selectedOptionCode: command.selectedOptionCode,
+      selectedAt: timestamp
+    },
+    quote
+  };
 }
 export interface MarkRegOptions {
   port?: number;
@@ -45,6 +189,8 @@ export interface MarkRegOptions {
   repository?: InMemoryMarkRegRepository;
   publisher?: EventPublisher;
   now?: () => string;
+  pricingRuleVersion?: string;
+  beforeQuotePersist?: (command: QuoteCreateCommand) => void | Promise<void>;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -114,14 +260,164 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const repository = options.repository ?? new InMemoryMarkRegRepository();
   const publisher = options.publisher ?? new InMemoryEventPublisher();
   const now = options.now ?? (() => new Date().toISOString());
+  const pricingRuleVersion = options.pricingRuleVersion ?? fixturePricingRuleVersion;
   const capabilityUrl =
     options.capabilityEngineUrl ?? process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
+  const quoteInFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/v1/quotes',
+          async handle(request) {
+            let command: QuoteCreateCommand;
+            try {
+              command = parseQuoteCreateCommand(request.body);
+            } catch (error) {
+              throw new HttpError(
+                422,
+                'INVALID_QUOTE_REQUEST',
+                error instanceof Error ? error.message : 'Invalid quote request.'
+              );
+            }
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== command.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key header is required and must match the command.'
+              );
+            const fingerprint = JSON.stringify({
+              ...command,
+              idempotencyKey: undefined,
+              correlationId: undefined
+            });
+            const prior = repository.getQuoteEntry(key);
+            if (prior && prior.fingerprint !== fingerprint)
+              throw new HttpError(
+                409,
+                'IDEMPOTENCY_CONFLICT',
+                'Idempotency key was already used with a different payload.'
+              );
+            if (prior) return json(200, prior.result);
+            const pending = quoteInFlight.get(key);
+            if (pending) {
+              if (pending.fingerprint !== fingerprint)
+                throw new HttpError(
+                  409,
+                  'IDEMPOTENCY_CONFLICT',
+                  'Idempotency key is in use with a different payload.'
+                );
+              return pending.result;
+            }
+            const work = (async () => {
+              const recommendation = repository.findRecommendation(
+                command.intakeId,
+                command.recommendationId
+              );
+              if (!recommendation)
+                throw new HttpError(
+                  422,
+                  'QUOTE_RELATIONSHIP_INVALID',
+                  'The Intake and Recommendation cannot be quoted together.'
+                );
+              if (
+                recommendation.recommendation.status !== 'FIXTURE_ONLY' ||
+                !recommendation.recommendation.options.some(
+                  (option) => option.tier === command.selectedOptionCode
+                )
+              )
+                throw new HttpError(
+                  422,
+                  'QUOTE_OPTION_INVALID',
+                  'The selected option is not eligible for fixture quotation.'
+                );
+              await options.beforeQuotePersist?.(command);
+              const result = fixtureQuote(command, now(), pricingRuleVersion);
+              repository.supersedeQuotes(
+                command.intakeId,
+                command.recommendationId,
+                result.quote.quoteId
+              );
+              repository.saveQuoteEntry(key, { fingerprint, result });
+              return json(201, result);
+            })();
+            quoteInFlight.set(key, { fingerprint, result: work });
+            try {
+              return await work;
+            } finally {
+              quoteInFlight.delete(key);
+            }
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/quotes/:quoteId/confirm',
+          handle(request) {
+            let command;
+            try {
+              command = parseQuoteConfirmationCommand(request.body);
+            } catch (error) {
+              throw new HttpError(
+                422,
+                'INVALID_CONFIRMATION_REQUEST',
+                error instanceof Error ? error.message : 'Invalid confirmation request.'
+              );
+            }
+            if (command.quoteId !== request.params.quoteId)
+              throw new HttpError(
+                422,
+                'QUOTE_ID_MISMATCH',
+                'Quote identifier does not match the route.'
+              );
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== command.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key header is required and must match the command.'
+              );
+            const prior = repository.getConfirmation(key);
+            if (prior && prior.quoteId !== command.quoteId)
+              throw new HttpError(
+                409,
+                'IDEMPOTENCY_CONFLICT',
+                'Idempotency key was already used for another quote.'
+              );
+            if (prior) return json(200, prior.value);
+            const quote = repository.getQuote(command.quoteId);
+            if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
+            const existingConfirmation = repository.findConfirmationByQuote(command.quoteId);
+            if (existingConfirmation) {
+              repository.saveConfirmation(key, existingConfirmation);
+              return json(200, existingConfirmation);
+            }
+            if (quote.status === 'SUPERSEDED')
+              throw new HttpError(409, 'QUOTE_SUPERSEDED', 'This quote is no longer current.');
+            if (quote.status === 'EXPIRED' || Date.parse(quote.validUntil) <= Date.parse(now())) {
+              repository.saveQuote({ ...quote, status: 'EXPIRED' });
+              throw new HttpError(409, 'QUOTE_EXPIRED', 'This quote has expired.');
+            }
+            if (quote.status !== 'READY')
+              throw new HttpError(409, 'QUOTE_NOT_READY', 'This quote cannot be confirmed.');
+            const confirmation: QuoteConfirmation = {
+              quoteId: quote.quoteId,
+              status: 'CONFIRMED',
+              confirmedAt: now(),
+              pendingProfessionalReview: true,
+              orderCreated: false,
+              paymentMade: false,
+              filingStarted: false
+            };
+            repository.saveQuote({ ...quote, status: 'CONFIRMED' });
+            repository.saveConfirmation(key, confirmation);
+            return json(201, confirmation);
+          }
+        },
         {
           method: 'POST',
           path: '/v1/intakes',

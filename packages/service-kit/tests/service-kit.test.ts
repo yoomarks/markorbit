@@ -125,4 +125,33 @@ describe('independent service runtime', () => {
     });
     expect(JSON.stringify(safe)).not.toContain('private implementation detail');
   });
+
+  it('keeps exact routes compatible while exposing generic decoded path parameters', async () => {
+    const runtime = createServiceRuntime(
+      { name: 'test-service', port: 0, version: '0.1.0' },
+      {
+        routes: [
+          { method: 'POST', path: '/exact', handle: ({ params }) => json(200, params) },
+          {
+            method: 'POST',
+            path: '/resources/:resourceId/actions/:actionId',
+            handle: ({ params }) => json(200, params)
+          }
+        ]
+      }
+    );
+    active.push(runtime);
+    await runtime.start();
+    const post = (path: string) =>
+      fetch(`http://127.0.0.1:${runtime.listeningPort}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}'
+      });
+    expect(await (await post('/exact')).json()).toEqual({});
+    expect(await (await post('/resources/quote%5Fone/actions/confirm')).json()).toEqual({
+      resourceId: 'quote_one',
+      actionId: 'confirm'
+    });
+  });
 });
