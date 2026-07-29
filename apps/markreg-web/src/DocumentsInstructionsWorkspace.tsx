@@ -1,5 +1,14 @@
 import { Alert, Button, Card, Checkbox, LoadingState } from '@markorbit/ui';
 import { useState } from 'react';
+import { useEffect } from 'react';
+import type {
+  DocumentPackage,
+  CustomerInstructionLedger,
+  PreparationLock,
+  ProfessionalReviewCase,
+  CustomerInstructionAcknowledgement
+} from '@markorbit/contracts';
+import type { MarkregClient } from './api/markreg.js';
 
 export type PreparationViewState =
   | 'SOURCE_LOADING'
@@ -215,6 +224,270 @@ export function DocumentsInstructionsWorkspace({
           <p>Preparation Lock ≠ Filing Submission. This action performs no external action.</p>
         </Card>
       </section>
+    </main>
+  );
+}
+
+export function ConnectedDocumentsInstructionsWorkspace({
+  client,
+  review
+}: {
+  client: MarkregClient;
+  review: ProfessionalReviewCase;
+}) {
+  const [pkg, setPackage] = useState<DocumentPackage>();
+  const [ledger, setLedger] = useState<CustomerInstructionLedger>();
+  const [lock, setLock] = useState<PreparationLock>();
+  const [checked, setChecked] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    if (!review.decision) return;
+    void client.createDocumentPackage!({
+      professionalReviewCaseId: review.reviewCaseId,
+      professionalReviewDecisionVersion: review.decision.decidedAt,
+      matterDraftVersion: review.source.matterDraftVersion,
+      idempotencyKey: `preparation-${review.reviewCaseId}-${review.decision.decidedAt}`
+    })
+      .then(setPackage)
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : 'Preparation could not start.')
+      );
+  }, [client, review]);
+  if (error)
+    return (
+      <Alert tone="danger" title="Preparation could not continue">
+        {error}
+      </Alert>
+    );
+  if (!pkg) return <LoadingState label="Creating governed Document Package" />;
+  if (lock)
+    return (
+      <section role="region" aria-labelledby="connected-lock" className="preparation-workspace">
+        <Card>
+          <h1 id="connected-lock">Locked for preparation — not submitted</h1>
+          <dl>
+            <dt>Preparation Lock ID</dt>
+            <dd>{lock.preparationLockId}</dd>
+            <dt>Package</dt>
+            <dd>
+              {lock.documentPackageId} · version {lock.documentPackageVersion}
+            </dd>
+            <dt>Instruction ledger</dt>
+            <dd>
+              {lock.instructionLedgerId} · version {lock.instructionLedgerVersion}
+            </dd>
+            <dt>Review decision version</dt>
+            <dd>{lock.snapshot.sourceReviewDecisionVersion}</dd>
+            <dt>Matter Draft version</dt>
+            <dd>{lock.snapshot.sourceMatterDraftVersion}</dd>
+            <dt>Locked</dt>
+            <dd>{lock.lockedAt}</dd>
+          </dl>
+          <h2>Authority consequences</h2>
+          <ul>
+            {Object.entries(lock.consequences).map(([key, value]) => (
+              <li key={key}>
+                {key}: <strong>{String(value)}</strong>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </section>
+    );
+  const record = async () => {
+    for (const requirement of pkg.requirements)
+      if (
+        !pkg.documentItems.some(
+          (x) => x.requirementCode === requirement.code && x.status !== 'SUPERSEDED'
+        )
+      )
+        await client.addDocument!(pkg.documentPackageId, {
+          requirementCode: requirement.code,
+          documentType: requirement.code,
+          suppliedBy: pkg.customerId,
+          documentReference: {
+            fileName: `${requirement.code}-${'long-governed-filename-'.repeat(5)}.pdf`,
+            contentType: 'application/pdf',
+            byteSize: 2048,
+            checksum: 'sha256:fixture-011',
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: pkg.customerId,
+            source: 'FIXTURE',
+            originalOrCopy: 'COPY'
+          }
+        });
+    setPackage(await client.getDocumentPackage!(pkg.documentPackageId));
+  };
+  const evaluate = async () =>
+    setPackage(await client.evaluateDocumentPackage!(pkg.documentPackageId));
+  const completeMetadata = async () => {
+    for (const item of pkg.documentItems.filter((x) => x.status !== 'SUPERSEDED'))
+      await client.updateDocument!(pkg.documentPackageId, item.documentItemId, {
+        documentReference: {
+          language: 'en',
+          signatureStatus: 'NOT_REQUIRED',
+          notarizationStatus: 'NOT_REQUIRED',
+          legalizationStatus: 'NOT_REQUIRED'
+        }
+      });
+    await evaluate();
+  };
+  const createLedger = async () => {
+    const value = await client.createInstructionLedger!(pkg.documentPackageId);
+    const entry = await client.appendInstruction!(value.instructionLedgerId, {
+      type: 'DOCUMENT_USE_AUTHORIZATION',
+      structuredValue: { authorized: true, packageVersion: pkg.version }
+    });
+    setLedger(
+      await client.confirmInstruction!(value.instructionLedgerId, entry.instructionEntryId)
+    );
+  };
+  const confirm = async () => {
+    const at = new Date().toISOString();
+    const codes = [
+      'APPLICANT_OWNER',
+      'MARK_REPRESENTATION',
+      'SCOPE',
+      'DOCUMENT_USE',
+      'NO_SUBMISSION',
+      'CHANGE_REVIEW_OR_QUOTE'
+    ] as const;
+    const acknowledgements: CustomerInstructionAcknowledgement[] = codes.map((code) => ({
+      code,
+      acknowledged: true,
+      acknowledgedBy: pkg.customerId,
+      acknowledgedAt: at,
+      evidenceReference: `browser:${code}`
+    }));
+    const response = await client.confirmInstructionLedger!(
+      ledger!.instructionLedgerId,
+      acknowledgements
+    );
+    setLedger(response.instructionLedger);
+  };
+  return (
+    <main className="preparation-workspace">
+      <header>
+        <p className="preparation-kicker">Professional Review complete</p>
+        <h1>Documents and Instructions</h1>
+        <p>Preparation Lock ≠ Filing Submission.</p>
+      </header>
+      <section aria-labelledby="connected-source">
+        <Card>
+          <h2 id="connected-source">Source lineage</h2>
+          <dl>
+            <dt>Professional Review Case</dt>
+            <dd>{review.reviewCaseId}</dd>
+            <dt>Review decision version</dt>
+            <dd>{review.decision?.decidedAt}</dd>
+            <dt>Matter Draft version</dt>
+            <dd>{review.source.matterDraftVersion}</dd>
+            <dt>Document Package</dt>
+            <dd>
+              {pkg.documentPackageId} · version {pkg.version}
+            </dd>
+            <dt>Goods/services</dt>
+            <dd>{review.source.preparation.goodsServices}</dd>
+          </dl>
+        </Card>
+      </section>
+      <section aria-labelledby="connected-documents">
+        <Card>
+          <h2 id="connected-documents">Document requirements</h2>
+          <ul className="document-requirements">
+            {pkg.requirements.map((r) => (
+              <li key={r.code}>
+                <strong>{r.name}</strong>
+                <span>
+                  {pkg.missingRequirements.includes(r.code)
+                    ? 'Required · Missing'
+                    : 'Received · metadata recorded'}
+                </span>
+                <small>{r.reason}</small>
+              </li>
+            ))}
+          </ul>
+          {pkg.documentItems.map((i) => (
+            <p className="long-value" key={i.documentItemId}>
+              {i.documentReference.fileName} · version {i.version}
+            </p>
+          ))}
+          <p>Document metadata recorded — binary storage not enabled</p>
+          {pkg.documentItems.length === 0 && (
+            <Button onClick={() => void record()}>Record fixture document metadata</Button>
+          )}{' '}
+          {pkg.documentItems.length > 0 && pkg.validationChecks.length === 0 && (
+            <Button onClick={() => void evaluate()}>Evaluate documents</Button>
+          )}{' '}
+          {pkg.validationChecks.some((x) => x.status === 'UNKNOWN') && (
+            <Button onClick={() => void completeMetadata()}>
+              Complete required metadata and reevaluate
+            </Button>
+          )}
+          <ul>
+            {pkg.validationChecks.map((x, i) => (
+              <li key={`${x.code}-${i}`}>
+                {x.code}: {x.status}
+                {x.blocking ? ' — blocking' : ''}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </section>
+      {pkg.status === 'READY_FOR_CUSTOMER_CONFIRMATION' && !ledger && (
+        <Button onClick={() => void createLedger()}>Review customer instructions</Button>
+      )}
+      {ledger && (
+        <section aria-labelledby="connected-ledger">
+          <Card>
+            <h2 id="connected-ledger">Customer Instruction Ledger</h2>
+            <ol>
+              {ledger.entries.map((e) => (
+                <li key={e.instructionEntryId}>
+                  {e.type} · {e.status} · {e.instructionEntryId}
+                </li>
+              ))}
+            </ol>
+            {ledger.status === 'DRAFT' && (
+              <fieldset>
+                <legend>Confirm the exact preparation instructions</legend>
+                {acknowledgements.map((label) => (
+                  <Checkbox
+                    key={label}
+                    label={label}
+                    checked={checked.includes(label)}
+                    onChange={(e) =>
+                      setChecked((v) =>
+                        e.target.checked ? [...v, label] : v.filter((x) => x !== label)
+                      )
+                    }
+                  />
+                ))}
+              </fieldset>
+            )}
+            {ledger.status === 'DRAFT' && (
+              <Button
+                disabled={checked.length !== acknowledgements.length}
+                onClick={() => void confirm()}
+              >
+                Confirm customer instructions
+              </Button>
+            )}
+            {ledger.status === 'CONFIRMED' && (
+              <Button
+                onClick={() =>
+                  void client.createPreparationLock!(
+                    pkg.documentPackageId,
+                    ledger.instructionLedgerId
+                  ).then(setLock)
+                }
+              >
+                Lock package for preparation
+              </Button>
+            )}
+          </Card>
+        </section>
+      )}
     </main>
   );
 }

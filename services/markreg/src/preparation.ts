@@ -407,7 +407,7 @@ export class PreparationService {
         ),
         this.check(
           'LANGUAGE_IDENTIFIED',
-          i ? !!i.documentReference.language : false,
+          i ? (i.documentReference.language ? true : undefined) : false,
           r.blocking,
           i?.documentItemId,
           at

@@ -3,11 +3,21 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkregApp } from '../src/App.js';
-import type { IntakeCreateCommand, IntakeRecommendationResponse } from '@markorbit/contracts';
+import type {
+  IntakeCreateCommand,
+  IntakeRecommendationResponse,
+  ProfessionalReviewCase,
+  DocumentPackage,
+  CustomerInstructionLedger,
+  PreparationLock
+} from '@markorbit/contracts';
 import type { MarkregClient } from '../src/api/markreg.js';
 import { MarkregApiError } from '../src/api/errors.js';
 
-beforeEach(() => sessionStorage.clear());
+beforeEach(() => {
+  sessionStorage.clear();
+  window.history.replaceState({}, '', '/');
+});
 
 async function completeIntake() {
   const user = userEvent.setup();
@@ -62,6 +72,240 @@ const response = (command: IntakeCreateCommand): IntakeRecommendationResponse =>
 });
 
 describe('guided intake', () => {
+  it('enters the Gateway-backed Documents and Instructions journey and reaches its lock receipt', async () => {
+    const at = '2026-07-29T12:00:00.000Z';
+    const review = {
+      schemaVersion: 1,
+      reviewCaseId: 'professional-review_app',
+      source: {
+        schemaVersion: 1,
+        matterDraftId: 'matter-draft_app',
+        matterDraftVersion: 'matter-v7',
+        confirmationId: 'confirmation_app',
+        customerId: 'customer_app',
+        status: 'READY_FOR_PROFESSIONAL_REVIEW',
+        preparation: {
+          classes: [9],
+          documentReferences: [],
+          goodsServices: 'Long governed software scope',
+          targetJurisdiction: 'US',
+          trademark: 'ORBIT'
+        },
+        readiness: { evaluatedAt: at, checks: [], readyForProfessionalReview: true },
+        readinessTimestamp: at
+      },
+      status: 'REVIEWED_READY_FOR_NEXT_STEP',
+      priority: 'NORMAL',
+      requestedBy: 'customer_app',
+      createdAt: at,
+      updatedAt: at,
+      assignment: { status: 'CLAIMED', professionalAppointed: false },
+      checklist: [],
+      evidence: [],
+      decision: {
+        code: 'MARK_READY_FOR_NEXT_STEP',
+        reviewerId: 'reviewer_app',
+        decidedAt: 'decision-v3',
+        rationale: 'Ready',
+        checklistSnapshot: [],
+        evidenceReferences: [],
+        sourceMatterDraftVersion: 'matter-v7',
+        consequences: {
+          orderCreated: false,
+          paymentCreated: false,
+          formalMatterCreated: false,
+          providerAppointed: false,
+          filingCreated: false,
+          customerMessageSent: false
+        }
+      }
+    } satisfies ProfessionalReviewCase;
+    const requirement = {
+      code: 'APPLICANT_IDENTITY_EVIDENCE',
+      name: 'Applicant identity evidence',
+      reason: 'Illustrative only',
+      source: 'FIXTURE',
+      blocking: true,
+      fixtureOnly: true
+    } as const;
+    const basePackage = {
+      schemaVersion: 1,
+      documentPackageId: 'document-package_app',
+      version: 1,
+      professionalReviewCaseId: review.reviewCaseId,
+      professionalReviewDecisionVersion: 'decision-v3',
+      matterDraftId: review.source.matterDraftId,
+      matterDraftVersion: 'matter-v7',
+      customerConfirmationId: review.source.confirmationId,
+      customerId: review.source.customerId,
+      jurisdiction: 'US',
+      trademarkReference: 'ORBIT',
+      requirements: [requirement],
+      documentItems: [],
+      validationChecks: [],
+      missingRequirements: [requirement.code],
+      status: 'NEEDS_DOCUMENTS',
+      createdAt: at,
+      updatedAt: at
+    } satisfies DocumentPackage;
+    const item = {
+      documentItemId: 'document-item_app',
+      documentPackageId: basePackage.documentPackageId,
+      documentType: requirement.code,
+      requirementCode: requirement.code,
+      version: 1,
+      status: 'PROVIDED',
+      documentReference: {
+        fileName: 'identity.pdf',
+        contentType: 'application/pdf',
+        byteSize: 1,
+        checksum: 'sha256:x',
+        uploadedAt: at,
+        uploadedBy: review.source.customerId,
+        source: 'FIXTURE',
+        originalOrCopy: 'COPY'
+      },
+      suppliedBy: review.source.customerId,
+      suppliedAt: at,
+      validationChecks: [],
+      createdAt: at,
+      updatedAt: at
+    } as const;
+    const supplied = {
+      ...basePackage,
+      version: 2,
+      documentItems: [item],
+      missingRequirements: []
+    } satisfies DocumentPackage;
+    const unknown = {
+      ...supplied,
+      version: 3,
+      validationChecks: [
+        {
+          code: 'LANGUAGE_IDENTIFIED',
+          status: 'UNKNOWN',
+          blocking: true,
+          explanation: 'Unknown',
+          checkedAt: at,
+          source: 'FIXTURE'
+        }
+      ]
+    } satisfies DocumentPackage;
+    const ready = {
+      ...supplied,
+      version: 4,
+      status: 'READY_FOR_CUSTOMER_CONFIRMATION',
+      validationChecks: [
+        {
+          code: 'LANGUAGE_IDENTIFIED',
+          status: 'PASS',
+          blocking: true,
+          explanation: 'Pass',
+          checkedAt: at,
+          source: 'FIXTURE'
+        }
+      ]
+    } satisfies DocumentPackage;
+    const ledger = {
+      schemaVersion: 1,
+      instructionLedgerId: 'instruction-ledger_app',
+      version: 1,
+      documentPackageId: ready.documentPackageId,
+      documentPackageVersion: ready.version,
+      customerId: ready.customerId,
+      matterDraftId: ready.matterDraftId,
+      matterDraftVersion: ready.matterDraftVersion,
+      professionalReviewCaseId: ready.professionalReviewCaseId,
+      professionalReviewDecisionVersion: ready.professionalReviewDecisionVersion,
+      entries: [],
+      acknowledgements: [],
+      status: 'DRAFT',
+      currentEffectiveInstructionSet: {},
+      createdAt: at,
+      updatedAt: at
+    } satisfies CustomerInstructionLedger;
+    const entry = {
+      instructionEntryId: 'instruction-entry_app',
+      type: 'DOCUMENT_USE_AUTHORIZATION',
+      structuredValue: { authorized: true },
+      status: 'CONFIRMED',
+      createdAt: at,
+      confirmedAt: at,
+      evidence: []
+    } as const;
+    const confirmed = {
+      ...ledger,
+      version: 3,
+      entries: [entry],
+      status: 'CONFIRMED',
+      confirmedAt: at
+    } satisfies CustomerInstructionLedger;
+    const lock = {
+      schemaVersion: 1,
+      preparationLockId: 'preparation-lock_app',
+      documentPackageId: ready.documentPackageId,
+      documentPackageVersion: 5,
+      instructionLedgerId: ledger.instructionLedgerId,
+      instructionLedgerVersion: 4,
+      lockedAt: at,
+      snapshot: {
+        documentPackage: { ...ready, status: 'LOCKED_FOR_PREPARATION', lockedAt: at },
+        instructionLedger: { ...confirmed, status: 'LOCKED_FOR_PREPARATION', lockedAt: at },
+        sourceReviewDecisionVersion: 'decision-v3',
+        sourceMatterDraftVersion: 'matter-v7',
+        commercialScopeUnchanged: true
+      },
+      nextPermittedAction: 'GOVERNED_FILING_AUTHORITY_REVIEW',
+      consequences: {
+        orderCreated: false,
+        paymentCreated: false,
+        formalMatterCreated: false,
+        professionalAppointed: false,
+        filingCreated: false,
+        filingSubmitted: false,
+        customerMessageSent: false,
+        externalDocumentSent: false,
+        trademarkOfficeContacted: false
+      }
+    } satisfies PreparationLock;
+    const client = {
+      createIntake: vi.fn(),
+      getProfessionalReview: vi.fn().mockResolvedValue({ reviewCase: review }),
+      createDocumentPackage: vi.fn().mockResolvedValue(basePackage),
+      addDocument: vi.fn().mockResolvedValue(item),
+      getDocumentPackage: vi.fn().mockResolvedValue(supplied),
+      evaluateDocumentPackage: vi.fn().mockResolvedValueOnce(unknown).mockResolvedValueOnce(ready),
+      updateDocument: vi.fn().mockResolvedValue(item),
+      createInstructionLedger: vi.fn().mockResolvedValue(ledger),
+      appendInstruction: vi.fn().mockResolvedValue(entry),
+      confirmInstruction: vi.fn().mockResolvedValue({ ...ledger, entries: [entry] }),
+      confirmInstructionLedger: vi.fn().mockResolvedValue({ instructionLedger: confirmed }),
+      createPreparationLock: vi.fn().mockResolvedValue(lock)
+    } satisfies MarkregClient;
+    window.history.replaceState({}, '', '/?professionalReviewCaseId=professional-review_app');
+    const user = userEvent.setup();
+    render(<MarkregApp client={client} />);
+    expect(await screen.findByText('decision-v3')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Open Documents and Instructions' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Documents and Instructions' })
+    ).toBeVisible();
+    expect(client.createDocumentPackage).toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Record fixture document metadata' }));
+    await user.click(await screen.findByRole('button', { name: 'Evaluate documents' }));
+    expect(await screen.findByText(/UNKNOWN — blocking/)).toBeVisible();
+    await user.click(
+      screen.getByRole('button', { name: 'Complete required metadata and reevaluate' })
+    );
+    await user.click(await screen.findByRole('button', { name: 'Review customer instructions' }));
+    for (const checkbox of screen.getAllByRole('checkbox')) await user.click(checkbox);
+    await user.click(screen.getByRole('button', { name: 'Confirm customer instructions' }));
+    await user.click(await screen.findByRole('button', { name: 'Lock package for preparation' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Locked for preparation — not submitted' })
+    ).toBeVisible();
+    expect(client.createPreparationLock).toHaveBeenCalled();
+  });
   it('validates required fields and preserves answers when moving back', async () => {
     const user = userEvent.setup();
     render(<MarkregApp />);

@@ -10,7 +10,16 @@ import type {
   MatterDraftPreparation,
   AuthorityBoundary,
   ConfirmationAcknowledgement,
-  MarkOrbitId
+  MarkOrbitId,
+  ProfessionalReviewCase,
+  DocumentPackage,
+  DocumentItem,
+  DocumentReference,
+  DocumentRequirementCode,
+  CustomerInstructionLedger,
+  CustomerInstructionEntry,
+  CustomerInstructionAcknowledgement,
+  PreparationLock
 } from '@markorbit/contracts';
 import { createApiClient, type ApiClient } from './client.js';
 
@@ -28,6 +37,43 @@ export interface MarkregClient {
     patch: Partial<MatterDraftPreparation>
   ): Promise<MatterDraftResponse>;
   evaluateMatterDraft?(id: string): Promise<MatterDraftResponse>;
+  getProfessionalReview?(id: string): Promise<{ reviewCase: ProfessionalReviewCase }>;
+  createDocumentPackage?(command: {
+    professionalReviewCaseId: string;
+    professionalReviewDecisionVersion: string;
+    matterDraftVersion: string;
+    idempotencyKey: string;
+  }): Promise<DocumentPackage>;
+  getDocumentPackage?(id: string): Promise<DocumentPackage>;
+  addDocument?(
+    id: string,
+    input: {
+      requirementCode: DocumentRequirementCode;
+      documentType: string;
+      documentReference: DocumentReference;
+      suppliedBy: MarkOrbitId;
+    }
+  ): Promise<DocumentItem>;
+  updateDocument?(
+    packageId: string,
+    itemId: string,
+    patch: { documentReference: Partial<DocumentReference> }
+  ): Promise<DocumentItem>;
+  evaluateDocumentPackage?(id: string): Promise<DocumentPackage>;
+  createInstructionLedger?(documentPackageId: string): Promise<CustomerInstructionLedger>;
+  appendInstruction?(
+    id: string,
+    input: { type: 'DOCUMENT_USE_AUTHORIZATION'; structuredValue: Record<string, unknown> }
+  ): Promise<CustomerInstructionEntry>;
+  confirmInstruction?(ledgerId: string, entryId: string): Promise<CustomerInstructionLedger>;
+  confirmInstructionLedger?(
+    id: string,
+    acknowledgements: CustomerInstructionAcknowledgement[]
+  ): Promise<{ instructionLedger: CustomerInstructionLedger }>;
+  createPreparationLock?(
+    documentPackageId: string,
+    instructionLedgerId: string
+  ): Promise<PreparationLock>;
 }
 export interface ConfirmationCommand {
   quoteId: MarkOrbitId;
@@ -104,6 +150,65 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
       return api.post(
         `/api/markreg/matter-drafts/${encodeURIComponent(id)}/evaluate-readiness`,
         {},
+        {}
+      );
+    },
+    getProfessionalReview(id) {
+      return api.get(`/api/lite/professional-review-cases/${encodeURIComponent(id)}`);
+    },
+    createDocumentPackage(command) {
+      const { idempotencyKey, ...body } = command;
+      return api.post('/api/markreg/document-packages', body, {
+        'Idempotency-Key': idempotencyKey
+      });
+    },
+    getDocumentPackage(id) {
+      return api.get(`/api/markreg/document-packages/${encodeURIComponent(id)}`);
+    },
+    addDocument(id, input) {
+      return api.post(
+        `/api/markreg/document-packages/${encodeURIComponent(id)}/documents`,
+        input,
+        {}
+      );
+    },
+    updateDocument(packageId, itemId, patch) {
+      return api.patch(
+        `/api/markreg/document-packages/${encodeURIComponent(packageId)}/documents/${encodeURIComponent(itemId)}`,
+        patch
+      );
+    },
+    evaluateDocumentPackage(id) {
+      return api.post(`/api/markreg/document-packages/${encodeURIComponent(id)}/evaluate`, {}, {});
+    },
+    createInstructionLedger(documentPackageId) {
+      return api.post('/api/markreg/instruction-ledgers', { documentPackageId }, {});
+    },
+    appendInstruction(id, input) {
+      return api.post(
+        `/api/markreg/instruction-ledgers/${encodeURIComponent(id)}/entries`,
+        input,
+        {}
+      );
+    },
+    confirmInstruction(ledgerId, entryId) {
+      return api.post(
+        `/api/markreg/instruction-ledgers/${encodeURIComponent(ledgerId)}/entries/${encodeURIComponent(entryId)}/confirm`,
+        {},
+        {}
+      );
+    },
+    confirmInstructionLedger(id, acknowledgements) {
+      return api.post(
+        `/api/markreg/instruction-ledgers/${encodeURIComponent(id)}/confirm`,
+        { acknowledgements },
+        {}
+      );
+    },
+    createPreparationLock(documentPackageId, instructionLedgerId) {
+      return api.post(
+        '/api/markreg/preparation-locks',
+        { documentPackageId, instructionLedgerId },
         {}
       );
     }

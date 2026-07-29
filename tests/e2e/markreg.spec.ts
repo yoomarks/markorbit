@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { intakeDraft, installMatterGatewayFixture, seedMarkreg } from './helpers/markreg.js';
+import {
+  intakeDraft,
+  installMatterGatewayFixture,
+  installPreparationGatewayFixture,
+  seedMarkreg
+} from './helpers/markreg.js';
 import {
   capture,
   expectNoHorizontalOverflow,
@@ -168,5 +173,62 @@ test('Customer Confirmation to ready Matter Draft remains preparatory @visual', 
   await expect(page.getByText(/Readiness is not approval/)).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await capture(page, `markreg-matter-draft-ready-${testInfo.project.name}`);
+  assertHealthy();
+});
+
+test('Completed Professional Review reaches an immutable Preparation Lock @visual', async ({
+  page
+}, testInfo) => {
+  const assertHealthy = watchPage(page);
+  await installPreparationGatewayFixture(page);
+  await page.goto(`${urls.markreg}?professionalReviewCaseId=professional-review_e2e011`);
+  await expect(page.getByRole('heading', { name: 'Professional Review complete' })).toBeVisible();
+  await expect(page.getByText('decision-v11')).toBeVisible();
+  await expect(page.getByText('matter-v11')).toBeVisible();
+  await page.getByRole('button', { name: 'Open Documents and Instructions' }).click();
+  await expect(page.getByRole('heading', { name: 'Documents and Instructions' })).toBeVisible();
+  await expect(page.getByText('Required · Missing').first()).toBeVisible();
+  await capture(page, `markreg-documents-missing-${testInfo.project.name}`);
+  await page.getByRole('button', { name: 'Record fixture document metadata' }).click();
+  await expect(page.getByText(/long-governed-filename/).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Evaluate documents' }).click();
+  await expect(page.getByText(/UNKNOWN — blocking/).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Complete required metadata and reevaluate' }).click();
+  await page.getByRole('button', { name: 'Review customer instructions' }).click();
+  await expect(page.getByRole('heading', { name: 'Customer Instruction Ledger' })).toBeVisible();
+  await expect(page.getByText(/DOCUMENT_USE_AUTHORIZATION · CONFIRMED/)).toBeVisible();
+  const acknowledgements = page
+    .getByRole('group', { name: 'Confirm the exact preparation instructions' })
+    .getByRole('checkbox');
+  await expect(acknowledgements).toHaveCount(6);
+  for (const checkbox of await acknowledgements.all()) await expect(checkbox).not.toBeChecked();
+  const confirm = page.getByRole('button', { name: 'Confirm customer instructions' });
+  await expect(confirm).toBeDisabled();
+  await acknowledgements.first().focus();
+  await expectVisibleFocus(page);
+  for (const checkbox of await acknowledgements.all()) await checkbox.click();
+  await expect(confirm).toBeEnabled();
+  await capture(page, `markreg-instruction-confirmation-${testInfo.project.name}`);
+  await confirm.click();
+  await page.getByRole('button', { name: 'Lock package for preparation' }).click();
+  const receipt = page.getByRole('region', { name: 'Locked for preparation — not submitted' });
+  await expect(receipt).toBeVisible();
+  await expect(receipt.getByText('preparation-lock_e2e011')).toBeVisible();
+  for (const key of [
+    'orderCreated',
+    'paymentCreated',
+    'formalMatterCreated',
+    'professionalAppointed',
+    'filingCreated',
+    'filingSubmitted',
+    'customerMessageSent',
+    'externalDocumentSent',
+    'trademarkOfficeContacted'
+  ])
+    await expect(receipt.getByText(`${key}:`, { exact: false })).toContainText('false');
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `markreg-preparation-lock-${testInfo.project.name}`);
+  if (testInfo.project.name.startsWith('mobile'))
+    await capture(page, 'markreg-preparation-lock-mobile');
   assertHealthy();
 });
