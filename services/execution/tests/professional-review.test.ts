@@ -23,14 +23,14 @@ const snapshot: MatterDraftReviewSnapshot = {
   readiness: { evaluatedAt: '2026-07-29T00:00:00Z', readyForProfessionalReview: true, checks: [] },
   readinessTimestamp: '2026-07-29T00:00:00Z'
 };
-function setup(source: MatterDraftReviewSnapshot | undefined = snapshot) {
+function setup(source: MatterDraftReviewSnapshot = snapshot) {
   let current = source;
   const service = new ProfessionalReviewService(
     new InMemoryProfessionalReviewRepository(),
     { getMatterDraft: async () => structuredClone(current) },
     () => '2026-07-29T12:00:00Z'
   );
-  return { service, set: (v: MatterDraftReviewSnapshot | undefined) => (current = v) };
+  return { service, set: (v: MatterDraftReviewSnapshot) => (current = v) };
 }
 const command = {
   matterDraftId: 'matter-draft_009' as const,
