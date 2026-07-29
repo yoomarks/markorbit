@@ -92,6 +92,11 @@
   }
 }
 @media (max-width: 640px) {
+  .mo-shell:has(.lite-workspace) {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+  }
   .mo-shell__body:has(.lite-workspace),
   .mo-shell main:has(.lite-workspace),
   .lite-workspace,
@@ -99,6 +104,15 @@
   .lite-workspace .lite-list > .mo-card {
     min-width: 0;
     max-width: 100%;
+  }
+  .mo-shell__body:has(.lite-workspace),
+  .mo-shell main:has(.lite-workspace) {
+    width: 100%;
+  }
+  .mo-shell__body:has(.lite-workspace) .mo-topbar {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
   }
   .lite-workspace .lite-filters,
   .lite-workspace .mo-alert--info {
