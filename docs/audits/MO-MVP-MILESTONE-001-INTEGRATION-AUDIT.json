@@ -144,5 +144,12 @@
     "Node 22 and remote CI status are unverified.",
     "Latest-main provenance cannot be remotely verified because origin is absent."
   ],
-  "freezeRecommendation": "DO_NOT_FREEZE"
+  "freezeRecommendation": "DO_NOT_FREEZE",
+  "remediationReferences": [
+    {
+      "taskId": "MO-MVP-TASK-013",
+      "document": "docs/tasks/MO-MVP-TASK-013-REAL-RUNTIME-GOLDEN-PATH.md",
+      "findingUnchanged": true
+    }
+  ]
 }

@@ -67,6 +67,9 @@ function correlation(request: IncomingMessage): string {
 function send(response: ServerResponse, result: JsonResult): void {
   response.writeHead(result.status, {
     'content-type': 'application/json; charset=utf-8',
+    'access-control-allow-origin': '*',
+    'access-control-allow-headers': 'content-type, idempotency-key, x-correlation-id',
+    'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS',
     ...result.headers
   });
   response.end(JSON.stringify(result.body));
@@ -109,6 +112,15 @@ export function createServiceRuntime(
       const nextServer = createServer((request, response) => {
         void (async () => {
           const path = new URL(request.url ?? '/', 'http://localhost').pathname;
+          if (request.method === 'OPTIONS') {
+            response.writeHead(204, {
+              'access-control-allow-origin': request.headers.origin ?? '*',
+              'access-control-allow-headers': 'content-type, idempotency-key, x-correlation-id',
+              'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
+            });
+            response.end();
+            return;
+          }
           if (path === '/health') {
             if (request.method !== 'GET')
               throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');

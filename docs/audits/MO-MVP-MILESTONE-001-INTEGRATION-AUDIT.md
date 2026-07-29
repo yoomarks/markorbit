@@ -1,5 +1,7 @@
 # MO MVP Milestone 1 — TASK 001–012 Integration Audit
 
+> Remediation reference (TASK 013): see `docs/tasks/MO-MVP-TASK-013-REAL-RUNTIME-GOLDEN-PATH.md`. This does not alter the original FAIL; remote Node 22 CI and the complete real-runtime browser journey must be green before the blockers can close.
+
 ## Executive result
 
 **Result: FAIL. Freeze recommendation: DO NOT FREEZE.**
