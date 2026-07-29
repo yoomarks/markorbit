@@ -34,8 +34,8 @@ jobs:
       - run: pnpm test:runtime
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium
-      - run: CI=1 pnpm test:e2e
       - run: CI=1 pnpm test:e2e:real-runtime
       - run: CI=1 pnpm test:visual
       - name: Ensure generated artifacts are not tracked
