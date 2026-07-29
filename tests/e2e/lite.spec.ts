@@ -44,6 +44,7 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   await expect(page.getByRole('heading', { level: 1, name: 'Northwind Outdoor' })).toBeVisible();
   await expect(page.getByText('Customer Record ≠ Verified Legal Identity')).toBeVisible();
   await page.getByRole('button', { name: 'Back to customers' }).click();
+  await expect(page.getByRole('button', { name: 'View customer details' })).toBeFocused();
   await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
   await expect(page.getByLabel('Customer status')).toHaveValue('Active');
 
@@ -57,6 +58,7 @@ test('Lite filters survive customer detail and suggested actions do not execute'
     .filter({ hasText: 'Review acknowledgement saved' });
   await expect(reviewAcknowledgement).toContainText('No contact, order, appointment, filing');
   await page.getByRole('button', { name: 'Back to opportunities' }).click();
+  await expect(page.getByRole('button', { name: 'View opportunity details' })).toBeFocused();
   await expect(page.getByLabel('Opportunity status')).toHaveValue('REVIEWING');
   const reviewingStatus = page.locator('strong').filter({ hasText: /^REVIEWING$/ });
   await expect(reviewingStatus).toHaveCount(1);

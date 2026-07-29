@@ -1,11 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { applicationUrl } from '../applications.js';
 
 export const urls = {
-  lite: 'http://127.0.0.1:4171',
-  markreg: 'http://127.0.0.1:4172',
-  operations: 'http://127.0.0.1:4173'
+  lite: applicationUrl('lite'),
+  markreg: applicationUrl('markreg'),
+  operations: applicationUrl('operations')
 } as const;
 
 export function watchPage(page: Page, options: { expectedHttpErrors?: boolean } = {}) {
