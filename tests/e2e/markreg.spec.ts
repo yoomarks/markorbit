@@ -153,7 +153,17 @@ test('Customer Confirmation to ready Matter Draft remains preparatory @visual', 
   await page.getByLabel('Representative requirement').selectOption('true');
   await page.getByLabel('Required documents').fill('document_e2e');
   await page.getByLabel('Commercial scope remains unchanged').check();
-  await page.getByRole('button', { name: 'Prepare for professional review' }).click();
+  const readinessRegion = page.getByRole('region', { name: 'Readiness checks' });
+  const prepareButton = page.getByRole('button', { name: 'Prepare for professional review' });
+  await expect(prepareButton).toBeVisible();
+  await prepareButton.scrollIntoViewIfNeeded();
+  await expect(prepareButton).toBeInViewport();
+  const readinessBox = await readinessRegion.boundingBox();
+  const actionBox = await prepareButton.boundingBox();
+  if (readinessBox === null || actionBox === null)
+    throw new Error('Readiness or action layout is unavailable.');
+  expect(actionBox.y).toBeGreaterThanOrEqual(readinessBox.y + readinessBox.height);
+  await prepareButton.click();
   await expect(page.getByText('Ready for professional review', { exact: true })).toBeVisible();
   await expect(page.getByText(/Readiness is not approval/)).toBeVisible();
   await expectNoHorizontalOverflow(page);

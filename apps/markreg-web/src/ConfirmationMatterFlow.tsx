@@ -243,8 +243,8 @@ export function ConfirmationMatterFlow({
     setState('MATTER_DRAFT_EDITING');
   };
   return (
-    <>
-      <Card>
+    <section className="confirmation-matter-flow">
+      <Card className="matter-draft-layout">
         <h2>Matter Draft preparation workspace</h2>
         <p>
           Status: <strong>{matter.status}</strong>
@@ -329,8 +329,12 @@ export function ConfirmationMatterFlow({
         ) : (
           <p>None.</p>
         )}
-        <h3>Readiness checks</h3>
-        <div className="markreg-readiness" style={{ overflowWrap: 'anywhere' }}>
+        <h3 id="matter-readiness-heading">Readiness checks</h3>
+        <section
+          className="readiness-check-list"
+          role="region"
+          aria-labelledby="matter-readiness-heading"
+        >
           {matter.readiness.checks.map((check) => (
             <section key={check.code}>
               <h4>{check.code}</h4>
@@ -341,18 +345,18 @@ export function ConfirmationMatterFlow({
               {check.evidenceReference && <p>Evidence: {check.evidenceReference}</p>}
             </section>
           ))}
-        </div>
+        </section>
         {state === 'READY_FOR_PROFESSIONAL_REVIEW' ? (
           <Alert tone="success" title="Ready for professional review">
             Readiness is not approval, authority, an Order, or a filing. Order created: No · Payment
             created: No · Professional appointed: No · Filing created: No
           </Alert>
         ) : (
-          <div className="markreg-actions">
+          <div className="markreg-actions matter-draft-actions">
             <Button onClick={() => void evaluate()}>Prepare for professional review</Button>
           </div>
         )}
       </Card>
-    </>
+    </section>
   );
 }
