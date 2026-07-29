@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- HTTP request bodies are validated by the domain service and return typed errors. */
 import {
   parseExecutionCreateCommand,
   type EventEnvelope,
@@ -7,6 +8,19 @@ import {
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import type {
+  MatterDraft,
+  MatterDraftId,
+  MatterDraftReviewSnapshot,
+  ProfessionalReviewCaseId
+} from '@markorbit/contracts';
+import {
+  InMemoryProfessionalReviewRepository,
+  ProfessionalReviewError,
+  ProfessionalReviewService,
+  type MatterDraftReviewSource
+} from './professional-review.js';
+export * from './professional-review.js';
 export const serviceManifest = Object.freeze({
   name: 'execution',
   port: Number(process.env.PORT ?? '4104'),
@@ -33,16 +47,135 @@ export interface ExecutionOptions {
   repository?: InMemoryExecutionRepository;
   publisher?: EventPublisher;
   now?: () => string;
+  reviewRepository?: InMemoryProfessionalReviewRepository;
+  matterDraftSource?: MatterDraftReviewSource;
+  markRegUrl?: string;
 }
 export function createRuntime(options: ExecutionOptions = {}) {
   const repository = options.repository ?? new InMemoryExecutionRepository();
   const publisher = options.publisher ?? new InMemoryEventPublisher();
   const now = options.now ?? (() => new Date().toISOString());
+  const matterDraftSource =
+    options.matterDraftSource ??
+    httpMatterDraftSource(options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105');
+  const review = new ProfessionalReviewService(
+    options.reviewRepository ?? new InMemoryProfessionalReviewRepository(),
+    matterDraftSource,
+    now
+  );
+  const mutation = async (work: () => Promise<unknown>) => {
+    try {
+      return json(200, {
+        reviewCase: await work(),
+        consequences: {
+          orderCreated: false,
+          paymentCreated: false,
+          formalMatterCreated: false,
+          providerAppointed: false,
+          filingCreated: false,
+          customerMessageSent: false
+        }
+      });
+    } catch (error) {
+      if (error instanceof ProfessionalReviewError)
+        throw new HttpError(error.status, error.code, error.message);
+      throw error;
+    }
+  };
   const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/v1/professional-review-cases',
+          handle: async (r) =>
+            mutation(() =>
+              review.create({
+                ...(r.body as any),
+                idempotencyKey: r.headers['idempotency-key'] ?? ''
+              })
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/professional-review-cases',
+          handle: async () => json(200, { reviewCases: await review.list() })
+        },
+        {
+          method: 'GET',
+          path: '/v1/professional-review-cases/:reviewCaseId',
+          handle: async (r) => {
+            try {
+              return json(200, {
+                reviewCase: await review.get(r.params.reviewCaseId as ProfessionalReviewCaseId)
+              });
+            } catch (e) {
+              if (e instanceof ProfessionalReviewError)
+                throw new HttpError(e.status, e.code, e.message);
+              throw e;
+            }
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/professional-review-cases/:reviewCaseId/claim',
+          handle: (r) =>
+            mutation(() =>
+              review.claim(
+                r.params.reviewCaseId as ProfessionalReviewCaseId,
+                (r.body as any).reviewerId
+              )
+            )
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/professional-review-cases/:reviewCaseId/checklist',
+          handle: (r) =>
+            mutation(() =>
+              review.updateChecklist(
+                r.params.reviewCaseId as ProfessionalReviewCaseId,
+                (r.body as any).reviewerId,
+                (r.body as any).updates
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/professional-review-cases/:reviewCaseId/request-information',
+          handle: (r) =>
+            mutation(() =>
+              review.requestInformation(
+                r.params.reviewCaseId as ProfessionalReviewCaseId,
+                (r.body as any).reviewerId,
+                {
+                  requestedFields: (r.body as any).requestedFields,
+                  reason: (r.body as any).reason,
+                  reviewerNote: (r.body as any).reviewerNote
+                }
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/professional-review-cases/:reviewCaseId/complete',
+          handle: (r) =>
+            mutation(() =>
+              review.complete(
+                r.params.reviewCaseId as ProfessionalReviewCaseId,
+                (r.body as any).reviewerId,
+                (r.body as any).code,
+                (r.body as any).rationale
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/professional-review-cases/:reviewCaseId/withdraw',
+          handle: (r) =>
+            mutation(() => review.withdraw(r.params.reviewCaseId as ProfessionalReviewCaseId))
+        },
         {
           method: 'POST',
           path: '/v1/executions',
@@ -119,4 +252,32 @@ export function createRuntime(options: ExecutionOptions = {}) {
       ]
     }
   );
+}
+
+function httpMatterDraftSource(baseUrl: string): MatterDraftReviewSource {
+  return {
+    async getMatterDraft(id: MatterDraftId) {
+      const response = await fetch(`${baseUrl}/v1/matter-drafts/${encodeURIComponent(id)}`);
+      if (response.status === 404) return undefined;
+      if (!response.ok)
+        throw new ProfessionalReviewError(
+          'SOURCE_UNAVAILABLE',
+          'Matter Draft source is unavailable.',
+          502
+        );
+      const body = (await response.json()) as { matterDraft?: MatterDraft } | MatterDraft;
+      const draft = ('matterDraft' in body ? body.matterDraft : body) as MatterDraft;
+      return {
+        schemaVersion: 1,
+        matterDraftId: draft.matterDraftId,
+        matterDraftVersion: draft.updatedAt,
+        confirmationId: draft.confirmationId,
+        customerId: draft.customerId,
+        status: draft.status,
+        preparation: structuredClone(draft.preparation),
+        readiness: structuredClone(draft.readiness),
+        readinessTimestamp: draft.readiness.evaluatedAt
+      } satisfies MatterDraftReviewSnapshot;
+    }
+  };
 }

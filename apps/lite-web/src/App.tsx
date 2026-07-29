@@ -24,6 +24,7 @@ import { opportunityFixtures } from './features/opportunities/fixture-repository
 import type { OpportunityDetail, OpportunityStatus } from './features/opportunities/view-models.js';
 import type { FixtureState, RelatedRecord } from './features/shared/view-models.js';
 import './lite.css';
+import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
 
 const nav = [
   'Today',
@@ -34,12 +35,13 @@ const nav = [
   'Capability',
   'Guide'
 ] as const;
-type Surface = 'today' | 'customers' | 'opportunities';
+type Surface = 'today' | 'customers' | 'opportunities' | 'professional-review';
 export interface LiteAppProps {
   initialSurface?: Surface;
   initialState?: FixtureState;
   initialCustomerId?: string;
   initialOpportunityId?: string;
+  initialReviewCaseId?: string;
 }
 const statusTone = (status: OpportunityStatus) =>
   status === 'QUALIFIED'
@@ -487,13 +489,16 @@ export function LiteApp({
   initialSurface = 'today',
   initialState = 'ready',
   initialCustomerId,
-  initialOpportunityId
+  initialOpportunityId,
+  initialReviewCaseId
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(initialSurface);
   const [state, setState] = useState<FixtureState>(initialState);
   useEffect(() => {
     const followHash = () => {
       if (window.location.hash === '#work-customers') setSurface('customers');
+      else if (window.location.hash === '#work-professional-review')
+        setSurface('professional-review');
       else if (window.location.hash === '#opportunities') setSurface('opportunities');
       else if (window.location.hash === '#today') setSurface('today');
     };
@@ -510,7 +515,7 @@ export function LiteApp({
             label,
             href: label === 'Work' ? '#work-customers' : `#${label.toLowerCase()}`,
             active:
-              surface === 'customers'
+              surface === 'customers' || surface === 'professional-review'
                 ? label === 'Work'
                 : surface === 'opportunities'
                   ? label === 'Opportunities'
@@ -524,19 +529,19 @@ export function LiteApp({
     >
       <div className="lite-workspace">
         <FixtureBanner />
-        {surface !== 'today' && (
+        {(surface === 'customers' || surface === 'professional-review') && (
           <div className="lite-subnav" aria-label="Workspace view">
             <Button
               variant={surface === 'customers' ? 'primary' : 'secondary'}
               onClick={() => setSurface('customers')}
             >
-              Work / Customers
+              Customers
             </Button>
             <Button
-              variant={surface === 'opportunities' ? 'primary' : 'secondary'}
-              onClick={() => setSurface('opportunities')}
+              variant={surface === 'professional-review' ? 'primary' : 'secondary'}
+              onClick={() => setSurface('professional-review')}
             >
-              Opportunities
+              Professional Review
             </Button>
           </div>
         )}
@@ -572,6 +577,11 @@ export function LiteApp({
             state={state}
             setState={setState}
             initialSelected={initialCustomerId}
+          />
+        ) : surface === 'professional-review' ? (
+          <ProfessionalReview
+            state={state}
+            {...(initialReviewCaseId ? { initialSelected: initialReviewCaseId } : {})}
           />
         ) : (
           <Opportunities

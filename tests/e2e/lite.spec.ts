@@ -48,7 +48,10 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
   await expect(page.getByLabel('Customer status')).toHaveValue('Active');
 
-  await page.getByRole('button', { name: 'Opportunities', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name: 'Opportunities' })
+    .click();
   await page.getByLabel('Opportunity status').selectOption('REVIEWING');
   await page.getByRole('button', { name: 'View opportunity details' }).click();
   await expect(page.getByText('Opportunity ≠ Confirmed Demand')).toBeVisible();
@@ -63,5 +66,34 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   const reviewingStatus = page.locator('strong').filter({ hasText: /^REVIEWING$/ });
   await expect(reviewingStatus).toHaveCount(1);
   await expect(reviewingStatus).toBeVisible();
+  assertHealthy();
+});
+
+test('Lite governed professional review preserves filters, focus, and authority boundaries @visual', async ({
+  page
+}, testInfo) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.lite}#work-professional-review`);
+  await page.getByLabel('Status').selectOption('QUEUED');
+  await page.getByLabel('Jurisdiction').selectOption('EU');
+  await page.getByRole('button', { name: 'Open professional review' }).click();
+  await expect(page.getByRole('heading', { name: 'Exact Matter Draft snapshot' })).toBeVisible();
+  await expect(page.getByText('2026-07-28T15:40:00.000Z')).toBeVisible();
+  await page.getByRole('button', { name: 'Claim review' }).click();
+  await expect(page.getByText(/UNKNOWN never counts as PASS/)).toBeVisible();
+  await page.getByRole('button', { name: 'Request more information' }).click();
+  await expect(page.getByText('Information request prepared — not sent')).toBeVisible();
+  await expect(page.getByText(/customerMessageSent: false/)).toBeVisible();
+  for (const select of await page.getByLabel('Review result').all())
+    await select.selectOption('PASS');
+  await page.getByRole('button', { name: 'Save checklist' }).click();
+  await page.getByRole('button', { name: 'Mark reviewed and ready for next step' }).click();
+  await expect(page.getByText(/orderCreated: false/)).toContainText('filingCreated: false');
+  await expectNoHorizontalOverflow(page);
+  const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
+  await capture(page, `lite-professional-review-${viewport}`);
+  await page.getByRole('button', { name: 'Back to review queue' }).click();
+  await expect(page.getByRole('button', { name: 'Open professional review' })).toBeFocused();
+  await expect(page.getByLabel('Status')).toHaveValue('QUEUED');
   assertHealthy();
 });
