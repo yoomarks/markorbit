@@ -61,6 +61,51 @@ export function createRuntime(options: GatewayOptions = {}) {
       routes: [
         ...(
           [
+            ['POST', '/api/execution/filing-authorizations'],
+            ['GET', '/api/execution/filing-authorizations/:filingAuthorizationId'],
+            ['POST', '/api/execution/filing-authorizations/:filingAuthorizationId/confirm'],
+            ['POST', '/api/execution/filing-authorizations/:filingAuthorizationId/withdraw'],
+            ['POST', '/api/execution/execution-releases'],
+            ['GET', '/api/execution/execution-releases'],
+            ['GET', '/api/execution/execution-releases/:executionReleaseId'],
+            ['POST', '/api/execution/execution-releases/:executionReleaseId/evaluate'],
+            ['PATCH', '/api/execution/execution-releases/:executionReleaseId/assignment'],
+            ['POST', '/api/execution/execution-releases/:executionReleaseId/release'],
+            ['POST', '/api/execution/execution-releases/:executionReleaseId/withdraw'],
+            ['GET', '/api/execution/filing-task-drafts/:filingExecutionTaskDraftId'],
+            ['GET', '/api/execution/execution-releases/:executionReleaseId/filing-task-draft']
+          ] as const
+        ).map(([method, path]): JsonRoute => ({
+          method,
+          path,
+          handle: async (request) => {
+            try {
+              const response = await fetch(
+                `${executionUrl}${request.path.replace('/api/execution', '/v1')}`,
+                {
+                  method: request.method,
+                  headers: {
+                    'content-type': 'application/json',
+                    ...(request.headers['idempotency-key']
+                      ? { 'idempotency-key': request.headers['idempotency-key'] }
+                      : {})
+                  },
+                  ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
+                }
+              );
+              return json(response.status, await response.json());
+            } catch {
+              throw new HttpError(
+                502,
+                'DOWNSTREAM_UNAVAILABLE',
+                'Execution filing governance service is unavailable.',
+                true
+              );
+            }
+          }
+        })),
+        ...(
+          [
             ['GET', '/api/markreg/document-packages'],
             ['POST', '/api/markreg/document-packages'],
             ['GET', '/api/markreg/document-packages/:documentPackageId'],
