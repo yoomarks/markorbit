@@ -22,17 +22,29 @@ for (const row of inventory) {
     'httpIntegrationTestFile'
   ])
     assert.ok(row[field], `${key(row)} lacks ${field}`);
-  const expected = row.path.startsWith('/health')
+  const expected = row.path.startsWith('/__milestone/')
     ? 'runtime'
-    : row.path.includes('/execution/')
-      ? 'execution'
-      : row.path.includes('/lite/')
-        ? 'lite'
-        : 'markreg';
+    : row.path.startsWith('/health')
+      ? 'runtime'
+      : row.path.includes('/execution/')
+        ? 'execution'
+        : row.path.includes('/lite/')
+          ? 'lite'
+          : 'markreg';
   assert.equal(row.owner, expected, `${key(row)} owner mismatch`);
   assert.equal(row.authenticationMode, 'FIXTURE_ONLY_UNAUTHENTICATED');
-  assert.equal(row.environmentScope, 'NON_PRODUCTION_MILESTONE_RUNTIME');
+  assert.ok(
+    ['NON_PRODUCTION_MILESTONE_RUNTIME', 'MILESTONE_TEST_RUNTIME_ONLY'].includes(
+      row.environmentScope
+    )
+  );
 }
-assert.equal(source.length, 53);
-assert.equal(source.filter((x) => !x.path.startsWith('/health/')).length, 51);
-console.log('Gateway inventory PASS: 53 runtime routes (51 governed/compatibility + 2 health)');
+assert.equal(source.length, 54);
+assert.equal(
+  source.filter((x) => !x.path.startsWith('/health/') && !x.path.startsWith('/__milestone/'))
+    .length,
+  51
+);
+console.log(
+  'Gateway inventory PASS: 54 runtime routes (51 governed/compatibility + 2 health + 1 test-only evidence)'
+);

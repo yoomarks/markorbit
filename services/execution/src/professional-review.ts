@@ -60,6 +60,9 @@ export class InMemoryProfessionalReviewRepository implements ProfessionalReviewR
   async list(): Promise<ProfessionalReviewCase[]> {
     return [...this.cases.values()].map((value) => structuredClone(value));
   }
+  snapshotIdempotencyCount() {
+    return this.keys.size;
+  }
   async findByIdempotencyKey(key: string) {
     const v = this.keys.get(key);
     return v && structuredClone(v);

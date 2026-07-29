@@ -6,6 +6,10 @@ import {
 } from '../../apps/markreg-web/src/routing/markreg-route.js';
 import { serializeLiteRoute, type LiteRoute } from '../../apps/lite-web/src/routing/lite-route.js';
 import { MilestoneLineageRecorder } from './lineage-recorder.js';
+import {
+  assertScenarioSnapshotEqual,
+  fetchScenarioSnapshot
+} from './milestone-scenario-snapshot.js';
 
 const id = async (page: Page, expression: RegExp) => {
   const match = (await page.locator('body').innerText()).match(expression);
@@ -14,15 +18,18 @@ const id = async (page: Page, expression: RegExp) => {
 };
 const checkpoint = async (
   page: Page,
+  scenario: string,
   app: 'markreg' | 'lite',
   route: MarkregRoute | LiteRoute,
   expectedStatus: string
 ) =>
   test.step(`Deep-link reload checkpoints / ${route.view}`, async () => {
+    const before = await fetchScenarioSnapshot(scenario);
     const direct = await page.context().newPage();
-    const methods: string[] = [];
+    const requests: { method: string; url: string }[] = [];
     direct.on('request', (request) => {
-      if (request.url().startsWith(milestoneUrls.gateway)) methods.push(request.method());
+      if (request.url().startsWith(milestoneUrls.gateway))
+        requests.push({ method: request.method(), url: request.url() });
     });
     const query =
       app === 'markreg'
@@ -38,8 +45,11 @@ const checkpoint = async (
     await expect(direct).toHaveURL(`${base}/${query}`);
     await expect(direct.getByText(route.recordId)).toBeVisible();
     await expect(direct.getByText(route.expectedVersion, { exact: true }).first()).toBeVisible();
-    expect(methods.length).toBeGreaterThanOrEqual(2);
-    expect(methods.every((method) => method === 'GET')).toBe(true);
+    const mutations = requests.filter(({ method }) => !['GET', 'HEAD'].includes(method));
+    expect(mutations, `Unexpected checkpoint mutations: ${JSON.stringify(mutations)}`).toEqual([]);
+    expect(requests.length).toBeGreaterThanOrEqual(2);
+    const after = await fetchScenarioSnapshot(scenario);
+    assertScenarioSnapshotEqual(before, after);
     await direct.close();
   });
 
@@ -134,6 +144,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       lineage.record('matterDraft', { id: matterId, version: matterVersion });
       await checkpoint(
         page,
+        scenario,
         'markreg',
         { view: 'matter-draft', recordId: matterId, expectedVersion: matterVersion },
         'READY_FOR_PROFESSIONAL_REVIEW'
@@ -159,6 +170,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       lineage.record('reviewDecision', { id: reviewId, version: reviewVersion });
       await checkpoint(
         page,
+        scenario,
         'lite',
         {
           section: 'work',
@@ -206,6 +218,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       lineage.record('preparationLock', { id: lockId, version: lockVersion });
       await checkpoint(
         page,
+        scenario,
         'markreg',
         { view: 'preparation-lock', recordId: lockId, expectedVersion: lockVersion },
         'READY'
@@ -250,6 +263,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       lineage.record('filingAuthorization', { id: authorizationId, version: 2 });
       await checkpoint(
         page,
+        scenario,
         'markreg',
         { view: 'filing-authorization', recordId: authorizationId, expectedVersion: '2' },
         'AUTHORIZED'
@@ -282,6 +296,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       lineage.record('executionRelease', { id: releaseId, version: releasedVersion });
       await checkpoint(
         page,
+        scenario,
         'lite',
         {
           section: 'work',
@@ -295,6 +310,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       lineage.recordIdentity('filingExecutionTaskDraft', taskId);
       await checkpoint(
         page,
+        scenario,
         'lite',
         { section: 'work', view: 'filing-task-draft', recordId: taskId, expectedVersion: '1' },
         'PREPARED'

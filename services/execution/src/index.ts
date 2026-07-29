@@ -67,6 +67,7 @@ export interface ExecutionOptions {
   markRegUrl?: string;
   filingRepository?: InMemoryFilingGovernanceRepository;
   preparationLockSource?: PreparationLockSource;
+  milestoneTestRuntime?: boolean;
 }
 export function createRuntime(options: ExecutionOptions = {}) {
   const repository = options.repository ?? new InMemoryExecutionRepository();
@@ -124,6 +125,19 @@ export function createRuntime(options: ExecutionOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')
+          ? [
+              {
+                method: 'GET' as const,
+                path: '/__milestone/scenario-records',
+                handle: async () =>
+                  json(200, {
+                    professionalReviewCases: await review.list(),
+                    ...(await filingRepository.snapshot())
+                  })
+              }
+            ]
+          : []),
         {
           method: 'POST',
           path: '/v1/filing-authorizations',

@@ -221,6 +221,7 @@ export interface MarkRegOptions {
   matterFlowRepository?: MatterFlowRepository;
   preparationRepository?: PreparationRepository;
   preparationSources?: PreparationSources;
+  milestoneTestRuntime?: boolean;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -324,11 +325,9 @@ export function createRuntime(options: MarkRegOptions = {}) {
     getMatterDraft: (id) => matterFlowRepository.getMatterDraft(id as `matter-draft_${string}`),
     getConfirmation: (id) => matterFlowRepository.getConfirmation(id as `confirmation_${string}`)
   };
-  const preparation = new PreparationService(
-    options.preparationRepository ?? new InMemoryPreparationRepository(),
-    preparationSources,
-    now
-  );
+  const preparationRepository =
+    options.preparationRepository ?? new InMemoryPreparationRepository();
+  const preparation = new PreparationService(preparationRepository, preparationSources, now);
   const prepared = async (work: () => Promise<unknown>) => {
     try {
       return json(200, await work());
@@ -351,6 +350,29 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')
+          ? [
+              {
+                method: 'GET' as const,
+                path: '/__milestone/scenario-records',
+                handle: () => {
+                  if (
+                    !(matterFlowRepository instanceof InMemoryMatterFlowRepository) ||
+                    !(preparationRepository instanceof InMemoryPreparationRepository)
+                  )
+                    throw new HttpError(
+                      404,
+                      'MILESTONE_SNAPSHOT_UNAVAILABLE',
+                      'Milestone snapshot is unavailable.'
+                    );
+                  return json(200, {
+                    matterDrafts: matterFlowRepository.snapshotMatterDrafts(),
+                    preparationLocks: preparationRepository.snapshotLocks()
+                  });
+                }
+              }
+            ]
+          : []),
         {
           method: 'GET',
           path: '/v1/intakes/:intakeId',

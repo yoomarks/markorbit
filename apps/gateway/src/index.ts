@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion -- milestone-only repository snapshots are normalized immediately at the Gateway boundary. */
 import {
   assertDirectIntake,
   parseIntakeCreateCommand,
@@ -6,7 +7,10 @@ import {
   parseQuoteConfirmationCommand,
   type QuoteCreateCommand,
   type QuoteConfirmationCommand,
-  type IntakeCreateCommand
+  type IntakeCreateCommand,
+  type MilestoneRecordSnapshot,
+  type MilestoneScenarioRecordSnapshot,
+  noAuthorizationAuthorityConsequences
 } from '@markorbit/contracts';
 import {
   createServiceRuntime,
@@ -24,6 +28,7 @@ export interface GatewayOptions {
   port?: number;
   markRegUrl?: string;
   executionUrl?: string;
+  milestoneTestRuntime?: boolean;
 }
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -33,6 +38,8 @@ function record(value: unknown): Record<string, unknown> {
 export function createRuntime(options: GatewayOptions = {}) {
   const markRegUrl = options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  const milestoneTestRuntime =
+    options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
   const forward = async (request: JsonRequest, path: string) => {
     try {
       const response = await fetch(`${markRegUrl}${path}`, {
@@ -59,6 +66,147 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...(milestoneTestRuntime
+          ? [
+              {
+                method: 'GET',
+                path: '/__milestone/scenarios/:scenario/records',
+                handle: async (request: JsonRequest) => {
+                  const scenario = request.params.scenario!;
+                  const [markregResponse, executionResponse] = await Promise.all([
+                    fetch(`${markRegUrl}/__milestone/scenario-records`),
+                    fetch(`${executionUrl}/__milestone/scenario-records`)
+                  ]);
+                  if (!markregResponse.ok || !executionResponse.ok)
+                    throw new HttpError(
+                      502,
+                      'MILESTONE_SNAPSHOT_UNAVAILABLE',
+                      'Milestone authoritative repositories are unavailable.',
+                      true
+                    );
+                  const markreg = (await markregResponse.json()) as any;
+                  const execution = (await executionResponse.json()) as any;
+                  const matterDrafts = (markreg.matterDrafts as any[]).filter((value) =>
+                    String(value.preparation?.applicantName ?? '').startsWith(scenario)
+                  );
+                  const matterIds = new Set(matterDrafts.map((value) => value.matterDraftId));
+                  const reviews = (execution.professionalReviewCases as any[]).filter((value) =>
+                    matterIds.has(value.source?.matterDraftId)
+                  );
+                  const reviewIds = new Set(reviews.map((value) => value.reviewCaseId));
+                  const locks = (markreg.preparationLocks as any[]).filter((value) =>
+                    reviewIds.has(value.snapshot?.documentPackage?.professionalReviewCaseId)
+                  );
+                  const lockIds = new Set(locks.map((value) => value.preparationLockId));
+                  const authorizations = (execution.filingAuthorizations as any[]).filter((value) =>
+                    lockIds.has(value.preparationLockId)
+                  );
+                  const authorizationIds = new Set(
+                    authorizations.map((value) => value.filingAuthorizationId)
+                  );
+                  const releases = (execution.executionReleases as any[]).filter((value) =>
+                    authorizationIds.has(value.filingAuthorizationId)
+                  );
+                  const releaseIds = new Set(releases.map((value) => value.executionReleaseId));
+                  const tasks = (execution.filingExecutionTaskDrafts as any[]).filter((value) =>
+                    releaseIds.has(value.executionReleaseId)
+                  );
+                  const collection = (
+                    values: any[],
+                    active: (status: string) => boolean,
+                    project: (value: any) => Omit<MilestoneRecordSnapshot, 'contentHash'>
+                  ) => {
+                    const records = values
+                      .map((value) => ({
+                        ...project(value),
+                        contentHash: createHash('sha256')
+                          .update(JSON.stringify(value))
+                          .digest('hex')
+                      }))
+                      .sort((a, b) => a.id.localeCompare(b.id));
+                    return {
+                      totalCount: records.length,
+                      activeCount: records.filter((value) => active(value.status)).length,
+                      activeIds: records
+                        .filter((value) => active(value.status))
+                        .map((value) => value.id)
+                        .sort(),
+                      records
+                    };
+                  };
+                  const snapshot: MilestoneScenarioRecordSnapshot = {
+                    scenario,
+                    matterDrafts: collection(
+                      matterDrafts,
+                      (status) => status !== 'WITHDRAWN',
+                      (value) => ({
+                        id: value.matterDraftId,
+                        version: value.updatedAt,
+                        status: value.status,
+                        sourceId: value.confirmationId
+                      })
+                    ),
+                    professionalReviewCases: collection(
+                      reviews,
+                      (status) => !['STALE', 'WITHDRAWN'].includes(status),
+                      (value) => ({
+                        id: value.reviewCaseId,
+                        version: value.decision?.decidedAt ?? value.updatedAt,
+                        status: value.status,
+                        sourceId: value.source.matterDraftId,
+                        sourceVersion: value.source.matterDraftVersion
+                      })
+                    ),
+                    preparationLocks: collection(
+                      locks,
+                      () => true,
+                      (value) => ({
+                        id: value.preparationLockId,
+                        version: `${value.documentPackageVersion}:${value.instructionLedgerVersion}`,
+                        status: 'READY',
+                        sourceId: value.snapshot.documentPackage.professionalReviewCaseId,
+                        sourceVersion: value.snapshot.sourceReviewDecisionVersion
+                      })
+                    ),
+                    filingAuthorizations: collection(
+                      authorizations,
+                      (status) => !['WITHDRAWN', 'STALE', 'EXPIRED'].includes(status),
+                      (value) => ({
+                        id: value.filingAuthorizationId,
+                        version: value.version,
+                        status: value.status,
+                        sourceId: value.preparationLockId,
+                        sourceVersion: value.preparationLockVersion
+                      })
+                    ),
+                    executionReleases: collection(
+                      releases,
+                      (status) => !['WITHDRAWN', 'STALE'].includes(status),
+                      (value) => ({
+                        id: value.executionReleaseId,
+                        version: value.version,
+                        status: value.status,
+                        sourceId: value.filingAuthorizationId,
+                        sourceVersion: value.filingAuthorizationVersion
+                      })
+                    ),
+                    filingExecutionTaskDrafts: collection(
+                      tasks,
+                      (status) => status === 'PREPARED',
+                      (value) => ({
+                        id: value.filingExecutionTaskDraftId,
+                        version: value.schemaVersion,
+                        status: value.status,
+                        sourceId: value.executionReleaseId
+                      })
+                    ),
+                    authorityConsequences: noAuthorizationAuthorityConsequences
+                  };
+                  return json(200, snapshot);
+                }
+              } as JsonRoute
+            ]
+          : []),
         ...(
           [
             ['GET', '/api/markreg/intakes/:intakeId', '/v1/intakes/:intakeId'],

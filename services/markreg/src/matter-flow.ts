@@ -95,6 +95,12 @@ export class InMemoryMatterFlowRepository implements MatterFlowRepository {
     this.drafts.set(value.matterDraftId, structuredClone(value));
     return Promise.resolve();
   }
+  snapshotMatterDrafts() {
+    return [...this.drafts.values()].map((value) => structuredClone(value));
+  }
+  snapshotIdempotencyCount() {
+    return this.keys.size;
+  }
 }
 const requiredAcknowledgements = [
   'NO_FILING',

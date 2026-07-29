@@ -106,6 +106,12 @@ export class InMemoryPreparationRepository implements PreparationRepository {
     const v = this.locks.get(id);
     return v && structuredClone(v);
   }
+  snapshotLocks() {
+    return [...this.locks.values()].map((value) => structuredClone(value));
+  }
+  snapshotIdempotencyCount() {
+    return this.keys.size;
+  }
 }
 
 export interface CreatePackageCommand {

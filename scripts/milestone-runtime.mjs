@@ -46,7 +46,8 @@ export function milestoneConfiguration(ports = milestonePorts) {
       env: {
         PORT: String(ports.markreg),
         EXECUTION_URL: urls.execution,
-        CAPABILITY_ENGINE_URL: urls.capability
+        CAPABILITY_ENGINE_URL: urls.capability,
+        MO_MILESTONE_TEST_RUNTIME: '1'
       }
     },
     {
@@ -54,7 +55,11 @@ export function milestoneConfiguration(ports = milestonePorts) {
       port: ports.execution,
       health: `${urls.execution}/health`,
       args: ['--filter', '@markorbit/execution-service', 'dev'],
-      env: { PORT: String(ports.execution), MARKREG_URL: urls.markreg }
+      env: {
+        PORT: String(ports.execution),
+        MARKREG_URL: urls.markreg,
+        MO_MILESTONE_TEST_RUNTIME: '1'
+      }
     },
     {
       name: 'gateway',

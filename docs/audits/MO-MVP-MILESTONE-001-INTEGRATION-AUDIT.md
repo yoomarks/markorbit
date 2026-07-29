@@ -241,7 +241,7 @@ TASK 014 does not declare Milestone 1 frozen. TASK 015 retains freeze authority.
 ### TASK 014 continuation correction
 
 - The route codecs are now used by both application entry points, and three missing read-only authoritative routes have owning-service and real Gateway HTTP coverage.
-- The corrected source-derived inventory is 53 total runtime routes: 51 governed/compatibility routes plus two health probes. The audit's 48 excluded health routes; TASK 014 added three read-only routes. The former 47-row artifact omitted four multiline tuples and contained one parser artifact.
+- The source-derived inventory is now 54 total runtime routes: 51 governed/compatibility routes, two health probes and one protected test-only snapshot evidence route. The audit's 48 excluded health routes; TASK 014 added three governed read routes. The former 47-row artifact omitted four multiline tuples and contained one parser artifact.
 - M-002 remains **RESOLVED** after actual shared-config MarkReg/Lite Storybook builds and generated story-index validation found all 86 applicable IDs.
 - M-003 remains **REMEDIATION_IN_PROGRESS**: ordinary focused direct-load/refresh/recovery coverage exists, but real-runtime checkpoint navigation is not complete.
 - M-004 remains **REMEDIATION_IN_PROGRESS**: descriptors are complete but 17/17 explicit Service and real Gateway HTTP adapters are not complete.
@@ -262,5 +262,14 @@ The detailed audit at `docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md` supe
 - **M-003 — REMEDIATION_IN_PROGRESS:** canonical six-checkpoint reload evidence passes, but authoritative active-record ID/count equality before and after navigation is not asserted.
 - **M-004 — REMEDIATION_IN_PROGRESS:** the current command runs broad package suites and validates static registry references (mode B); it does not execute a descriptor-specific Service and Gateway HTTP adapter with the complete required assertion set for each of 17 cases.
 - Remote Node 22 CI remains **UNVERIFIED** because the checkout has no remote, PR URL, remote head or Actions status.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014 authoritative deep-link stability evidence
+
+- **M-003 — RESOLVED:** a test-runtime-only Gateway snapshot composes records read directly from the MarkReg and Execution in-memory authoritative repositories. It is absent without `MO_MILESTONE_TEST_RUNTIME=1`, is GET-only, and returns stable, sorted, scenario-isolated snapshots for Matter Drafts, Professional Review Cases, Preparation Locks, Filing Authorizations, Execution Releases and Filing Execution Task Drafts.
+- Each of the six desktop and six mobile direct-navigation/reload checkpoints now captures the complete six-collection scenario snapshot before navigation and after reload. Equality includes total/active counts, active IDs, record IDs, versions, statuses, source IDs, source versions and a hash of each complete authoritative record (including acknowledgements and internal assignments). Both projects passed on their first attempt with retries disabled; browser request observation found no POST, PUT, PATCH or DELETE in any checkpoint window, and all thirteen external authority consequences remained false.
+- The full path contains twelve additional real HTTP repository snapshot reads around six direct navigations and six reloads. Its explicit 60-second budget produced first-run durations of 38.0 seconds desktop and 33.1 seconds mobile.
+- **M-004 remains REMEDIATION_IN_PROGRESS.** This evidence change does not modify or close the negative-path semantic matrix.
 
 The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.

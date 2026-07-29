@@ -27,7 +27,7 @@
     {
       "id": "M-003",
       "severity": "Major",
-      "status": "REMEDIATION_IN_PROGRESS",
+      "status": "RESOLVED",
       "summary": "Deep-link and recovery behavior is not demonstrated for each governed workflow stage."
     },
     {
@@ -185,7 +185,7 @@
         "status": "PASS"
       },
       "gatewayRoutes": {
-        "runtimeTotal": 53,
+        "runtimeTotal": 54,
         "governedAndCompatibility": 51,
         "health": 2,
         "auditBaselineExcludingHealth": 48,
@@ -208,13 +208,16 @@
       "realRuntimeDeepLinks": {
         "retries": 0,
         "checkpoints": 6,
-        "desktop": "PASS_FIRST_ATTEMPT_26.8S",
-        "mobile": "PASS_FIRST_ATTEMPT_20.9S",
-        "mutationMethodsObserved": "GET_ONLY"
+        "desktop": "PASS_FIRST_ATTEMPT_38.0S",
+        "mobile": "PASS_FIRST_ATTEMPT_33.1S",
+        "mutationMethodsObserved": "GET_HEAD_ONLY",
+        "authoritativeSnapshots": "SIX_OF_SIX_EQUAL_PER_PROJECT",
+        "snapshotCollections": 6,
+        "duplicateActiveRecords": 0
       },
       "finalEvidenceAudit": {
         "document": "docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md",
-        "m003": "REMEDIATION_IN_PROGRESS_ACTIVE_RECORD_COUNTS_MISSING",
+        "m003": "RESOLVED_AUTHORITATIVE_SNAPSHOTS_EQUAL_DESKTOP_MOBILE",
         "m004": "REMEDIATION_IN_PROGRESS_REGISTRY_IS_METADATA_NOT_PER_CASE_EXECUTOR",
         "remoteNode22": "UNVERIFIED_NO_REMOTE"
       }

@@ -176,6 +176,16 @@ export class InMemoryFilingGovernanceRepository {
   private async taskList() {
     return [...this.tasks.values()].map(clone);
   }
+  async snapshot() {
+    return {
+      filingAuthorizations: await this.authorizationList(),
+      executionReleases: await this.releaseList(),
+      filingExecutionTaskDrafts: await this.taskList()
+    };
+  }
+  snapshotIdempotencyCount() {
+    return this.authorizationKeys.size + this.releaseKeys.size + this.decisionKeys.size;
+  }
 }
 const acknowledgementCodes: FilingAuthorizationAcknowledgementCode[] = [
   'APPLICANT_OWNER_CONFIRMED',

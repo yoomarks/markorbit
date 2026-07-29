@@ -821,6 +821,33 @@ export interface FilingExecutionTaskDraft {
   createdAt: string;
 }
 
+/** Read-only evidence available only from the non-production Milestone test runtime. */
+export interface MilestoneRecordSnapshot {
+  id: string;
+  version?: string | number;
+  status: string;
+  sourceId?: string;
+  sourceVersion?: string | number;
+  /** Hash of the complete authoritative record, including acknowledgements and assignments. */
+  contentHash: string;
+}
+export interface RecordCollectionSnapshot {
+  totalCount: number;
+  activeCount: number;
+  activeIds: string[];
+  records: MilestoneRecordSnapshot[];
+}
+export interface MilestoneScenarioRecordSnapshot {
+  scenario: string;
+  matterDrafts: RecordCollectionSnapshot;
+  professionalReviewCases: RecordCollectionSnapshot;
+  preparationLocks: RecordCollectionSnapshot;
+  filingAuthorizations: RecordCollectionSnapshot;
+  executionReleases: RecordCollectionSnapshot;
+  filingExecutionTaskDrafts: RecordCollectionSnapshot;
+  authorityConsequences: AuthorizationAuthorityConsequences;
+}
+
 export class ContractValidationError extends TypeError {
   constructor(message: string) {
     super(message);
