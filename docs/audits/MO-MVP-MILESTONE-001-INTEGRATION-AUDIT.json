@@ -1,0 +1,148 @@
+{
+  "auditedSha": "8005458a59a8fdbbdda96b275561501206793454",
+  "result": "FAIL",
+  "blockerCount": 2,
+  "majorCount": 3,
+  "minorCount": 3,
+  "observationCount": 4,
+  "findings": [
+    {
+      "id": "B-001",
+      "severity": "Blocker",
+      "status": "OPEN",
+      "summary": "Required Node 22 validation and remote CI are unavailable; local Node is v20.20.2 and the checkout has no origin remote."
+    },
+    {
+      "id": "B-002",
+      "severity": "Blocker",
+      "status": "OPEN",
+      "summary": "No complete deterministic Milestone 1 browser path runs against real Gateway, MarkReg and Execution runtimes."
+    },
+    {
+      "id": "M-002",
+      "severity": "Major",
+      "status": "OPEN",
+      "summary": "Storybook lacks a complete required state matrix for every major workflow."
+    },
+    {
+      "id": "M-003",
+      "severity": "Major",
+      "status": "OPEN",
+      "summary": "Deep-link and recovery behavior is not demonstrated for each governed workflow stage."
+    },
+    {
+      "id": "M-004",
+      "severity": "Major",
+      "status": "OPEN",
+      "summary": "Negative paths are distributed across suites rather than consolidated as a service-to-Gateway typed-error integration matrix."
+    },
+    {
+      "id": "m-001",
+      "severity": "Minor",
+      "status": "OPEN",
+      "summary": "Gateway route prefixes are inconsistent between /v1/markreg and /api/{markreg,lite,execution}."
+    },
+    {
+      "id": "m-002",
+      "severity": "Minor",
+      "status": "OPEN",
+      "summary": "Fixture-only unauthenticated status is not explicit route by route."
+    },
+    {
+      "id": "m-003",
+      "severity": "Minor",
+      "status": "OPEN",
+      "summary": "Legacy POST /v1/executions needs explicit documentation relative to the non-filing task-draft boundary."
+    },
+    {
+      "id": "O-001",
+      "severity": "Observation",
+      "status": "NOTED",
+      "summary": "Service ownership and typed access boundaries are clean."
+    },
+    {
+      "id": "O-002",
+      "severity": "Observation",
+      "status": "NOTED",
+      "summary": "Authoritative stores are service-local in-memory fixture repositories, not React state."
+    },
+    {
+      "id": "O-003",
+      "severity": "Observation",
+      "status": "NOTED",
+      "summary": "Authority disclaimers and false consequences are explicit throughout downstream stages."
+    },
+    {
+      "id": "O-004",
+      "severity": "Observation",
+      "status": "NOTED",
+      "summary": "No prohibited Playwright workaround was found."
+    }
+  ],
+  "testTotals": {
+    "source": "successful focused Vitest runs under local Node v20.20.2; browser totals from static project inventory",
+    "executionService": 30,
+    "gateway": 53,
+    "markregWeb": 23,
+    "liteWeb": 9,
+    "e2eProjectTests": 22,
+    "visualProjectTests": 16,
+    "goldenPathDesktop": "FAIL_NOT_REAL_RUNTIMES",
+    "goldenPathMobile": "FAIL_NOT_REAL_RUNTIMES",
+    "remoteNode22Ci": "UNKNOWN_NO_REMOTE",
+    "coreService": 2,
+    "markregService": 16,
+    "operationsConsole": 0,
+    "workspaceTest": "FAIL_3_MARKREG_TIMEOUTS_UNDER_UNSUPPORTED_NODE20_PARALLEL_RUN",
+    "e2eExecution": "NOT_RUN_MISSING_PLAYWRIGHT_CHROMIUM_BINARY",
+    "visualExecution": "NOT_RUN_E2E_PREREQUISITE_FAILED"
+  },
+  "routeCoverage": {
+    "gatewayRouteCount": 48,
+    "authentication": "FIXTURE_ONLY_UNAUTHENTICATED",
+    "httpCoverage": "INDIVIDUAL_ROUTE_FAMILIES_COVERED",
+    "realRuntimeBrowserCoverage": false,
+    "namingConsistent": false,
+    "authorityConsequencesForwarded": true
+  },
+  "stageCoverage": {
+    "Consultation": "PARTIAL_INTERCEPTED_BROWSER",
+    "RecommendationPlan": "PARTIAL_INTERCEPTED_BROWSER",
+    "Quote": "PARTIAL_INTERCEPTED_BROWSER",
+    "CustomerConfirmation": "PARTIAL_INTERCEPTED_BROWSER",
+    "MatterDraft": "PARTIAL_INTERCEPTED_BROWSER",
+    "ProfessionalReview": "PARTIAL_INTERCEPTED_BROWSER",
+    "DocumentPackage": "PARTIAL_INTERCEPTED_BROWSER",
+    "InstructionLedger": "PARTIAL_INTERCEPTED_BROWSER",
+    "PreparationLock": "PARTIAL_INTERCEPTED_BROWSER",
+    "FilingAuthorization": "PARTIAL_INTERCEPTED_BROWSER",
+    "ExecutionRelease": "PARTIAL_INTERCEPTED_BROWSER",
+    "FilingExecutionTaskDraft": "PARTIAL_INTERCEPTED_BROWSER"
+  },
+  "authorityChecks": {
+    "recommendationCreatesAppointment": false,
+    "quoteCreatesCustomerConfirmation": false,
+    "customerConfirmationCreatesOrder": false,
+    "matterDraftCreatesFormalMatter": false,
+    "reviewReadinessCreatesApproval": false,
+    "reviewAssignmentCreatesProfessionalAppointment": false,
+    "reviewCompletionCreatesFilingApproval": false,
+    "documentProvidedClaimsLegalValidity": false,
+    "preparationLockCreatesSubmission": false,
+    "filingAuthorizationCreatesSubmission": false,
+    "executionReleaseCreatesExecution": false,
+    "taskDraftCreatesFiledApplication": false,
+    "internalAssigneeCreatesExternalAppointment": false,
+    "paymentUsedAsPerformance": false,
+    "externalFilingSideEffect": false
+  },
+  "residualRisks": [
+    "Fixture stores conceal restart and persistence-boundary behavior.",
+    "No one real-runtime browser test proves the complete exact-version lineage.",
+    "Story/deep-link state coverage is incomplete.",
+    "Authentication is absent and safe only for an explicitly fixture-only environment.",
+    "Node 22 and remote CI status are unverified.",
+    "Latest-main provenance cannot be remotely verified because origin is absent."
+  ],
+  "freezeRecommendation": "DO_NOT_FREEZE"
+}
