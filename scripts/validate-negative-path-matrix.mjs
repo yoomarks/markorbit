@@ -22,8 +22,8 @@ for (const row of rows) {
   assert.equal(row.mutationSideEffectExpectation, 'NO_RECORD_OR_IDEMPOTENCY_MUTATION');
   assert.equal(row.authorityConsequenceExpectation, 'NO_EXTERNAL_AUTHORITY_CONSEQUENCE');
 }
-console.log('17 descriptors');
-console.log('17 service cases passed');
-console.log('17 Gateway cases passed');
-console.log('0 missing adapters');
-console.log('0 unexpected adapters');
+console.log('17 descriptors registered');
+console.log('17 Service evidence references registered');
+console.log('17 Gateway evidence references registered');
+console.log('0 missing registry IDs');
+console.log('WARNING: registry validation does not establish per-case executable equivalence');

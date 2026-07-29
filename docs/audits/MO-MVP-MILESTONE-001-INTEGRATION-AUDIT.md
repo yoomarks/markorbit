@@ -254,3 +254,13 @@ TASK 014 does not declare Milestone 1 frozen. TASK 015 retains freeze authority.
 - Runtime stability is covered by eight harness regression scenarios and ten consecutive `pnpm test:runtime` executions without manual cleanup. The harness names all six runtimes and awaits child exit, log closure and port release.
 
 The original audit result remains **FAIL** and its freeze recommendation remains **DO_NOT_FREEZE**. TASK 014 remediation does not declare Milestone 1 frozen; TASK 015 retains that decision.
+
+### TASK 014 final evidence audit correction
+
+The detailed audit at `docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md` supersedes the unsupported M-003/M-004 closure claims above:
+
+- **M-003 — REMEDIATION_IN_PROGRESS:** canonical six-checkpoint reload evidence passes, but authoritative active-record ID/count equality before and after navigation is not asserted.
+- **M-004 — REMEDIATION_IN_PROGRESS:** the current command runs broad package suites and validates static registry references (mode B); it does not execute a descriptor-specific Service and Gateway HTTP adapter with the complete required assertion set for each of 17 cases.
+- Remote Node 22 CI remains **UNVERIFIED** because the checkout has no remote, PR URL, remote head or Actions status.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
