@@ -56,7 +56,24 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.lite-workspace,
+.lite-workspace > *,
+.lite-filters,
+.lite-list,
+.lite-list > *,
+.lite-row,
+.lite-row > * {
+  min-width: 0;
+  max-width: 100%;
+}
 @media (max-width: 760px) {
+  .lite-workspace .lite-filters,
+  .lite-workspace .mo-alert {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    transform: none;
+  }
   .lite-subnav,
   .lite-filters,
   .lite-row {

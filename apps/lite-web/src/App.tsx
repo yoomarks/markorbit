@@ -488,64 +488,66 @@ export function LiteApp({
         <TopBar context="Northstar IP · Fixture workspace" actions={<Badge>Not live data</Badge>} />
       }
     >
-      <FixtureBanner />
-      {surface !== 'today' && (
-        <div className="lite-subnav" aria-label="Workspace view">
-          <Button
-            variant={surface === 'customers' ? 'primary' : 'secondary'}
-            onClick={() => setSurface('customers')}
-          >
-            Work / Customers
-          </Button>
-          <Button
-            variant={surface === 'opportunities' ? 'primary' : 'secondary'}
-            onClick={() => setSurface('opportunities')}
-          >
-            Opportunities
-          </Button>
-        </div>
-      )}
-      {surface === 'today' ? (
-        <>
-          <PageHeader
-            title="Today"
-            description="A calm view of the work that needs professional attention."
-          />
-          <div className="mo-grid">
-            <Card>
-              <h2>Pending attention</h2>
-              <DataList
-                items={[
-                  { label: 'Client intake review', value: '4', status: 'Due today' },
-                  { label: 'Draft publish packages', value: '2', status: 'Awaiting approval' }
-                ]}
-              />
-            </Card>
-            <Card>
-              <h2>Opportunities</h2>
-              <DataList items={[{ label: 'Evidence observations', value: '3' }]} />
-            </Card>
-            <Card>
-              <h2>Work</h2>
-              <DataList items={[{ label: 'Customers needing review', value: '1' }]} />
-            </Card>
+      <div className="lite-workspace">
+        <FixtureBanner />
+        {surface !== 'today' && (
+          <div className="lite-subnav" aria-label="Workspace view">
+            <Button
+              variant={surface === 'customers' ? 'primary' : 'secondary'}
+              onClick={() => setSurface('customers')}
+            >
+              Work / Customers
+            </Button>
+            <Button
+              variant={surface === 'opportunities' ? 'primary' : 'secondary'}
+              onClick={() => setSurface('opportunities')}
+            >
+              Opportunities
+            </Button>
           </div>
-        </>
-      ) : surface === 'customers' ? (
-        <Customers
-          key={initialCustomerId}
-          state={state}
-          setState={setState}
-          initialSelected={initialCustomerId}
-        />
-      ) : (
-        <Opportunities
-          key={initialOpportunityId}
-          state={state}
-          setState={setState}
-          initialSelected={initialOpportunityId}
-        />
-      )}
+        )}
+        {surface === 'today' ? (
+          <>
+            <PageHeader
+              title="Today"
+              description="A calm view of the work that needs professional attention."
+            />
+            <div className="mo-grid">
+              <Card>
+                <h2>Pending attention</h2>
+                <DataList
+                  items={[
+                    { label: 'Client intake review', value: '4', status: 'Due today' },
+                    { label: 'Draft publish packages', value: '2', status: 'Awaiting approval' }
+                  ]}
+                />
+              </Card>
+              <Card>
+                <h2>Opportunities</h2>
+                <DataList items={[{ label: 'Evidence observations', value: '3' }]} />
+              </Card>
+              <Card>
+                <h2>Work</h2>
+                <DataList items={[{ label: 'Customers needing review', value: '1' }]} />
+              </Card>
+            </div>
+          </>
+        ) : surface === 'customers' ? (
+          <Customers
+            key={initialCustomerId}
+            state={state}
+            setState={setState}
+            initialSelected={initialCustomerId}
+          />
+        ) : (
+          <Opportunities
+            key={initialOpportunityId}
+            state={state}
+            setState={setState}
+            initialSelected={initialOpportunityId}
+          />
+        )}
+      </div>
     </AppShell>
   );
 }
