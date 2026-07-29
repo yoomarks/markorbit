@@ -3,7 +3,8 @@ import type {
   IntakeRecommendationResponse,
   MarkOrbitId,
   PlanQuoteResponse,
-  PlanOptionCode
+  PlanOptionCode,
+  ProfessionalReviewCase
 } from '@markorbit/contracts';
 import {
   Alert,
@@ -24,6 +25,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MarkregApiError } from './api/errors.js';
 import { createMarkregClient, type MarkregClient } from './api/markreg.js';
 import { ConfirmationMatterFlow } from './ConfirmationMatterFlow.js';
+import { ConnectedDocumentsInstructionsWorkspace } from './DocumentsInstructionsWorkspace.js';
 
 export interface IntakeDraft {
   applicantType: string;
@@ -70,6 +72,10 @@ const load = <T,>(key: string): T | undefined => {
 const fingerprint = (draft: IntakeDraft) => JSON.stringify(draft);
 
 export function MarkregApp({ client = createMarkregClient() }: { client?: MarkregClient }) {
+  const reviewCaseId = new URLSearchParams(window.location.search).get('professionalReviewCaseId');
+  const [completedReview, setCompletedReview] = useState<ProfessionalReviewCase>();
+  const [reviewLoading, setReviewLoading] = useState(Boolean(reviewCaseId));
+  const [preparationOpen, setPreparationOpen] = useState(false);
   const [started, setStarted] = useState(() => Boolean(load<IntakeDraft>(storageKey)));
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<IntakeDraft>(
@@ -90,6 +96,13 @@ export function MarkregApp({ client = createMarkregClient() }: { client?: Markre
   useEffect(() => {
     sessionStorage.setItem(storageKey, JSON.stringify(draft));
   }, [draft]);
+  useEffect(() => {
+    if (!reviewCaseId || !client.getProfessionalReview) return;
+    void client
+      .getProfessionalReview(reviewCaseId)
+      .then(({ reviewCase }) => setCompletedReview(reviewCase))
+      .finally(() => setReviewLoading(false));
+  }, [client, reviewCaseId]);
   const update = (key: keyof IntakeDraft, value: string | string[]) => {
     setDraft((d) => ({ ...d, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
@@ -158,6 +171,36 @@ export function MarkregApp({ client = createMarkregClient() }: { client?: Markre
     }
   };
 
+  if (reviewLoading)
+    return (
+      <main className="markreg-page">
+        <LoadingState label="Loading completed Professional Review" />
+      </main>
+    );
+  if (completedReview?.status === 'REVIEWED_READY_FOR_NEXT_STEP') {
+    if (preparationOpen)
+      return <ConnectedDocumentsInstructionsWorkspace client={client} review={completedReview} />;
+    return (
+      <main className="markreg-page">
+        <FixtureBanner />
+        <PageHeader
+          title="Professional Review complete"
+          description="The exact reviewed source is ready for governed document and instruction preparation."
+        />
+        <Card>
+          <KeyValueList
+            items={[
+              { key: 'Review Case', value: completedReview.reviewCaseId },
+              { key: 'Decision version', value: completedReview.decision?.decidedAt ?? '' },
+              { key: 'Matter Draft version', value: completedReview.source.matterDraftVersion }
+            ]}
+          />
+          <Button onClick={() => setPreparationOpen(true)}>Open Documents and Instructions</Button>
+          <p>Preparation Lock ≠ Filing Submission.</p>
+        </Card>
+      </main>
+    );
+  }
   if (!started)
     return (
       <main className="markreg-page">

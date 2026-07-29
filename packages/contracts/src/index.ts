@@ -410,6 +410,236 @@ export interface ProfessionalReviewCase {
   decision?: Readonly<ProfessionalReviewDecision>;
 }
 
+/** Version 1 contracts for MarkReg-owned governed filing preparation. */
+export type DocumentPackageId = `document-package_${string}`;
+export type DocumentPackageVersion = number;
+export type DocumentItemId = `document-item_${string}`;
+export type DocumentItemVersion = number;
+export type CustomerInstructionLedgerId = `instruction-ledger_${string}`;
+export type CustomerInstructionEntryId = `instruction-entry_${string}`;
+export type PreparationLockId = `preparation-lock_${string}`;
+export type DocumentPackageStatus =
+  | 'DRAFT'
+  | 'NEEDS_DOCUMENTS'
+  | 'READY_FOR_CUSTOMER_CONFIRMATION'
+  | 'LOCKED_FOR_PREPARATION'
+  | 'STALE'
+  | 'WITHDRAWN';
+export type DocumentRequirementCode =
+  | 'APPLICANT_IDENTITY_EVIDENCE'
+  | 'APPLICANT_ADDRESS_EVIDENCE'
+  | 'MARK_REPRESENTATION_FILE'
+  | 'POWER_OF_ATTORNEY'
+  | 'PRIORITY_DOCUMENT'
+  | 'PRIORITY_TRANSLATION'
+  | 'TRANSLATION'
+  | 'TRANSLITERATION'
+  | 'USE_EVIDENCE'
+  | 'SIGNED_DECLARATION'
+  | 'CORPORATE_STATUS_EVIDENCE'
+  | 'REPRESENTATIVE_INSTRUCTION'
+  | 'OTHER_REVIEW_REQUIRED_DOCUMENT';
+export interface DocumentRequirement {
+  code: DocumentRequirementCode;
+  name: string;
+  reason: string;
+  source: string;
+  blocking: boolean;
+  fixtureOnly: true;
+}
+export type DocumentItemStatus =
+  | 'REQUIRED_MISSING'
+  | 'PROVIDED'
+  | 'REVIEW_NEEDED'
+  | 'ACCEPTED_FOR_PREPARATION'
+  | 'REJECTED'
+  | 'SUPERSEDED'
+  | 'NOT_APPLICABLE';
+export interface DocumentReference {
+  fileName: string;
+  contentType: string;
+  byteSize: number;
+  checksum?: string;
+  storageReference?: string;
+  uploadedAt: string;
+  uploadedBy: MarkOrbitId;
+  source: 'CUSTOMER' | 'PROFESSIONAL' | 'FIXTURE';
+  originalOrCopy: 'ORIGINAL' | 'COPY' | 'UNKNOWN';
+  language?: string;
+  translationReference?: string;
+  signatureStatus?: 'RECORDED' | 'NOT_REQUIRED' | 'UNKNOWN';
+  notarizationStatus?: 'RECORDED' | 'NOT_REQUIRED' | 'UNKNOWN';
+  legalizationStatus?: 'RECORDED' | 'NOT_REQUIRED' | 'UNKNOWN';
+}
+export type DocumentValidationCheckCode =
+  | 'SOURCE_REVIEW_CURRENT'
+  | 'SOURCE_MATTER_DRAFT_CURRENT'
+  | 'REQUIRED_DOCUMENT_PRESENT'
+  | 'DOCUMENT_VERSION_CURRENT'
+  | 'DOCUMENT_TYPE_MATCHES_REQUIREMENT'
+  | 'FILE_METADATA_PRESENT'
+  | 'CHECKSUM_PRESENT'
+  | 'LANGUAGE_IDENTIFIED'
+  | 'TRANSLATION_PRESENT_OR_NOT_REQUIRED'
+  | 'SIGNATURE_STATUS_RECORDED_OR_NOT_REQUIRED'
+  | 'NOTARIZATION_STATUS_RECORDED_OR_NOT_REQUIRED'
+  | 'LEGALIZATION_STATUS_RECORDED_OR_NOT_REQUIRED'
+  | 'CUSTOMER_USE_AUTHORIZATION_PRESENT'
+  | 'COMMERCIAL_SCOPE_UNCHANGED';
+export interface DocumentValidationCheck {
+  code: DocumentValidationCheckCode;
+  status: ReadinessCheckStatus;
+  blocking: boolean;
+  explanation: string;
+  evidenceReference?: string;
+  checkedAt: string;
+  source: string;
+}
+export interface DocumentItem {
+  documentItemId: DocumentItemId;
+  documentPackageId: DocumentPackageId;
+  documentType: string;
+  requirementCode: DocumentRequirementCode;
+  version: DocumentItemVersion;
+  status: DocumentItemStatus;
+  documentReference: Readonly<DocumentReference>;
+  suppliedBy: MarkOrbitId;
+  suppliedAt: string;
+  supersedesDocumentItemId?: DocumentItemId;
+  reviewNote?: string;
+  validationChecks: ReadonlyArray<Readonly<DocumentValidationCheck>>;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface DocumentPackage {
+  schemaVersion: 1;
+  documentPackageId: DocumentPackageId;
+  version: DocumentPackageVersion;
+  professionalReviewCaseId: ProfessionalReviewCaseId;
+  professionalReviewDecisionVersion: string;
+  matterDraftId: MatterDraftId;
+  matterDraftVersion: string;
+  customerConfirmationId: CustomerConfirmationId;
+  customerId: MarkOrbitId;
+  jurisdiction: string;
+  trademarkReference: string;
+  requirements: ReadonlyArray<Readonly<DocumentRequirement>>;
+  documentItems: ReadonlyArray<Readonly<DocumentItem>>;
+  validationChecks: ReadonlyArray<Readonly<DocumentValidationCheck>>;
+  missingRequirements: ReadonlyArray<DocumentRequirementCode>;
+  status: DocumentPackageStatus;
+  createdAt: string;
+  updatedAt: string;
+  lockedAt?: string;
+}
+export type CustomerInstructionLedgerStatus =
+  'DRAFT' | 'CONFIRMED' | 'LOCKED_FOR_PREPARATION' | 'STALE' | 'WITHDRAWN';
+export type CustomerInstructionType =
+  | 'APPLICANT_IDENTITY'
+  | 'APPLICANT_ADDRESS'
+  | 'MARK_REPRESENTATION'
+  | 'JURISDICTION'
+  | 'CLASS_SELECTION'
+  | 'GOODS_SERVICES'
+  | 'FILING_BASIS'
+  | 'REPRESENTATIVE_SELECTION'
+  | 'PRIORITY_CLAIM'
+  | 'DOCUMENT_USE_AUTHORIZATION'
+  | 'FILING_TIMING'
+  | 'COMMERCIAL_SCOPE_ACKNOWLEDGEMENT'
+  | 'OTHER_PREPARATION_INSTRUCTION';
+export type CustomerInstructionStatus = 'PROPOSED' | 'CONFIRMED' | 'SUPERSEDED' | 'WITHDRAWN';
+export interface CustomerInstructionEvidence {
+  reference: string;
+  recordedAt: string;
+  source: string;
+}
+export interface CustomerInstructionAcknowledgement {
+  code:
+    | 'APPLICANT_OWNER'
+    | 'MARK_REPRESENTATION'
+    | 'SCOPE'
+    | 'DOCUMENT_USE'
+    | 'NO_SUBMISSION'
+    | 'CHANGE_REVIEW_OR_QUOTE';
+  acknowledged: true;
+  acknowledgedBy: MarkOrbitId;
+  acknowledgedAt: string;
+  evidenceReference: string;
+}
+export interface CustomerInstructionEntry {
+  instructionEntryId: CustomerInstructionEntryId;
+  type: CustomerInstructionType;
+  structuredValue: Readonly<Record<string, unknown>>;
+  note?: string;
+  status: CustomerInstructionStatus;
+  createdAt: string;
+  confirmedAt?: string;
+  supersedesInstructionEntryId?: CustomerInstructionEntryId;
+  evidence: ReadonlyArray<Readonly<CustomerInstructionEvidence>>;
+}
+export interface CustomerInstructionLedger {
+  schemaVersion: 1;
+  instructionLedgerId: CustomerInstructionLedgerId;
+  version: number;
+  documentPackageId: DocumentPackageId;
+  documentPackageVersion: DocumentPackageVersion;
+  customerId: MarkOrbitId;
+  matterDraftId: MatterDraftId;
+  matterDraftVersion: string;
+  professionalReviewCaseId: ProfessionalReviewCaseId;
+  professionalReviewDecisionVersion: string;
+  entries: ReadonlyArray<Readonly<CustomerInstructionEntry>>;
+  acknowledgements: ReadonlyArray<Readonly<CustomerInstructionAcknowledgement>>;
+  status: CustomerInstructionLedgerStatus;
+  currentEffectiveInstructionSet: Readonly<Record<string, CustomerInstructionEntryId>>;
+  createdAt: string;
+  updatedAt: string;
+  confirmedAt?: string;
+  lockedAt?: string;
+}
+export interface PreparationAuthorityConsequences {
+  orderCreated: false;
+  paymentCreated: false;
+  formalMatterCreated: false;
+  professionalAppointed: false;
+  filingCreated: false;
+  filingSubmitted: false;
+  customerMessageSent: false;
+  externalDocumentSent: false;
+  trademarkOfficeContacted: false;
+}
+export const noPreparationAuthorityConsequences: PreparationAuthorityConsequences = Object.freeze({
+  orderCreated: false,
+  paymentCreated: false,
+  formalMatterCreated: false,
+  professionalAppointed: false,
+  filingCreated: false,
+  filingSubmitted: false,
+  customerMessageSent: false,
+  externalDocumentSent: false,
+  trademarkOfficeContacted: false
+});
+export interface PreparationSnapshot {
+  documentPackage: Readonly<DocumentPackage>;
+  instructionLedger: Readonly<CustomerInstructionLedger>;
+  sourceReviewDecisionVersion: string;
+  sourceMatterDraftVersion: string;
+  commercialScopeUnchanged: true;
+}
+export interface PreparationLock {
+  schemaVersion: 1;
+  preparationLockId: PreparationLockId;
+  documentPackageId: DocumentPackageId;
+  documentPackageVersion: DocumentPackageVersion;
+  instructionLedgerId: CustomerInstructionLedgerId;
+  instructionLedgerVersion: number;
+  lockedAt: string;
+  snapshot: Readonly<PreparationSnapshot>;
+  nextPermittedAction: 'GOVERNED_FILING_AUTHORITY_REVIEW';
+  consequences: Readonly<PreparationAuthorityConsequences>;
+}
+
 export class ContractValidationError extends TypeError {
   constructor(message: string) {
     super(message);
