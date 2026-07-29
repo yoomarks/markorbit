@@ -41,30 +41,10 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   await page.getByLabel('Customer status').selectOption('Active');
   await page.getByLabel('Country / region').selectOption('US');
   const detailsButton = page.getByRole('button', { name: 'View customer details' });
-  await detailsButton.evaluate((element) => {
-    element.scrollIntoView({
-      block: 'center',
-      inline: 'nearest'
-    });
-  });
+  await detailsButton.scrollIntoViewIfNeeded();
   await expect(detailsButton).toBeVisible();
   await expect(detailsButton).toBeInViewport();
-  await expect
-    .poll(async () =>
-      detailsButton.evaluate((element) => {
-        const rect = element.getBoundingClientRect();
-        const elementAtCenter = document.elementFromPoint(
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2
-        );
-
-        return (
-          elementAtCenter === element ||
-          (elementAtCenter !== null && element.contains(elementAtCenter))
-        );
-      })
-    )
-    .toBe(true);
+  await detailsButton.click({ trial: true });
   await detailsButton.click();
   await expect(page.getByRole('heading', { level: 1, name: 'Northwind Outdoor' })).toBeVisible();
   await expect(page.getByText('Customer Record ≠ Verified Legal Identity')).toBeVisible();

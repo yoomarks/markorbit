@@ -91,3 +91,27 @@
     width: 100%;
   }
 }
+@media (max-width: 640px) {
+  .mo-shell__body:has(.lite-workspace),
+  .mo-shell main:has(.lite-workspace),
+  .lite-workspace,
+  .lite-workspace .lite-list,
+  .lite-workspace .lite-list > .mo-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .lite-workspace .lite-filters,
+  .lite-workspace .mo-alert--info {
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    z-index: auto !important;
+    height: auto;
+  }
+  .lite-workspace .lite-list > .mo-card,
+  .lite-workspace .lite-list > .mo-card .mo-button {
+    scroll-margin-block: var(--mo-space-lg);
+  }
+}
