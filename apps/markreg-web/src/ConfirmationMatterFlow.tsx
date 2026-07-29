@@ -187,9 +187,9 @@ export function ConfirmationMatterFlow({
     );
   if (state === 'CONFIRMATION_RECEIPT' && confirmation)
     return (
-      <>
+      <section role="region" aria-labelledby="confirmation-receipt-heading">
         <Card>
-          <h2>Customer Confirmation receipt</h2>
+          <h2 id="confirmation-receipt-heading">Confirmation receipt</h2>
           <KeyValueList
             items={[
               { key: 'Confirmation ID', value: confirmation.confirmationId },
@@ -205,13 +205,19 @@ export function ConfirmationMatterFlow({
                 )
               },
               { key: 'Terms version', value: confirmation.termsVersion },
-              { key: 'Next permitted action', value: 'Prepare Matter Draft' },
-              { key: 'Order created', value: 'No' },
-              { key: 'Payment created', value: 'No' },
-              { key: 'Professional appointed', value: 'No' },
-              { key: 'Filing created', value: 'No' }
+              { key: 'Next permitted action', value: 'Prepare Matter Draft' }
             ]}
           />
+          <h3>Confirmation consequences</h3>
+          <ul aria-label="Confirmation consequences">
+            {['Order created', 'Payment created', 'Professional appointed', 'Filing created'].map(
+              (label) => (
+                <li key={label}>
+                  <span>{label}</span> <strong>No</strong>
+                </li>
+              )
+            )}
+          </ul>
           <h3>Acknowledgement record</h3>
           <ul>
             {confirmation.acknowledgements.map((a) => (
@@ -226,7 +232,7 @@ export function ConfirmationMatterFlow({
           </Alert>
           <Button onClick={() => void createDraft()}>Prepare Matter Draft</Button>
         </Card>
-      </>
+      </section>
     );
   if (!matter) return null;
   const update = <K extends keyof MatterDraftPreparation>(
@@ -324,7 +330,7 @@ export function ConfirmationMatterFlow({
           <p>None.</p>
         )}
         <h3>Readiness checks</h3>
-        <div className="markreg-readiness">
+        <div className="markreg-readiness" style={{ overflowWrap: 'anywhere' }}>
           {matter.readiness.checks.map((check) => (
             <section key={check.code}>
               <h4>{check.code}</h4>
@@ -342,7 +348,9 @@ export function ConfirmationMatterFlow({
             created: No · Professional appointed: No · Filing created: No
           </Alert>
         ) : (
-          <Button onClick={() => void evaluate()}>Prepare for professional review</Button>
+          <div className="markreg-actions">
+            <Button onClick={() => void evaluate()}>Prepare for professional review</Button>
+          </div>
         )}
       </Card>
     </>

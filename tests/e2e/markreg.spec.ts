@@ -121,14 +121,18 @@ test('Customer Confirmation to ready Matter Draft remains preparatory @visual', 
   if (testInfo.project.name.startsWith('desktop'))
     await capture(page, 'markreg-confirmation-acknowledgements');
   await page.getByRole('button', { name: 'Confirm selected Quote' }).click();
-  await expect(page.getByRole('heading', { name: 'Customer Confirmation receipt' })).toBeVisible();
-  for (const text of [
-    'Order created No',
-    'Payment created No',
-    'Professional appointed No',
-    'Filing created No'
-  ])
-    await expect(page.getByText(text, { exact: false })).toBeVisible();
+  const confirmationReceipt = page.getByRole('region', { name: 'Confirmation receipt' });
+  await expect(confirmationReceipt).toBeVisible();
+  for (const label of [
+    'Order created',
+    'Payment created',
+    'Professional appointed',
+    'Filing created'
+  ]) {
+    const consequence = confirmationReceipt.getByRole('listitem').filter({ hasText: label });
+    await expect(consequence).toHaveCount(1);
+    await expect(consequence.getByText('No', { exact: true })).toBeVisible();
+  }
   await capture(page, `markreg-confirmation-receipt-${testInfo.project.name}`);
   await page.getByRole('button', { name: 'Prepare Matter Draft' }).click();
   await expect(

@@ -581,8 +581,8 @@ function Recommendation({
               <li key={l}>{l}</li>
             ))}
           </ul>
-          <ConfirmationMatterFlow quote={quote} client={client} />
         </Card>
+        <ConfirmationMatterFlow quote={quote} client={client} />
       </main>
     );
   return (
