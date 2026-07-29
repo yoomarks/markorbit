@@ -15,7 +15,9 @@ import {
   type PlanQuoteResponse,
   type Quote,
   type QuoteConfirmation,
-  type QuoteCreateCommand
+  type QuoteCreateCommand,
+  type ProfessionalReviewCase,
+  type CustomerInstructionType
 } from '@markorbit/contracts';
 import { noAutomaticConsequences } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
@@ -27,7 +29,16 @@ import {
   type ConfirmQuoteCommand,
   type MatterFlowRepository
 } from './matter-flow.js';
+import {
+  InMemoryPreparationRepository,
+  PreparationError,
+  PreparationService,
+  type PreparationRepository,
+  type PreparationSources,
+  type CreatePackageCommand
+} from './preparation.js';
 export * from './matter-flow.js';
+export * from './preparation.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -201,6 +212,8 @@ export interface MarkRegOptions {
   pricingRuleVersion?: string;
   beforeQuotePersist?: (command: QuoteCreateCommand) => void | Promise<void>;
   matterFlowRepository?: MatterFlowRepository;
+  preparationRepository?: PreparationRepository;
+  preparationSources?: PreparationSources;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -282,6 +295,42 @@ export function createRuntime(options: MarkRegOptions = {}) {
     (id) => Promise.resolve(repository.getQuote(id)),
     now
   );
+  const preparationSources: PreparationSources = options.preparationSources ?? {
+    async getReview(id) {
+      const response = await fetch(
+        `${executionUrl}/v1/professional-review-cases/${encodeURIComponent(id)}`
+      );
+      if (response.status === 404) return undefined;
+      if (!response.ok)
+        throw new HttpError(
+          502,
+          'DOWNSTREAM_UNAVAILABLE',
+          'Professional Review source is unavailable.',
+          true
+        );
+      return (
+        (await response.json()) as {
+          reviewCase: ProfessionalReviewCase;
+        }
+      ).reviewCase;
+    },
+    getMatterDraft: (id) => matterFlowRepository.getMatterDraft(id as `matter-draft_${string}`),
+    getConfirmation: (id) => matterFlowRepository.getConfirmation(id as `confirmation_${string}`)
+  };
+  const preparation = new PreparationService(
+    options.preparationRepository ?? new InMemoryPreparationRepository(),
+    preparationSources,
+    now
+  );
+  const prepared = async (work: () => Promise<unknown>) => {
+    try {
+      return json(200, await work());
+    } catch (error) {
+      if (error instanceof PreparationError)
+        throw new HttpError(error.status, error.code, error.message);
+      throw error;
+    }
+  };
   const governed = async (work: () => Promise<unknown>) => {
     try {
       return json(200, await work());
@@ -295,6 +344,188 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/v1/document-packages',
+          handle: (r) =>
+            prepared(() =>
+              preparation.createPackage({
+                ...(r.body as Omit<CreatePackageCommand, 'idempotencyKey'>),
+                idempotencyKey: r.headers['idempotency-key'] ?? ''
+              })
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/document-packages',
+          handle: (r) =>
+            prepared(async () => ({
+              documentPackages: await preparation.listPackages(
+                new URL(`http://local${r.path}`).searchParams.get('customerId') ?? undefined
+              )
+            }))
+        },
+        {
+          method: 'GET',
+          path: '/v1/document-packages/:documentPackageId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.getPackage(r.params.documentPackageId as `document-package_${string}`)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/documents',
+          handle: (r) =>
+            prepared(() =>
+              preparation.addDocument(
+                r.params.documentPackageId as `document-package_${string}`,
+                r.body as never
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/documents/:documentItemId/supersede',
+          handle: (r) =>
+            prepared(() =>
+              preparation.supersedeDocument(
+                r.params.documentPackageId as `document-package_${string}`,
+                r.params.documentItemId as `document-item_${string}`,
+                r.body as never
+              )
+            )
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/document-packages/:documentPackageId/documents/:documentItemId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.updateDocument(
+                r.params.documentPackageId as `document-package_${string}`,
+                r.params.documentItemId as `document-item_${string}`,
+                r.body as never
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/evaluate',
+          handle: (r) =>
+            prepared(() =>
+              preparation.evaluate(r.params.documentPackageId as `document-package_${string}`)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/withdraw',
+          handle: (r) =>
+            prepared(() =>
+              preparation.withdrawPackage(
+                r.params.documentPackageId as `document-package_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers',
+          handle: (r) =>
+            prepared(() =>
+              preparation.createLedger(
+                (r.body as { documentPackageId: `document-package_${string}` }).documentPackageId
+              )
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/instruction-ledgers/:instructionLedgerId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.getLedger(r.params.instructionLedgerId as `instruction-ledger_${string}`)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/entries',
+          handle: (r) =>
+            prepared(() =>
+              preparation.appendInstruction(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                r.body as never
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/confirm',
+          handle: (r) =>
+            prepared(() =>
+              preparation.confirmInstruction(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                r.params.instructionEntryId as `instruction-entry_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/supersede',
+          handle: (r) =>
+            prepared(() =>
+              preparation.appendInstruction(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                {
+                  ...(r.body as {
+                    type: CustomerInstructionType;
+                    structuredValue: Record<string, unknown>;
+                    note?: string;
+                  }),
+                  supersedesInstructionEntryId: r.params
+                    .instructionEntryId as `instruction-entry_${string}`
+                }
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/confirm',
+          handle: (r) =>
+            prepared(() =>
+              preparation.confirmLedger(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                (r.body as { acknowledgements: never[] }).acknowledgements
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/withdraw',
+          handle: (r) =>
+            prepared(() =>
+              preparation.withdrawLedger(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/preparation-locks',
+          handle: (r) =>
+            prepared(() => {
+              const b = r.body as {
+                documentPackageId: `document-package_${string}`;
+                instructionLedgerId: `instruction-ledger_${string}`;
+              };
+              return preparation.lock(b.documentPackageId, b.instructionLedgerId);
+            })
+        },
+        {
+          method: 'GET',
+          path: '/v1/preparation-locks/:preparationLockId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.getLock(r.params.preparationLockId as `preparation-lock_${string}`)
+            )
+        },
         {
           method: 'POST',
           path: '/v1/customer-confirmations',

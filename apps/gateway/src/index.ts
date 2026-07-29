@@ -8,7 +8,13 @@ import {
   type QuoteConfirmationCommand,
   type IntakeCreateCommand
 } from '@markorbit/contracts';
-import { createServiceRuntime, HttpError, json, type JsonRequest } from '@markorbit/service-kit';
+import {
+  createServiceRuntime,
+  HttpError,
+  json,
+  type JsonRequest,
+  type JsonRoute
+} from '@markorbit/service-kit';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -53,6 +59,43 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...(
+          [
+            ['GET', '/api/markreg/document-packages'],
+            ['POST', '/api/markreg/document-packages'],
+            ['GET', '/api/markreg/document-packages/:documentPackageId'],
+            ['POST', '/api/markreg/document-packages/:documentPackageId/documents'],
+            [
+              'POST',
+              '/api/markreg/document-packages/:documentPackageId/documents/:documentItemId/supersede'
+            ],
+            [
+              'PATCH',
+              '/api/markreg/document-packages/:documentPackageId/documents/:documentItemId'
+            ],
+            ['POST', '/api/markreg/document-packages/:documentPackageId/evaluate'],
+            ['POST', '/api/markreg/document-packages/:documentPackageId/withdraw'],
+            ['POST', '/api/markreg/instruction-ledgers'],
+            ['GET', '/api/markreg/instruction-ledgers/:instructionLedgerId'],
+            ['POST', '/api/markreg/instruction-ledgers/:instructionLedgerId/entries'],
+            [
+              'POST',
+              '/api/markreg/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/confirm'
+            ],
+            [
+              'POST',
+              '/api/markreg/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/supersede'
+            ],
+            ['POST', '/api/markreg/instruction-ledgers/:instructionLedgerId/confirm'],
+            ['POST', '/api/markreg/instruction-ledgers/:instructionLedgerId/withdraw'],
+            ['POST', '/api/markreg/preparation-locks'],
+            ['GET', '/api/markreg/preparation-locks/:preparationLockId']
+          ] as const
+        ).map(([method, path]): JsonRoute => ({
+          method,
+          path,
+          handle: (r: JsonRequest) => forward(r, r.path.replace('/api/markreg', '/v1'))
+        })),
         ...[
           '/api/lite/professional-review-cases',
           '/api/lite/professional-review-cases/:reviewCaseId',
