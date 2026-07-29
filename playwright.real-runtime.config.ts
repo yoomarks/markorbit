@@ -4,7 +4,7 @@ import { milestonePorts } from './scripts/milestone-runtime.mjs';
 const inCI = Boolean(process.env['CI']);
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: 'milestone-001-real-runtime.spec.ts',
+  testMatch: /milestone-001-real-runtime\.spec\.ts/,
   outputDir: 'test-results/real-runtime',
   fullyParallel: false,
   workers: 1,
