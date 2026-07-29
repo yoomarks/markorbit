@@ -640,6 +640,187 @@ export interface PreparationLock {
   consequences: Readonly<PreparationAuthorityConsequences>;
 }
 
+/** Version 1 contracts for the Execution-owned filing authority boundary. */
+export type FilingAuthorizationId = `filing-authorization_${string}`;
+export type ExecutionReleaseId = `execution-release_${string}`;
+export type FilingExecutionTaskDraftId = `filing-task-draft_${string}`;
+export type FilingAuthorizationStatus =
+  'DRAFT' | 'PENDING_CONFIRMATION' | 'AUTHORIZED' | 'WITHDRAWN' | 'STALE' | 'EXPIRED';
+export type AuthorizationCapacity = 'OWNER' | 'AUTHORIZED_OFFICER' | 'AUTHORIZED_AGENT';
+export type FilingExecutionChannel = 'OFFICE_PORTAL' | 'INTERNAL_MANUAL_PREPARATION';
+export interface AuthorizedPartyReference {
+  partyId: MarkOrbitId;
+  displayName: string;
+}
+export interface FilingAuthorizationScope {
+  jurisdiction: string;
+  applicantOwnerReference: string;
+  trademarkReference: string;
+  classes: ReadonlyArray<string>;
+  goodsServices: ReadonlyArray<string>;
+  filingBasis: string;
+  priorityClaim?: string;
+  useLockedDocuments: true;
+  representativeUse: 'PERMITTED_WHERE_REQUIRED' | 'NOT_REQUIRED';
+  permittedFilingChannel: FilingExecutionChannel;
+  permittedExecutionWindow: Readonly<{ startsAt: string; endsAt: string }>;
+}
+export type FilingAuthorizationAcknowledgementCode =
+  | 'APPLICANT_OWNER_CONFIRMED'
+  | 'MARK_CONFIRMED'
+  | 'JURISDICTION_CLASSES_GOODS_CONFIRMED'
+  | 'LOCKED_DOCUMENT_USE_AUTHORIZED'
+  | 'FILING_INSTRUCTION_PREPARATION_AUTHORIZED'
+  | 'AUTHORIZATION_IS_NOT_SUBMISSION'
+  | 'REPRESENTATIVE_APPOINTMENT_MAY_BE_REQUIRED'
+  | 'SCOPE_CHANGE_REQUIRES_REAUTHORIZATION'
+  | 'OFFICE_ACCEPTANCE_NOT_GUARANTEED';
+export interface FilingAuthorizationAcknowledgement {
+  code: FilingAuthorizationAcknowledgementCode;
+  version: 1;
+  acknowledgedBy: MarkOrbitId;
+  acknowledgedAt: string;
+  evidenceReference: string;
+}
+export interface FilingAuthorizationEvidence {
+  reference: string;
+  source: string;
+  recordedAt: string;
+}
+export interface AuthorizationAuthorityConsequences {
+  orderCreated: false;
+  paymentCreated: false;
+  invoiceCreated: false;
+  formalMatterCreated: false;
+  professionalAppointed: false;
+  providerAssignedExternally: false;
+  filingCreated: false;
+  filingSubmitted: false;
+  officialApplicationCreated: false;
+  officialApplicationNumberReceived: false;
+  customerMessageSent: false;
+  externalDocumentSent: false;
+  trademarkOfficeContacted: false;
+}
+export const noAuthorizationAuthorityConsequences: AuthorizationAuthorityConsequences =
+  Object.freeze({
+    orderCreated: false,
+    paymentCreated: false,
+    invoiceCreated: false,
+    formalMatterCreated: false,
+    professionalAppointed: false,
+    providerAssignedExternally: false,
+    filingCreated: false,
+    filingSubmitted: false,
+    officialApplicationCreated: false,
+    officialApplicationNumberReceived: false,
+    customerMessageSent: false,
+    externalDocumentSent: false,
+    trademarkOfficeContacted: false
+  });
+export type ExecutionTaskAuthorityConsequences = AuthorizationAuthorityConsequences;
+export interface FilingAuthorization {
+  schemaVersion: 1;
+  version: number;
+  filingAuthorizationId: FilingAuthorizationId;
+  preparationLockId: PreparationLockId;
+  preparationLockVersion: string;
+  preparationSnapshot: Readonly<PreparationSnapshot>;
+  professionalReviewCaseId: ProfessionalReviewCaseId;
+  professionalReviewVersion: string;
+  customerId: MarkOrbitId;
+  authorizedParty: Readonly<AuthorizedPartyReference>;
+  authorizationCapacity: AuthorizationCapacity;
+  jurisdiction: string;
+  applicantOwnerReference: string;
+  trademarkReference: string;
+  classes: ReadonlyArray<string>;
+  goodsServices: ReadonlyArray<string>;
+  filingBasis: string;
+  representativeRequirement: string;
+  scope: Readonly<FilingAuthorizationScope>;
+  termsVersion: string;
+  acknowledgements: ReadonlyArray<Readonly<FilingAuthorizationAcknowledgement>>;
+  evidence: ReadonlyArray<Readonly<FilingAuthorizationEvidence>>;
+  status: FilingAuthorizationStatus;
+  authorizedAt?: string;
+  expiresAt?: string;
+  withdrawnAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export type ExecutionReleaseStatus =
+  'DRAFT' | 'BLOCKED' | 'READY_FOR_RELEASE' | 'RELEASED_FOR_EXECUTION' | 'STALE' | 'WITHDRAWN';
+export type ExecutionReleaseCheckStatus = 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+export interface ExecutionReleaseCheck {
+  code: string;
+  status: ExecutionReleaseCheckStatus;
+  blocking: boolean;
+  explanation: string;
+  evidenceReference?: string;
+  source: string;
+  checkedAt: string;
+}
+export interface ExecutionReleaseAssignment {
+  internalExecutorId?: MarkOrbitId;
+  assignedAt?: string;
+}
+export interface ExecutionReleaseDecision {
+  decision: 'RELEASE';
+  decidedBy: MarkOrbitId;
+  rationale: string;
+  decidedAt: string;
+}
+export interface ExecutionReleaseEvidence {
+  reference: string;
+  source: string;
+  recordedAt: string;
+}
+export interface ExecutionRelease {
+  schemaVersion: 1;
+  version: number;
+  executionReleaseId: ExecutionReleaseId;
+  filingAuthorizationId: FilingAuthorizationId;
+  filingAuthorizationVersion: number;
+  preparationLockId: PreparationLockId;
+  preparationLockVersion: string;
+  professionalReviewCaseId: ProfessionalReviewCaseId;
+  professionalReviewVersion: string;
+  customerId: MarkOrbitId;
+  jurisdiction: string;
+  requestedExecutionChannel: FilingExecutionChannel;
+  checks: ReadonlyArray<Readonly<ExecutionReleaseCheck>>;
+  assignment: Readonly<ExecutionReleaseAssignment>;
+  decision?: Readonly<ExecutionReleaseDecision>;
+  evidence: ReadonlyArray<Readonly<ExecutionReleaseEvidence>>;
+  status: ExecutionReleaseStatus;
+  createdAt: string;
+  updatedAt: string;
+  releasedAt?: string;
+}
+export type FilingExecutionTaskDraftStatus = 'PREPARED' | 'CANCELLED' | 'STALE';
+export interface FilingExecutionTaskDraft {
+  schemaVersion: 1;
+  filingExecutionTaskDraftId: FilingExecutionTaskDraftId;
+  executionReleaseId: ExecutionReleaseId;
+  filingAuthorizationId: FilingAuthorizationId;
+  preparationLockId: PreparationLockId;
+  executionSnapshot: Readonly<FilingAuthorizationScope>;
+  jurisdiction: string;
+  applicant: string;
+  trademark: string;
+  classes: ReadonlyArray<string>;
+  goodsServices: ReadonlyArray<string>;
+  filingBasis: string;
+  documentReferences: ReadonlyArray<string>;
+  instructionReferences: ReadonlyArray<string>;
+  representativeRequirement: string;
+  executionChannel: FilingExecutionChannel;
+  internalAssigneeReference?: MarkOrbitId;
+  status: FilingExecutionTaskDraftStatus;
+  createdAt: string;
+}
+
 export class ContractValidationError extends TypeError {
   constructor(message: string) {
     super(message);

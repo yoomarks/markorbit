@@ -9,6 +9,7 @@ import type {
   CustomerInstructionAcknowledgement
 } from '@markorbit/contracts';
 import type { MarkregClient } from './api/markreg.js';
+import { FilingAuthorizationView } from './FilingAuthorization.js';
 
 export type PreparationViewState =
   | 'SOURCE_LOADING'
@@ -238,6 +239,7 @@ export function ConnectedDocumentsInstructionsWorkspace({
   const [pkg, setPackage] = useState<DocumentPackage>();
   const [ledger, setLedger] = useState<CustomerInstructionLedger>();
   const [lock, setLock] = useState<PreparationLock>();
+  const [authorizationOpen, setAuthorizationOpen] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -260,6 +262,7 @@ export function ConnectedDocumentsInstructionsWorkspace({
       </Alert>
     );
   if (!pkg) return <LoadingState label="Creating governed Document Package" />;
+  if (lock && authorizationOpen) return <FilingAuthorizationView />;
   if (lock)
     return (
       <section role="region" aria-labelledby="connected-lock" className="preparation-workspace">
@@ -291,6 +294,10 @@ export function ConnectedDocumentsInstructionsWorkspace({
               </li>
             ))}
           </ul>
+          <Button onClick={() => setAuthorizationOpen(true)}>Open Filing Authorization</Button>
+          <p>
+            Customer Instruction ≠ Filing Authorization. Filing Authorization ≠ Filing Submission.
+          </p>
         </Card>
       </section>
     );

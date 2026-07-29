@@ -25,6 +25,7 @@ import type { OpportunityDetail, OpportunityStatus } from './features/opportunit
 import type { FixtureState, RelatedRecord } from './features/shared/view-models.js';
 import './lite.css';
 import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
+import { ExecutionReleaseView } from './features/execution-release/ExecutionRelease.js';
 
 const nav = [
   'Today',
@@ -35,7 +36,8 @@ const nav = [
   'Capability',
   'Guide'
 ] as const;
-type Surface = 'today' | 'customers' | 'opportunities' | 'professional-review';
+type Surface =
+  'today' | 'customers' | 'opportunities' | 'professional-review' | 'execution-release';
 export interface LiteAppProps {
   initialSurface?: Surface;
   initialState?: FixtureState;
@@ -499,6 +501,7 @@ export function LiteApp({
       if (window.location.hash === '#work-customers') setSurface('customers');
       else if (window.location.hash === '#work-professional-review')
         setSurface('professional-review');
+      else if (window.location.hash === '#work-execution-release') setSurface('execution-release');
       else if (window.location.hash === '#opportunities') setSurface('opportunities');
       else if (window.location.hash === '#today') setSurface('today');
     };
@@ -515,7 +518,9 @@ export function LiteApp({
             label,
             href: label === 'Work' ? '#work-customers' : `#${label.toLowerCase()}`,
             active:
-              surface === 'customers' || surface === 'professional-review'
+              surface === 'customers' ||
+              surface === 'professional-review' ||
+              surface === 'execution-release'
                 ? label === 'Work'
                 : surface === 'opportunities'
                   ? label === 'Opportunities'
@@ -529,7 +534,9 @@ export function LiteApp({
     >
       <div className="lite-workspace">
         <FixtureBanner />
-        {(surface === 'customers' || surface === 'professional-review') && (
+        {(surface === 'customers' ||
+          surface === 'professional-review' ||
+          surface === 'execution-release') && (
           <div className="lite-subnav" aria-label="Workspace view">
             <Button
               variant={surface === 'customers' ? 'primary' : 'secondary'}
@@ -542,6 +549,12 @@ export function LiteApp({
               onClick={() => setSurface('professional-review')}
             >
               Professional Review
+            </Button>
+            <Button
+              variant={surface === 'execution-release' ? 'primary' : 'secondary'}
+              onClick={() => setSurface('execution-release')}
+            >
+              Execution Release
             </Button>
           </div>
         )}
@@ -583,6 +596,8 @@ export function LiteApp({
             state={state}
             {...(initialReviewCaseId ? { initialSelected: initialReviewCaseId } : {})}
           />
+        ) : surface === 'execution-release' ? (
+          <ExecutionReleaseView state="RELEASE_BLOCKED" />
         ) : (
           <Opportunities
             key={initialOpportunityId}

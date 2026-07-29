@@ -12,7 +12,12 @@ import type {
   MatterDraft,
   MatterDraftId,
   MatterDraftReviewSnapshot,
-  ProfessionalReviewCaseId
+  ProfessionalReviewCaseId,
+  PreparationLock,
+  PreparationLockId,
+  FilingAuthorizationId,
+  ExecutionReleaseId,
+  FilingExecutionTaskDraftId
 } from '@markorbit/contracts';
 import {
   InMemoryProfessionalReviewRepository,
@@ -21,6 +26,16 @@ import {
   type MatterDraftReviewSource
 } from './professional-review.js';
 export * from './professional-review.js';
+import {
+  FilingGovernanceError,
+  FilingGovernanceService,
+  InMemoryFilingGovernanceRepository,
+  type PreparationLockSource,
+  type FilingAuthorizationRepository,
+  type ExecutionReleaseRepository,
+  type FilingExecutionTaskDraftRepository
+} from './filing-authorization.js';
+export * from './filing-authorization.js';
 export const serviceManifest = Object.freeze({
   name: 'execution',
   port: Number(process.env.PORT ?? '4104'),
@@ -50,6 +65,8 @@ export interface ExecutionOptions {
   reviewRepository?: InMemoryProfessionalReviewRepository;
   matterDraftSource?: MatterDraftReviewSource;
   markRegUrl?: string;
+  filingRepository?: InMemoryFilingGovernanceRepository;
+  preparationLockSource?: PreparationLockSource;
 }
 export function createRuntime(options: ExecutionOptions = {}) {
   const repository = options.repository ?? new InMemoryExecutionRepository();
@@ -63,6 +80,26 @@ export function createRuntime(options: ExecutionOptions = {}) {
     matterDraftSource,
     now
   );
+  const filingRepository = options.filingRepository ?? new InMemoryFilingGovernanceRepository();
+  const filing = new FilingGovernanceService(
+    filingRepository as unknown as FilingAuthorizationRepository,
+    filingRepository as unknown as ExecutionReleaseRepository,
+    filingRepository as unknown as FilingExecutionTaskDraftRepository,
+    options.preparationLockSource ??
+      httpPreparationLockSource(
+        options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105'
+      ),
+    now
+  );
+  const filingMutation = async (work: () => Promise<unknown>, name = 'filingAuthorization') => {
+    try {
+      return json(200, { [name]: await work(), consequences: filing.consequences });
+    } catch (error) {
+      if (error instanceof FilingGovernanceError)
+        throw new HttpError(error.status, error.code, error.message);
+      throw error;
+    }
+  };
   const mutation = async (work: () => Promise<unknown>) => {
     try {
       return json(200, {
@@ -87,6 +124,130 @@ export function createRuntime(options: ExecutionOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/v1/filing-authorizations',
+          handle: (r) =>
+            filingMutation(() =>
+              filing.createAuthorization({
+                ...(r.body as any),
+                idempotencyKey: r.headers['idempotency-key'] ?? ''
+              })
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/filing-authorizations/:filingAuthorizationId',
+          handle: (r) =>
+            filingMutation(() =>
+              filing.getAuthorization(r.params.filingAuthorizationId as FilingAuthorizationId)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/filing-authorizations/:filingAuthorizationId/confirm',
+          handle: (r) =>
+            filingMutation(() =>
+              filing.confirmAuthorization(r.params.filingAuthorizationId as FilingAuthorizationId, {
+                ...(r.body as any),
+                idempotencyKey: r.headers['idempotency-key'] ?? ''
+              })
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/filing-authorizations/:filingAuthorizationId/withdraw',
+          handle: (r) =>
+            filingMutation(() =>
+              filing.withdrawAuthorization(r.params.filingAuthorizationId as FilingAuthorizationId)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases',
+          handle: (r) =>
+            filingMutation(
+              () =>
+                filing.createRelease({
+                  ...(r.body as any),
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                }),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/execution-releases',
+          handle: () => filingMutation(() => filing.listReleases(), 'executionReleases')
+        },
+        {
+          method: 'GET',
+          path: '/v1/execution-releases/:executionReleaseId',
+          handle: (r) =>
+            filingMutation(
+              () => filing.getRelease(r.params.executionReleaseId as ExecutionReleaseId),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases/:executionReleaseId/evaluate',
+          handle: (r) =>
+            filingMutation(
+              () => filing.evaluate(r.params.executionReleaseId as ExecutionReleaseId),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/execution-releases/:executionReleaseId/assignment',
+          handle: (r) =>
+            filingMutation(
+              () => filing.assign(r.params.executionReleaseId as ExecutionReleaseId, r.body as any),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases/:executionReleaseId/release',
+          handle: (r) =>
+            filingMutation(
+              () =>
+                filing.release(r.params.executionReleaseId as ExecutionReleaseId, {
+                  ...(r.body as any),
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                }),
+              'releaseResult'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases/:executionReleaseId/withdraw',
+          handle: (r) =>
+            filingMutation(
+              () => filing.withdrawRelease(r.params.executionReleaseId as ExecutionReleaseId),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/filing-task-drafts/:filingExecutionTaskDraftId',
+          handle: (r) =>
+            filingMutation(
+              () =>
+                filing.getTask(r.params.filingExecutionTaskDraftId as FilingExecutionTaskDraftId),
+              'filingExecutionTaskDraft'
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/execution-releases/:executionReleaseId/filing-task-draft',
+          handle: (r) =>
+            filingMutation(
+              () => filing.getTaskForRelease(r.params.executionReleaseId as ExecutionReleaseId),
+              'filingExecutionTaskDraft'
+            )
+        },
         {
           method: 'POST',
           path: '/v1/professional-review-cases',
@@ -252,6 +413,29 @@ export function createRuntime(options: ExecutionOptions = {}) {
       ]
     }
   );
+}
+
+function httpPreparationLockSource(baseUrl: string): PreparationLockSource {
+  return {
+    async getPreparationLock(id: PreparationLockId) {
+      const response = await fetch(`${baseUrl}/v1/preparation-locks/${encodeURIComponent(id)}`);
+      if (response.status === 404) return undefined;
+      if (!response.ok)
+        throw new FilingGovernanceError(
+          'SOURCE_UNAVAILABLE',
+          'Preparation Lock source is unavailable.',
+          502
+        );
+      const body = (await response.json()) as
+        { preparationLock?: PreparationLock } | PreparationLock;
+      return clonePreparationLock(
+        ('preparationLock' in body ? body.preparationLock : body) as PreparationLock
+      );
+    }
+  };
+}
+function clonePreparationLock(value: PreparationLock): PreparationLock {
+  return structuredClone(value);
 }
 
 function httpMatterDraftSource(baseUrl: string): MatterDraftReviewSource {
