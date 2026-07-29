@@ -56,6 +56,20 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.review-check {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1.2fr) minmax(10rem, 0.7fr) minmax(14rem, 1fr);
+  gap: var(--mo-space-md);
+  align-items: end;
+  padding: var(--mo-space-md) 0;
+  border-bottom: 1px solid var(--mo-border);
+}
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mo-space-md);
+  margin: var(--mo-space-lg) 0;
+}
 .lite-workspace,
 .lite-workspace > *,
 .lite-workspace .lite-filters,
@@ -83,8 +97,16 @@
     flex-direction: column;
   }
   .lite-grid,
-  .lite-detail-grid {
+  .lite-detail-grid,
+  .review-check {
     grid-template-columns: 1fr;
+  }
+  .review-actions {
+    flex-direction: column;
+  }
+  .review-actions .mo-button {
+    width: 100%;
+    min-height: 44px;
   }
   .lite-subnav .mo-button,
   .lite-row .mo-button {

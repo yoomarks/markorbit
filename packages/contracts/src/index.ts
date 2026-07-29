@@ -299,6 +299,117 @@ export const noAutomaticConsequences: AuthorityBoundary = Object.freeze({
   filingCreated: false
 });
 
+/** Version 1 contracts for Execution-owned professional review. */
+export type ProfessionalReviewCaseId = `professional-review_${string}`;
+export const professionalReviewCaseStatuses = [
+  'QUEUED',
+  'IN_REVIEW',
+  'NEEDS_INFORMATION',
+  'REVIEWED_READY_FOR_NEXT_STEP',
+  'STALE',
+  'WITHDRAWN'
+] as const;
+export type ProfessionalReviewCaseStatus = (typeof professionalReviewCaseStatuses)[number];
+export type ProfessionalReviewPriority = 'NORMAL' | 'HIGH' | 'URGENT';
+export type ProfessionalReviewChecklistStatus = 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+export type ProfessionalReviewChecklistCode =
+  | 'SOURCE_MATTER_DRAFT_CURRENT'
+  | 'CUSTOMER_CONFIRMATION_VALID'
+  | 'APPLICANT_INFORMATION_REVIEWED'
+  | 'MARK_REPRESENTATION_REVIEWED'
+  | 'JURISDICTION_REVIEWED'
+  | 'CLASS_SELECTION_REVIEWED'
+  | 'GOODS_SERVICES_REVIEWED'
+  | 'FILING_BASIS_REVIEWED'
+  | 'REPRESENTATIVE_REQUIREMENT_REVIEWED'
+  | 'DOCUMENT_READINESS_REVIEWED'
+  | 'COMMERCIAL_SCOPE_UNCHANGED'
+  | 'AUTHORITY_BOUNDARIES_ACKNOWLEDGED';
+export interface ReviewAuthorityConsequences {
+  orderCreated: false;
+  paymentCreated: false;
+  formalMatterCreated: false;
+  providerAppointed: false;
+  filingCreated: false;
+  customerMessageSent: false;
+}
+export const noReviewAuthorityConsequences: ReviewAuthorityConsequences = Object.freeze({
+  orderCreated: false,
+  paymentCreated: false,
+  formalMatterCreated: false,
+  providerAppointed: false,
+  filingCreated: false,
+  customerMessageSent: false
+});
+export interface MatterDraftReviewSnapshot {
+  schemaVersion: 1;
+  matterDraftId: MatterDraftId;
+  matterDraftVersion: string;
+  confirmationId: CustomerConfirmationId;
+  customerId: MarkOrbitId;
+  status: MatterDraftStatus;
+  preparation: Readonly<MatterDraftPreparation>;
+  readiness: Readonly<MatterReadiness>;
+  readinessTimestamp: string;
+}
+export interface ProfessionalReviewAssignment {
+  assignedReviewerId?: MarkOrbitId;
+  assignedAt?: string;
+  claimedBy?: MarkOrbitId;
+  claimedAt?: string;
+  status: 'UNASSIGNED' | 'ASSIGNED' | 'CLAIMED';
+  /** Queue assignment is administrative routing, never professional appointment. */
+  professionalAppointed: false;
+}
+export interface ProfessionalReviewChecklistItem {
+  code: ProfessionalReviewChecklistCode;
+  status: ProfessionalReviewChecklistStatus;
+  blocking: boolean;
+  explanation: string;
+  reviewerNote?: string;
+  evidenceReference?: string;
+  reviewedAt?: string;
+}
+export interface ProfessionalReviewEvidence {
+  reference: string;
+  description: string;
+  recordedAt: string;
+}
+export interface InformationRequestDraft {
+  requestedFields: string[];
+  reason: string;
+  reviewerNote?: string;
+  createdAt: string;
+  sent: false;
+}
+export type ProfessionalReviewDecisionCode =
+  'REQUEST_INFORMATION' | 'RETURN_TO_PREPARATION' | 'MARK_READY_FOR_NEXT_STEP';
+export interface ProfessionalReviewDecision {
+  code: ProfessionalReviewDecisionCode;
+  reviewerId: MarkOrbitId;
+  decidedAt: string;
+  rationale: string;
+  checklistSnapshot: ReadonlyArray<Readonly<ProfessionalReviewChecklistItem>>;
+  evidenceReferences: string[];
+  sourceMatterDraftVersion: string;
+  consequences: Readonly<ReviewAuthorityConsequences>;
+}
+export interface ProfessionalReviewCase {
+  schemaVersion: 1;
+  reviewCaseId: ProfessionalReviewCaseId;
+  source: Readonly<MatterDraftReviewSnapshot>;
+  status: ProfessionalReviewCaseStatus;
+  priority: ProfessionalReviewPriority;
+  requestedBy: MarkOrbitId;
+  createdAt: string;
+  updatedAt: string;
+  assignment: Readonly<ProfessionalReviewAssignment>;
+  checklist: ReadonlyArray<Readonly<ProfessionalReviewChecklistItem>>;
+  evidence: ReadonlyArray<Readonly<ProfessionalReviewEvidence>>;
+  informationRequest?: Readonly<InformationRequestDraft>;
+  decision?: Readonly<ProfessionalReviewDecision>;
+}
+
 export class ContractValidationError extends TypeError {
   constructor(message: string) {
     super(message);

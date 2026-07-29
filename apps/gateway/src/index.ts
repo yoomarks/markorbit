@@ -17,6 +17,7 @@ export const serviceManifest = Object.freeze({
 export interface GatewayOptions {
   port?: number;
   markRegUrl?: string;
+  executionUrl?: string;
 }
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -25,6 +26,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 export function createRuntime(options: GatewayOptions = {}) {
   const markRegUrl = options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
+  const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const forward = async (request: JsonRequest, path: string) => {
     try {
       const response = await fetch(`${markRegUrl}${path}`, {
@@ -51,6 +53,50 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...[
+          '/api/lite/professional-review-cases',
+          '/api/lite/professional-review-cases/:reviewCaseId',
+          '/api/lite/professional-review-cases/:reviewCaseId/claim',
+          '/api/lite/professional-review-cases/:reviewCaseId/checklist',
+          '/api/lite/professional-review-cases/:reviewCaseId/request-information',
+          '/api/lite/professional-review-cases/:reviewCaseId/complete',
+          '/api/lite/professional-review-cases/:reviewCaseId/withdraw'
+        ].flatMap((path) => {
+          const methods = path.endsWith('/checklist')
+            ? ['PATCH']
+            : path.includes(':reviewCaseId/')
+              ? ['POST']
+              : path.includes(':reviewCaseId')
+                ? ['GET']
+                : ['GET', 'POST'];
+          return methods.map((method) => ({
+            method: method as 'GET' | 'POST' | 'PATCH',
+            path,
+            handle: async (r: JsonRequest) => {
+              const suffix = r.path.replace('/api/lite', '/v1');
+              try {
+                const response = await fetch(`${executionUrl}${suffix}`, {
+                  method: r.method,
+                  headers: {
+                    'content-type': 'application/json',
+                    ...(r.headers['idempotency-key']
+                      ? { 'idempotency-key': r.headers['idempotency-key'] }
+                      : {})
+                  },
+                  ...(r.method === 'GET' ? {} : { body: JSON.stringify(r.body ?? {}) })
+                });
+                return json(response.status, await response.json());
+              } catch {
+                throw new HttpError(
+                  502,
+                  'DOWNSTREAM_UNAVAILABLE',
+                  'Professional review service is unavailable.',
+                  true
+                );
+              }
+            }
+          }));
+        }),
         {
           method: 'POST',
           path: '/api/markreg/customer-confirmations',

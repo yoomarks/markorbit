@@ -32,3 +32,43 @@ export const Mobile390: Story = {
     }
   }
 };
+export const ReviewQueueLoading: Story = {
+  args: { initialSurface: 'professional-review', initialState: 'loading' }
+};
+export const ReviewQueueEmpty: Story = {
+  args: { initialSurface: 'professional-review', initialState: 'empty' }
+};
+export const UnassignedReviewQueue: Story = { args: { initialSurface: 'professional-review' } };
+export const AssignedReviewQueue: Story = { args: { initialSurface: 'professional-review' } };
+export const StaleReviewCase: Story = {
+  args: { initialSurface: 'professional-review', initialState: 'stale' }
+};
+export const ReviewDetail: Story = {
+  args: { initialSurface: 'professional-review', initialReviewCaseId: 'professional-review_01001' }
+};
+export const ChecklistBlockingFail: Story = {
+  args: { initialSurface: 'professional-review', initialReviewCaseId: 'professional-review_01001' }
+};
+export const ChecklistBlockingUnknown: Story = {
+  args: { initialSurface: 'professional-review', initialReviewCaseId: 'professional-review_01001' }
+};
+export const InformationRequestPrepared: Story = {
+  args: { initialSurface: 'professional-review', initialReviewCaseId: 'professional-review_01001' }
+};
+export const ReviewedReadyForNextStep: Story = { args: { initialSurface: 'professional-review' } };
+export const WithdrawnReview: Story = { args: { initialSurface: 'professional-review' } };
+export const ReviewRecoverableError: Story = {
+  args: { initialSurface: 'professional-review', initialState: 'error' }
+};
+export const LongGoodsServices: Story = {
+  args: { initialSurface: 'professional-review', initialReviewCaseId: 'professional-review_01001' }
+};
+export const ReviewMobile390: Story = {
+  args: { initialSurface: 'professional-review' },
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile1',
+      viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
+    }
+  }
+};
