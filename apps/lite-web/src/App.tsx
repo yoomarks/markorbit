@@ -597,7 +597,7 @@ export function LiteApp({
             {...(initialReviewCaseId ? { initialSelected: initialReviewCaseId } : {})}
           />
         ) : surface === 'execution-release' ? (
-          <ExecutionReleaseView state="RELEASE_BLOCKED" />
+          <ExecutionReleaseView />
         ) : (
           <Opportunities
             key={initialOpportunityId}

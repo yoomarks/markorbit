@@ -4,7 +4,8 @@ import type {
   MarkOrbitId,
   PlanQuoteResponse,
   PlanOptionCode,
-  ProfessionalReviewCase
+  ProfessionalReviewCase,
+  PreparationLock
 } from '@markorbit/contracts';
 import {
   Alert,
@@ -26,6 +27,7 @@ import { MarkregApiError } from './api/errors.js';
 import { createMarkregClient, type MarkregClient } from './api/markreg.js';
 import { ConfirmationMatterFlow } from './ConfirmationMatterFlow.js';
 import { ConnectedDocumentsInstructionsWorkspace } from './DocumentsInstructionsWorkspace.js';
+import { FilingAuthorizationView } from './FilingAuthorization.js';
 
 export interface IntakeDraft {
   applicantType: string;
@@ -73,6 +75,8 @@ const fingerprint = (draft: IntakeDraft) => JSON.stringify(draft);
 
 export function MarkregApp({ client = createMarkregClient() }: { client?: MarkregClient }) {
   const reviewCaseId = new URLSearchParams(window.location.search).get('professionalReviewCaseId');
+  const preparationLockId = new URLSearchParams(window.location.search).get('preparationLockId');
+  const [authorizationLock, setAuthorizationLock] = useState<PreparationLock>();
   const [completedReview, setCompletedReview] = useState<ProfessionalReviewCase>();
   const [reviewLoading, setReviewLoading] = useState(Boolean(reviewCaseId));
   const [preparationOpen, setPreparationOpen] = useState(false);
@@ -103,6 +107,10 @@ export function MarkregApp({ client = createMarkregClient() }: { client?: Markre
       .then(({ reviewCase }) => setCompletedReview(reviewCase))
       .finally(() => setReviewLoading(false));
   }, [client, reviewCaseId]);
+  useEffect(() => {
+    if (!preparationLockId || !client.getPreparationLock) return;
+    void client.getPreparationLock(preparationLockId).then(setAuthorizationLock);
+  }, [client, preparationLockId]);
   const update = (key: keyof IntakeDraft, value: string | string[]) => {
     setDraft((d) => ({ ...d, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
@@ -171,6 +179,10 @@ export function MarkregApp({ client = createMarkregClient() }: { client?: Markre
     }
   };
 
+  if (preparationLockId && !authorizationLock)
+    return <LoadingState label="Loading Preparation Lock for Filing Authorization" />;
+  if (authorizationLock)
+    return <FilingAuthorizationView client={client} preparationLock={authorizationLock} />;
   if (reviewLoading)
     return (
       <main className="markreg-page">

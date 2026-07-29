@@ -19,7 +19,12 @@ import type {
   CustomerInstructionLedger,
   CustomerInstructionEntry,
   CustomerInstructionAcknowledgement,
-  PreparationLock
+  PreparationLock,
+  FilingAuthorization,
+  FilingAuthorizationAcknowledgementCode,
+  AuthorizationCapacity,
+  FilingExecutionChannel,
+  AuthorizationAuthorityConsequences
 } from '@markorbit/contracts';
 import { createApiClient, type ApiClient } from './client.js';
 
@@ -74,6 +79,29 @@ export interface MarkregClient {
     documentPackageId: string,
     instructionLedgerId: string
   ): Promise<PreparationLock>;
+  getPreparationLock?(id: string): Promise<PreparationLock>;
+  createFilingAuthorization?(command: {
+    preparationLockId: string;
+    preparationLockVersion: string;
+    authorizedParty: { partyId: MarkOrbitId; displayName: string };
+    authorizationCapacity: AuthorizationCapacity;
+    executionChannel: FilingExecutionChannel;
+    idempotencyKey: string;
+  }): Promise<FilingAuthorizationResponse>;
+  getFilingAuthorization?(id: string): Promise<FilingAuthorizationResponse>;
+  confirmFilingAuthorization?(
+    id: string,
+    command: {
+      acknowledgementCodes: FilingAuthorizationAcknowledgementCode[];
+      acknowledgedBy: MarkOrbitId;
+      idempotencyKey: string;
+    }
+  ): Promise<FilingAuthorizationResponse>;
+  withdrawFilingAuthorization?(id: string): Promise<FilingAuthorizationResponse>;
+}
+export interface FilingAuthorizationResponse {
+  filingAuthorization: FilingAuthorization;
+  consequences: AuthorizationAuthorityConsequences;
 }
 export interface ConfirmationCommand {
   quoteId: MarkOrbitId;
@@ -209,6 +237,33 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
       return api.post(
         '/api/markreg/preparation-locks',
         { documentPackageId, instructionLedgerId },
+        {}
+      );
+    },
+    getPreparationLock(id) {
+      return api.get(`/api/markreg/preparation-locks/${encodeURIComponent(id)}`);
+    },
+    createFilingAuthorization(command) {
+      const { idempotencyKey, ...body } = command;
+      return api.post('/api/execution/filing-authorizations', body, {
+        'Idempotency-Key': idempotencyKey
+      });
+    },
+    getFilingAuthorization(id) {
+      return api.get(`/api/execution/filing-authorizations/${encodeURIComponent(id)}`);
+    },
+    confirmFilingAuthorization(id, command) {
+      const { idempotencyKey, ...body } = command;
+      return api.post(
+        `/api/execution/filing-authorizations/${encodeURIComponent(id)}/confirm`,
+        body,
+        { 'Idempotency-Key': idempotencyKey }
+      );
+    },
+    withdrawFilingAuthorization(id) {
+      return api.post(
+        `/api/execution/filing-authorizations/${encodeURIComponent(id)}/withdraw`,
+        {},
         {}
       );
     }

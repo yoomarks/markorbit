@@ -262,7 +262,8 @@ export function ConnectedDocumentsInstructionsWorkspace({
       </Alert>
     );
   if (!pkg) return <LoadingState label="Creating governed Document Package" />;
-  if (lock && authorizationOpen) return <FilingAuthorizationView />;
+  if (lock && authorizationOpen)
+    return <FilingAuthorizationView client={client} preparationLock={lock} />;
   if (lock)
     return (
       <section role="region" aria-labelledby="connected-lock" className="preparation-workspace">
