@@ -154,9 +154,29 @@ test.describe('Milestone 001 real runtime golden path', () => {
     await page.getByRole('button', { name: 'Open Filing Authorization' }).click();
     const authorizationChecks = page.getByRole('checkbox');
     await expect(authorizationChecks).toHaveCount(9);
-    for (let index = 0; index < 9; index++) {
-      await expect(authorizationChecks.nth(index)).not.toBeChecked();
-      await authorizationChecks.nth(index).locator('..').click();
+    const authorizationLabels = [
+      'I confirm the applicant or owner information.',
+      'I confirm the trademark representation.',
+      'I confirm the jurisdiction, classes and goods/services.',
+      'I authorize use of the locked document package.',
+      'I authorize preparation of the filing instruction.',
+      'I understand that authorization does not itself submit an application.',
+      'I understand that a professional or representative may still need to accept appointment.',
+      'I understand that scope changes require a new review and authorization.',
+      'I understand that government-office acceptance is not guaranteed.'
+    ];
+    const acknowledgementRows = page.locator('.authorization-acknowledgement');
+    let previousBottom = 0;
+    for (let index = 0; index < authorizationLabels.length; index++) {
+      const box = await acknowledgementRows.nth(index).boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y).toBeGreaterThanOrEqual(previousBottom);
+      previousBottom = box!.y + box!.height;
+    }
+    for (const label of authorizationLabels) {
+      const acknowledgement = page.getByLabel(label, { exact: true });
+      await expect(acknowledgement).not.toBeChecked();
+      await acknowledgement.check();
     }
     await page.getByRole('button', { name: 'Confirm Filing Authorization' }).click();
     await expect(

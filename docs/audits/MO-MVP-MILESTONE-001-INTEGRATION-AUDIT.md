@@ -223,4 +223,4 @@ None. The audit adds only this Markdown report and its machine-readable JSON com
 
 **DO NOT FREEZE.** Resolve B-001 and B-002, add the missing state/deep-link matrices, run the complete quality gate on Node 22, run desktop/mobile golden and visual suites sequentially against real runtimes, then obtain green remote CI. A later audit may recommend freeze only after those facts are evidenced; this report does not claim milestone freeze.
 
-> TASK 013 continuation status: implementation head is recorded in the Draft PR; B-002 remains OPEN. Desktop real-runtime: PASS. Mobile 390px real-runtime: FAIL at a normal-click Filing Authorization acknowledgement overlap. Node 22 remote CI: NOT RUN, so B-001 remains OPEN.
+> TASK 013 remediation: implementation head `f657cdaee6035651f8bd313f93ae108bedd5df03`; desktop real-runtime PASS; mobile 390px real-runtime PASS; complete exact lineage PASS; governed API interception false; B-002 RESOLVED. Node 22 remote CI remains OPEN, therefore B-001 remains OPEN. The original audit result and freeze recommendation remain unchanged.

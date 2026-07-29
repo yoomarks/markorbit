@@ -243,8 +243,9 @@ export function FilingAuthorizationView({
               <h2>Required active acknowledgements</h2>
             </legend>
             {authorizationAcknowledgements.map(({ code, label }) => (
-              <label key={code} className="authorization-acknowledgement">
+              <div key={code} className="authorization-acknowledgement">
                 <input
+                  id={`authorization-${code}`}
                   type="checkbox"
                   checked={checked.includes(code)}
                   onChange={(e) =>
@@ -253,8 +254,8 @@ export function FilingAuthorizationView({
                     )
                   }
                 />
-                <span>{label}</span>
-              </label>
+                <label htmlFor={`authorization-${code}`}>{label}</label>
+              </div>
             ))}
           </fieldset>
           <Button disabled={!all || state !== 'AUTHORIZATION_DRAFT'} onClick={() => void confirm()}>

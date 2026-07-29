@@ -1,3 +1,18 @@
+.markreg-page {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+.markreg-page dd,
+.markreg-page li,
+.markreg-page label,
+.markreg-page fieldset,
+.markreg-page .mo-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .confirmation-matter-flow,
 .matter-draft-layout,
 .readiness-check-list,
@@ -80,13 +95,18 @@
   gap: var(--mo-space-md);
   min-width: 0;
   padding-block: var(--mo-space-sm);
+  position: static;
+  height: auto;
+  min-height: 3rem;
 }
-.authorization-acknowledgement span {
+.authorization-acknowledgement label {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 fieldset:has(.authorization-acknowledgement) {
   display: grid;
+  grid-auto-rows: minmax(max-content, auto);
+  align-items: start;
   gap: var(--mo-space-sm);
   min-inline-size: 0;
 }

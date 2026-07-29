@@ -80,6 +80,17 @@
   min-width: 0;
   max-width: 100%;
 }
+.lite-workspace {
+  overflow-x: clip;
+}
+.lite-workspace li,
+.lite-workspace strong,
+.lite-workspace dd,
+.lite-workspace .mo-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 @media (max-width: 760px) {
   .lite-workspace .lite-filters,
   .lite-workspace .mo-alert--info {

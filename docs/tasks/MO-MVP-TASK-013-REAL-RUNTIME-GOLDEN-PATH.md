@@ -23,7 +23,7 @@ The harness supplies `MARKREG_URL` and `EXECUTION_URL` to Gateway and supplies `
 
 The logical journey uses `milestone-001-desktop` and `milestone-001-mobile` namespaces. Server repositories begin clean on each harness start; there is no test bootstrap or production reset endpoint. `MilestoneLineageRecorder` records Customer, Opportunity, Plan, Quote, Customer Confirmation, Matter Draft, Professional Review Case and decision, Document Package, Instruction Ledger, Preparation Lock, Filing Authorization, Execution Release, and Filing Execution Task Draft identities and versions.
 
-No fixture bootstrap endpoint is exposed. Fixture semantics remain incapable of external filing. The desktop browser path completes the full chain through real Gateway-backed applications. The 390px path currently reaches Filing Authorization but still exposes a normal-click overlap defect in the acknowledgement list, so B-002 remains open until that path is green.
+No fixture bootstrap endpoint is exposed. Fixture semantics remain incapable of external filing. The desktop browser path completes the full chain through real Gateway-backed applications. Both desktop and 390px projects complete the full exact-lineage chain through real Gateway-backed applications without governed API interception. B-002 is resolved by local evidence; B-001 remains open pending remote Node 22 CI.
 
 ## Commands and CI
 
