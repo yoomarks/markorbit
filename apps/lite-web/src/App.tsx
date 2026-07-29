@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AppShell,
@@ -178,6 +178,15 @@ function Customers({
   const [status, setStatus] = useState('ALL');
   const [region, setRegion] = useState('ALL');
   const [selected, setSelected] = useState<string | undefined>(initialSelected);
+  const originId = useRef<string>();
+  useEffect(() => {
+    if (!selected && originId.current) {
+      document
+        .querySelector<HTMLButtonElement>(`[data-customer-id="${originId.current}"]`)
+        ?.focus();
+      originId.current = undefined;
+    }
+  }, [selected]);
   const rows = useMemo(
     () =>
       state === 'empty'
@@ -235,7 +244,15 @@ function Customers({
                 <Badge>{c.status}</Badge>
               </div>
               <p>{c.opportunityCount} related opportunities</p>
-              <Button onClick={() => setSelected(c.id)}>View customer details</Button>
+              <Button
+                data-customer-id={c.id}
+                onClick={() => {
+                  originId.current = c.id;
+                  setSelected(c.id);
+                }}
+              >
+                View customer details
+              </Button>
             </Card>
           ))}
         </div>
@@ -351,6 +368,15 @@ function Opportunities({
   const [status, setStatus] = useState('ALL');
   const [region, setRegion] = useState('ALL');
   const [selected, setSelected] = useState<string | undefined>(initialSelected);
+  const originId = useRef<string>();
+  useEffect(() => {
+    if (!selected && originId.current) {
+      document
+        .querySelector<HTMLButtonElement>(`[data-opportunity-id="${originId.current}"]`)
+        ?.focus();
+      originId.current = undefined;
+    }
+  }, [selected]);
   const rows = useMemo(
     () =>
       state === 'empty'
@@ -424,7 +450,15 @@ function Opportunities({
               <p>
                 <strong>{o.trademark}</strong> · {o.confidence} confidence
               </p>
-              <Button onClick={() => setSelected(o.id)}>View opportunity details</Button>
+              <Button
+                data-opportunity-id={o.id}
+                onClick={() => {
+                  originId.current = o.id;
+                  setSelected(o.id);
+                }}
+              >
+                View opportunity details
+              </Button>
             </Card>
           ))}
         </div>

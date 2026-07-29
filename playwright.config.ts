@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { applicationUrl, applications } from './tests/e2e/applications.js';
 
 const inCI = Boolean(process.env['CI']);
 
@@ -29,18 +30,18 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --filter @markorbit/lite-web dev --host 127.0.0.1 --port 4171',
-      url: 'http://127.0.0.1:4171',
+      command: `pnpm --filter ${applications.lite.package} dev --host 127.0.0.1 --port ${applications.lite.port}`,
+      url: applicationUrl('lite'),
       reuseExistingServer: !inCI
     },
     {
-      command: 'pnpm --filter @markorbit/markreg-web dev --host 127.0.0.1 --port 4172',
-      url: 'http://127.0.0.1:4172',
+      command: `pnpm --filter ${applications.markreg.package} dev --host 127.0.0.1 --port ${applications.markreg.port}`,
+      url: applicationUrl('markreg'),
       reuseExistingServer: !inCI
     },
     {
-      command: 'pnpm --filter @markorbit/operations-console dev --host 127.0.0.1 --port 4173',
-      url: 'http://127.0.0.1:4173',
+      command: `pnpm --filter ${applications.operations.package} dev --host 127.0.0.1 --port ${applications.operations.port}`,
+      url: applicationUrl('operations'),
       reuseExistingServer: !inCI
     }
   ]
