@@ -265,6 +265,14 @@ The detailed audit at `docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md` supe
 
 The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
 
+### TASK 014-C1.1 ordinary recovery stability
+
+- The eight-target MarkReg recovery test was split into four isolated table-driven tests: Consultation/Recommendation/Quote, Customer Confirmation/Matter Draft, Documents and Instructions/Preparation Lock, and Filing Authorization. Each test owns its interception lifecycle and independently proves exact direct load, reload, missing-route recovery, unsupported-route recovery and GET-only behavior.
+- Desktop focused durations were 17.076s, 13.664s, 12.939s and 9.825s respectively, all materially below the unchanged 30-second ordinary-test budget. The ordinary inventory is now 32 project-tests (16 desktop and 16 mobile), including five recovery tests per project.
+- The complete ordinary suite passed 32/32 on its first validation run and then passed five consecutive 32/32 stability runs without cleanup or retries being added. Finding states remain M-002 **RESOLVED**, M-003 **RESOLVED**, and M-004 **REMEDIATION_IN_PROGRESS**.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
 ### TASK 014 authoritative deep-link stability evidence
 
 - **M-003 — RESOLVED:** a test-runtime-only Gateway snapshot composes records read directly from the MarkReg and Execution in-memory authoritative repositories. It is absent without `MO_MILESTONE_TEST_RUNTIME=1`, is GET-only, and returns stable, sorted, scenario-isolated snapshots for Matter Drafts, Professional Review Cases, Preparation Locks, Filing Authorizations, Execution Releases and Filing Execution Task Drafts.

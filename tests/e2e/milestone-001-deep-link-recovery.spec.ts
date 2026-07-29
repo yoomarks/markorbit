@@ -1,84 +1,105 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { applicationUrl } from './applications';
 
 // Deterministic interception in this ordinary-E2E suite validates UI recovery presentation only.
 // It is not real-runtime evidence; the isolated real-runtime spec never intercepts governed APIs.
-test('MarkReg governed targets direct-load exact identity, refresh, and never mutate during recovery', async ({
-  page
-}) => {
-  const targets = [
-    [
-      'consultation',
-      'consultationId',
-      'consultationVersion',
-      'intake',
-      'intakeId',
-      'intake_exact',
-      '1',
-      'RECOMMENDATION_READY'
-    ],
-    [
-      'recommendation-plan',
-      'recommendationId',
-      'recommendationVersion',
-      'recommendation',
-      'recommendationId',
-      'recommendation_exact',
-      '1',
-      'FIXTURE_ONLY'
-    ],
-    ['quote', 'quoteId', 'quoteVersion', 'quote', 'quoteId', 'quote_exact', 'pricing-v1', 'READY'],
-    [
-      'customer-confirmation',
-      'confirmationId',
-      'confirmationVersion',
-      'confirmation',
-      'confirmationId',
-      'confirmation_exact',
-      '1',
-      'CONFIRMED'
-    ],
-    [
-      'matter-draft',
-      'matterDraftId',
-      'matterDraftVersion',
-      'matterDraft',
-      'matterDraftId',
-      'matter-draft_exact',
-      '1',
-      'READY_FOR_PROFESSIONAL_REVIEW'
-    ],
-    [
-      'documents',
-      'professionalReviewCaseId',
-      'reviewDecisionVersion',
-      'reviewCase',
-      'reviewCaseId',
-      'professional-review_exact',
-      '2026-07-29T00:00:00.000Z',
-      'REVIEWED_READY_FOR_NEXT_STEP'
-    ],
-    [
-      'preparation-lock',
-      'preparationLockId',
-      'preparationLockVersion',
-      'preparationLock',
-      'preparationLockId',
-      'preparation-lock_exact',
-      '1',
-      'LOCKED_FOR_PREPARATION'
-    ],
-    [
-      'filing-authorization',
-      'filingAuthorizationId',
-      'filingAuthorizationVersion',
-      'filingAuthorization',
-      'filingAuthorizationId',
-      'filing-authorization_exact',
-      '4',
-      'AUTHORIZED'
+const markregTargets = [
+  {
+    group: 'Consultation / Recommendation / Quote',
+    targets: [
+      [
+        'consultation',
+        'consultationId',
+        'consultationVersion',
+        'intake',
+        'intakeId',
+        'intake_exact',
+        '1',
+        'RECOMMENDATION_READY'
+      ],
+      [
+        'recommendation-plan',
+        'recommendationId',
+        'recommendationVersion',
+        'recommendation',
+        'recommendationId',
+        'recommendation_exact',
+        '1',
+        'FIXTURE_ONLY'
+      ],
+      ['quote', 'quoteId', 'quoteVersion', 'quote', 'quoteId', 'quote_exact', 'pricing-v1', 'READY']
     ]
-  ] as const;
+  },
+  {
+    group: 'Customer Confirmation / Matter Draft',
+    targets: [
+      [
+        'customer-confirmation',
+        'confirmationId',
+        'confirmationVersion',
+        'confirmation',
+        'confirmationId',
+        'confirmation_exact',
+        '1',
+        'CONFIRMED'
+      ],
+      [
+        'matter-draft',
+        'matterDraftId',
+        'matterDraftVersion',
+        'matterDraft',
+        'matterDraftId',
+        'matter-draft_exact',
+        '1',
+        'READY_FOR_PROFESSIONAL_REVIEW'
+      ]
+    ]
+  },
+  {
+    group: 'Documents and Instructions / Preparation Lock',
+    targets: [
+      [
+        'documents',
+        'professionalReviewCaseId',
+        'reviewDecisionVersion',
+        'reviewCase',
+        'reviewCaseId',
+        'professional-review_exact',
+        '2026-07-29T00:00:00.000Z',
+        'REVIEWED_READY_FOR_NEXT_STEP'
+      ],
+      [
+        'preparation-lock',
+        'preparationLockId',
+        'preparationLockVersion',
+        'preparationLock',
+        'preparationLockId',
+        'preparation-lock_exact',
+        '1',
+        'LOCKED_FOR_PREPARATION'
+      ]
+    ]
+  },
+  {
+    group: 'Filing Authorization',
+    targets: [
+      [
+        'filing-authorization',
+        'filingAuthorizationId',
+        'filingAuthorizationVersion',
+        'filingAuthorization',
+        'filingAuthorizationId',
+        'filing-authorization_exact',
+        '4',
+        'AUTHORIZED'
+      ]
+    ]
+  }
+] as const;
+
+type MarkregTarget = (typeof markregTargets)[number]['targets'][number];
+
+async function runMarkregRecoveryGroup(page: Page, targets: readonly MarkregTarget[]) {
   const methods: string[] = [];
   await page.route('http://127.0.0.1:4000/**', async (route) => {
     methods.push(route.request().method());
@@ -104,15 +125,25 @@ test('MarkReg governed targets direct-load exact identity, refresh, and never mu
       `${applicationUrl('markreg')}/?view=${view}&${idKey}=${id}&${versionKey}=${encodeURIComponent(version)}`
     );
     await expect(page.getByText(id)).toBeVisible();
+    await expect(page.getByText(version, { exact: true }).first()).toBeVisible();
     await page.reload();
     await expect(page.getByText(id)).toBeVisible();
+    await expect(page.getByText(version, { exact: true }).first()).toBeVisible();
   }
   expect(methods.every((x) => x === 'GET')).toBeTruthy();
   await page.goto(`${applicationUrl('markreg')}/?view=quote`);
   await expect(page.getByRole('heading', { name: /required/ })).toBeFocused();
   await page.goto(`${applicationUrl('markreg')}/?view=open-latest`);
   await expect(page.getByRole('heading', { name: /Unsupported/ })).toBeFocused();
-});
+  expect(methods.every((method) => method === 'GET')).toBeTruthy();
+  await page.unrouteAll({ behavior: 'wait' });
+}
+
+for (const { group, targets } of markregTargets) {
+  test(`MarkReg governed recovery — ${group}`, async ({ page }) => {
+    await runMarkregRecoveryGroup(page, targets);
+  });
+}
 
 test('Lite Work targets load exact detail without opening first/latest queue record', async ({
   page
