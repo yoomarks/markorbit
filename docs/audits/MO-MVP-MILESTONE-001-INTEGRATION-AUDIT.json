@@ -21,37 +21,37 @@
     {
       "id": "M-002",
       "severity": "Major",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "summary": "Storybook lacks a complete required state matrix for every major workflow."
     },
     {
       "id": "M-003",
       "severity": "Major",
-      "status": "OPEN",
+      "status": "REMEDIATION_IN_PROGRESS",
       "summary": "Deep-link and recovery behavior is not demonstrated for each governed workflow stage."
     },
     {
       "id": "M-004",
       "severity": "Major",
-      "status": "OPEN",
+      "status": "REMEDIATION_IN_PROGRESS",
       "summary": "Negative paths are distributed across suites rather than consolidated as a service-to-Gateway typed-error integration matrix."
     },
     {
       "id": "m-001",
       "severity": "Minor",
-      "status": "OPEN",
+      "status": "RESOLVED_BY_POLICY",
       "summary": "Gateway route prefixes are inconsistent between /v1/markreg and /api/{markreg,lite,execution}."
     },
     {
       "id": "m-002",
       "severity": "Minor",
-      "status": "OPEN",
+      "status": "RESOLVED_BY_EXPLICIT_INVENTORY",
       "summary": "Fixture-only unauthenticated status is not explicit route by route."
     },
     {
       "id": "m-003",
       "severity": "Minor",
-      "status": "OPEN",
+      "status": "RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST",
       "summary": "Legacy POST /v1/executions needs explicit documentation relative to the non-filing task-draft boundary."
     },
     {
@@ -158,6 +158,28 @@
       "completeLineage": "PASS",
       "governedApiInterception": false,
       "b001Status": "OPEN"
+    },
+    {
+      "taskId": "MO-MVP-TASK-014",
+      "document": "docs/tasks/MO-MVP-TASK-014-STORYBOOK-DEEP-LINK-NEGATIVE-PATH-CLOSURE.md",
+      "startingMainSha": "41c73d2b95f66dc7ed9d7fc02b2ffc65b7f75124",
+      "originalResultUnchanged": true,
+      "freezeRecommendationUnchanged": true,
+      "storyMatrix": {
+        "cells": 99,
+        "applicable": 86,
+        "notApplicable": 13,
+        "status": "PASS"
+      },
+      "deepLinkTargets": {
+        "markreg": 8,
+        "lite": 3,
+        "status": "CODEC_PASS_BROWSER_EVIDENCE_PENDING"
+      },
+      "negativePathCases": {
+        "count": 17,
+        "status": "DESCRIPTORS_PASS_EXECUTABLE_EQUIVALENCE_PENDING"
+      }
     }
   ]
 }

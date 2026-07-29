@@ -224,3 +224,16 @@ None. The audit adds only this Markdown report and its machine-readable JSON com
 **DO NOT FREEZE.** Resolve B-001 and B-002, add the missing state/deep-link matrices, run the complete quality gate on Node 22, run desktop/mobile golden and visual suites sequentially against real runtimes, then obtain green remote CI. A later audit may recommend freeze only after those facts are evidenced; this report does not claim milestone freeze.
 
 > TASK 013 remediation: implementation head `f657cdaee6035651f8bd313f93ae108bedd5df03`; desktop real-runtime PASS; mobile 390px real-runtime PASS; complete exact lineage PASS; governed API interception false; B-002 RESOLVED. Node 22 remote CI remains OPEN, therefore B-001 remains OPEN. The original audit result and freeze recommendation remain unchanged.
+
+## TASK 014 remediation evidence (Draft)
+
+The original result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+- **M-002 — RESOLVED:** the 99-cell machine-readable Storybook matrix maps 86 applicable cells to stories and documents 13 impossible domain states as N/A; automated validation is in `pnpm test:story-matrix` and Node 22 milestone CI.
+- **M-003 — REMEDIATION_IN_PROGRESS:** typed exact-version codecs cover all eight MarkReg and three Lite targets, but focused recovery and real-runtime direct-navigation/reload acceptance evidence is not yet complete.
+- **M-004 — REMEDIATION_IN_PROGRESS:** the consolidated 17-case descriptor/report exists, but executable case-by-case owning-service and real Gateway HTTP equivalence remains required.
+- **m-001 — RESOLVED_BY_POLICY:** see `docs/architecture/GATEWAY_ROUTE_NAMESPACE_POLICY.md`.
+- **m-002 — RESOLVED_BY_EXPLICIT_INVENTORY:** see the JSON and Markdown Gateway route inventories.
+- **m-003 — RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST:** the namespace policy distinguishes the internal execution envelope from filing governance; the existing Execution boundary regression coverage retains false authority consequences.
+
+TASK 014 does not declare Milestone 1 frozen. TASK 015 retains freeze authority.

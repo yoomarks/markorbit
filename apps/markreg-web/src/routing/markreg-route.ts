@@ -1,0 +1,76 @@
+export const MARKREG_VIEWS = [
+  'consultation',
+  'recommendation-plan',
+  'quote',
+  'customer-confirmation',
+  'matter-draft',
+  'documents',
+  'preparation-lock',
+  'filing-authorization'
+] as const;
+
+export type MarkregView = (typeof MARKREG_VIEWS)[number];
+export type MarkregRoute = { view: MarkregView; recordId: string; expectedVersion: number };
+export type MarkregRouteResult =
+  | { kind: 'VALID'; route: MarkregRoute }
+  | { kind: 'MALFORMED_ROUTE'; reason: string }
+  | { kind: 'UNSUPPORTED_ROUTE'; view: string };
+export type GovernedRouteViewState =
+  | { kind: 'ROUTE_LOADING' }
+  | { kind: 'READY' }
+  | { kind: 'INCOMPLETE_OR_BLOCKED'; reason: string }
+  | { kind: 'STALE' | 'WITHDRAWN' | 'EXPIRED'; readOnly: true }
+  | { kind: 'NOT_FOUND'; expectedId: string }
+  | { kind: 'VERSION_MISMATCH'; expectedVersion: number; actualVersion: number }
+  | { kind: 'MALFORMED_ROUTE'; reason: string }
+  | {
+      kind: 'DOWNSTREAM_UNAVAILABLE' | 'RECOVERABLE_ERROR';
+      retryIdentity: { id: string; version: number };
+    };
+
+const keys: Record<MarkregView, [string, string]> = {
+  consultation: ['consultationId', 'consultationVersion'],
+  'recommendation-plan': ['recommendationId', 'recommendationVersion'],
+  quote: ['quoteId', 'quoteVersion'],
+  'customer-confirmation': ['confirmationId', 'confirmationVersion'],
+  'matter-draft': ['matterDraftId', 'matterDraftVersion'],
+  documents: ['professionalReviewCaseId', 'reviewDecisionVersion'],
+  'preparation-lock': ['preparationLockId', 'preparationLockVersion'],
+  'filing-authorization': ['filingAuthorizationId', 'filingAuthorizationVersion']
+};
+
+export function parseMarkregRoute(input: string | URLSearchParams): MarkregRouteResult {
+  const params =
+    typeof input === 'string'
+      ? new URLSearchParams(input.startsWith('?') ? input.slice(1) : input)
+      : input;
+  const rawView = params.get('view');
+  if (!rawView) return { kind: 'MALFORMED_ROUTE', reason: 'A governed view is required.' };
+  if (!MARKREG_VIEWS.includes(rawView as MarkregView))
+    return { kind: 'UNSUPPORTED_ROUTE', view: rawView };
+  const view = rawView as MarkregView;
+  const [idKey, versionKey] = keys[view];
+  const recordId = params.get(idKey)?.trim();
+  const version = Number(params.get(versionKey));
+  if (!recordId || !Number.isSafeInteger(version) || version < 1)
+    return {
+      kind: 'MALFORMED_ROUTE',
+      reason: `${idKey} and a positive ${versionKey} are required.`
+    };
+  return { kind: 'VALID', route: { view, recordId, expectedVersion: version } };
+}
+
+export const validateMarkregRoute = (route: MarkregRoute) =>
+  parseMarkregRoute(serializeMarkregRoute(route));
+export function serializeMarkregRoute(route: MarkregRoute): string {
+  const [idKey, versionKey] = keys[route.view];
+  return `?${new URLSearchParams({ view: route.view, [idKey]: route.recordId, [versionKey]: String(route.expectedVersion) })}`;
+}
+export function canonicalizeMarkregRoute(input: string | URLSearchParams): MarkregRouteResult {
+  const result = parseMarkregRoute(input);
+  return result.kind === 'VALID' ? parseMarkregRoute(serializeMarkregRoute(result.route)) : result;
+}
+export const expectedMarkregIdentity = (route: MarkregRoute) => ({
+  id: route.recordId,
+  version: route.expectedVersion
+});
