@@ -51,3 +51,11 @@ The current GET-only assertion is useful mutation-request evidence but cannot, b
 ## Runtime harness audit
 
 The harness registers children before readiness, supports custom ports, uses non-detached children for the Playwright launcher, awaits SIGTERM/exit and bounded SIGKILL, closes logs, checks port release and provides idempotent stop. Standalone mode retains detached process-group cleanup. The regression suite exercises occupied port, middle and Web failure, timeout, named early exit, double stop, custom ports and successful six-runtime release. Signal handlers are process-scoped and `once`; process termination removes them, but no long-lived in-process start/stop API is exposed by the launcher.
+
+## Clean-checkout negative-path entry correction
+
+The contracts package correctly declares `main` and ESM `exports.import` as `./dist/index.js`, with declarations at `./dist/index.d.ts`; its `tsup` build produces those two files. A detached clean worktree proved that `pnpm install --frozen-lockfile` does not produce `dist`, so importing `@markorbit/contracts` from MarkReg failed with `ERR_MODULE_NOT_FOUND`. Running the existing topological Turbo build made the same import pass. The failure was missing dependency preparation, not an incorrect package export.
+
+`test:negative-path-matrix` now invokes `build:negative-path-deps`, which topologically builds Contracts, Events, Service Kit, MarkReg, Execution and Gateway before selecting evidence tests. `--case NP-006` was also verified in that clean worktree. The new runner selects exactly one registered Service test and one registered Gateway test for `--case`; a local loop selected all 17 IDs independently.
+
+This correction makes the command clean-checkout safe and changes it from broad-suite mode to selected evidence-test execution. It does **not** cure the semantic gaps in the table above: several registrations still point to only related tests rather than complete descriptor-specific assertions. Therefore M-004 remains **REMEDIATION_IN_PROGRESS**, and runner output deliberately says “referenced test PASS” rather than claiming 17 complete Service/Gateway cases.
