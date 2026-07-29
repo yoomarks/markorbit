@@ -16,11 +16,12 @@ const listSuite = (config) => {
 
 test('default Playwright inventory excludes the real-runtime suite', () => {
   const { entries, output } = listSuite('playwright.config.ts');
-  assert.equal(entries.length, 22);
+  assert.equal(entries.length, 26);
   assert.deepEqual([...new Set(entries.map(({ file }) => file))].sort(), [
     'filing-authorization-release.spec.ts',
     'lite.spec.ts',
     'markreg.spec.ts',
+    'milestone-001-deep-link-recovery.spec.ts',
     'operations.spec.ts'
   ]);
   assert.deepEqual(
@@ -30,7 +31,7 @@ test('default Playwright inventory excludes the real-runtime suite', () => {
         entries.filter((entry) => entry.project === project).length
       ])
     ),
-    { 'desktop-chromium': 11, 'mobile-chromium': 11 }
+    { 'desktop-chromium': 13, 'mobile-chromium': 13 }
   );
   assert.doesNotMatch(output, /milestone-001-real-runtime\.spec\.ts|@real-runtime/);
 });

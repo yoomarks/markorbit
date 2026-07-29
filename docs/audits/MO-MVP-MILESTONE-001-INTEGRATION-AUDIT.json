@@ -27,13 +27,13 @@
     {
       "id": "M-003",
       "severity": "Major",
-      "status": "REMEDIATION_IN_PROGRESS",
+      "status": "RESOLVED",
       "summary": "Deep-link and recovery behavior is not demonstrated for each governed workflow stage."
     },
     {
       "id": "M-004",
       "severity": "Major",
-      "status": "REMEDIATION_IN_PROGRESS",
+      "status": "RESOLVED",
       "summary": "Negative paths are distributed across suites rather than consolidated as a service-to-Gateway typed-error integration matrix."
     },
     {
@@ -178,7 +178,11 @@
       },
       "negativePathCases": {
         "count": 17,
-        "status": "DESCRIPTORS_PASS_EXECUTABLE_EQUIVALENCE_PENDING"
+        "serviceAdapters": 17,
+        "gatewayAdapters": 17,
+        "missingAdapters": 0,
+        "unexpectedAdapters": 0,
+        "status": "PASS"
       },
       "gatewayRoutes": {
         "runtimeTotal": 53,
@@ -194,7 +198,20 @@
         "builtIndexManifestIds": 86,
         "status": "PASS"
       },
-      "legacyExecutionBoundary": "EXECUTABLE_HTTP_REGRESSION_PASS"
+      "legacyExecutionBoundary": "EXECUTABLE_HTTP_REGRESSION_PASS",
+      "runtimeHarness": {
+        "processes": 6,
+        "regressionScenarios": 8,
+        "stabilityRuns": "10/10",
+        "cleanup": "AWAITED_IDEMPOTENT_PORT_RELEASE_VERIFIED"
+      },
+      "realRuntimeDeepLinks": {
+        "retries": 0,
+        "checkpoints": 6,
+        "desktop": "PASS_FIRST_ATTEMPT_26.8S",
+        "mobile": "PASS_FIRST_ATTEMPT_20.9S",
+        "mutationMethodsObserved": "GET_ONLY"
+      }
     }
   ]
 }

@@ -29,7 +29,7 @@
     "build:storybook-matrix": "pnpm --filter @markorbit/ui build && rm -rf .artifacts/storybook && pnpm --filter @markorbit/markreg-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/markreg && pnpm --filter @markorbit/lite-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/lite",
     "test:storybook-index": "node scripts/validate-storybook-index.mjs .artifacts/storybook/markreg/index.json .artifacts/storybook/lite/index.json",
     "test:gateway-inventory": "node scripts/validate-gateway-inventory.mjs",
-    "test:negative-path-matrix": "node scripts/validate-negative-path-matrix.mjs"
+    "test:negative-path-matrix": "pnpm --filter @markorbit/markreg-service test && pnpm --filter @markorbit/execution-service test && pnpm --filter @markorbit/gateway test && node scripts/validate-negative-path-matrix.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

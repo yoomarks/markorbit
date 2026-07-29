@@ -8,7 +8,7 @@ export default defineConfig({
   outputDir: 'test-results/real-runtime',
   fullyParallel: false,
   workers: 1,
-  retries: inCI ? 1 : 0,
+  retries: 0,
   forbidOnly: inCI,
   timeout: 30_000,
   reporter: inCI

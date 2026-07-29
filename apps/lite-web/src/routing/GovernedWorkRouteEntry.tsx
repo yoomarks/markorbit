@@ -25,12 +25,21 @@ async function load(view: string, id: string) {
     root.executionRelease ??
     root.filingExecutionTaskDraft) as Record<string, unknown>;
   const actualId = scalar(
-    record.reviewCaseId ?? record.executionReleaseId ?? record.filingExecutionTaskDraftId
+    view === 'professional-review'
+      ? record.reviewCaseId
+      : view === 'execution-release'
+        ? record.executionReleaseId
+        : record.filingExecutionTaskDraftId
   );
   return {
     record,
     id: actualId,
-    version: scalar(record.version ?? record.updatedAt ?? record.schemaVersion, '1'),
+    version:
+      view === 'professional-review'
+        ? scalar(
+            (record.decision as Record<string, unknown> | undefined)?.decidedAt ?? record.updatedAt
+          )
+        : scalar(record.version ?? record.schemaVersion, '1'),
     status: scalar(record.status, 'READY')
   };
 }

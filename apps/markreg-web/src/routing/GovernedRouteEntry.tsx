@@ -34,11 +34,19 @@ const scalar = (value: unknown, fallback = '') =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
 const identity = (record: Record<string, unknown>) =>
   scalar(Object.entries(record).find(([key]) => key.endsWith('Id'))?.[1]);
-const version = (record: Record<string, unknown>) =>
-  scalar(
-    record.version ?? record.schemaVersion ?? record.pricingRuleVersion ?? record.updatedAt,
+const version = (record: Record<string, unknown>, view: string) => {
+  if (view === 'matter-draft') return scalar(record.updatedAt);
+  if (view === 'documents')
+    return scalar(
+      (record.decision as Record<string, unknown> | undefined)?.decidedAt ?? record.updatedAt
+    );
+  if (view === 'preparation-lock')
+    return `${scalar(record.documentPackageVersion)}:${scalar(record.instructionLedgerVersion)}`;
+  return scalar(
+    record.version ?? record.pricingRuleVersion ?? record.schemaVersion ?? record.updatedAt,
     '1'
   );
+};
 
 const defaultClient = createMarkregClient();
 export function GovernedRouteEntry({
@@ -72,7 +80,7 @@ export function GovernedRouteEntry({
         const loaded = {
           record,
           actualId: identity(record),
-          actualVersion: version(record),
+          actualVersion: version(record, parsed.route.view),
           status: typeof record.status === 'string' ? record.status : 'READY'
         };
         if (loaded.actualId !== parsed.route.recordId) {

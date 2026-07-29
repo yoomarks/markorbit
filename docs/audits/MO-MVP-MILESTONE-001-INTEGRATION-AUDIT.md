@@ -246,3 +246,11 @@ TASK 014 does not declare Milestone 1 frozen. TASK 015 retains freeze authority.
 - M-003 remains **REMEDIATION_IN_PROGRESS**: ordinary focused direct-load/refresh/recovery coverage exists, but real-runtime checkpoint navigation is not complete.
 - M-004 remains **REMEDIATION_IN_PROGRESS**: descriptors are complete but 17/17 explicit Service and real Gateway HTTP adapters are not complete.
 - m-003 remains **RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST** after the new Execution HTTP regression test verified the legacy envelope has no filing/task-draft consequences.
+
+### TASK 014 final recovery evidence
+
+- **M-003 — RESOLVED:** ordinary recovery remains green; desktop and mobile real-runtime paths each pass on their first attempt with retries disabled and all six codec-generated direct-navigation/reload checkpoints. Every checkpoint observes only Gateway GET requests and asserts the exact canonical identity/version/status, preventing latest fallback or duplicate mutation.
+- **M-004 — RESOLVED:** `pnpm test:negative-path-matrix` runs MarkReg Service, Execution Service, and real Gateway HTTP suites, then proves equality across 17 descriptors, 17 Service adapters and 17 Gateway adapters with zero missing/unexpected adapters. Typed errors, immutable failure state, idempotency behavior, stale task propagation and false authority consequences remain asserted in the referenced executable suites.
+- Runtime stability is covered by eight harness regression scenarios and ten consecutive `pnpm test:runtime` executions without manual cleanup. The harness names all six runtimes and awaits child exit, log closure and port release.
+
+The original audit result remains **FAIL** and its freeze recommendation remains **DO_NOT_FREEZE**. TASK 014 remediation does not declare Milestone 1 frozen; TASK 015 retains that decision.
