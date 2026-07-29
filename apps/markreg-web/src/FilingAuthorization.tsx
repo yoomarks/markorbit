@@ -230,6 +230,11 @@ export function FilingAuthorizationView({
               ...consequenceItems
             ]}
           />
+          <a
+            href={`http://127.0.0.1:4371/?filingAuthorizationId=${encodeURIComponent(authorization.filingAuthorizationId)}&filingAuthorizationVersion=${authorization.version}#work-execution-release`}
+          >
+            Open exact authorization in Lite Execution Release
+          </a>
         </Card>
       ) : (
         <Card>

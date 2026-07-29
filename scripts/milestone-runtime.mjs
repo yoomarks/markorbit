@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 
 export const milestonePorts = Object.freeze({
   gateway: 4300,
+  capability: 4302,
   execution: 4304,
   markreg: 4305,
   liteWeb: 4371,
@@ -13,6 +14,7 @@ export const milestonePorts = Object.freeze({
 
 export const milestoneUrls = Object.freeze({
   gateway: `http://127.0.0.1:${milestonePorts.gateway}`,
+  capability: `http://127.0.0.1:${milestonePorts.capability}`,
   execution: `http://127.0.0.1:${milestonePorts.execution}`,
   markreg: `http://127.0.0.1:${milestonePorts.markreg}`,
   liteWeb: `http://127.0.0.1:${milestonePorts.liteWeb}`,
@@ -21,11 +23,22 @@ export const milestoneUrls = Object.freeze({
 
 const definitions = [
   {
+    name: 'capability-engine',
+    port: milestonePorts.capability,
+    health: `${milestoneUrls.capability}/health`,
+    args: ['--filter', '@markorbit/capability-engine', 'dev'],
+    env: { PORT: String(milestonePorts.capability) }
+  },
+  {
     name: 'markreg',
     port: milestonePorts.markreg,
     health: `${milestoneUrls.markreg}/health`,
     args: ['--filter', '@markorbit/markreg-service', 'dev'],
-    env: { PORT: String(milestonePorts.markreg), EXECUTION_URL: milestoneUrls.execution }
+    env: {
+      PORT: String(milestonePorts.markreg),
+      EXECUTION_URL: milestoneUrls.execution,
+      CAPABILITY_ENGINE_URL: milestoneUrls.capability
+    }
   },
   {
     name: 'execution',
@@ -42,7 +55,9 @@ const definitions = [
     env: {
       PORT: String(milestonePorts.gateway),
       MARKREG_URL: milestoneUrls.markreg,
-      EXECUTION_URL: milestoneUrls.execution
+      EXECUTION_URL: milestoneUrls.execution,
+      WEB_ORIGINS: `${milestoneUrls.markregWeb},${milestoneUrls.liteWeb}`,
+      MO_MILESTONE_TEST_RUNTIME: '1'
     }
   },
   {

@@ -14,13 +14,19 @@ export type MilestoneLineageKey =
 export class MilestoneLineageRecorder {
   readonly scenarioId = 'milestone-001-golden-path';
   readonly versioned = new Map<MilestoneLineageKey, VersionedIdentity>();
-  readonly identities = new Map<'customerConfirmation' | 'filingExecutionTaskDraft', string>();
+  readonly identities = new Map<
+    'customer' | 'opportunity' | 'customerConfirmation' | 'filingExecutionTaskDraft',
+    string
+  >();
   record(key: MilestoneLineageKey, identity: VersionedIdentity) {
     if (!identity.id || identity.version === '') throw new Error(`Incomplete ${key} lineage.`);
     this.versioned.set(key, Object.freeze({ ...identity }));
     return identity;
   }
-  recordIdentity(key: 'customerConfirmation' | 'filingExecutionTaskDraft', id: string) {
+  recordIdentity(
+    key: 'customer' | 'opportunity' | 'customerConfirmation' | 'filingExecutionTaskDraft',
+    id: string
+  ) {
     if (!id) throw new Error(`Incomplete ${key} lineage.`);
     this.identities.set(key, id);
     return id;

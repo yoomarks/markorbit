@@ -8,21 +8,22 @@ The user is a Milestone reviewer whose job is to verify governed handoffs across
 
 ## Topology and health
 
-| Runtime     | Port | Health/readiness |
-| ----------- | ---: | ---------------- |
-| Gateway     | 4300 | `GET /health`    |
-| Execution   | 4304 | `GET /health`    |
-| MarkReg     | 4305 | `GET /health`    |
-| Lite Web    | 4371 | `GET /`          |
-| MarkReg Web | 4372 | `GET /`          |
+| Runtime           | Port | Health/readiness |
+| ----------------- | ---: | ---------------- |
+| Gateway           | 4300 | `GET /health`    |
+| Capability Engine | 4302 | `GET /health`    |
+| Execution         | 4304 | `GET /health`    |
+| MarkReg           | 4305 | `GET /health`    |
+| Lite Web          | 4371 | `GET /`          |
+| MarkReg Web       | 4372 | `GET /`          |
 
 The harness supplies `MARKREG_URL` and `EXECUTION_URL` to Gateway and supplies `VITE_MARKREG_GATEWAY_URL` / `VITE_LITE_GATEWAY_URL` to the Web runtimes. It starts downstream services before Gateway, waits on every explicit readiness URL, rejects occupied ports and early child exits, and handles SIGINT/SIGTERM. Per-process logs are retained under ignored `.artifacts/milestone-runtime/` for diagnostics.
 
 ## Scenario and lineage
 
-`milestone-001-golden-path` is the sole scenario identity. Server repositories begin clean on each harness start; there is no production reset endpoint. `MilestoneLineageRecorder` requires an ID and exact version for every versioned handoff and separately records Customer Confirmation and Filing Execution Task Draft identities. The intended exact chain is Plan, Quote, Customer Confirmation, Matter Draft, Professional Review Case and decision, Document Package, Instruction Ledger, Preparation Lock, Filing Authorization, Execution Release, and Filing Execution Task Draft.
+The logical journey uses `milestone-001-desktop` and `milestone-001-mobile` namespaces. Server repositories begin clean on each harness start; there is no test bootstrap or production reset endpoint. `MilestoneLineageRecorder` records Customer, Opportunity, Plan, Quote, Customer Confirmation, Matter Draft, Professional Review Case and decision, Document Package, Instruction Ledger, Preparation Lock, Filing Authorization, Execution Release, and Filing Execution Task Draft identities and versions.
 
-No fixture bootstrap endpoint is exposed. Fixture semantics remain incapable of external filing. Current coverage proves the real MarkReg consultation, Plan, and Quote handoff; completing all later browser handoffs remains the explicit residual limitation before B-002 can be closed.
+No fixture bootstrap endpoint is exposed. Fixture semantics remain incapable of external filing. The desktop browser path completes the full chain through real Gateway-backed applications. The 390px path currently reaches Filing Authorization but still exposes a normal-click overlap defect in the acknowledgement list, so B-002 remains open until that path is green.
 
 ## Commands and CI
 

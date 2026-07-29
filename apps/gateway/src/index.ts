@@ -61,6 +61,23 @@ export function createRuntime(options: GatewayOptions = {}) {
       routes: [
         ...(
           [
+            ['markreg', markRegUrl],
+            ['execution', executionUrl]
+          ] as const
+        ).map(([name, url]): JsonRoute => ({
+          method: 'GET',
+          path: `/health/${name}`,
+          handle: async () => {
+            try {
+              const response = await fetch(`${url}/health`);
+              return json(response.status, await response.json());
+            } catch {
+              throw new HttpError(502, 'DOWNSTREAM_UNAVAILABLE', `${name} is unavailable.`, true);
+            }
+          }
+        })),
+        ...(
+          [
             ['POST', '/api/execution/filing-authorizations'],
             ['GET', '/api/execution/filing-authorizations/:filingAuthorizationId'],
             ['POST', '/api/execution/filing-authorizations/:filingAuthorizationId/confirm'],

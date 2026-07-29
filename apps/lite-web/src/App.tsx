@@ -44,6 +44,7 @@ export interface LiteAppProps {
   initialCustomerId?: string;
   initialOpportunityId?: string;
   initialReviewCaseId?: string;
+  initialFilingAuthorization?: { id: string; version: number };
 }
 const statusTone = (status: OpportunityStatus) =>
   status === 'QUALIFIED'
@@ -492,7 +493,8 @@ export function LiteApp({
   initialState = 'ready',
   initialCustomerId,
   initialOpportunityId,
-  initialReviewCaseId
+  initialReviewCaseId,
+  initialFilingAuthorization
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(initialSurface);
   const [state, setState] = useState<FixtureState>(initialState);
@@ -597,7 +599,9 @@ export function LiteApp({
             {...(initialReviewCaseId ? { initialSelected: initialReviewCaseId } : {})}
           />
         ) : surface === 'execution-release' ? (
-          <ExecutionReleaseView />
+          <ExecutionReleaseView
+            {...(initialFilingAuthorization ? { initialFilingAuthorization } : {})}
+          />
         ) : (
           <Opportunities
             key={initialOpportunityId}

@@ -58,6 +58,47 @@
   overflow-wrap: anywhere;
 }
 
+.customer-confirmation-card fieldset {
+  display: grid;
+  gap: var(--mo-space-md);
+  min-inline-size: 0;
+  margin-block-end: var(--mo-space-lg);
+  padding: var(--mo-space-lg);
+}
+.customer-confirmation-card .mo-check {
+  align-items: flex-start;
+  min-width: 0;
+}
+.customer-confirmation-card .mo-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.authorization-acknowledgement {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--mo-space-md);
+  min-width: 0;
+  padding-block: var(--mo-space-sm);
+}
+.authorization-acknowledgement span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+fieldset:has(.authorization-acknowledgement) {
+  display: grid;
+  gap: var(--mo-space-sm);
+  min-inline-size: 0;
+}
+@media (max-width: 640px) {
+  .customer-confirmation-card {
+    padding-bottom: calc(var(--mo-space-xxl) * 4);
+  }
+  .customer-confirmation-card > .mo-button {
+    margin-top: var(--mo-space-xl);
+  }
+}
+
 @media (max-width: 640px) {
   .confirmation-matter-flow {
     padding-bottom: calc(var(--mo-space-xxl) * 3);

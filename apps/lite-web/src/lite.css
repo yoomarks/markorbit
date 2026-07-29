@@ -127,6 +127,12 @@
     min-width: 0;
     max-width: 100%;
   }
+  .lite-workspace {
+    padding-bottom: calc(var(--mo-space-xxl) * 5);
+  }
+  .lite-workspace > section > .mo-button {
+    margin-block: var(--mo-space-xl);
+  }
   .mo-shell__body:has(.lite-workspace),
   .mo-shell main:has(.lite-workspace) {
     width: 100%;

@@ -149,7 +149,12 @@
     {
       "taskId": "MO-MVP-TASK-013",
       "document": "docs/tasks/MO-MVP-TASK-013-REAL-RUNTIME-GOLDEN-PATH.md",
-      "findingUnchanged": true
+      "findingUnchanged": true,
+      "taskHead": "pending final commit",
+      "b002Status": "OPEN",
+      "desktopRealRuntime": "PASS",
+      "mobileRealRuntime": "FAIL: normal-click overlap at Filing Authorization acknowledgements",
+      "node22Ci": "NOT RUN / OPEN"
     }
   ]
 }

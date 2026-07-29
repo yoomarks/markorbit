@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MarkOrbitId, ProfessionalReviewCase } from '@markorbit/contracts';
 import {
   Alert,
   Badge,
@@ -12,89 +13,73 @@ import {
   TextInput
 } from '@markorbit/ui';
 import type { FixtureState } from '../shared/view-models.js';
+import {
+  createProfessionalReviewClient,
+  type ProfessionalReviewClient
+} from '../../api/professional-review.js';
 
-const initialCases = [
-  {
-    id: 'professional-review_01001',
-    customer: 'Northstar Coffee Ltd',
-    trademark: 'NORTHSTAR FIELD NOTES',
-    jurisdiction: 'EU',
-    classes: '9, 16, 35',
-    version: '2026-07-28T15:40:00.000Z',
-    readyAt: '28 Jul 2026 · 15:40 UTC',
-    status: 'QUEUED',
-    priority: 'HIGH',
-    reviewer: 'Unassigned',
-    stale: false,
-    goods:
-      'Downloadable publications; printed field journals; online retail services relating to unusually detailed technical and educational material.'
-  },
-  {
-    id: 'professional-review_01002',
-    customer: 'Atlas Workshop Inc',
-    trademark: 'ATLAS WORKSHOP',
-    jurisdiction: 'US',
-    classes: '35, 41',
-    version: '2026-07-27T09:10:00.000Z',
-    readyAt: '27 Jul 2026 · 09:10 UTC',
-    status: 'STALE',
-    priority: 'NORMAL',
-    reviewer: 'reviewer_lee',
-    stale: true,
-    goods: 'Business consulting and professional workshops.'
-  }
-];
-type ReviewCase = (typeof initialCases)[number];
+const reviewerId = 'reviewer_milestone' as MarkOrbitId;
+const defaultProfessionalReviewClient = createProfessionalReviewClient();
 export function ProfessionalReview({
   state,
-  initialSelected
+  initialSelected,
+  client = defaultProfessionalReviewClient
 }: {
   state: FixtureState;
   initialSelected?: string;
+  client?: ProfessionalReviewClient;
 }) {
-  const cases = initialCases;
+  const [cases, setCases] = useState<ProfessionalReviewCase[]>([]);
   const [selected, setSelected] = useState<string | undefined>(initialSelected);
   const [status, setStatus] = useState('ALL');
-  const [jurisdiction, setJurisdiction] = useState('ALL');
-  const [priority, setPriority] = useState('ALL');
-  const [assignment, setAssignment] = useState('ALL');
-  const [currency, setCurrency] = useState('ALL');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const origin = useRef<string>();
-  useEffect(() => {
-    if (!selected && origin.current) {
-      document.querySelector<HTMLButtonElement>(`[data-review-id="${origin.current}"]`)?.focus();
-      origin.current = undefined;
+  const load = async () => {
+    try {
+      setCases((await client.list()).reviewCases);
+      setLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Review queue unavailable.');
+      setLoading(false);
     }
-  }, [selected]);
+  };
+  useEffect(() => {
+    void load();
+  }, []);
   const rows = useMemo(
-    () =>
-      state === 'empty'
-        ? []
-        : cases.filter(
-            (c) =>
-              (status === 'ALL' || c.status === status) &&
-              (jurisdiction === 'ALL' || c.jurisdiction === jurisdiction) &&
-              (priority === 'ALL' || c.priority === priority) &&
-              (assignment === 'ALL' ||
-                (assignment === 'UNASSIGNED'
-                  ? c.reviewer === 'Unassigned'
-                  : c.reviewer !== 'Unassigned')) &&
-              (currency === 'ALL' || (currency === 'STALE') === c.stale)
-          ),
-    [cases, status, jurisdiction, priority, assignment, currency, state]
+    () => cases.filter((value) => status === 'ALL' || value.status === status),
+    [cases, status]
   );
-  const current = cases.find((c) => c.id === selected);
-  if (state === 'loading') return <LoadingState label="Loading professional review queue" />;
-  if (state === 'error')
-    return (
-      <>
-        <PageHeader title="Professional Review" description="Work / Professional Review" />
-        <Alert tone="danger" title="Review queue unavailable">
-          The recoverable fixture error did not change any review case. Try again.
-        </Alert>
-      </>
+  const current = cases.find((value) => value.reviewCaseId === selected);
+  const save = (value: ProfessionalReviewCase) =>
+    setCases((items) =>
+      items.map((item) => (item.reviewCaseId === value.reviewCaseId ? value : item))
     );
-  if (current) return <ReviewDetail value={current} onBack={() => setSelected(undefined)} />;
+  if (loading || state === 'loading')
+    return <LoadingState label="Loading professional review queue" />;
+  if (error || state === 'error')
+    return (
+      <Alert tone="danger" title="Review queue unavailable">
+        {error}
+      </Alert>
+    );
+  if (current)
+    return (
+      <ReviewDetail
+        value={current}
+        client={client}
+        save={save}
+        onBack={() => {
+          setSelected(undefined);
+          requestAnimationFrame(() =>
+            document
+              .querySelector<HTMLButtonElement>(`[data-review-id="${origin.current}"]`)
+              ?.focus()
+          );
+        }}
+      />
+    );
   return (
     <section aria-labelledby="review-queue-heading">
       <PageHeader
@@ -104,81 +89,31 @@ export function ProfessionalReview({
       />
       <Alert tone="warning" title="Authority boundary">
         Matter Draft readiness ≠ professional approval. Queue assignment ≠ professional appointment.
-        No action here files, charges, appoints, creates a formal Matter, or contacts a customer.
       </Alert>
-      {state === 'stale' && (
-        <Alert tone="warning" title="Partial or stale queue data">
-          Some source Matter Draft versions changed. Stale cases cannot be completed.
-        </Alert>
-      )}
-      <div className="lite-filters" role="search" aria-label="Review queue filters">
-        <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="ALL">All statuses</option>
-          <option>QUEUED</option>
-          <option>IN_REVIEW</option>
-          <option>NEEDS_INFORMATION</option>
-          <option>STALE</option>
-        </Select>
-        <Select
-          label="Jurisdiction"
-          value={jurisdiction}
-          onChange={(e) => setJurisdiction(e.target.value)}
-        >
-          <option value="ALL">All jurisdictions</option>
-          <option>EU</option>
-          <option>US</option>
-        </Select>
-        <Select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="ALL">All priorities</option>
-          <option>HIGH</option>
-          <option>NORMAL</option>
-        </Select>
-        <Select
-          label="Assignment"
-          value={assignment}
-          onChange={(e) => setAssignment(e.target.value)}
-        >
-          <option value="ALL">Assigned and unassigned</option>
-          <option value="UNASSIGNED">Unassigned</option>
-          <option value="ASSIGNED">Assigned</option>
-        </Select>
-        <Select
-          label="Source currency"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-        >
-          <option value="ALL">Stale and current</option>
-          <option value="CURRENT">Current</option>
-          <option value="STALE">Stale</option>
-        </Select>
-      </div>
+      <Select label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
+        <option>ALL</option>
+        <option>QUEUED</option>
+        <option>IN_REVIEW</option>
+        <option>REVIEWED_READY_FOR_NEXT_STEP</option>
+      </Select>
       {rows.length ? (
-        <div className="lite-list" aria-live="polite">
-          {rows.map((c) => (
-            <Card key={c.id}>
-              <div className="lite-row">
-                <div>
-                  <h2>{c.trademark}</h2>
-                  <p>
-                    {c.customer} · {c.jurisdiction} · Classes {c.classes}
-                  </p>
-                </div>
-                <Badge>{c.stale ? 'STALE — completion blocked' : c.status}</Badge>
-              </div>
+        <div className="lite-list">
+          {rows.map((value) => (
+            <Card key={value.reviewCaseId}>
+              <h2>{value.source.preparation.trademark}</h2>
+              <Badge>{value.status}</Badge>
               <KeyValueList
                 items={[
-                  { key: 'Review case ID', value: c.id },
-                  { key: 'Source Matter Draft version', value: c.version },
-                  { key: 'Readiness timestamp', value: c.readyAt },
-                  { key: 'Priority / age', value: `${c.priority} · 1 day` },
-                  { key: 'Assigned reviewer', value: c.reviewer }
+                  { key: 'Review case ID', value: value.reviewCaseId },
+                  { key: 'Matter Draft ID', value: value.source.matterDraftId },
+                  { key: 'Source Matter Draft version', value: value.source.matterDraftVersion }
                 ]}
               />
               <Button
-                data-review-id={c.id}
+                data-review-id={value.reviewCaseId}
                 onClick={() => {
-                  origin.current = c.id;
-                  setSelected(c.id);
+                  origin.current = value.reviewCaseId;
+                  setSelected(value.reviewCaseId);
                 }}
               >
                 Open professional review
@@ -195,125 +130,120 @@ export function ProfessionalReview({
     </section>
   );
 }
-function ReviewDetail({ value, onBack }: { value: ReviewCase; onBack: () => void }) {
-  const [claimed, setClaimed] = useState(value.reviewer !== 'Unassigned');
-  const [checks, setChecks] = useState<Record<string, string>>({
-    SOURCE_MATTER_DRAFT_CURRENT: 'PASS',
-    CUSTOMER_CONFIRMATION_VALID: 'PASS',
-    APPLICANT_INFORMATION_REVIEWED: 'UNKNOWN',
-    AUTHORITY_BOUNDARIES_ACKNOWLEDGED: 'UNKNOWN'
-  });
-  const [request, setRequest] = useState(false);
-  const [completed, setCompleted] = useState(value.status === 'REVIEWED_READY_FOR_NEXT_STEP');
-  const blocking = Object.values(checks).some((x) => x === 'UNKNOWN' || x === 'FAIL');
+
+function ReviewDetail({
+  value,
+  client,
+  save,
+  onBack
+}: {
+  value: ProfessionalReviewCase;
+  client: ProfessionalReviewClient;
+  save: (value: ProfessionalReviewCase) => void;
+  onBack: () => void;
+}) {
+  const [rationale, setRationale] = useState('');
+  const blocking = value.checklist.some(
+    (item) => item.blocking && !['PASS', 'NOT_APPLICABLE'].includes(item.status)
+  );
+  const claimed = value.assignment.claimedBy === reviewerId;
+  const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
   return (
-    <section aria-labelledby="review-detail-heading">
+    <section>
       <Button variant="secondary" onClick={onBack}>
         ← Back to review queue
       </Button>
       <PageHeader
-        title={value.trademark}
-        description={`Professional Review Case ${value.id}`}
-        actions={<Badge>{completed ? 'REVIEWED_READY_FOR_NEXT_STEP' : value.status}</Badge>}
+        title={value.source.preparation.trademark ?? value.reviewCaseId}
+        description={`Professional Review Case ${value.reviewCaseId}`}
+        actions={<Badge>{value.status}</Badge>}
       />
-      <Alert tone="warning" title="Professional authority remains bounded">
-        Review started ≠ instruction accepted. Review completed ≠ filing approved. Reviewed ready
-        for next step ≠ executed action.
-      </Alert>
-      <div className="lite-detail-grid">
-        <Card>
-          <h2>Exact Matter Draft snapshot</h2>
-          <KeyValueList
-            items={[
-              { key: 'Customer', value: value.customer },
-              { key: 'Jurisdiction / classes', value: `${value.jurisdiction} / ${value.classes}` },
-              { key: 'Matter Draft version', value: value.version },
-              { key: 'Confirmation reference', value: 'confirmation_task009-001' },
-              { key: 'Readiness', value: value.readyAt }
-            ]}
-          />
-          <h3>Preparation data</h3>
-          <p className="lite-long">{value.goods}</p>
-        </Card>
-        <Card>
-          <h2>Readiness and evidence</h2>
-          <p>
-            All MarkReg readiness checks passed at snapshot time. Evidence: matter-draft snapshot
-            and customer confirmation.
-          </p>
-          <p>
-            <strong>Source immutability:</strong> this review references exactly one Matter Draft
-            version.
-          </p>
-        </Card>
-      </div>
+      <Card>
+        <h2>Exact Matter Draft snapshot</h2>
+        <KeyValueList
+          items={[
+            { key: 'Matter Draft ID', value: value.source.matterDraftId },
+            { key: 'Matter Draft version', value: value.source.matterDraftVersion },
+            { key: 'Customer Confirmation', value: value.source.confirmationId },
+            { key: 'Customer', value: value.source.customerId }
+          ]}
+        />
+      </Card>
       <Card>
         <h2>Professional-review checklist</h2>
-        {Object.entries(checks).map(([code, result]) => (
-          <div className="review-check" key={code}>
-            <label htmlFor={code}>{code} (blocking)</label>
-            <Select
-              label="Review result"
-              id={code}
-              value={result}
-              onChange={(e) => setChecks({ ...checks, [code]: e.target.value })}
-            >
-              <option>UNKNOWN</option>
-              <option>PASS</option>
-              <option>FAIL</option>
-              <option>NOT_APPLICABLE</option>
-            </Select>
-            <TextInput
-              label="Reviewer note"
-              defaultValue="Evidence reviewed against immutable source."
-            />
-          </div>
+        {value.checklist.map((item) => (
+          <p key={item.code}>
+            <strong>{item.code}</strong>: {item.status} — {item.explanation}
+          </p>
         ))}
-        <Button variant="secondary">Save checklist</Button>
         {blocking && (
           <p role="status">
             Blocking FAIL or UNKNOWN items prevent completion. UNKNOWN never counts as PASS.
           </p>
         )}
+        {value.decision && <p>Review decision version: {value.decision.decidedAt}</p>}
       </Card>
-      {request && (
-        <Alert title="Information request prepared — not sent">
-          Requested fields: applicant authority evidence · Reason: clarify preparation evidence ·
-          Created: 29 Jul 2026 · sent: false · customerMessageSent: false.
-        </Alert>
-      )}
-      <div className="review-actions" aria-label="Review actions">
+      {!claimed && (
         <Button
-          disabled={value.stale || claimed}
-          onClick={() => {
-            setClaimed(true);
-          }}
+          onClick={() =>
+            void client
+              .claim(value.reviewCaseId, reviewerId)
+              .then(({ reviewCase }) => save(reviewCase))
+          }
         >
           Claim review
         </Button>
-        <Button variant="secondary" disabled={!claimed} onClick={() => setRequest(true)}>
-          Request more information
-        </Button>
-        <Button variant="secondary" disabled={!claimed}>
-          Return to preparation
-        </Button>
+      )}
+      {claimed && blocking && (
         <Button
-          disabled={!claimed || blocking || completed}
-          onClick={() => {
-            setCompleted(true);
-          }}
+          onClick={() =>
+            void client
+              .checklist(
+                value.reviewCaseId,
+                reviewerId,
+                value.checklist.map((item) => ({
+                  code: item.code,
+                  status: 'PASS',
+                  explanation: 'Exact source evidence reviewed.'
+                }))
+              )
+              .then(({ reviewCase }) => save(reviewCase))
+          }
         >
-          Mark reviewed and ready for next step
+          Complete review checklist
         </Button>
-        <Button variant="secondary" disabled={completed}>
-          Withdraw review case
-        </Button>
-      </div>
-      {completed && (
-        <Alert title="Reviewed ready for next step — no action executed">
-          orderCreated: false · paymentCreated: false · formalMatterCreated: false ·
-          providerAppointed: false · filingCreated: false · customerMessageSent: false
-        </Alert>
+      )}
+      {claimed && !blocking && !complete && (
+        <>
+          <TextInput
+            label="Review decision rationale"
+            value={rationale}
+            onChange={(event) => setRationale(event.target.value)}
+          />
+          <Button
+            disabled={!rationale.trim()}
+            onClick={() =>
+              void client
+                .complete(value.reviewCaseId, reviewerId, rationale)
+                .then(({ reviewCase }) => save(reviewCase))
+            }
+          >
+            Mark reviewed and ready for next step
+          </Button>
+        </>
+      )}
+      {complete && (
+        <>
+          <Alert title="Reviewed ready for next step — no action executed">
+            orderCreated: false · paymentCreated: false · formalMatterCreated: false ·
+            providerAppointed: false · filingCreated: false · customerMessageSent: false
+          </Alert>
+          <a
+            href={`http://127.0.0.1:4372/?professionalReviewCaseId=${encodeURIComponent(value.reviewCaseId)}`}
+          >
+            Return to MarkReg Documents and Instructions
+          </a>
+        </>
       )}
     </section>
   );

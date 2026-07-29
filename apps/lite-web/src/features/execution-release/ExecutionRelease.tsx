@@ -44,15 +44,18 @@ const falseConsequences: AuthorizationAuthorityConsequences = {
   externalDocumentSent: false,
   trademarkOfficeContacted: false
 };
+const defaultExecutionClient = createLiteExecutionClient();
 export function ExecutionReleaseView({
-  client = createLiteExecutionClient(),
+  client = defaultExecutionClient,
   fixtureReleases,
-  state: initialState
+  state: initialState,
+  initialFilingAuthorization
 }: {
   client?: LiteExecutionClient;
   fixtureReleases?: ExecutionRelease[];
   state?: ReleaseViewState;
   long?: boolean;
+  initialFilingAuthorization?: { id: string; version: number };
 }) {
   const [view, setView] = useState<ReleaseViewState>(initialState ?? 'RELEASE_QUEUE_LOADING');
   const [releases, setReleases] = useState<ExecutionRelease[]>(fixtureReleases ?? []);
@@ -74,8 +77,22 @@ export function ExecutionReleaseView({
       return;
     }
     let active = true;
-    void client
-      .listReleases()
+    void (
+      initialFilingAuthorization
+        ? client
+            .createRelease({
+              filingAuthorizationId:
+                initialFilingAuthorization.id as `filing-authorization_${string}`,
+              filingAuthorizationVersion: initialFilingAuthorization.version,
+              requestedExecutionChannel: 'OFFICE_PORTAL',
+              idempotencyKey: `execution-release:${initialFilingAuthorization.id}:${initialFilingAuthorization.version}`
+            })
+            .then((created) => ({
+              executionReleases: [created.executionRelease],
+              consequences: created.consequences
+            }))
+        : client.listReleases()
+    )
       .then((r) => {
         if (active) {
           setReleases(r.executionReleases);
@@ -92,7 +109,7 @@ export function ExecutionReleaseView({
     return () => {
       active = false;
     };
-  }, [client, fixtureReleases]);
+  }, [client, fixtureReleases, initialFilingAuthorization]);
   const rows = useMemo(() => {
     const filtered = releases.filter(
       (r) =>

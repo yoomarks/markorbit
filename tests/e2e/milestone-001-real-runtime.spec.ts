@@ -1,18 +1,32 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { milestoneUrls } from '../../scripts/milestone-runtime.mjs';
 import { MilestoneLineageRecorder } from './lineage-recorder.js';
 
+const id = async (page: Page, expression: RegExp) => {
+  const match = (await page.locator('body').innerText()).match(expression);
+  expect(match?.[1]).toBeTruthy();
+  return match![1]!;
+};
+const capture = async (page: Page, name: string) =>
+  page.screenshot({
+    path: `playwright-screenshots/runtime/${test.info().project.name}-${name}.png`,
+    fullPage: true
+  });
+
 test.describe('Milestone 001 real runtime golden path', () => {
-  test('creates an exact Plan and Quote lineage through the real Gateway @real-runtime', async ({
+  test('completes exact governed lineage through both real Web applications @real-runtime', async ({
     page
   }) => {
     const lineage = new MilestoneLineageRecorder();
-    await page.goto(milestoneUrls.markregWeb);
+    const scenario = test.info().project.name.includes('mobile')
+      ? 'milestone-001-mobile'
+      : 'milestone-001-desktop';
+    await page.goto(`${milestoneUrls.markregWeb}/?scenario=${scenario}`);
     await page.getByRole('button', { name: 'Start consultation' }).click();
     await page.getByLabel('Applicant type').selectOption({ label: 'Company' });
     await page
       .getByLabel('Applicant name')
-      .fill('Milestone 001 Golden Path Applicant With A Deliberately Long Legal Name Limited');
+      .fill(`${scenario} Applicant With A Deliberately Long Legal Name Limited`);
     await page.getByLabel('Applicant country').selectOption('GB');
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByLabel('Trademark type').selectOption({ label: 'Word mark' });
@@ -33,29 +47,156 @@ test.describe('Milestone 001 real runtime golden path', () => {
     await expect(
       page.getByRole('heading', { name: 'Compare your protection options' })
     ).toBeVisible();
-
     const recommendation = await page.evaluate(() =>
       JSON.parse(sessionStorage.getItem('markreg-recommendation-v1') ?? 'null')
     );
-    lineage.record('plan', {
-      id: recommendation.recommendation.recommendationId,
-      version: recommendation.recommendation.version ?? 'fixture-v1'
-    });
-    await page.getByRole('button', { name: /Request quote/i }).click();
+    lineage.recordIdentity('customer', 'customer_markreg');
+    lineage.recordIdentity('opportunity', recommendation.intake.intakeId);
+    await page.getByRole('button', { name: /request quote/i }).click();
     await expect(page.getByRole('heading', { name: 'Review your fixture quote' })).toBeVisible();
     const quote = await page.evaluate(() =>
       JSON.parse(sessionStorage.getItem('markreg-quote-v1') ?? 'null')
     );
+    lineage.record('plan', { id: quote.planSelection.planSelectionId, version: 'plan-v1' });
     lineage.record('quote', { id: quote.quote.quoteId, version: quote.quote.pricingRuleVersion });
-    expect(lineage.require('quote').id).toMatch(/^quote_/);
-
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Review your fixture quote' })).toBeVisible();
+    await expect(page.getByText(lineage.require('quote').id)).toBeVisible();
+
+    const confirmationChecks = page
+      .getByRole('group', { name: 'Required acknowledgements' })
+      .getByRole('checkbox');
+    await expect(confirmationChecks).toHaveCount(4);
+    for (let index = 0; index < 4; index++) {
+      await expect(confirmationChecks.nth(index)).not.toBeChecked();
+      await confirmationChecks.nth(index).click();
+    }
+    await page.getByRole('button', { name: 'Confirm selected Quote' }).click();
+    await expect(page.getByRole('heading', { name: 'Confirmation receipt' })).toBeVisible();
+    const confirmationId = await id(page, /Confirmation ID\s+(confirmation_[\w-]+)/);
+    lineage.recordIdentity('customerConfirmation', confirmationId);
+    await page.getByRole('button', { name: 'Prepare Matter Draft' }).click();
+    await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();
+    const matterId = await id(page, /Matter Draft ID\s+(matter-draft_[\w-]+)/);
+    const fill = async (label: string, value: string) => page.getByLabel(label).fill(value);
+    await fill(
+      'Applicant / Owner',
+      `${scenario} Applicant With A Deliberately Long Legal Name Limited`
+    );
+    await fill('Applicant address', '1 Governed Lineage Way, London');
+    await fill('Trademark representation', 'MARKORBIT GOLDEN PATH');
+    await page.getByLabel('Target jurisdiction').selectOption('GB');
+    await fill('Classes', '9, 35');
+    await fill(
+      'Goods / services',
+      'Extremely long goods and services text that wraps without overflow on the 390px governed preparation workspace.'
+    );
+    await fill('Filing basis', 'INTENT_TO_USE');
+    await page.getByLabel('Representative requirement').selectOption('false');
+    await fill('Required documents', 'identity.pdf, mark-representation.pdf');
+    await page.getByLabel('Commercial scope remains unchanged').click();
+    await page.getByRole('button', { name: 'Prepare for professional review' }).click();
+    await expect(page.getByText('READY_FOR_PROFESSIONAL_REVIEW')).toBeVisible();
+    const matterVersion = await id(page, /Matter Draft version\s+(\S+)/);
+    lineage.record('matterDraft', { id: matterId, version: matterVersion });
+    await capture(page, 'matter-draft-readiness');
+    await page.getByRole('button', { name: 'Send to Professional Review' }).click();
+    await page.getByRole('link', { name: 'Open exact Professional Review in Lite' }).click();
+
+    await expect(page.getByRole('button', { name: 'Claim review' })).toBeVisible();
+    const reviewId = await id(page, /Professional Review Case (professional-review_[\w-]+)/);
+    await expect(page.getByText(lineage.require('matterDraft').id)).toBeVisible();
+    await expect(page.getByText(String(lineage.require('matterDraft').version))).toBeVisible();
+    await page.getByRole('button', { name: 'Claim review' }).click();
+    await page.getByRole('button', { name: 'Complete review checklist' }).click();
+    await fill(
+      'Review decision rationale',
+      'Exact immutable Matter Draft evidence supports the next governed preparation step.'
+    );
+    await page.getByRole('button', { name: 'Mark reviewed and ready for next step' }).click();
+    await expect(page.getByText('REVIEWED_READY_FOR_NEXT_STEP')).toBeVisible();
+    const reviewVersion = await id(page, /Review decision version: (\S+)/);
+    lineage.record('professionalReviewCase', { id: reviewId, version: reviewVersion });
+    lineage.record('reviewDecision', { id: reviewId, version: reviewVersion });
+    await capture(page, 'professional-review-completed');
+    await page.getByRole('link', { name: 'Return to MarkReg Documents and Instructions' }).click();
+    await page.getByRole('button', { name: 'Open Documents and Instructions' }).click();
+    await page.getByRole('button', { name: 'Create Document Package' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Record fixture document metadata' })
+    ).toBeVisible();
+    const packageId = await id(page, /(document-package_[\w-]+) · version (\d+)/);
+    const packageVersion = await id(page, /document-package_[\w-]+ · version (\d+)/);
+    lineage.record('documentPackage', { id: packageId, version: Number(packageVersion) });
+    await page.getByRole('button', { name: 'Record fixture document metadata' }).click();
+    await page.getByRole('button', { name: 'Evaluate documents' }).click();
+    await expect(page.getByText(/UNKNOWN — blocking/).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Complete required metadata and reevaluate' }).click();
+    await page.getByRole('button', { name: 'Review customer instructions' }).click();
+    await expect(
+      page.getByRole('group', { name: 'Confirm the exact preparation instructions' })
+    ).toBeVisible();
+    const ledgerId = await id(page, /(instruction-ledger_[\w-]+) · version (\d+)/);
+    const ledgerVersion = await id(page, /instruction-ledger_[\w-]+ · version (\d+)/);
+    lineage.record('instructionLedger', { id: ledgerId, version: Number(ledgerVersion) });
+    const instructionChecks = page
+      .getByRole('group', { name: 'Confirm the exact preparation instructions' })
+      .getByRole('checkbox');
+    for (let index = 0; index < 6; index++) await instructionChecks.nth(index).click();
+    await page.getByRole('button', { name: 'Confirm customer instructions' }).click();
+    await page.getByRole('button', { name: 'Lock package for preparation' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Locked for preparation — not submitted' })
+    ).toBeVisible();
+    const lockId = await id(page, /Preparation Lock ID\s+(preparation-lock_[\w-]+)/);
+    const lockVersion = `${lineage.require('documentPackage').version}:${lineage.require('instructionLedger').version}`;
+    lineage.record('preparationLock', { id: lockId, version: lockVersion });
+    await capture(page, 'preparation-lock-receipt');
+    await page.getByRole('button', { name: 'Open Filing Authorization' }).click();
+    const authorizationChecks = page.getByRole('checkbox');
+    await expect(authorizationChecks).toHaveCount(9);
+    for (let index = 0; index < 9; index++) {
+      await expect(authorizationChecks.nth(index)).not.toBeChecked();
+      await authorizationChecks.nth(index).locator('..').click();
+    }
+    await page.getByRole('button', { name: 'Confirm Filing Authorization' }).click();
+    await expect(
+      page.getByText('Authorized for internal execution review — not submitted')
+    ).toBeVisible();
+    const authorizationId = await id(
+      page,
+      /Filing Authorization ID\s+(filing-authorization_[\w-]+)/
+    );
+    lineage.record('filingAuthorization', { id: authorizationId, version: 2 });
+    await capture(page, 'filing-authorization-receipt');
+    await page
+      .getByRole('link', { name: 'Open exact authorization in Lite Execution Release' })
+      .click();
+    await page.getByRole('button', { name: 'Open release' }).click();
+    await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();
+    const releaseId = await id(page, /(execution-release_[\w-]+)/);
+    lineage.record('executionRelease', { id: releaseId, version: 1 });
+    await page.getByRole('button', { name: 'Evaluate release' }).click();
+    await page.getByRole('button', { name: 'Assign internal executor' }).click();
+    await fill(
+      'Internal release rationale',
+      'All exact governed evidence passed internal execution review.'
+    );
+    await page.getByRole('button', { name: 'Release for execution' }).click();
+    await expect(
+      page.getByText('Released for execution — no external filing performed')
+    ).toBeVisible();
+    const taskId = await id(page, /Task Draft ID\s+(filing-task-draft_[\w-]+)/);
+    lineage.recordIdentity('filingExecutionTaskDraft', taskId);
+    await expect(page.getByText('PREPARED')).toBeVisible();
+    await expect(page.getByText('false')).toHaveCount(13);
+    await capture(page, 'execution-release-receipt');
+    await capture(page, 'final-task-draft-lineage');
+    await page.getByRole('button', { name: /Back to release queue/ }).click();
+    await expect(page.getByRole('button', { name: 'Open release' })).toBeFocused();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
       )
     ).toBe(true);
-    await expect(page.locator('body')).toContainText('not');
   });
 });

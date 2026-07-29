@@ -290,8 +290,11 @@ describe('guided intake', () => {
     expect(
       await screen.findByRole('heading', { name: 'Documents and Instructions' })
     ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Create Document Package' }));
     expect(client.createDocumentPackage).toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Record fixture document metadata' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Record fixture document metadata' })
+    );
     await user.click(await screen.findByRole('button', { name: 'Evaluate documents' }));
     expect(await screen.findByText(/UNKNOWN — blocking/)).toBeVisible();
     await user.click(

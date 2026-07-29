@@ -33,13 +33,34 @@ test(
   { timeout: 60_000 },
   async () => {
     const runtime = await startMilestoneRuntime({ timeoutMs: 30_000 });
-    assert.equal(runtime.children.length, 5);
+    assert.equal(runtime.children.length, 6);
     for (const url of [milestoneUrls.markreg, milestoneUrls.execution, milestoneUrls.gateway]) {
       const response = await fetch(`${url}/health`);
       assert.equal(response.status, 200);
     }
+    for (const downstream of ['markreg', 'execution']) {
+      const response = await fetch(`${milestoneUrls.gateway}/health/${downstream}`);
+      assert.equal(response.status, 200);
+    }
     for (const url of [milestoneUrls.markregWeb, milestoneUrls.liteWeb])
       assert.equal((await fetch(url)).status, 200);
+    const markregClient = await (
+      await fetch(`${milestoneUrls.markregWeb}/src/api/client.ts`)
+    ).text();
+    const liteClient = await (await fetch(`${milestoneUrls.liteWeb}/src/api/execution.ts`)).text();
+    assert.match(markregClient, new RegExp(milestoneUrls.gateway.replaceAll('.', '\\.')));
+    assert.match(liteClient, new RegExp(milestoneUrls.gateway.replaceAll('.', '\\.')));
+    const allowed = await fetch(`${milestoneUrls.gateway}/api/execution/execution-releases`, {
+      method: 'OPTIONS',
+      headers: { origin: milestoneUrls.liteWeb }
+    });
+    assert.equal(allowed.status, 204);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), milestoneUrls.liteWeb);
+    const denied = await fetch(`${milestoneUrls.gateway}/api/execution/execution-releases`, {
+      method: 'OPTIONS',
+      headers: { origin: 'https://untrusted.example' }
+    });
+    assert.equal(denied.status, 403);
     await runtime.stop();
     for (const port of Object.values(milestonePorts)) await assertPortAvailable(port);
   }
