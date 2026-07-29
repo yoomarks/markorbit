@@ -279,7 +279,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const matterFlowRepository = options.matterFlowRepository ?? new InMemoryMatterFlowRepository();
   const matterFlow = new MatterFlowService(
     matterFlowRepository,
-    async (id) => repository.getQuote(id),
+    (id) => Promise.resolve(repository.getQuote(id)),
     now
   );
   const governed = async (work: () => Promise<unknown>) => {

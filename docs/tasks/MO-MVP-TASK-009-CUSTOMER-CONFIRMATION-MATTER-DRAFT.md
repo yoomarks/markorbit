@@ -41,9 +41,15 @@ Typed errors include `QUOTE_NOT_FOUND`, `QUOTE_VERSION_MISMATCH`, `QUOTE_NOT_CON
 
 The evidence model evaluates confirmation validity, applicant identity/address, mark representation, jurisdiction, class selection, goods/services, filing basis, representative requirement, documents and unchanged commercial scope. Each check records code, `PASS | FAIL | UNKNOWN | NOT_APPLICABLE`, explanation, optional evidence reference, and blocking classification. All blocking checks must be `PASS` or `NOT_APPLICABLE`.
 
-## Customer experience and states
+## Implemented customer experience and state ownership
 
-The intended MarkReg information architecture is Quote review, unselected acknowledgements, immutable receipt, structured Matter Draft sections, missing-information summary and readiness evidence. Desktop uses a review/workspace layout; mobile collapses it into one reading and keyboard order without horizontal overflow. Loading, empty, incomplete, stale, recoverable-error, withdrawn and ready-for-review states retain the same authority notice. Focus remains visible, field errors are associated with controls, and the strongest label is **Prepare for professional review**—never “Submit filing”. Fixture-backed Storybook and desktop/mobile Playwright coverage are the acceptance surfaces for the product workflow.
+`ConfirmationMatterFlow` extends the existing TASK 005 Quote view rather than creating another application. It renders Quote/Plan identity, four initially-unselected acknowledgements, the immutable receipt, a structured Matter Draft form, missing information, and every typed readiness check. Its explicit `MatterViewState` covers Quote review, confirmation/loading/evaluation operations, receipt, editing/needs-information, ready, recoverable-error and withdrawn states. Temporary inputs remain in the form; confirmed records and drafts are populated only from asynchronous `MarkregClient` calls.
+
+`createMarkregClient` calls the seven `/api/markreg` Gateway routes through the shared HTTP adapter's GET, POST and PATCH operations. It imports domain records from `@markorbit/contracts`; the web app does not import MarkReg service implementations or redefine record contracts.
+
+The readiness presentation shows code, status, blocking classification, explanation and evidence reference. An `UNKNOWN` check remains visibly blocking. The strongest action is **Prepare for professional review**, and the ready notice reiterates that readiness is not approval or filing.
+
+Storybook contains Quote-ready, incomplete/complete acknowledgement, submitting, receipt, withdrawn, draft-loading, incomplete, blocking FAIL, blocking UNKNOWN, ready, stale, recoverable-error, long-goods/services and 390px-mobile states in `ConfirmationMatterFlow.stories.tsx`.
 
 ## Authority restrictions
 
@@ -51,7 +57,9 @@ The returned boundary is always `orderCreated: false`, `paymentCreated: false`, 
 
 ## Acceptance path
 
-Review the fixture Quote, actively complete acknowledgements, confirm and verify its receipt; prepare a Matter Draft, observe blocking evidence, complete required fixture data, evaluate it to `READY_FOR_PROFESSIONAL_REVIEW`, and verify all four automatic-consequence flags remain false.
+The desktop/mobile Playwright journey uses the centralized MarkReg application registry and an asynchronous Gateway-route fixture. It reviews Quote/Plan identity, verifies unchecked acknowledgements and disabled confirmation, operates the controls with ordinary locators and keyboard focus, validates the immutable receipt and false consequences, creates an incomplete draft, completes long fixture data, evaluates it to `READY_FOR_PROFESSIONAL_REVIEW`, and verifies that readiness is not approval or filing. Runtime-only visual captures cover acknowledgements, receipt, incomplete draft, ready desktop/mobile and a 390px state.
+
+`customer-confirmation-matter-draft.test.ts` adds twelve real HTTP integration cases through the Gateway and MarkReg runtimes. They cover all seven routes, authoritative snapshots, Quote version/status/expiry, acknowledgements, idempotency conflict/replay, withdrawal/retrieval, draft creation/retrieval/update, FAIL/UNKNOWN evidence, readiness, commercial-scope invalidation, immutable ready drafts, typed errors and all false consequences.
 
 ## Non-goals and future handoff
 

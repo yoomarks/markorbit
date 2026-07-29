@@ -8,7 +8,7 @@ import {
   type QuoteConfirmationCommand,
   type IntakeCreateCommand
 } from '@markorbit/contracts';
-import { createServiceRuntime, HttpError, json } from '@markorbit/service-kit';
+import { createServiceRuntime, HttpError, json, type JsonRequest } from '@markorbit/service-kit';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -25,10 +25,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 export function createRuntime(options: GatewayOptions = {}) {
   const markRegUrl = options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
-  const forward = async (
-    request: { method: string; headers: Record<string, string>; body?: unknown },
-    path: string
-  ) => {
+  const forward = async (request: JsonRequest, path: string) => {
     try {
       const response = await fetch(`${markRegUrl}${path}`, {
         method: request.method,
@@ -38,7 +35,7 @@ export function createRuntime(options: GatewayOptions = {}) {
             ? { 'idempotency-key': request.headers['idempotency-key'] }
             : {})
         },
-        body: request.method === 'GET' ? undefined : JSON.stringify(request.body ?? {})
+        ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
       });
       return json(response.status, await response.json());
     } catch {
@@ -63,7 +60,7 @@ export function createRuntime(options: GatewayOptions = {}) {
           method: 'GET',
           path: '/api/markreg/customer-confirmations/:confirmationId',
           handle: (r) =>
-            forward(r, `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId)}`)
+            forward(r, `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}`)
         },
         {
           method: 'POST',
@@ -71,7 +68,7 @@ export function createRuntime(options: GatewayOptions = {}) {
           handle: (r) =>
             forward(
               r,
-              `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId)}/withdraw`
+              `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}/withdraw`
             )
         },
         {
@@ -83,13 +80,13 @@ export function createRuntime(options: GatewayOptions = {}) {
           method: 'GET',
           path: '/api/markreg/matter-drafts/:matterDraftId',
           handle: (r) =>
-            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId)}`)
+            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`)
         },
         {
           method: 'PATCH',
           path: '/api/markreg/matter-drafts/:matterDraftId',
           handle: (r) =>
-            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId)}`)
+            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`)
         },
         {
           method: 'POST',
@@ -97,7 +94,7 @@ export function createRuntime(options: GatewayOptions = {}) {
           handle: (r) =>
             forward(
               r,
-              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId)}/evaluate-readiness`
+              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/evaluate-readiness`
             )
         },
         {

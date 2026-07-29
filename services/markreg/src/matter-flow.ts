@@ -61,36 +61,39 @@ export class InMemoryMatterFlowRepository implements MatterFlowRepository {
   private readonly confirmations = new Map<CustomerConfirmationId, CustomerConfirmation>();
   private readonly keys = new Map<string, IdempotentConfirmation>();
   private readonly drafts = new Map<MatterDraftId, MatterDraft>();
-  async createConfirmation(key: string, fingerprint: string, value: CustomerConfirmation) {
+  createConfirmation(key: string, fingerprint: string, value: CustomerConfirmation) {
     this.confirmations.set(value.confirmationId, structuredClone(value));
     this.keys.set(key, { fingerprint, value: structuredClone(value) });
+    return Promise.resolve();
   }
-  async getConfirmation(id: CustomerConfirmationId) {
+  getConfirmation(id: CustomerConfirmationId) {
     const value = this.confirmations.get(id);
-    return value && structuredClone(value);
+    return Promise.resolve(value && structuredClone(value));
   }
-  async findConfirmationByIdempotencyKey(key: string) {
+  findConfirmationByIdempotencyKey(key: string) {
     const value = this.keys.get(key);
-    return value && structuredClone(value);
+    return Promise.resolve(value && structuredClone(value));
   }
-  async withdrawConfirmation(id: CustomerConfirmationId, at: string) {
+  withdrawConfirmation(id: CustomerConfirmationId, at: string) {
     const value = this.confirmations.get(id);
     if (!value)
       throw new MatterFlowError('CONFIRMATION_NOT_FOUND', 'Confirmation was not found.', 404);
-    if (value.status === 'WITHDRAWN') return structuredClone(value);
+    if (value.status === 'WITHDRAWN') return Promise.resolve(structuredClone(value));
     const withdrawn = { ...value, status: 'WITHDRAWN' as const, updatedAt: at };
     this.confirmations.set(id, withdrawn);
-    return structuredClone(withdrawn);
+    return Promise.resolve(structuredClone(withdrawn));
   }
-  async createMatterDraft(value: MatterDraft) {
+  createMatterDraft(value: MatterDraft) {
     this.drafts.set(value.matterDraftId, structuredClone(value));
+    return Promise.resolve();
   }
-  async getMatterDraft(id: MatterDraftId) {
+  getMatterDraft(id: MatterDraftId) {
     const value = this.drafts.get(id);
-    return value && structuredClone(value);
+    return Promise.resolve(value && structuredClone(value));
   }
-  async updateMatterDraft(value: MatterDraft) {
+  updateMatterDraft(value: MatterDraft) {
     this.drafts.set(value.matterDraftId, structuredClone(value));
+    return Promise.resolve();
   }
 }
 const requiredAcknowledgements = [

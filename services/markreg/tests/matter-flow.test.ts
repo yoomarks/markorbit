@@ -65,7 +65,7 @@ function setup() {
     repository,
     service: new MatterFlowService(
       repository,
-      async () => structuredClone(quote),
+      () => Promise.resolve(structuredClone(quote)),
       () => now
     )
   };
@@ -101,7 +101,7 @@ describe('customer confirmation and Matter Draft domain', () => {
     });
     const invalid = new MatterFlowService(
       new InMemoryMatterFlowRepository(),
-      async () => ({ ...quote, status: 'SUPERSEDED' }),
+      () => Promise.resolve({ ...quote, status: 'SUPERSEDED' }),
       () => now
     );
     await expect(invalid.confirm(command)).rejects.toBeInstanceOf(MatterFlowError);

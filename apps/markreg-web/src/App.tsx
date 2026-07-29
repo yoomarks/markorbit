@@ -23,6 +23,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { MarkregApiError } from './api/errors.js';
 import { createMarkregClient, type MarkregClient } from './api/markreg.js';
+import { ConfirmationMatterFlow } from './ConfirmationMatterFlow.js';
 
 export interface IntakeDraft {
   applicantType: string;
@@ -580,7 +581,7 @@ function Recommendation({
               <li key={l}>{l}</li>
             ))}
           </ul>
-          <Button onClick={() => void confirm()}>Confirm quote</Button>
+          <ConfirmationMatterFlow quote={quote} client={client} />
         </Card>
       </main>
     );
