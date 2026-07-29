@@ -17,8 +17,17 @@ import {
   type QuoteConfirmation,
   type QuoteCreateCommand
 } from '@markorbit/contracts';
+import { noAutomaticConsequences } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import {
+  InMemoryMatterFlowRepository,
+  MatterFlowError,
+  MatterFlowService,
+  type ConfirmQuoteCommand,
+  type MatterFlowRepository
+} from './matter-flow.js';
+export * from './matter-flow.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -191,6 +200,7 @@ export interface MarkRegOptions {
   now?: () => string;
   pricingRuleVersion?: string;
   beforeQuotePersist?: (command: QuoteCreateCommand) => void | Promise<void>;
+  matterFlowRepository?: MatterFlowRepository;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -266,10 +276,114 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
   const quoteInFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
+  const matterFlowRepository = options.matterFlowRepository ?? new InMemoryMatterFlowRepository();
+  const matterFlow = new MatterFlowService(
+    matterFlowRepository,
+    async (id) => repository.getQuote(id),
+    now
+  );
+  const governed = async (work: () => Promise<unknown>) => {
+    try {
+      return json(200, await work());
+    } catch (error) {
+      if (error instanceof MatterFlowError)
+        throw new HttpError(error.status, error.code, error.message);
+      throw error;
+    }
+  };
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'POST',
+          path: '/v1/customer-confirmations',
+          async handle(request) {
+            const body = request.body as ConfirmQuoteCommand;
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== body.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key must match the command.'
+              );
+            return governed(() => matterFlow.confirm(body));
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/customer-confirmations/:confirmationId',
+          async handle(request) {
+            const value = await matterFlowRepository.getConfirmation(
+              request.params.confirmationId as `confirmation_${string}`
+            );
+            if (!value)
+              throw new HttpError(404, 'CONFIRMATION_NOT_FOUND', 'Confirmation was not found.');
+            return json(200, {
+              confirmation: value,
+              nextAction: value.status === 'CONFIRMED' ? 'PREPARE_MATTER_DRAFT' : 'NONE',
+              consequences: noAutomaticConsequences
+            });
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/customer-confirmations/:confirmationId/withdraw',
+          async handle(request) {
+            return governed(async () => ({
+              confirmation: await matterFlowRepository.withdrawConfirmation(
+                request.params.confirmationId as `confirmation_${string}`,
+                now()
+              ),
+              nextAction: 'NONE',
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts',
+          async handle(request) {
+            return governed(() =>
+              matterFlow.createDraft(
+                (request.body as { confirmationId: `confirmation_${string}` }).confirmationId
+              )
+            );
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/matter-drafts/:matterDraftId',
+          async handle(request) {
+            const value = await matterFlowRepository.getMatterDraft(
+              request.params.matterDraftId as `matter-draft_${string}`
+            );
+            if (!value)
+              throw new HttpError(404, 'MATTER_DRAFT_NOT_FOUND', 'Matter Draft was not found.');
+            return json(200, { matterDraft: value, consequences: noAutomaticConsequences });
+          }
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/matter-drafts/:matterDraftId',
+          async handle(request) {
+            return governed(() =>
+              matterFlow.updateDraft(
+                request.params.matterDraftId as `matter-draft_${string}`,
+                request.body as never
+              )
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts/:matterDraftId/evaluate-readiness',
+          async handle(request) {
+            return governed(() =>
+              matterFlow.evaluateReadiness(request.params.matterDraftId as `matter-draft_${string}`)
+            );
+          }
+        },
         {
           method: 'POST',
           path: '/v1/quotes',

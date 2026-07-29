@@ -195,6 +195,110 @@ export interface PlanQuoteResponse {
   quote: Quote;
 }
 
+/** Version 1 contracts for the commercial-confirmation to preparation boundary. */
+export type CustomerConfirmationId = `confirmation_${string}`;
+export type MatterDraftId = `matter-draft_${string}`;
+export const customerConfirmationStatuses = ['DRAFT', 'CONFIRMED', 'WITHDRAWN'] as const;
+export type CustomerConfirmationStatus = (typeof customerConfirmationStatuses)[number];
+export const matterDraftStatuses = [
+  'DRAFT',
+  'NEEDS_INFORMATION',
+  'READY_FOR_PROFESSIONAL_REVIEW',
+  'WITHDRAWN'
+] as const;
+export type MatterDraftStatus = (typeof matterDraftStatuses)[number];
+export type ReadinessCheckStatus = 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+export type MatterReadinessCheckCode =
+  | 'CUSTOMER_CONFIRMATION_VALID'
+  | 'APPLICANT_IDENTITY_PRESENT'
+  | 'APPLICANT_ADDRESS_PRESENT'
+  | 'MARK_REPRESENTATION_PRESENT'
+  | 'JURISDICTION_SELECTED'
+  | 'CLASS_SELECTION_PRESENT'
+  | 'GOODS_SERVICES_PRESENT'
+  | 'FILING_BASIS_PRESENT_OR_NOT_REQUIRED'
+  | 'REPRESENTATIVE_REQUIREMENT_EVALUATED'
+  | 'REQUIRED_DOCUMENTS_PRESENT'
+  | 'COMMERCIAL_SCOPE_UNCHANGED';
+export interface ConfirmationAcknowledgement {
+  code:
+    'NO_FILING' | 'NO_PROFESSIONAL_APPOINTMENT' | 'REVIEW_MAY_BE_REQUIRED' | 'SCOPE_CHANGE_REQUOTE';
+  acknowledged: true;
+  acknowledgedAt: string;
+}
+export interface QuoteSnapshotReference {
+  quoteId: MarkOrbitId;
+  quoteVersion: string;
+  planId: MarkOrbitId;
+  planVersion: string;
+  currency: string;
+  totalMinor: number;
+  lineItems: ReadonlyArray<Readonly<QuoteLine>>;
+}
+export interface CustomerConfirmation {
+  schemaVersion: 1;
+  confirmationId: CustomerConfirmationId;
+  customerId: MarkOrbitId;
+  quoteSnapshot: Readonly<QuoteSnapshotReference>;
+  confirmedBy: MarkOrbitId;
+  confirmedAt: string;
+  termsVersion: string;
+  acknowledgements: ReadonlyArray<Readonly<ConfirmationAcknowledgement>>;
+  status: CustomerConfirmationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface MatterReadinessCheck {
+  code: MatterReadinessCheckCode;
+  status: ReadinessCheckStatus;
+  explanation: string;
+  evidenceReference?: string;
+  blocking: boolean;
+}
+export interface MatterReadiness {
+  evaluatedAt: string;
+  checks: ReadonlyArray<Readonly<MatterReadinessCheck>>;
+  readyForProfessionalReview: boolean;
+}
+export interface MatterDraftPreparation {
+  applicantName?: string;
+  applicantAddress?: string;
+  trademark?: string;
+  targetJurisdiction?: string;
+  classes: number[];
+  goodsServices?: string;
+  filingBasis?: string;
+  representativeRequired?: boolean;
+  documentReferences: string[];
+  commercialScopeUnchanged?: boolean;
+}
+export interface MatterDraft {
+  schemaVersion: 1;
+  matterDraftId: MatterDraftId;
+  confirmationId: CustomerConfirmationId;
+  customerId: MarkOrbitId;
+  preparation: Readonly<MatterDraftPreparation>;
+  instructionCompleteness: 'INCOMPLETE' | 'COMPLETE';
+  documentReadiness: 'MISSING' | 'READY';
+  readiness: MatterReadiness;
+  missingInformation: string[];
+  status: MatterDraftStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AuthorityBoundary {
+  orderCreated: false;
+  paymentCreated: false;
+  professionalAppointed: false;
+  filingCreated: false;
+}
+export const noAutomaticConsequences: AuthorityBoundary = Object.freeze({
+  orderCreated: false,
+  paymentCreated: false,
+  professionalAppointed: false,
+  filingCreated: false
+});
+
 export class ContractValidationError extends TypeError {
   constructor(message: string) {
     super(message);
