@@ -61,6 +61,27 @@ export function createRuntime(options: GatewayOptions = {}) {
       routes: [
         ...(
           [
+            ['GET', '/api/markreg/intakes/:intakeId', '/v1/intakes/:intakeId'],
+            [
+              'GET',
+              '/api/markreg/recommendations/:recommendationId',
+              '/v1/recommendations/:recommendationId'
+            ],
+            ['GET', '/api/markreg/quotes/:quoteId', '/v1/quotes/:quoteId']
+          ] as const
+        ).map(([method, path, downstreamPath]): JsonRoute => ({
+          method,
+          path,
+          handle: (request) => {
+            const parameter = Object.values(request.params)[0]!;
+            return forward(
+              request,
+              downstreamPath.replace(/:[^/]+/, encodeURIComponent(parameter))
+            );
+          }
+        })),
+        ...(
+          [
             ['markreg', markRegUrl],
             ['execution', executionUrl]
           ] as const

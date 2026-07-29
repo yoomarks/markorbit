@@ -9,11 +9,11 @@ import {
 
 describe('MarkReg governed route codec', () => {
   it.each(MARKREG_VIEWS)('round trips %s with exact identity and version', (view) => {
-    const encoded = serializeMarkregRoute({ view, recordId: 'record / 42', expectedVersion: 7 });
+    const encoded = serializeMarkregRoute({ view, recordId: 'record / 42', expectedVersion: 'v7' });
     const parsed = parseMarkregRoute(encoded);
     expect(parsed.kind).toBe('VALID');
     if (parsed.kind === 'VALID')
-      expect(expectedMarkregIdentity(parsed.route)).toEqual({ id: 'record / 42', version: 7 });
+      expect(expectedMarkregIdentity(parsed.route)).toEqual({ id: 'record / 42', version: 'v7' });
     expect(canonicalizeMarkregRoute(encoded)).toEqual(parsed);
   });
   it('distinguishes malformed and unsupported routes without selecting latest', () => {

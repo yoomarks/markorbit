@@ -174,12 +174,27 @@
       "deepLinkTargets": {
         "markreg": 8,
         "lite": 3,
-        "status": "CODEC_PASS_BROWSER_EVIDENCE_PENDING"
+        "status": "APPLICATION_AND_ORDINARY_E2E_PASS_REAL_RUNTIME_CHECKPOINTS_PENDING"
       },
       "negativePathCases": {
         "count": 17,
         "status": "DESCRIPTORS_PASS_EXECUTABLE_EQUIVALENCE_PENDING"
-      }
+      },
+      "gatewayRoutes": {
+        "runtimeTotal": 53,
+        "governedAndCompatibility": 51,
+        "health": 2,
+        "auditBaselineExcludingHealth": 48,
+        "task014ReadOnlyAdded": 3,
+        "prior47Cause": "four multiline tuples omitted plus one GET POST parser artifact"
+      },
+      "storybookBuild": {
+        "markreg": "PASS",
+        "lite": "PASS",
+        "builtIndexManifestIds": 86,
+        "status": "PASS"
+      },
+      "legacyExecutionBoundary": "EXECUTABLE_HTTP_REGRESSION_PASS"
     }
   ]
 }

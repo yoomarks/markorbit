@@ -70,6 +70,13 @@ export class InMemoryMarkRegRepository {
   all() {
     return [...this.entries.values()];
   }
+  getIntake(id: string) {
+    return this.all().find((entry) => entry.intake.intakeId === id)?.intake;
+  }
+  getRecommendation(id: string) {
+    return this.all().find((entry) => entry.result?.recommendation.recommendationId === id)?.result
+      ?.recommendation;
+  }
   getQuoteEntry(key: string) {
     return this.quoteEntries.get(key);
   }
@@ -344,6 +351,35 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'GET',
+          path: '/v1/intakes/:intakeId',
+          handle: (request) => {
+            const intake = repository.getIntake(request.params.intakeId!);
+            if (!intake)
+              throw new HttpError(404, 'INTAKE_NOT_FOUND', 'Consultation was not found.');
+            return json(200, { intake });
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/recommendations/:recommendationId',
+          handle: (request) => {
+            const recommendation = repository.getRecommendation(request.params.recommendationId!);
+            if (!recommendation)
+              throw new HttpError(404, 'RECOMMENDATION_NOT_FOUND', 'Recommendation was not found.');
+            return json(200, { recommendation });
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/quotes/:quoteId',
+          handle: (request) => {
+            const quote = repository.getQuote(request.params.quoteId!);
+            if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
+            return json(200, { quote });
+          }
+        },
         {
           method: 'POST',
           path: '/v1/document-packages',

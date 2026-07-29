@@ -31,3 +31,13 @@ The typed codecs and Storybook matrix do not by themselves prove authoritative d
 ## TASK 015 handoff
 
 TASK 015 remains solely responsible for reassessment and any freeze decision after all open acceptance evidence is green.
+
+## Continuation implementation evidence
+
+The typed codecs are now invoked by the actual MarkReg and Lite entry points. Direct-link screens load through the existing Gateway clients, compare exact identity/version, focus recovery headings, retain read-only terminal evidence, retry only the same identity/version, and never invoke a mutation. Consultation, Recommendation and Quote gained three minimal owning-service GET routes forwarded by the Gateway; their HTTP integration test proves exact lookup, 404 without latest fallback, and no repository mutation.
+
+Gateway inventory validation now extracts method/path pairs from Gateway source and compares the complete set and owner metadata. There are 53 runtime routes: the original audit's 48 governed/compatibility routes, three TASK 014 read-only routes, and two health probes. The earlier 47 was a faulty documentation extractor result: four multiline tuples were omitted and one `GET POST` parser artifact was included.
+
+Storybook validation now builds the shared configuration for MarkReg and Lite into ignored diagnostic directories and verifies all 86 applicable IDs against each generated `index.json`, including duplicate-ID detection. The legacy `/v1/executions` HTTP regression test proves the response remains only `CAPABILITY_INVOCATION` / `RECORDED` and contains none of the filing, submission, official-application, office-contact or task-draft consequences.
+
+The ordinary focused browser suite is explicitly fixture-intercepted UI recovery evidence, not real-runtime evidence. M-003 remains in progress until all TASK 013 real-runtime checkpoint navigation passes on desktop and mobile. M-004 remains in progress until the 17 descriptors have explicit owning-service and real-Gateway HTTP execution adapters; descriptor validation is not represented as behavioral execution.

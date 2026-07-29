@@ -9,11 +9,11 @@ import {
 describe('Lite governed Work route codec', () => {
   it.each(LITE_WORK_VIEWS)('round trips %s under Work', (view) => {
     const parsed = parseLiteRoute(
-      serializeLiteRoute({ section: 'work', view, recordId: 'governed-1', expectedVersion: 3 })
+      serializeLiteRoute({ section: 'work', view, recordId: 'governed-1', expectedVersion: 'v3' })
     );
     expect(parsed.kind).toBe('VALID');
     if (parsed.kind === 'VALID')
-      expect(expectedLiteIdentity(parsed.route)).toEqual({ id: 'governed-1', version: 3 });
+      expect(expectedLiteIdentity(parsed.route)).toEqual({ id: 'governed-1', version: 'v3' });
   });
   it('rejects missing identity and top-level shortcuts', () => {
     expect(parseLiteRoute('?section=work&view=execution-release')).toMatchObject({

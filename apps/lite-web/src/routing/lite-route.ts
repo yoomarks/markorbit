@@ -8,7 +8,7 @@ export type LiteRoute = {
   section: 'work';
   view: LiteWorkView;
   recordId: string;
-  expectedVersion: number;
+  expectedVersion: string;
 };
 export type LiteRouteResult =
   | { kind: 'VALID'; route: LiteRoute }
@@ -33,11 +33,11 @@ export function parseLiteRoute(input: string | URLSearchParams): LiteRouteResult
   const view = raw as LiteWorkView;
   const [idKey, versionKey] = keys[view];
   const recordId = p.get(idKey)?.trim();
-  const version = Number(p.get(versionKey));
-  if (!recordId || !Number.isSafeInteger(version) || version < 1)
+  const version = p.get(versionKey)?.trim();
+  if (!recordId || !version)
     return {
       kind: 'MALFORMED_ROUTE',
-      reason: `${idKey} and a positive ${versionKey} are required.`
+      reason: `${idKey} and ${versionKey} are required.`
     };
   return { kind: 'VALID', route: { section: 'work', view, recordId, expectedVersion: version } };
 }

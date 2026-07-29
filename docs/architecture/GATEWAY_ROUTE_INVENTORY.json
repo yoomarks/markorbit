@@ -310,6 +310,28 @@
       "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
     },
     {
+      "method": "PATCH",
+      "path": "/api/markreg/document-packages/:documentPackageId/documents/:documentItemId",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/document-packages/:documentPackageId/documents/:documentItemId/supersede",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
+    },
+    {
       "method": "POST",
       "path": "/api/markreg/document-packages/:documentPackageId/evaluate",
       "owner": "markreg",
@@ -377,6 +399,28 @@
     },
     {
       "method": "POST",
+      "path": "/api/markreg/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/confirm",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/supersede",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
+    },
+    {
+      "method": "POST",
       "path": "/api/markreg/instruction-ledgers/:instructionLedgerId/withdraw",
       "owner": "markreg",
       "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
@@ -385,6 +429,17 @@
       "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
       "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/intakes/:intakeId",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/governed-read-routes.test.ts"
     },
     {
       "method": "POST",
@@ -454,6 +509,28 @@
     },
     {
       "method": "GET",
+      "path": "/api/markreg/quotes/:quoteId",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/governed-read-routes.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/recommendations/:recommendationId",
+      "owner": "markreg",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/governed-read-routes.test.ts"
+    },
+    {
+      "method": "GET",
       "path": "/health/execution",
       "owner": "runtime",
       "namespaceClass": "HEALTH",
@@ -504,17 +581,6 @@
       "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
       "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
       "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
-      "authorityConsequenceResponse": "NONE_EXTERNAL",
-      "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
-    },
-    {
-      "method": "GET",
-      "path": "POST",
-      "owner": "markreg",
-      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
-      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
-      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
-      "idempotencyRequirement": "NOT_APPLICABLE_READ",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
       "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
     }

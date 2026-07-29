@@ -237,3 +237,12 @@ The original result remains **FAIL** and the freeze recommendation remains **DO_
 - **m-003 — RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST:** the namespace policy distinguishes the internal execution envelope from filing governance; the existing Execution boundary regression coverage retains false authority consequences.
 
 TASK 014 does not declare Milestone 1 frozen. TASK 015 retains freeze authority.
+
+### TASK 014 continuation correction
+
+- The route codecs are now used by both application entry points, and three missing read-only authoritative routes have owning-service and real Gateway HTTP coverage.
+- The corrected source-derived inventory is 53 total runtime routes: 51 governed/compatibility routes plus two health probes. The audit's 48 excluded health routes; TASK 014 added three read-only routes. The former 47-row artifact omitted four multiline tuples and contained one parser artifact.
+- M-002 remains **RESOLVED** after actual shared-config MarkReg/Lite Storybook builds and generated story-index validation found all 86 applicable IDs.
+- M-003 remains **REMEDIATION_IN_PROGRESS**: ordinary focused direct-load/refresh/recovery coverage exists, but real-runtime checkpoint navigation is not complete.
+- M-004 remains **REMEDIATION_IN_PROGRESS**: descriptors are complete but 17/17 explicit Service and real Gateway HTTP adapters are not complete.
+- m-003 remains **RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST** after the new Execution HTTP regression test verified the legacy envelope has no filing/task-draft consequences.

@@ -10,7 +10,7 @@ export const MARKREG_VIEWS = [
 ] as const;
 
 export type MarkregView = (typeof MARKREG_VIEWS)[number];
-export type MarkregRoute = { view: MarkregView; recordId: string; expectedVersion: number };
+export type MarkregRoute = { view: MarkregView; recordId: string; expectedVersion: string };
 export type MarkregRouteResult =
   | { kind: 'VALID'; route: MarkregRoute }
   | { kind: 'MALFORMED_ROUTE'; reason: string }
@@ -21,11 +21,11 @@ export type GovernedRouteViewState =
   | { kind: 'INCOMPLETE_OR_BLOCKED'; reason: string }
   | { kind: 'STALE' | 'WITHDRAWN' | 'EXPIRED'; readOnly: true }
   | { kind: 'NOT_FOUND'; expectedId: string }
-  | { kind: 'VERSION_MISMATCH'; expectedVersion: number; actualVersion: number }
+  | { kind: 'VERSION_MISMATCH'; expectedVersion: string; actualVersion: string }
   | { kind: 'MALFORMED_ROUTE'; reason: string }
   | {
       kind: 'DOWNSTREAM_UNAVAILABLE' | 'RECOVERABLE_ERROR';
-      retryIdentity: { id: string; version: number };
+      retryIdentity: { id: string; version: string };
     };
 
 const keys: Record<MarkregView, [string, string]> = {
@@ -51,11 +51,11 @@ export function parseMarkregRoute(input: string | URLSearchParams): MarkregRoute
   const view = rawView as MarkregView;
   const [idKey, versionKey] = keys[view];
   const recordId = params.get(idKey)?.trim();
-  const version = Number(params.get(versionKey));
-  if (!recordId || !Number.isSafeInteger(version) || version < 1)
+  const version = params.get(versionKey)?.trim();
+  if (!recordId || !version)
     return {
       kind: 'MALFORMED_ROUTE',
-      reason: `${idKey} and a positive ${versionKey} are required.`
+      reason: `${idKey} and ${versionKey} are required.`
     };
   return { kind: 'VALID', route: { view, recordId, expectedVersion: version } };
 }
