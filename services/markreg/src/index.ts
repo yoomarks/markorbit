@@ -116,6 +116,14 @@ export class InMemoryMarkRegRepository {
       )
         this.quotes.set(id, { ...quote, status: 'SUPERSEDED' });
   }
+  snapshotSemanticState() {
+    return structuredClone({
+      quotes: [...this.quotes.values()],
+      confirmations: [...this.confirmations.values()],
+      quoteIdempotencyCount: this.quoteEntries.size,
+      confirmationIdempotencyCount: this.confirmations.size
+    });
+  }
 }
 
 const money = (amountMinor: number, currency = 'USD') => ({ amountMinor, currency });
@@ -333,7 +341,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
       return json(200, await work());
     } catch (error) {
       if (error instanceof PreparationError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -342,7 +350,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
       return json(200, await work());
     } catch (error) {
       if (error instanceof MatterFlowError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -586,6 +594,16 @@ export function createRuntime(options: MarkRegOptions = {}) {
         },
         {
           method: 'POST',
+          path: '/v1/preparation-locks/:preparationLockId/validate-current',
+          handle: (r) =>
+            prepared(() =>
+              preparation.validateLockCurrent(
+                r.params.preparationLockId as `preparation-lock_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
           path: '/v1/customer-confirmations',
           async handle(request) {
             const body = request.body as ConfirmQuoteCommand;
@@ -635,7 +653,8 @@ export function createRuntime(options: MarkRegOptions = {}) {
           async handle(request) {
             return governed(() =>
               matterFlow.createDraft(
-                (request.body as { confirmationId: `confirmation_${string}` }).confirmationId
+                (request.body as { confirmationId: `confirmation_${string}` }).confirmationId,
+                (request.body as { confirmationVersion?: string }).confirmationVersion
               )
             );
           }
@@ -670,6 +689,15 @@ export function createRuntime(options: MarkRegOptions = {}) {
           async handle(request) {
             return governed(() =>
               matterFlow.evaluateReadiness(request.params.matterDraftId as `matter-draft_${string}`)
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts/:matterDraftId/progress',
+          async handle(request) {
+            return governed(() =>
+              matterFlow.progressDraft(request.params.matterDraftId as `matter-draft_${string}`)
             );
           }
         },

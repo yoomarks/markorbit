@@ -118,8 +118,42 @@ export const milestoneNegativePathAdapters = [
     'apps/gateway/tests/filing-authorization-execution-release.test.ts',
     'marks released record and its task draft stale'
   ]
-].map(([caseId, serviceFile, servicePattern, gatewayFile, gatewayPattern]) => ({
-  caseId,
-  service: { file: serviceFile, pattern: servicePattern },
-  gateway: { file: gatewayFile, pattern: gatewayPattern }
-}));
+].map(([caseId, serviceFile, servicePattern, gatewayFile, gatewayPattern]) => {
+  const markregComplete = [
+    'NP-001',
+    'NP-002',
+    'NP-003',
+    'NP-004',
+    'NP-005',
+    'NP-008',
+    'NP-009',
+    'NP-010',
+    'NP-011'
+  ].includes(caseId);
+  return {
+    caseId,
+    semanticClosure: markregComplete ? 'SEMANTICALLY_COMPLETE' : 'SEMANTIC_CLOSURE_PENDING',
+    service: markregComplete
+      ? {
+          file: 'services/markreg/tests/milestone-negative-path-matrix.test.ts',
+          pattern: `${caseId} Service boundary preserves typed immutable failure`,
+          sourcePattern: "'%s Service boundary preserves typed immutable failure'"
+        }
+      : { file: serviceFile, pattern: servicePattern },
+    gateway: markregComplete
+      ? {
+          file: 'apps/gateway/tests/markreg-negative-path-matrix.test.ts',
+          pattern: `${caseId} Gateway HTTP preserves semantic immutable failure`,
+          sourcePattern: "'%s Gateway HTTP preserves semantic immutable failure'"
+        }
+      : { file: gatewayFile, pattern: gatewayPattern },
+    assertions: markregComplete
+      ? {
+          typedError: true,
+          immutableState: true,
+          noPartialMutation: true,
+          authorityConsequences: '13/13_FALSE'
+        }
+      : undefined
+  };
+});

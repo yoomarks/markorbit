@@ -182,11 +182,14 @@
         "gatewayAdapters": 17,
         "missingAdapters": 0,
         "unexpectedAdapters": 0,
-        "status": "PASS"
+        "markregSemanticComplete": 9,
+        "executionSemanticComplete": 0,
+        "semanticPending": 8,
+        "status": "REMEDIATION_IN_PROGRESS_9_OF_17"
       },
       "gatewayRoutes": {
-        "runtimeTotal": 54,
-        "governedAndCompatibility": 51,
+        "runtimeTotal": 56,
+        "governedAndCompatibility": 53,
         "health": 2,
         "auditBaselineExcludingHealth": 48,
         "task014ReadOnlyAdded": 3,
@@ -218,7 +221,7 @@
       "finalEvidenceAudit": {
         "document": "docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md",
         "m003": "RESOLVED_AUTHORITATIVE_SNAPSHOTS_EQUAL_DESKTOP_MOBILE",
-        "m004": "REMEDIATION_IN_PROGRESS_REGISTRY_IS_METADATA_NOT_PER_CASE_EXECUTOR",
+        "m004": "REMEDIATION_IN_PROGRESS_MARKREG_9_OF_9_EXECUTION_0_OF_8",
         "remoteNode22": "UNVERIFIED_NO_REMOTE"
       }
     }

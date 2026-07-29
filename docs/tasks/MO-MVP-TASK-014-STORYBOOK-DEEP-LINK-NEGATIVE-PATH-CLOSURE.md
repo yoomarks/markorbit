@@ -51,3 +51,5 @@ The real-runtime path removed repeated workflow screenshots and is divided into 
 The negative-path runner and its remaining semantic gaps are unchanged by this repository-stability work. M-004 remains `REMEDIATION_IN_PROGRESS`.
 
 TASK 014-C1.1 splits the ordinary MarkReg deep-link recovery matrix into four independent table-driven tests rather than raising the 30-second timeout. The slowest focused desktop group completed in 17.076 seconds. The resulting 32-test ordinary project inventory passed once for acceptance and then passed five consecutive full-suite stability runs.
+
+TASK 014-C2-A adds deterministic, descriptor-driven semantic execution for the nine MarkReg-owned negative paths. Each case runs once through the public MarkReg domain service and once through real ephemeral MarkReg and Gateway HTTP listeners, with strict before/after repository equality, typed details, no partial mutation and 13 false authority consequences. MarkReg is 9/9 complete; Execution remains 0/8, leaving M-004 at 9/17 and `REMEDIATION_IN_PROGRESS`.

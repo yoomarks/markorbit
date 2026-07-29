@@ -28,7 +28,8 @@ export class PreparationError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly status = 409
+    readonly status = 409,
+    readonly details?: Readonly<Record<string, unknown>>
   ) {
     super(message);
   }
@@ -111,6 +112,14 @@ export class InMemoryPreparationRepository implements PreparationRepository {
   }
   snapshotIdempotencyCount() {
     return this.keys.size;
+  }
+  snapshotSemanticState() {
+    return structuredClone({
+      documentPackages: [...this.packages.values()],
+      instructionLedgers: [...this.ledgers.values()],
+      preparationLocks: [...this.locks.values()],
+      idempotencyCount: this.keys.size
+    });
   }
 }
 
@@ -647,12 +656,34 @@ export class PreparationService {
   async lock(packageId: DocumentPackageId, ledgerId: CustomerInstructionLedgerId) {
     const p = await this.requiredPackage(packageId),
       l = await this.ledger(ledgerId);
+    if (p.missingRequirements.length || p.status === 'NEEDS_DOCUMENTS')
+      throw new PreparationError(
+        'REQUIRED_DOCUMENT_MISSING',
+        'A required document is missing.',
+        422,
+        {
+          stage: 'Documents and Instructions',
+          missingFields: p.missingRequirements
+        }
+      );
+    if (p.documentItems.some((item) => item.status === 'SUPERSEDED'))
+      throw new PreparationError(
+        'SUPERSEDED_DOCUMENT',
+        'Superseded evidence cannot be active.',
+        409,
+        {
+          stage: 'Documents and Instructions',
+          state: 'SUPERSEDED'
+        }
+      );
     if (p.status !== 'READY_FOR_CUSTOMER_CONFIRMATION')
       throw new PreparationError('DOCUMENTS_NOT_READY', 'All blocking document checks must pass.');
     if (l.status !== 'CONFIRMED')
       throw new PreparationError(
-        'INSTRUCTIONS_NOT_CONFIRMED',
-        'Instruction Ledger must be confirmed.'
+        'INSTRUCTION_LEDGER_UNCONFIRMED',
+        'Instruction Ledger must be confirmed.',
+        422,
+        { stage: 'Documents and Instructions', state: l.status }
       );
     if (l.documentPackageId !== p.documentPackageId || l.documentPackageVersion > p.version)
       throw new PreparationError(
@@ -706,5 +737,27 @@ export class PreparationService {
         404
       );
     return v;
+  }
+  async validateLockCurrent(id: PreparationLockId) {
+    const lock = await this.getLock(id);
+    const currentPackage = await this.repo.findPackage(lock.documentPackageId);
+    const currentLedger = await this.repo.findLedger(lock.instructionLedgerId);
+    if (
+      !currentPackage ||
+      !currentLedger ||
+      currentPackage.version !== lock.documentPackageVersion ||
+      currentLedger.version !== lock.instructionLedgerVersion
+    )
+      throw new PreparationError(
+        'STALE_PREPARATION_SOURCE',
+        'Preparation Lock source is stale.',
+        409,
+        {
+          stage: 'Preparation Lock',
+          expectedVersion: `${lock.documentPackageVersion}:${lock.instructionLedgerVersion}`,
+          actualVersion: `${currentPackage?.version ?? 'missing'}:${currentLedger?.version ?? 'missing'}`
+        }
+      );
+    return lock;
   }
 }

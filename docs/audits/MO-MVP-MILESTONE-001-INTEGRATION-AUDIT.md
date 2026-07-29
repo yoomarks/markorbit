@@ -265,6 +265,14 @@ The detailed audit at `docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md` supe
 
 The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
 
+### TASK 014-C2-A MarkReg negative-path semantic closure
+
+- Nine MarkReg-owned descriptors (NP-001, NP-002, NP-003, NP-004, NP-005, NP-008, NP-009, NP-010 and NP-011) now execute independently at both the public Service boundary and a real Gateway → MarkReg HTTP stack on ephemeral ports.
+- Each case derives its expected code/status/stage from the machine-readable descriptor, uses a deterministic repository fixture and fixed clock, compares complete repository state before/after, verifies zero downstream partial records and events, preserves idempotency state, and checks all 13 authority consequences false.
+- The MarkReg matrix is **9/9 SEMANTICALLY_COMPLETE**. The eight Execution-owned cases remain **SEMANTIC_CLOSURE_PENDING**, so overall M-004 evidence is **9/17 COMPLETE** and M-004 remains **REMEDIATION_IN_PROGRESS**.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
 ### TASK 014-C1.1 ordinary recovery stability
 
 - The eight-target MarkReg recovery test was split into four isolated table-driven tests: Consultation/Recommendation/Quote, Customer Confirmation/Matter Draft, Documents and Instructions/Preparation Lock, and Filing Authorization. Each test owns its interception lifecycle and independently proves exact direct load, reload, missing-route recovery, unsupported-route recovery and GET-only behavior.

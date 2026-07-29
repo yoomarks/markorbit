@@ -320,7 +320,8 @@ export function createRuntime(options: GatewayOptions = {}) {
             ['POST', '/api/markreg/instruction-ledgers/:instructionLedgerId/confirm'],
             ['POST', '/api/markreg/instruction-ledgers/:instructionLedgerId/withdraw'],
             ['POST', '/api/markreg/preparation-locks'],
-            ['GET', '/api/markreg/preparation-locks/:preparationLockId']
+            ['GET', '/api/markreg/preparation-locks/:preparationLockId'],
+            ['POST', '/api/markreg/preparation-locks/:preparationLockId/validate-current']
           ] as const
         ).map(([method, path]): JsonRoute => ({
           method,
@@ -416,6 +417,12 @@ export function createRuntime(options: GatewayOptions = {}) {
               r,
               `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/evaluate-readiness`
             )
+        },
+        {
+          method: 'POST',
+          path: '/api/markreg/matter-drafts/:matterDraftId/progress',
+          handle: (r) =>
+            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/progress`)
         },
         {
           method: 'POST',

@@ -44,7 +44,8 @@ export class HttpError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
-    readonly retryable = false
+    readonly retryable = false,
+    readonly details?: Readonly<Record<string, unknown>>
   ) {
     super(message);
     this.name = 'HttpError';
@@ -197,7 +198,8 @@ export function createServiceRuntime(
               code: safe.code,
               message: safe.message,
               correlationId: correlation(request),
-              retryable: safe.retryable
+              retryable: safe.retryable,
+              ...(safe.details ? { details: safe.details } : {})
             })
           );
         });

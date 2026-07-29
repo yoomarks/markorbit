@@ -14,7 +14,7 @@ for (const adapter of adapters)
     const evidence = adapter[boundary];
     const source = fs.readFileSync(evidence.file, 'utf8');
     assert.ok(
-      source.includes(evidence.pattern),
+      source.includes(evidence.sourcePattern ?? evidence.pattern),
       `${adapter.caseId} ${boundary} evidence is missing: ${evidence.pattern}`
     );
   }
@@ -26,4 +26,13 @@ console.log('17 descriptors registered');
 console.log('17 Service evidence references registered');
 console.log('17 Gateway evidence references registered');
 console.log('0 missing registry IDs');
-console.log('WARNING: registry validation does not establish per-case executable equivalence');
+const complete = adapters.filter((adapter) => adapter.semanticClosure === 'SEMANTICALLY_COMPLETE');
+const pending = adapters.filter(
+  (adapter) => adapter.semanticClosure === 'SEMANTIC_CLOSURE_PENDING'
+);
+assert.equal(complete.length, 9);
+assert.equal(pending.length, 8);
+console.log('9 semantic closures complete');
+console.log('8 semantic closures pending');
+console.log('0 missing registrations');
+console.log('M-004 remains REMEDIATION_IN_PROGRESS');
