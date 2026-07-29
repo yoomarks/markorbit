@@ -58,21 +58,23 @@
 }
 .lite-workspace,
 .lite-workspace > *,
-.lite-filters,
-.lite-list,
-.lite-list > *,
-.lite-row,
-.lite-row > * {
+.lite-workspace .lite-filters,
+.lite-workspace .lite-list,
+.lite-workspace .lite-list > .mo-card,
+.lite-workspace .lite-row,
+.lite-workspace .lite-row > * {
   min-width: 0;
   max-width: 100%;
 }
 @media (max-width: 760px) {
   .lite-workspace .lite-filters,
-  .lite-workspace .mo-alert {
+  .lite-workspace .mo-alert--info {
     position: static;
     inset: auto;
     z-index: auto;
     transform: none;
+    overflow: visible;
+    height: auto;
   }
   .lite-subnav,
   .lite-filters,
