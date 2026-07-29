@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   capture,
   expectNoHorizontalOverflow,
@@ -6,40 +6,6 @@ import {
   urls,
   watchPage
 } from './helpers/page.js';
-
-async function clickCenteredPointer(page: Page, target: Locator) {
-  await target.evaluate((element) => {
-    element.scrollIntoView({
-      block: 'center',
-      inline: 'nearest'
-    });
-  });
-
-  await expect(target).toBeVisible();
-  await expect(target).toBeInViewport();
-
-  await expect
-    .poll(async () =>
-      target.evaluate((element) => {
-        const rect = element.getBoundingClientRect();
-        const hitTarget = document.elementFromPoint(
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2
-        );
-
-        return hitTarget === element || (hitTarget !== null && element.contains(hitTarget));
-      })
-    )
-    .toBe(true);
-
-  const box = await target.boundingBox();
-
-  if (box === null) {
-    throw new Error('Target has no clickable bounding box.');
-  }
-
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-}
 
 test('Lite Today provides its fixed semantic navigation and responsive workspace @visual', async ({
   page
@@ -74,8 +40,7 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   await page.getByLabel('Search customers').fill('Northwind');
   await page.getByLabel('Customer status').selectOption('Active');
   await page.getByLabel('Country / region').selectOption('US');
-  const customerDetailsButton = page.getByRole('button', { name: 'View customer details' });
-  await clickCenteredPointer(page, customerDetailsButton);
+  await page.getByRole('button', { name: 'View customer details' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Northwind Outdoor' })).toBeVisible();
   await expect(page.getByText('Customer Record ≠ Verified Legal Identity')).toBeVisible();
   await page.getByRole('button', { name: 'Back to customers' }).click();
@@ -84,10 +49,7 @@ test('Lite filters survive customer detail and suggested actions do not execute'
 
   await page.getByRole('button', { name: 'Opportunities', exact: true }).click();
   await page.getByLabel('Opportunity status').selectOption('REVIEWING');
-  const opportunityDetailsButton = page.getByRole('button', {
-    name: 'View opportunity details'
-  });
-  await clickCenteredPointer(page, opportunityDetailsButton);
+  await page.getByRole('button', { name: 'View opportunity details' }).click();
   await expect(page.getByText('Opportunity ≠ Confirmed Demand')).toBeVisible();
   await page.getByRole('button', { name: 'Mark suggestion as reviewed' }).click();
   const reviewAcknowledgement = page

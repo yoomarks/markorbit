@@ -114,4 +114,23 @@
   .lite-workspace .lite-list > .mo-card .mo-button {
     scroll-margin-block: var(--mo-space-lg);
   }
+  .lite-workspace .lite-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-items: start;
+    gap: var(--mo-space-lg);
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .lite-workspace .lite-detail-grid > * {
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    position: static;
+    inset: auto;
+    transform: none;
+    grid-area: auto;
+  }
 }
