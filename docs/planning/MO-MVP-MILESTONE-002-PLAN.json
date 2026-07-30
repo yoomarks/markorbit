@@ -2,8 +2,8 @@
   "milestone": "MO_MVP_MILESTONE_002",
   "frozenPredecessorTag": "v0.1.0-milestone.1",
   "primaryOutcome": "Authenticated Durable Matter Operations",
-  "status": "PROPOSED",
-  "recommendedDirection": "OPTION_A_DURABLE_AUTHENTICATED_MATTER_OPERATIONS",
+  "status": "APPROVED_FOR_IMPLEMENTATION",
+  "recommendedDirection": "DURABLE_AUTHENTICATED_MATTER_OPERATIONS",
   "baseline": {
     "mainSha": "c704f9378e999fdd3589e6f72e1d4925b36a5eb4",
     "mainTreeSha": "9090a7e0181a34bbdf8dc53109f89cb5cbd5232d",
@@ -26,7 +26,7 @@
   ],
   "inScope": [
     "authenticated users and server-verified principals",
-    "Workplace membership, bounded roles and permissions",
+    "Workspace membership, bounded roles and permissions",
     "persistent authoritative repositories and migrations",
     "explicit Formal Matter creation from exact-version governed source",
     "immutable source snapshot and durable lineage",
@@ -157,8 +157,8 @@
       "owner": "MarkReg",
       "currentRepository": null,
       "currentPersistence": "NOT_IMPLEMENTED",
-      "proposedVersionRule": "integer starting at 1",
-      "restart": "MUST_SURVIVE"
+      "restart": "MUST_SURVIVE",
+      "versionRule": "integer starting at 1"
     }
   ],
   "authorityTransitions": [
@@ -167,14 +167,13 @@
       "owner": "MarkReg",
       "authorizedRoles": ["WORKSPACE_ADMIN", "MATTER_MANAGER"],
       "source": "exact Matter Draft identity/version plus Confirmation and complete immutable lineage snapshot",
-      "requiredDraftStatus": "READY_FOR_PROFESSIONAL_REVIEW",
-      "professionalReviewRequirement": "OPEN_OWNER_DECISION",
-      "resultStatus": "OPEN_FOR_INTERNAL_OPERATIONS_RECOMMENDED",
+      "requiredDraftStatus": "READY",
+      "professionalReviewRequirement": "NOT_REQUIRED",
+      "resultStatus": "OPEN",
       "initialVersion": 1,
-      "idempotencyScope": "workplace + command + key",
+      "idempotencyScope": "workspace + command + key",
       "duplicateBehavior": "same hash returns same Matter; different hash conflicts",
       "staleBehavior": "STALE_SOURCE with no writes",
-      "proposedEvent": "markreg.formal-matter.created.v1 subject to outbox gate",
       "falseConsequences": [
         "Order",
         "Invoice",
@@ -188,14 +187,26 @@
         "customer message",
         "external document transmission",
         "trademark-office contact"
-      ]
+      ],
+      "unauthorizedRoles": ["REVIEWER", "READ_ONLY"],
+      "idStrategy": "APPLICATION_GENERATED_UUIDV7",
+      "databaseIdType": "uuid",
+      "atomicWrites": [
+        "Formal Matter",
+        "immutable governed-source snapshot",
+        "source hashes and versions",
+        "idempotency record",
+        "append-only audit record"
+      ],
+      "eventDelivery": "PROCESS_LOCAL_NON_DURABLE_NO_DELIVERY_GUARANTEE",
+      "event": "process-local only; non-durable and not delivery-guaranteed"
     }
   ],
   "identityModel": {
-    "tenantTerm": "WORKPLACE_RECOMMENDED_OWNER_APPROVAL_REQUIRED",
+    "tenantTerm": "WORKSPACE",
     "entities": [
       "User",
-      "Workplace",
+      "Workspace",
       "Membership",
       "Role",
       "Permission",
@@ -204,7 +215,7 @@
       "ServiceIdentity"
     ],
     "roles": ["WORKSPACE_ADMIN", "MATTER_MANAGER", "REVIEWER", "READ_ONLY"],
-    "authentication": "OPAQUE_SERVER_SIDE_SAME_ORIGIN_SESSION_RECOMMENDED",
+    "authentication": "SERVER_GENERATED_OPAQUE_SESSION_IN_POSTGRESQL_HTTPONLY_COOKIE",
     "serviceAuthentication": "separate bearer or workload identity",
     "authorizationLayers": [
       "Web route",
@@ -214,23 +225,28 @@
       "database constraint",
       "audit"
     ],
-    "isolation": "repository key + query scope + composite database constraint + application checks; RLS open"
+    "isolation": "workspace_id + workspace-scoped repository APIs + composite constraints + Service authorization + Gateway Principal + cross-workspace tests; RLS deferred",
+    "technicalBoundaryTerm": "tenant boundary",
+    "publicRegistration": false,
+    "enterpriseSso": false,
+    "jwtDistributedAuth": false
   },
   "persistenceModel": {
-    "technology": "POSTGRESQL_16_RECOMMENDED_OWNER_APPROVAL_REQUIRED",
+    "technology": "POSTGRESQL_16_APPROVED_NOT_IMPLEMENTED",
     "evidence": "Existing Docker Compose resource; no application driver or migration tool exists.",
-    "migrationTool": "OPEN_TASK_017_SELECTION",
+    "migrationTool": "TASK_017_BOUNDED_THIN_RUNNER_SELECTION",
     "adapterPattern": "service-owned repository port with memory and PostgreSQL adapters",
-    "transaction": "Matter + snapshot + idempotency result + audit + optional outbox",
+    "transaction": "Formal Matter + immutable governed-source snapshot + source hashes/versions + idempotency record + append-only audit; no outbox",
     "concurrency": "integer version compare-and-swap",
-    "idempotency": "unique workplace/command/key with request hash and stable result",
-    "outbox": "OPEN: transactional outbox if events publish, otherwise no publication promise",
+    "idempotency": "unique workspace/command/key with request hash and stable result",
+    "outbox": "NOT_IN_MILESTONE_2; process-local events are non-durable and not delivery-guaranteed",
     "audit": "append-only service-owned table",
     "clock": "injected UTC application clock",
-    "storage": "normalized tenant/identity/state/version/index keys plus schema-versioned immutable jsonb snapshot",
+    "storage": "normalized workspace/identity/state/version/index keys plus schema-versioned immutable JSONB snapshots",
     "local": "existing Compose PostgreSQL extended by migrations",
     "ci": "isolated real PostgreSQL required",
-    "rollback": "forward-only shared migrations; expand/migrate/contract for destructive changes"
+    "rollback": "forward-only shared migrations; expand/migrate/contract for destructive changes",
+    "migrationPolicy": "SQL-first, ordered/versioned, clean bootstrap and prior-schema upgrade tests; no ORM automatic schema synchronization; production forward-oriented"
   },
   "durabilityClassification": [
     {
@@ -256,7 +272,7 @@
     {
       "record": "Professional Review Case",
       "classification": "MIGRATION_DEFERRED",
-      "condition": "becomes durable if required by authority trigger"
+      "condition": "Not a live dependency for Formal Matter creation; later admission requires immutable snapshot, exact identity/version, content hash and admission time."
     },
     {
       "record": "Document Package",
@@ -300,7 +316,7 @@
     ],
     "gateway": "real HTTP and real PostgreSQL",
     "restart": "create, stop runtimes, restart, reload exact record",
-    "tenantIsolation": "Workplace A cannot read or mutate Workplace B",
+    "tenantIsolation": "Workspace A cannot read or mutate Workspace B",
     "migration": [
       "empty database",
       "each retained prior Milestone 2 schema",
@@ -316,21 +332,20 @@
     "tenantScope": "mandatory at service, repository and database layers",
     "roleEnforcement": "Gateway and owning service; never UI only",
     "audit": "allowed and denied actions, redacted",
-    "testUsers": "separate Workplaces and fixture/production modes",
+    "testUsers": "separate Workspaces and fixture/production modes",
     "claims": "no production security certification, enterprise SSO or DR claim"
   },
   "risks": [
-    "Business authority trigger and professional-review prerequisite remain open.",
     "No current driver, migration runner, authentication tooling or durable event publisher exists.",
     "A durable Matter cannot depend on disappearing fixture state; snapshot admission is mandatory.",
     "Cross-service identity and Matter transactions cannot share a database transaction.",
-    "At-least-once event publication needs an outbox or event publication must be deferred.",
-    "Tenant scoping omissions can expose customer relationship/private context."
+    "Tenant scoping omissions can expose customer relationship/private context.",
+    "Process-local domain events are non-durable and carry no delivery guarantee in Milestone 2.",
+    "RLS is deferred; every repository API, constraint, Service authorization check and cross-workspace test must enforce isolation."
   ],
   "dependencies": [
-    "owner decision gates",
     "PostgreSQL foundation",
-    "Core identity and Workplace membership",
+    "Core identity and Workspace membership",
     "Gateway principal propagation",
     "Formal Matter shared contracts",
     "MarkReg durable source and Matter repositories"
@@ -343,7 +358,7 @@
     },
     {
       "id": "TASK_018",
-      "title": "Identity, Workplace and Membership contracts",
+      "title": "Identity, Workspace and Membership contracts",
       "dependsOn": ["TASK_017"]
     },
     {
@@ -403,27 +418,85 @@
     }
   ],
   "acceptanceCriteria": [
-    "authenticated active Workplace member explicitly creates an eligible Formal Matter",
+    "authenticated active Workspace member explicitly creates an eligible Formal Matter",
     "exact source identity/version and complete immutable snapshot are stored",
     "Matter has durable opaque ID and version 1",
     "audit and idempotency result commit atomically",
     "identical replay returns the same Matter and conflicting replay fails",
     "stale source and expected-version races write no partial state",
     "restart preserves exact Matter and lineage",
-    "cross-Workplace access cannot read or mutate",
+    "cross-Workspace access cannot read or mutate",
     "Gateway and browser evidence use real runtimes and PostgreSQL",
     "no Payment, Filing Submission or other listed external-authority consequence is created"
   ],
   "openDecisions": [
-    "Approve primary Option A direction",
-    "Approve PostgreSQL 16 or alternative and migration tool",
-    "Approve authentication/session mechanism and ownership",
-    "Approve Workplace versus Tenant terminology",
-    "Approve Formal Matter authority trigger, initial status and professional-review prerequisite",
-    "Approve UUIDv7 versus ULID-style Matter ID",
-    "Approve durable upstream record classification",
-    "Approve transactional outbox versus no event publication",
-    "Approve PostgreSQL RLS use",
-    "Approve TASK 017-027 sequence"
-  ]
+    "Select the thin SQL migration runner during TASK 017 after a bounded repository-compatibility comparison.",
+    "Select the PostgreSQL client library and connection-pool settings during TASK 017.",
+    "Choose database-per-service versus schema-per-service for local and CI isolation without changing service ownership.",
+    "Define session expiry, rotation and administrator-provisioning operational details within the approved opaque-session boundary."
+  ],
+  "ownerDecisions": {
+    "direction": {
+      "decision": "DURABLE_AUTHENTICATED_MATTER_OPERATIONS",
+      "approved": true,
+      "implemented": false
+    },
+    "database": {
+      "decision": "PostgreSQL 16",
+      "approved": true,
+      "implemented": false
+    },
+    "terminology": {
+      "productTerm": "Workspace",
+      "technicalDescription": "tenant boundary",
+      "approved": true
+    },
+    "authentication": {
+      "decision": "server-generated opaque session IDs persisted in PostgreSQL and an HttpOnly Web cookie; Gateway resolves typed Principal",
+      "approved": true,
+      "implemented": false,
+      "publicRegistration": false,
+      "enterpriseSso": false,
+      "jwtDistributedArchitecture": false
+    },
+    "formalMatterTrigger": {
+      "command": "CreateFormalMatter",
+      "approved": true,
+      "implemented": false,
+      "professionalReviewMandatory": false,
+      "initialStatus": "OPEN",
+      "initialVersion": 1,
+      "idStrategy": "application-generated UUIDv7",
+      "databaseType": "uuid"
+    },
+    "durabilityClassification": {
+      "approved": true,
+      "implemented": false
+    },
+    "eventDelivery": {
+      "outboxPromise": false,
+      "reason": "No real asynchronous consumer is in Milestone 2; process-local events are non-durable and not delivery-guaranteed."
+    },
+    "rowLevelSecurity": {
+      "required": false,
+      "disposition": "DEFERRED_HARDENING_OPTION"
+    },
+    "taskSequence": {
+      "approved": true,
+      "tasks": [
+        "TASK_017",
+        "TASK_018",
+        "TASK_019",
+        "TASK_020",
+        "TASK_021",
+        "TASK_022",
+        "TASK_023",
+        "TASK_024",
+        "TASK_025",
+        "TASK_026",
+        "TASK_027"
+      ],
+      "task017StartsAfterTask016Merge": true
+    }
+  }
 }

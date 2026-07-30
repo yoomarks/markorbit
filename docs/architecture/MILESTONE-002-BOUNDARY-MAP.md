@@ -9,47 +9,47 @@ Browser ── secure session ──> Gateway ── verified Principal ──> 
                                │                                  ├─ immutable source snapshot
                                │                                  ├─ idempotency result
                                │                                  ├─ append-only audit
-                               │                                  └─ optional transactional outbox
+                               │                                  └─ no outbox in Milestone 2
                                │
-                               └─> Core Service ── User / Workplace / Membership
+                               └─> Core Service ── User / Workspace / Membership
 
 Execution Service ── API/event only ──> MarkReg (no shared database)
 ```
 
-PostgreSQL is a recommended technology, not an implemented component. Core and MarkReg must use separate owned schemas/databases and credentials. Web and Gateway have no database credentials. Cross-service joins happen through contracts/APIs or admitted immutable snapshots, never SQL.
+PostgreSQL 16 is approved, not implemented. Core and MarkReg must use separate owned schemas/databases and credentials. Web and Gateway have no database credentials. Cross-service joins happen through contracts/APIs or admitted immutable snapshots, never SQL.
 
 ## Ownership map
 
-| Boundary    | Owns in Milestone 2                                                                                            | Must not own                                               |
-| ----------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Web product | route/view state and explicit user action                                                                      | authentication truth, permission truth, domain persistence |
-| Gateway     | session validation, principal resolution, coarse route permission, aggregation and safe HTTP mapping           | Formal Matter, membership or audit data                    |
-| Core        | User, Workplace, Membership, role references, sessions/service identities (final split gated)                  | Matter workflow                                            |
-| MarkReg     | Customer Confirmation, Matter Draft, Formal Matter, admitted lineage snapshot, Matter idempotency/audit/outbox | credentials, Payment, external provider/office state       |
-| Execution   | existing review/authorization/release/task-draft boundaries                                                    | Formal Matter and MarkReg database                         |
+| Boundary    | Owns in Milestone 2                                                                                     | Must not own                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Web product | route/view state and explicit user action                                                               | authentication truth, permission truth, domain persistence |
+| Gateway     | session validation, principal resolution, coarse route permission, aggregation and safe HTTP mapping    | Formal Matter, membership or audit data                    |
+| Core        | User, Workspace, Membership, role references, sessions/service identities (final split gated)           | Matter workflow                                            |
+| MarkReg     | Customer Confirmation, Matter Draft, Formal Matter, admitted lineage snapshot, Matter idempotency/audit | credentials, Payment, external provider/office state       |
+| Execution   | existing review/authorization/release/task-draft boundaries                                             | Formal Matter and MarkReg database                         |
 
 ## Defense-in-depth request path
 
 1. Web route requires a session but never treats hidden controls as authorization.
 2. Gateway validates the opaque cookie, CSRF/origin for unsafe methods, active membership and route permission.
-3. Gateway supplies tamper-resistant internal principal context; the public request body cannot override actor or Workplace.
+3. Gateway supplies tamper-resistant internal principal context; the public request body cannot override actor or Workspace.
 4. MarkReg checks permission and source ownership on every command/query.
-5. Repository APIs require `workplaceId`; queries include it.
-6. Composite database keys/foreign keys enforce ownership. PostgreSQL RLS remains an owner decision.
-7. Audit records the actor, Workplace, decision and correlation without secrets.
+5. Repository APIs require `workspaceId`; queries include it.
+6. Workspace-scoped composite keys/foreign keys enforce ownership. PostgreSQL RLS is deferred hardening, not a Milestone 2 guarantee.
+7. Audit records the actor, Workspace, decision and correlation without secrets.
 
 ## Transaction and consistency boundary
 
-`CreateFormalMatter` locks/validates the durable source version and atomically writes the Matter, complete immutable source snapshot, idempotency response, successful audit, and an outbox row only if event publication is approved. Failure rolls back all five. Publication after commit is asynchronous and at-least-once; consumers dedupe event ID. If outbox is deferred, no creation event is promised.
+`CreateFormalMatter` locks/validates the durable source version and atomically writes the `OPEN` version 1 Matter with its application-generated UUIDv7, complete immutable source snapshot, source hashes/versions, idempotency response and successful audit. Failure rolls back all writes. Professional Review is not required. Any domain event is process-local, non-durable and not delivery-guaranteed; there is no Milestone 2 outbox or reliable cross-service delivery promise.
 
 An ephemeral upstream record is never referenced as the only evidence. Fixture admission must materialize a schema-versioned snapshot and checksum in the transaction. Formal Matter is not an alias for Matter Draft and does not mutate it.
 
-## Contract boundary (proposed)
+## Contract boundary (approved)
 
 - Command: `CreateFormalMatter { matterDraftId, matterDraftVersion, expectedSourceVersion, idempotencyKey, correlationId }`; principal is transport context, not caller-supplied payload.
-- Result: `FormalMatter` version 1 with Workplace ownership and immutable `FormalMatterSourceSnapshot`.
+- Result: `FormalMatter` status `OPEN`, version 1 and PostgreSQL `uuid` ID generated as UUIDv7, with Workspace ownership and immutable `FormalMatterSourceSnapshot`.
 - Errors: `UNAUTHENTICATED`, `FORBIDDEN`, `SOURCE_NOT_FOUND`, `STALE_SOURCE`, `SOURCE_INELIGIBLE`, `IDEMPOTENCY_CONFLICT`, `VERSION_CONFLICT`, `PERSISTENCE_UNAVAILABLE`.
-- Event, if approved: `markreg.formal-matter.created.v1` in the shared envelope.
+- Event: optional process-local notification only; it is non-durable and carries no delivery guarantee.
 - No contract may imply Order, Invoice, Payment, appointment, Filing, Submission, application/number, provider assignment, message, external document or office contact.
 
 ## Deployment and test boundary
@@ -58,4 +58,4 @@ Local Compose already declares PostgreSQL 16, but runtime wiring, driver, migrat
 
 ## Open architecture gates
 
-PostgreSQL approval; driver/migration runner; Core-versus-dedicated session ownership; opaque session store; Workplace terminology; professional-review prerequisite; UUIDv7 versus ULID; database-per-service versus schema-per-service locally; RLS; and outbox/no-publication. These are deliberately not ADRs until owners approve enough evidence.
+PostgreSQL 16, Workspace, PostgreSQL-backed opaque sessions, the non-review-dependent trigger, UUIDv7, no outbox, deferred RLS and TASK 017–027 are approved but not implemented. TASK 017 selects a thin SQL migration runner and PostgreSQL client after bounded compatibility comparison. Database-versus-schema local isolation and session expiry/rotation/provisioning details remain implementation selections. TASK 017 starts only after TASK 016 merges.

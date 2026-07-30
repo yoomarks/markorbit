@@ -1,6 +1,6 @@
 # MO MVP Milestone 2 Scope Lock
 
-**Status:** `PROPOSED`; owner decision gates remain open. **Predecessor:** `v0.1.0-milestone.1`.
+**Status:** `APPROVED_FOR_IMPLEMENTATION`; decisions are approved, not implemented. **Predecessor:** `v0.1.0-milestone.1`.
 
 ## Baseline and evidence
 
@@ -10,11 +10,11 @@ The recommendation follows the product lock, service ownership and implementatio
 
 ## Decision and product boundary
 
-**Recommended direction:** Option A, **Durable Authenticated Matter Operations**. No material repository objection was found. It closes the exact residual risk beneath every later commercial or external action while retaining MarkReg ownership and the Gateway boundary.
+**Approved direction:** `DURABLE_AUTHENTICATED_MATTER_OPERATIONS` (Option A). No material repository objection was found. It closes the exact residual risk beneath every later commercial or external action while retaining MarkReg ownership and the Gateway boundary. Options B and C are future milestones.
 
-**Primary outcome:** an authenticated member of an authorized **Workplace** can explicitly create a Formal Matter from an eligible, exact-version governed Matter Draft; the Matter, immutable source snapshot, idempotency result and audit evidence survive restart; another Workplace cannot access it; and no Payment, Filing Submission or external-authority consequence occurs.
+**Primary outcome:** an authenticated member of an authorized **Workspace** can explicitly create a Formal Matter from an eligible, exact-version governed Matter Draft; the Matter, immutable source snapshot, idempotency result and audit evidence survive restart; another Workspace cannot access it; and no Payment, Filing Submission or external-authority consequence occurs.
 
-“Workplace” is recommended because existing contracts and canonical ownership use it. “Workspace” may describe the UI context, but it must not become a second tenant aggregate. Owner approval is required before implementation.
+**Workspace** is the canonical product term. “Tenant boundary” is the internal technical description of the isolation boundary; it is not a second domain aggregate.
 
 ### Direction comparison
 
@@ -38,7 +38,7 @@ All implementations below use process-local `Map` repositories, random UUID-deri
 
 | Object                      | Owner / implementation                                  | Identity, version and lifecycle                                                                                                                                                     | Lineage / idempotency / authority                                                                                                                                                |
 | --------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Consultation (Intake)       | MarkReg / `InMemoryIntakeRepository` in service runtime | `intake_*`; no aggregate version; `RECEIVED`, `RECOMMENDATION_READY`, `FAILED`                                                                                                      | Actor-supplied Workplace; key+payload replay/conflict and in-flight coalescing; emits intake/recommendation events; no formal authority                                          |
+| Consultation (Intake)       | MarkReg / `InMemoryIntakeRepository` in service runtime | `intake_*`; no aggregate version; `RECEIVED`, `RECOMMENDATION_READY`, `FAILED`                                                                                                      | Actor-supplied Workspace; key+payload replay/conflict and in-flight coalescing; emits intake/recommendation events; no formal authority                                          |
 | Recommendation / Plan       | MarkReg fixture recommendation and plan/quote maps      | recommendation is `FIXTURE_ONLY`; Plan Selection has ID/timestamp, no version                                                                                                       | Intake/recommendation exact IDs; command keys protect creation; recommendation event only; preparatory                                                                           |
 | Quote                       | MarkReg in-memory quote repository                      | `quote_*`; version is represented externally by timestamp/string; `DRAFT`, `READY`, `CONFIRMED`, `EXPIRED`, `SUPERSEDED`                                                            | Intake, recommendation and plan IDs; confirmation replay guarded; confirmation expressly creates no order/payment/filing                                                         |
 | Customer Confirmation       | MarkReg / `InMemoryMatterFlowRepository`                | `confirmation_*`, schema v1, `updatedAt` used as version; `DRAFT`, `CONFIRMED`, `WITHDRAWN`                                                                                         | Immutable quote/plan snapshot; create is idempotent with conflict; no event; no order/payment/appointment/filing                                                                 |
@@ -64,59 +64,60 @@ All implementations below use process-local `Map` repositories, random UUID-deri
 
 ## Primary acceptance journey
 
-1. A user authenticates and selects a Workplace through a server-established principal.
-2. MarkReg loads an eligible governed Matter Draft by `(workplaceId, matterDraftId, sourceVersion)` and verifies its Confirmation and immutable lineage.
+1. A user authenticates and selects a Workspace through a server-established principal.
+2. MarkReg loads an eligible governed Matter Draft by `(workspaceId, matterDraftId, sourceVersion)` and verifies its Confirmation and immutable lineage.
 3. A `Workspace Admin` or `Matter Manager` submits `CreateFormalMatter` with the source tuple, expected source version, correlation ID and idempotency key.
-4. In one MarkReg-owned database transaction, the service creates Matter version 1 and its immutable source snapshot, records the idempotency result and append-only audit entry, and (subject to the outbox gate) records an event.
+4. In one native PostgreSQL transaction, MarkReg creates the `OPEN` Formal Matter at version 1, immutable governed-source snapshot, source hashes/versions, idempotency record and append-only audit record. No outbox is written.
 5. Duplicate identical input returns the same Matter; reuse with different input conflicts. A stale source fails without writes.
 6. Runtimes stop and restart. The authenticated member reloads the exact Matter through Gateway; its ID, version and snapshot are identical.
-7. a member of another Workplace receives a non-enumerating denial and cannot read or mutate it.
+7. a member of another Workspace receives a non-enumerating denial and cannot read or mutate it.
 8. Evidence proves all prohibited consequences remain false.
 
 **Desktop evidence:** an authenticated MarkReg operations route shows loading, eligible, creating, success/reload, stale, conflict, permission, partial-lineage, empty and service-error states; keyboard focus moves to the result/error summary. Desktop is the acceptance surface; mobile must remain usable but a new product IA is not designed in TASK 016. **API evidence:** real Gateway HTTP with secure authentication, typed client, status/error mapping, no interception and real PostgreSQL. **Service evidence:** repository/service tests show the transaction, snapshot, audit, key replay, version conflict and tenant scope. **Restart evidence:** create → stop MarkReg/Gateway → restart → exact GET. Storybook fixtures and Playwright implementation belong to TASK 024, not this documentation task.
 
 ## Formal Matter authority transition
 
-| Field                 | Proposed lock                                                                                                                                                                                                      |
+| Field                 | Approved lock                                                                                                                                                                                                      |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Command               | `CreateFormalMatter` (owner must approve trigger semantics)                                                                                                                                                        |
-| Actor / role          | Authenticated active Workplace member; `WORKSPACE_ADMIN` or `MATTER_MANAGER`; service identities cannot impersonate users                                                                                          |
+| Command               | `CreateFormalMatter` (approved public command)                                                                                                                                                                     |
+| Actor / role          | Authenticated active Workspace member; `WORKSPACE_ADMIN` or `MATTER_MANAGER`; service identities cannot impersonate users                                                                                          |
 | Source                | exact `matterDraftId`, `matterDraftVersion`, Confirmation ID/version and lineage checksum/snapshot                                                                                                                 |
-| Required state        | Draft `READY_FOR_PROFESSIONAL_REVIEW`; Confirmation `CONFIRMED`; same Workplace; current, complete lineage. Whether completed professional review is additionally required is **open**                             |
+| Required state        | Accepted Customer Confirmation; Matter Draft in `READY` state; exact source IDs/versions; same Workspace; current, complete lineage. Professional Review completion is **not required**                            |
 | Blocks                | missing/mismatched/stale/withdrawn source; incomplete readiness; inactive membership; missing permission/key; duplicate active Matter for source; changed commercial scope; unavailable database/audit transaction |
-| Result                | MarkReg-owned `FormalMatter { schemaVersion, matterId, workplaceId, customerId, sourceSnapshot, status, version, createdBy, createdAt, updatedAt }`                                                                |
-| ID/version            | application-generated UUIDv7/ULID-style opaque `matter_*` recommended, database unique; initial `version: 1`; exact algorithm open pending driver/tool choice                                                      |
-| Initial status        | `OPEN_FOR_INTERNAL_OPERATIONS` recommended; owner approval required                                                                                                                                                |
+| Result                | MarkReg-owned `FormalMatter { schemaVersion, matterId, workspaceId, customerId, sourceSnapshot, sourceHashes, status, version, createdBy, createdAt, updatedAt }`                                                  |
+| ID/version            | application-generated UUIDv7 stored as PostgreSQL `uuid`; initial `version: 1`                                                                                                                                     |
+| Initial status        | `OPEN`                                                                                                                                                                                                             |
 | Audit                 | actor/principal/role, action, aggregate, before/after version, source tuple, time, correlation, key, outcome/failure                                                                                               |
-| Isolation             | Workplace is part of every repository key/query and composite database constraints                                                                                                                                 |
-| Idempotency           | unique `(workplace_id, command_name, idempotency_key)` stores request hash and stable result; same hash replays, different hash `IDEMPOTENCY_CONFLICT`                                                             |
+| Isolation             | Workspace is part of every repository key/query and composite database constraints                                                                                                                                 |
+| Idempotency           | unique `(workspace_id, command_name, idempotency_key)` stores request hash and stable result; same hash replays, different hash `IDEMPOTENCY_CONFLICT`                                                             |
 | Staleness/concurrency | source version mismatch `STALE_SOURCE`; unique source tuple prevents duplicate; later writes use `WHERE version = expectedVersion`, otherwise `VERSION_CONFLICT`                                                   |
-| Event                 | proposed `markreg.formal-matter.created.v1`; publication/outbox is gated, never a substitute for the committed aggregate/audit                                                                                     |
+| Event                 | Any domain event remains process-local, non-durable and not delivery-guaranteed; Milestone 2 has no reliable cross-service event or outbox promise                                                                 |
 
-Creation does **not** create Order, Invoice, Payment, professional appointment, Filing, Filing Submission, official application/number, external provider assignment, customer message, external document transmission or trademark-office contact.
+Formal Matter is the durable internal case container. Professional Review is a later governed workflow and authority gate. Creation does **not** grant permission to file, appoint a professional, contact an office or execute externally, and does **not** create Order, Invoice, Payment, professional appointment, Filing, Filing Submission, official application/number, external provider assignment, customer message, external document dispatch or trademark-office contact.
 
 ## Identity and authorization recommendation
 
-- **User:** human identity and credential subject. **Workplace:** tenant/customer-relationship boundary. **Membership:** active User↔Workplace relation with one bounded role. **Role:** `WORKSPACE_ADMIN`, `MATTER_MANAGER`, `REVIEWER`, `READ_ONLY`. **Permission:** stable service-checked capabilities derived from role, initially `matter:create/read/update`, `review:read/act`, `membership:manage`, `audit:read`.
-- **Session/Principal:** server-verified user, session ID, active Workplace, membership/role, authentication time and correlation context. Never accept actor/Workplace identity solely from request JSON.
+- **User:** human identity and credential subject. **Workspace:** tenant/customer-relationship boundary. **Membership:** active User↔Workspace relation with one bounded role. **Role:** `WORKSPACE_ADMIN`, `MATTER_MANAGER`, `REVIEWER`, `READ_ONLY`. **Permission:** stable service-checked capabilities derived from role, initially `matter:create/read/update`, `review:read/act`, `membership:manage`, `audit:read`.
+- **Session/Principal:** server-verified user, session ID, active Workspace, membership/role, authentication time and correlation context. Never accept actor/Workspace identity solely from request JSON.
 - **Service identity:** separately authenticated machine subject with explicitly granted service-to-service audience; it does not gain a human role or cross-tenant wildcard by default.
-- **Mechanism recommendation:** same-origin, opaque server-side session in `HttpOnly`, `Secure`, `SameSite=Lax` cookie; password hashes use a modern memory-hard algorithm. CSRF token/origin validation protects unsafe cookie-authenticated methods. Bearer tokens are reserved for service identities. Exact library/session store is open.
-- **Enforcement:** Web route hides/guards UX; Gateway authenticates, resolves active membership and forwards signed/internal principal context; MarkReg reauthorizes every command/query; repository methods require Workplace and apply scoped predicates; database composite keys/foreign keys/RLS evaluation protect ownership; audit records both allowed and denied attempts without secrets. UI-only authorization is forbidden.
-- Isolation is defense in depth: typed repository key + mandatory query scope + composite constraints/foreign keys + service/application checks. PostgreSQL RLS is an explicit open decision, not claimed as implemented.
+- **Approved mechanism:** the server generates opaque session IDs persisted in PostgreSQL and sets an `HttpOnly`, `Secure`, `SameSite=Lax` cookie at the Web boundary. Gateway resolves the session into a typed Principal; the owning Service still authorizes every operation. Milestone 2 uses seeded or administrator-provisioned users, has no public registration, enterprise SSO or JWT-based distributed-auth architecture, and does not claim production-complete recovery/account lifecycle. CSRF token/origin validation protects unsafe cookie-authenticated methods.
+- **Enforcement:** Web route hides/guards UX; Gateway authenticates, resolves active membership and forwards typed internal Principal context; MarkReg reauthorizes every command/query; repository methods require Workspace and apply scoped predicates; workspace-scoped composite keys/foreign keys protect ownership; audit records allowed and denied attempts without secrets. UI-only authorization is forbidden.
+- Isolation uses `workspace_id` on every durable record, workspace-scoped repository APIs, composite unique/foreign-key constraints where applicable, Service authorization, Gateway Principal propagation and real cross-workspace integration tests. PostgreSQL RLS is not required for Milestone 2 and remains a later hardening option.
 
 ## Persistence architecture recommendation
 
-PostgreSQL 16 is the evidence-supported candidate because it is already in Compose and provides transactions, unique/composite constraints and row-version compare/update. Approval remains a gate because no driver or migration tool exists. Select a thin PostgreSQL driver and forward migration runner in TASK 017 after a short ADR; do not introduce an ORM by default.
+PostgreSQL 16 is approved. Use service-owned repositories, native PostgreSQL transactions, optimistic concurrency, workspace-scoped composite constraints, immutable JSONB source snapshots where required, append-only audit and durable idempotency. The choice is approved but not implemented in TASK 016.
 
-- MarkReg owns Formal Matter, immutable source snapshot, idempotency and audit tables/schema. Core owns identity/Workplace/Membership persistence. No cross-service database reads; Gateway/Web never query PostgreSQL.
-- Keep repository ports and run identical contract suites against memory and PostgreSQL adapters. A MarkReg application transaction covers Matter, snapshot, successful audit, idempotency result and outbox row if selected.
-- Use integer aggregate version, `UPDATE ... WHERE workplace_id=? AND matter_id=? AND version=?`, affected-row check, and unique `(workplace_id,matter_id)`, `(workplace_id,source_draft_id,source_version)` and idempotency constraints.
+- MarkReg owns Formal Matter, immutable source snapshot, idempotency and audit tables/schema. Core owns identity/Workspace/Membership persistence. No cross-service database reads; Gateway/Web never query PostgreSQL.
+- Keep repository ports and run identical contract suites against memory and PostgreSQL adapters. A native MarkReg PostgreSQL transaction covers Matter, snapshot, source hashes/versions, successful audit and idempotency result—no outbox row.
+- Use integer aggregate version, `UPDATE ... WHERE workspace_id=? AND matter_id=? AND version=?`, affected-row check, and unique `(workspace_id,matter_id)`, `(workspace_id,source_draft_id,source_version)` and idempotency constraints.
 - Normalize identity, ownership, lifecycle, versions, timestamps and indexed lineage keys. Store the complete immutable governed source snapshot in `jsonb` with schema version and checksum; never use mutable JSON as the only tenant/version key.
 - Store UTC instants from an injected application clock, with database defaults only as a safety net. Tests fix the clock.
 - Audit is append-only. A domain event communicates a committed business fact; audit is durable accountability evidence; application logs diagnose runtime behavior; traces correlate distributed work. Console output is not audit.
 - Local development extends existing Compose. CI starts isolated PostgreSQL, applies migrations from empty, and allocates database/schema per worker. Tests roll back transactions or drop isolated schemas; restart tests use a retained database volume.
 - Migrations are ordered, checksum-verified and forward-only in shared environments. A failed migration prevents startup. Rollback normally means application rollback/forward repair; destructive changes require expand/migrate/contract and backups. Seeds are separate and never run as migrations.
-- Outbox recommendation: include a transactional outbox foundation only if Milestone 2 publishes Matter events. Direct publish after commit cannot guarantee delivery. Owner may defer publication entirely; it must not permit dual-write.
+- Migrations are SQL-first, ordered and versioned, bootstrap an empty database, and have prior-schema upgrade tests. Production migrations are forward-oriented; ORM automatic schema synchronization is prohibited. TASK 017 may select the thin migration runner after a bounded repository-compatibility comparison; this is an implementation selection, not an owner gate.
+- Milestone 2 does not promise reliable cross-service event delivery and must not implement a transactional outbox without a later approved task introducing a real asynchronous consumer. Process-local events are non-durable and not delivery-guaranteed.
 
 ## Durability classification
 
@@ -125,7 +126,7 @@ PostgreSQL 16 is the evidence-supported candidate because it is already in Compo
 | Consultation, Recommendation/Plan, Quote | `MIGRATION_DEFERRED`     | Not needed to operate the new aggregate once the immutable admitted source snapshot is stored                |
 | Customer Confirmation                    | `DURABLE_IN_MILESTONE_2` | Authority input must survive and be tenant-scoped, or be fully embedded; persistence is recommended          |
 | Matter Draft                             | `DURABLE_IN_MILESTONE_2` | Explicit command source and eligibility/version check must survive restart                                   |
-| Professional Review Case                 | `MIGRATION_DEFERRED`     | Formal Matter trigger dependency is open; if owner requires review, it becomes durable before creation ships |
+| Professional Review Case                 | `MIGRATION_DEFERRED`     | Not required for Formal Matter creation; later admission is an immutable exact-version/content-hash snapshot |
 | Document Package                         | `READ_THROUGH_FIXTURE`   | May remain demonstration data; never a live dependency of Formal Matter without snapshot admission           |
 | Instruction Ledger                       | `READ_THROUGH_FIXTURE`   | Same snapshot rule                                                                                           |
 | Preparation Lock                         | `MIGRATION_DEFERRED`     | Later filing-governance prerequisite, not required for internal Formal Matter creation                       |
@@ -134,24 +135,24 @@ PostgreSQL 16 is the evidence-supported candidate because it is already in Compo
 | Filing Execution Task Draft              | `REMAINS_TEST_ONLY`      | No filing execution in M2                                                                                    |
 | Formal Matter                            | `DURABLE_IN_MILESTONE_2` | New authoritative aggregate; it does not supersede or mutate Matter Draft                                    |
 
-No durable record may point only to an ephemeral object. At admission the transaction stores the complete immutable source payload, IDs, versions, schema versions and checksum. A fixture may be read only to create that snapshot under an explicit fixture-conversion policy; afterward the durable Matter resolves from its snapshot, not from process memory. `SUPERSEDED_BY_FORMAL_RECORD` is intentionally unused: Matter Draft and Formal Matter have distinct authority.
+No durable record may point only to an ephemeral object. At admission the transaction stores the complete immutable source payload, IDs, versions, schema versions, content hashes and admission time. A fixture may be read only to create that snapshot under an explicit fixture-conversion policy; afterward the durable Matter resolves from its snapshot, not from process memory. Review evidence uses this rule and never a durable foreign key requiring the fixture-only review repository after restart. `SUPERSEDED_BY_FORMAL_RECORD` is intentionally unused: Matter Draft and Formal Matter have distinct authority.
 
 ## Audit, errors and reliability acceptance
 
-`AuditRecord` is append-only and includes event ID, Workplace ID, actor ID/role, action, aggregate type/ID, previous/result version, source identity/version, UTC timestamp, correlation ID, idempotency key, outcome and structured failure code. Sensitive credentials and document content are excluded. Successful mutation and audit are atomic; audit-write failure rolls back the Matter. Denied attempts are recorded in a separate safe audit transaction where feasible without exposing resource existence.
+`AuditRecord` is append-only and includes event ID, Workspace ID, actor ID/role, action, aggregate type/ID, previous/result version, source identity/version, UTC timestamp, correlation ID, idempotency key, outcome and structured failure code. Sensitive credentials and document content are excluded. Successful mutation and audit are atomic; audit-write failure rolls back the Matter. Denied attempts are recorded in a separate safe audit transaction where feasible without exposing resource existence.
 
-| Case                         | Required result and error layer                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------- |
-| Identical duplicate          | Same result/ID, no second Matter/event; application replay, HTTP 200                              |
-| Key with different input     | typed application `IDEMPOTENCY_CONFLICT`, HTTP 409                                                |
-| Expected-version race        | one commit; loser typed domain `VERSION_CONFLICT`, HTTP 409                                       |
-| Stale source                 | typed domain `STALE_SOURCE`, HTTP 409; zero writes                                                |
-| Unauthorized/cross-Workplace | application `FORBIDDEN`/non-enumerating `NOT_FOUND`, HTTP 403/404 policy gate; zero domain writes |
-| Database unavailable         | infrastructure failure mapped to retryable safe HTTP 503; no false success                        |
-| Transaction/audit failure    | rollback aggregate, key and outbox; application `TRANSACTION_FAILED`, safe HTTP 503/500           |
-| Restart during request       | retry with key returns committed result or executes once; never partial state                     |
-| Failed migration             | infrastructure startup failure; service not ready and no later migration runs                     |
-| Repeated event publication   | consumer dedupes `eventId`; outbox marks delivery without duplicating domain effect               |
+| Case                         | Required result and error layer                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| Identical duplicate          | Same result/ID, no second Matter/event; application replay, HTTP 200                               |
+| Key with different input     | typed application `IDEMPOTENCY_CONFLICT`, HTTP 409                                                 |
+| Expected-version race        | one commit; loser typed domain `VERSION_CONFLICT`, HTTP 409                                        |
+| Stale source                 | typed domain `STALE_SOURCE`, HTTP 409; zero writes                                                 |
+| Unauthorized/cross-Workspace | application `FORBIDDEN`/non-enumerating `NOT_FOUND`, HTTP 403/404 policy gate; zero domain writes  |
+| Database unavailable         | infrastructure failure mapped to retryable safe HTTP 503; no false success                         |
+| Transaction/audit failure    | rollback aggregate, snapshot, key and audit; application `TRANSACTION_FAILED`, safe HTTP 503/500   |
+| Restart during request       | retry with key returns committed result or executes once; never partial state                      |
+| Failed migration             | infrastructure startup failure; service not ready and no later migration runs                      |
+| Repeated process-local event | no durable delivery promise or authoritative mutation; a later real consumer requires new approval |
 
 ## Test and security boundary
 
@@ -178,6 +179,6 @@ Each owning service owns its schema history. Clean bootstrap applies all migrati
 | Multi-region / production DR                            | Deployment topology, RPO/RTO, backup/restore rehearsal                                          |
 | Marketplace                                             | Provider/commercial governance and billing plans                                                |
 
-## Owner decision gates
+## Approved owner decisions and remaining implementation selections
 
-Before TASK 017: approve direction, PostgreSQL, Workplace terminology, task sequence and migration ownership. Before auth work: approve session mechanism/library and credential policy. Before Formal Matter contract: approve authority trigger, initial status, required professional-review state, ID algorithm and durable upstream set. Before event work: approve transactional outbox versus no publication. Recommendations are not implementation and every unresolved item remains open in the machine-readable plan.
+Direction, PostgreSQL 16, Workspace terminology, opaque PostgreSQL-backed sessions, `CreateFormalMatter`, no mandatory Professional Review, `OPEN`/version 1/UUIDv7, durability classifications, no outbox promise, deferred RLS and TASK 017–027 are approved. They are not implemented. Remaining bounded selections are the thin SQL migration runner, PostgreSQL client/pool settings, local/CI database-versus-schema isolation, and session expiry/rotation/administrator-provisioning details. TASK 017 may begin only after TASK 016 merges.

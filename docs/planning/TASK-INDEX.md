@@ -6,7 +6,7 @@
 - MO-MVP-TASK-002 — First Vertical Slice Contracts and Service Runtime
 - MO-MVP-TASK-003 — UI Foundation and Product UI Briefs (implemented)
 - MO-MVP-TASK-004 — markreg.com Guided Intake and Recommendation UI (implemented)
-- MO-MVP-TASK-005 — Authentication, Workplace and Channel Context
+- MO-MVP-TASK-005 — Authentication, Workspace and Channel Context
 
 ## Capability and Execution
 
@@ -61,9 +61,9 @@
 
 ## Milestone 2 planning
 
-- TASK 016 — Milestone 2 scope and architecture lock (**proposed in Draft PR**)
-  - Recommended direction: Durable Authenticated Matter Operations
-  - Status: `PROPOSED`; owner decision gates remain open
+- TASK 016 — Milestone 2 scope and architecture lock (**approved; Draft PR not merged**)
+  - Approved direction: Durable Authenticated Matter Operations
+  - Status: `APPROVED_FOR_IMPLEMENTATION`; decisions are not yet implemented
   - Scope: `docs/planning/MO-MVP-MILESTONE-002-SCOPE-LOCK.md`
   - Delivery graph: TASK 017–027 in `docs/planning/MO-MVP-MILESTONE-002-DELIVERY-PLAN.md`
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-002-PLAN.json`
