@@ -61,9 +61,13 @@
 
 ## Milestone 2 planning
 
-- TASK 016 — Milestone 2 scope and architecture lock (**approved; Draft PR not merged**)
+- TASK 016 — Milestone 2 scope and architecture lock (**approved and merged in PR #24**)
   - Approved direction: Durable Authenticated Matter Operations
   - Status: `APPROVED_FOR_IMPLEMENTATION`; decisions are not yet implemented
   - Scope: `docs/planning/MO-MVP-MILESTONE-002-SCOPE-LOCK.md`
   - Delivery graph: TASK 017–027 in `docs/planning/MO-MVP-MILESTONE-002-DELIVERY-PLAN.md`
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-002-PLAN.json`
+- TASK 017 — Persistence foundation and repository contracts (**completed; Draft PR pending**)
+  - PostgreSQL 16, node-postgres, repository-local SQL-first migrations
+  - Database-per-owning-service local/CI isolation
+  - Infrastructure only; TASK 018 has not started

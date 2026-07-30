@@ -17,6 +17,23 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-test:
+    profiles: ['persistence-test']
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: markorbit_test
+      POSTGRES_PASSWORD: markorbit-test-only
+      POSTGRES_DB: markorbit_test
+    ports:
+      - '${POSTGRES_TEST_PORT:-5433}:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U markorbit_test -d markorbit_test']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
   redis:
     image: redis:7-alpine
     ports:
