@@ -9,14 +9,14 @@
     {
       "id": "B-001",
       "severity": "Blocker",
-      "status": "OPEN",
-      "summary": "Required Node 22 validation and remote CI are unavailable; local Node is v20.20.2 and the checkout has no origin remote."
+      "status": "RESOLVED_REMOTE_VERIFIED",
+      "summary": "Final TASK 014 tree passed required Node 22.x remote validation on PR #22."
     },
     {
       "id": "B-002",
       "severity": "Blocker",
-      "status": "OPEN",
-      "summary": "No complete deterministic Milestone 1 browser path runs against real Gateway, MarkReg and Execution runtimes."
+      "status": "RESOLVED",
+      "summary": "Desktop and mobile complete deterministic browser paths pass against the six-process real runtime."
     },
     {
       "id": "M-002",
@@ -80,22 +80,22 @@
     }
   ],
   "testTotals": {
-    "source": "successful focused Vitest runs under local Node v20.20.2; browser totals from static project inventory",
-    "executionService": 30,
-    "gateway": 53,
-    "markregWeb": 23,
-    "liteWeb": 9,
-    "e2eProjectTests": 22,
+    "source": "final remote Node 22 validation on PR #22",
+    "executionService": 39,
+    "gateway": 75,
+    "markregWeb": 34,
+    "liteWeb": 13,
+    "e2eProjectTests": 32,
     "visualProjectTests": 16,
-    "goldenPathDesktop": "FAIL_NOT_REAL_RUNTIMES",
-    "goldenPathMobile": "FAIL_NOT_REAL_RUNTIMES",
-    "remoteNode22Ci": "UNKNOWN_NO_REMOTE",
+    "goldenPathDesktop": "PASS_REAL_RUNTIME",
+    "goldenPathMobile": "PASS_REAL_RUNTIME",
+    "remoteNode22Ci": "PASS_FINAL_TREE",
     "coreService": 2,
-    "markregService": 16,
+    "markregService": 25,
     "operationsConsole": 0,
-    "workspaceTest": "FAIL_3_MARKREG_TIMEOUTS_UNDER_UNSUPPORTED_NODE20_PARALLEL_RUN",
-    "e2eExecution": "NOT_RUN_MISSING_PLAYWRIGHT_CHROMIUM_BINARY",
-    "visualExecution": "NOT_RUN_E2E_PREREQUISITE_FAILED"
+    "workspaceTest": "PASS",
+    "e2eExecution": "PASS_32_OF_32",
+    "visualExecution": "PASS_16_OF_16"
   },
   "routeCoverage": {
     "gatewayRouteCount": 48,
@@ -225,5 +225,18 @@
         "remoteNode22": "UNVERIFIED_NO_REMOTE"
       }
     }
-  ]
+  ],
+  "originalAuditResult": "FAIL",
+  "finalRemediationResult": "PASS",
+  "milestoneFreezeEligibility": "ELIGIBLE_FOR_FINAL_FREEZE_AUDIT",
+  "remoteValidation": {
+    "status": "PASS",
+    "pr": "https://github.com/yoomarks/markorbit/pull/22",
+    "commit": "c02803d36d3e67aebd2455adf7f1698028a3524e",
+    "tree": "d0d7f924ef18c52393534d9208d12096abc464dc",
+    "node": "22.x",
+    "pnpm": "10.28.1",
+    "validationRun": "https://github.com/yoomarks/markorbit/actions/runs/30501407474",
+    "browserVisualRun": "https://github.com/yoomarks/markorbit/actions/runs/30501407550"
+  }
 }

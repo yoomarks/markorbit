@@ -67,3 +67,7 @@ The prior active-record evidence gap is closed by a protected, GET-only scenario
 ## TASK 014-C2-B final semantic evidence
 
 The earlier M-004 correction is now superseded by descriptor-specific execution. All 17 descriptors have individually executable public Service tests and real Gateway-to-owning-service HTTP tests. MarkReg is 9/9 and Execution is 8/8. Each test validates the descriptor code/status/stage, authoritative post-state, no partial downstream record, idempotency integrity and 13/13 false authority consequences. NP-017 retains exactly one Task Draft with the original ID and changes only its status from `PREPARED` to `STALE`; it explicitly rejects `FILED` and `SUBMITTED`. M-004 is locally **RESOLVED**; remote Node 22 validation is **UNVERIFIED**. The original result remains **FAIL** and freeze recommendation **DO_NOT_FREEZE**.
+
+## Final remote acceptance
+
+The final PR #22 implementation tree `d0d7f924ef18c52393534d9208d12096abc464dc` passed both required GitHub Actions workflows on remote commit `c02803d36d3e67aebd2455adf7f1698028a3524e` under Node 22.x and pnpm 10.28.1. Validation run: <https://github.com/yoomarks/markorbit/actions/runs/30501407474>. Browser and visual run: <https://github.com/yoomarks/markorbit/actions/runs/30501407550>. B-001 is **RESOLVED_REMOTE_VERIFIED**, B-002 and M-002/M-003/M-004 are **RESOLVED**, final remediation is **PASS**, and the milestone is **ELIGIBLE_FOR_FINAL_FREEZE_AUDIT**. The historical result remains **FAIL**; no freeze is declared here.

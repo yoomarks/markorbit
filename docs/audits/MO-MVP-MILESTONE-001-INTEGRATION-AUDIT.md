@@ -297,3 +297,11 @@ The original audit result remains **FAIL** and the freeze recommendation remains
 - MarkReg is **9/9**, Execution is **8/8**, and the overall matrix is **17/17 SEMANTICALLY_COMPLETE**. M-004 is locally **RESOLVED**. Remote Node 22 validation remains **UNVERIFIED**.
 
 The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014 final remote Node 22 acceptance
+
+PR [#22](https://github.com/yoomarks/markorbit/pull/22) remained Draft while final head `c02803d36d3e67aebd2455adf7f1698028a3524e` (tree `d0d7f924ef18c52393534d9208d12096abc464dc`) passed the Node 22.x / pnpm 10.28.1 validation and browser workflows. The final run passed workspace validation, formatting, lint, typecheck, runtime tests, the 99-cell Storybook matrix and built indexes, the 57-route Gateway inventory, the 17/17 semantic matrix, package tests, builds, `pnpm check`, ordinary E2E 32/32, real-runtime desktop/mobile 2/2 with retries disabled, visual 16/16, and the tracked-artifact audit.
+
+Final remediation dispositions are B-001 **RESOLVED_REMOTE_VERIFIED**, B-002 **RESOLVED**, M-002/M-003/M-004 **RESOLVED**, m-001 **RESOLVED_BY_POLICY**, m-002 **RESOLVED_BY_EXPLICIT_INVENTORY**, and m-003 **RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST**. `finalRemediationResult` is **PASS** and `milestoneFreezeEligibility` is **ELIGIBLE_FOR_FINAL_FREEZE_AUDIT**.
+
+The historical audit result remains **FAIL** and its freeze recommendation remains **DO_NOT_FREEZE**. This remediation evidence does not declare Milestone 1 frozen.
