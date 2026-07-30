@@ -20,11 +20,21 @@
     "test:e2e:headed": "playwright test --headed",
     "test:visual": "playwright test --config playwright.config.ts --grep @visual",
     "validate:workspace": "node scripts/validate-workspace.mjs",
-    "check": "pnpm validate:workspace && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm validate:workspace && pnpm test:story-matrix && pnpm test:gateway-inventory && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "infra:config": "docker compose -f infrastructure/docker-compose.yml config",
     "infra:up": "docker compose -f infrastructure/docker-compose.yml up -d",
     "infra:down": "docker compose -f infrastructure/docker-compose.yml down",
-    "infra:reset": "docker compose -f infrastructure/docker-compose.yml down -v"
+    "infra:reset": "docker compose -f infrastructure/docker-compose.yml down -v",
+    "test:story-matrix": "node scripts/validate-story-matrix.mjs",
+    "build:storybook-matrix": "pnpm --filter @markorbit/ui build && rm -rf .artifacts/storybook && pnpm --filter @markorbit/markreg-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/markreg && pnpm --filter @markorbit/lite-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/lite",
+    "test:storybook-index": "node scripts/validate-storybook-index.mjs .artifacts/storybook/markreg/index.json .artifacts/storybook/lite/index.json",
+    "test:gateway-inventory": "node scripts/validate-gateway-inventory.mjs",
+    "build:negative-path-deps": "turbo run build --filter=@markorbit/markreg-service... --filter=@markorbit/execution-service... --filter=@markorbit/gateway...",
+    "test:negative-path-matrix:prepare": "pnpm build:negative-path-deps",
+    "test:negative-path-matrix:coverage": "node scripts/validate-negative-path-matrix.mjs",
+    "test:negative-path-matrix": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs",
+    "test:negative-path-matrix:markreg": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --markreg",
+    "test:negative-path-matrix:execution": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --execution"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

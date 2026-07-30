@@ -150,7 +150,7 @@ describe('filing authorization and execution release governance', () => {
         acknowledgedBy: 'customer_012',
         idempotencyKey: 'confirm'
       })
-    ).rejects.toMatchObject({ code: 'MANDATORY_ACKNOWLEDGEMENT_MISSING' });
+    ).rejects.toMatchObject({ code: 'ACKNOWLEDGEMENT_REQUIRED' });
   });
   it('authorizes then preserves a completed authorization receipt', async () => {
     const service = setup();
@@ -208,7 +208,7 @@ describe('filing authorization and execution release governance', () => {
         rationale: 'Ready',
         idempotencyKey: 'decision'
       })
-    ).rejects.toMatchObject({ code: 'RELEASE_CHECKS_BLOCKING' });
+    ).rejects.toMatchObject({ code: 'BLOCKING_CHECK_UNKNOWN' });
   });
   it('creates exactly one internal task draft after explicit assignment and release', async () => {
     const service = setup();

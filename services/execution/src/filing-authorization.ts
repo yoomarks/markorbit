@@ -23,7 +23,8 @@ export class FilingGovernanceError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly status = 409
+    readonly status = 409,
+    readonly details?: Readonly<Record<string, unknown>>
   ) {
     super(message);
   }
@@ -175,6 +176,16 @@ export class InMemoryFilingGovernanceRepository {
   }
   private async taskList() {
     return [...this.tasks.values()].map(clone);
+  }
+  async snapshot() {
+    return {
+      filingAuthorizations: await this.authorizationList(),
+      executionReleases: await this.releaseList(),
+      filingExecutionTaskDrafts: await this.taskList()
+    };
+  }
+  snapshotIdempotencyCount() {
+    return this.authorizationKeys.size + this.releaseKeys.size + this.decisionKeys.size;
   }
 }
 const acknowledgementCodes: FilingAuthorizationAcknowledgementCode[] = [
@@ -431,9 +442,10 @@ export class FilingGovernanceService {
     const missing = acknowledgementCodes.filter((code) => !supplied.has(code));
     if (missing.length)
       throw new FilingGovernanceError(
-        'MANDATORY_ACKNOWLEDGEMENT_MISSING',
+        'ACKNOWLEDGEMENT_REQUIRED',
         `Missing active acknowledgements: ${missing.join(', ')}`,
-        422
+        422,
+        { stage: 'Filing Authorization', missingAcknowledgements: missing }
       );
     const at = this.now();
     const next: FilingAuthorization = {
@@ -484,7 +496,14 @@ export class FilingGovernanceService {
         );
       return this.releaseRecord(keyed.id as ExecutionReleaseId);
     }
-    const auth = await this.getAuthorization(command.filingAuthorizationId);
+    const auth = await this.authorization(command.filingAuthorizationId);
+    if (auth.expiresAt && Date.parse(this.now()) >= Date.parse(auth.expiresAt))
+      throw new FilingGovernanceError(
+        'FILING_AUTHORIZATION_EXPIRED',
+        'Filing Authorization has expired.',
+        409,
+        { stage: 'Filing Authorization', state: 'EXPIRED', expiresAt: auth.expiresAt }
+      );
     if (auth.version !== command.filingAuthorizationVersion)
       throw new FilingGovernanceError(
         'AUTHORIZATION_VERSION_MISMATCH',
@@ -501,7 +520,9 @@ export class FilingGovernanceService {
     )
       throw new FilingGovernanceError(
         'ACTIVE_EXECUTION_RELEASE_EXISTS',
-        'An active Execution Release already exists.'
+        'An active Execution Release already exists.',
+        409,
+        { stage: 'Execution Release', state: 'ACTIVE' }
       );
     const at = this.now();
     const value: ExecutionRelease = {
@@ -622,6 +643,28 @@ export class FilingGovernanceService {
       return { release, taskDraft: await this.tasks.findByExecutionRelease(id) };
     }
     const value = await this.getRelease(id);
+    const failed = value.checks.filter((check) => check.blocking && check.status === 'FAIL');
+    if (failed.length)
+      throw new FilingGovernanceError(
+        'BLOCKING_CHECK_FAILED',
+        'A blocking execution check failed.',
+        422,
+        {
+          stage: 'Execution Release',
+          blockingChecks: failed.map(({ code, status }) => ({ id: code, status }))
+        }
+      );
+    const unknown = value.checks.filter((check) => check.blocking && check.status === 'UNKNOWN');
+    if (unknown.length)
+      throw new FilingGovernanceError(
+        'BLOCKING_CHECK_UNKNOWN',
+        'A blocking execution check is unresolved.',
+        422,
+        {
+          stage: 'Execution Release',
+          blockingChecks: unknown.map(({ code, status }) => ({ id: code, status }))
+        }
+      );
     if (value.status !== 'READY_FOR_RELEASE')
       throw new FilingGovernanceError(
         'RELEASE_CHECKS_BLOCKING',
@@ -717,5 +760,30 @@ export class FilingGovernanceService {
         404
       );
     return value;
+  }
+  async validateTaskCurrent(id: FilingExecutionTaskDraftId) {
+    const task = await this.getTask(id);
+    const release = await this.releaseRecord(task.executionReleaseId);
+    const authorization = await this.authorization(task.filingAuthorizationId);
+    if (
+      release.status !== 'RELEASED_FOR_EXECUTION' ||
+      authorization.status !== 'AUTHORIZED' ||
+      release.filingAuthorizationVersion !== authorization.version
+    ) {
+      const stale = { ...task, status: 'STALE' as const };
+      await this.tasks.markStale(stale);
+      throw new FilingGovernanceError(
+        'STALE_FILING_TASK_DRAFT',
+        'Filing Execution Task Draft source lineage is stale.',
+        409,
+        {
+          stage: 'Filing Execution Task Draft',
+          state: 'STALE',
+          sourceId: release.executionReleaseId,
+          sourceVersion: release.version
+        }
+      );
+    }
+    return task;
   }
 }

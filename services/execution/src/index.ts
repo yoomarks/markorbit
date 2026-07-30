@@ -67,6 +67,7 @@ export interface ExecutionOptions {
   markRegUrl?: string;
   filingRepository?: InMemoryFilingGovernanceRepository;
   preparationLockSource?: PreparationLockSource;
+  milestoneTestRuntime?: boolean;
 }
 export function createRuntime(options: ExecutionOptions = {}) {
   const repository = options.repository ?? new InMemoryExecutionRepository();
@@ -96,7 +97,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
       return json(200, { [name]: await work(), consequences: filing.consequences });
     } catch (error) {
       if (error instanceof FilingGovernanceError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -115,7 +116,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
       });
     } catch (error) {
       if (error instanceof ProfessionalReviewError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -124,6 +125,31 @@ export function createRuntime(options: ExecutionOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')
+          ? [
+              {
+                method: 'GET' as const,
+                path: '/__milestone/scenario-records',
+                handle: async () =>
+                  json(200, {
+                    professionalReviewCases: await review.list(),
+                    ...(await filingRepository.snapshot())
+                  })
+              }
+            ]
+          : []),
+        {
+          method: 'POST',
+          path: '/v1/filing-task-drafts/:filingExecutionTaskDraftId/validate-current',
+          handle: (r) =>
+            filingMutation(
+              () =>
+                filing.validateTaskCurrent(
+                  r.params.filingExecutionTaskDraftId as FilingExecutionTaskDraftId
+                ),
+              'filingExecutionTaskDraft'
+            )
+        },
         {
           method: 'POST',
           path: '/v1/filing-authorizations',
@@ -274,7 +300,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
               });
             } catch (e) {
               if (e instanceof ProfessionalReviewError)
-                throw new HttpError(e.status, e.code, e.message);
+                throw new HttpError(e.status, e.code, e.message, false, e.details);
               throw e;
             }
           }

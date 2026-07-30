@@ -18,7 +18,8 @@ export class MatterFlowError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly status = 409
+    readonly status = 409,
+    readonly details?: Readonly<Record<string, unknown>>
   ) {
     super(message);
   }
@@ -95,6 +96,19 @@ export class InMemoryMatterFlowRepository implements MatterFlowRepository {
     this.drafts.set(value.matterDraftId, structuredClone(value));
     return Promise.resolve();
   }
+  snapshotMatterDrafts() {
+    return [...this.drafts.values()].map((value) => structuredClone(value));
+  }
+  snapshotIdempotencyCount() {
+    return this.keys.size;
+  }
+  snapshotSemanticState() {
+    return structuredClone({
+      confirmations: [...this.confirmations.values()],
+      matterDrafts: [...this.drafts.values()],
+      idempotencyCount: this.keys.size
+    });
+  }
 }
 const requiredAcknowledgements = [
   'NO_FILING',
@@ -118,13 +132,28 @@ export class MatterFlowService {
     if (!quote) throw new MatterFlowError('QUOTE_NOT_FOUND', 'Quote was not found.', 404);
     if (command.quoteVersion !== quote.pricingRuleVersion)
       throw new MatterFlowError(
-        'QUOTE_VERSION_MISMATCH',
-        'The exact current Quote version is required.'
+        'VERSION_MISMATCH',
+        'The exact current Quote version is required.',
+        409,
+        {
+          stage: 'Customer Confirmation',
+          expectedVersion: command.quoteVersion,
+          actualVersion: quote.pricingRuleVersion
+        }
       );
+    if (quote.status === 'SUPERSEDED')
+      throw new MatterFlowError('STALE_QUOTE', 'The Quote is stale.', 409, {
+        stage: 'Quote',
+        state: quote.status
+      });
     if (quote.status !== 'READY')
       throw new MatterFlowError('QUOTE_NOT_CONFIRMABLE', 'Only a READY Quote can be confirmed.');
     if (Date.parse(quote.validUntil) <= Date.parse(this.now()))
-      throw new MatterFlowError('QUOTE_EXPIRED', 'The Quote is no longer current.');
+      throw new MatterFlowError('QUOTE_EXPIRED', 'The Quote is no longer current.', 409, {
+        stage: 'Quote',
+        state: 'EXPIRED',
+        validUntil: quote.validUntil
+      });
     if (
       requiredAcknowledgements.some(
         (code) => !command.acknowledgements.some((item) => item.code === code && item.acknowledged)
@@ -167,14 +196,30 @@ export class MatterFlowService {
       consequences: noAutomaticConsequences
     };
   }
-  async createDraft(confirmationId: CustomerConfirmationId): Promise<MatterDraftResult> {
+  async createDraft(
+    confirmationId: CustomerConfirmationId,
+    expectedVersion?: string
+  ): Promise<MatterDraftResult> {
     const confirmation = await this.repository.getConfirmation(confirmationId);
     if (!confirmation)
       throw new MatterFlowError('CONFIRMATION_NOT_FOUND', 'Confirmation was not found.', 404);
     if (confirmation.status === 'WITHDRAWN')
       throw new MatterFlowError(
         'CONFIRMATION_WITHDRAWN',
-        'A withdrawn confirmation cannot prepare a Matter Draft.'
+        'A withdrawn confirmation cannot prepare a Matter Draft.',
+        409,
+        { stage: 'Customer Confirmation', state: confirmation.status }
+      );
+    if (expectedVersion && expectedVersion !== confirmation.updatedAt)
+      throw new MatterFlowError(
+        'VERSION_MISMATCH',
+        'The exact Confirmation version is required.',
+        409,
+        {
+          stage: 'Customer Confirmation',
+          expectedVersion,
+          actualVersion: confirmation.updatedAt
+        }
       );
     const at = this.now();
     const preparation: MatterDraftPreparation = { classes: [], documentReferences: [] };
@@ -244,6 +289,31 @@ export class MatterFlowService {
     };
     await this.repository.updateMatterDraft(value);
     return result(value);
+  }
+  async progressDraft(id: MatterDraftId): Promise<MatterDraftResult> {
+    const draft = await this.repository.getMatterDraft(id);
+    if (!draft)
+      throw new MatterFlowError('MATTER_DRAFT_NOT_FOUND', 'Matter Draft was not found.', 404);
+    const blockingUnknown = draft.readiness.checks.find(
+      (check) => check.blocking && check.status === 'UNKNOWN'
+    );
+    if (blockingUnknown)
+      throw new MatterFlowError(
+        'BLOCKING_CHECK_UNKNOWN',
+        'Blocking evidence remains UNKNOWN.',
+        422,
+        {
+          stage: 'Matter Draft',
+          state: draft.status,
+          missingFields: [blockingUnknown.code]
+        }
+      );
+    if (!draft.readiness.readyForProfessionalReview)
+      throw new MatterFlowError('MATTER_DRAFT_NOT_READY', 'Matter Draft is not ready.', 422, {
+        stage: 'Matter Draft',
+        state: draft.status
+      });
+    return result(draft);
   }
 }
 function check(

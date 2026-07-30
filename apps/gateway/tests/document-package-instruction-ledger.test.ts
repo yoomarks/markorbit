@@ -383,7 +383,7 @@ describe('Gateway Instruction Ledger and Preparation Lock', () => {
           instructionLedgerId: l.instructionLedgerId
         })
       ).json()
-    ).toMatchObject({ code: 'DOCUMENTS_NOT_READY' });
+    ).toMatchObject({ code: 'REQUIRED_DOCUMENT_MISSING' });
     const ready = await readyPackage();
     const draft = (await (
       await call('/api/markreg/instruction-ledgers', 'POST', {
@@ -397,7 +397,7 @@ describe('Gateway Instruction Ledger and Preparation Lock', () => {
           instructionLedgerId: draft.instructionLedgerId
         })
       ).json()
-    ).toMatchObject({ code: 'INSTRUCTIONS_NOT_CONFIRMED' });
+    ).toMatchObject({ code: 'INSTRUCTION_LEDGER_UNCONFIRMED' });
   });
   it('locks, retrieves an immutable snapshot, and returns every false authority consequence', async () => {
     const p = await readyPackage();

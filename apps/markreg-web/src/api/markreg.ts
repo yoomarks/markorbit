@@ -29,6 +29,7 @@ import type {
 import { createApiClient, type ApiClient } from './client.js';
 
 export interface MarkregClient {
+  getGovernedRecord?(view: string, id: string): Promise<unknown>;
   createIntake(command: IntakeCreateCommand): Promise<IntakeRecommendationResponse>;
   createQuote?(command: QuoteCreateCommand): Promise<PlanQuoteResponse>;
   confirmQuote?(command: QuoteConfirmationCommand): Promise<QuoteConfirmation>;
@@ -133,6 +134,21 @@ export interface MatterDraftResponse {
 
 export function createMarkregClient(api: ApiClient = createApiClient()): MarkregClient {
   return {
+    getGovernedRecord(view, id) {
+      const paths: Record<string, string> = {
+        consultation: `/api/markreg/intakes/${encodeURIComponent(id)}`,
+        'recommendation-plan': `/api/markreg/recommendations/${encodeURIComponent(id)}`,
+        quote: `/api/markreg/quotes/${encodeURIComponent(id)}`,
+        'customer-confirmation': `/api/markreg/customer-confirmations/${encodeURIComponent(id)}`,
+        'matter-draft': `/api/markreg/matter-drafts/${encodeURIComponent(id)}`,
+        documents: `/api/lite/professional-review-cases/${encodeURIComponent(id)}`,
+        'preparation-lock': `/api/markreg/preparation-locks/${encodeURIComponent(id)}`,
+        'filing-authorization': `/api/execution/filing-authorizations/${encodeURIComponent(id)}`
+      };
+      const path = paths[view];
+      if (!path) return Promise.reject(new Error('Unsupported governed route.'));
+      return api.get(path);
+    },
     createIntake(command) {
       const { idempotencyKey, correlationId, ...body } = command;
       return api.post<IntakeRecommendationResponse>('/v1/markreg/intakes', body, {

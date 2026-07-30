@@ -21,78 +21,96 @@ export const milestoneUrls = Object.freeze({
   markregWeb: `http://127.0.0.1:${milestonePorts.markregWeb}`
 });
 
-const definitions = [
-  {
-    name: 'capability-engine',
-    port: milestonePorts.capability,
-    health: `${milestoneUrls.capability}/health`,
-    args: ['--filter', '@markorbit/capability-engine', 'dev'],
-    env: { PORT: String(milestonePorts.capability) }
-  },
-  {
-    name: 'markreg',
-    port: milestonePorts.markreg,
-    health: `${milestoneUrls.markreg}/health`,
-    args: ['--filter', '@markorbit/markreg-service', 'dev'],
-    env: {
-      PORT: String(milestonePorts.markreg),
-      EXECUTION_URL: milestoneUrls.execution,
-      CAPABILITY_ENGINE_URL: milestoneUrls.capability
+export function milestoneConfiguration(ports = milestonePorts) {
+  const urls = Object.freeze({
+    gateway: `http://127.0.0.1:${ports.gateway}`,
+    capability: `http://127.0.0.1:${ports.capability}`,
+    execution: `http://127.0.0.1:${ports.execution}`,
+    markreg: `http://127.0.0.1:${ports.markreg}`,
+    liteWeb: `http://127.0.0.1:${ports.liteWeb}`,
+    markregWeb: `http://127.0.0.1:${ports.markregWeb}`
+  });
+  const definitions = [
+    {
+      name: 'capability-engine',
+      port: ports.capability,
+      health: `${urls.capability}/health`,
+      args: ['--filter', '@markorbit/capability-engine', 'dev'],
+      env: { PORT: String(ports.capability) }
+    },
+    {
+      name: 'markreg',
+      port: ports.markreg,
+      health: `${urls.markreg}/health`,
+      args: ['--filter', '@markorbit/markreg-service', 'dev'],
+      env: {
+        PORT: String(ports.markreg),
+        EXECUTION_URL: urls.execution,
+        CAPABILITY_ENGINE_URL: urls.capability,
+        MO_MILESTONE_TEST_RUNTIME: '1'
+      }
+    },
+    {
+      name: 'execution',
+      port: ports.execution,
+      health: `${urls.execution}/health`,
+      args: ['--filter', '@markorbit/execution-service', 'dev'],
+      env: {
+        PORT: String(ports.execution),
+        MARKREG_URL: urls.markreg,
+        MO_MILESTONE_TEST_RUNTIME: '1'
+      }
+    },
+    {
+      name: 'gateway',
+      port: ports.gateway,
+      health: `${urls.gateway}/health`,
+      args: ['--filter', '@markorbit/gateway', 'dev'],
+      env: {
+        PORT: String(ports.gateway),
+        MARKREG_URL: urls.markreg,
+        EXECUTION_URL: urls.execution,
+        WEB_ORIGINS: `${urls.markregWeb},${urls.liteWeb}`,
+        MO_MILESTONE_TEST_RUNTIME: '1'
+      }
+    },
+    {
+      name: 'markreg-web',
+      port: ports.markregWeb,
+      health: urls.markregWeb,
+      args: [
+        '--filter',
+        '@markorbit/markreg-web',
+        'dev',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(ports.markregWeb),
+        '--strictPort'
+      ],
+      env: { VITE_MARKREG_GATEWAY_URL: urls.gateway }
+    },
+    {
+      name: 'lite-web',
+      port: ports.liteWeb,
+      health: urls.liteWeb,
+      args: [
+        '--filter',
+        '@markorbit/lite-web',
+        'dev',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(ports.liteWeb),
+        '--strictPort'
+      ],
+      env: { VITE_LITE_GATEWAY_URL: urls.gateway }
     }
-  },
-  {
-    name: 'execution',
-    port: milestonePorts.execution,
-    health: `${milestoneUrls.execution}/health`,
-    args: ['--filter', '@markorbit/execution-service', 'dev'],
-    env: { PORT: String(milestonePorts.execution), MARKREG_URL: milestoneUrls.markreg }
-  },
-  {
-    name: 'gateway',
-    port: milestonePorts.gateway,
-    health: `${milestoneUrls.gateway}/health`,
-    args: ['--filter', '@markorbit/gateway', 'dev'],
-    env: {
-      PORT: String(milestonePorts.gateway),
-      MARKREG_URL: milestoneUrls.markreg,
-      EXECUTION_URL: milestoneUrls.execution,
-      WEB_ORIGINS: `${milestoneUrls.markregWeb},${milestoneUrls.liteWeb}`,
-      MO_MILESTONE_TEST_RUNTIME: '1'
-    }
-  },
-  {
-    name: 'markreg-web',
-    port: milestonePorts.markregWeb,
-    health: milestoneUrls.markregWeb,
-    args: [
-      '--filter',
-      '@markorbit/markreg-web',
-      'dev',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(milestonePorts.markregWeb),
-      '--strictPort'
-    ],
-    env: { VITE_MARKREG_GATEWAY_URL: milestoneUrls.gateway }
-  },
-  {
-    name: 'lite-web',
-    port: milestonePorts.liteWeb,
-    health: milestoneUrls.liteWeb,
-    args: [
-      '--filter',
-      '@markorbit/lite-web',
-      'dev',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(milestonePorts.liteWeb),
-      '--strictPort'
-    ],
-    env: { VITE_LITE_GATEWAY_URL: milestoneUrls.gateway }
-  }
-];
+  ];
+  return { ports, urls, definitions };
+}
+
+const definitions = milestoneConfiguration().definitions;
 
 export async function assertPortAvailable(port) {
   await new Promise((resolvePromise, reject) => {
@@ -120,57 +138,117 @@ export async function waitForHealth(name, url, child, timeoutMs = 30_000) {
   throw new Error(`${name} did not become healthy at ${url} within ${timeoutMs}ms.`);
 }
 
+const delay = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+async function waitForExit(child, timeoutMs) {
+  if (child.exitCode !== null || child.signalCode !== null) return true;
+  return new Promise((resolvePromise) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolvePromise(false);
+    }, timeoutMs);
+    const done = () => {
+      cleanup();
+      resolvePromise(true);
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      child.off('exit', done);
+      child.off('close', done);
+    };
+    child.once('exit', done);
+    child.once('close', done);
+  });
+}
+async function waitForPorts(ports, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (const port of ports) {
+    while (true) {
+      try {
+        await assertPortAvailable(port);
+        break;
+      } catch (error) {
+        if (Date.now() >= deadline) throw error;
+        await delay(50);
+      }
+    }
+  }
+}
+
 export async function startMilestoneRuntime(options = {}) {
   const root = options.root ?? process.cwd();
+  const configuration = milestoneConfiguration(options.ports ?? milestonePorts);
   const logDirectory = resolve(root, options.logDirectory ?? '.artifacts/milestone-runtime');
-  const selected = options.definitions ?? definitions;
+  const selected = options.definitions ?? configuration.definitions;
+  const selectedPorts = selected.map((value) => value.port);
   mkdirSync(logDirectory, { recursive: true });
   for (const definition of selected) await assertPortAvailable(definition.port);
   const children = [];
-  const stop = async () => {
-    await Promise.all(
-      children.map(
-        ({ child }) =>
-          new Promise((done) => {
-            if (child.exitCode !== null) return done();
-            child.once('exit', done);
+  let stopPromise;
+  const stop = () => {
+    if (stopPromise) return stopPromise;
+    stopPromise = (async () => {
+      const errors = [];
+      for (const entry of [...children].reverse()) {
+        const { child, log } = entry;
+        try {
+          if (child.exitCode === null && child.signalCode === null) {
             try {
-              process.kill(-child.pid, 'SIGTERM');
+              if (entry.detached) process.kill(-child.pid, 'SIGTERM');
+              else child.kill('SIGTERM');
             } catch {
               child.kill('SIGTERM');
             }
-            setTimeout(() => {
-              if (child.exitCode === null) {
-                try {
-                  process.kill(-child.pid, 'SIGKILL');
-                } catch {
-                  child.kill('SIGKILL');
-                }
+            if (!(await waitForExit(child, options.termTimeoutMs ?? 5_000))) {
+              try {
+                if (entry.detached) process.kill(-child.pid, 'SIGKILL');
+                else child.kill('SIGKILL');
+              } catch {
+                child.kill('SIGKILL');
               }
-            }, 5_000).unref();
-          })
-      )
-    );
+              if (!(await waitForExit(child, options.killTimeoutMs ?? 2_000)))
+                throw new Error(`${entry.name} did not exit after SIGKILL.`);
+            }
+          }
+        } catch (error) {
+          errors.push(error);
+        } finally {
+          await new Promise((resolvePromise) => log.end(resolvePromise));
+        }
+      }
+      try {
+        await waitForPorts(selectedPorts, options.portReleaseTimeoutMs);
+      } catch (error) {
+        errors.push(error);
+      }
+      if (errors.length) throw new AggregateError(errors, 'Milestone runtime cleanup failed.');
+    })();
+    return stopPromise;
   };
   try {
     for (const definition of selected) {
       const log = createWriteStream(resolve(logDirectory, `${definition.name}.log`), {
         flags: 'a'
       });
-      const child = spawn('pnpm', definition.args, {
+      const detached = options.detached ?? true;
+      const child = spawn(definition.command ?? 'pnpm', definition.args, {
         cwd: root,
         env: { ...process.env, ...definition.env },
-        detached: true,
+        detached,
         stdio: ['ignore', 'pipe', 'pipe']
       });
+      const entry = { ...definition, child, log, detached };
+      children.push(entry);
       child.stdout.pipe(log);
       child.stderr.pipe(log);
-      children.push({ ...definition, child, log });
       await waitForHealth(definition.name, definition.health, child, options.timeoutMs);
     }
-    return { children, logDirectory, ports: milestonePorts, urls: milestoneUrls, stop };
+    return { children, logDirectory, ports: configuration.ports, urls: configuration.urls, stop };
   } catch (error) {
-    await stop();
+    try {
+      await stop();
+    } catch (cleanupError) {
+      error.cleanupError = cleanupError;
+    }
     throw error;
   }
 }

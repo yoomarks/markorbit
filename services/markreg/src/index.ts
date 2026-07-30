@@ -70,6 +70,13 @@ export class InMemoryMarkRegRepository {
   all() {
     return [...this.entries.values()];
   }
+  getIntake(id: string) {
+    return this.all().find((entry) => entry.intake.intakeId === id)?.intake;
+  }
+  getRecommendation(id: string) {
+    return this.all().find((entry) => entry.result?.recommendation.recommendationId === id)?.result
+      ?.recommendation;
+  }
   getQuoteEntry(key: string) {
     return this.quoteEntries.get(key);
   }
@@ -108,6 +115,14 @@ export class InMemoryMarkRegRepository {
         quote.status === 'READY'
       )
         this.quotes.set(id, { ...quote, status: 'SUPERSEDED' });
+  }
+  snapshotSemanticState() {
+    return structuredClone({
+      quotes: [...this.quotes.values()],
+      confirmations: [...this.confirmations.values()],
+      quoteIdempotencyCount: this.quoteEntries.size,
+      confirmationIdempotencyCount: this.confirmations.size
+    });
   }
 }
 
@@ -214,6 +229,7 @@ export interface MarkRegOptions {
   matterFlowRepository?: MatterFlowRepository;
   preparationRepository?: PreparationRepository;
   preparationSources?: PreparationSources;
+  milestoneTestRuntime?: boolean;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -317,17 +333,15 @@ export function createRuntime(options: MarkRegOptions = {}) {
     getMatterDraft: (id) => matterFlowRepository.getMatterDraft(id as `matter-draft_${string}`),
     getConfirmation: (id) => matterFlowRepository.getConfirmation(id as `confirmation_${string}`)
   };
-  const preparation = new PreparationService(
-    options.preparationRepository ?? new InMemoryPreparationRepository(),
-    preparationSources,
-    now
-  );
+  const preparationRepository =
+    options.preparationRepository ?? new InMemoryPreparationRepository();
+  const preparation = new PreparationService(preparationRepository, preparationSources, now);
   const prepared = async (work: () => Promise<unknown>) => {
     try {
       return json(200, await work());
     } catch (error) {
       if (error instanceof PreparationError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -336,7 +350,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
       return json(200, await work());
     } catch (error) {
       if (error instanceof MatterFlowError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -344,6 +358,58 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')
+          ? [
+              {
+                method: 'GET' as const,
+                path: '/__milestone/scenario-records',
+                handle: () => {
+                  if (
+                    !(matterFlowRepository instanceof InMemoryMatterFlowRepository) ||
+                    !(preparationRepository instanceof InMemoryPreparationRepository)
+                  )
+                    throw new HttpError(
+                      404,
+                      'MILESTONE_SNAPSHOT_UNAVAILABLE',
+                      'Milestone snapshot is unavailable.'
+                    );
+                  return json(200, {
+                    matterDrafts: matterFlowRepository.snapshotMatterDrafts(),
+                    preparationLocks: preparationRepository.snapshotLocks()
+                  });
+                }
+              }
+            ]
+          : []),
+        {
+          method: 'GET',
+          path: '/v1/intakes/:intakeId',
+          handle: (request) => {
+            const intake = repository.getIntake(request.params.intakeId!);
+            if (!intake)
+              throw new HttpError(404, 'INTAKE_NOT_FOUND', 'Consultation was not found.');
+            return json(200, { intake });
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/recommendations/:recommendationId',
+          handle: (request) => {
+            const recommendation = repository.getRecommendation(request.params.recommendationId!);
+            if (!recommendation)
+              throw new HttpError(404, 'RECOMMENDATION_NOT_FOUND', 'Recommendation was not found.');
+            return json(200, { recommendation });
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/quotes/:quoteId',
+          handle: (request) => {
+            const quote = repository.getQuote(request.params.quoteId!);
+            if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
+            return json(200, { quote });
+          }
+        },
         {
           method: 'POST',
           path: '/v1/document-packages',
@@ -528,6 +594,16 @@ export function createRuntime(options: MarkRegOptions = {}) {
         },
         {
           method: 'POST',
+          path: '/v1/preparation-locks/:preparationLockId/validate-current',
+          handle: (r) =>
+            prepared(() =>
+              preparation.validateLockCurrent(
+                r.params.preparationLockId as `preparation-lock_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
           path: '/v1/customer-confirmations',
           async handle(request) {
             const body = request.body as ConfirmQuoteCommand;
@@ -577,7 +653,8 @@ export function createRuntime(options: MarkRegOptions = {}) {
           async handle(request) {
             return governed(() =>
               matterFlow.createDraft(
-                (request.body as { confirmationId: `confirmation_${string}` }).confirmationId
+                (request.body as { confirmationId: `confirmation_${string}` }).confirmationId,
+                (request.body as { confirmationVersion?: string }).confirmationVersion
               )
             );
           }
@@ -612,6 +689,15 @@ export function createRuntime(options: MarkRegOptions = {}) {
           async handle(request) {
             return governed(() =>
               matterFlow.evaluateReadiness(request.params.matterDraftId as `matter-draft_${string}`)
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts/:matterDraftId/progress',
+          async handle(request) {
+            return governed(() =>
+              matterFlow.progressDraft(request.params.matterDraftId as `matter-draft_${string}`)
             );
           }
         },

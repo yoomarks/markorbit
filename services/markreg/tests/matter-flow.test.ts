@@ -97,7 +97,7 @@ describe('customer confirmation and Matter Draft domain', () => {
   it('rejects a quote-version mismatch and an invalid Quote status', async () => {
     const { service } = setup();
     await expect(service.confirm({ ...command, quoteVersion: 'v2' })).rejects.toMatchObject({
-      code: 'QUOTE_VERSION_MISMATCH'
+      code: 'VERSION_MISMATCH'
     });
     const invalid = new MatterFlowService(
       new InMemoryMatterFlowRepository(),

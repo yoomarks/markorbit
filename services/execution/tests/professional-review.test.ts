@@ -126,7 +126,7 @@ describe('professional review', () => {
     c.set({ ...snapshot, matterDraftVersion: 'v2' });
     await expect(
       c.service.complete(c.id, 'actor_reviewer', 'MARK_READY_FOR_NEXT_STEP', 'ok')
-    ).rejects.toMatchObject({ code: 'CASE_STALE' });
+    ).rejects.toMatchObject({ code: 'STALE_PROFESSIONAL_REVIEW' });
   });
   it('completes only when every blocking item passes and records no consequences', async () => {
     const c = await claimed();

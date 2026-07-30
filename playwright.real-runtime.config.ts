@@ -8,9 +8,11 @@ export default defineConfig({
   outputDir: 'test-results/real-runtime',
   fullyParallel: false,
   workers: 1,
-  retries: inCI ? 1 : 0,
+  retries: 0,
   forbidOnly: inCI,
-  timeout: 30_000,
+  // The full governed chain now includes twelve authoritative repository snapshots around six
+  // direct-navigation/reload checkpoints. Keep retries disabled and budget the complete path.
+  timeout: 60_000,
   reporter: inCI
     ? [['line'], ['html', { outputFolder: 'playwright-report/real-runtime', open: 'never' }]]
     : 'list',

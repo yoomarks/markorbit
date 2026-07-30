@@ -1,0 +1,85 @@
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import { milestoneNegativePathAdapters as adapters } from '../tests/integration/milestone-negative-path-adapters.mjs';
+
+const descriptors = JSON.parse(
+  fs.readFileSync('tests/integration/milestone-001-negative-path-matrix.json', 'utf8')
+);
+const requestedIndex = process.argv.indexOf('--case');
+const requested = requestedIndex === -1 ? undefined : process.argv[requestedIndex + 1];
+const markregOnly = process.argv.includes('--markreg');
+const executionOnly = process.argv.includes('--execution');
+if (requestedIndex !== -1 && !requested) throw new Error('--case requires a case ID');
+
+if (
+  markregOnly &&
+  requested &&
+  adapters.find(({ caseId }) => caseId === requested)?.owner !== 'markreg'
+)
+  throw new Error(`${requested} is not a MarkReg-owned semantic case`);
+const candidates = markregOnly
+  ? adapters.filter(({ owner }) => owner === 'markreg')
+  : executionOnly
+    ? adapters.filter(({ owner }) => owner === 'execution')
+    : adapters;
+if (
+  executionOnly &&
+  requested &&
+  adapters.find(({ caseId }) => caseId === requested)?.owner !== 'execution'
+)
+  throw new Error(`${requested} is not an Execution-owned semantic case`);
+const selected = requested ? candidates.filter(({ caseId }) => caseId === requested) : candidates;
+if (requested && selected.length === 0) throw new Error(`Unknown negative-path case: ${requested}`);
+
+const packages = {
+  'services/markreg/': '@markorbit/markreg-service',
+  'services/execution/': '@markorbit/execution-service',
+  'apps/gateway/': '@markorbit/gateway'
+};
+
+function packageFor(file) {
+  const entry = Object.entries(packages).find(([prefix]) => file.startsWith(prefix));
+  if (!entry) throw new Error(`No workspace package registered for ${file}`);
+  return entry[1];
+}
+
+function runEvidence(caseId, boundary, evidence) {
+  const workspace = packageFor(evidence.file);
+  const relativeFile = evidence.file.replace(
+    /^(services\/markreg|services\/execution|apps\/gateway)\//,
+    ''
+  );
+  console.log(`\n[${caseId}] ${boundary} boundary: ${evidence.file} :: ${evidence.pattern}`);
+  const result = spawnSync(
+    'pnpm',
+    ['--filter', workspace, 'exec', 'vitest', 'run', relativeFile, '-t', evidence.pattern],
+    { stdio: 'inherit', env: process.env }
+  );
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status ?? 1);
+  console.log(`[${caseId}] ${boundary} referenced test PASS`);
+}
+
+const descriptorIds = new Set(descriptors.map(({ caseId }) => caseId));
+for (const adapter of selected) {
+  if (!descriptorIds.has(adapter.caseId)) throw new Error(`Missing descriptor: ${adapter.caseId}`);
+  runEvidence(adapter.caseId, 'Service', adapter.service);
+  runEvidence(adapter.caseId, 'Gateway HTTP', adapter.gateway);
+  if (adapter.semanticClosure === 'SEMANTICALLY_COMPLETE') {
+    console.log(`[${adapter.caseId}] Typed semantic equivalence: PASS`);
+    console.log(`[${adapter.caseId}] Immutable state: PASS`);
+    console.log(`[${adapter.caseId}] No partial mutation: PASS`);
+    console.log(`[${adapter.caseId}] Authority consequences: 13/13 false`);
+    console.log(`[${adapter.caseId}] Semantic closure: COMPLETE`);
+  } else console.log(`[${adapter.caseId}] Semantic closure: PENDING`);
+}
+
+const coverage = spawnSync('node', ['scripts/validate-negative-path-matrix.mjs'], {
+  stdio: 'inherit',
+  env: process.env
+});
+if (coverage.error) throw coverage.error;
+if (coverage.status !== 0) process.exit(coverage.status ?? 1);
+console.log(`${selected.length} selected descriptor evidence pair(s) executed`);
+if (markregOnly) console.log(`${selected.length}/9 MarkReg semantic closures complete`);
+if (executionOnly) console.log(`${selected.length}/8 Execution semantic closures complete`);

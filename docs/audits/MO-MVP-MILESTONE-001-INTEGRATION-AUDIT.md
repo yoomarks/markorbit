@@ -224,3 +224,84 @@ None. The audit adds only this Markdown report and its machine-readable JSON com
 **DO NOT FREEZE.** Resolve B-001 and B-002, add the missing state/deep-link matrices, run the complete quality gate on Node 22, run desktop/mobile golden and visual suites sequentially against real runtimes, then obtain green remote CI. A later audit may recommend freeze only after those facts are evidenced; this report does not claim milestone freeze.
 
 > TASK 013 remediation: implementation head `f657cdaee6035651f8bd313f93ae108bedd5df03`; desktop real-runtime PASS; mobile 390px real-runtime PASS; complete exact lineage PASS; governed API interception false; B-002 RESOLVED. Node 22 remote CI remains OPEN, therefore B-001 remains OPEN. The original audit result and freeze recommendation remain unchanged.
+
+## TASK 014 remediation evidence (Draft)
+
+The original result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+- **M-002 — RESOLVED:** the 99-cell machine-readable Storybook matrix maps 86 applicable cells to stories and documents 13 impossible domain states as N/A; automated validation is in `pnpm test:story-matrix` and Node 22 milestone CI.
+- **M-003 — REMEDIATION_IN_PROGRESS:** typed exact-version codecs cover all eight MarkReg and three Lite targets, but focused recovery and real-runtime direct-navigation/reload acceptance evidence is not yet complete.
+- **M-004 — REMEDIATION_IN_PROGRESS:** the consolidated 17-case descriptor/report exists, but executable case-by-case owning-service and real Gateway HTTP equivalence remains required.
+- **m-001 — RESOLVED_BY_POLICY:** see `docs/architecture/GATEWAY_ROUTE_NAMESPACE_POLICY.md`.
+- **m-002 — RESOLVED_BY_EXPLICIT_INVENTORY:** see the JSON and Markdown Gateway route inventories.
+- **m-003 — RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST:** the namespace policy distinguishes the internal execution envelope from filing governance; the existing Execution boundary regression coverage retains false authority consequences.
+
+TASK 014 does not declare Milestone 1 frozen. TASK 015 retains freeze authority.
+
+### TASK 014 continuation correction
+
+- The route codecs are now used by both application entry points, and three missing read-only authoritative routes have owning-service and real Gateway HTTP coverage.
+- The source-derived inventory is now 54 total runtime routes: 51 governed/compatibility routes, two health probes and one protected test-only snapshot evidence route. The audit's 48 excluded health routes; TASK 014 added three governed read routes. The former 47-row artifact omitted four multiline tuples and contained one parser artifact.
+- M-002 remains **RESOLVED** after actual shared-config MarkReg/Lite Storybook builds and generated story-index validation found all 86 applicable IDs.
+- M-003 remains **REMEDIATION_IN_PROGRESS**: ordinary focused direct-load/refresh/recovery coverage exists, but real-runtime checkpoint navigation is not complete.
+- M-004 remains **REMEDIATION_IN_PROGRESS**: descriptors are complete but 17/17 explicit Service and real Gateway HTTP adapters are not complete.
+- m-003 remains **RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST** after the new Execution HTTP regression test verified the legacy envelope has no filing/task-draft consequences.
+
+### TASK 014 final recovery evidence
+
+- **M-003 — RESOLVED:** ordinary recovery remains green; desktop and mobile real-runtime paths each pass on their first attempt with retries disabled and all six codec-generated direct-navigation/reload checkpoints. Every checkpoint observes only Gateway GET requests and asserts the exact canonical identity/version/status, preventing latest fallback or duplicate mutation.
+- **M-004 — RESOLVED:** `pnpm test:negative-path-matrix` runs MarkReg Service, Execution Service, and real Gateway HTTP suites, then proves equality across 17 descriptors, 17 Service adapters and 17 Gateway adapters with zero missing/unexpected adapters. Typed errors, immutable failure state, idempotency behavior, stale task propagation and false authority consequences remain asserted in the referenced executable suites.
+- Runtime stability is covered by eight harness regression scenarios and ten consecutive `pnpm test:runtime` executions without manual cleanup. The harness names all six runtimes and awaits child exit, log closure and port release.
+
+The original audit result remains **FAIL** and its freeze recommendation remains **DO_NOT_FREEZE**. TASK 014 remediation does not declare Milestone 1 frozen; TASK 015 retains that decision.
+
+### TASK 014 final evidence audit correction
+
+The detailed audit at `docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md` supersedes the unsupported M-003/M-004 closure claims above:
+
+- **M-003 — REMEDIATION_IN_PROGRESS:** canonical six-checkpoint reload evidence passes, but authoritative active-record ID/count equality before and after navigation is not asserted.
+- **M-004 — REMEDIATION_IN_PROGRESS:** the current command runs broad package suites and validates static registry references (mode B); it does not execute a descriptor-specific Service and Gateway HTTP adapter with the complete required assertion set for each of 17 cases.
+- Remote Node 22 CI remains **UNVERIFIED** because the checkout has no remote, PR URL, remote head or Actions status.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014-C2-A MarkReg negative-path semantic closure
+
+- Nine MarkReg-owned descriptors (NP-001, NP-002, NP-003, NP-004, NP-005, NP-008, NP-009, NP-010 and NP-011) now execute independently at both the public Service boundary and a real Gateway → MarkReg HTTP stack on ephemeral ports.
+- Each case derives its expected code/status/stage from the machine-readable descriptor, uses a deterministic repository fixture and fixed clock, compares complete repository state before/after, verifies zero downstream partial records and events, preserves idempotency state, and checks all 13 authority consequences false.
+- The MarkReg matrix is **9/9 SEMANTICALLY_COMPLETE**. The eight Execution-owned cases remain **SEMANTIC_CLOSURE_PENDING**, so overall M-004 evidence is **9/17 COMPLETE** and M-004 remains **REMEDIATION_IN_PROGRESS**.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014-C1.1 ordinary recovery stability
+
+- The eight-target MarkReg recovery test was split into four isolated table-driven tests: Consultation/Recommendation/Quote, Customer Confirmation/Matter Draft, Documents and Instructions/Preparation Lock, and Filing Authorization. Each test owns its interception lifecycle and independently proves exact direct load, reload, missing-route recovery, unsupported-route recovery and GET-only behavior.
+- Desktop focused durations were 17.076s, 13.664s, 12.939s and 9.825s respectively, all materially below the unchanged 30-second ordinary-test budget. The ordinary inventory is now 32 project-tests (16 desktop and 16 mobile), including five recovery tests per project.
+- The complete ordinary suite passed 32/32 on its first validation run and then passed five consecutive 32/32 stability runs without cleanup or retries being added. Finding states remain M-002 **RESOLVED**, M-003 **RESOLVED**, and M-004 **REMEDIATION_IN_PROGRESS**.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014 authoritative deep-link stability evidence
+
+- **M-003 — RESOLVED:** a test-runtime-only Gateway snapshot composes records read directly from the MarkReg and Execution in-memory authoritative repositories. It is absent without `MO_MILESTONE_TEST_RUNTIME=1`, is GET-only, and returns stable, sorted, scenario-isolated snapshots for Matter Drafts, Professional Review Cases, Preparation Locks, Filing Authorizations, Execution Releases and Filing Execution Task Drafts.
+- Each of the six desktop and six mobile direct-navigation/reload checkpoints now captures the complete six-collection scenario snapshot before navigation and after reload. Equality includes total/active counts, active IDs, record IDs, versions, statuses, source IDs, source versions and a hash of each complete authoritative record (including acknowledgements and internal assignments). Both projects passed on their first attempt with retries disabled; browser request observation found no POST, PUT, PATCH or DELETE in any checkpoint window, and all thirteen external authority consequences remained false.
+- The full path contains twelve additional real HTTP repository snapshot reads around six direct navigations and six reloads. Its explicit 60-second budget produced first-run durations of 38.0 seconds desktop and 33.1 seconds mobile.
+- **M-004 remains REMEDIATION_IN_PROGRESS.** This evidence change does not modify or close the negative-path semantic matrix.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014-C2-B Execution negative-path semantic closure
+
+- Eight Execution-owned descriptors (NP-006, NP-007, NP-012 through NP-017) now execute independently through the public Execution Service and through real ephemeral Execution and Gateway HTTP listeners.
+- Each case uses descriptor-derived typed expectations, deterministic repository state and a fixed clock, and checks authoritative pre/post state, idempotency entries, downstream counts and all 13 authority consequences. NP-017 additionally preserves one Task Draft ID/count while transitioning only `PREPARED` to `STALE`, never `FILED` or `SUBMITTED`.
+- MarkReg is **9/9**, Execution is **8/8**, and the overall matrix is **17/17 SEMANTICALLY_COMPLETE**. M-004 is locally **RESOLVED**. Remote Node 22 validation remains **UNVERIFIED**.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014 final remote Node 22 acceptance
+
+PR [#22](https://github.com/yoomarks/markorbit/pull/22) remained Draft while final head `c02803d36d3e67aebd2455adf7f1698028a3524e` (tree `d0d7f924ef18c52393534d9208d12096abc464dc`) passed the Node 22.x / pnpm 10.28.1 validation and browser workflows. The final run passed workspace validation, formatting, lint, typecheck, runtime tests, the 99-cell Storybook matrix and built indexes, the 57-route Gateway inventory, the 17/17 semantic matrix, package tests, builds, `pnpm check`, ordinary E2E 32/32, real-runtime desktop/mobile 2/2 with retries disabled, visual 16/16, and the tracked-artifact audit.
+
+Final remediation dispositions are B-001 **RESOLVED_REMOTE_VERIFIED**, B-002 **RESOLVED**, M-002/M-003/M-004 **RESOLVED**, m-001 **RESOLVED_BY_POLICY**, m-002 **RESOLVED_BY_EXPLICIT_INVENTORY**, and m-003 **RESOLVED_BY_DOCUMENTATION_AND_BOUNDARY_TEST**. `finalRemediationResult` is **PASS** and `milestoneFreezeEligibility` is **ELIGIBLE_FOR_FINAL_FREEZE_AUDIT**.
+
+The historical audit result remains **FAIL** and its freeze recommendation remains **DO_NOT_FREEZE**. This remediation evidence does not declare Milestone 1 frozen.
