@@ -156,6 +156,17 @@
       "httpIntegrationTestFile": "apps/gateway/tests/filing-authorization-execution-release.test.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/execution/filing-task-drafts/:filingExecutionTaskDraftId/validate-current",
+      "owner": "execution",
+      "namespaceClass": "MILESTONE_INTERNAL_FIXTURE_API",
+      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
+      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "idempotencyRequirement": "NOT_REQUIRED_VALIDATION_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/execution-negative-path-matrix.test.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/lite/professional-review-cases",
       "owner": "lite",

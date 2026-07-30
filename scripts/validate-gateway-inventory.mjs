@@ -39,12 +39,12 @@ for (const row of inventory) {
     )
   );
 }
-assert.equal(source.length, 56);
+assert.equal(source.length, 57);
 assert.equal(
   source.filter((x) => !x.path.startsWith('/health/') && !x.path.startsWith('/__milestone/'))
     .length,
-  53
+  54
 );
 console.log(
-  'Gateway inventory PASS: 56 runtime routes (53 governed/compatibility + 2 health + 1 test-only evidence)'
+  'Gateway inventory PASS: 57 runtime routes (54 governed/compatibility + 2 health + 1 test-only evidence)'
 );

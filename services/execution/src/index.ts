@@ -97,7 +97,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
       return json(200, { [name]: await work(), consequences: filing.consequences });
     } catch (error) {
       if (error instanceof FilingGovernanceError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -116,7 +116,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
       });
     } catch (error) {
       if (error instanceof ProfessionalReviewError)
-        throw new HttpError(error.status, error.code, error.message);
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
       throw error;
     }
   };
@@ -138,6 +138,18 @@ export function createRuntime(options: ExecutionOptions = {}) {
               }
             ]
           : []),
+        {
+          method: 'POST',
+          path: '/v1/filing-task-drafts/:filingExecutionTaskDraftId/validate-current',
+          handle: (r) =>
+            filingMutation(
+              () =>
+                filing.validateTaskCurrent(
+                  r.params.filingExecutionTaskDraftId as FilingExecutionTaskDraftId
+                ),
+              'filingExecutionTaskDraft'
+            )
+        },
         {
           method: 'POST',
           path: '/v1/filing-authorizations',
@@ -288,7 +300,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
               });
             } catch (e) {
               if (e instanceof ProfessionalReviewError)
-                throw new HttpError(e.status, e.code, e.message);
+                throw new HttpError(e.status, e.code, e.message, false, e.details);
               throw e;
             }
           }

@@ -18,7 +18,8 @@ export class ProfessionalReviewError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly status = 409
+    readonly status = 409,
+    readonly details?: Readonly<Record<string, unknown>>
   ) {
     super(message);
   }
@@ -168,7 +169,9 @@ export class ProfessionalReviewService {
     )
       throw new ProfessionalReviewError(
         'ACTIVE_REVIEW_CASE_EXISTS',
-        'An active case already exists for this Matter Draft version.'
+        'An active case already exists for this Matter Draft version.',
+        409,
+        { stage: 'Professional Review', state: 'ACTIVE' }
       );
     const at = this.now();
     const value: ProfessionalReviewCase = {
@@ -324,7 +327,16 @@ export class ProfessionalReviewService {
   private async reviewable(id: ProfessionalReviewCaseId, reviewerId: MarkOrbitId) {
     const v = await this.get(id);
     if (v.status === 'STALE')
-      throw new ProfessionalReviewError('CASE_STALE', 'A stale case cannot be reviewed.');
+      throw new ProfessionalReviewError(
+        'STALE_PROFESSIONAL_REVIEW',
+        'A stale case cannot be reviewed.',
+        409,
+        {
+          stage: 'Professional Review',
+          state: v.status,
+          actualVersion: v.source.matterDraftVersion
+        }
+      );
     if (v.status === 'WITHDRAWN')
       throw new ProfessionalReviewError('CASE_WITHDRAWN', 'A withdrawn case cannot be reviewed.');
     if (v.assignment.claimedBy !== reviewerId)

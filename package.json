@@ -33,7 +33,8 @@
     "test:negative-path-matrix:prepare": "pnpm build:negative-path-deps",
     "test:negative-path-matrix:coverage": "node scripts/validate-negative-path-matrix.mjs",
     "test:negative-path-matrix": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs",
-    "test:negative-path-matrix:markreg": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --markreg"
+    "test:negative-path-matrix:markreg": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --markreg",
+    "test:negative-path-matrix:execution": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --execution"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

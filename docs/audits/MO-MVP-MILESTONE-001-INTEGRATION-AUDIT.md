@@ -289,3 +289,11 @@ The original audit result remains **FAIL** and the freeze recommendation remains
 - **M-004 remains REMEDIATION_IN_PROGRESS.** This evidence change does not modify or close the negative-path semantic matrix.
 
 The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.
+
+### TASK 014-C2-B Execution negative-path semantic closure
+
+- Eight Execution-owned descriptors (NP-006, NP-007, NP-012 through NP-017) now execute independently through the public Execution Service and through real ephemeral Execution and Gateway HTTP listeners.
+- Each case uses descriptor-derived typed expectations, deterministic repository state and a fixed clock, and checks authoritative pre/post state, idempotency entries, downstream counts and all 13 authority consequences. NP-017 additionally preserves one Task Draft ID/count while transitioning only `PREPARED` to `STALE`, never `FILED` or `SUBMITTED`.
+- MarkReg is **9/9**, Execution is **8/8**, and the overall matrix is **17/17 SEMANTICALLY_COMPLETE**. M-004 is locally **RESOLVED**. Remote Node 22 validation remains **UNVERIFIED**.
+
+The original audit result remains **FAIL** and the freeze recommendation remains **DO_NOT_FREEZE**.

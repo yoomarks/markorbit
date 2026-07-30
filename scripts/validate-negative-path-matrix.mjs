@@ -30,9 +30,11 @@ const complete = adapters.filter((adapter) => adapter.semanticClosure === 'SEMAN
 const pending = adapters.filter(
   (adapter) => adapter.semanticClosure === 'SEMANTIC_CLOSURE_PENDING'
 );
-assert.equal(complete.length, 9);
-assert.equal(pending.length, 8);
-console.log('9 semantic closures complete');
-console.log('8 semantic closures pending');
+assert.equal(complete.length, 17);
+assert.equal(pending.length, 0);
+console.log('17 Service semantic cases complete');
+console.log('17 Gateway HTTP semantic cases complete');
+console.log('17 semantic closures complete');
+console.log('0 semantic closures pending');
 console.log('0 missing registrations');
-console.log('M-004 remains REMEDIATION_IN_PROGRESS');
+console.log('M-004 semantic acceptance evidence is complete');

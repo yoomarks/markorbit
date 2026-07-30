@@ -130,30 +130,51 @@ export const milestoneNegativePathAdapters = [
     'NP-010',
     'NP-011'
   ].includes(caseId);
+  const executionComplete = [
+    'NP-006',
+    'NP-007',
+    'NP-012',
+    'NP-013',
+    'NP-014',
+    'NP-015',
+    'NP-016',
+    'NP-017'
+  ].includes(caseId);
   return {
     caseId,
-    semanticClosure: markregComplete ? 'SEMANTICALLY_COMPLETE' : 'SEMANTIC_CLOSURE_PENDING',
+    owner: markregComplete ? 'markreg' : 'execution',
+    semanticClosure:
+      markregComplete || executionComplete ? 'SEMANTICALLY_COMPLETE' : 'SEMANTIC_CLOSURE_PENDING',
     service: markregComplete
       ? {
           file: 'services/markreg/tests/milestone-negative-path-matrix.test.ts',
           pattern: `${caseId} Service boundary preserves typed immutable failure`,
           sourcePattern: "'%s Service boundary preserves typed immutable failure'"
         }
-      : { file: serviceFile, pattern: servicePattern },
+      : {
+          file: 'services/execution/tests/milestone-negative-path-matrix.test.ts',
+          pattern: `${caseId} Service boundary preserves typed authoritative failure`,
+          sourcePattern: "'%s Service boundary preserves typed authoritative failure'"
+        },
     gateway: markregComplete
       ? {
           file: 'apps/gateway/tests/markreg-negative-path-matrix.test.ts',
           pattern: `${caseId} Gateway HTTP preserves semantic immutable failure`,
           sourcePattern: "'%s Gateway HTTP preserves semantic immutable failure'"
         }
-      : { file: gatewayFile, pattern: gatewayPattern },
-    assertions: markregComplete
-      ? {
-          typedError: true,
-          immutableState: true,
-          noPartialMutation: true,
-          authorityConsequences: '13/13_FALSE'
-        }
-      : undefined
+      : {
+          file: 'apps/gateway/tests/execution-negative-path-matrix.test.ts',
+          pattern: `${caseId} Gateway HTTP preserves semantic authoritative failure`,
+          sourcePattern: "'%s Gateway HTTP preserves semantic authoritative failure'"
+        },
+    assertions:
+      markregComplete || executionComplete
+        ? {
+            typedError: true,
+            immutableState: true,
+            noPartialMutation: true,
+            authorityConsequences: '13/13_FALSE'
+          }
+        : undefined
   };
 });

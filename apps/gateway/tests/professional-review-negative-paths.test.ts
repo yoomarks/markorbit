@@ -75,7 +75,7 @@ describe('professional-review negative paths through the real Gateway HTTP bound
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ code: 'ACTIVE_REVIEW_CASE_EXISTS' });
   });
-  it('preserves CASE_STALE and the unchanged record for stale Professional Review completion', async () => {
+  it('preserves STALE_PROFESSIONAL_REVIEW and the unchanged record for stale Professional Review completion', async () => {
     const { call, setSource } = await stack();
     const created = (await (
       await call('/api/lite/professional-review-cases', 'POST', command, 'review-key-1')
@@ -92,7 +92,7 @@ describe('professional-review negative paths through the real Gateway HTTP bound
       rationale: 'must not complete'
     });
     expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ code: 'CASE_STALE' });
+    expect(await response.json()).toMatchObject({ code: 'STALE_PROFESSIONAL_REVIEW' });
     const after = (await (await call(`/api/lite/professional-review-cases/${id}`)).json()) as any;
     expect(after.reviewCase).toEqual(before.reviewCase);
     expect(after.reviewCase.status).toBe('STALE');

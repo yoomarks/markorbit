@@ -33,7 +33,7 @@
     {
       "id": "M-004",
       "severity": "Major",
-      "status": "REMEDIATION_IN_PROGRESS",
+      "status": "RESOLVED",
       "summary": "Negative paths are distributed across suites rather than consolidated as a service-to-Gateway typed-error integration matrix."
     },
     {
@@ -183,13 +183,13 @@
         "missingAdapters": 0,
         "unexpectedAdapters": 0,
         "markregSemanticComplete": 9,
-        "executionSemanticComplete": 0,
-        "semanticPending": 8,
-        "status": "REMEDIATION_IN_PROGRESS_9_OF_17"
+        "executionSemanticComplete": 8,
+        "semanticPending": 0,
+        "status": "RESOLVED_17_OF_17"
       },
       "gatewayRoutes": {
-        "runtimeTotal": 56,
-        "governedAndCompatibility": 53,
+        "runtimeTotal": 57,
+        "governedAndCompatibility": 54,
         "health": 2,
         "auditBaselineExcludingHealth": 48,
         "task014ReadOnlyAdded": 3,
@@ -221,7 +221,7 @@
       "finalEvidenceAudit": {
         "document": "docs/audits/MO-MVP-TASK-014-FINAL-EVIDENCE-AUDIT.md",
         "m003": "RESOLVED_AUTHORITATIVE_SNAPSHOTS_EQUAL_DESKTOP_MOBILE",
-        "m004": "REMEDIATION_IN_PROGRESS_MARKREG_9_OF_9_EXECUTION_0_OF_8",
+        "m004": "RESOLVED_MARKREG_9_OF_9_EXECUTION_8_OF_8_OVERALL_17_OF_17",
         "remoteNode22": "UNVERIFIED_NO_REMOTE"
       }
     }

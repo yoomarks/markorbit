@@ -259,6 +259,10 @@ export function createRuntime(options: GatewayOptions = {}) {
             ['POST', '/api/execution/execution-releases/:executionReleaseId/release'],
             ['POST', '/api/execution/execution-releases/:executionReleaseId/withdraw'],
             ['GET', '/api/execution/filing-task-drafts/:filingExecutionTaskDraftId'],
+            [
+              'POST',
+              '/api/execution/filing-task-drafts/:filingExecutionTaskDraftId/validate-current'
+            ],
             ['GET', '/api/execution/execution-releases/:executionReleaseId/filing-task-draft']
           ] as const
         ).map(([method, path]): JsonRoute => ({
