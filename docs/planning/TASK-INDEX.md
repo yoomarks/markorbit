@@ -58,3 +58,12 @@
   - Freeze recommendation: **FREEZE**
   - Milestone frozen: **false pending explicit owner approval**
   - Evidence: `docs/audits/MO-MVP-MILESTONE-001-FREEZE-AUDIT.md`
+
+## Milestone 2 planning
+
+- TASK 016 — Milestone 2 scope and architecture lock (**proposed in Draft PR**)
+  - Recommended direction: Durable Authenticated Matter Operations
+  - Status: `PROPOSED`; owner decision gates remain open
+  - Scope: `docs/planning/MO-MVP-MILESTONE-002-SCOPE-LOCK.md`
+  - Delivery graph: TASK 017–027 in `docs/planning/MO-MVP-MILESTONE-002-DELIVERY-PLAN.md`
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-002-PLAN.json`

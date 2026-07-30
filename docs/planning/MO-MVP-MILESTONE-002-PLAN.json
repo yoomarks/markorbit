@@ -1,0 +1,429 @@
+{
+  "milestone": "MO_MVP_MILESTONE_002",
+  "frozenPredecessorTag": "v0.1.0-milestone.1",
+  "primaryOutcome": "Authenticated Durable Matter Operations",
+  "status": "PROPOSED",
+  "recommendedDirection": "OPTION_A_DURABLE_AUTHENTICATED_MATTER_OPERATIONS",
+  "baseline": {
+    "mainSha": "c704f9378e999fdd3589e6f72e1d4925b36a5eb4",
+    "mainTreeSha": "9090a7e0181a34bbdf8dc53109f89cb5cbd5232d",
+    "frozenTagTargetSha": "c704f9378e999fdd3589e6f72e1d4925b36a5eb4",
+    "tagIsAncestorOfOriginMain": true,
+    "postFreezeCommits": [],
+    "planningAffectingDrift": false
+  },
+  "alternativeDirections": [
+    {
+      "id": "OPTION_B_COMMERCIAL_TRANSACTION_LAYER",
+      "disposition": "DEFERRED",
+      "reason": "Depends on durable identity and Matter operations plus unmodeled financial authority."
+    },
+    {
+      "id": "OPTION_C_EXTERNAL_FILING_EXECUTION",
+      "disposition": "DEFERRED",
+      "reason": "Depends on durable operations, protected-action approval and provider/office integrations."
+    }
+  ],
+  "inScope": [
+    "authenticated users and server-verified principals",
+    "Workplace membership, bounded roles and permissions",
+    "persistent authoritative repositories and migrations",
+    "explicit Formal Matter creation from exact-version governed source",
+    "immutable source snapshot and durable lineage",
+    "append-only audit",
+    "durable idempotency",
+    "optimistic concurrency",
+    "restart recovery",
+    "tenant-isolation enforcement",
+    "real PostgreSQL integration, migration, restart and browser acceptance"
+  ],
+  "nonGoals": [
+    {
+      "item": "payment processing and invoice settlement",
+      "laterDependency": "commercial ledger, provider integration and financial authority"
+    },
+    {
+      "item": "automated Order creation",
+      "laterDependency": "approved Customer/Order and contracting-party semantics"
+    },
+    {
+      "item": "external trademark-office filing and official application-number ingestion",
+      "laterDependency": "protected-action approval, office adapter and Official Truth reconciliation"
+    },
+    {
+      "item": "external attorney or provider appointment",
+      "laterDependency": "MGSN eligibility/allocation and appointment authority"
+    },
+    {
+      "item": "production document object storage",
+      "laterDependency": "retention, encryption, scanning and access policy"
+    },
+    {
+      "item": "email or SMS delivery",
+      "laterDependency": "consent, communication ownership and provider audit"
+    },
+    {
+      "item": "AI Capability Engine",
+      "laterDependency": "separate governed capability/evidence/version milestone"
+    },
+    {
+      "item": "full enterprise SSO",
+      "laterDependency": "bounded IAM followed by OIDC/SAML governance"
+    },
+    {
+      "item": "multi-region deployment and production disaster recovery",
+      "laterDependency": "RPO/RTO, backup/restore and deployment design"
+    },
+    {
+      "item": "marketplace or billing plans",
+      "laterDependency": "provider and commercial governance"
+    }
+  ],
+  "domainObjects": [
+    {
+      "name": "Customer Confirmation",
+      "owner": "MarkReg",
+      "currentRepository": "InMemoryMatterFlowRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "updatedAt/schemaVersion 1",
+      "restart": "LOST"
+    },
+    {
+      "name": "Matter Draft",
+      "owner": "MarkReg",
+      "currentRepository": "InMemoryMatterFlowRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "updatedAt/schemaVersion 1",
+      "restart": "LOST"
+    },
+    {
+      "name": "Professional Review Case",
+      "owner": "Execution",
+      "currentRepository": "InMemoryProfessionalReviewRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "updatedAt/source decision version",
+      "restart": "LOST"
+    },
+    {
+      "name": "Document Package",
+      "owner": "MarkReg",
+      "currentRepository": "InMemoryPreparationRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "integer",
+      "restart": "LOST"
+    },
+    {
+      "name": "Instruction Ledger",
+      "owner": "MarkReg",
+      "currentRepository": "InMemoryPreparationRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "integer",
+      "restart": "LOST"
+    },
+    {
+      "name": "Preparation Lock",
+      "owner": "MarkReg",
+      "currentRepository": "InMemoryPreparationRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "immutable source-derived string",
+      "restart": "LOST"
+    },
+    {
+      "name": "Filing Authorization",
+      "owner": "Execution",
+      "currentRepository": "InMemoryFilingGovernanceRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "integer",
+      "restart": "LOST"
+    },
+    {
+      "name": "Execution Release",
+      "owner": "Execution",
+      "currentRepository": "InMemoryFilingGovernanceRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "integer",
+      "restart": "LOST"
+    },
+    {
+      "name": "Filing Execution Task Draft",
+      "owner": "Execution",
+      "currentRepository": "InMemoryFilingGovernanceRepository",
+      "currentPersistence": "PROCESS_MEMORY",
+      "versionRule": "no aggregate version",
+      "restart": "LOST"
+    },
+    {
+      "name": "Formal Matter",
+      "owner": "MarkReg",
+      "currentRepository": null,
+      "currentPersistence": "NOT_IMPLEMENTED",
+      "proposedVersionRule": "integer starting at 1",
+      "restart": "MUST_SURVIVE"
+    }
+  ],
+  "authorityTransitions": [
+    {
+      "command": "CreateFormalMatter",
+      "owner": "MarkReg",
+      "authorizedRoles": ["WORKSPACE_ADMIN", "MATTER_MANAGER"],
+      "source": "exact Matter Draft identity/version plus Confirmation and complete immutable lineage snapshot",
+      "requiredDraftStatus": "READY_FOR_PROFESSIONAL_REVIEW",
+      "professionalReviewRequirement": "OPEN_OWNER_DECISION",
+      "resultStatus": "OPEN_FOR_INTERNAL_OPERATIONS_RECOMMENDED",
+      "initialVersion": 1,
+      "idempotencyScope": "workplace + command + key",
+      "duplicateBehavior": "same hash returns same Matter; different hash conflicts",
+      "staleBehavior": "STALE_SOURCE with no writes",
+      "proposedEvent": "markreg.formal-matter.created.v1 subject to outbox gate",
+      "falseConsequences": [
+        "Order",
+        "Invoice",
+        "Payment",
+        "professional appointment",
+        "Filing",
+        "Filing Submission",
+        "official application",
+        "official application number",
+        "external provider assignment",
+        "customer message",
+        "external document transmission",
+        "trademark-office contact"
+      ]
+    }
+  ],
+  "identityModel": {
+    "tenantTerm": "WORKPLACE_RECOMMENDED_OWNER_APPROVAL_REQUIRED",
+    "entities": [
+      "User",
+      "Workplace",
+      "Membership",
+      "Role",
+      "Permission",
+      "Session",
+      "Principal",
+      "ServiceIdentity"
+    ],
+    "roles": ["WORKSPACE_ADMIN", "MATTER_MANAGER", "REVIEWER", "READ_ONLY"],
+    "authentication": "OPAQUE_SERVER_SIDE_SAME_ORIGIN_SESSION_RECOMMENDED",
+    "serviceAuthentication": "separate bearer or workload identity",
+    "authorizationLayers": [
+      "Web route",
+      "Gateway route",
+      "Service command/query",
+      "repository scope",
+      "database constraint",
+      "audit"
+    ],
+    "isolation": "repository key + query scope + composite database constraint + application checks; RLS open"
+  },
+  "persistenceModel": {
+    "technology": "POSTGRESQL_16_RECOMMENDED_OWNER_APPROVAL_REQUIRED",
+    "evidence": "Existing Docker Compose resource; no application driver or migration tool exists.",
+    "migrationTool": "OPEN_TASK_017_SELECTION",
+    "adapterPattern": "service-owned repository port with memory and PostgreSQL adapters",
+    "transaction": "Matter + snapshot + idempotency result + audit + optional outbox",
+    "concurrency": "integer version compare-and-swap",
+    "idempotency": "unique workplace/command/key with request hash and stable result",
+    "outbox": "OPEN: transactional outbox if events publish, otherwise no publication promise",
+    "audit": "append-only service-owned table",
+    "clock": "injected UTC application clock",
+    "storage": "normalized tenant/identity/state/version/index keys plus schema-versioned immutable jsonb snapshot",
+    "local": "existing Compose PostgreSQL extended by migrations",
+    "ci": "isolated real PostgreSQL required",
+    "rollback": "forward-only shared migrations; expand/migrate/contract for destructive changes"
+  },
+  "durabilityClassification": [
+    {
+      "record": "Consultation",
+      "classification": "MIGRATION_DEFERRED"
+    },
+    {
+      "record": "Recommendation / Plan",
+      "classification": "MIGRATION_DEFERRED"
+    },
+    {
+      "record": "Quote",
+      "classification": "MIGRATION_DEFERRED"
+    },
+    {
+      "record": "Customer Confirmation",
+      "classification": "DURABLE_IN_MILESTONE_2"
+    },
+    {
+      "record": "Matter Draft",
+      "classification": "DURABLE_IN_MILESTONE_2"
+    },
+    {
+      "record": "Professional Review Case",
+      "classification": "MIGRATION_DEFERRED",
+      "condition": "becomes durable if required by authority trigger"
+    },
+    {
+      "record": "Document Package",
+      "classification": "READ_THROUGH_FIXTURE"
+    },
+    {
+      "record": "Instruction Ledger",
+      "classification": "READ_THROUGH_FIXTURE"
+    },
+    {
+      "record": "Preparation Lock",
+      "classification": "MIGRATION_DEFERRED"
+    },
+    {
+      "record": "Filing Authorization",
+      "classification": "REMAINS_TEST_ONLY"
+    },
+    {
+      "record": "Execution Release",
+      "classification": "REMAINS_TEST_ONLY"
+    },
+    {
+      "record": "Filing Execution Task Draft",
+      "classification": "REMAINS_TEST_ONLY"
+    },
+    {
+      "record": "Formal Matter",
+      "classification": "DURABLE_IN_MILESTONE_2"
+    }
+  ],
+  "testStrategy": {
+    "repositoryContract": ["in-memory adapter", "PostgreSQL adapter"],
+    "service": [
+      "authorization",
+      "tenant scope",
+      "versions",
+      "idempotency",
+      "transactions",
+      "audit",
+      "false authority consequences"
+    ],
+    "gateway": "real HTTP and real PostgreSQL",
+    "restart": "create, stop runtimes, restart, reload exact record",
+    "tenantIsolation": "Workplace A cannot read or mutate Workplace B",
+    "migration": [
+      "empty database",
+      "each retained prior Milestone 2 schema",
+      "failed migration readiness"
+    ],
+    "browser": "authenticated real-runtime desktop create and reload without interception",
+    "uiFixtures": "Storybook loading, empty, eligible, creating, success, permission, partial, stale, conflict and error"
+  },
+  "securityBoundary": {
+    "credentials": "no repository credentials; memory-hard password hashing",
+    "session": "HttpOnly Secure SameSite=Lax opaque cookie recommended",
+    "csrf": "token and Origin validation for unsafe cookie requests",
+    "tenantScope": "mandatory at service, repository and database layers",
+    "roleEnforcement": "Gateway and owning service; never UI only",
+    "audit": "allowed and denied actions, redacted",
+    "testUsers": "separate Workplaces and fixture/production modes",
+    "claims": "no production security certification, enterprise SSO or DR claim"
+  },
+  "risks": [
+    "Business authority trigger and professional-review prerequisite remain open.",
+    "No current driver, migration runner, authentication tooling or durable event publisher exists.",
+    "A durable Matter cannot depend on disappearing fixture state; snapshot admission is mandatory.",
+    "Cross-service identity and Matter transactions cannot share a database transaction.",
+    "At-least-once event publication needs an outbox or event publication must be deferred.",
+    "Tenant scoping omissions can expose customer relationship/private context."
+  ],
+  "dependencies": [
+    "owner decision gates",
+    "PostgreSQL foundation",
+    "Core identity and Workplace membership",
+    "Gateway principal propagation",
+    "Formal Matter shared contracts",
+    "MarkReg durable source and Matter repositories"
+  ],
+  "tasks": [
+    {
+      "id": "TASK_017",
+      "title": "Persistence foundation and repository contracts",
+      "dependsOn": []
+    },
+    {
+      "id": "TASK_018",
+      "title": "Identity, Workplace and Membership contracts",
+      "dependsOn": ["TASK_017"]
+    },
+    {
+      "id": "TASK_019",
+      "title": "Authentication runtime and Gateway principal",
+      "dependsOn": ["TASK_018"]
+    },
+    {
+      "id": "TASK_020",
+      "title": "Formal Matter domain contract",
+      "dependsOn": ["TASK_018"]
+    },
+    {
+      "id": "TASK_021",
+      "title": "Formal Matter persistent repository",
+      "dependsOn": ["TASK_017", "TASK_020"]
+    },
+    {
+      "id": "TASK_022",
+      "title": "Explicit Matter creation Service boundary",
+      "dependsOn": ["TASK_018", "TASK_019", "TASK_020", "TASK_021"]
+    },
+    {
+      "id": "TASK_023",
+      "title": "Gateway API and typed client",
+      "dependsOn": ["TASK_019", "TASK_022"]
+    },
+    {
+      "id": "TASK_024",
+      "title": "Authenticated MarkReg Web journey",
+      "dependsOn": ["TASK_023"]
+    },
+    {
+      "id": "TASK_025",
+      "title": "Durable audit, idempotency and event delivery hardening",
+      "dependsOn": ["TASK_022", "TASK_023", "TASK_024"]
+    },
+    {
+      "id": "TASK_026",
+      "title": "Restart, migration and tenant-isolation matrix",
+      "dependsOn": [
+        "TASK_017",
+        "TASK_018",
+        "TASK_019",
+        "TASK_020",
+        "TASK_021",
+        "TASK_022",
+        "TASK_023",
+        "TASK_024",
+        "TASK_025"
+      ]
+    },
+    {
+      "id": "TASK_027",
+      "title": "Milestone 2 integration audit",
+      "dependsOn": ["TASK_026"]
+    }
+  ],
+  "acceptanceCriteria": [
+    "authenticated active Workplace member explicitly creates an eligible Formal Matter",
+    "exact source identity/version and complete immutable snapshot are stored",
+    "Matter has durable opaque ID and version 1",
+    "audit and idempotency result commit atomically",
+    "identical replay returns the same Matter and conflicting replay fails",
+    "stale source and expected-version races write no partial state",
+    "restart preserves exact Matter and lineage",
+    "cross-Workplace access cannot read or mutate",
+    "Gateway and browser evidence use real runtimes and PostgreSQL",
+    "no Payment, Filing Submission or other listed external-authority consequence is created"
+  ],
+  "openDecisions": [
+    "Approve primary Option A direction",
+    "Approve PostgreSQL 16 or alternative and migration tool",
+    "Approve authentication/session mechanism and ownership",
+    "Approve Workplace versus Tenant terminology",
+    "Approve Formal Matter authority trigger, initial status and professional-review prerequisite",
+    "Approve UUIDv7 versus ULID-style Matter ID",
+    "Approve durable upstream record classification",
+    "Approve transactional outbox versus no event publication",
+    "Approve PostgreSQL RLS use",
+    "Approve TASK 017-027 sequence"
+  ]
+}
