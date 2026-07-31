@@ -46,9 +46,15 @@ import {
   CustomerConfirmationService,
   type CustomerConfirmationRepository
 } from './customer-confirmation.js';
+import {
+  MatterDraftError,
+  MatterDraftService,
+  type MatterDraftRepository
+} from './matter-draft.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
 export * from './customer-confirmation.js';
+export * from './matter-draft.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -241,6 +247,7 @@ export interface MarkRegOptions {
   preparationSources?: PreparationSources;
   milestoneTestRuntime?: boolean;
   customerConfirmationRepository?: CustomerConfirmationRepository;
+  matterDraftRepository?: MatterDraftRepository;
   internalServiceSecret?: string;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
@@ -330,6 +337,14 @@ export function createRuntime(options: MarkRegOptions = {}) {
         now
       )
     : undefined;
+  const durableDrafts =
+    options.customerConfirmationRepository && options.matterDraftRepository
+      ? new MatterDraftService(
+          options.matterDraftRepository,
+          options.customerConfirmationRepository,
+          now
+        )
+      : undefined;
   const internalServiceSecret =
     options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
   const fixtureRuntime =
@@ -369,6 +384,21 @@ export function createRuntime(options: MarkRegOptions = {}) {
                   ? 503
                   : error.code === 'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT' ||
                       error.code === 'CUSTOMER_CONFIRMATION_INVALID_SOURCE'
+                    ? 422
+                    : 409;
+        throw new HttpError(status, error.code, error.message, status === 503);
+      }
+      if (error instanceof MatterDraftError) {
+        const status =
+          error.code === 'AUTHENTICATION_REQUIRED'
+            ? 401
+            : error.code === 'PERMISSION_DENIED' || error.code === 'MATTER_DRAFT_WORKSPACE_MISMATCH'
+              ? 403
+              : error.code === 'MATTER_DRAFT_NOT_FOUND'
+                ? 404
+                : error.code === 'PERSISTENCE_UNAVAILABLE'
+                  ? 503
+                  : error.code === 'MATTER_DRAFT_INVALID_SOURCE'
                     ? 422
                     : 409;
         throw new HttpError(status, error.code, error.message, status === 503);
@@ -794,6 +824,28 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/matter-drafts',
           async handle(request) {
+            if (durableDrafts) {
+              const b = request.body as {
+                workspaceId: string;
+                confirmationId: string;
+                confirmationVersion: number;
+              };
+              return durable(async () => ({
+                matterDraft: await durableDrafts.create(durablePrincipal(request), {
+                  workspaceId: b.workspaceId,
+                  customerConfirmationId: b.confirmationId,
+                  customerConfirmationVersion: b.confirmationVersion
+                }),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
             return governed(() =>
               matterFlow.createDraft(
                 (request.body as { confirmationId: `confirmation_${string}` }).confirmationId,
@@ -806,6 +858,30 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/matter-drafts/:matterDraftId',
           async handle(request) {
+            if (durableDrafts) {
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              return durable(async () => ({
+                matterDraft: await durableDrafts.get(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
             const value = await matterFlowRepository.getMatterDraft(
               request.params.matterDraftId as `matter-draft_${string}`
             );
@@ -818,6 +894,36 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'PATCH',
           path: '/v1/matter-drafts/:matterDraftId',
           async handle(request) {
+            if (durableDrafts) {
+              const b = request.body as {
+                expectedVersion: number;
+                preparation?: Record<string, unknown>;
+              };
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              return durable(async () => ({
+                matterDraft: await durableDrafts.update(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!,
+                  b.expectedVersion,
+                  (b.preparation ?? b) as never
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
             return governed(() =>
               matterFlow.updateDraft(
                 request.params.matterDraftId as `matter-draft_${string}`,
@@ -830,6 +936,32 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/matter-drafts/:matterDraftId/evaluate-readiness',
           async handle(request) {
+            if (durableDrafts) {
+              const b = request.body as { expectedVersion: number };
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              return durable(async () => ({
+                matterDraft: await durableDrafts.evaluate(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!,
+                  b.expectedVersion
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
             return governed(() =>
               matterFlow.evaluateReadiness(request.params.matterDraftId as `matter-draft_${string}`)
             );

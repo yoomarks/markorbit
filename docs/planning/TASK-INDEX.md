@@ -74,4 +74,6 @@
 - TASK 019 — Authenticated runtime, Sessions and Gateway Principal (**merged in `5d71e60`**)
   - Core-owned opaque Sessions; Gateway cookie, CSRF, CORS and Principal resolution boundaries
 - TASK 020 — Durable authenticated Customer Confirmation (**implementation in Draft PR**)
-  - MarkReg-owned durable acceptance evidence; TASK 021 has not started
+  - MarkReg-owned durable acceptance evidence
+- TASK 021 — MarkReg durable preparation vertical slice (**implementation in Draft PR**)
+  - MarkReg-owned Matter Draft persistence, authenticated existing routes, optimistic concurrency and durable readiness
