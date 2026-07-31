@@ -93,8 +93,9 @@ export class InMemoryMatterDraftRepository implements MatterDraftRepository {
       throw new MatterDraftError('MATTER_DRAFT_NOT_FOUND', 'Matter Draft was not found.');
     if (current.version !== expectedVersion)
       throw new MatterDraftError('MATTER_DRAFT_STALE_VERSION', 'Matter Draft version is stale.');
-    this.values.set(id, clone(value));
-    return clone(value);
+    const next = { ...clone(value), version: current.version + 1 };
+    this.values.set(id, next);
+    return clone(next);
   }
 }
 type Row = Record<string, unknown>;
@@ -388,5 +389,14 @@ export class MatterDraftService {
       status: r.readyForProfessionalReview ? 'READY_FOR_PROFESSIONAL_REVIEW' : 'NEEDS_INFORMATION',
       updatedAt: at
     });
+  }
+  async progress(p: WorkspacePrincipal, workspaceId: string, id: string, expectedVersion: number) {
+    authorize(p, workspaceId, 'matter:manage');
+    const value = await this.get(p, workspaceId, id);
+    if (value.version !== expectedVersion)
+      throw new MatterDraftError('MATTER_DRAFT_STALE_VERSION', 'Matter Draft version is stale.');
+    if (!value.readiness.readyForProfessionalReview)
+      throw new MatterDraftError('MATTER_DRAFT_INVALID_SOURCE', 'Matter Draft is not ready.');
+    return value;
   }
 }

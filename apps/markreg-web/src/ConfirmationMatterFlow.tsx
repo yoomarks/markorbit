@@ -17,7 +17,7 @@ import {
   TextArea,
   TextInput
 } from '@markorbit/ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MarkregClient } from './api/markreg.js';
 
 export type MatterViewState =
@@ -26,6 +26,7 @@ export type MatterViewState =
   | 'CONFIRMATION_RECEIPT'
   | 'MATTER_DRAFT_LOADING'
   | 'MATTER_DRAFT_EDITING'
+  | 'MATTER_DRAFT_SAVING'
   | 'MATTER_DRAFT_EVALUATING'
   | 'MATTER_DRAFT_NEEDS_INFORMATION'
   | 'READY_FOR_PROFESSIONAL_REVIEW'
@@ -63,11 +64,38 @@ export function ConfirmationMatterFlow({
     fixture?.message ?? 'Your saved records are unchanged. Try again.'
   );
   const [reviewCase, setReviewCase] = useState<ProfessionalReviewCase>();
+  const [savedMessage, setSavedMessage] = useState('');
   const [form, setForm] = useState<MatterDraftPreparation>(
     () => fixture?.draft?.preparation ?? { classes: [], documentReferences: [] }
   );
   const complete = checked.length === codes.length;
   const planId = quote.planSelection.planSelectionId;
+  const draftStorageKey = `markreg-matter-draft:${quote.quote.quoteId}`;
+  const workspaceId =
+    typeof sessionStorage === 'undefined'
+      ? undefined
+      : (sessionStorage.getItem('markorbit-workspace-id') ?? undefined);
+  useEffect(() => {
+    if (fixture || !client.getMatterDraft || typeof sessionStorage === 'undefined') return;
+    const id = sessionStorage.getItem(draftStorageKey);
+    if (!id) return;
+    setState('MATTER_DRAFT_LOADING');
+    void client
+      .getMatterDraft(id)
+      .then((response) => {
+        setMatter(response.matterDraft);
+        setForm(response.matterDraft.preparation);
+        setState(
+          response.matterDraft.status === 'READY_FOR_PROFESSIONAL_REVIEW'
+            ? 'READY_FOR_PROFESSIONAL_REVIEW'
+            : 'MATTER_DRAFT_NEEDS_INFORMATION'
+        );
+      })
+      .catch((error) => {
+        setMessage(error instanceof Error ? error.message : message);
+        setState('RECOVERABLE_ERROR');
+      });
+  }, [client, draftStorageKey, fixture]);
   const confirm = async () => {
     setState('CONFIRMING');
     try {
@@ -99,21 +127,57 @@ export function ConfirmationMatterFlow({
     if (!confirmation) return;
     setState('MATTER_DRAFT_LOADING');
     try {
-      const response = await client.createMatterDraft!(confirmation.confirmationId);
+      const response = await client.createMatterDraft!(
+        confirmation.confirmationId,
+        (confirmation as CustomerConfirmation & { version?: number }).version ?? 1,
+        workspaceId
+      );
       setMatter(response.matterDraft);
       setForm(response.matterDraft.preparation);
+      sessionStorage.setItem(draftStorageKey, response.matterDraft.matterDraftId);
       setState('MATTER_DRAFT_NEEDS_INFORMATION');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : message);
       setState('RECOVERABLE_ERROR');
     }
   };
+  const save = async () => {
+    if (!matter) return undefined;
+    setState('MATTER_DRAFT_SAVING');
+    try {
+      const response = await client.updateMatterDraft!(
+        matter.matterDraftId,
+        form,
+        (matter as MatterDraft & { version?: number }).version,
+        workspaceId
+      );
+      setMatter(response.matterDraft);
+      setSavedMessage(
+        `Saved version ${(response.matterDraft as MatterDraft & { version?: number }).version ?? response.matterDraft.updatedAt}`
+      );
+      setState('MATTER_DRAFT_NEEDS_INFORMATION');
+      return response.matterDraft;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : message);
+      setState('RECOVERABLE_ERROR');
+      return undefined;
+    }
+  };
   const evaluate = async () => {
     if (!matter) return;
     setState('MATTER_DRAFT_EVALUATING');
     try {
-      await client.updateMatterDraft!(matter.matterDraftId, form);
-      const response = await client.evaluateMatterDraft!(matter.matterDraftId);
+      const saved = await client.updateMatterDraft!(
+        matter.matterDraftId,
+        form,
+        (matter as MatterDraft & { version?: number }).version,
+        workspaceId
+      );
+      const response = await client.evaluateMatterDraft!(
+        matter.matterDraftId,
+        (saved.matterDraft as MatterDraft & { version?: number }).version,
+        workspaceId
+      );
       setMatter(response.matterDraft);
       setState(
         response.matterDraft.status === 'READY_FOR_PROFESSIONAL_REVIEW'
@@ -147,6 +211,7 @@ export function ConfirmationMatterFlow({
     return <LoadingState label="Loading Matter Draft workspace" />;
   if (state === 'MATTER_DRAFT_EVALUATING')
     return <LoadingState label="Evaluating explicit readiness evidence" />;
+  if (state === 'MATTER_DRAFT_SAVING') return <LoadingState label="Saving Matter Draft" />;
   if (state === 'RECOVERABLE_ERROR')
     return (
       <Alert tone="danger" title="Matter preparation could not continue">
@@ -254,7 +319,12 @@ export function ConfirmationMatterFlow({
         <KeyValueList
           items={[
             { key: 'Matter Draft ID', value: matter.matterDraftId },
-            { key: 'Matter Draft version', value: matter.updatedAt }
+            {
+              key: 'Matter Draft version',
+              value: String(
+                (matter as MatterDraft & { version?: number }).version ?? matter.updatedAt
+              )
+            }
           ]}
         />
         <div className="markreg-form">
@@ -327,6 +397,11 @@ export function ConfirmationMatterFlow({
             onChange={(e) => update('commercialScopeUnchanged', e.target.checked)}
           />
         </div>
+        {savedMessage && (
+          <Alert tone="success" title="Matter Draft saved">
+            {savedMessage}
+          </Alert>
+        )}
         <h3>Missing information</h3>
         {matter.missingInformation.length ? (
           <ul>
@@ -383,6 +458,7 @@ export function ConfirmationMatterFlow({
           </>
         ) : (
           <div className="markreg-actions matter-draft-actions">
+            <Button onClick={() => void save()}>Save Matter Draft</Button>
             <Button onClick={() => void evaluate()}>Prepare for professional review</Button>
           </div>
         )}

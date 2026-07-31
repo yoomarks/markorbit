@@ -830,6 +830,16 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 confirmationId: string;
                 confirmationVersion: number;
               };
+              if (
+                !b.workspaceId ||
+                !b.confirmationId ||
+                !Number.isSafeInteger(b.confirmationVersion)
+              )
+                throw new HttpError(
+                  400,
+                  'INVALID_REQUEST',
+                  'Workspace, Confirmation and exact version are required.'
+                );
               return durable(async () => ({
                 matterDraft: await durableDrafts.create(durablePrincipal(request), {
                   workspaceId: b.workspaceId,
@@ -906,6 +916,8 @@ export function createRuntime(options: MarkRegOptions = {}) {
                   'INVALID_WORKSPACE_CONTEXT',
                   'Workspace context is required.'
                 );
+              if (!Number.isSafeInteger(b.expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
               return durable(async () => ({
                 matterDraft: await durableDrafts.update(
                   durablePrincipal(request),
@@ -945,6 +957,8 @@ export function createRuntime(options: MarkRegOptions = {}) {
                   'INVALID_WORKSPACE_CONTEXT',
                   'Workspace context is required.'
                 );
+              if (!Number.isSafeInteger(b.expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
               return durable(async () => ({
                 matterDraft: await durableDrafts.evaluate(
                   durablePrincipal(request),
@@ -971,6 +985,35 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/matter-drafts/:matterDraftId/progress',
           async handle(request) {
+            if (durableDrafts) {
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              const expectedVersion = (request.body as { expectedVersion?: number })
+                .expectedVersion;
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              if (!Number.isSafeInteger(expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
+              return durable(async () => ({
+                matterDraft: await durableDrafts.progress(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!,
+                  expectedVersion!
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
             return governed(() =>
               matterFlow.progressDraft(request.params.matterDraftId as `matter-draft_${string}`)
             );
