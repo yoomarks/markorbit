@@ -1041,3 +1041,4 @@ export function parseRecommendationPackage(value: unknown): RecommendationPackag
     throw new ContractValidationError('recommendation.options must be ordered A/B/C.');
   return value as RecommendationPackage;
 }
+export * from './identity.js';

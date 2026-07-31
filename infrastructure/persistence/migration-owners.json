@@ -1,3 +1,4 @@
 {
-  "persistence_foundation": "@markorbit/persistence"
+  "persistence_foundation": "@markorbit/persistence",
+  "core": "@markorbit/core-service"
 }
