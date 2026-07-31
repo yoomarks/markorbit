@@ -78,3 +78,5 @@
 - TASK 021 — MarkReg durable preparation vertical slice (**implementation in Draft PR**)
 - TASK 022 — Formal Matter creation vertical slice (**implementation in Draft PR**)
   - MarkReg-owned Matter Draft persistence, authenticated existing routes, optimistic concurrency and durable readiness
+- TASK 023 — Mo Lite durable Matter workspace (**implemented in Draft PR**)
+  - Authenticated PostgreSQL-backed list/detail, URL recovery, Workspace isolation, and bounded Lite projection

@@ -101,7 +101,8 @@ export function createRuntime(options: GatewayOptions = {}) {
   };
   const forward = async (request: JsonRequest, path: string, principal?: WorkspacePrincipal) => {
     try {
-      const response = await fetch(`${markRegUrl}${path}`, {
+      const search = new URLSearchParams(request.query).toString();
+      const response = await fetch(`${markRegUrl}${path}${search ? `?${search}` : ''}`, {
         method: request.method,
         headers: {
           'content-type': 'application/json',
@@ -198,6 +199,11 @@ export function createRuntime(options: GatewayOptions = {}) {
               return mapAuthentication(error);
             }
           }
+        },
+        {
+          method: 'GET',
+          path: '/api/markreg/formal-matters',
+          handle: (r) => matterDraft(r, '/v1/formal-matters', 'matter:read')
         },
         {
           method: 'POST',

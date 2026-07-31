@@ -731,6 +731,58 @@ export function createRuntime(options: MarkRegOptions = {}) {
             )
         },
         {
+          method: 'GET',
+          path: '/v1/formal-matters',
+          async handle(request) {
+            if (!formalMatters)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Formal Matter persistence is unavailable.',
+                true
+              );
+            const workspaceId = request.headers['x-markorbit-workspace-id'];
+            if (!workspaceId)
+              throw new HttpError(
+                400,
+                'INVALID_WORKSPACE_CONTEXT',
+                'Workspace context is required.'
+              );
+            const { status, type, search, createdFrom, createdTo } = request.query;
+            const page = Number(request.query.page ?? '1');
+            const pageSize = Number(request.query.pageSize ?? '20');
+            if (
+              !Number.isSafeInteger(page) ||
+              page < 1 ||
+              !Number.isSafeInteger(pageSize) ||
+              pageSize < 1 ||
+              pageSize > 100 ||
+              (status && status !== 'OPEN') ||
+              (type && type !== 'TRADEMARK_REGISTRATION') ||
+              (search?.length ?? 0) > 100 ||
+              (createdFrom && Number.isNaN(Date.parse(createdFrom))) ||
+              (createdTo && Number.isNaN(Date.parse(createdTo)))
+            )
+              throw new HttpError(
+                400,
+                'INVALID_FILTERS',
+                'Matter list filters or pagination are invalid.'
+              );
+            return durable(async () => ({
+              ...(await formalMatters.list(durablePrincipal(request), workspaceId, {
+                page,
+                pageSize,
+                ...(status ? { status: status as 'OPEN' } : {}),
+                ...(type ? { type: type as 'TRADEMARK_REGISTRATION' } : {}),
+                ...(search ? { search } : {}),
+                ...(createdFrom ? { createdFrom } : {}),
+                ...(createdTo ? { createdTo } : {})
+              })),
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
           method: 'POST',
           path: '/v1/formal-matters',
           async handle(request) {

@@ -398,26 +398,37 @@
       "httpIntegrationTestFile": "apps/gateway/tests/customer-confirmation-matter-draft.test.ts"
     },
     {
+      "method": "GET",
+      "path": "/api/markreg/formal-matters",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/formal-matter-http.integration.test.ts"
+    },
+    {
       "method": "POST",
       "path": "/api/markreg/formal-matters",
       "owner": "markreg",
       "namespaceClass": "CANONICAL_PRODUCT_API",
-      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
-      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
       "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
-      "httpIntegrationTestFile": "apps/gateway/tests/formal-matter.test.ts"
+      "httpIntegrationTestFile": "scripts/formal-matter-http.integration.test.ts"
     },
     {
       "method": "GET",
       "path": "/api/markreg/formal-matters/:formalMatterId",
       "owner": "markreg",
       "namespaceClass": "CANONICAL_PRODUCT_API",
-      "authenticationMode": "FIXTURE_ONLY_UNAUTHENTICATED",
-      "environmentScope": "NON_PRODUCTION_MILESTONE_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
       "idempotencyRequirement": "NOT_APPLICABLE_READ",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
-      "httpIntegrationTestFile": "apps/gateway/tests/formal-matter.test.ts"
+      "httpIntegrationTestFile": "scripts/formal-matter-http.integration.test.ts"
     },
     {
       "method": "POST",

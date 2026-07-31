@@ -22,8 +22,9 @@ for (const row of inventory) {
     'httpIntegrationTestFile'
   ])
     assert.ok(row[field], `${key(row)} lacks ${field}`);
-  const authenticated = row.path.startsWith('/api/auth/') || row.path.endsWith('/context');
-  const expected = authenticated
+  const authOwner = row.path.startsWith('/api/auth/') || row.path.endsWith('/context');
+  const authenticated = authOwner || row.path.startsWith('/api/markreg/formal-matters');
+  const expected = authOwner
     ? 'auth'
     : row.path.startsWith('/__milestone/')
       ? 'runtime'
@@ -47,7 +48,7 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 62);
+assert.equal(source.length, 63);
 assert.equal(
   source.filter(
     (x) =>
@@ -56,8 +57,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  56
+  57
 );
 console.log(
-  'Gateway inventory PASS: 62 runtime routes (56 governed/compatibility + 3 authenticated + 2 health + 1 test-only evidence); test bootstrap excluded'
+  'Gateway inventory PASS: 63 runtime routes (54 governed/compatibility + 6 authenticated + 2 health + 1 test-only evidence); test bootstrap excluded'
 );

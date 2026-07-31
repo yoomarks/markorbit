@@ -235,6 +235,26 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
       f.repository.findById(otherWorkspaceId, created.formalMatterId)
     ).resolves.toBeNull();
   });
+  it('searches and paginates a bounded projection with Workspace isolation', async () => {
+    const f = await fixture('list');
+    const created = await f.service.create(principal, f.command);
+    const result = await f.repository.list(workspaceId, {
+      search: 'ORBIT',
+      status: 'OPEN',
+      type: 'TRADEMARK_REGISTRATION',
+      page: 1,
+      pageSize: 1
+    });
+    expect(result).toMatchObject({ total: 1, page: 1, pageSize: 1 });
+    expect(result.items[0]).toMatchObject({
+      formalMatterId: created.formalMatterId,
+      applicant: 'Orbit Ltd',
+      jurisdiction: 'US',
+      classes: [9]
+    });
+    expect(result.items[0]).not.toHaveProperty('sourceSnapshot');
+    expect((await f.repository.list(otherWorkspaceId, { page: 1, pageSize: 20 })).total).toBe(0);
+  });
   it('rolls back Matter, snapshot, command and audit when the transaction fails', async () => {
     const f = await fixture('rollback');
     const value = await f.service.create(principal, { ...f.command, idempotencyKey: 'seed' });

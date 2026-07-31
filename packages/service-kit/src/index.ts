@@ -17,6 +17,7 @@ export interface JsonRequest {
   method: string;
   path: string;
   params: Readonly<Record<string, string>>;
+  query: Readonly<Record<string, string>>;
 }
 export interface JsonResult {
   status: number;
@@ -126,7 +127,8 @@ export function createServiceRuntime(
       if (server?.listening) return;
       const nextServer = createServer((request, response) => {
         void (async () => {
-          const path = new URL(request.url ?? '/', 'http://localhost').pathname;
+          const requestUrl = new URL(request.url ?? '/', 'http://localhost');
+          const path = requestUrl.pathname;
           if (request.method === 'OPTIONS') {
             const origin = corsOrigin(request);
             if (!origin) throw new HttpError(403, 'ORIGIN_NOT_ALLOWED', 'Origin is not allowed.');
@@ -186,7 +188,8 @@ export function createServiceRuntime(
               headers,
               method: request.method ?? '',
               path,
-              params: matched.params
+              params: matched.params,
+              query: Object.fromEntries(requestUrl.searchParams)
             })
           );
         })().catch((error: unknown) => {

@@ -26,9 +26,11 @@ import type { FixtureState, RelatedRecord } from './features/shared/view-models.
 import './lite.css';
 import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
 import { ExecutionReleaseView } from './features/execution-release/ExecutionRelease.js';
+import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 
 const nav = [
   'Today',
+  'Matters',
   'Content',
   'Opportunities',
   'Trademarks',
@@ -37,7 +39,7 @@ const nav = [
   'Guide'
 ] as const;
 type Surface =
-  'today' | 'customers' | 'opportunities' | 'professional-review' | 'execution-release';
+  'today' | 'matters' | 'customers' | 'opportunities' | 'professional-review' | 'execution-release';
 export interface LiteAppProps {
   initialSurface?: Surface;
   initialState?: FixtureState;
@@ -45,6 +47,7 @@ export interface LiteAppProps {
   initialOpportunityId?: string;
   initialReviewCaseId?: string;
   initialFilingAuthorization?: { id: string; version: number };
+  workspaceId?: string;
 }
 const statusTone = (status: OpportunityStatus) =>
   status === 'QUALIFIED'
@@ -494,7 +497,8 @@ export function LiteApp({
   initialCustomerId,
   initialOpportunityId,
   initialReviewCaseId,
-  initialFilingAuthorization
+  initialFilingAuthorization,
+  workspaceId = new URLSearchParams(window.location.search).get('workspaceId') ?? ''
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(initialSurface);
   const [state, setState] = useState<FixtureState>(initialState);
@@ -506,6 +510,7 @@ export function LiteApp({
       else if (window.location.hash === '#work-execution-release') setSurface('execution-release');
       else if (window.location.hash === '#opportunities') setSurface('opportunities');
       else if (window.location.hash === '#today') setSurface('today');
+      else if (window.location.hash === '#matters') setSurface('matters');
     };
     followHash();
     window.addEventListener('hashchange', followHash);
@@ -526,16 +531,25 @@ export function LiteApp({
                 ? label === 'Work'
                 : surface === 'opportunities'
                   ? label === 'Opportunities'
-                  : label === 'Today'
+                  : surface === 'matters'
+                    ? label === 'Matters'
+                    : label === 'Today'
           }))}
         />
       }
       topBar={
-        <TopBar context="Northstar IP · Fixture workspace" actions={<Badge>Not live data</Badge>} />
+        <TopBar
+          context={
+            surface === 'matters'
+              ? `Workspace · ${workspaceId || 'not selected'}`
+              : 'Northstar IP · Fixture workspace'
+          }
+          actions={<Badge>{surface === 'matters' ? 'Authenticated' : 'Not live data'}</Badge>}
+        />
       }
     >
       <div className="lite-workspace">
-        <FixtureBanner />
+        {surface !== 'matters' && <FixtureBanner />}
         {(surface === 'customers' ||
           surface === 'professional-review' ||
           surface === 'execution-release') && (
@@ -560,7 +574,16 @@ export function LiteApp({
             </Button>
           </div>
         )}
-        {surface === 'today' ? (
+        {surface === 'matters' ? (
+          workspaceId ? (
+            <MatterWorkspace workspaceId={workspaceId} />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load durable Matters."
+            />
+          )
+        ) : surface === 'today' ? (
           <>
             <PageHeader
               title="Today"
