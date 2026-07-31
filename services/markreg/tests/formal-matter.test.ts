@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { InMemoryFormalMatterRepository, FormalMatterError } from '../src/formal-matter.js';
+import { InMemoryFormalMatterRepository } from '../src/formal-matter.js';
+import type { FormalMatterError } from '../src/formal-matter.js';
 import type { FormalMatter } from '@markorbit/contracts';
 
 const matter = (id = 'formal-matter_one'): FormalMatter => ({

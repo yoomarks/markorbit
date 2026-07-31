@@ -90,12 +90,12 @@ export class InMemoryFormalMatterRepository implements FormalMatterRepository {
     await work;
     return result;
   }
-  async findById(w: string, id: string) {
+  findById(w: string, id: string) {
     const v = this.matters.get(id);
-    return v?.workspaceId === w ? clone(v) : null;
+    return Promise.resolve(v?.workspaceId === w ? clone(v) : null);
   }
-  async findByIdempotencyKey(w: string, k: string) {
-    return clone(this.keys.get(`${w}:${k}`) ?? null);
+  findByIdempotencyKey(w: string, k: string) {
+    return Promise.resolve(clone(this.keys.get(`${w}:${k}`) ?? null));
   }
   evidence() {
     return { matters: this.matters.size, idempotency: this.keys.size, audits: this.audits.length };
@@ -176,11 +176,25 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
       );
     } catch (cause) {
       if (cause instanceof FormalMatterError) throw cause;
-      if ((cause as { code?: string }).code === '23505')
+      const code = (cause as { code?: string }).code;
+      if (code === '23505' || code === '40001') {
+        // A concurrent identical command can lose either the unique-key race or the
+        // serializable transaction race. The winner is durable before PostgreSQL
+        // reports either error, so resolve the approved replay semantics here.
+        const replay = await this.findByIdempotencyKey(v.workspaceId, key);
+        if (replay) {
+          if (replay.fingerprint !== fp)
+            throw new FormalMatterError(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency key has conflicting input.'
+            );
+          return replay.matter;
+        }
         throw new FormalMatterError(
           'DUPLICATE_SOURCE',
           'The exact Matter Draft version already created a Formal Matter.'
         );
+      }
       throw new FormalMatterError(
         'PERSISTENCE_UNAVAILABLE',
         'Formal Matter persistence is unavailable.',
@@ -239,15 +253,16 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
   }
 }
 const priorMatter = (r: Row) => r;
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+export function canonicalFormalMatterSnapshot(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalFormalMatterSnapshot).join(',')}]`;
   if (value && typeof value === 'object')
     return `{${Object.entries(value as Record<string, unknown>)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`)
+      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalFormalMatterSnapshot(v)}`)
       .join(',')}}`;
   return JSON.stringify(value);
 }
+const canonical = canonicalFormalMatterSnapshot;
 function authorize(p: WorkspacePrincipal, w: string, permission: Permission) {
   if (p.kind !== 'WORKSPACE')
     throw new FormalMatterError('AUTHENTICATION_REQUIRED', 'A Workspace Principal is required.');

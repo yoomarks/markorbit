@@ -70,6 +70,9 @@ jobs:
       - run: pnpm test:customer-confirmation:postgres
       - run: pnpm test:customer-confirmation:postgres
       - run: pnpm test:customer-confirmation:http
+      - run: pnpm test:formal-matter:postgres
+      - run: pnpm test:formal-matter:postgres
+      - run: pnpm test:formal-matter:http
 
   validate:
     runs-on: ubuntu-latest

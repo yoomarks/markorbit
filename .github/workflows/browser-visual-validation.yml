@@ -89,6 +89,9 @@ jobs:
       - name: Run browser and visual validation
         run: pnpm test:e2e
 
+      - name: Run focused Formal Matter desktop and mobile acceptance
+        run: pnpm test:formal-matter:browser
+
       - name: Generate focused visual evidence
         run: pnpm test:visual
 

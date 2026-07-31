@@ -17,7 +17,8 @@ import {
   type QuoteConfirmation,
   type QuoteCreateCommand,
   type ProfessionalReviewCase,
-  type CustomerInstructionType
+  type CustomerInstructionType,
+  type CreateFormalMatterCommand
 } from '@markorbit/contracts';
 import {
   noAutomaticConsequences,
@@ -740,7 +741,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 'Formal Matter persistence is unavailable.',
                 true
               );
-            const b = request.body as import('@markorbit/contracts').CreateFormalMatterCommand;
+            const b = request.body as CreateFormalMatterCommand;
             if (
               !b.workspaceId ||
               !b.customerConfirmationId ||

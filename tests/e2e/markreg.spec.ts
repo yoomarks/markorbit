@@ -171,8 +171,23 @@ test('Customer Confirmation to ready Matter Draft remains preparatory @visual', 
   await prepareButton.click();
   await expect(page.getByText('Ready for professional review', { exact: true })).toBeVisible();
   await expect(page.getByText(/Readiness is not approval/)).toBeVisible();
+  const createFormalMatter = page.getByRole('button', { name: 'Create Formal Matter' });
+  await expect(createFormalMatter).toBeVisible();
+  await createFormalMatter.click();
+  const formalReceipt = page.getByRole('region', { name: 'Formal Matter receipt' });
+  await expect(formalReceipt).toBeVisible();
+  await expect(formalReceipt.getByText('formal-matter_e2e022', { exact: true })).toBeVisible();
+  await expect(formalReceipt.getByText(/matter-draft_e2e · version 1/)).toBeVisible();
+  await expect(formalReceipt.getByText(/confirmation_e2e · version 1/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Formal Matter receipt' })).toContainText(
+    'formal-matter_e2e022'
+  );
+  await expect(page.getByRole('region', { name: 'Formal Matter receipt' })).toContainText(
+    'matter-draft_e2e · version 1'
+  );
   await expectNoHorizontalOverflow(page);
-  await capture(page, `markreg-matter-draft-ready-${testInfo.project.name}`);
+  await capture(page, `markreg-formal-matter-receipt-${testInfo.project.name}`);
   assertHealthy();
 });
 
