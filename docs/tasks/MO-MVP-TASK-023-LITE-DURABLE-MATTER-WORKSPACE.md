@@ -23,3 +23,11 @@ Core supplies the existing permission matrix. Gateway resolves the opaque cookie
 Focused repository evidence covers bounded projection, deterministic pagination, search and Workspace isolation. The authenticated HTTP and PostgreSQL suites remain mandatory, followed by `pnpm check`. Playwright real-runtime acceptance must exercise list/detail, Back/refresh/deep link, desktop/mobile, restart recovery and confirm no `page.route`, `context.route`, or `route.fulfill` interception.
 
 No migration is introduced because this is a read-only projection over the TASK 022 Formal Matter tables. Assignment, priority, notes, status transitions, Professional Review changes, documents, providers, orders, payment, filing, notification, outbox, RLS, JWT, registration and TASK 024 are non-goals.
+
+## Executable acceptance commands
+
+- `pnpm test:lite-matter:postgres` builds dependencies and executes required PostgreSQL list/detail, ordering, pagination, isolation, reconnect, immutable evidence, and unavailable-database coverage.
+- `pnpm test:lite-matter:http` builds dependencies and executes real Core, MarkReg, Gateway, and PostgreSQL listeners for all readable roles, negative authentication, filters, isolation, immutable history, service/database failure, and actual MarkReg listener replacement.
+- `pnpm test:lite-matter:browser` builds dependencies, proves the focused suite contains no browser interception, and executes desktop plus 390px mobile authenticated Lite list/detail, Back/focus, refresh, direct-link, and Workspace-switch recovery.
+
+The focused browser runtime seeds TASK 022-compatible source evidence into PostgreSQL, creates the Formal Matter through `FormalMatterService`, obtains a real opaque Session through the test-only authentication bootstrap, and reads exclusively through Gateway HTTP. It does not provide Matter responses from browser fixtures.

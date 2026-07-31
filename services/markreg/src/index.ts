@@ -761,7 +761,8 @@ export function createRuntime(options: MarkRegOptions = {}) {
               (type && type !== 'TRADEMARK_REGISTRATION') ||
               (search?.length ?? 0) > 100 ||
               (createdFrom && Number.isNaN(Date.parse(createdFrom))) ||
-              (createdTo && Number.isNaN(Date.parse(createdTo)))
+              (createdTo && Number.isNaN(Date.parse(createdTo))) ||
+              (createdFrom && createdTo && Date.parse(createdFrom) > Date.parse(createdTo))
             )
               throw new HttpError(
                 400,

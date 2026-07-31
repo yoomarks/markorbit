@@ -153,7 +153,7 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
   });
   beforeEach(truncate);
   afterAll(() => database.close());
-  const fixture = async (suffix: string) => {
+  const fixture = async (suffix: string, createdAt = at) => {
     const confirmations = new PostgresCustomerConfirmationRepository(database.getPool());
     const source = confirmation(suffix);
     await confirmations.create(source);
@@ -161,7 +161,7 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
     const ready = draft(source, suffix);
     await drafts.create(ready);
     const repository = new PostgresFormalMatterRepository(database, database.getPool());
-    const service = new FormalMatterService(repository, confirmations, drafts, () => at);
+    const service = new FormalMatterService(repository, confirmations, drafts, () => createdAt);
     const command = {
       workspaceId,
       customerConfirmationId: source.confirmationId as `confirmation_${string}`,
@@ -254,6 +254,45 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
     });
     expect(result.items[0]).not.toHaveProperty('sourceSnapshot');
     expect((await f.repository.list(otherWorkspaceId, { page: 1, pageSize: 20 })).total).toBe(0);
+  });
+  it('filters, orders and paginates without duplicates or gaps, then reconnects exactly', async () => {
+    const created = [];
+    for (const [suffix, timestamp] of [
+      ['old', '2026-07-29T00:00:00.000Z'],
+      ['tie-b', '2026-07-30T00:00:00.000Z'],
+      ['tie-a', '2026-07-30T00:00:00.000Z']
+    ] as const) {
+      const f = await fixture(suffix, timestamp);
+      created.push(await f.service.create(principal, f.command));
+    }
+    const repository = new PostgresFormalMatterRepository(database, database.getPool());
+    const query = {
+      status: 'OPEN' as const,
+      type: 'TRADEMARK_REGISTRATION' as const,
+      createdFrom: '2026-07-29T00:00:00.000Z',
+      createdTo: '2026-07-30T23:59:59.999Z',
+      pageSize: 2
+    };
+    const first = await repository.list(workspaceId, { ...query, page: 1 });
+    const second = await repository.list(workspaceId, { ...query, page: 2 });
+    const ids = [...first.items, ...second.items].map((item) => item.formalMatterId);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids.slice(0, 2)).toEqual([...ids.slice(0, 2)].sort());
+    const reconnect = new PostgresFormalMatterRepository(database, database.getPool());
+    expect(await reconnect.list(workspaceId, { ...query, page: 1 })).toEqual(first);
+    expect(await reconnect.findById(workspaceId, created[0]!.formalMatterId)).toEqual(created[0]);
+  });
+  it('maps an unavailable database to the canonical persistence error', async () => {
+    const unavailable = new PostgresFormalMatterRepository(database, {
+      query: () => Promise.reject(new Error('database unavailable'))
+    } as never);
+    await expect(unavailable.list(workspaceId, { page: 1, pageSize: 20 })).rejects.toMatchObject({
+      code: 'PERSISTENCE_UNAVAILABLE'
+    });
+    await expect(unavailable.findById(workspaceId, 'formal-matter_missing')).rejects.toMatchObject({
+      code: 'PERSISTENCE_UNAVAILABLE'
+    });
   });
   it('rolls back Matter, snapshot, command and audit when the transaction fails', async () => {
     const f = await fixture('rollback');

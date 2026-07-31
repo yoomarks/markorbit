@@ -13,7 +13,7 @@ import {
   Select,
   TextInput
 } from '@markorbit/ui';
-const gateway = import.meta.env.VITE_GATEWAY_URL ?? '';
+const gateway = import.meta.env.VITE_LITE_GATEWAY_URL ?? import.meta.env.VITE_GATEWAY_URL ?? '';
 const current = () => new URLSearchParams(location.search);
 function navigate(values: Record<string, string | undefined>, replace = false) {
   const q = current();
@@ -41,6 +41,13 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
     [error, setError] = useState<{ status?: number; message: string }>(),
     [loading, setLoading] = useState(true);
   const origin = useRef<string>();
+  const priorWorkspace = useRef(workspaceId);
+  useEffect(() => {
+    if (priorWorkspace.current !== workspaceId && current().has('formalMatterId')) {
+      priorWorkspace.current = workspaceId;
+      navigate({ formalMatterId: undefined }, true);
+    }
+  }, [workspaceId]);
   useEffect(() => {
     const f = () => setTick((v) => v + 1);
     addEventListener('popstate', f);
@@ -72,10 +79,15 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
   }, [workspaceId, selected, search, status, type, page, tick]);
   useEffect(() => {
     if (!selected && origin.current) {
-      document.querySelector<HTMLButtonElement>(`[data-matter-id="${origin.current}"]`)?.focus();
-      origin.current = undefined;
+      const trigger = document.querySelector<HTMLButtonElement>(
+        `[data-matter-id="${origin.current}"]`
+      );
+      if (trigger) {
+        trigger.focus();
+        origin.current = undefined;
+      }
     }
-  }, [selected]);
+  }, [selected, data]);
   if (loading) return <LoadingState label="Loading durable Matters" />;
   if (error)
     return (

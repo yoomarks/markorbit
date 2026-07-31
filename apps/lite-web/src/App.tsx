@@ -502,8 +502,10 @@ export function LiteApp({
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(initialSurface);
   const [state, setState] = useState<FixtureState>(initialState);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(workspaceId);
   useEffect(() => {
     const followHash = () => {
+      setActiveWorkspaceId(new URLSearchParams(window.location.search).get('workspaceId') ?? '');
       if (window.location.hash === '#work-customers') setSurface('customers');
       else if (window.location.hash === '#work-professional-review')
         setSurface('professional-review');
@@ -514,7 +516,11 @@ export function LiteApp({
     };
     followHash();
     window.addEventListener('hashchange', followHash);
-    return () => window.removeEventListener('hashchange', followHash);
+    window.addEventListener('popstate', followHash);
+    return () => {
+      window.removeEventListener('hashchange', followHash);
+      window.removeEventListener('popstate', followHash);
+    };
   }, []);
   return (
     <AppShell
@@ -541,7 +547,7 @@ export function LiteApp({
         <TopBar
           context={
             surface === 'matters'
-              ? `Workspace · ${workspaceId || 'not selected'}`
+              ? `Workspace · ${activeWorkspaceId || 'not selected'}`
               : 'Northstar IP · Fixture workspace'
           }
           actions={<Badge>{surface === 'matters' ? 'Authenticated' : 'Not live data'}</Badge>}
@@ -575,8 +581,8 @@ export function LiteApp({
           </div>
         )}
         {surface === 'matters' ? (
-          workspaceId ? (
-            <MatterWorkspace workspaceId={workspaceId} />
+          activeWorkspaceId ? (
+            <MatterWorkspace workspaceId={activeWorkspaceId} />
           ) : (
             <ErrorState
               title="Select a Workspace"
