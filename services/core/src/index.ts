@@ -9,3 +9,4 @@ export const serviceManifest = Object.freeze({
 export function createRuntime() {
   return createServiceRuntime(serviceManifest);
 }
+export * from './identity.js';

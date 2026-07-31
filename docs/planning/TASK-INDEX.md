@@ -70,4 +70,4 @@
 - TASK 017 — Persistence foundation and repository contracts (**completed; Draft PR pending**)
   - PostgreSQL 16, node-postgres, repository-local SQL-first migrations
   - Database-per-owning-service local/CI isolation
-  - Infrastructure only; TASK 018 has not started
+  - TASK 018 implemented on its dedicated Draft PR: Core-owned User, Workspace, Membership, role/permission contracts and persistence

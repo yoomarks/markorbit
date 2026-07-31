@@ -8,11 +8,14 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsup src/index.ts src/main.ts --format esm --dts --clean",
     "test": "vitest run",
+    "test:postgres": "vitest run tests/identity-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@markorbit/contracts": "workspace:*",
+    "@markorbit/persistence": "workspace:*",
     "@markorbit/service-kit": "workspace:*"
   },
   "main": "./dist/index.js",
