@@ -19,6 +19,7 @@ import {
   type JsonRequest,
   type JsonRoute
 } from '@markorbit/service-kit';
+export * from './auth.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),

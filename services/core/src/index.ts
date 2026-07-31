@@ -10,3 +10,4 @@ export function createRuntime() {
   return createServiceRuntime(serviceManifest);
 }
 export * from './identity.js';
+export * from './auth.js';

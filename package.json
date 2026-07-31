@@ -29,6 +29,7 @@
     "test:persistence": "pnpm --filter @markorbit/persistence test:persistence",
     "build:identity-postgres-deps": "turbo run build --filter=@markorbit/core-service...",
     "test:identity:postgres": "pnpm build:identity-postgres-deps && pnpm --filter @markorbit/core-service test:postgres",
+    "test:auth": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/gateway... && pnpm --filter @markorbit/core-service exec vitest run tests/auth.test.ts && pnpm --filter @markorbit/gateway exec vitest run tests/auth-boundary.test.ts",
     "infra:config": "docker compose -f infrastructure/docker-compose.yml config",
     "infra:up": "docker compose -f infrastructure/docker-compose.yml up -d",
     "infra:down": "docker compose -f infrastructure/docker-compose.yml down",
