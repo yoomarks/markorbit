@@ -71,3 +71,6 @@
   - PostgreSQL 16, node-postgres, repository-local SQL-first migrations
   - Database-per-owning-service local/CI isolation
   - TASK 018 implemented on its dedicated Draft PR: Core-owned User, Workspace, Membership, role/permission contracts and persistence
+- TASK 019 — Authenticated runtime, Sessions and Gateway Principal (**implementation in Draft PR**)
+  - Core-owned opaque Sessions; Gateway cookie, CSRF, CORS and Principal resolution boundaries
+  - TASK 020 has not started

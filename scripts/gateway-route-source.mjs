@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../apps/gateway/src/index.ts', import.meta.url), 'utf8');
-export function extractGatewayRoutes() {
+export function extractGatewayRoutes(sourceText = source) {
   const routes = [];
   const add = (method, path) => {
     if (path.startsWith('/')) routes.push({ method, path });
   };
-  for (const match of source.matchAll(/\[\s*'(GET|POST|PATCH)'\s*,\s*'([^']+)'\s*(?:,|\])/g))
+  for (const match of sourceText.matchAll(/\[\s*'(GET|POST|PATCH)'\s*,\s*'([^']+)'\s*(?:,|\])/g))
     add(match[1], match[2]);
-  for (const match of source.matchAll(/method:\s*'(GET|POST|PATCH)'\s*,\s*path:\s*'([^']+)'/g))
+  for (const match of sourceText.matchAll(/method:\s*'(GET|POST|PATCH)'\s*,\s*path:\s*'([^']+)'/g))
     add(match[1], match[2]);
   add('GET', '/health/markreg');
   add('GET', '/health/execution');

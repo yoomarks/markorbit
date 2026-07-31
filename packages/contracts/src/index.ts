@@ -1042,3 +1042,4 @@ export function parseRecommendationPackage(value: unknown): RecommendationPackag
   return value as RecommendationPackage;
 }
 export * from './identity.js';
+export * from './auth.js';

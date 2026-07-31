@@ -78,8 +78,10 @@ function send(request: IncomingMessage, response: ServerResponse, result: JsonRe
     ...(origin
       ? {
           'access-control-allow-origin': origin,
+          'access-control-allow-credentials': 'true',
           vary: 'Origin',
-          'access-control-allow-headers': 'content-type, idempotency-key, x-correlation-id',
+          'access-control-allow-headers':
+            'content-type, idempotency-key, x-correlation-id, x-markorbit-csrf-token, x-markorbit-workspace-id',
           'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
         }
       : {}),
@@ -130,8 +132,10 @@ export function createServiceRuntime(
             if (!origin) throw new HttpError(403, 'ORIGIN_NOT_ALLOWED', 'Origin is not allowed.');
             response.writeHead(204, {
               'access-control-allow-origin': origin,
+              'access-control-allow-credentials': 'true',
               vary: 'Origin',
-              'access-control-allow-headers': 'content-type, idempotency-key, x-correlation-id',
+              'access-control-allow-headers':
+                'content-type, idempotency-key, x-correlation-id, x-markorbit-csrf-token, x-markorbit-workspace-id',
               'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
             });
             response.end();
