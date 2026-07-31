@@ -13,6 +13,28 @@
       "httpIntegrationTestFile": "apps/gateway/tests/milestone-scenario-snapshot.test.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "owner": "auth",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_SESSION_REVOCATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/auth-http.integration.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "owner": "auth",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/auth-http.integration.test.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/execution/execution-releases",
       "owner": "execution",
@@ -572,6 +594,17 @@
       "idempotencyRequirement": "NOT_APPLICABLE_READ",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
       "httpIntegrationTestFile": "apps/gateway/tests/governed-read-routes.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:workspaceId/context",
+      "owner": "auth",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/auth-http.integration.test.ts"
     },
     {
       "method": "GET",

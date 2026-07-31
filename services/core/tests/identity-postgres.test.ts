@@ -67,7 +67,7 @@ integration('PostgreSQL 16 identity verification', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_identity', await loadMigrations(migrationsDirectory));
   });

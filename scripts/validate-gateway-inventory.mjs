@@ -22,29 +22,42 @@ for (const row of inventory) {
     'httpIntegrationTestFile'
   ])
     assert.ok(row[field], `${key(row)} lacks ${field}`);
-  const expected = row.path.startsWith('/__milestone/')
-    ? 'runtime'
-    : row.path.startsWith('/health')
+  const authenticated = row.path.startsWith('/api/auth/') || row.path.endsWith('/context');
+  const expected = authenticated
+    ? 'auth'
+    : row.path.startsWith('/__milestone/')
       ? 'runtime'
-      : row.path.includes('/execution/')
-        ? 'execution'
-        : row.path.includes('/lite/')
-          ? 'lite'
-          : 'markreg';
+      : row.path.startsWith('/health')
+        ? 'runtime'
+        : row.path.includes('/execution/')
+          ? 'execution'
+          : row.path.includes('/lite/')
+            ? 'lite'
+            : 'markreg';
   assert.equal(row.owner, expected, `${key(row)} owner mismatch`);
-  assert.equal(row.authenticationMode, 'FIXTURE_ONLY_UNAUTHENTICATED');
+  assert.equal(
+    row.authenticationMode,
+    authenticated ? 'COOKIE_AUTHENTICATED' : 'FIXTURE_ONLY_UNAUTHENTICATED'
+  );
   assert.ok(
-    ['NON_PRODUCTION_MILESTONE_RUNTIME', 'MILESTONE_TEST_RUNTIME_ONLY'].includes(
-      row.environmentScope
-    )
+    authenticated
+      ? row.environmentScope === 'ALL_ENVIRONMENTS'
+      : ['NON_PRODUCTION_MILESTONE_RUNTIME', 'MILESTONE_TEST_RUNTIME_ONLY'].includes(
+          row.environmentScope
+        )
   );
 }
-assert.equal(source.length, 57);
+assert.equal(source.length, 60);
 assert.equal(
-  source.filter((x) => !x.path.startsWith('/health/') && !x.path.startsWith('/__milestone/'))
-    .length,
+  source.filter(
+    (x) =>
+      !x.path.startsWith('/health/') &&
+      !x.path.startsWith('/__milestone/') &&
+      !x.path.startsWith('/api/auth/') &&
+      !x.path.endsWith('/context')
+  ).length,
   54
 );
 console.log(
-  'Gateway inventory PASS: 57 runtime routes (54 governed/compatibility + 2 health + 1 test-only evidence)'
+  'Gateway inventory PASS: 60 runtime routes (54 governed/compatibility + 3 authenticated + 2 health + 1 test-only evidence); test bootstrap excluded'
 );
