@@ -12,6 +12,7 @@ import {
   type MilestoneScenarioRecordSnapshot,
   noAuthorizationAuthorityConsequences
 } from '@markorbit/contracts';
+import { AuthenticationError } from '@markorbit/contracts';
 import {
   createServiceRuntime,
   HttpError,
@@ -20,6 +21,16 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 export * from './auth.js';
+import {
+  clearSessionCookie,
+  csrfToken,
+  type CoreAuthenticationClient,
+  HttpCoreAuthenticationClient,
+  readSessionCookie,
+  requireTrustedOrigin,
+  sessionCookie,
+  validateCsrf
+} from './auth.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -30,6 +41,13 @@ export interface GatewayOptions {
   markRegUrl?: string;
   executionUrl?: string;
   milestoneTestRuntime?: boolean;
+  authenticationClient?: CoreAuthenticationClient;
+  internalServiceSecret?: string;
+  coreUrl?: string;
+  csrfSecret?: string;
+  allowedOrigins?: readonly string[];
+  secureCookies?: boolean;
+  fixtureUsers?: Readonly<Record<string, string>>;
 }
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -41,6 +59,42 @@ export function createRuntime(options: GatewayOptions = {}) {
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const milestoneTestRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+  const allowedOrigins =
+    options.allowedOrigins ?? (process.env.WEB_ORIGINS ?? '').split(',').filter(Boolean);
+  const csrfSecret = options.csrfSecret ?? process.env.MO_CSRF_SECRET ?? '';
+  const authenticationClient =
+    options.authenticationClient ??
+    (options.internalServiceSecret || process.env.MO_INTERNAL_SERVICE_SECRET
+      ? new HttpCoreAuthenticationClient(
+          options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET!
+        )
+      : undefined);
+  const correlation = (request: JsonRequest) => request.headers['x-correlation-id'];
+  const token = (request: JsonRequest) => {
+    const value = readSessionCookie(request.headers.cookie);
+    if (!value) throw new HttpError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required.');
+    return value;
+  };
+  const mapAuthentication = (error: unknown): never => {
+    if (!(error instanceof AuthenticationError)) throw error;
+    const status =
+      error.code === 'AUTHENTICATION_SERVICE_UNAVAILABLE'
+        ? 503
+        : error.code === 'INVALID_WORKSPACE_CONTEXT'
+          ? 400
+          : [
+                'MEMBERSHIP_REQUIRED',
+                'MEMBERSHIP_SUSPENDED',
+                'WORKSPACE_ARCHIVED',
+                'PERMISSION_DENIED',
+                'INVALID_CSRF_TOKEN',
+                'UNTRUSTED_ORIGIN'
+              ].includes(error.code)
+            ? 403
+            : 401;
+    throw new HttpError(status, error.code, error.message, status === 503);
+  };
   const forward = async (request: JsonRequest, path: string) => {
     try {
       const response = await fetch(`${markRegUrl}${path}`, {
@@ -67,6 +121,155 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        {
+          method: 'GET',
+          path: '/api/auth/session',
+          handle: async (request) => {
+            if (!authenticationClient)
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            try {
+              const principal = await authenticationClient.resolve(
+                token(request),
+                correlation(request)
+              );
+              return json(200, {
+                authenticated: true,
+                userId: principal.userId,
+                sessionId: principal.sessionId,
+                sessionExpiresAt: principal.sessionExpiresAt,
+                csrfToken: csrfToken(principal.sessionId, csrfSecret)
+              });
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
+        },
+        {
+          method: 'POST',
+          path: '/api/auth/logout',
+          handle: async (request) => {
+            if (!authenticationClient)
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            try {
+              const principal = await authenticationClient.resolve(
+                token(request),
+                correlation(request)
+              );
+              requireTrustedOrigin(request.headers.origin, allowedOrigins);
+              validateCsrf(
+                principal.sessionId,
+                csrfSecret,
+                request.headers['x-markorbit-csrf-token']
+              );
+              await authenticationClient.revoke(principal.sessionId, correlation(request));
+              return json(
+                200,
+                { authenticated: false },
+                {
+                  'set-cookie': clearSessionCookie(
+                    options.secureCookies ?? process.env.NODE_ENV === 'production'
+                  )
+                }
+              );
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
+        },
+        {
+          method: 'GET',
+          path: '/api/workspaces/:workspaceId/context',
+          handle: async (request) => {
+            if (!authenticationClient)
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            const workspaceId = request.params.workspaceId!;
+            const header = request.headers['x-markorbit-workspace-id'];
+            if (header && header !== workspaceId)
+              throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace contexts conflict.');
+            try {
+              const principal = await authenticationClient.resolveWorkspace(
+                token(request),
+                workspaceId,
+                correlation(request)
+              );
+              return json(200, {
+                workspaceId: principal.workspaceId,
+                membershipId: principal.membershipId,
+                role: principal.role,
+                permissions: principal.permissions
+              });
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
+        },
+        ...(milestoneTestRuntime
+          ? [
+              {
+                method: 'POST' as const,
+                path: '/__test/auth/session',
+                handle: async (request: JsonRequest) => {
+                  if (!authenticationClient)
+                    throw new HttpError(
+                      503,
+                      'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                      'Authentication service is unavailable.',
+                      true
+                    );
+                  const fixture = record(request.body).fixture;
+                  const userId =
+                    typeof fixture === 'string' ? options.fixtureUsers?.[fixture] : undefined;
+                  if (!userId)
+                    throw new HttpError(
+                      403,
+                      'TEST_FIXTURE_NOT_ALLOWED',
+                      'Fixture identity is not allowed.'
+                    );
+                  try {
+                    const issued = await authenticationClient.issue(userId, correlation(request));
+                    const maxAge = Math.max(
+                      0,
+                      Math.floor((Date.parse(issued.session.expiresAt) - Date.now()) / 1000)
+                    );
+                    return json(
+                      201,
+                      {
+                        authenticated: true,
+                        userId: issued.session.userId,
+                        sessionId: issued.session.sessionId,
+                        sessionExpiresAt: issued.session.expiresAt,
+                        csrfToken: csrfToken(issued.session.sessionId, csrfSecret)
+                      },
+                      {
+                        'set-cookie': sessionCookie(
+                          issued.rawToken,
+                          maxAge,
+                          options.secureCookies ?? false
+                        )
+                      }
+                    );
+                  } catch (error) {
+                    return mapAuthentication(error);
+                  }
+                }
+              }
+            ]
+          : []),
         ...(milestoneTestRuntime
           ? [
               {

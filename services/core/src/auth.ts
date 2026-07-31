@@ -89,6 +89,9 @@ export class InMemorySessionRepository implements SessionRepository {
         )
     );
   }
+  clear() {
+    this.rows.clear();
+  }
 }
 type Row = Record<string, unknown>;
 const map = (r: Row): Session => ({
@@ -103,40 +106,47 @@ const map = (r: Row): Session => ({
 });
 export class PostgresSessionRepository implements SessionRepository {
   constructor(private readonly q: QueryClient) {}
-  async create(s: Session) {
+  private async query(text: string, values?: unknown[]) {
     try {
-      const r = await this.q.query(
-        'INSERT INTO sessions(session_id,user_id,token_hash,status,version,created_at,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-        [
-          s.sessionId,
-          s.userId,
-          s.tokenHash,
-          s.status,
-          s.version,
-          s.createdAt,
-          s.expiresAt,
-          s.revokedAt
-        ]
-      );
-      return map(r.rows[0]!);
-    } catch (e) {
-      if ((e as { code?: string }).code === '23505')
+      return await this.q.query(text, values);
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505')
         throw new AuthenticationError('DUPLICATE_TOKEN_HASH', 'Session token collision.', {
-          cause: e
+          cause: error
         });
-      throw e;
+      throw new AuthenticationError(
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Session persistence is unavailable.',
+        { cause: error }
+      );
     }
   }
+  async create(s: Session) {
+    const r = await this.query(
+      'INSERT INTO sessions(session_id,user_id,token_hash,status,version,created_at,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+      [
+        s.sessionId,
+        s.userId,
+        s.tokenHash,
+        s.status,
+        s.version,
+        s.createdAt,
+        s.expiresAt,
+        s.revokedAt
+      ]
+    );
+    return map(r.rows[0]!);
+  }
   async findByTokenHash(h: string) {
-    const r = await this.q.query('SELECT * FROM sessions WHERE token_hash=$1', [h]);
+    const r = await this.query('SELECT * FROM sessions WHERE token_hash=$1', [h]);
     return r.rows[0] ? map(r.rows[0]) : null;
   }
   async findById(id: string) {
-    const r = await this.q.query('SELECT * FROM sessions WHERE session_id=$1', [id]);
+    const r = await this.query('SELECT * FROM sessions WHERE session_id=$1', [id]);
     return r.rows[0] ? map(r.rows[0]) : null;
   }
   async revoke(id: string, v: number, at: string) {
-    const r = await this.q.query(
+    const r = await this.query(
       "UPDATE sessions SET status='REVOKED',revoked_at=$3,version=version+1 WHERE session_id=$1 AND version=$2 AND status='ACTIVE' RETURNING *",
       [id, v, at]
     );
@@ -147,14 +157,14 @@ export class PostgresSessionRepository implements SessionRepository {
     throw new AuthenticationError('STALE_SESSION_VERSION', 'Session version is stale.');
   }
   async revokeAllForUser(id: string, at: string) {
-    const r = await this.q.query(
+    const r = await this.query(
       "UPDATE sessions SET status='REVOKED',revoked_at=$2,version=version+1 WHERE user_id=$1 AND status='ACTIVE'",
       [id, at]
     );
     return r.rowCount ?? 0;
   }
   async listActiveForUser(id: string) {
-    const r = await this.q.query(
+    const r = await this.query(
       "SELECT * FROM sessions WHERE user_id=$1 AND status='ACTIVE' ORDER BY created_at,session_id",
       [id]
     );
@@ -231,6 +241,11 @@ export class AuthenticationService {
   async revokeSession(id: string, version: number) {
     return this.d.sessions.revoke(id, version, this.clock().toISOString());
   }
+  async revokeCurrentSession(id: string) {
+    const existing = await this.d.sessions.findById(id);
+    if (!existing) throw new AuthenticationError('INVALID_SESSION', 'Session is invalid.');
+    return this.revokeSession(id, existing.version);
+  }
   async revokeUserSessions(id: string) {
     return this.d.sessions.revokeAllForUser(id, this.clock().toISOString());
   }
@@ -275,9 +290,16 @@ export class AuthenticationService {
   }
 }
 export function authorize(principal: Principal, permission?: Permission) {
+  if (!['ANONYMOUS', 'AUTHENTICATED_USER', 'WORKSPACE'].includes(principal.kind))
+    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Authentication is required.');
   if (principal.kind === 'ANONYMOUS')
     throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Authentication is required.');
-  if (permission && (principal.kind !== 'WORKSPACE' || !principal.permissions.includes(permission)))
+  if (
+    permission &&
+    (!(PERMISSIONS as readonly string[]).includes(permission) ||
+      principal.kind !== 'WORKSPACE' ||
+      !principal.permissions.includes(permission))
+  )
     throw new AuthenticationError('PERMISSION_DENIED', 'Permission is denied.');
   return principal;
 }

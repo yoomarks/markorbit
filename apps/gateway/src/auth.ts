@@ -36,25 +36,39 @@ export function requireTrustedOrigin(origin: string | undefined, allowed: readon
     throw new AuthenticationError('UNTRUSTED_ORIGIN', 'Request origin is not trusted.');
 }
 export interface CoreAuthenticationClient {
-  resolve(token: string): Promise<AuthenticatedUserPrincipal>;
-  resolveWorkspace(token: string, workspaceId: string): Promise<WorkspacePrincipal>;
-  revoke(sessionId: string): Promise<void>;
+  issue(
+    userId: string,
+    correlationId?: string
+  ): Promise<{
+    rawToken: string;
+    session: { sessionId: string; userId: string; expiresAt: string };
+  }>;
+  resolve(token: string, correlationId?: string): Promise<AuthenticatedUserPrincipal>;
+  resolveWorkspace(
+    token: string,
+    workspaceId: string,
+    correlationId?: string
+  ): Promise<WorkspacePrincipal>;
+  revoke(sessionId: string, correlationId?: string): Promise<void>;
 }
 export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly serviceSecret: string
+    private readonly serviceSecret: string,
+    private readonly timeoutMs = 3_000
   ) {}
-  private async call<T>(path: string, body: unknown): Promise<T> {
+  private async call<T>(path: string, body: unknown, correlationId?: string): Promise<T> {
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-markorbit-internal-authorization': this.serviceSecret
+          'x-markorbit-internal-authorization': this.serviceSecret,
+          ...(correlationId ? { 'x-correlation-id': correlationId } : {})
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.timeoutMs)
       });
     } catch {
       throw new AuthenticationError(
@@ -76,14 +90,32 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     }
     return response.json() as Promise<T>;
   }
-  resolve(token: string) {
-    return this.call<AuthenticatedUserPrincipal>('/internal/auth/resolve', { token });
+  issue(userId: string, correlationId?: string) {
+    return this.call<{
+      rawToken: string;
+      session: { sessionId: string; userId: string; expiresAt: string };
+    }>('/internal/auth/sessions', { userId }, correlationId);
   }
-  resolveWorkspace(token: string, workspaceId: string) {
-    return this.call<WorkspacePrincipal>('/internal/auth/workspace', { token, workspaceId });
+  resolve(token: string, correlationId?: string) {
+    return this.call<AuthenticatedUserPrincipal>(
+      '/internal/auth/sessions/resolve',
+      { token },
+      correlationId
+    );
   }
-  async revoke(sessionId: string) {
-    await this.call('/internal/auth/revoke', { sessionId });
+  resolveWorkspace(token: string, workspaceId: string, correlationId?: string) {
+    return this.call<WorkspacePrincipal>(
+      '/internal/auth/workspace-principals/resolve',
+      { token, workspaceId },
+      correlationId
+    );
+  }
+  async revoke(sessionId: string, correlationId?: string) {
+    await this.call(
+      `/internal/auth/sessions/${encodeURIComponent(sessionId)}/revoke`,
+      {},
+      correlationId
+    );
   }
 }
 export const newCsrfSecret = () => randomBytes(32).toString('base64url');
