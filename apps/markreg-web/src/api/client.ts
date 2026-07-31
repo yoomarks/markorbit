@@ -4,8 +4,8 @@ import { MarkregApiError, safeErrorMessage } from './errors.js';
 
 export interface ApiClient {
   post<T>(path: string, body: unknown, headers: Record<string, string>): Promise<T>;
-  get<T>(path: string): Promise<T>;
-  patch<T>(path: string, body: unknown): Promise<T>;
+  get<T>(path: string, headers?: Record<string, string>): Promise<T>;
+  patch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
 }
 
 export function createApiClient(
@@ -23,9 +23,21 @@ export function createApiClient(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      const browserHeaders =
+        typeof sessionStorage === 'undefined'
+          ? {}
+          : {
+              ...(sessionStorage.getItem('markorbit-workspace-id')
+                ? { 'X-MarkOrbit-Workspace-Id': sessionStorage.getItem('markorbit-workspace-id')! }
+                : {}),
+              ...(method !== 'GET' && sessionStorage.getItem('markorbit-csrf-token')
+                ? { 'X-MarkOrbit-CSRF-Token': sessionStorage.getItem('markorbit-csrf-token')! }
+                : {})
+            };
       const response = await fetcher(`${baseUrl}${path}`, {
         method,
-        headers: { 'content-type': 'application/json', ...headers },
+        headers: { 'content-type': 'application/json', ...browserHeaders, ...headers },
+        credentials: 'include',
         ...(method === 'GET' ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal
       });
@@ -52,7 +64,9 @@ export function createApiClient(
   return {
     post: <T>(path: string, body: unknown, headers: Record<string, string>) =>
       request<T>('POST', path, body, headers),
-    get: <T>(path: string) => request<T>('GET', path),
-    patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body)
+    get: <T>(path: string, headers?: Record<string, string>) =>
+      request<T>('GET', path, undefined, headers),
+    patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+      request<T>('PATCH', path, body, headers)
   };
 }

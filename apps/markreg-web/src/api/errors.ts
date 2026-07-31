@@ -15,10 +15,30 @@ export class MarkregApiError extends Error {
 
 export function safeErrorMessage(status: number, error?: Partial<SafeError>): MarkregApiError {
   const reference = error?.correlationId;
+  if (status === 403)
+    return new MarkregApiError(
+      'blocking',
+      'You do not have permission to change this Matter Draft.',
+      reference
+    );
+  if (status === 404)
+    return new MarkregApiError(
+      'blocking',
+      'This Matter Draft was not found in the current Workspace.',
+      reference
+    );
+  if (status === 503)
+    return new MarkregApiError(
+      'recoverable',
+      'Matter preparation is temporarily unavailable. Your saved Draft is unchanged.',
+      reference
+    );
   if (status === 409)
     return new MarkregApiError(
       'conflict',
-      'This submission key was already used for different information. Review your details and submit again.',
+      error?.code?.includes('STALE')
+        ? 'This Matter Draft changed in another session. Reload the saved version before editing again.'
+        : 'This submission key was already used for different information. Review your details and submit again.',
       reference
     );
   if (status === 400 || status === 422)

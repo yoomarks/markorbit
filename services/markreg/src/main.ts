@@ -1,7 +1,8 @@
 import {
   createRuntime,
   InMemoryMatterFlowRepository,
-  PostgresCustomerConfirmationRepository
+  PostgresCustomerConfirmationRepository,
+  PostgresMatterDraftRepository
 } from './index.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
@@ -27,7 +28,8 @@ if (fixtureRuntime) {
   await database.start();
   closeDatabase = () => database.close();
   runtime = createRuntime({
-    customerConfirmationRepository: new PostgresCustomerConfirmationRepository(database.getPool())
+    customerConfirmationRepository: new PostgresCustomerConfirmationRepository(database.getPool()),
+    matterDraftRepository: new PostgresMatterDraftRepository(database.getPool())
   });
 }
 

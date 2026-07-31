@@ -36,13 +36,23 @@ export interface MarkregClient {
   createCustomerConfirmation?(command: ConfirmationCommand): Promise<ConfirmationResponse>;
   getCustomerConfirmation?(id: string): Promise<ConfirmationResponse>;
   withdrawCustomerConfirmation?(id: string): Promise<ConfirmationResponse>;
-  createMatterDraft?(confirmationId: string): Promise<MatterDraftResponse>;
+  createMatterDraft?(
+    confirmationId: string,
+    confirmationVersion?: number,
+    workspaceId?: string
+  ): Promise<MatterDraftResponse>;
   getMatterDraft?(id: string): Promise<MatterDraftResponse>;
   updateMatterDraft?(
     id: string,
-    patch: Partial<MatterDraftPreparation>
+    patch: Partial<MatterDraftPreparation>,
+    expectedVersion?: number,
+    workspaceId?: string
   ): Promise<MatterDraftResponse>;
-  evaluateMatterDraft?(id: string): Promise<MatterDraftResponse>;
+  evaluateMatterDraft?(
+    id: string,
+    expectedVersion?: number,
+    workspaceId?: string
+  ): Promise<MatterDraftResponse>;
   getProfessionalReview?(id: string): Promise<{ reviewCase: ProfessionalReviewCase }>;
   createProfessionalReview?(command: {
     matterDraftId: string;
@@ -127,9 +137,60 @@ export interface ConfirmationResponse {
   consequences: AuthorityBoundary;
 }
 export interface MatterDraftResponse {
-  matterDraft: MatterDraft;
+  matterDraft: MatterDraft & { version?: number; workspaceId?: string };
   nextAction?: string;
   consequences: AuthorityBoundary;
+}
+function confirmationResponse(value: ConfirmationResponse): ConfirmationResponse {
+  const raw = value.confirmation as CustomerConfirmation & {
+    version?: number;
+    acceptedAt?: string;
+    sourceSnapshot?: {
+      quoteId: string;
+      quoteVersion: string;
+      planId: string;
+      planVersion: string;
+      currency: string;
+      totalMinor: number;
+      lineItems: readonly {
+        code: string;
+        description: string;
+        category: string;
+        amountMinor: number;
+      }[];
+      termsVersion: string;
+      acknowledgementCodes: readonly ConfirmationAcknowledgement['code'][];
+    };
+  };
+  if (!raw.sourceSnapshot) return value;
+  const at = raw.acceptedAt ?? raw.updatedAt;
+  return {
+    ...value,
+    confirmation: {
+      schemaVersion: 1,
+      confirmationId: raw.confirmationId,
+      customerId: 'customer_workspace',
+      quoteSnapshot: {
+        ...raw.sourceSnapshot,
+        lineItems: raw.sourceSnapshot.lineItems.map((x) => ({
+          ...x,
+          amount: { amountMinor: x.amountMinor, currency: raw.sourceSnapshot!.currency }
+        }))
+      } as CustomerConfirmation['quoteSnapshot'],
+      confirmedBy: 'workspace_member',
+      confirmedAt: at,
+      termsVersion: raw.sourceSnapshot.termsVersion,
+      acknowledgements: raw.sourceSnapshot.acknowledgementCodes.map((code) => ({
+        code,
+        acknowledged: true,
+        acknowledgedAt: at
+      })),
+      status: raw.status,
+      createdAt: at,
+      updatedAt: raw.updatedAt,
+      version: raw.version
+    } as CustomerConfirmation & { version?: number }
+  };
 }
 
 export function createMarkregClient(api: ApiClient = createApiClient()): MarkregClient {
@@ -172,12 +233,16 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
       );
     },
     createCustomerConfirmation(command) {
-      return api.post('/api/markreg/customer-confirmations', command, {
-        'Idempotency-Key': command.idempotencyKey
-      });
+      return api
+        .post<ConfirmationResponse>('/api/markreg/customer-confirmations', command, {
+          'Idempotency-Key': command.idempotencyKey
+        })
+        .then(confirmationResponse);
     },
     getCustomerConfirmation(id) {
-      return api.get(`/api/markreg/customer-confirmations/${encodeURIComponent(id)}`);
+      return api
+        .get<ConfirmationResponse>(`/api/markreg/customer-confirmations/${encodeURIComponent(id)}`)
+        .then(confirmationResponse);
     },
     withdrawCustomerConfirmation(id) {
       return api.post(
@@ -186,19 +251,30 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
         {}
       );
     },
-    createMatterDraft(confirmationId) {
-      return api.post('/api/markreg/matter-drafts', { confirmationId }, {});
+    createMatterDraft(confirmationId, confirmationVersion, workspaceId) {
+      return api.post(
+        '/api/markreg/matter-drafts',
+        {
+          confirmationId,
+          ...(confirmationVersion === undefined ? {} : { confirmationVersion }),
+          ...(workspaceId === undefined ? {} : { workspaceId })
+        },
+        {}
+      );
     },
     getMatterDraft(id) {
       return api.get(`/api/markreg/matter-drafts/${encodeURIComponent(id)}`);
     },
-    updateMatterDraft(id, patch) {
-      return api.patch(`/api/markreg/matter-drafts/${encodeURIComponent(id)}`, patch);
+    updateMatterDraft(id, patch, expectedVersion, workspaceId) {
+      return api.patch(
+        `/api/markreg/matter-drafts/${encodeURIComponent(id)}`,
+        expectedVersion === undefined ? patch : { preparation: patch, expectedVersion, workspaceId }
+      );
     },
-    evaluateMatterDraft(id) {
+    evaluateMatterDraft(id, expectedVersion, workspaceId) {
       return api.post(
         `/api/markreg/matter-drafts/${encodeURIComponent(id)}/evaluate-readiness`,
-        {},
+        { expectedVersion, workspaceId },
         {}
       );
     },

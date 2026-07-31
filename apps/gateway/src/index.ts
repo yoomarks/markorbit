@@ -125,6 +125,48 @@ export function createRuntime(options: GatewayOptions = {}) {
       throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
     }
   };
+  const matterDraft = async (
+    r: JsonRequest,
+    path: string,
+    permission:
+      | 'matter:read'
+      | 'matter:create'
+      | 'matter:manage'
+      | 'review:perform'
+      | readonly ('matter:manage' | 'review:perform')[],
+    mutation = false
+  ) => {
+    if (!authenticationClient) {
+      if (milestoneTestRuntime) return forward(r, path);
+      throw new HttpError(
+        503,
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Authentication service is unavailable.',
+        true
+      );
+    }
+    try {
+      const b = record(r.body ?? {});
+      const workspaceId =
+        typeof b.workspaceId === 'string' ? b.workspaceId : r.headers['x-markorbit-workspace-id'];
+      if (!workspaceId)
+        throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
+      if (mutation) {
+        const user = await authenticationClient.resolve(token(r), correlation(r));
+        requireTrustedOrigin(r.headers.origin, allowedOrigins);
+        validateCsrf(user.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
+      }
+      const p = await authenticationClient.resolveWorkspace(token(r), workspaceId, correlation(r));
+      const accepted: readonly (
+        'matter:read' | 'matter:create' | 'matter:manage' | 'review:perform'
+      )[] = typeof permission === 'string' ? [permission] : permission;
+      if (!accepted.some((value) => p.permissions.includes(value)))
+        throw new AuthenticationError('PERMISSION_DENIED', 'Permission is required.');
+      return forward(r, path, p);
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -722,34 +764,50 @@ export function createRuntime(options: GatewayOptions = {}) {
         {
           method: 'POST',
           path: '/api/markreg/matter-drafts',
-          handle: (r) => forward(r, '/v1/matter-drafts')
+          handle: (r) => matterDraft(r, '/v1/matter-drafts', 'matter:create', true)
         },
         {
           method: 'GET',
           path: '/api/markreg/matter-drafts/:matterDraftId',
           handle: (r) =>
-            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`)
+            matterDraft(
+              r,
+              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`,
+              'matter:read'
+            )
         },
         {
           method: 'PATCH',
           path: '/api/markreg/matter-drafts/:matterDraftId',
           handle: (r) =>
-            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`)
+            matterDraft(
+              r,
+              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}`,
+              'matter:manage',
+              true
+            )
         },
         {
           method: 'POST',
           path: '/api/markreg/matter-drafts/:matterDraftId/evaluate-readiness',
           handle: (r) =>
-            forward(
+            matterDraft(
               r,
-              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/evaluate-readiness`
+              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/evaluate-readiness`,
+              ['matter:manage', 'review:perform'],
+              true
             )
         },
         {
           method: 'POST',
           path: '/api/markreg/matter-drafts/:matterDraftId/progress',
           handle: (r) =>
-            forward(r, `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/progress`)
+            matterDraft(
+              r,
+              `/v1/matter-drafts/${encodeURIComponent(r.params.matterDraftId!)}/progress`,
+              'matter:manage',
+              true
+            )
         },
         {
           method: 'POST',

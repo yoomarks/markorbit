@@ -14,7 +14,8 @@ import {
 import {
   createRuntime as createMarkReg,
   InMemoryMarkRegRepository,
-  InMemoryCustomerConfirmationRepository
+  InMemoryCustomerConfirmationRepository,
+  InMemoryMatterDraftRepository
 } from '../services/markreg/dist/index.js';
 
 const secret = 'task-020-http-internal-service-secret';
@@ -29,10 +30,12 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
   const core = createCore({ port: 0, authentication: auth, internalServiceSecret: secret });
   const quotes = new InMemoryMarkRegRepository();
   const confirmations = new InMemoryCustomerConfirmationRepository();
+  const drafts = new InMemoryMatterDraftRepository();
   const markreg = createMarkReg({
     port: 0,
     repository: quotes,
     customerConfirmationRepository: confirmations,
+    matterDraftRepository: drafts,
     internalServiceSecret: secret,
     now: () => '2026-07-31T12:00:00.000Z'
   });
@@ -152,6 +155,62 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
     });
     const session = await fetch(`${base}/api/auth/session`, { headers: { cookie } });
     const csrf = ((await session.json()) as { csrfToken: string }).csrfToken;
+    const mutationHeaders = {
+      'content-type': 'application/json',
+      cookie,
+      origin: 'https://test.markorbit.local',
+      'x-markorbit-csrf-token': csrf,
+      'x-markorbit-workspace-id': workspaceId
+    };
+    const createdDraft = await fetch(`${base}/api/markreg/matter-drafts`, {
+      method: 'POST',
+      headers: mutationHeaders,
+      body: JSON.stringify({
+        workspaceId,
+        confirmationId: value.confirmation.confirmationId,
+        confirmationVersion: 1
+      })
+    });
+    expect(createdDraft.status).toBe(200);
+    const draft = (await createdDraft.json()) as {
+      matterDraft: { matterDraftId: string; version: number };
+    };
+    const edited = await fetch(
+      `${base}/api/markreg/matter-drafts/${draft.matterDraft.matterDraftId}`,
+      {
+        method: 'PATCH',
+        headers: mutationHeaders,
+        body: JSON.stringify({
+          workspaceId,
+          expectedVersion: 1,
+          preparation: { applicantName: 'HTTP Orbit Ltd' }
+        })
+      }
+    );
+    expect(edited.status).toBe(200);
+    expect(await edited.json()).toMatchObject({
+      matterDraft: { version: 2, preparation: { applicantName: 'HTTP Orbit Ltd' } }
+    });
+    const stale = await fetch(
+      `${base}/api/markreg/matter-drafts/${draft.matterDraft.matterDraftId}`,
+      {
+        method: 'PATCH',
+        headers: mutationHeaders,
+        body: JSON.stringify({
+          workspaceId,
+          expectedVersion: 1,
+          preparation: { applicantName: 'Stale loser' }
+        })
+      }
+    );
+    expect(stale.status).toBe(409);
+    const reloaded = await fetch(
+      `${base}/api/markreg/matter-drafts/${draft.matterDraft.matterDraftId}`,
+      { headers: { cookie, 'x-markorbit-workspace-id': workspaceId } }
+    );
+    expect(await reloaded.json()).toMatchObject({
+      matterDraft: { version: 2, preparation: { applicantName: 'HTTP Orbit Ltd' } }
+    });
     const withdrawn = await fetch(
       `${base}/api/markreg/customer-confirmations/${value.confirmation.confirmationId}/withdraw`,
       {
@@ -168,6 +227,23 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
     expect(withdrawn.status).toBe(200);
     expect(await withdrawn.json()).toMatchObject({
       confirmation: { status: 'WITHDRAWN', version: 2 }
+    });
+    const evaluated = await fetch(
+      `${base}/api/markreg/matter-drafts/${draft.matterDraft.matterDraftId}/evaluate-readiness`,
+      {
+        method: 'POST',
+        headers: mutationHeaders,
+        body: JSON.stringify({ workspaceId, expectedVersion: 2 })
+      }
+    );
+    expect(await evaluated.json()).toMatchObject({
+      matterDraft: {
+        readiness: {
+          checks: expect.arrayContaining([
+            expect.objectContaining({ code: 'CUSTOMER_CONFIRMATION_VALID', status: 'FAIL' })
+          ])
+        }
+      }
     });
   });
   it('rejects anonymous, missing source, stale source and duplicate creation', async () => {
