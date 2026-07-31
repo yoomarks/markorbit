@@ -126,9 +126,10 @@ beforeEach(() => {
   url = '';
 });
 describe('Gateway Customer Confirmation routes', () => {
-  it('creates and retrieves the authoritative immutable snapshot with false consequences', async () => {
+  it('returns the fixture receipt contract and proceeds to Prepare Matter Draft', async () => {
     await start();
     const value = await confirmed();
+    expect(value.confirmation.confirmationId).toMatch(/^confirmation_/);
     expect(value.confirmation.quoteSnapshot.totalMinor).toBe(90000);
     expect(value.consequences).toEqual({
       orderCreated: false,
@@ -143,6 +144,13 @@ describe('Gateway Customer Confirmation routes', () => {
     expect(get.status).toBe(200);
     expect(await get.json()).toMatchObject({
       confirmation: { confirmationId: value.confirmation.confirmationId }
+    });
+    const prepared = await request('/api/markreg/matter-drafts', 'POST', {
+      confirmationId: value.confirmation.confirmationId
+    });
+    expect(prepared.status).toBe(200);
+    expect(await prepared.json()).toMatchObject({
+      matterDraft: { confirmationId: value.confirmation.confirmationId }
     });
   });
   it('verifies the exact Quote version', async () => {

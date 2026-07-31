@@ -1,6 +1,6 @@
 import {
   createRuntime,
-  InMemoryCustomerConfirmationRepository,
+  InMemoryMatterFlowRepository,
   PostgresCustomerConfirmationRepository
 } from './index.js';
 
@@ -10,7 +10,7 @@ let runtime: ReturnType<typeof createRuntime>;
 if (fixtureRuntime) {
   runtime = createRuntime({
     milestoneTestRuntime: true,
-    customerConfirmationRepository: new InMemoryCustomerConfirmationRepository()
+    matterFlowRepository: new InMemoryMatterFlowRepository()
   });
 } else {
   const databaseUrl = process.env.MARKREG_DATABASE_URL ?? process.env.DATABASE_URL;
