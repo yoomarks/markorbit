@@ -22,9 +22,12 @@ The taxonomy distinguishes invalid configuration, unavailability, timeout, lock/
 
 Files use `NNNN_name.sql`, sort lexically by version, and are SHA-256 checksummed. Duplicate versions or names fail before execution. History is keyed by namespace and records application time and duration. Identical applied migrations are skipped, changed/missing applied files fail verification, an advisory lock prevents concurrent application, and a migration plus its success record are atomic. Correction is always a new forward migration.
 
+Checksums cover the exact file bytes without newline normalization, and files that are not valid UTF-8 are rejected: changing LF/CRLF, a byte-order mark, or any other byte changes the checksum. Migration files must therefore be committed as UTF-8 with the repository's LF policy. Non-transactional statements, including `CREATE INDEX CONCURRENTLY`, are unsupported; a future reviewed runner extension is required rather than bypassing the transaction.
+
 ```bash
 pnpm infra:up
 docker compose -f infrastructure/docker-compose.yml --profile persistence-test up -d postgres-test
+docker compose -f infrastructure/docker-compose.yml --profile persistence-test exec postgres-test pg_isready -U markorbit_test -d markorbit_test
 pnpm db:migrate
 pnpm db:migrate:status
 pnpm db:migrate:verify
@@ -33,6 +36,7 @@ PERSISTENCE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@lo
 pnpm infra:down
 pnpm infra:reset # deliberate removal of local volumes
 docker compose -f infrastructure/docker-compose.yml --profile persistence-test down
+docker compose -f infrastructure/docker-compose.yml --profile persistence-test down -v # deliberate test-only reset
 ```
 
 The bootstrap command refuses a database identifier without `test`; the isolated test container uses tmpfs and cannot destroy the normal local database.
@@ -42,6 +46,8 @@ The bootstrap command refuses a database identifier without `test`; the isolated
 Unit tests cover configuration, redaction and migration discovery. Real PostgreSQL tests cover bootstrap/status/idempotence/checksum, rollback/no false history, advisory-lock concurrency, independent namespaces, transactions, reconnect durability, readiness failure and idempotent shutdown. One behavioral repository contract runs unchanged against memory and PostgreSQL probe adapters, including exact/scoped lookup, duplicates, optimistic versioning, rollback and no partial mutation.
 
 `validate:persistence-boundaries` requires declared namespace owners, rejects database imports in Web/Gateway, and rejects foreign migration paths in services. The dedicated CI `persistence` job supplies PostgreSQL 16 and test-only credentials.
+
+This is a bounded source-level guard for obvious imports and declared migration ownership; it is not a claim that static scanning can prove every possible cross-service SQL behavior.
 
 ## Limits and removal
 

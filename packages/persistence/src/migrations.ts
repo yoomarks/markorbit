@@ -28,12 +28,22 @@ export async function loadMigrations(directory: string): Promise<Migration[]> {
             'MIGRATION_EXECUTION_FAILED',
             `Invalid migration filename: ${file}`
           );
-        const sql = await readFile(path.join(directory, file), 'utf8');
+        const bytes = await readFile(path.join(directory, file));
+        let sql: string;
+        try {
+          sql = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch (cause) {
+          throw new PersistenceError(
+            'MIGRATION_EXECUTION_FAILED',
+            `Migration ${file} must contain valid UTF-8.`,
+            { cause }
+          );
+        }
         return {
           version: match[1]!,
           name: match[2]!,
           sql,
-          checksum: createHash('sha256').update(sql).digest('hex')
+          checksum: createHash('sha256').update(bytes).digest('hex')
         };
       })
   );
@@ -57,6 +67,50 @@ CREATE TABLE IF NOT EXISTS markorbit_persistence.migration_history (
  namespace text NOT NULL, version text NOT NULL, name text NOT NULL, checksum text NOT NULL,
  applied_at timestamptz NOT NULL DEFAULT clock_timestamp(), duration_ms integer NOT NULL,
  PRIMARY KEY(namespace, version), UNIQUE(namespace, name));`);
+const bootstrap = async (client: PoolClient): Promise<void> => {
+  await client.query('BEGIN');
+  try {
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended('markorbit:migration-history-bootstrap', 0))"
+    );
+    await setup(client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  }
+};
+async function statusWithClient(
+  client: PoolClient,
+  namespace: string,
+  migrations: Migration[]
+): Promise<MigrationRecord[]> {
+  const result = await client.query<{
+    version: string;
+    name: string;
+    checksum: string;
+    applied_at: Date;
+    duration_ms: number;
+  }>(
+    'SELECT version,name,checksum,applied_at,duration_ms FROM markorbit_persistence.migration_history WHERE namespace=$1',
+    [namespace]
+  );
+  const applied = new Map(result.rows.map((r) => [r.version, r]));
+  return migrations.map((m) => {
+    const row = applied.get(m.version);
+    return row
+      ? {
+          namespace,
+          version: m.version,
+          name: m.name,
+          checksum: m.checksum,
+          appliedAt: row.applied_at,
+          durationMs: row.duration_ms,
+          state: 'applied'
+        }
+      : { namespace, version: m.version, name: m.name, checksum: m.checksum, state: 'pending' };
+  });
+}
 export async function migrationStatus(
   pool: Pool,
   namespace: string,
@@ -64,43 +118,18 @@ export async function migrationStatus(
 ): Promise<MigrationRecord[]> {
   const client = await pool.connect();
   try {
-    await setup(client);
-    const result = await client.query<{
-      version: string;
-      name: string;
-      checksum: string;
-      applied_at: Date;
-      duration_ms: number;
-    }>(
-      'SELECT version,name,checksum,applied_at,duration_ms FROM markorbit_persistence.migration_history WHERE namespace=$1',
-      [namespace]
-    );
-    const applied = new Map(result.rows.map((r) => [r.version, r]));
-    return migrations.map((m) => {
-      const row = applied.get(m.version);
-      return row
-        ? {
-            namespace,
-            version: m.version,
-            name: m.name,
-            checksum: m.checksum,
-            appliedAt: row.applied_at,
-            durationMs: row.duration_ms,
-            state: 'applied'
-          }
-        : { namespace, version: m.version, name: m.name, checksum: m.checksum, state: 'pending' };
-    });
+    await bootstrap(client);
+    return await statusWithClient(client, namespace, migrations);
   } finally {
     client.release();
   }
 }
-export async function verifyMigrations(
-  pool: Pool,
+async function verifyWithClient(
+  client: PoolClient,
   namespace: string,
   migrations: Migration[]
 ): Promise<void> {
-  const statuses = await migrationStatus(pool, namespace, migrations);
-  const rows = await pool.query<{ version: string; name: string; checksum: string }>(
+  const rows = await client.query<{ version: string; name: string; checksum: string }>(
     'SELECT version,name,checksum FROM markorbit_persistence.migration_history WHERE namespace=$1',
     [namespace]
   );
@@ -113,7 +142,19 @@ export async function verifyMigrations(
         `Applied migration ${row.version} does not match its immutable file.`
       );
   }
-  void statuses;
+}
+export async function verifyMigrations(
+  pool: Pool,
+  namespace: string,
+  migrations: Migration[]
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await bootstrap(client);
+    await verifyWithClient(client, namespace, migrations);
+  } finally {
+    client.release();
+  }
 }
 export async function migrate(
   pool: Pool,
@@ -122,12 +163,22 @@ export async function migrate(
 ): Promise<MigrationRecord[]> {
   const client = await pool.connect();
   try {
-    await setup(client);
-    await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [
-      `markorbit:migrate:${namespace}`
-    ]);
     try {
-      await verifyMigrations(pool, namespace, migrations);
+      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [
+        `markorbit:migrate:${namespace}`
+      ]);
+    } catch (cause) {
+      throw new PersistenceError(
+        'MIGRATION_LOCK_UNAVAILABLE',
+        `Could not acquire the migration lock for namespace ${namespace}.`,
+        { cause }
+      );
+    }
+    try {
+      // Infrastructure bootstrap and every history read deliberately use the
+      // physical session that owns the advisory lock.
+      await bootstrap(client);
+      await verifyWithClient(client, namespace, migrations);
       for (const migration of migrations) {
         const exists = await client.query(
           'SELECT 1 FROM markorbit_persistence.migration_history WHERE namespace=$1 AND version=$2',
@@ -152,7 +203,7 @@ export async function migrate(
           );
         }
       }
-      return migrationStatus(pool, namespace, migrations);
+      return statusWithClient(client, namespace, migrations);
     } finally {
       await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [
         `markorbit:migrate:${namespace}`

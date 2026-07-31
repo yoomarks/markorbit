@@ -28,6 +28,7 @@ jobs:
       DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_test
       DB_MIGRATION_NAMESPACE: persistence_foundation
       DB_TEST_DATABASE: markorbit_test
+      PERSISTENCE_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -36,6 +37,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:test:bootstrap
+      - run: pnpm db:migrate
       - run: pnpm db:migrate:status
       - run: pnpm db:migrate:verify
       - run: pnpm test:persistence

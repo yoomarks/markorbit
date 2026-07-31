@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseDatabaseConfig, PersistenceError, redactSecrets } from '../src/index.js';
+import {
+  normalizeDatabaseError,
+  parseDatabaseConfig,
+  PersistenceError,
+  redactSecrets
+} from '../src/index.js';
 
 const valid = {
   NODE_ENV: 'test',
@@ -21,4 +26,10 @@ describe('database configuration', () => {
     expect(redactSecrets('postgresql://user:hunter2@db/x password=hunter2')).toBe(
       'postgresql://user:[REDACTED]@db/x password=[REDACTED]'
     ));
+  it('categorizes driver timeouts and constraints without domain translation', () => {
+    expect(normalizeDatabaseError({ code: '57014' })).toMatchObject({ code: 'DATABASE_TIMEOUT' });
+    expect(normalizeDatabaseError({ code: '23505' })).toMatchObject({
+      code: 'CONSTRAINT_VIOLATION'
+    });
+  });
 });

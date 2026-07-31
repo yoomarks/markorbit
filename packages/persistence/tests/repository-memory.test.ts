@@ -25,12 +25,19 @@ describe('in-memory probe repository contract', () => {
   it(
     'runs the shared behavioral contract',
     repositoryContract(() => {
-      const repository = new MemoryRepository();
+      const values = new Map<string, Probe>();
+      const repository = new MemoryRepository(values);
       return Promise.resolve({
         repository,
         rollback: async (work) => {
           const isolated = new MemoryRepository();
           await work(isolated);
+        },
+        commit: (work) => work(new MemoryRepository(values)),
+        reopen: () => Promise.resolve(new MemoryRepository(values)),
+        cleanup: () => {
+          values.clear();
+          return Promise.resolve();
         },
         close: () => Promise.resolve()
       });

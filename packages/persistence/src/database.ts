@@ -11,11 +11,15 @@ export interface TransactionOptions {
 export interface QueryClient {
   query: PoolClient['query'];
 }
+export type PoolFactory = (config: PoolConfig) => Pool;
 
 export class ManagedDatabase {
   private pool: Pool | undefined;
   private closePromise: Promise<void> | undefined;
-  constructor(private readonly config: DatabaseConfig) {}
+  constructor(
+    private readonly config: DatabaseConfig,
+    private readonly poolFactory: PoolFactory = (poolConfig) => new Pool(poolConfig)
+  ) {}
 
   async start(): Promise<void> {
     if (this.pool) return;
@@ -23,7 +27,7 @@ export class ManagedDatabase {
       'url' in this.config.connection
         ? { connectionString: this.config.connection.url }
         : this.config.connection;
-    const pool = new Pool({
+    const pool = this.poolFactory({
       ...connection,
       max: this.config.poolMaximum,
       connectionTimeoutMillis: this.config.connectionTimeoutMs,

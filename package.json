@@ -16,7 +16,7 @@
     "format:check": "prettier --check .",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:real-runtime": "playwright test --config playwright.real-runtime.config.ts",
-    "test:runtime": "node --test scripts/milestone-runtime.test.mjs scripts/playwright-suite-boundary.test.mjs",
+    "test:runtime": "node --test scripts/milestone-runtime.test.mjs scripts/playwright-suite-boundary.test.mjs scripts/validate-persistence-boundaries.test.mjs",
     "test:e2e:headed": "playwright test --headed",
     "test:visual": "playwright test --config playwright.config.ts --grep @visual",
     "validate:workspace": "node scripts/validate-workspace.mjs",

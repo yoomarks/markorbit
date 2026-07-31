@@ -14,12 +14,15 @@ export function repositoryContract(
   factory: () => Promise<{
     repository: ProbeRepository;
     rollback(work: (repository: ProbeRepository) => Promise<void>): Promise<void>;
+    commit(work: (repository: ProbeRepository) => Promise<void>): Promise<void>;
+    reopen(): Promise<ProbeRepository>;
+    cleanup(): Promise<void>;
     close(): Promise<void>;
   }>
 ) {
   return async () => {
     const harness = await factory();
-    const repository = harness.repository;
+    let repository = harness.repository;
     try {
       expect(await repository.find('scope-a', 'missing')).toBeUndefined();
       await repository.create({ id: 'one', scopeId: 'scope-a', value: 'initial', version: 1 });
@@ -41,6 +44,19 @@ export function repositoryContract(
         transactional.create({ id: 'rolled-back', scopeId: 'scope-a', value: 'x', version: 1 })
       );
       expect(await repository.find('scope-a', 'rolled-back')).toBeUndefined();
+      await harness.commit((transactional) =>
+        transactional.create({ id: 'committed', scopeId: 'scope-a', value: 'durable', version: 1 })
+      );
+      repository = await harness.reopen();
+      expect(await repository.find('scope-a', 'committed')).toEqual({
+        id: 'committed',
+        scopeId: 'scope-a',
+        value: 'durable',
+        version: 1
+      });
+      await harness.cleanup();
+      expect(await repository.find('scope-a', 'one')).toBeUndefined();
+      expect(await repository.find('scope-a', 'committed')).toBeUndefined();
     } finally {
       await harness.close();
     }

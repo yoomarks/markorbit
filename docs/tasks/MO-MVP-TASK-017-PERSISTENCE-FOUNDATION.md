@@ -2,7 +2,7 @@
 
 ## Status and baseline
 
-Completed on `codex/mo-mvp-task-017-persistence-foundation`. Baseline commit `6db87c7831aaf631add1bcdfadc892cba08da9ab`, tree `1f55b0dadb66b8aa3ea67dbdac95439b03304270`, contains PR #24 and the `APPROVED_FOR_IMPLEMENTATION` Milestone 2 plan. The supplied checkout had no configured remote, so synchronization provenance is the local merge commit.
+Completed on existing PR branch `4rd7lx-codex/postgresql`. Baseline commit `6db87c7831aaf631add1bcdfadc892cba08da9ab`, tree `1f55b0dadb66b8aa3ea67dbdac95439b03304270`, contains PR #24 and the `APPROVED_FOR_IMPLEMENTATION` Milestone 2 plan. The supplied checkout had no configured remote, so synchronization provenance is the local merge commit.
 
 ## Bounded outcome
 
@@ -17,3 +17,7 @@ The real PostgreSQL suite uses only `PERSISTENCE_TEST_DATABASE_URL`, creates its
 ## Non-goals
 
 Authentication, identity objects, sessions, product persistence, formal-state behavior, audit, idempotency, outbox, external providers, object storage and production deployment are excluded. TASK 018 has not started.
+
+## TASK 017-R1 verification
+
+The R1 audit makes required database-test mode fail closed, keeps migration bootstrap/history reads and execution on the advisory-lock-owning PoolClient, proves a concurrent migration body executes once, and expands lifecycle, exact-byte checksum, shared repository-contract, and negative boundary tests. Local PostgreSQL 16.14 executed all 7 PostgreSQL integration cases with zero skips; the complete focused suite executed 22/22 tests. CI uses Node 22, pnpm 10.28.1, PostgreSQL 16, and `PERSISTENCE_TEST_REQUIRED=1`. PR-head Actions evidence remains authoritative and must be recorded in the existing PR; local verification does not substitute for it.

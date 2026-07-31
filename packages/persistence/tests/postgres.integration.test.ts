@@ -14,6 +14,9 @@ import {
 } from '../src/index.js';
 import { repositoryContract, type Probe, type ProbeRepository } from './repository-contract.js';
 const url = process.env.PERSISTENCE_TEST_DATABASE_URL;
+const required = process.env.PERSISTENCE_TEST_REQUIRED === '1';
+if (required && !url)
+  throw new Error('PERSISTENCE_TEST_REQUIRED=1 requires PERSISTENCE_TEST_DATABASE_URL.');
 const integration = url ? describe : describe.skip;
 const config = () =>
   parseDatabaseConfig({
@@ -77,6 +80,21 @@ integration('real PostgreSQL 16 foundation', () => {
     await expect(
       verifyMigrations(database.getPool(), 'persistence_probe', altered)
     ).rejects.toMatchObject({ code: 'MIGRATION_CHECKSUM_MISMATCH' });
+    await database.getPool().query('CREATE TABLE checksum_later_counter(value integer)');
+    await expect(
+      migrate(database.getPool(), 'persistence_probe', [
+        altered[0]!,
+        {
+          version: '0002',
+          name: 'must_not_run',
+          sql: 'INSERT INTO checksum_later_counter VALUES (1)',
+          checksum: 'later'
+        }
+      ])
+    ).rejects.toMatchObject({ code: 'MIGRATION_CHECKSUM_MISMATCH' });
+    expect((await database.getPool().query('SELECT 1 FROM checksum_later_counter')).rowCount).toBe(
+      0
+    );
   });
   it('rolls back a failed migration without false history', async () => {
     const migration = {
@@ -100,10 +118,15 @@ integration('real PostgreSQL 16 foundation', () => {
     expect(table.rows[0]?.value).toBeNull();
   });
   it('serializes concurrent migration processes', async () => {
+    await database
+      .getPool()
+      .query(
+        'DROP TABLE IF EXISTS migration_execution_counter; CREATE TABLE migration_execution_counter(value integer)'
+      );
     const m = {
       version: '0001',
       name: 'concurrent',
-      sql: 'SELECT pg_sleep(0.05)',
+      sql: 'SELECT pg_sleep(0.05); INSERT INTO migration_execution_counter VALUES (1)',
       checksum: 'same'
     };
     await Promise.all([
@@ -116,6 +139,9 @@ integration('real PostgreSQL 16 foundation', () => {
         'concurrent_probe'
       ]);
     expect(rows.rowCount).toBe(1);
+    expect(
+      (await database.getPool().query('SELECT 1 FROM migration_execution_counter')).rowCount
+    ).toBe(1);
   });
   it('commits, rolls back application errors, and closes idempotently', async () => {
     await database.transact(async (c) => {
@@ -175,6 +201,16 @@ integration('real PostgreSQL 16 foundation', () => {
           } catch (error) {
             if (!(error instanceof Error) || error.message !== 'rollback sentinel') throw error;
           }
+        },
+        commit: (work) => database.transact((client) => work(new PostgresProbeRepository(client))),
+        reopen: async () => {
+          await database.close();
+          database = new ManagedDatabase(config());
+          await database.start();
+          return new PostgresProbeRepository(database.getPool());
+        },
+        cleanup: async () => {
+          await database.getPool().query('TRUNCATE persistence_test_probe');
         },
         close: () => Promise.resolve()
       };
