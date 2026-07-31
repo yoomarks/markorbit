@@ -251,10 +251,14 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
         {}
       );
     },
-    createMatterDraft(confirmationId, confirmationVersion = 1, workspaceId) {
+    createMatterDraft(confirmationId, confirmationVersion, workspaceId) {
       return api.post(
         '/api/markreg/matter-drafts',
-        { confirmationId, confirmationVersion, workspaceId },
+        {
+          confirmationId,
+          ...(confirmationVersion === undefined ? {} : { confirmationVersion }),
+          ...(workspaceId === undefined ? {} : { workspaceId })
+        },
         {}
       );
     },
@@ -262,11 +266,10 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
       return api.get(`/api/markreg/matter-drafts/${encodeURIComponent(id)}`);
     },
     updateMatterDraft(id, patch, expectedVersion, workspaceId) {
-      return api.patch(`/api/markreg/matter-drafts/${encodeURIComponent(id)}`, {
-        preparation: patch,
-        expectedVersion,
-        workspaceId
-      });
+      return api.patch(
+        `/api/markreg/matter-drafts/${encodeURIComponent(id)}`,
+        expectedVersion === undefined ? patch : { preparation: patch, expectedVersion, workspaceId }
+      );
     },
     evaluateMatterDraft(id, expectedVersion, workspaceId) {
       return api.post(

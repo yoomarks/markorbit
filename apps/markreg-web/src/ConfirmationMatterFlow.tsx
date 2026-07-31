@@ -129,7 +129,7 @@ export function ConfirmationMatterFlow({
     try {
       const response = await client.createMatterDraft!(
         confirmation.confirmationId,
-        (confirmation as CustomerConfirmation & { version?: number }).version ?? 1,
+        (confirmation as CustomerConfirmation & { version?: number }).version,
         workspaceId
       );
       setMatter(response.matterDraft);
@@ -418,6 +418,11 @@ export function ConfirmationMatterFlow({
           role="region"
           aria-labelledby="matter-readiness-heading"
         >
+          {matter.readiness.checks.length === 0 && (
+            <p>
+              <strong>UNKNOWN</strong> — readiness has not yet been evaluated.
+            </p>
+          )}
           {matter.readiness.checks.map((check) => (
             <section key={check.code}>
               <h4>{check.code}</h4>

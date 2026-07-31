@@ -41,13 +41,21 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
   const markregMigrations = () =>
     loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/markreg-service');
+  const resetMarkRegTestState = async () => {
+    const pool = database.getPool();
+    await pool.query('DROP TABLE IF EXISTS matter_drafts CASCADE');
+    await pool.query('DROP TABLE IF EXISTS customer_confirmations CASCADE');
+    const history = await pool.query<{ migration_history: string | null }>(
+      "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
+    );
+    if (history.rows[0]?.migration_history)
+      await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace = $1', [
+        'markreg_customer_confirmation_test'
+      ]);
+  };
   beforeAll(async () => {
     await database.start();
-    await database
-      .getPool()
-      .query(
-        'DROP TABLE IF EXISTS customer_confirmations CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
-      );
+    await resetMarkRegTestState();
     await migrate(
       database.getPool(),
       'markreg_customer_confirmation_test',
