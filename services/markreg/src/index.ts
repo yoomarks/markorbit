@@ -17,7 +17,8 @@ import {
   type QuoteConfirmation,
   type QuoteCreateCommand,
   type ProfessionalReviewCase,
-  type CustomerInstructionType
+  type CustomerInstructionType,
+  type CreateFormalMatterCommand
 } from '@markorbit/contracts';
 import {
   noAutomaticConsequences,
@@ -51,10 +52,17 @@ import {
   MatterDraftService,
   type MatterDraftRepository
 } from './matter-draft.js';
+import {
+  FormalMatterError,
+  FormalMatterService,
+  InMemoryFormalMatterRepository,
+  type FormalMatterRepository
+} from './formal-matter.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
 export * from './customer-confirmation.js';
 export * from './matter-draft.js';
+export * from './formal-matter.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -248,6 +256,7 @@ export interface MarkRegOptions {
   milestoneTestRuntime?: boolean;
   customerConfirmationRepository?: CustomerConfirmationRepository;
   matterDraftRepository?: MatterDraftRepository;
+  formalMatterRepository?: FormalMatterRepository;
   internalServiceSecret?: string;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
@@ -345,6 +354,15 @@ export function createRuntime(options: MarkRegOptions = {}) {
           now
         )
       : undefined;
+  const formalMatters =
+    options.customerConfirmationRepository && options.matterDraftRepository
+      ? new FormalMatterService(
+          options.formalMatterRepository ?? new InMemoryFormalMatterRepository(),
+          options.customerConfirmationRepository,
+          options.matterDraftRepository,
+          now
+        )
+      : undefined;
   const internalServiceSecret =
     options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
   const fixtureRuntime =
@@ -399,6 +417,21 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 : error.code === 'PERSISTENCE_UNAVAILABLE'
                   ? 503
                   : error.code === 'MATTER_DRAFT_INVALID_SOURCE'
+                    ? 422
+                    : 409;
+        throw new HttpError(status, error.code, error.message, status === 503);
+      }
+      if (error instanceof FormalMatterError) {
+        const status =
+          error.code === 'AUTHENTICATION_REQUIRED'
+            ? 401
+            : ['PERMISSION_DENIED', 'WORKSPACE_MISMATCH'].includes(error.code)
+              ? 403
+              : ['FORMAL_MATTER_NOT_FOUND', 'SOURCE_NOT_FOUND'].includes(error.code)
+                ? 404
+                : error.code === 'PERSISTENCE_UNAVAILABLE'
+                  ? 503
+                  : error.code === 'SOURCE_INELIGIBLE'
                     ? 422
                     : 409;
         throw new HttpError(status, error.code, error.message, status === 503);
@@ -696,6 +729,70 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 r.params.preparationLockId as `preparation-lock_${string}`
               )
             )
+        },
+        {
+          method: 'POST',
+          path: '/v1/formal-matters',
+          async handle(request) {
+            if (!formalMatters)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Formal Matter persistence is unavailable.',
+                true
+              );
+            const b = request.body as CreateFormalMatterCommand;
+            if (
+              !b.workspaceId ||
+              !b.customerConfirmationId ||
+              !b.matterDraftId ||
+              !b.idempotencyKey ||
+              !Number.isSafeInteger(b.expectedCustomerConfirmationVersion) ||
+              !Number.isSafeInteger(b.expectedMatterDraftVersion) ||
+              request.headers['idempotency-key'] !== b.idempotencyKey
+            )
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Exact source versions and matching Idempotency-Key are required.'
+              );
+            return durable(async () => ({
+              formalMatter: await formalMatters.create(
+                durablePrincipal(request),
+                b,
+                request.headers['x-correlation-id']
+              ),
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/formal-matters/:formalMatterId',
+          async handle(request) {
+            if (!formalMatters)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Formal Matter persistence is unavailable.',
+                true
+              );
+            const workspaceId = request.headers['x-markorbit-workspace-id'];
+            if (!workspaceId)
+              throw new HttpError(
+                400,
+                'INVALID_WORKSPACE_CONTEXT',
+                'Workspace context is required.'
+              );
+            return durable(async () => ({
+              formalMatter: await formalMatters.get(
+                durablePrincipal(request),
+                workspaceId,
+                request.params.formalMatterId!
+              ),
+              consequences: noAutomaticConsequences
+            }));
+          }
         },
         {
           method: 'POST',

@@ -286,6 +286,48 @@ export interface MatterDraft {
   createdAt: string;
   updatedAt: string;
 }
+/** Durable, operational Matter created from an exact READY preparation version. */
+export type FormalMatterId = `formal-matter_${string}`;
+export interface FormalMatterSourceSnapshot {
+  schemaVersion: 1;
+  customerConfirmation: { id: CustomerConfirmationId; version: number; status: 'CONFIRMED' };
+  quote: { id: MarkOrbitId; version: string; currency: string; totalMinor: number };
+  matterDraft: {
+    id: MatterDraftId;
+    version: number;
+    status: 'READY_FOR_PROFESSIONAL_REVIEW';
+    readiness: MatterReadiness;
+  };
+  preparation: Readonly<MatterDraftPreparation>;
+}
+export interface FormalMatter {
+  schemaVersion: 1;
+  formalMatterId: FormalMatterId;
+  workspaceId: string;
+  kind: 'TRADEMARK_REGISTRATION';
+  status: 'OPEN';
+  version: 1;
+  sourceCustomerConfirmationId: CustomerConfirmationId;
+  sourceCustomerConfirmationVersion: number;
+  sourceMatterDraftId: MatterDraftId;
+  sourceMatterDraftVersion: number;
+  sourceQuoteId: MarkOrbitId;
+  sourceQuoteVersion: string;
+  sourceSnapshot: Readonly<FormalMatterSourceSnapshot>;
+  snapshotSchemaVersion: 1;
+  snapshotSha256: string;
+  createdByUserId: MarkOrbitId;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CreateFormalMatterCommand {
+  workspaceId: string;
+  customerConfirmationId: CustomerConfirmationId;
+  expectedCustomerConfirmationVersion: number;
+  matterDraftId: MatterDraftId;
+  expectedMatterDraftVersion: number;
+  idempotencyKey: string;
+}
 export interface AuthorityBoundary {
   orderCreated: false;
   paymentCreated: false;

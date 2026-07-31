@@ -92,6 +92,7 @@ export const quote = {
 export async function seedMarkreg(page: Page, state: 'applicant' | 'review' | 'recommendation') {
   await page.addInitScript(
     ({ draft, result, target }) => {
+      sessionStorage.setItem('markorbit-workspace-id', '11111111-1111-4111-8111-111111111111');
       if (target !== 'applicant')
         sessionStorage.setItem('markreg-guided-intake-v1', JSON.stringify(draft));
       if (target === 'recommendation')
@@ -127,7 +128,8 @@ export async function installMatterGatewayFixture(page: Page) {
     ].map((code) => ({ code, acknowledged: true, acknowledgedAt: '2026-07-29T12:00:00.000Z' })),
     status: 'CONFIRMED',
     createdAt: '2026-07-29T12:00:00.000Z',
-    updatedAt: '2026-07-29T12:00:00.000Z'
+    updatedAt: '2026-07-29T12:00:00.000Z',
+    version: 1
   };
   const consequences = {
     orderCreated: false,
@@ -178,8 +180,43 @@ export async function installMatterGatewayFixture(page: Page) {
           .map((x) => x.code),
     status: ready ? 'READY_FOR_PROFESSIONAL_REVIEW' : 'NEEDS_INFORMATION',
     createdAt: '2026-07-29T12:00:00.000Z',
-    updatedAt: '2026-07-29T12:00:00.000Z'
+    updatedAt: '2026-07-29T12:00:00.000Z',
+    version: 1
   });
+  const formalMatter = {
+    schemaVersion: 1,
+    formalMatterId: 'formal-matter_e2e022',
+    workspaceId: '11111111-1111-4111-8111-111111111111',
+    kind: 'TRADEMARK_REGISTRATION',
+    status: 'OPEN',
+    version: 1,
+    sourceCustomerConfirmationId: confirmation.confirmationId,
+    sourceCustomerConfirmationVersion: 1,
+    sourceMatterDraftId: 'matter-draft_e2e',
+    sourceMatterDraftVersion: 1,
+    sourceQuoteId: 'quote_e2e',
+    sourceQuoteVersion: 'quote-v1',
+    sourceSnapshot: {},
+    snapshotSchemaVersion: 1,
+    snapshotSha256: 'a'.repeat(64),
+    createdByUserId: 'user_e2e',
+    createdAt: '2026-07-29T12:00:00.000Z',
+    updatedAt: '2026-07-29T12:00:00.000Z'
+  };
+  await page.route('**/api/markreg/formal-matters', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ formalMatter, consequences })
+    })
+  );
+  await page.route('**/api/markreg/formal-matters/formal-matter_e2e022', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ formalMatter, consequences })
+    })
+  );
   await page.route('**/v1/markreg/quotes', (route) =>
     route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(quote) })
   );

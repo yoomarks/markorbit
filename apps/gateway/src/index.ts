@@ -632,6 +632,31 @@ export function createRuntime(options: GatewayOptions = {}) {
         }),
         {
           method: 'POST',
+          path: '/api/markreg/formal-matters',
+          handle: (r) => {
+            const b = record(r.body);
+            const key = r.headers['idempotency-key'];
+            if (!key || b.idempotencyKey !== key)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'A matching Idempotency-Key is required.'
+              );
+            return matterDraft(r, '/v1/formal-matters', 'matter:create', true);
+          }
+        },
+        {
+          method: 'GET',
+          path: '/api/markreg/formal-matters/:formalMatterId',
+          handle: (r) =>
+            matterDraft(
+              r,
+              `/v1/formal-matters/${encodeURIComponent(r.params.formalMatterId!)}`,
+              'matter:read'
+            )
+        },
+        {
+          method: 'POST',
           path: '/api/markreg/customer-confirmations',
           handle: async (r) => {
             if (!authenticationClient) {

@@ -47,7 +47,7 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 60);
+assert.equal(source.length, 62);
 assert.equal(
   source.filter(
     (x) =>
@@ -56,8 +56,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  54
+  56
 );
 console.log(
-  'Gateway inventory PASS: 60 runtime routes (54 governed/compatibility + 3 authenticated + 2 health + 1 test-only evidence); test bootstrap excluded'
+  'Gateway inventory PASS: 62 runtime routes (56 governed/compatibility + 3 authenticated + 2 health + 1 test-only evidence); test bootstrap excluded'
 );

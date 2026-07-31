@@ -7,6 +7,7 @@ import {
   verifyMigrations
 } from '@markorbit/persistence';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import {
   CustomerConfirmationError,
   PostgresCustomerConfirmationRepository
@@ -41,8 +42,20 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
   const markregMigrations = () =>
     loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/markreg-service');
+  const declaredMarkRegVersions = async () => {
+    const registry = JSON.parse(await readFile(migrationOwners, 'utf8')) as {
+      migrations: Readonly<Record<string, string>>;
+    };
+    return Object.entries(registry.migrations)
+      .filter(([, owner]) => owner === '@markorbit/markreg-service')
+      .map(([name]) => name.split('_', 1)[0]!)
+      .sort((a, b) => a.localeCompare(b));
+  };
   const resetMarkRegTestState = async () => {
     const pool = database.getPool();
+    await pool.query('DROP TABLE IF EXISTS formal_matter_audit CASCADE');
+    await pool.query('DROP TABLE IF EXISTS formal_matter_commands CASCADE');
+    await pool.query('DROP TABLE IF EXISTS formal_matters CASCADE');
     await pool.query('DROP TABLE IF EXISTS matter_drafts CASCADE');
     await pool.query('DROP TABLE IF EXISTS customer_confirmations CASCADE');
     const history = await pool.query<{ migration_history: string | null }>(
@@ -68,9 +81,20 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
     await database.getPool().query('TRUNCATE matter_drafts, customer_confirmations');
     return new PostgresCustomerConfirmationRepository(database.getPool());
   });
-  it('loads, reports and verifies only the MarkReg-owned migration', async () => {
+  it('loads, reports and verifies every migration declared as MarkReg-owned', async () => {
     const migrations = await markregMigrations();
-    expect(migrations.map((x) => x.version)).toEqual(['0020', '0021']);
+    const loadedVersions = migrations.map((x) => x.version);
+    const expectedVersions = await declaredMarkRegVersions();
+    expect(loadedVersions).toEqual(expectedVersions);
+    expect(loadedVersions).toEqual([...loadedVersions].sort((a, b) => a.localeCompare(b)));
+    expect(loadedVersions).toEqual(expect.arrayContaining(['0020', '0021', '0022']));
+    const registry = JSON.parse(await readFile(migrationOwners, 'utf8')) as {
+      migrations: Readonly<Record<string, string>>;
+    };
+    const nonMarkRegVersions = Object.entries(registry.migrations)
+      .filter(([, owner]) => owner !== '@markorbit/markreg-service')
+      .map(([name]) => name.split('_', 1)[0]!);
+    expect(loadedVersions.filter((version) => nonMarkRegVersions.includes(version))).toEqual([]);
     expect(
       (
         await migrationStatus(database.getPool(), 'markreg_customer_confirmation_test', migrations)
