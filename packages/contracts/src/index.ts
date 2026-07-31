@@ -328,6 +328,37 @@ export interface CreateFormalMatterCommand {
   expectedMatterDraftVersion: number;
   idempotencyKey: string;
 }
+/** Bounded Workspace-facing projection; the immutable source snapshot remains MarkReg-owned. */
+export interface FormalMatterListItem {
+  formalMatterId: FormalMatterId;
+  type: FormalMatter['kind'];
+  status: FormalMatter['status'];
+  version: number;
+  createdAt: string;
+  createdBy: string;
+  applicant?: string;
+  trademark?: string;
+  jurisdiction?: string;
+  classes: number[];
+  sourceMatterDraftId: MatterDraftId;
+  sourceMatterDraftVersion: number;
+  nextStep: 'PROFESSIONAL_REVIEW_AVAILABLE';
+}
+export interface FormalMatterListResponse {
+  items: FormalMatterListItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+export interface FormalMatterListQuery {
+  status?: FormalMatter['status'];
+  type?: FormalMatter['kind'];
+  search?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  page: number;
+  pageSize: number;
+}
 export interface AuthorityBoundary {
   orderCreated: false;
   paymentCreated: false;

@@ -22,6 +22,7 @@ import {
   PostgresCustomerConfirmationRepository,
   PostgresMatterDraftRepository,
   PostgresFormalMatterRepository,
+  FormalMatterService,
   hashSnapshot
 } from '../services/markreg/dist/index.js';
 
@@ -35,6 +36,7 @@ const workspaceId = '44444444-4444-4444-8444-444444444444';
 const otherWorkspaceId = '55555555-5555-4555-8555-555555555555';
 const at = '2026-07-31T16:00:00.000Z';
 suite('real authenticated Formal Matter HTTP vertical slice', () => {
+  let authenticationNow = new Date('2026-07-31T16:00:00.000Z');
   const database = new ManagedDatabase({
     connection: { url: url! },
     applicationName: 'formal-matter-http',
@@ -49,7 +51,13 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     workspaces = new InMemoryWorkspaceRepository(),
     memberships = new InMemoryMembershipRepository(users, workspaces),
     sessions = new InMemorySessionRepository();
-  const auth = new AuthenticationService({ users, workspaces, memberships, sessions });
+  const auth = new AuthenticationService({
+    users,
+    workspaces,
+    memberships,
+    sessions,
+    clock: () => authenticationNow
+  });
   const core = createCore({ port: 0, authentication: auth, internalServiceSecret: secret });
   let markreg: ReturnType<typeof createMarkReg>,
     gateway: ReturnType<typeof createGateway>,
@@ -202,10 +210,21 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
       await users.create({ userId, email: `${name}@example.test`, displayName: role });
       await memberships.create({ membershipId, workspaceId, userId, role: role as never });
     }
+    await users.create({
+      userId: 'user_nonmember',
+      email: 'nonmember@example.test',
+      displayName: 'Non-member'
+    });
+    await memberships.create({
+      membershipId: 'membership_admin_other',
+      workspaceId: otherWorkspaceId,
+      userId: 'user_workspace_admin',
+      role: 'WORKSPACE_ADMIN'
+    });
     await core.start();
     markreg = runtime(0);
     await markreg.start();
-    markregPort = markreg.listeningPort;
+    markregPort = markreg.listeningPort!;
     gateway = createGateway({
       port: 0,
       markRegUrl: `http://127.0.0.1:${markregPort}`,
@@ -219,14 +238,15 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
         admin: 'user_workspace_admin',
         manager: 'user_matter_manager',
         reviewer: 'user_reviewer',
-        readonly: 'user_read_only'
+        readonly: 'user_read_only',
+        nonmember: 'user_nonmember'
       },
       csrfSecret: 'task-022-csrf',
       allowedOrigins: [origin]
     });
     await gateway.start();
     base = `http://127.0.0.1:${gateway.listeningPort}`;
-    for (const role of ['admin', 'manager', 'reviewer', 'readonly']) {
+    for (const role of ['admin', 'manager', 'reviewer', 'readonly', 'nonmember']) {
       const boot = await fetch(`${base}/__test/auth/session`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -284,6 +304,119 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
   it('denies Reviewer and Read Only creation', async () => {
     expect((await create('reviewer', 'denied_reviewer')).response.status).toBe(403);
     expect((await create('readonly', 'denied_readonly')).response.status).toBe(403);
+  });
+  it('allows every matter:read role to list and read with filters and pagination', async () => {
+    const created = await create('admin', 'read_roles');
+    const value = (await created.response.json()) as { formalMatter: { formalMatterId: string } };
+    for (const role of ['admin', 'manager', 'reviewer', 'readonly']) {
+      const list = await fetch(
+        `${base}/api/markreg/formal-matters?search=ORBIT&status=OPEN&type=TRADEMARK_REGISTRATION&page=1&pageSize=1`,
+        { headers: { cookie: cookies[role]!, 'x-markorbit-workspace-id': workspaceId } }
+      );
+      expect(list.status, role).toBe(200);
+      expect((await list.json()) as { items: unknown[] }).toMatchObject({
+        page: 1,
+        pageSize: 1,
+        items: [{ status: 'OPEN', type: 'TRADEMARK_REGISTRATION' }]
+      });
+      const detail = await fetch(
+        `${base}/api/markreg/formal-matters/${value.formalMatter.formalMatterId}`,
+        { headers: { cookie: cookies[role]!, 'x-markorbit-workspace-id': workspaceId } }
+      );
+      expect(detail.status, role).toBe(200);
+    }
+  });
+  it('denies anonymous, expired and non-member Sessions', async () => {
+    expect(
+      (
+        await fetch(`${base}/api/markreg/formal-matters`, {
+          headers: { 'x-markorbit-workspace-id': workspaceId }
+        })
+      ).status
+    ).toBe(401);
+    expect(
+      (
+        await fetch(`${base}/api/markreg/formal-matters`, {
+          headers: { cookie: cookies.nonmember!, 'x-markorbit-workspace-id': workspaceId }
+        })
+      ).status
+    ).toBe(403);
+    authenticationNow = new Date('2030-01-01T00:00:00.000Z');
+    expect(
+      (
+        await fetch(`${base}/api/markreg/formal-matters`, {
+          headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
+        })
+      ).status
+    ).toBe(401);
+    authenticationNow = new Date('2026-07-31T16:00:00.000Z');
+  });
+  it('isolates Workspace list/detail and rejects invalid filters', async () => {
+    const foreignSource = await seed('foreign-list', { workspace: otherWorkspaceId });
+    const repository = new PostgresFormalMatterRepository(database, database.getPool());
+    const foreignPrincipal = {
+      ...(await auth.resolveWorkspacePrincipal(
+        cookies.admin!.match(/mo_session=([^;]+)/)![1]!,
+        otherWorkspaceId
+      ))
+    } as never;
+    const service = new FormalMatterService(repository, confirmations(), drafts(), () => at);
+    const foreign = await service.create(foreignPrincipal, {
+      workspaceId: otherWorkspaceId,
+      customerConfirmationId: foreignSource.confirmation.confirmationId as never,
+      expectedCustomerConfirmationVersion: 1,
+      matterDraftId: foreignSource.draft.matterDraftId as never,
+      expectedMatterDraftVersion: 1,
+      idempotencyKey: 'foreign-list'
+    });
+    const list = await fetch(`${base}/api/markreg/formal-matters`, {
+      headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
+    });
+    expect(
+      ((await list.json()) as { items: { formalMatterId: string }[] }).items.map(
+        (x) => x.formalMatterId
+      )
+    ).not.toContain(foreign.formalMatterId);
+    expect(
+      (
+        await fetch(`${base}/api/markreg/formal-matters/${foreign.formalMatterId}`, {
+          headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
+        })
+      ).status
+    ).toBe(404);
+    for (const query of [
+      'page=0',
+      'pageSize=101',
+      'status=CLOSED',
+      'createdFrom=nope',
+      'createdFrom=2026-08-02T00:00:00Z&createdTo=2026-08-01T00:00:00Z'
+    ])
+      expect(
+        (
+          await fetch(`${base}/api/markreg/formal-matters?${query}`, {
+            headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
+          })
+        ).status
+      ).toBe(400);
+  });
+  it('keeps immutable Matter detail after the current Draft changes', async () => {
+    const created = await create('admin', 'immutable-detail');
+    const value = (await created.response.json()) as {
+      formalMatter: { formalMatterId: string; snapshotSha256: string; sourceSnapshot: unknown };
+    };
+    await database
+      .getPool()
+      .query(
+        "UPDATE matter_drafts SET preparation=jsonb_set(preparation,'{trademark}','\"CHANGED\"'::jsonb),version=version+1 WHERE matter_draft_id=$1",
+        [created.source.draft.matterDraftId]
+      );
+    const detail = await fetch(
+      `${base}/api/markreg/formal-matters/${value.formalMatter.formalMatterId}`,
+      { headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId } }
+    );
+    expect((await detail.json()) as { formalMatter: unknown }).toMatchObject({
+      formalMatter: value.formalMatter
+    });
   });
   it('maps conflict, stale, withdrawn, not-ready and cross-Workspace sources safely', async () => {
     const conflict = await create('admin', 'conflict');
@@ -352,6 +485,15 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     await markreg.stop();
     markreg = runtime(markregPort);
     await markreg.start();
+    const list = await fetch(
+      `${base}/api/markreg/formal-matters?search=${value.formalMatter.formalMatterId}`,
+      { headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId } }
+    );
+    expect(await list.json()).toMatchObject({
+      items: [
+        { formalMatterId: value.formalMatter.formalMatterId, status: value.formalMatter.status }
+      ]
+    });
     const read = await fetch(
       `${base}/api/markreg/formal-matters/${value.formalMatter.formalMatterId}`,
       { headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId } }
@@ -366,5 +508,21 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     expect(response.status).toBe(503);
     markreg = runtime(markregPort);
     await markreg.start();
+  });
+  it('maps database unavailability to 503 and recovers against the same durable data', async () => {
+    await database.close();
+    const unavailable = await fetch(`${base}/api/markreg/formal-matters`, {
+      headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
+    });
+    expect(unavailable.status).toBe(503);
+    await markreg.stop();
+    await database.start();
+    markreg = runtime(markregPort);
+    await markreg.start();
+    const recovered = await fetch(`${base}/api/markreg/formal-matters?page=1&pageSize=100`, {
+      headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
+    });
+    expect(recovered.status).toBe(200);
+    expect(((await recovered.json()) as { total: number }).total).toBeGreaterThan(0);
   });
 });

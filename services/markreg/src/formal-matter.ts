@@ -4,6 +4,8 @@ import type {
   FormalMatter,
   FormalMatterId,
   FormalMatterSourceSnapshot,
+  FormalMatterListQuery,
+  FormalMatterListResponse,
   Permission,
   WorkspacePrincipal
 } from '@markorbit/contracts';
@@ -50,6 +52,7 @@ export interface FormalMatterRepository {
   ): Promise<FormalMatter>;
   findById(workspaceId: string, id: string): Promise<FormalMatter | null>;
   findByIdempotencyKey(workspaceId: string, key: string): Promise<Creation | null>;
+  list(workspaceId: string, query: FormalMatterListQuery): Promise<FormalMatterListResponse>;
 }
 const clone = <T>(v: T): T => structuredClone(v);
 export class InMemoryFormalMatterRepository implements FormalMatterRepository {
@@ -96,6 +99,11 @@ export class InMemoryFormalMatterRepository implements FormalMatterRepository {
   }
   findByIdempotencyKey(w: string, k: string) {
     return Promise.resolve(clone(this.keys.get(`${w}:${k}`) ?? null));
+  }
+  list(w: string, q: FormalMatterListQuery) {
+    const filtered = [...this.matters.values()].filter((m) => matches(m, w, q));
+    filtered.sort(orderMatters);
+    return Promise.resolve(projectPage(filtered, q));
   }
   evidence() {
     return { matters: this.matters.size, idempotency: this.keys.size, audits: this.audits.length };
@@ -178,22 +186,9 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
       if (cause instanceof FormalMatterError) throw cause;
       const code = (cause as { code?: string }).code;
       if (code === '23505' || code === '40001') {
-        // A concurrent identical command can lose either the unique-key race or the
-        // serializable transaction race. The winner is durable before PostgreSQL
-        // reports either error, so resolve the approved replay semantics here.
-        const replay = await this.findByIdempotencyKey(v.workspaceId, key);
-        if (replay) {
-          if (replay.fingerprint !== fp)
-            throw new FormalMatterError(
-              'IDEMPOTENCY_CONFLICT',
-              'Idempotency key has conflicting input.'
-            );
-          return replay.matter;
-        }
-        throw new FormalMatterError(
-          'DUPLICATE_SOURCE',
-          'The exact Matter Draft version already created a Formal Matter.'
-        );
+        // The failed SERIALIZABLE transaction is already rolled back by transact(). Resolve
+        // the winner on fresh pool checkouts; it can still be completing its commit.
+        return this.resolveConcurrentWinner(v, key, fp);
       }
       throw new FormalMatterError(
         'PERSISTENCE_UNAVAILABLE',
@@ -201,6 +196,49 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
         { cause: cause instanceof Error ? cause : undefined }
       );
     }
+  }
+  private async resolveConcurrentWinner(v: FormalMatter, key: string, fp: string) {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const replay = await this.findByIdempotencyKey(v.workspaceId, key);
+      if (replay) {
+        if (replay.fingerprint !== fp)
+          throw new FormalMatterError(
+            'IDEMPOTENCY_CONFLICT',
+            'Idempotency key has conflicting input.'
+          );
+        return replay.matter;
+      }
+      const source = await this.findBySource(
+        v.workspaceId,
+        v.sourceMatterDraftId,
+        v.sourceMatterDraftVersion
+      );
+      if (source) {
+        if (source.key === key && source.fingerprint === fp) return source.matter;
+        throw new FormalMatterError(
+          'DUPLICATE_SOURCE',
+          'The exact Matter Draft version already created a Formal Matter.'
+        );
+      }
+      if (attempt < 9) await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+    }
+    throw new FormalMatterError(
+      'PERSISTENCE_UNAVAILABLE',
+      'The concurrent Formal Matter result is not yet available.'
+    );
+  }
+  private async findBySource(workspaceId: string, draftId: string, draftVersion: number) {
+    const result = await this.query.query(
+      'SELECT c.idempotency_key,c.request_fingerprint,m.* FROM formal_matters m JOIN formal_matter_commands c ON c.workspace_id=m.workspace_id AND c.formal_matter_id=m.formal_matter_id WHERE m.workspace_id=$1 AND m.source_matter_draft_id=$2 AND m.source_matter_draft_version=$3',
+      [workspaceId, draftId, draftVersion]
+    );
+    if (!result.rowCount) return null;
+    const row = result.rows[0] as Row;
+    return {
+      key: String(row.idempotency_key),
+      fingerprint: String(row.request_fingerprint),
+      matter: this.map(priorMatter(row))
+    };
   }
   async findById(w: string, id: string) {
     try {
@@ -228,6 +266,49 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
           matter: this.map(priorMatter(r.rows[0] as Row))
         }
       : null;
+  }
+  async list(w: string, q: FormalMatterListQuery) {
+    try {
+      const where = ['workspace_id=$1'];
+      const values: unknown[] = [w];
+      const add = (sql: string, value: unknown) => {
+        values.push(value);
+        where.push(sql.replace('?', `$${values.length}`));
+      };
+      if (q.status) add('status=?', q.status);
+      if (q.type) add('kind=?', q.type);
+      if (q.createdFrom) add('created_at>=?', q.createdFrom);
+      if (q.createdTo) add('created_at<=?', q.createdTo);
+      if (q.search) {
+        values.push(`%${q.search.replace(/[\\%_]/g, '\\$&')}%`);
+        const n = values.length;
+        where.push(
+          `(formal_matter_id ILIKE $${n} ESCAPE '\\' OR source_matter_draft_id ILIKE $${n} ESCAPE '\\' OR source_snapshot->'preparation'->>'applicantName' ILIKE $${n} ESCAPE '\\' OR source_snapshot->'preparation'->>'trademark' ILIKE $${n} ESCAPE '\\')`
+        );
+      }
+      const predicate = where.join(' AND ');
+      const count = await this.query.query(
+        `SELECT count(*)::int AS total FROM formal_matters WHERE ${predicate}`,
+        values
+      );
+      values.push(q.pageSize, (q.page - 1) * q.pageSize);
+      const rows = await this.query.query(
+        `SELECT * FROM formal_matters WHERE ${predicate} ORDER BY created_at DESC, formal_matter_id ASC LIMIT $${values.length - 1} OFFSET $${values.length}`,
+        values
+      );
+      return {
+        items: rows.rows.map((r) => project(this.map(priorMatter(r as Row)))),
+        page: q.page,
+        pageSize: q.pageSize,
+        total: Number((count.rows[0] as Row).total)
+      };
+    } catch (cause) {
+      throw new FormalMatterError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Formal Matter persistence is unavailable.',
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
   }
   private map(r: Row): FormalMatter {
     return {
@@ -377,4 +458,51 @@ export class FormalMatterService {
     if (!v) throw new FormalMatterError('FORMAL_MATTER_NOT_FOUND', 'Formal Matter was not found.');
     return v;
   }
+  async list(p: WorkspacePrincipal, workspaceId: string, query: FormalMatterListQuery) {
+    authorize(p, workspaceId, 'matter:read');
+    return this.repo.list(workspaceId, query);
+  }
 }
+
+const project = (m: FormalMatter) => ({
+  formalMatterId: m.formalMatterId,
+  type: m.kind,
+  status: m.status,
+  version: m.version,
+  createdAt: m.createdAt,
+  createdBy: m.createdByUserId,
+  ...(m.sourceSnapshot.preparation.applicantName
+    ? { applicant: m.sourceSnapshot.preparation.applicantName }
+    : {}),
+  ...(m.sourceSnapshot.preparation.trademark
+    ? { trademark: m.sourceSnapshot.preparation.trademark }
+    : {}),
+  ...(m.sourceSnapshot.preparation.targetJurisdiction
+    ? { jurisdiction: m.sourceSnapshot.preparation.targetJurisdiction }
+    : {}),
+  classes: [...m.sourceSnapshot.preparation.classes],
+  sourceMatterDraftId: m.sourceMatterDraftId,
+  sourceMatterDraftVersion: m.sourceMatterDraftVersion,
+  nextStep: 'PROFESSIONAL_REVIEW_AVAILABLE' as const
+});
+const matches = (m: FormalMatter, w: string, q: FormalMatterListQuery) =>
+  m.workspaceId === w &&
+  (!q.status || m.status === q.status) &&
+  (!q.type || m.kind === q.type) &&
+  (!q.createdFrom || m.createdAt >= q.createdFrom) &&
+  (!q.createdTo || m.createdAt <= q.createdTo) &&
+  (!q.search ||
+    [
+      m.formalMatterId,
+      m.sourceMatterDraftId,
+      m.sourceSnapshot.preparation.applicantName,
+      m.sourceSnapshot.preparation.trademark
+    ].some((v) => v?.toLowerCase().includes(q.search!.toLowerCase())));
+const orderMatters = (a: FormalMatter, b: FormalMatter) =>
+  b.createdAt.localeCompare(a.createdAt) || a.formalMatterId.localeCompare(b.formalMatterId);
+const projectPage = (all: FormalMatter[], q: FormalMatterListQuery): FormalMatterListResponse => ({
+  items: all.slice((q.page - 1) * q.pageSize, q.page * q.pageSize).map(project),
+  page: q.page,
+  pageSize: q.pageSize,
+  total: all.length
+});

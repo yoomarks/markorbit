@@ -20,6 +20,13 @@
   display: grid;
   gap: var(--mo-space-lg);
 }
+.lite-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mo-space-md);
+  margin-top: var(--mo-space-xl);
+}
 .lite-row {
   justify-content: space-between;
   align-items: flex-start;

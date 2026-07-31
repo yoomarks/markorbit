@@ -46,6 +46,30 @@ const audit = (value: FormalMatter) => ({
   createdAt: value.createdAt
 });
 describe('Formal Matter atomic repository', () => {
+  it('lists a bounded, deterministic Workspace projection', async () => {
+    const repository = new InMemoryFormalMatterRepository();
+    const later = {
+      ...matter('formal-matter_z'),
+      sourceMatterDraftId: 'matter-draft_z' as never,
+      createdAt: '2026-02-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T00:00:00.000Z'
+    };
+    const earlier = matter('formal-matter_a');
+    await repository.createAtomically(earlier, 'a', 'a', audit(earlier));
+    await repository.createAtomically(later, 'z', 'z', audit(later));
+    const first = await repository.list(earlier.workspaceId, {
+      page: 1,
+      pageSize: 1,
+      search: 'formal-matter'
+    });
+    expect(first).toMatchObject({ total: 2, page: 1, pageSize: 1 });
+    expect(first.items[0]).toMatchObject({
+      formalMatterId: 'formal-matter_z',
+      nextStep: 'PROFESSIONAL_REVIEW_AVAILABLE'
+    });
+    expect(first.items[0]).not.toHaveProperty('sourceSnapshot');
+    expect((await repository.list('other-workspace', { page: 1, pageSize: 20 })).total).toBe(0);
+  });
   it('coalesces concurrent identical commands into exactly one Matter and evidence set', async () => {
     const repository = new InMemoryFormalMatterRepository();
     const value = matter();

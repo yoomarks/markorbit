@@ -68,3 +68,7 @@ The source-derived inventory contains **60 runtime routes: 54 Milestone governed
 | POST   | `/v1/markreg/intakes`                                                                         | markreg   | LEGACY_COMPATIBILITY           | FIXTURE_ONLY_UNAUTHENTICATED | NON_PRODUCTION_MILESTONE_RUNTIME | `apps/gateway/tests/customer-confirmation-matter-draft.test.ts`     |
 | POST   | `/v1/markreg/quotes`                                                                          | markreg   | LEGACY_COMPATIBILITY           | FIXTURE_ONLY_UNAUTHENTICATED | NON_PRODUCTION_MILESTONE_RUNTIME | `apps/gateway/tests/customer-confirmation-matter-draft.test.ts`     |
 | POST   | `/v1/markreg/quotes/:quoteId/confirm`                                                         | markreg   | LEGACY_COMPATIBILITY           | FIXTURE_ONLY_UNAUTHENTICATED | NON_PRODUCTION_MILESTONE_RUNTIME | `apps/gateway/tests/customer-confirmation-matter-draft.test.ts`     |
+
+## TASK 023 durable Lite Matter reads
+
+`GET /api/markreg/formal-matters` completes the existing authenticated Formal Matter route family. It resolves the cookie Session and Workspace Principal through Core, requires `matter:read`, preserves correlation ID, and forwards only the trusted Principal envelope to MarkReg. Query parameters are forwarded for bounded database-side search, filtering, and deterministic pagination. The existing detail route remains the deep-link target; cross-Workspace records use not-found semantics.

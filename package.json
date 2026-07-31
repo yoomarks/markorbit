@@ -57,7 +57,12 @@
     "test:negative-path-matrix:coverage": "node scripts/validate-negative-path-matrix.mjs",
     "test:negative-path-matrix": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs",
     "test:negative-path-matrix:markreg": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --markreg",
-    "test:negative-path-matrix:execution": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --execution"
+    "test:negative-path-matrix:execution": "pnpm test:negative-path-matrix:prepare && node scripts/run-negative-path-matrix.mjs --execution",
+    "build:lite-matter-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...",
+    "test:lite-matter:postgres": "pnpm build:lite-matter-deps && pnpm --filter @markorbit/markreg-service exec vitest run tests/formal-matter-postgres.test.ts",
+    "test:lite-matter:http": "pnpm build:lite-matter-deps && pnpm exec vitest run scripts/formal-matter-http.integration.test.ts",
+    "test:lite-matter:no-interception": "node scripts/validate-lite-matter-no-interception.mjs",
+    "test:lite-matter:browser": "pnpm build:lite-matter-deps && pnpm test:lite-matter:no-interception && playwright test --config playwright.lite-matter-real-runtime.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

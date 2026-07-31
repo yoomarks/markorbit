@@ -18,6 +18,7 @@ test('Lite Today provides its fixed semantic navigation and responsive workspace
   await expect(navigation).toBeVisible();
   await expect(navigation.getByRole('link')).toHaveText([
     'Today',
+    'Matters',
     'Content',
     'Opportunities',
     'Trademarks',
