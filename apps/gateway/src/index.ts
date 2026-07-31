@@ -12,7 +12,11 @@ import {
   type MilestoneScenarioRecordSnapshot,
   noAuthorizationAuthorityConsequences
 } from '@markorbit/contracts';
-import { AuthenticationError } from '@markorbit/contracts';
+import {
+  AuthenticationError,
+  encodeInternalWorkspacePrincipal,
+  type WorkspacePrincipal
+} from '@markorbit/contracts';
 import {
   createServiceRuntime,
   HttpError,
@@ -95,12 +99,21 @@ export function createRuntime(options: GatewayOptions = {}) {
             : 401;
     throw new HttpError(status, error.code, error.message, status === 503);
   };
-  const forward = async (request: JsonRequest, path: string) => {
+  const forward = async (request: JsonRequest, path: string, principal?: WorkspacePrincipal) => {
     try {
       const response = await fetch(`${markRegUrl}${path}`, {
         method: request.method,
         headers: {
           'content-type': 'application/json',
+          ...(principal
+            ? {
+                'x-markorbit-internal-authorization':
+                  options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET!,
+                'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+                'x-markorbit-workspace-id': principal.workspaceId,
+                ...(correlation(request) ? { 'x-correlation-id': correlation(request)! } : {})
+              }
+            : {}),
           ...(request.headers['idempotency-key']
             ? { 'idempotency-key': request.headers['idempotency-key'] }
             : {})
@@ -109,12 +122,7 @@ export function createRuntime(options: GatewayOptions = {}) {
       });
       return json(response.status, await response.json());
     } catch {
-      throw new HttpError(
-        502,
-        'DOWNSTREAM_UNAVAILABLE',
-        'Matter preparation service is unavailable.',
-        true
-      );
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
     }
   };
   return createServiceRuntime(
@@ -583,22 +591,133 @@ export function createRuntime(options: GatewayOptions = {}) {
         {
           method: 'POST',
           path: '/api/markreg/customer-confirmations',
-          handle: (r) => forward(r, '/v1/customer-confirmations')
+          handle: async (r) => {
+            if (!authenticationClient) {
+              if (milestoneTestRuntime) return forward(r, '/v1/customer-confirmations');
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            }
+            try {
+              const b = record(r.body);
+              const workspaceId =
+                typeof b.workspaceId === 'string'
+                  ? b.workspaceId
+                  : r.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              const p = await authenticationClient.resolveWorkspace(
+                token(r),
+                workspaceId,
+                correlation(r)
+              );
+              if (!p.permissions.includes('matter:create'))
+                throw new AuthenticationError('PERMISSION_DENIED', 'Permission is required.');
+              return forward(r, '/v1/customer-confirmations', p);
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
         },
         {
           method: 'GET',
           path: '/api/markreg/customer-confirmations/:confirmationId',
-          handle: (r) =>
-            forward(r, `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}`)
+          handle: async (r) => {
+            if (!authenticationClient) {
+              if (milestoneTestRuntime)
+                return forward(
+                  r,
+                  `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}`
+                );
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            }
+            try {
+              const workspaceId = r.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              const p = await authenticationClient.resolveWorkspace(
+                token(r),
+                workspaceId,
+                correlation(r)
+              );
+              if (!p.permissions.includes('matter:read'))
+                throw new AuthenticationError('PERMISSION_DENIED', 'Permission is required.');
+              return forward(
+                r,
+                `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}`,
+                p
+              );
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
         },
         {
           method: 'POST',
           path: '/api/markreg/customer-confirmations/:confirmationId/withdraw',
-          handle: (r) =>
-            forward(
-              r,
-              `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}/withdraw`
-            )
+          handle: async (r) => {
+            if (!authenticationClient) {
+              if (milestoneTestRuntime)
+                return forward(
+                  r,
+                  `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}/withdraw`
+                );
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            }
+            try {
+              const b = record(r.body);
+              const workspaceId =
+                typeof b.workspaceId === 'string'
+                  ? b.workspaceId
+                  : r.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              if (!Number.isSafeInteger(b.expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
+              const user = await authenticationClient.resolve(token(r), correlation(r));
+              requireTrustedOrigin(r.headers.origin, allowedOrigins);
+              validateCsrf(user.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
+              const p = await authenticationClient.resolveWorkspace(
+                token(r),
+                workspaceId,
+                correlation(r)
+              );
+              if (!p.permissions.includes('matter:manage'))
+                throw new AuthenticationError('PERMISSION_DENIED', 'Permission is required.');
+              return forward(
+                r,
+                `/v1/customer-confirmations/${encodeURIComponent(r.params.confirmationId!)}/withdraw`,
+                p
+              );
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
         },
         {
           method: 'POST',

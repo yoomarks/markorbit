@@ -1,73 +1,79 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase } from '@markorbit/persistence';
 import {
-  PostgresCustomerConfirmationRepository,
-  hashSnapshot,
-  type AcceptedQuoteSnapshot
+  CustomerConfirmationError,
+  PostgresCustomerConfirmationRepository
 } from '../src/customer-confirmation.js';
-
-const url = process.env.MARKREG_TEST_DATABASE_URL;
-const required = process.env.MARKREG_POSTGRES_TEST_REQUIRED === '1';
-if (required && !url) throw new Error('MARKREG_TEST_DATABASE_URL is required.');
+import {
+  contractRecord,
+  contractWorkspace,
+  runCustomerConfirmationRepositoryContract
+} from './customer-confirmation-repository-contract.js';
+const url = process.env.MARKREG_TEST_DATABASE_URL,
+  required = process.env.MARKREG_POSTGRES_TEST_REQUIRED === '1';
+if (required && !url)
+  throw new Error('MARKREG_TEST_DATABASE_URL is required when MARKREG_POSTGRES_TEST_REQUIRED=1.');
 const suite = url ? describe : describe.skip;
-suite('Customer Confirmation PostgreSQL repository', () => {
+suite('PostgreSQL Customer Confirmation persistence', () => {
   const database = new ManagedDatabase({
     connection: { url: url! },
-    applicationName: 'markreg-customer-confirmation-test',
-    poolMaximum: 4,
+    applicationName: 'markreg-confirmation-test',
+    poolMaximum: 6,
     connectionTimeoutMs: 2000,
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
-    sslMode: 'disable'
+    sslMode: 'disable',
+    migrationNamespace: 'markreg_customer_confirmation_test'
   });
-  let repository: PostgresCustomerConfirmationRepository;
-  const snapshot: AcceptedQuoteSnapshot = {
-    schemaVersion: 1,
-    quoteId: 'quote_pg',
-    quoteVersion: 'v1',
-    planId: 'plan_pg',
-    planVersion: 'v1',
-    currency: 'USD',
-    totalMinor: 1,
-    lineItems: [],
-    termsVersion: 'v1',
-    acknowledgementCodes: []
-  };
-  beforeAll(async () => {
-    await database.start();
+  beforeAll(() => database.start());
+  beforeEach(() => database.getPool().query('TRUNCATE customer_confirmations'));
+  afterAll(() => database.close());
+  runCustomerConfirmationRepositoryContract('PostgreSQL', async () => {
     await database.getPool().query('TRUNCATE customer_confirmations');
-    repository = new PostgresCustomerConfirmationRepository(database.getPool());
+    return new PostgresCustomerConfirmationRepository(database.getPool());
   });
-  afterAll(async () => database.close());
-  it('persists, reloads, isolates and atomically withdraws', async () => {
-    const record = {
-      confirmationId: 'confirmation_11111111-1111-4111-8111-111111111111',
-      workspaceId: '11111111-1111-4111-8111-111111111111',
-      sourceQuoteId: snapshot.quoteId,
-      sourceQuoteVersion: snapshot.quoteVersion,
-      status: 'CONFIRMED' as const,
-      version: 1,
-      snapshotSchemaVersion: 1 as const,
-      sourceSnapshot: snapshot,
-      sourceSnapshotHash: hashSnapshot(snapshot),
-      acceptedAt: '2026-07-31T12:00:00.000Z',
-      updatedAt: '2026-07-31T12:00:00.000Z',
-      withdrawnAt: null
-    };
-    await repository.create(record);
-    expect(await repository.findById(record.workspaceId, record.confirmationId)).toEqual(record);
-    expect(
-      await repository.findById('22222222-2222-4222-8222-222222222222', record.confirmationId)
-    ).toBeNull();
-    expect(
-      (
-        await repository.withdraw(
-          record.workspaceId,
-          record.confirmationId,
-          1,
-          '2026-07-31T13:00:00.000Z'
-        )
-      ).version
-    ).toBe(2);
+  it('allows exactly one of two concurrent duplicate creates', async () => {
+    const r = new PostgresCustomerConfirmationRepository(database.getPool()),
+      v = contractRecord('concurrent-create');
+    const results = await Promise.allSettled([
+      r.create(v),
+      r.create({ ...v, confirmationId: 'confirmation_concurrent-create-2' })
+    ]);
+    expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((x) => x.status === 'rejected');
+    expect(rejected).toBeDefined();
+    if (!rejected || rejected.status !== 'rejected')
+      throw new Error('Expected rejected duplicate.');
+    expect(rejected.reason as unknown).toMatchObject({ code: 'CUSTOMER_CONFIRMATION_DUPLICATE' });
+  });
+  it('allows exactly one expected-version withdrawal winner', async () => {
+    const r = new PostgresCustomerConfirmationRepository(database.getPool()),
+      v = await r.create(contractRecord('concurrent-withdraw'));
+    const results = await Promise.allSettled([
+      r.withdraw(contractWorkspace, v.confirmationId, 1, '2026-07-31T13:00:00.000Z'),
+      r.withdraw(contractWorkspace, v.confirmationId, 1, '2026-07-31T13:00:01.000Z')
+    ]);
+    expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((x) => x.status === 'rejected')).toHaveLength(1);
+    expect((await r.findById(contractWorkspace, v.confirmationId))!.version).toBe(2);
+  });
+  it('maps unavailable database without leaking driver details', async () => {
+    const broken = new ManagedDatabase({
+      connection: { url: 'postgresql://127.0.0.1:1/unavailable' },
+      applicationName: 'unavailable',
+      poolMaximum: 1,
+      connectionTimeoutMs: 50,
+      idleTimeoutMs: 50,
+      statementTimeoutMs: 50,
+      sslMode: 'disable',
+      migrationNamespace: 'markreg_test'
+    });
+    const r = new PostgresCustomerConfirmationRepository({
+      query: (...args: Parameters<ReturnType<typeof database.getPool>['query']>) =>
+        broken.getPool().query(...args)
+    } as never);
+    await expect(r.findById(contractWorkspace, 'confirmation_missing')).rejects.toBeInstanceOf(
+      CustomerConfirmationError
+    );
   });
 });

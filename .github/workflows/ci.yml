@@ -33,6 +33,8 @@ jobs:
       IDENTITY_POSTGRES_TEST_REQUIRED: '1'
       AUTH_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_auth_test
       AUTH_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
       MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
       WEB_ORIGINS: https://test.markorbit.local
@@ -51,6 +53,7 @@ jobs:
           CREATE DATABASE markorbit_persistence_test;
           CREATE DATABASE markorbit_identity_test;
           CREATE DATABASE markorbit_auth_test;
+          CREATE DATABASE markorbit_markreg_test;
           SQL
       - run: pnpm db:test:bootstrap
       - run: pnpm db:migrate
@@ -63,6 +66,15 @@ jobs:
       - run: pnpm test:auth:postgres
       - run: pnpm test:auth
       - run: pnpm test:auth:http
+      - name: Migrate and verify isolated MarkReg database
+        env:
+          DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+          DB_MIGRATION_NAMESPACE: markreg
+        run: pnpm db:migrate && pnpm db:migrate:status && pnpm db:migrate:verify
+      - run: pnpm test:customer-confirmation
+      - run: pnpm test:customer-confirmation:postgres
+      - run: pnpm test:customer-confirmation:postgres
+      - run: pnpm test:customer-confirmation:http
 
   validate:
     runs-on: ubuntu-latest

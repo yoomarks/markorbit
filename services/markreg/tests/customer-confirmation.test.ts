@@ -3,6 +3,7 @@ import type { WorkspacePrincipal } from '@markorbit/contracts';
 import {
   CustomerConfirmationError,
   CustomerConfirmationService,
+  canonicalJson,
   hashSnapshot,
   InMemoryCustomerConfirmationRepository,
   type AcceptedQuoteSnapshot
@@ -33,6 +34,37 @@ const snapshot: AcceptedQuoteSnapshot = {
     { code: 'SERVICE', description: 'Service fee', category: 'SERVICE_FEE', amountMinor: 12500 }
   ],
   termsVersion: 'terms-v1',
+  acknowledgementCodes: ['NO_FILING'],
+  selectedOptionCode: 'A',
+  recommendationId: 'recommendation_1',
+  assumptions: [],
+  limitations: []
+};
+const quote = {
+  quoteId: snapshot.quoteId,
+  pricingRuleVersion: snapshot.quoteVersion,
+  status: 'READY',
+  validUntil: '2030-01-01T00:00:00.000Z',
+  currency: snapshot.currency,
+  total: { amountMinor: snapshot.totalMinor, currency: snapshot.currency },
+  lines: snapshot.lineItems.map((x) => ({
+    code: x.code,
+    description: x.description,
+    category: x.category,
+    amount: { amountMinor: x.amountMinor, currency: snapshot.currency }
+  })),
+  selectedOptionCode: 'A',
+  recommendationId: snapshot.recommendationId,
+  assumptions: [],
+  limitations: []
+} as never;
+const input = {
+  workspaceId,
+  quoteId: 'quote_1',
+  quoteVersion: 'quote-v1',
+  planId: 'plan_1',
+  planVersion: 'plan-v1',
+  termsVersion: 'terms-v1',
   acknowledgementCodes: ['NO_FILING']
 };
 const setup = () => {
@@ -41,7 +73,7 @@ const setup = () => {
     repository,
     service: new CustomerConfirmationService(
       repository,
-      async (id) => (id === snapshot.quoteId ? structuredClone(snapshot) : null),
+      (id) => Promise.resolve(id === snapshot.quoteId ? structuredClone(quote) : null),
       () => '2026-07-31T12:00:00.000Z'
     )
   };
@@ -49,7 +81,7 @@ const setup = () => {
 describe('durable Customer Confirmation contract (in memory)', () => {
   it('creates and exactly reloads a workspace-scoped immutable snapshot', async () => {
     const { service } = setup();
-    const created = await service.create(principal(), workspaceId, 'quote_1', 'quote-v1');
+    const created = await service.create(principal(), input);
     expect(created.version).toBe(1);
     expect(created.status).toBe('CONFIRMED');
     expect(created.sourceSnapshotHash).toBe(hashSnapshot(snapshot));
@@ -61,7 +93,7 @@ describe('durable Customer Confirmation contract (in memory)', () => {
   });
   it('fails closed across workspaces', async () => {
     const { service } = setup();
-    const created = await service.create(principal(), workspaceId, 'quote_1', 'quote-v1');
+    const created = await service.create(principal(), input);
     const other = { ...principal(), workspaceId: '22222222-2222-4222-8222-222222222222' };
     await expect(
       service.get(other, other.workspaceId, created.confirmationId)
@@ -69,14 +101,14 @@ describe('durable Customer Confirmation contract (in memory)', () => {
   });
   it('rejects duplicate source identity and version', async () => {
     const { service } = setup();
-    await service.create(principal(), workspaceId, 'quote_1', 'quote-v1');
-    await expect(
-      service.create(principal(), workspaceId, 'quote_1', 'quote-v1')
-    ).rejects.toMatchObject({ code: 'CUSTOMER_CONFIRMATION_DUPLICATE' });
+    await service.create(principal(), input);
+    await expect(service.create(principal(), input)).rejects.toMatchObject({
+      code: 'CUSTOMER_CONFIRMATION_DUPLICATE'
+    });
   });
   it('withdraws once with optimistic concurrency and retains acceptance', async () => {
     const { service } = setup();
-    const accepted = await service.create(principal(), workspaceId, 'quote_1', 'quote-v1');
+    const accepted = await service.create(principal(), input);
     const withdrawn = await service.withdraw(principal(), workspaceId, accepted.confirmationId, 1);
     expect(withdrawn).toMatchObject({
       status: 'WITHDRAWN',
@@ -89,31 +121,71 @@ describe('durable Customer Confirmation contract (in memory)', () => {
   });
   it('rejects stale source versions and missing sources', async () => {
     const { service } = setup();
-    await expect(service.create(principal(), workspaceId, 'quote_1', 'old')).rejects.toMatchObject({
+    await expect(
+      service.create(principal(), { ...input, quoteVersion: 'old' })
+    ).rejects.toMatchObject({
       code: 'CUSTOMER_CONFIRMATION_SOURCE_VERSION_MISMATCH'
     });
     await expect(
-      service.create(principal(), workspaceId, 'quote_missing', 'v1')
+      service.create(principal(), { ...input, quoteId: 'quote_missing', quoteVersion: 'v1' })
     ).rejects.toMatchObject({ code: 'CUSTOMER_CONFIRMATION_SOURCE_NOT_FOUND' });
   });
   it('enforces permissions and exact Workspace Principal scope', async () => {
     const { service } = setup();
+    await expect(service.create(principal(['matter:read']), input)).rejects.toMatchObject({
+      code: 'PERMISSION_DENIED'
+    });
     await expect(
-      service.create(principal(['matter:read']), workspaceId, 'quote_1', 'quote-v1')
-    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
-    await expect(
-      service.create(
-        { ...principal(), workspaceId: '22222222-2222-4222-8222-222222222222' },
-        workspaceId,
-        'quote_1',
-        'quote-v1'
-      )
+      service.create({ ...principal(), workspaceId: '22222222-2222-4222-8222-222222222222' }, input)
     ).rejects.toMatchObject({ code: 'CUSTOMER_CONFIRMATION_WORKSPACE_MISMATCH' });
   });
   it('canonicalizes property order and changes hash for meaningful values', () => {
     const reordered = { ...snapshot, currency: snapshot.currency };
     expect(hashSnapshot(reordered)).toBe(hashSnapshot(snapshot));
     expect(hashSnapshot({ ...snapshot, totalMinor: 12501 })).not.toBe(hashSnapshot(snapshot));
+  });
+  it('preserves semantic array order and canonicalizes nested keys', () => {
+    expect(canonicalJson({ nested: { b: 2, a: 1 } })).toBe(
+      canonicalJson({ nested: { a: 1, b: 2 } })
+    );
+    expect(hashSnapshot({ ...snapshot, acknowledgementCodes: ['A', 'B'] })).not.toBe(
+      hashSnapshot({ ...snapshot, acknowledgementCodes: ['B', 'A'] })
+    );
+    expect(canonicalJson(null)).toBe('null');
+  });
+  it.each([NaN, Infinity, -Infinity, 1n, Symbol('x'), () => undefined, new Date()])(
+    'rejects unsupported canonical values',
+    (value) => {
+      expect(() => canonicalJson(value)).toThrow(CustomerConfirmationError);
+    }
+  );
+  it('rejects prohibited prototype-like keys, excessive depth, size and forged hashes', async () => {
+    const polluted = JSON.parse('{"__proto__":{"admin":true}}') as unknown;
+    expect(() => canonicalJson(polluted)).toThrow(CustomerConfirmationError);
+    let deep: unknown = {};
+    for (let i = 0; i < 14; i++) deep = { deep };
+    expect(() => canonicalJson(deep)).toThrow(CustomerConfirmationError);
+    expect(() => hashSnapshot({ ...snapshot, limitations: ['x'.repeat(70_000)] })).toThrow(
+      CustomerConfirmationError
+    );
+    const { repository } = setup();
+    const valid = {
+      confirmationId: 'confirmation_forged',
+      workspaceId,
+      sourceQuoteId: 'quote_forged',
+      sourceQuoteVersion: 'v1',
+      status: 'CONFIRMED' as const,
+      version: 1,
+      snapshotSchemaVersion: 1 as const,
+      sourceSnapshot: snapshot,
+      sourceSnapshotHash: '0'.repeat(64),
+      acceptedAt: '2026-07-31T12:00:00.000Z',
+      updatedAt: '2026-07-31T12:00:00.000Z',
+      withdrawnAt: null
+    };
+    await expect(repository.create(valid)).rejects.toMatchObject({
+      code: 'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT'
+    });
   });
   it('rejects undefined rather than silently dropping it', () => {
     expect(() =>

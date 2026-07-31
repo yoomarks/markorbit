@@ -75,13 +75,15 @@ async function start(seed = quote()) {
     port: 0,
     repository: quotes,
     matterFlowRepository: matter,
+    milestoneTestRuntime: true,
     now: () => now
   });
   active.push(markreg);
   await markreg.start();
   const gateway = createGateway({
     port: 0,
-    markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`
+    markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`,
+    milestoneTestRuntime: true
   });
   active.push(gateway);
   await gateway.start();

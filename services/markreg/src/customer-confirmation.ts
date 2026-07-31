@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Permission, WorkspacePrincipal } from '@markorbit/contracts';
+import type { Permission, Quote, WorkspacePrincipal } from '@markorbit/contracts';
 import type { QueryClient } from '@markorbit/persistence';
 import { PersistenceError } from '@markorbit/persistence';
 
@@ -21,7 +21,13 @@ export interface AcceptedQuoteSnapshot {
   }>[];
   termsVersion: string;
   acknowledgementCodes: readonly string[];
+  selectedOptionCode: string;
+  recommendationId: string;
+  assumptions: readonly Readonly<{ code: string; text: string }>[];
+  limitations: readonly string[];
 }
+export const CUSTOMER_CONFIRMATION_SNAPSHOT_MAX_BYTES = 64 * 1024;
+export const CUSTOMER_CONFIRMATION_SNAPSHOT_MAX_DEPTH = 12;
 export interface CustomerConfirmationRecord {
   confirmationId: string;
   workspaceId: string;
@@ -61,7 +67,12 @@ export class CustomerConfirmationError extends Error {
 }
 
 /** RFC-8785-like bounded canonical JSON: object keys sort recursively; undefined is rejected. */
-export function canonicalJson(value: unknown): string {
+export function canonicalJson(value: unknown, depth = 0): string {
+  if (depth > CUSTOMER_CONFIRMATION_SNAPSHOT_MAX_DEPTH)
+    throw new CustomerConfirmationError(
+      'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
+      'Snapshot exceeds maximum depth.'
+    );
   if (value === undefined)
     throw new CustomerConfirmationError(
       'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
@@ -77,11 +88,25 @@ export function canonicalJson(value: unknown): string {
       );
     return JSON.stringify(value);
   }
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (Array.isArray(value))
+    return `[${value.map((item) => canonicalJson(item, depth + 1)).join(',')}]`;
   if (typeof value === 'object') {
+    if (Object.getPrototypeOf(value) !== Object.prototype)
+      throw new CustomerConfirmationError(
+        'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
+        'Snapshot contains an unsupported object.'
+      );
     return `{${Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => {
+        if (key === '__proto__' || key === 'prototype' || key === 'constructor')
+          throw new CustomerConfirmationError(
+            'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
+            'Snapshot contains a prohibited property.'
+          );
+        return [key, item] as const;
+      })
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item, depth + 1)}`)
       .join(',')}}`;
   }
   throw new CustomerConfirmationError(
@@ -89,10 +114,17 @@ export function canonicalJson(value: unknown): string {
     'Snapshot contains an unsupported value.'
   );
 }
+export function snapshotBytes(snapshot: AcceptedQuoteSnapshot): Buffer {
+  const bytes = Buffer.from(canonicalJson(snapshot), 'utf8');
+  if (bytes.byteLength > CUSTOMER_CONFIRMATION_SNAPSHOT_MAX_BYTES)
+    throw new CustomerConfirmationError(
+      'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
+      'Snapshot exceeds maximum size.'
+    );
+  return bytes;
+}
 export const hashSnapshot = (snapshot: AcceptedQuoteSnapshot) =>
-  createHash('sha256')
-    .update(Buffer.from(canonicalJson(snapshot), 'utf8'))
-    .digest('hex');
+  createHash('sha256').update(snapshotBytes(snapshot)).digest('hex');
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
@@ -109,13 +141,19 @@ export function validateSnapshot(value: unknown): AcceptedQuoteSnapshot {
     !Number.isSafeInteger(v.totalMinor) ||
     !Array.isArray(v.lineItems) ||
     typeof v.termsVersion !== 'string' ||
-    !Array.isArray(v.acknowledgementCodes)
+    !Array.isArray(v.acknowledgementCodes) ||
+    typeof v.selectedOptionCode !== 'string' ||
+    typeof v.recommendationId !== 'string' ||
+    !Array.isArray(v.assumptions) ||
+    !Array.isArray(v.limitations)
   )
     throw new CustomerConfirmationError(
       'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
       'Persisted Customer Confirmation snapshot is invalid.'
     );
-  return clone(v as AcceptedQuoteSnapshot);
+  const result = clone(v as AcceptedQuoteSnapshot);
+  snapshotBytes(result);
+  return result;
 }
 export interface CustomerConfirmationRepository {
   create(record: CustomerConfirmationRecord): Promise<CustomerConfirmationRecord>;
@@ -135,6 +173,12 @@ export interface CustomerConfirmationRepository {
 export class InMemoryCustomerConfirmationRepository implements CustomerConfirmationRepository {
   private readonly values = new Map<string, CustomerConfirmationRecord>();
   async create(record: CustomerConfirmationRecord) {
+    const snapshot = validateSnapshot(record.sourceSnapshot);
+    if (hashSnapshot(snapshot) !== record.sourceSnapshotHash)
+      throw new CustomerConfirmationError(
+        'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
+        'Customer Confirmation snapshot hash is invalid.'
+      );
     if (
       await this.findBySource(record.workspaceId, record.sourceQuoteId, record.sourceQuoteVersion)
     )
@@ -149,14 +193,16 @@ export class InMemoryCustomerConfirmationRepository implements CustomerConfirmat
     const value = this.values.get(id);
     return Promise.resolve(value?.workspaceId === workspaceId ? clone(value) : null);
   }
-  async findBySource(workspaceId: string, quoteId: string, quoteVersion: string) {
-    return clone(
-      [...this.values.values()].find(
-        (v) =>
-          v.workspaceId === workspaceId &&
-          v.sourceQuoteId === quoteId &&
-          v.sourceQuoteVersion === quoteVersion
-      ) ?? null
+  findBySource(workspaceId: string, quoteId: string, quoteVersion: string) {
+    return Promise.resolve(
+      clone(
+        [...this.values.values()].find(
+          (v) =>
+            v.workspaceId === workspaceId &&
+            v.sourceQuoteId === quoteId &&
+            v.sourceQuoteVersion === quoteVersion
+        ) ?? null
+      )
     );
   }
   async withdraw(workspaceId: string, id: string, expectedVersion: number, at: string) {
@@ -192,6 +238,12 @@ export class PostgresCustomerConfirmationRepository implements CustomerConfirmat
   constructor(private readonly database: QueryClient) {}
   async create(v: CustomerConfirmationRecord) {
     try {
+      const snapshot = validateSnapshot(v.sourceSnapshot);
+      if (hashSnapshot(snapshot) !== v.sourceSnapshotHash)
+        throw new CustomerConfirmationError(
+          'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT',
+          'Customer Confirmation snapshot hash is invalid.'
+        );
       const r = await this.database.query(
         'INSERT INTO customer_confirmations (confirmation_id,workspace_id,source_quote_id,source_quote_version,status,version,snapshot_schema_version,source_snapshot,source_snapshot_hash,accepted_at,updated_at,withdrawn_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12) RETURNING *',
         [
@@ -318,28 +370,60 @@ function authorize(principal: WorkspacePrincipal, workspaceId: string, permissio
 export class CustomerConfirmationService {
   constructor(
     private readonly repository: CustomerConfirmationRepository,
-    private readonly loadQuote: (id: string) => Promise<AcceptedQuoteSnapshot | null>,
+    private readonly loadQuote: (id: string) => Promise<Quote | null>,
     private readonly now = () => new Date().toISOString()
   ) {}
   async create(
     principal: WorkspacePrincipal,
-    workspaceId: string,
-    quoteId: string,
-    quoteVersion: string
+    input: {
+      workspaceId: string;
+      quoteId: string;
+      quoteVersion: string;
+      planId: string;
+      planVersion: string;
+      termsVersion: string;
+      acknowledgementCodes: readonly string[];
+    }
   ) {
+    const { workspaceId, quoteId, quoteVersion } = input;
     authorize(principal, workspaceId, 'matter:create');
-    const source = await this.loadQuote(quoteId);
-    if (!source)
+    const quote = await this.loadQuote(quoteId);
+    if (!quote)
       throw new CustomerConfirmationError(
         'CUSTOMER_CONFIRMATION_SOURCE_NOT_FOUND',
         'Quote was not found.'
       );
-    if (source.quoteVersion !== quoteVersion)
+    if (quote.pricingRuleVersion !== quoteVersion)
       throw new CustomerConfirmationError(
         'CUSTOMER_CONFIRMATION_SOURCE_VERSION_MISMATCH',
         'The exact Quote version is required.'
       );
-    const snapshot = validateSnapshot(source);
+    if (quote.status !== 'READY' || Date.parse(quote.validUntil) <= Date.parse(this.now()))
+      throw new CustomerConfirmationError(
+        'CUSTOMER_CONFIRMATION_INVALID_SOURCE',
+        'Quote is not confirmable.'
+      );
+    const snapshot = validateSnapshot({
+      schemaVersion: 1,
+      quoteId: quote.quoteId,
+      quoteVersion: quote.pricingRuleVersion,
+      planId: input.planId,
+      planVersion: input.planVersion,
+      currency: quote.currency,
+      totalMinor: quote.total.amountMinor,
+      lineItems: quote.lines.map((line) => ({
+        code: line.code,
+        description: line.description,
+        category: line.category,
+        amountMinor: line.amount.amountMinor
+      })),
+      termsVersion: input.termsVersion,
+      acknowledgementCodes: [...input.acknowledgementCodes],
+      selectedOptionCode: quote.selectedOptionCode,
+      recommendationId: quote.recommendationId,
+      assumptions: quote.assumptions.map((x) => ({ code: x.code, text: x.text })),
+      limitations: [...quote.limitations]
+    });
     const at = this.now();
     return this.repository.create({
       confirmationId: `confirmation_${randomUUID()}`,
