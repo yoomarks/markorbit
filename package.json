@@ -27,6 +27,7 @@
     "db:migrate:verify": "tsx packages/persistence/src/cli.ts verify infrastructure/persistence/migrations",
     "db:test:bootstrap": "tsx packages/persistence/src/cli.ts bootstrap-test infrastructure/persistence/migrations",
     "test:persistence": "pnpm --filter @markorbit/persistence test:persistence",
+    "test:identity:postgres": "pnpm --filter @markorbit/core-service test:postgres",
     "infra:config": "docker compose -f infrastructure/docker-compose.yml config",
     "infra:up": "docker compose -f infrastructure/docker-compose.yml up -d",
     "infra:down": "docker compose -f infrastructure/docker-compose.yml down",

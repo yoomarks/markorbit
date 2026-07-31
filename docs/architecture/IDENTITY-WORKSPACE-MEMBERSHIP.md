@@ -19,12 +19,12 @@ The vocabulary is `workspace:read`, `workspace:manage`, `membership:read`, `memb
 
 ## Persistence and isolation
 
-The SQL-first migration creates `users`, `workspaces`, and `workspace_memberships`, with UUID primary keys, status/role/version checks, unique normalized identifiers, membership uniqueness, and Core-owned foreign keys. In-memory and PostgreSQL adapters implement the same domain-specific interfaces. PostgreSQL clients are injected (including transaction clients); adapters neither create pools nor import-connect. Membership lookup and mutation include `workspaceId`, lists are deterministically ordered, and no RLS guarantee is claimed.
+The SQL-first migration creates `users`, `workspaces`, and `workspace_memberships`, with UUID primary keys, status/role/version checks, unique normalized identifiers, membership uniqueness, and Core-owned foreign keys. In-memory and PostgreSQL adapters implement the same domain-specific interfaces. PostgreSQL clients are injected (including transaction clients); adapters neither create pools nor import-connect. Membership lookup and mutation include `workspaceId`, lists are deterministically ordered, and no RLS guarantee is claimed. Active Membership admission uses one `INSERT ... SELECT` statement whose materialized eligibility sources lock the User and Workspace rows; disable/archive therefore linearizes before or after admission rather than racing an unprotected read-check-write sequence.
 
 Administrator provisioning means explicit creation through the internal repository boundary. There is no production default account, credential, registration, login, session, cookie, token, Gateway route, or Web behavior.
 
 ## Operations and removal boundary
 
-Run `pnpm --filter @markorbit/core-service test`, the workspace quality gates, and persistence migration status/verification. A rollback removes the Core adapters/contracts only after consumers are removed; deployed SQL is forward-oriented and must receive a new corrective migration rather than editing the applied migration.
+The unchanged behavioral suites contain 10 User, 9 Workspace, and 14 Membership cases and run against both in-memory and PostgreSQL adapters. `IDENTITY_POSTGRES_TEST_REQUIRED=1` makes a missing database URL a suite failure; CI supplies PostgreSQL 16 and permits zero skipped database cases. Run `pnpm --filter @markorbit/core-service test`, `pnpm test:identity:postgres`, the workspace quality gates, and persistence migration status/verification. A rollback removes the Core adapters/contracts only after consumers are removed; deployed SQL is forward-oriented and must receive a new corrective migration rather than editing the applied migration.
 
 TASK 019 will introduce runtime Principal/session behavior. It has not started here.

@@ -400,26 +400,31 @@ export class PostgresMembershipRepository implements MembershipRepository {
   constructor(private q: QueryClient) {}
   async create(i: Pick<WorkspaceMembership, 'membershipId' | 'workspaceId' | 'userId' | 'role'>) {
     if (!validRole(i.role)) throw new IdentityError('INVALID_ROLE', 'Role is invalid.');
-    const u = await this.q.query('SELECT status FROM users WHERE user_id=$1', [i.userId]),
-      w = await this.q.query('SELECT status FROM workspaces WHERE workspace_id=$1', [
-        i.workspaceId
-      ]);
-    if (!u.rows[0]) throw new IdentityError('USER_NOT_FOUND', 'User was not found.');
-    if (u.rows[0].status === 'DISABLED')
-      throw new IdentityError('USER_DISABLED', 'User is disabled.');
-    if (!w.rows[0]) throw new IdentityError('WORKSPACE_NOT_FOUND', 'Workspace was not found.');
-    if (w.rows[0].status === 'ARCHIVED')
-      throw new IdentityError('WORKSPACE_ARCHIVED', 'Workspace is archived.');
     try {
-      return mapMembership(
-        (
-          await this.q.query(
-            'INSERT INTO workspace_memberships(membership_id,workspace_id,user_id,role) VALUES($1,$2,$3,$4) RETURNING *',
-            [i.membershipId, i.workspaceId, i.userId, i.role]
-          )
-        ).rows[0]
+      const inserted = await this.q.query(
+        `WITH eligible_user AS MATERIALIZED (
+           SELECT user_id FROM users WHERE user_id=$3 AND status='ACTIVE' FOR UPDATE
+         ), eligible_workspace AS MATERIALIZED (
+           SELECT workspace_id FROM workspaces WHERE workspace_id=$2 AND status='ACTIVE' FOR UPDATE
+         )
+         INSERT INTO workspace_memberships(membership_id,workspace_id,user_id,role)
+         SELECT $1,eligible_workspace.workspace_id,eligible_user.user_id,$4
+         FROM eligible_user CROSS JOIN eligible_workspace RETURNING *`,
+        [i.membershipId, i.workspaceId, i.userId, i.role]
       );
+      if (inserted.rows[0]) return mapMembership(inserted.rows[0]);
+      const [user, workspace] = await Promise.all([
+        this.q.query('SELECT status FROM users WHERE user_id=$1', [i.userId]),
+        this.q.query('SELECT status FROM workspaces WHERE workspace_id=$1', [i.workspaceId])
+      ]);
+      if (!user.rows[0]) throw new IdentityError('USER_NOT_FOUND', 'User was not found.');
+      if (user.rows[0].status === 'DISABLED')
+        throw new IdentityError('USER_DISABLED', 'User is disabled.');
+      if (!workspace.rows[0])
+        throw new IdentityError('WORKSPACE_NOT_FOUND', 'Workspace was not found.');
+      throw new IdentityError('WORKSPACE_ARCHIVED', 'Workspace is archived.');
     } catch (e) {
+      if (e instanceof IdentityError) throw e;
       pgError(e, 'DUPLICATE_MEMBERSHIP');
     }
   }
