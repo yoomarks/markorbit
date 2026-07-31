@@ -25,12 +25,23 @@ export async function persistenceBoundaryFailures(root) {
     failures.push(
       `Duplicate migration namespace ownership: ${[...new Set(duplicateKeys)].join(', ')}`
     );
-  const owners = JSON.parse(ownerSource);
+  const registry = JSON.parse(ownerSource);
+  const owners = registry.namespaces ?? {};
   for (const [namespace, owner] of Object.entries(owners))
     if (!/^[a-z][a-z0-9_]{0,62}$/u.test(namespace) || typeof owner !== 'string' || !owner)
       failures.push(
         `Migration namespace ${namespace || '<empty>'} requires one valid declared owner.`
       );
+  const migrationOwners = registry.migrations ?? {};
+  const migrationFiles = (await readdir(path.join(root, 'infrastructure/persistence/migrations')))
+    .filter((name) => name.endsWith('.sql'))
+    .map((name) => name.slice(0, -4));
+  for (const migration of migrationFiles)
+    if (typeof migrationOwners[migration] !== 'string' || !migrationOwners[migration])
+      failures.push(`Migration ${migration} requires one declared owner.`);
+  for (const migration of Object.keys(migrationOwners))
+    if (!migrationFiles.includes(migration))
+      failures.push(`Migration owner ${migration} has no migration file.`);
 
   for (const area of [
     'apps/gateway',

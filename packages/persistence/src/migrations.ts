@@ -61,6 +61,48 @@ export async function loadMigrations(directory: string): Promise<Migration[]> {
   }
   return migrations;
 }
+interface MigrationOwnershipRegistry {
+  namespaces: Readonly<Record<string, string>>;
+  migrations: Readonly<Record<string, string>>;
+}
+export async function loadMigrationsForOwner(
+  directory: string,
+  ownershipFile: string,
+  owner: string
+): Promise<Migration[]> {
+  let registry: MigrationOwnershipRegistry;
+  try {
+    registry = JSON.parse(await readFile(ownershipFile, 'utf8')) as MigrationOwnershipRegistry;
+  } catch (cause) {
+    throw new PersistenceError(
+      'MIGRATION_EXECUTION_FAILED',
+      'Migration ownership registry is invalid.',
+      { cause }
+    );
+  }
+  if (
+    !registry ||
+    typeof registry !== 'object' ||
+    !registry.migrations ||
+    typeof registry.migrations !== 'object'
+  )
+    throw new PersistenceError(
+      'MIGRATION_EXECUTION_FAILED',
+      'Migration ownership registry is invalid.'
+    );
+  const migrations = await loadMigrations(directory);
+  for (const migration of migrations) {
+    const key = `${migration.version}_${migration.name}`;
+    if (typeof registry.migrations[key] !== 'string' || registry.migrations[key].length === 0)
+      throw new PersistenceError(
+        'MIGRATION_EXECUTION_FAILED',
+        `Migration ${key} has no declared owner.`
+      );
+  }
+  return migrations.filter(
+    (migration) => registry.migrations[`${migration.version}_${migration.name}`] === owner
+  );
+}
 const setup = async (client: PoolClient) =>
   client.query(`CREATE SCHEMA IF NOT EXISTS markorbit_persistence;
 CREATE TABLE IF NOT EXISTS markorbit_persistence.migration_history (

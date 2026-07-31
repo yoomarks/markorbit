@@ -14,12 +14,12 @@ async function fixture() {
     'apps/operations-console',
     'services/alpha',
     'services/beta',
-    'infrastructure/persistence'
+    'infrastructure/persistence/migrations'
   ])
     await mkdir(path.join(root, area), { recursive: true });
   await writeFile(
     path.join(root, 'infrastructure/persistence/migration-owners.json'),
-    '{"alpha":"@markorbit/alpha-service"}'
+    '{"namespaces":{"alpha":"@markorbit/alpha-service"},"migrations":{}}'
   );
   return root;
 }
@@ -35,7 +35,7 @@ test('rejects duplicate/undeclared ownership and foreign service imports', async
   const root = await fixture();
   await writeFile(
     path.join(root, 'infrastructure/persistence/migration-owners.json'),
-    '{"alpha":"one","alpha":"two"}'
+    '{"namespaces":{"alpha":"one","alpha":"two"},"migrations":{}}'
   );
   await mkdir(path.join(root, 'services/beta/migrations/undeclared'), { recursive: true });
   await writeFile(

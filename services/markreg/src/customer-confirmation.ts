@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Permission, Quote, WorkspacePrincipal } from '@markorbit/contracts';
 import type { QueryClient } from '@markorbit/persistence';
-import { PersistenceError } from '@markorbit/persistence';
 
 export const CUSTOMER_CONFIRMATION_SNAPSHOT_SCHEMA_VERSION = 1 as const;
 export type CustomerConfirmationState = 'CONFIRMED' | 'WITHDRAWN';
@@ -346,11 +345,10 @@ export class PostgresCustomerConfirmationRepository implements CustomerConfirmat
 }
 function unavailable(cause: unknown) {
   if (cause instanceof CustomerConfirmationError) return cause;
-  const wrapped = cause instanceof PersistenceError ? cause : undefined;
   return new CustomerConfirmationError(
     'PERSISTENCE_UNAVAILABLE',
     'Customer Confirmation persistence is unavailable.',
-    { cause: wrapped }
+    { cause: cause instanceof Error ? cause : undefined }
   );
 }
 function authorize(principal: WorkspacePrincipal, workspaceId: string, permission: Permission) {
