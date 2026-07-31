@@ -39,6 +39,7 @@ import {
 } from './preparation.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
+export * from './customer-confirmation.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),

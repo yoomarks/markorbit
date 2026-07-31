@@ -1,5 +1,6 @@
 {
   "persistence_foundation": "@markorbit/persistence",
   "core": "@markorbit/core-service",
-  "core_sessions": "@markorbit/core-service"
+  "core_sessions": "@markorbit/core-service",
+  "markreg_customer_confirmations": "@markorbit/markreg-service"
 }
