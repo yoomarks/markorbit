@@ -77,6 +77,15 @@ export class InMemoryProfessionalReviewRepository implements ProfessionalReviewR
     );
   }
   private save(v: ProfessionalReviewCase) {
+    const current = this.cases.get(v.reviewCaseId);
+    if (current?.version !== undefined && v.version !== (current.version ?? 0) + 1)
+      return Promise.reject(
+        new ProfessionalReviewError(
+          'STALE_PROFESSIONAL_REVIEW',
+          'The Review Case changed; reload the exact latest version.',
+          409
+        )
+      );
     this.cases.set(v.reviewCaseId, structuredClone(v));
     return Promise.resolve();
   }
@@ -132,6 +141,10 @@ export class ProfessionalReviewService {
     idempotencyKey: string;
     requestedBy: MarkOrbitId;
     priority?: ProfessionalReviewPriority;
+    workspaceId?: string;
+    formalMatterId?: ProfessionalReviewCase['formalMatterId'];
+    sourceFormalMatterVersion?: number;
+    sourceSnapshotSha256?: string;
   }) {
     const fingerprint = createHash('sha256').update(JSON.stringify(command)).digest('hex');
     const key = await this.repository.findByIdempotencyKey(command.idempotencyKey);
@@ -177,6 +190,15 @@ export class ProfessionalReviewService {
     const value: ProfessionalReviewCase = {
       schemaVersion: 1,
       reviewCaseId: `professional-review_${randomUUID()}`,
+      ...(command.workspaceId ? { workspaceId: command.workspaceId } : {}),
+      ...(command.formalMatterId ? { formalMatterId: command.formalMatterId } : {}),
+      ...(command.sourceFormalMatterVersion
+        ? { sourceFormalMatterVersion: command.sourceFormalMatterVersion }
+        : {}),
+      ...(command.sourceSnapshotSha256
+        ? { sourceSnapshotSha256: command.sourceSnapshotSha256 }
+        : {}),
+      version: 1,
       source: structuredClone(source),
       status: 'QUEUED',
       priority: command.priority ?? 'NORMAL',
@@ -214,10 +236,16 @@ export class ProfessionalReviewService {
     if (['STALE', 'WITHDRAWN', 'REVIEWED_READY_FOR_NEXT_STEP'].includes(v.status)) return;
     const current = await this.source.getMatterDraft(v.source.matterDraftId);
     if (!current || current.matterDraftVersion !== v.source.matterDraftVersion)
-      await this.repository.markStale({ ...v, status: 'STALE', updatedAt: this.now() });
+      await this.repository.markStale({
+        ...v,
+        status: 'STALE',
+        version: (v.version ?? 0) + 1,
+        updatedAt: this.now()
+      });
   }
-  async claim(id: ProfessionalReviewCaseId, reviewerId: MarkOrbitId) {
+  async claim(id: ProfessionalReviewCaseId, reviewerId: MarkOrbitId, expectedVersion?: number) {
     const v = await this.get(id);
+    this.exact(v, expectedVersion);
     if (v.status !== 'QUEUED')
       throw new ProfessionalReviewError('CASE_NOT_CLAIMABLE', 'Only a queued case may be claimed.');
     const at = this.now();
@@ -225,6 +253,7 @@ export class ProfessionalReviewService {
       ...v,
       status: 'IN_REVIEW' as const,
       updatedAt: at,
+      version: (v.version ?? 0) + 1,
       assignment: {
         assignedReviewerId: reviewerId,
         assignedAt: at,
@@ -240,13 +269,16 @@ export class ProfessionalReviewService {
   async updateChecklist(
     id: ProfessionalReviewCaseId,
     reviewerId: MarkOrbitId,
-    updates: Partial<ProfessionalReviewChecklistItem>[]
+    updates: Partial<ProfessionalReviewChecklistItem>[],
+    expectedVersion?: number
   ) {
     const v = await this.reviewable(id, reviewerId);
+    this.exact(v, expectedVersion);
     const at = this.now();
     const next = {
       ...v,
       updatedAt: at,
+      version: (v.version ?? 0) + 1,
       checklist: v.checklist.map((item) => {
         const u = updates.find((x) => x.code === item.code);
         return u ? { ...item, ...structuredClone(u), code: item.code, reviewedAt: at } : item;
@@ -258,9 +290,11 @@ export class ProfessionalReviewService {
   async requestInformation(
     id: ProfessionalReviewCaseId,
     reviewerId: MarkOrbitId,
-    input: Omit<InformationRequestDraft, 'createdAt' | 'sent'>
+    input: Omit<InformationRequestDraft, 'createdAt' | 'sent'>,
+    expectedVersion?: number
   ) {
     const v = await this.reviewable(id, reviewerId);
+    this.exact(v, expectedVersion);
     if (!input.requestedFields.length)
       throw new ProfessionalReviewError(
         'REQUIRED_INFORMATION_EMPTY',
@@ -272,6 +306,7 @@ export class ProfessionalReviewService {
       ...v,
       status: 'NEEDS_INFORMATION' as const,
       updatedAt: draft.createdAt,
+      version: (v.version ?? 0) + 1,
       informationRequest: draft
     };
     await this.repository.prepareInformationRequest(next);
@@ -281,11 +316,20 @@ export class ProfessionalReviewService {
     id: ProfessionalReviewCaseId,
     reviewerId: MarkOrbitId,
     code: ProfessionalReviewDecisionCode,
-    rationale: string
+    rationale: string,
+    expectedVersion?: number
   ) {
     const v = await this.reviewable(id, reviewerId);
-    if (v.decision)
+    if (v.decision) {
+      if (
+        v.decision.code === code &&
+        v.decision.rationale === rationale &&
+        v.decision.reviewerId === reviewerId
+      )
+        return v;
       throw new ProfessionalReviewError('DECISION_IMMUTABLE', 'A completed decision is immutable.');
+    }
+    this.exact(v, expectedVersion);
     if (
       code === 'MARK_READY_FOR_NEXT_STEP' &&
       v.checklist.some((x) => x.blocking && !['PASS', 'NOT_APPLICABLE'].includes(x.status))
@@ -312,7 +356,15 @@ export class ProfessionalReviewService {
         : code === 'REQUEST_INFORMATION'
           ? ('NEEDS_INFORMATION' as const)
           : ('WITHDRAWN' as const);
-    const next = { ...v, status, updatedAt: at, decision };
+    const next = {
+      ...v,
+      status,
+      updatedAt: at,
+      version: (v.version ?? 0) + 1,
+      decision,
+      completedAt: at,
+      completedBy: reviewerId
+    };
     await this.repository.recordDecision(next);
     return next;
   }
@@ -320,7 +372,12 @@ export class ProfessionalReviewService {
     const v = await this.required(id);
     if (v.decision)
       throw new ProfessionalReviewError('DECISION_IMMUTABLE', 'A completed decision is immutable.');
-    const next = { ...v, status: 'WITHDRAWN' as const, updatedAt: this.now() };
+    const next = {
+      ...v,
+      status: 'WITHDRAWN' as const,
+      version: (v.version ?? 0) + 1,
+      updatedAt: this.now()
+    };
     await this.repository.withdraw(next);
     return next;
   }
@@ -346,5 +403,14 @@ export class ProfessionalReviewService {
         403
       );
     return v;
+  }
+  private exact(value: ProfessionalReviewCase, expectedVersion?: number) {
+    if (expectedVersion !== undefined && expectedVersion !== value.version)
+      throw new ProfessionalReviewError(
+        'STALE_PROFESSIONAL_REVIEW',
+        'The Review Case changed; reload the exact latest version.',
+        409,
+        { expectedVersion, actualVersion: value.version }
+      );
   }
 }

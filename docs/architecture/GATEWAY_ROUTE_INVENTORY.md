@@ -72,3 +72,7 @@ The source-derived inventory contains **60 runtime routes: 54 Milestone governed
 ## TASK 023 durable Lite Matter reads
 
 `GET /api/markreg/formal-matters` completes the existing authenticated Formal Matter route family. It resolves the cookie Session and Workspace Principal through Core, requires `matter:read`, preserves correlation ID, and forwards only the trusted Principal envelope to MarkReg. Query parameters are forwarded for bounded database-side search, filtering, and deterministic pagination. The existing detail route remains the deep-link target; cross-Workspace records use not-found semantics.
+
+## TASK 024 durable Professional Review
+
+The existing `/api/lite/professional-review-cases` route family is authenticated in production. Reads require `review:read`; mutations require `review:perform`, trusted origin and CSRF. Gateway resolves the opaque Session and Workspace Principal through Core, preserves correlation ID, and forwards a trusted internal Principal envelope to Execution without forwarding the browser Session or browser-supplied roles.

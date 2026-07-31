@@ -26,6 +26,7 @@ import {
   type MatterDraftReviewSource
 } from './professional-review.js';
 export * from './professional-review.js';
+export * from './professional-review-postgres.js';
 import {
   FilingGovernanceError,
   FilingGovernanceService,
@@ -312,7 +313,8 @@ export function createRuntime(options: ExecutionOptions = {}) {
             mutation(() =>
               review.claim(
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
-                (r.body as any).reviewerId
+                (r.body as any).reviewerId,
+                (r.body as any).expectedVersion
               )
             )
         },
@@ -324,7 +326,8 @@ export function createRuntime(options: ExecutionOptions = {}) {
               review.updateChecklist(
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
                 (r.body as any).reviewerId,
-                (r.body as any).updates
+                (r.body as any).updates,
+                (r.body as any).expectedVersion
               )
             )
         },
@@ -340,7 +343,8 @@ export function createRuntime(options: ExecutionOptions = {}) {
                   requestedFields: (r.body as any).requestedFields,
                   reason: (r.body as any).reason,
                   reviewerNote: (r.body as any).reviewerNote
-                }
+                },
+                (r.body as any).expectedVersion
               )
             )
         },
@@ -353,7 +357,8 @@ export function createRuntime(options: ExecutionOptions = {}) {
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
                 (r.body as any).reviewerId,
                 (r.body as any).code,
-                (r.body as any).rationale
+                (r.body as any).rationale,
+                (r.body as any).expectedVersion
               )
             )
         },

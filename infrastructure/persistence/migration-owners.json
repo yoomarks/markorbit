@@ -5,13 +5,15 @@
     "core_sessions": "@markorbit/core-service",
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
-    "markreg_formal_matters": "@markorbit/markreg-service"
+    "markreg_formal_matters": "@markorbit/markreg-service",
+    "execution_professional_reviews": "@markorbit/execution-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
     "0019_core_sessions": "@markorbit/core-service",
     "0020_markreg_customer_confirmations": "@markorbit/markreg-service",
     "0021_markreg_matter_drafts": "@markorbit/markreg-service",
-    "0022_markreg_formal_matters": "@markorbit/markreg-service"
+    "0022_markreg_formal_matters": "@markorbit/markreg-service",
+    "0023_execution_professional_reviews": "@markorbit/execution-service"
   }
 }

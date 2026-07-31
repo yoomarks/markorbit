@@ -168,6 +168,74 @@ export function createRuntime(options: GatewayOptions = {}) {
       return mapAuthentication(error);
     }
   };
+  const professionalReview = async (r: JsonRequest, mutation: boolean) => {
+    if (!authenticationClient) {
+      if (milestoneTestRuntime) return forwardReview(r);
+      throw new HttpError(
+        503,
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Authentication service is unavailable.',
+        true
+      );
+    }
+    try {
+      const body = record(r.body ?? {});
+      const workspaceId =
+        typeof body.workspaceId === 'string'
+          ? body.workspaceId
+          : r.headers['x-markorbit-workspace-id'];
+      if (!workspaceId)
+        throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
+      if (mutation) {
+        const user = await authenticationClient.resolve(token(r), correlation(r));
+        requireTrustedOrigin(r.headers.origin, allowedOrigins);
+        validateCsrf(user.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
+      }
+      const principal = await authenticationClient.resolveWorkspace(
+        token(r),
+        workspaceId,
+        correlation(r)
+      );
+      const required = mutation ? 'review:perform' : 'review:read';
+      if (!principal.permissions.includes(required))
+        throw new AuthenticationError('PERMISSION_DENIED', `${required} permission is required.`);
+      return forwardReview(r, principal);
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
+  const forwardReview = async (r: JsonRequest, principal?: WorkspacePrincipal) => {
+    const suffix = r.path.replace('/api/lite', '/v1');
+    try {
+      const response = await fetch(`${executionUrl}${suffix}`, {
+        method: r.method,
+        headers: {
+          'content-type': 'application/json',
+          ...(principal
+            ? {
+                'x-markorbit-internal-authorization':
+                  options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET!,
+                'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+                'x-markorbit-workspace-id': principal.workspaceId,
+                ...(correlation(r) ? { 'x-correlation-id': correlation(r)! } : {})
+              }
+            : {}),
+          ...(r.headers['idempotency-key']
+            ? { 'idempotency-key': r.headers['idempotency-key'] }
+            : {})
+        },
+        ...(r.method === 'GET' ? {} : { body: JSON.stringify(r.body ?? {}) })
+      });
+      return json(response.status, await response.json());
+    } catch {
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'Professional Review service is unavailable.',
+        true
+      );
+    }
+  };
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -611,29 +679,7 @@ export function createRuntime(options: GatewayOptions = {}) {
           return methods.map((method) => ({
             method: method as 'GET' | 'POST' | 'PATCH',
             path,
-            handle: async (r: JsonRequest) => {
-              const suffix = r.path.replace('/api/lite', '/v1');
-              try {
-                const response = await fetch(`${executionUrl}${suffix}`, {
-                  method: r.method,
-                  headers: {
-                    'content-type': 'application/json',
-                    ...(r.headers['idempotency-key']
-                      ? { 'idempotency-key': r.headers['idempotency-key'] }
-                      : {})
-                  },
-                  ...(r.method === 'GET' ? {} : { body: JSON.stringify(r.body ?? {}) })
-                });
-                return json(response.status, await response.json());
-              } catch {
-                throw new HttpError(
-                  502,
-                  'DOWNSTREAM_UNAVAILABLE',
-                  'Professional review service is unavailable.',
-                  true
-                );
-              }
-            }
+            handle: (r: JsonRequest) => professionalReview(r, method !== 'GET')
           }));
         }),
         {

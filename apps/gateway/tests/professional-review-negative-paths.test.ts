@@ -44,7 +44,7 @@ async function stack() {
     matterDraftSource: { getMatterDraft: async () => structuredClone(source) }
   });
   const executionUrl = await start(execution);
-  const gateway = createGateway({ port: 0, executionUrl });
+  const gateway = createGateway({ port: 0, executionUrl, milestoneTestRuntime: true });
   const base = await start(gateway);
   const call = (path: string, method = 'GET', body?: unknown, key?: string) =>
     fetch(base + path, {

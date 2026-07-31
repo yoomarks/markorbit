@@ -5,10 +5,25 @@ import type {
 } from '@markorbit/contracts';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
-async function request<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown) {
+async function request<T>(
+  path: string,
+  workspaceId: string,
+  method: 'GET' | 'POST' | 'PATCH' = 'GET',
+  body?: unknown
+) {
+  let csrf = '';
+  if (workspaceId && method !== 'GET') {
+    const session = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
+    csrf = String(((await session.json()) as { csrfToken?: string }).csrfToken ?? '');
+  }
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: { 'content-type': 'application/json' },
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+      ...(workspaceId ? { 'x-markorbit-workspace-id': workspaceId } : {}),
+      ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {})
+    },
     ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
   });
   const value = (await response.json()) as T | { message?: string };
@@ -22,36 +37,61 @@ async function request<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET'
 export interface ProfessionalReviewClient {
   list(): Promise<{ reviewCases: ProfessionalReviewCase[] }>;
   get(id: string): Promise<{ reviewCase: ProfessionalReviewCase }>;
-  claim(id: string, reviewerId: MarkOrbitId): Promise<{ reviewCase: ProfessionalReviewCase }>;
+  claim(
+    id: string,
+    reviewerId: MarkOrbitId,
+    expectedVersion: number
+  ): Promise<{ reviewCase: ProfessionalReviewCase }>;
   checklist(
     id: string,
     reviewerId: MarkOrbitId,
-    updates: Partial<ProfessionalReviewChecklistItem>[]
+    updates: Partial<ProfessionalReviewChecklistItem>[],
+    expectedVersion: number
   ): Promise<{ reviewCase: ProfessionalReviewCase }>;
   complete(
     id: string,
     reviewerId: MarkOrbitId,
-    rationale: string
+    rationale: string,
+    expectedVersion: number
   ): Promise<{ reviewCase: ProfessionalReviewCase }>;
 }
-export function createProfessionalReviewClient(): ProfessionalReviewClient {
+export function createProfessionalReviewClient(workspaceId = ''): ProfessionalReviewClient {
   return {
-    list: () => request('/api/lite/professional-review-cases'),
-    get: (id) => request(`/api/lite/professional-review-cases/${encodeURIComponent(id)}`),
-    claim: (id, reviewerId) =>
-      request(`/api/lite/professional-review-cases/${encodeURIComponent(id)}/claim`, 'POST', {
-        reviewerId
-      }),
-    checklist: (id, reviewerId, updates) =>
-      request(`/api/lite/professional-review-cases/${encodeURIComponent(id)}/checklist`, 'PATCH', {
-        reviewerId,
-        updates
-      }),
-    complete: (id, reviewerId, rationale) =>
-      request(`/api/lite/professional-review-cases/${encodeURIComponent(id)}/complete`, 'POST', {
-        reviewerId,
-        code: 'MARK_READY_FOR_NEXT_STEP',
-        rationale
-      })
+    list: () => request('/api/lite/professional-review-cases', workspaceId),
+    get: (id) =>
+      request(`/api/lite/professional-review-cases/${encodeURIComponent(id)}`, workspaceId),
+    claim: (id, reviewerId, expectedVersion) =>
+      request(
+        `/api/lite/professional-review-cases/${encodeURIComponent(id)}/claim`,
+        workspaceId,
+        'POST',
+        {
+          reviewerId,
+          expectedVersion
+        }
+      ),
+    checklist: (id, reviewerId, updates, expectedVersion) =>
+      request(
+        `/api/lite/professional-review-cases/${encodeURIComponent(id)}/checklist`,
+        workspaceId,
+        'PATCH',
+        {
+          reviewerId,
+          updates,
+          expectedVersion
+        }
+      ),
+    complete: (id, reviewerId, rationale, expectedVersion) =>
+      request(
+        `/api/lite/professional-review-cases/${encodeURIComponent(id)}/complete`,
+        workspaceId,
+        'POST',
+        {
+          reviewerId,
+          code: 'MARK_READY_FOR_NEXT_STEP',
+          rationale,
+          expectedVersion
+        }
+      )
   };
 }

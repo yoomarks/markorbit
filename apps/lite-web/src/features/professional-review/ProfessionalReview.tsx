@@ -19,16 +19,21 @@ import {
 } from '../../api/professional-review.js';
 
 const reviewerId = 'reviewer_milestone' as MarkOrbitId;
-const defaultProfessionalReviewClient = createProfessionalReviewClient();
 export function ProfessionalReview({
   state,
   initialSelected,
-  client = defaultProfessionalReviewClient
+  client,
+  workspaceId = ''
 }: {
   state: FixtureState;
   initialSelected?: string;
   client?: ProfessionalReviewClient;
+  workspaceId?: string;
 }) {
+  const resolvedClient = useMemo(
+    () => client ?? createProfessionalReviewClient(workspaceId),
+    [client, workspaceId]
+  );
   const [cases, setCases] = useState<ProfessionalReviewCase[]>([]);
   const [selected, setSelected] = useState<string | undefined>(initialSelected);
   const [status, setStatus] = useState('ALL');
@@ -37,7 +42,7 @@ export function ProfessionalReview({
   const origin = useRef<string>();
   const load = async () => {
     try {
-      setCases((await client.list()).reviewCases);
+      setCases((await resolvedClient.list()).reviewCases);
       setLoading(false);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Review queue unavailable.');
@@ -68,7 +73,7 @@ export function ProfessionalReview({
     return (
       <ReviewDetail
         value={current}
-        client={client}
+        client={resolvedClient}
         save={save}
         onBack={() => {
           setSelected(undefined);
@@ -164,6 +169,7 @@ function ReviewDetail({
           items={[
             { key: 'Matter Draft ID', value: value.source.matterDraftId },
             { key: 'Matter Draft version', value: value.source.matterDraftVersion },
+            { key: 'Review version', value: String(value.version ?? 1) },
             { key: 'Customer Confirmation', value: value.source.confirmationId },
             { key: 'Customer', value: value.source.customerId }
           ]}
@@ -187,7 +193,7 @@ function ReviewDetail({
         <Button
           onClick={() =>
             void client
-              .claim(value.reviewCaseId, reviewerId)
+              .claim(value.reviewCaseId, reviewerId, value.version ?? 1)
               .then(({ reviewCase }) => save(reviewCase))
           }
         >
@@ -205,7 +211,8 @@ function ReviewDetail({
                   code: item.code,
                   status: 'PASS',
                   explanation: 'Exact source evidence reviewed.'
-                }))
+                })),
+                value.version ?? 1
               )
               .then(({ reviewCase }) => save(reviewCase))
           }
@@ -224,7 +231,7 @@ function ReviewDetail({
             disabled={!rationale.trim()}
             onClick={() =>
               void client
-                .complete(value.reviewCaseId, reviewerId, rationale)
+                .complete(value.reviewCaseId, reviewerId, rationale, value.version ?? 1)
                 .then(({ reviewCase }) => save(reviewCase))
             }
           >
