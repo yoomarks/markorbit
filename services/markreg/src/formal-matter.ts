@@ -186,22 +186,9 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
       if (cause instanceof FormalMatterError) throw cause;
       const code = (cause as { code?: string }).code;
       if (code === '23505' || code === '40001') {
-        // A concurrent identical command can lose either the unique-key race or the
-        // serializable transaction race. The winner is durable before PostgreSQL
-        // reports either error, so resolve the approved replay semantics here.
-        const replay = await this.findByIdempotencyKey(v.workspaceId, key);
-        if (replay) {
-          if (replay.fingerprint !== fp)
-            throw new FormalMatterError(
-              'IDEMPOTENCY_CONFLICT',
-              'Idempotency key has conflicting input.'
-            );
-          return replay.matter;
-        }
-        throw new FormalMatterError(
-          'DUPLICATE_SOURCE',
-          'The exact Matter Draft version already created a Formal Matter.'
-        );
+        // The failed SERIALIZABLE transaction is already rolled back by transact(). Resolve
+        // the winner on fresh pool checkouts; it can still be completing its commit.
+        return this.resolveConcurrentWinner(v, key, fp);
       }
       throw new FormalMatterError(
         'PERSISTENCE_UNAVAILABLE',
@@ -209,6 +196,49 @@ export class PostgresFormalMatterRepository implements FormalMatterRepository {
         { cause: cause instanceof Error ? cause : undefined }
       );
     }
+  }
+  private async resolveConcurrentWinner(v: FormalMatter, key: string, fp: string) {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const replay = await this.findByIdempotencyKey(v.workspaceId, key);
+      if (replay) {
+        if (replay.fingerprint !== fp)
+          throw new FormalMatterError(
+            'IDEMPOTENCY_CONFLICT',
+            'Idempotency key has conflicting input.'
+          );
+        return replay.matter;
+      }
+      const source = await this.findBySource(
+        v.workspaceId,
+        v.sourceMatterDraftId,
+        v.sourceMatterDraftVersion
+      );
+      if (source) {
+        if (source.key === key && source.fingerprint === fp) return source.matter;
+        throw new FormalMatterError(
+          'DUPLICATE_SOURCE',
+          'The exact Matter Draft version already created a Formal Matter.'
+        );
+      }
+      if (attempt < 9) await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+    }
+    throw new FormalMatterError(
+      'PERSISTENCE_UNAVAILABLE',
+      'The concurrent Formal Matter result is not yet available.'
+    );
+  }
+  private async findBySource(workspaceId: string, draftId: string, draftVersion: number) {
+    const result = await this.query.query(
+      'SELECT c.idempotency_key,c.request_fingerprint,m.* FROM formal_matters m JOIN formal_matter_commands c ON c.workspace_id=m.workspace_id AND c.formal_matter_id=m.formal_matter_id WHERE m.workspace_id=$1 AND m.source_matter_draft_id=$2 AND m.source_matter_draft_version=$3',
+      [workspaceId, draftId, draftVersion]
+    );
+    if (!result.rowCount) return null;
+    const row = result.rows[0] as Row;
+    return {
+      key: String(row.idempotency_key),
+      fingerprint: String(row.request_fingerprint),
+      matter: this.map(priorMatter(row))
+    };
   }
   async findById(w: string, id: string) {
     try {

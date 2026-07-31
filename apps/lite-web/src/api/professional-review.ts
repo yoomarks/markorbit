@@ -4,8 +4,7 @@ import type {
   ProfessionalReviewChecklistItem
 } from '@markorbit/contracts';
 
-const baseUrl =
-  (import.meta.env['VITE_LITE_GATEWAY_URL'] as string | undefined) ?? 'http://127.0.0.1:4000';
+const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
 async function request<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown) {
   const response = await fetch(`${baseUrl}${path}`, {
     method,

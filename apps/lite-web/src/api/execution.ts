@@ -86,8 +86,7 @@ async function request<T>(
   return value as T;
 }
 export function createLiteExecutionClient(
-  baseUrl = (import.meta.env['VITE_LITE_GATEWAY_URL'] as string | undefined) ??
-    'http://127.0.0.1:4000'
+  baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000'
 ): LiteExecutionClient {
   return {
     createRelease: (c) => {

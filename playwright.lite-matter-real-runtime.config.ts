@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: /lite-matter-real-runtime\.spec\.ts/,
+  testMatch: '**/lite-matter-real-runtime.spec.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,

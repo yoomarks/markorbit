@@ -13,11 +13,27 @@ import {
   Select,
   TextInput
 } from '@markorbit/ui';
-const gateway = import.meta.env.VITE_LITE_GATEWAY_URL ?? import.meta.env.VITE_GATEWAY_URL ?? '';
+function parseGatewayUrl(value: unknown): string {
+  if (value === undefined || value === '') return '';
+  if (typeof value !== 'string') return '';
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+const gateway = parseGatewayUrl(
+  import.meta.env.VITE_LITE_GATEWAY_URL ?? import.meta.env.VITE_GATEWAY_URL
+);
 const current = () => new URLSearchParams(location.search);
 function navigate(values: Record<string, string | undefined>, replace = false) {
   const q = current();
-  for (const [k, v] of Object.entries(values)) v ? q.set(k, v) : q.delete(k);
+  for (const [k, v] of Object.entries(values)) {
+    if (v === undefined) q.delete(k);
+    else q.set(k, v);
+  }
   history[replace ? 'replaceState' : 'pushState'](null, '', `${location.pathname}?${q}#matters`);
   dispatchEvent(new PopStateEvent('popstate'));
 }
