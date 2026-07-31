@@ -2,7 +2,7 @@ import path from 'node:path';
 /* eslint-disable @typescript-eslint/require-await -- injected query failure and contract factory are asynchronous interfaces. */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  loadMigrations,
+  loadMigrationsForOwner,
   ManagedDatabase,
   migrate,
   parseDatabaseConfig,
@@ -24,6 +24,9 @@ const config = () =>
     DB_APPLICATION_NAME: 'markorbit-task-019-tests'
   });
 const migrations = path.resolve('../../infrastructure/persistence/migrations');
+const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
+const coreMigrations = () =>
+  loadMigrationsForOwner(migrations, migrationOwners, '@markorbit/core-service');
 const harness = (): SessionHarness => ({
   sessions: new PostgresSessionRepository(database.getPool()),
   user: async (id) => {
@@ -55,7 +58,7 @@ integration('PostgreSQL Session repository', () => {
       .query(
         'DROP TABLE IF EXISTS sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
-    await migrate(database.getPool(), 'core_auth', await loadMigrations(migrations));
+    await migrate(database.getPool(), 'core_auth', await coreMigrations());
   });
   afterAll(async () => database.close());
   sessionRepositoryContract('postgres', async () => harness());

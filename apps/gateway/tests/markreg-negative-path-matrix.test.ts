@@ -36,10 +36,13 @@ describe('MarkReg negative paths through real Gateway HTTP', () => {
           matterFlowRepository: fixture.matterRepository,
           preparationRepository: fixture.preparationRepository,
           publisher: fixture.publisher,
+          milestoneTestRuntime: true,
           now: () => '2026-07-29T12:00:00.000Z'
         })
       );
-      const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+      const gatewayUrl = await start(
+        createGateway({ port: 0, markRegUrl, milestoneTestRuntime: true })
+      );
       const request = fixture.http();
       const response = await fetch(`${gatewayUrl}${request.path}`, {
         method: request.method,

@@ -19,7 +19,11 @@ import {
   type ProfessionalReviewCase,
   type CustomerInstructionType
 } from '@markorbit/contracts';
-import { noAutomaticConsequences } from '@markorbit/contracts';
+import {
+  noAutomaticConsequences,
+  parseInternalWorkspacePrincipal,
+  AuthenticationError
+} from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
 import {
@@ -37,8 +41,14 @@ import {
   type PreparationSources,
   type CreatePackageCommand
 } from './preparation.js';
+import {
+  CustomerConfirmationError,
+  CustomerConfirmationService,
+  type CustomerConfirmationRepository
+} from './customer-confirmation.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
+export * from './customer-confirmation.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -230,6 +240,8 @@ export interface MarkRegOptions {
   preparationRepository?: PreparationRepository;
   preparationSources?: PreparationSources;
   milestoneTestRuntime?: boolean;
+  customerConfirmationRepository?: CustomerConfirmationRepository;
+  internalServiceSecret?: string;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -311,6 +323,59 @@ export function createRuntime(options: MarkRegOptions = {}) {
     (id) => Promise.resolve(repository.getQuote(id)),
     now
   );
+  const durableConfirmations = options.customerConfirmationRepository
+    ? new CustomerConfirmationService(
+        options.customerConfirmationRepository,
+        (id) => Promise.resolve(repository.getQuote(id) ?? null),
+        now
+      )
+    : undefined;
+  const internalServiceSecret =
+    options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
+  const fixtureRuntime =
+    options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+  const durablePrincipal = (request: { headers: Readonly<Record<string, string | undefined>> }) => {
+    if (
+      !internalServiceSecret ||
+      request.headers['x-markorbit-internal-authorization'] !== internalServiceSecret
+    )
+      throw new HttpError(
+        401,
+        'INTERNAL_SERVICE_UNAUTHORIZED',
+        'Internal service authentication is required.'
+      );
+    try {
+      return parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
+    } catch (error) {
+      if (error instanceof AuthenticationError) throw new HttpError(401, error.code, error.message);
+      throw error;
+    }
+  };
+  const durable = async (work: () => Promise<unknown>) => {
+    try {
+      return json(200, await work());
+    } catch (error) {
+      if (error instanceof CustomerConfirmationError) {
+        const status =
+          error.code === 'AUTHENTICATION_REQUIRED'
+            ? 401
+            : error.code === 'PERMISSION_DENIED' ||
+                error.code === 'CUSTOMER_CONFIRMATION_WORKSPACE_MISMATCH'
+              ? 403
+              : error.code === 'CUSTOMER_CONFIRMATION_NOT_FOUND' ||
+                  error.code === 'CUSTOMER_CONFIRMATION_SOURCE_NOT_FOUND'
+                ? 404
+                : error.code === 'PERSISTENCE_UNAVAILABLE'
+                  ? 503
+                  : error.code === 'CUSTOMER_CONFIRMATION_INVALID_SNAPSHOT' ||
+                      error.code === 'CUSTOMER_CONFIRMATION_INVALID_SOURCE'
+                    ? 422
+                    : 409;
+        throw new HttpError(status, error.code, error.message, status === 503);
+      }
+      throw error;
+    }
+  };
   const preparationSources: PreparationSources = options.preparationSources ?? {
     async getReview(id) {
       const response = await fetch(
@@ -358,7 +423,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
-        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')
+        ...(fixtureRuntime
           ? [
               {
                 method: 'GET' as const,
@@ -606,6 +671,39 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/customer-confirmations',
           async handle(request) {
+            if (durableConfirmations) {
+              const b = request.body as {
+                workspaceId: string;
+                quoteId: string;
+                quoteVersion: string;
+                planId: string;
+                planVersion: string;
+                termsVersion: string;
+                acknowledgements?: { code: string; acknowledged: boolean }[];
+              };
+              return durable(async () => ({
+                confirmation: await durableConfirmations.create(durablePrincipal(request), {
+                  workspaceId: b.workspaceId,
+                  quoteId: b.quoteId,
+                  quoteVersion: b.quoteVersion,
+                  planId: b.planId,
+                  planVersion: b.planVersion,
+                  termsVersion: b.termsVersion,
+                  acknowledgementCodes: (b.acknowledgements ?? [])
+                    .filter((x) => x.acknowledged)
+                    .map((x) => x.code)
+                }),
+                nextAction: 'PREPARE_MATTER_DRAFT',
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Customer Confirmation persistence is unavailable.',
+                true
+              );
             const body = request.body as ConfirmQuoteCommand;
             const key = request.headers['idempotency-key'];
             if (!key || key !== body.idempotencyKey)
@@ -621,6 +719,31 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/customer-confirmations/:confirmationId',
           async handle(request) {
+            if (durableConfirmations) {
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              return durable(async () => ({
+                confirmation: await durableConfirmations.get(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.confirmationId!
+                ),
+                nextAction: 'NONE',
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Customer Confirmation persistence is unavailable.',
+                true
+              );
             const value = await matterFlowRepository.getConfirmation(
               request.params.confirmationId as `confirmation_${string}`
             );
@@ -637,6 +760,26 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/customer-confirmations/:confirmationId/withdraw',
           async handle(request) {
+            if (durableConfirmations) {
+              const b = request.body as { workspaceId: string; expectedVersion: number };
+              return durable(async () => ({
+                confirmation: await durableConfirmations.withdraw(
+                  durablePrincipal(request),
+                  b.workspaceId,
+                  request.params.confirmationId!,
+                  b.expectedVersion
+                ),
+                nextAction: 'NONE',
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Customer Confirmation persistence is unavailable.',
+                true
+              );
             return governed(async () => ({
               confirmation: await matterFlowRepository.withdrawConfirmation(
                 request.params.confirmationId as `confirmation_${string}`,

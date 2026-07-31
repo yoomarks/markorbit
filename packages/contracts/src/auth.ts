@@ -33,6 +33,51 @@ export interface WorkspacePrincipal {
   sessionExpiresAt: string;
 }
 export type Principal = AnonymousPrincipal | AuthenticatedUserPrincipal | WorkspacePrincipal;
+export interface InternalWorkspacePrincipalEnvelope {
+  schemaVersion: 1;
+  principal: WorkspacePrincipal;
+}
+export function encodeInternalWorkspacePrincipal(principal: WorkspacePrincipal): string {
+  return Buffer.from(JSON.stringify({ schemaVersion: 1, principal }), 'utf8').toString('base64url');
+}
+export function parseInternalWorkspacePrincipal(value: string | undefined): WorkspacePrincipal {
+  if (!value)
+    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Workspace Principal is required.');
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+  } catch {
+    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Workspace Principal is invalid.');
+  }
+  const envelope = decoded as Partial<InternalWorkspacePrincipalEnvelope>;
+  const p = envelope.principal as Partial<WorkspacePrincipal> | undefined;
+  if (
+    envelope.schemaVersion !== 1 ||
+    !p ||
+    p.kind !== 'WORKSPACE' ||
+    !['WORKSPACE_ADMIN', 'MATTER_MANAGER', 'REVIEWER', 'READ_ONLY'].includes(String(p.role)) ||
+    !Array.isArray(p.permissions) ||
+    p.permissions.some(
+      (x) =>
+        ![
+          'workspace:read',
+          'workspace:manage',
+          'membership:read',
+          'membership:manage',
+          'matter:read',
+          'matter:create',
+          'matter:manage',
+          'review:read',
+          'review:perform'
+        ].includes(String(x))
+    ) ||
+    [p.sessionId, p.userId, p.workspaceId, p.membershipId, p.sessionExpiresAt].some(
+      (x) => typeof x !== 'string' || x.length === 0
+    )
+  )
+    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Workspace Principal is invalid.');
+  return structuredClone(p as WorkspacePrincipal);
+}
 export type AuthenticationErrorCode =
   | 'AUTHENTICATION_REQUIRED'
   | 'INVALID_SESSION'

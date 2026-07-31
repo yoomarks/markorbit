@@ -45,7 +45,7 @@ The bootstrap command refuses a database identifier without `test`; the isolated
 
 Unit tests cover configuration, redaction and migration discovery. Real PostgreSQL tests cover bootstrap/status/idempotence/checksum, rollback/no false history, advisory-lock concurrency, independent namespaces, transactions, reconnect durability, readiness failure and idempotent shutdown. One behavioral repository contract runs unchanged against memory and PostgreSQL probe adapters, including exact/scoped lookup, duplicates, optimistic versioning, rollback and no partial mutation.
 
-`validate:persistence-boundaries` requires declared namespace owners, rejects database imports in Web/Gateway, and rejects foreign migration paths in services. The dedicated CI `persistence` job supplies PostgreSQL 16 and test-only credentials.
+`validate:persistence-boundaries` requires declared namespace and per-file migration owners, rejects database imports in Web/Gateway, and rejects foreign migration paths in services. `loadMigrationsForOwner` validates that every repository migration is declared, preserves version ordering and exact-byte checksums, and selects only the calling service's files. Core Identity/Auth therefore load 0018–0019, MarkReg loads 0020, while global persistence verification may deliberately load all files in its isolated database. The dedicated CI `persistence` job supplies PostgreSQL 16 and test-only credentials.
 
 This is a bounded source-level guard for obvious imports and declared migration ownership; it is not a claim that static scanning can prove every possible cross-service SQL behavior.
 

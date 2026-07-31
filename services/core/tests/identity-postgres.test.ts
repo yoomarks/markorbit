@@ -2,7 +2,7 @@
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  loadMigrations,
+  loadMigrationsForOwner,
   ManagedDatabase,
   migrate,
   migrationStatus,
@@ -36,6 +36,9 @@ const config = () =>
   });
 let database: ManagedDatabase;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
+const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
+const coreMigrations = () =>
+  loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/core-service');
 const repositories = (q: QueryClient) => ({
   users: new PostgresUserRepository(q),
   workspaces: new PostgresWorkspaceRepository(q),
@@ -69,14 +72,14 @@ integration('PostgreSQL 16 identity verification', () => {
       .query(
         'DROP TABLE IF EXISTS sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
-    await migrate(database.getPool(), 'core_identity', await loadMigrations(migrationsDirectory));
+    await migrate(database.getPool(), 'core_identity', await coreMigrations());
   });
   afterAll(async () => database.close());
   userRepositoryContract('PostgreSQL', async () => harness());
   workspaceRepositoryContract('PostgreSQL', async () => harness());
   membershipRepositoryContract('PostgreSQL', async () => harness());
   it('reports applied status, verifies checksum, and repeats idempotently', async () => {
-    const migrations = await loadMigrations(migrationsDirectory);
+    const migrations = await coreMigrations();
     await migrate(database.getPool(), 'core_identity', migrations);
     expect(
       (await migrationStatus(database.getPool(), 'core_identity', migrations)).every(

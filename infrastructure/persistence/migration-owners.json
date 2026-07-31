@@ -1,5 +1,13 @@
 {
-  "persistence_foundation": "@markorbit/persistence",
-  "core": "@markorbit/core-service",
-  "core_sessions": "@markorbit/core-service"
+  "namespaces": {
+    "persistence_foundation": "@markorbit/persistence",
+    "core": "@markorbit/core-service",
+    "core_sessions": "@markorbit/core-service",
+    "markreg_customer_confirmations": "@markorbit/markreg-service"
+  },
+  "migrations": {
+    "0018_identity_workspace_membership": "@markorbit/core-service",
+    "0019_core_sessions": "@markorbit/core-service",
+    "0020_markreg_customer_confirmations": "@markorbit/markreg-service"
+  }
 }
