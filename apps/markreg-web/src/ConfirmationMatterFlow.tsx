@@ -4,7 +4,8 @@ import type {
   MatterDraft,
   MatterDraftPreparation,
   PlanQuoteResponse,
-  ProfessionalReviewCase
+  ProfessionalReviewCase,
+  FormalMatter
 } from '@markorbit/contracts';
 import {
   Alert,
@@ -30,6 +31,8 @@ export type MatterViewState =
   | 'MATTER_DRAFT_EVALUATING'
   | 'MATTER_DRAFT_NEEDS_INFORMATION'
   | 'READY_FOR_PROFESSIONAL_REVIEW'
+  | 'FORMAL_MATTER_CREATING'
+  | 'FORMAL_MATTER_RECEIPT'
   | 'RECOVERABLE_ERROR'
   | 'WITHDRAWN';
 const acknowledgementLabels = {
@@ -64,6 +67,7 @@ export function ConfirmationMatterFlow({
     fixture?.message ?? 'Your saved records are unchanged. Try again.'
   );
   const [reviewCase, setReviewCase] = useState<ProfessionalReviewCase>();
+  const [formalMatter, setFormalMatter] = useState<FormalMatter>();
   const [savedMessage, setSavedMessage] = useState('');
   const [form, setForm] = useState<MatterDraftPreparation>(
     () => fixture?.draft?.preparation ?? { classes: [], documentReferences: [] }
@@ -95,6 +99,15 @@ export function ConfirmationMatterFlow({
         setMessage(error instanceof Error ? error.message : message);
         setState('RECOVERABLE_ERROR');
       });
+  }, [client, draftStorageKey, fixture]);
+  useEffect(() => {
+    if (fixture || !client.getFormalMatter || typeof sessionStorage === 'undefined') return;
+    const id = sessionStorage.getItem(`${draftStorageKey}:formal-matter`);
+    if (!id) return;
+    void client.getFormalMatter(id).then(({ formalMatter: value }) => {
+      setFormalMatter(value);
+      setState('FORMAL_MATTER_RECEIPT');
+    });
   }, [client, draftStorageKey, fixture]);
   const confirm = async () => {
     setState('CONFIRMING');
@@ -212,6 +225,39 @@ export function ConfirmationMatterFlow({
   if (state === 'MATTER_DRAFT_EVALUATING')
     return <LoadingState label="Evaluating explicit readiness evidence" />;
   if (state === 'MATTER_DRAFT_SAVING') return <LoadingState label="Saving Matter Draft" />;
+  if (state === 'FORMAL_MATTER_CREATING')
+    return <LoadingState label="Creating Formal Matter atomically" />;
+  if (state === 'FORMAL_MATTER_RECEIPT' && formalMatter)
+    return (
+      <section role="region" aria-labelledby="formal-matter-receipt">
+        <Card>
+          <h2 id="formal-matter-receipt">Formal Matter receipt</h2>
+          <Alert tone="success" title="Formal Matter created">
+            The exact READY Draft was revalidated.
+          </Alert>
+          <KeyValueList
+            items={[
+              { key: 'Formal Matter ID', value: formalMatter.formalMatterId },
+              { key: 'Initial status', value: formalMatter.status },
+              { key: 'Workspace', value: formalMatter.workspaceId },
+              {
+                key: 'Customer Confirmation',
+                value: `${formalMatter.sourceCustomerConfirmationId} · version ${formalMatter.sourceCustomerConfirmationVersion}`
+              },
+              {
+                key: 'Matter Draft',
+                value: `${formalMatter.sourceMatterDraftId} · version ${formalMatter.sourceMatterDraftVersion}`
+              },
+              {
+                key: 'Quote',
+                value: `${formalMatter.sourceQuoteId} · version ${formalMatter.sourceQuoteVersion}`
+              },
+              { key: 'Created at', value: formalMatter.createdAt }
+            ]}
+          />
+        </Card>
+      </section>
+    );
   if (state === 'RECOVERABLE_ERROR')
     return (
       <Alert tone="danger" title="Matter preparation could not continue">
@@ -440,6 +486,48 @@ export function ConfirmationMatterFlow({
               Readiness is not approval, authority, an Order, or a filing. Order created: No ·
               Payment created: No · Professional appointed: No · Filing created: No
             </Alert>
+            <p>
+              Exact READY Draft version:{' '}
+              <strong>{String((matter as MatterDraft & { version?: number }).version)}</strong>
+            </p>
+            <Button
+              onClick={() => {
+                if (!confirmation || !workspaceId || !client.createFormalMatter) return;
+                const draftVersion = (matter as MatterDraft & { version?: number }).version;
+                const confirmationVersion = (
+                  confirmation as CustomerConfirmation & { version?: number }
+                ).version;
+                if (!draftVersion || !confirmationVersion) return;
+                setState('FORMAL_MATTER_CREATING');
+                void client
+                  .createFormalMatter({
+                    workspaceId,
+                    customerConfirmationId: confirmation.confirmationId,
+                    expectedCustomerConfirmationVersion: confirmationVersion,
+                    matterDraftId: matter.matterDraftId,
+                    expectedMatterDraftVersion: draftVersion,
+                    idempotencyKey: `formal-matter:${matter.matterDraftId}:${draftVersion}`
+                  })
+                  .then(({ formalMatter: value }) => {
+                    setFormalMatter(value);
+                    sessionStorage.setItem(
+                      `${draftStorageKey}:formal-matter`,
+                      value.formalMatterId
+                    );
+                    setState('FORMAL_MATTER_RECEIPT');
+                  })
+                  .catch((error) => {
+                    setMessage(
+                      error instanceof Error
+                        ? error.message
+                        : 'Formal Matter creation is unavailable.'
+                    );
+                    setState('RECOVERABLE_ERROR');
+                  });
+              }}
+            >
+              Create Formal Matter
+            </Button>
             {!reviewCase ? (
               <Button
                 onClick={() =>

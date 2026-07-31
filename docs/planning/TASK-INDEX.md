@@ -76,4 +76,5 @@
 - TASK 020 — Durable authenticated Customer Confirmation (**implementation in Draft PR**)
   - MarkReg-owned durable acceptance evidence
 - TASK 021 — MarkReg durable preparation vertical slice (**implementation in Draft PR**)
+- TASK 022 — Formal Matter creation vertical slice (**implementation in Draft PR**)
   - MarkReg-owned Matter Draft persistence, authenticated existing routes, optimistic concurrency and durable readiness

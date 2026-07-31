@@ -24,7 +24,9 @@ import type {
   FilingAuthorizationAcknowledgementCode,
   AuthorizationCapacity,
   FilingExecutionChannel,
-  AuthorizationAuthorityConsequences
+  AuthorizationAuthorityConsequences,
+  FormalMatter,
+  CreateFormalMatterCommand
 } from '@markorbit/contracts';
 import { createApiClient, type ApiClient } from './client.js';
 
@@ -53,6 +55,8 @@ export interface MarkregClient {
     expectedVersion?: number,
     workspaceId?: string
   ): Promise<MatterDraftResponse>;
+  createFormalMatter?(command: CreateFormalMatterCommand): Promise<{ formalMatter: FormalMatter }>;
+  getFormalMatter?(id: string): Promise<{ formalMatter: FormalMatter }>;
   getProfessionalReview?(id: string): Promise<{ reviewCase: ProfessionalReviewCase }>;
   createProfessionalReview?(command: {
     matterDraftId: string;
@@ -277,6 +281,14 @@ export function createMarkregClient(api: ApiClient = createApiClient()): Markreg
         { expectedVersion, workspaceId },
         {}
       );
+    },
+    createFormalMatter(command) {
+      return api.post('/api/markreg/formal-matters', command, {
+        'Idempotency-Key': command.idempotencyKey
+      });
+    },
+    getFormalMatter(id) {
+      return api.get(`/api/markreg/formal-matters/${encodeURIComponent(id)}`);
     },
     getProfessionalReview(id) {
       return api.get(`/api/lite/professional-review-cases/${encodeURIComponent(id)}`);
