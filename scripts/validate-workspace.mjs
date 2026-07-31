@@ -6,7 +6,7 @@ const root = process.cwd();
 const required = {
   apps: ['gateway', 'lite-web', 'markreg-web', 'operations-console'],
   services: ['core', 'knowledge', 'capability-engine', 'execution', 'markreg', 'mgsn'],
-  packages: ['contracts', 'service-kit', 'events', 'ai', 'ui', 'config', 'test-kit']
+  packages: ['contracts', 'service-kit', 'events', 'ai', 'ui', 'config', 'test-kit', 'persistence']
 };
 const failures = [];
 
