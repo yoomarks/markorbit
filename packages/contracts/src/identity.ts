@@ -15,7 +15,12 @@ export const PERMISSIONS = [
   'matter:create',
   'matter:manage',
   'review:read',
-  'review:perform'
+  'review:perform',
+  'document-package:read',
+  'document-package:prepare',
+  'instruction-ledger:read',
+  'instruction-ledger:write',
+  'document-package:mark-ready'
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

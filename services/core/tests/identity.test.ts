@@ -46,10 +46,31 @@ describe('role permission matrix', () => {
             'matter:create',
             'matter:manage',
             'review:read',
-            'review:perform'
+            'review:perform',
+            'document-package:read',
+            'document-package:prepare',
+            'instruction-ledger:read',
+            'instruction-ledger:write',
+            'document-package:mark-ready'
           ],
-          REVIEWER: ['workspace:read', 'matter:read', 'review:read', 'review:perform'],
-          READ_ONLY: ['workspace:read', 'matter:read', 'review:read']
+          REVIEWER: [
+            'workspace:read',
+            'matter:read',
+            'review:read',
+            'review:perform',
+            'document-package:read',
+            'document-package:prepare',
+            'instruction-ledger:read',
+            'instruction-ledger:write',
+            'document-package:mark-ready'
+          ],
+          READ_ONLY: [
+            'workspace:read',
+            'matter:read',
+            'review:read',
+            'document-package:read',
+            'instruction-ledger:read'
+          ]
         }[role].includes(permission as never);
         expect(
           hasPermission(role, permission, {
