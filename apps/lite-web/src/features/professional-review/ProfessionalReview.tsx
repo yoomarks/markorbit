@@ -84,6 +84,7 @@ export function ProfessionalReview({
       <ReviewDetail
         value={current}
         client={resolvedClient}
+        workspaceId={workspaceId}
         save={save}
         onBack={() => {
           setSelected(undefined);
@@ -150,12 +151,14 @@ function ReviewDetail({
   value,
   client,
   save,
-  onBack
+  onBack,
+  workspaceId
 }: {
   value: ProfessionalReviewCase;
   client: ProfessionalReviewClient;
   save: (value: ProfessionalReviewCase) => void;
   onBack: () => void;
+  workspaceId: string;
 }) {
   const [rationale, setRationale] = useState('');
   const [professionalFinding, setProfessionalFinding] = useState('');
@@ -267,9 +270,9 @@ function ReviewDetail({
             providerAppointed: false · filingCreated: false · customerMessageSent: false
           </Alert>
           <a
-            href={`http://127.0.0.1:4372/?professionalReviewCaseId=${encodeURIComponent(value.reviewCaseId)}`}
+            href={`/?documentPackageReviewCaseId=${encodeURIComponent(value.reviewCaseId)}&workspaceId=${encodeURIComponent(workspaceId)}`}
           >
-            Return to MarkReg Documents and Instructions
+            Start or resume Document Package
           </a>
         </>
       )}

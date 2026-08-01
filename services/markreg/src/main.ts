@@ -3,8 +3,14 @@ import {
   InMemoryMatterFlowRepository,
   PostgresCustomerConfirmationRepository,
   PostgresMatterDraftRepository,
-  PostgresFormalMatterRepository
+  PostgresFormalMatterRepository,
+  PostgresDocumentPackageService,
+  DocumentPackageError
 } from './index.js';
+import {
+  encodeInternalWorkspacePrincipal,
+  type ProfessionalReviewCase
+} from '@markorbit/contracts';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -28,10 +34,57 @@ if (fixtureRuntime) {
   );
   await database.start();
   closeDatabase = () => database.close();
+  const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
+  const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  if (!internalServiceSecret)
+    throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
+  const documentPackageService = new PostgresDocumentPackageService(database, database.getPool(), {
+    async get(principal, reviewCaseId, correlationId) {
+      let response: Response;
+      try {
+        response = await fetch(
+          `${executionUrl}/v1/professional-review-cases/${encodeURIComponent(reviewCaseId)}`,
+          {
+            headers: {
+              'x-markorbit-internal-authorization': internalServiceSecret,
+              'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+              'x-markorbit-workspace-id': principal.workspaceId,
+              ...(correlationId ? { 'x-correlation-id': correlationId } : {})
+            }
+          }
+        );
+      } catch (cause) {
+        throw new DocumentPackageError(
+          'REVIEW_SOURCE_UNAVAILABLE',
+          'Professional Review validation is unavailable.',
+          503,
+          true,
+          { cause: cause instanceof Error ? cause : undefined }
+        );
+      }
+      if (response.status === 404)
+        throw new DocumentPackageError(
+          'SOURCE_REVIEW_NOT_FOUND',
+          'Professional Review was not found.',
+          404
+        );
+      if (!response.ok)
+        throw new DocumentPackageError(
+          'REVIEW_SOURCE_UNAVAILABLE',
+          'Professional Review validation is unavailable.',
+          503,
+          true
+        );
+      return ((await response.json()) as { reviewCase: ProfessionalReviewCase }).reviewCase;
+    }
+  });
   runtime = createRuntime({
     customerConfirmationRepository: new PostgresCustomerConfirmationRepository(database.getPool()),
     matterDraftRepository: new PostgresMatterDraftRepository(database.getPool()),
-    formalMatterRepository: new PostgresFormalMatterRepository(database, database.getPool())
+    formalMatterRepository: new PostgresFormalMatterRepository(database, database.getPool()),
+    documentPackageService,
+    internalServiceSecret,
+    executionUrl
   });
 }
 

@@ -636,6 +636,56 @@ export interface DocumentPackage {
   readyBy?: MarkOrbitId;
   canonicalEvidenceHash?: string;
 }
+export interface DurableDocumentEvidenceInput {
+  requirementKey: string;
+  documentType: string;
+  displayName: string;
+  evidenceType: 'FILE_REFERENCE' | 'EXTERNAL_REFERENCE';
+  originalFileName?: string;
+  mediaType?: string;
+  sizeBytes?: number;
+  checksum: string;
+  storageReference?: string;
+  verificationStatus: 'RECORDED' | 'VERIFIED';
+  structuredNote?: Readonly<Record<string, unknown>>;
+}
+export interface DurableInstructionInput {
+  instructionType: string;
+  structuredPayload: Readonly<Record<string, unknown>>;
+  targetJurisdiction?: string;
+  targetClass?: string;
+  targetDocumentItemId?: string;
+  sourceReviewFindingId?: string;
+}
+export interface DurableDocumentPackageView {
+  documentPackageId: DocumentPackageId;
+  workspaceId: string;
+  formalMatterId: FormalMatterId;
+  sourceFormalMatterVersion: number;
+  sourceFormalMatterHash: string;
+  professionalReviewCaseId: ProfessionalReviewCaseId;
+  sourceReviewVersion: number;
+  sourceCompletedDecisionId: string;
+  sourceCompletedDecisionHash: string;
+  status: 'DRAFT' | 'READY_FOR_PREPARATION_LOCK';
+  version: number;
+  schemaVersion: 1;
+  requirements: readonly {
+    requirementKey: string;
+    displayName: string;
+    blocking: boolean;
+  }[];
+  draft: Readonly<Record<string, unknown>>;
+  documentItems: readonly Readonly<Record<string, unknown>>[];
+  instructionEntries: readonly Readonly<Record<string, unknown>>[];
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  readyAt?: string;
+  readyBy?: string;
+  canonicalEvidenceHash?: string;
+}
 export type CustomerInstructionLedgerStatus =
   'DRAFT' | 'CONFIRMED' | 'LOCKED_FOR_PREPARATION' | 'STALE' | 'WITHDRAWN';
 export type CustomerInstructionType =
