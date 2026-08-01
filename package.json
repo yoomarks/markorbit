@@ -67,7 +67,12 @@
     "test:professional-review:postgres": "pnpm build:professional-review-deps && pnpm --filter @markorbit/execution-service exec vitest run tests/professional-review-postgres.test.ts",
     "test:professional-review:http": "pnpm build:professional-review-deps && pnpm exec vitest run scripts/professional-review-http.integration.test.ts",
     "test:professional-review:no-interception": "pnpm build:professional-review-deps && node scripts/validate-professional-review-no-interception.mjs",
-    "test:professional-review:browser": "pnpm test:professional-review:no-interception && playwright test --config playwright.professional-review-real-runtime.config.ts"
+    "test:professional-review:browser": "pnpm test:professional-review:no-interception && playwright test --config playwright.professional-review-real-runtime.config.ts",
+    "build:document-package-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/markreg-service... --filter=@markorbit/execution-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...",
+    "test:document-package:postgres": "pnpm build:document-package-deps && MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1 pnpm --filter @markorbit/markreg-service exec vitest run tests/document-package-postgres.test.ts",
+    "test:document-package:http": "pnpm build:document-package-deps && MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1 pnpm exec vitest run scripts/document-package-http.integration.test.ts",
+    "test:document-package:no-interception": "pnpm build:document-package-deps && node scripts/validate-document-package-no-interception.mjs",
+    "test:document-package:browser": "pnpm build:document-package-deps && pnpm test:document-package:no-interception && playwright test --config playwright.document-package-real-runtime.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

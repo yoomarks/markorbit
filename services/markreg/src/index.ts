@@ -58,11 +58,13 @@ import {
   InMemoryFormalMatterRepository,
   type FormalMatterRepository
 } from './formal-matter.js';
+import { DocumentPackageError, type PostgresDocumentPackageService } from './document-package.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
 export * from './customer-confirmation.js';
 export * from './matter-draft.js';
 export * from './formal-matter.js';
+export * from './document-package.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -258,6 +260,7 @@ export interface MarkRegOptions {
   matterDraftRepository?: MatterDraftRepository;
   formalMatterRepository?: FormalMatterRepository;
   internalServiceSecret?: string;
+  documentPackageService?: PostgresDocumentPackageService;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -436,6 +439,8 @@ export function createRuntime(options: MarkRegOptions = {}) {
                     : 409;
         throw new HttpError(status, error.code, error.message, status === 503);
       }
+      if (error instanceof DocumentPackageError)
+        throw new HttpError(error.status, error.code, error.message, error.retryable);
       throw error;
     }
   };
@@ -464,6 +469,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const preparationRepository =
     options.preparationRepository ?? new InMemoryPreparationRepository();
   const preparation = new PreparationService(preparationRepository, preparationSources, now);
+  const durablePackages = options.documentPackageService;
   const prepared = async (work: () => Promise<unknown>) => {
     try {
       return json(200, await work());
@@ -541,13 +547,30 @@ export function createRuntime(options: MarkRegOptions = {}) {
         {
           method: 'POST',
           path: '/v1/document-packages',
-          handle: (r) =>
-            prepared(() =>
-              preparation.createPackage({
-                ...(r.body as Omit<CreatePackageCommand, 'idempotencyKey'>),
-                idempotencyKey: r.headers['idempotency-key'] ?? ''
-              })
-            )
+          handle: (r) => {
+            if (!durablePackages)
+              return prepared(() =>
+                preparation.createPackage({
+                  ...(r.body as Omit<CreatePackageCommand, 'idempotencyKey'>),
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                })
+              );
+            const b = r.body as Record<string, unknown>;
+            const text = (value: unknown) => (typeof value === 'string' ? value : '');
+            return durable(() =>
+              durablePackages.createOrOpen(
+                durablePrincipal(r),
+                {
+                  professionalReviewCaseId: text(b.professionalReviewCaseId),
+                  expectedReviewVersion: Number(b.expectedReviewVersion),
+                  expectedCompletedDecisionId: text(b.expectedCompletedDecisionId),
+                  expectedCompletedDecisionHash: text(b.expectedCompletedDecisionHash),
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                },
+                r.headers['x-correlation-id']
+              )
+            );
+          }
         },
         {
           method: 'GET',
@@ -563,20 +586,98 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/document-packages/:documentPackageId',
           handle: (r) =>
-            prepared(() =>
-              preparation.getPackage(r.params.documentPackageId as `document-package_${string}`)
-            )
+            durablePackages
+              ? durable(() => durablePackages.get(durablePrincipal(r), r.params.documentPackageId!))
+              : prepared(() =>
+                  preparation.getPackage(r.params.documentPackageId as `document-package_${string}`)
+                )
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/document-packages/:documentPackageId',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number; draft: Record<string, unknown> };
+            return durable(() =>
+              durablePackages.updateDraft(
+                durablePrincipal(r),
+                r.params.documentPackageId!,
+                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
+                r.headers['x-correlation-id']
+              )
+            );
+          }
         },
         {
           method: 'POST',
           path: '/v1/document-packages/:documentPackageId/documents',
-          handle: (r) =>
-            prepared(() =>
-              preparation.addDocument(
-                r.params.documentPackageId as `document-package_${string}`,
-                r.body as never
+          handle: (r) => {
+            if (!durablePackages)
+              return prepared(() =>
+                preparation.addDocument(
+                  r.params.documentPackageId as `document-package_${string}`,
+                  r.body as never
+                )
+              );
+            const b = r.body as { expectedVersion: number; evidence: never };
+            return durable(() =>
+              durablePackages.upsertEvidence(
+                durablePrincipal(r),
+                r.params.documentPackageId!,
+                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
+                r.headers['x-correlation-id']
               )
-            )
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/instructions',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number; instruction: never };
+            return durable(() =>
+              durablePackages.appendInstruction(
+                durablePrincipal(r),
+                r.params.documentPackageId!,
+                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
+                r.headers['x-correlation-id']
+              )
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/instructions/:instructionEntryId/supersede',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number; instruction: never };
+            return durable(() =>
+              durablePackages.supersedeInstruction(
+                durablePrincipal(r),
+                r.params.documentPackageId!,
+                r.params.instructionEntryId!,
+                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
+                r.headers['x-correlation-id']
+              )
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/mark-ready',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number };
+            return durable(() =>
+              durablePackages.markReady(
+                durablePrincipal(r),
+                r.params.documentPackageId!,
+                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
+                r.headers['x-correlation-id']
+              )
+            );
+          }
         },
         {
           method: 'POST',

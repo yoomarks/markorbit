@@ -1,11 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase } from '@markorbit/persistence';
-import {
-  loadMigrationsForOwner,
-  migrate,
-  migrationStatus,
-  verifyMigrations
-} from '@markorbit/persistence';
+import { loadMigrationsForOwner, migrationStatus, verifyMigrations } from '@markorbit/persistence';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import {
@@ -18,6 +13,10 @@ import {
   runCustomerConfirmationRepositoryContract
 } from './customer-confirmation-repository-contract.js';
 import { PostgresMatterDraftRepository } from '../src/matter-draft.js';
+import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from './support/markreg-test-database.js';
 import {
   matterDraftContractRecord,
   runMatterDraftRepositoryContract
@@ -36,7 +35,7 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'markreg_customer_confirmation_test'
+    migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
@@ -51,29 +50,13 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
       .map(([name]) => name.split('_', 1)[0]!)
       .sort((a, b) => a.localeCompare(b));
   };
-  const resetMarkRegTestState = async () => {
-    const pool = database.getPool();
-    await pool.query('DROP TABLE IF EXISTS formal_matter_audit CASCADE');
-    await pool.query('DROP TABLE IF EXISTS formal_matter_commands CASCADE');
-    await pool.query('DROP TABLE IF EXISTS formal_matters CASCADE');
-    await pool.query('DROP TABLE IF EXISTS matter_drafts CASCADE');
-    await pool.query('DROP TABLE IF EXISTS customer_confirmations CASCADE');
-    const history = await pool.query<{ migration_history: string | null }>(
-      "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
-    );
-    if (history.rows[0]?.migration_history)
-      await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace = $1', [
-        'markreg_customer_confirmation_test'
-      ]);
-  };
   beforeAll(async () => {
     await database.start();
-    await resetMarkRegTestState();
-    await migrate(
-      database.getPool(),
-      'markreg_customer_confirmation_test',
-      await markregMigrations()
-    );
+    await resetAndMigrateMarkRegTestDatabase({
+      pool: database.getPool(),
+      migrationsDirectory,
+      migrationOwners
+    });
   });
   beforeEach(() => database.getPool().query('TRUNCATE matter_drafts, customer_confirmations'));
   afterAll(() => database.close());
@@ -97,10 +80,10 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
     expect(loadedVersions.filter((version) => nonMarkRegVersions.includes(version))).toEqual([]);
     expect(
       (
-        await migrationStatus(database.getPool(), 'markreg_customer_confirmation_test', migrations)
+        await migrationStatus(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, migrations)
       ).every((x) => x.state === 'applied')
     ).toBe(true);
-    await verifyMigrations(database.getPool(), 'markreg_customer_confirmation_test', migrations);
+    await verifyMigrations(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, migrations);
   });
   runMatterDraftRepositoryContract('PostgreSQL', async () => {
     await database.getPool().query('TRUNCATE matter_drafts, customer_confirmations');

@@ -1,23 +1,23 @@
 import { expect, test } from '@playwright/test';
 
 const gateway = 'http://127.0.0.1:4400';
-const lite = 'http://127.0.0.1:4471';
+const lite = 'http://127.0.0.1:4481';
 const scenarios = {
-  'professional-review-desktop': {
-    fixture: 'task024Desktop',
+  'document-package-desktop': {
+    fixture: 'task025Desktop',
     workspaceId: '66666666-6666-4666-8666-666666666666',
     otherWorkspaceId: '77777777-7777-4777-8777-777777777777',
     trademark: 'DURABLE ORBIT DESKTOP'
   },
-  'professional-review-mobile-390': {
-    fixture: 'task024Mobile',
+  'document-package-mobile-390': {
+    fixture: 'task025Mobile',
     workspaceId: '88888888-8888-4888-8888-888888888888',
     otherWorkspaceId: '99999999-9999-4999-8999-999999999999',
     trademark: 'DURABLE ORBIT MOBILE'
   }
 } as const;
 
-test.describe('TASK 024 real durable Professional Review path', () => {
+test.describe('TASK 025 real durable Document Package path', () => {
   test('persists exact Review evidence through refresh, direct URL and governed completion', async ({
     page
   }) => {
@@ -35,27 +35,11 @@ test.describe('TASK 024 real durable Professional Review path', () => {
     await page
       .context()
       .addCookies([{ name: 'mo_session', value: sessionCookie!, domain: '127.0.0.1', path: '/' }]);
-    const matterListResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/markreg/formal-matters?') &&
-        response.request().method() === 'GET'
+    await page.goto(
+      `${lite}/?workspaceId=${scenario.workspaceId}&otherWorkspaceId=${scenario.otherWorkspaceId}#matters`
     );
-    await page.goto(`${lite}/?workspaceId=${scenario.workspaceId}#matters`);
-    expect(page.url()).not.toMatch(/documentPackageId|professionalReviewCaseId|formalMatterId/);
-    const listed = await matterListResponse;
-    expect(listed.status()).toBe(200);
-    const list = (await listed.json()) as {
-      items: { formalMatterId: string; trademark?: string }[];
-    };
-    const target = list.items.find((matter) => matter.trademark === scenario.trademark);
-    expect(target?.formalMatterId).toMatch(/^formal-matter_/);
     await expect(page.getByRole('heading', { name: 'Matters', exact: true })).toBeVisible();
-    const matterHeading = page.getByRole('heading', { name: scenario.trademark, exact: true });
-    const matterRow = page.locator('section').filter({ has: matterHeading });
-    await expect(matterRow).toBeVisible();
-    const detailTrigger = matterRow.getByRole('button', { name: 'View Matter details' });
-    await expect(detailTrigger).toBeVisible();
-    await detailTrigger.click();
+    await page.getByRole('button', { name: 'View Matter details' }).click();
     await expect(page.getByRole('heading', { name: scenario.trademark })).toBeVisible();
     const openResponse = page.waitForResponse(
       (response) =>
@@ -137,26 +121,86 @@ test.describe('TASK 024 real durable Professional Review path', () => {
       page.getByText('Ready for next step — no action executed', { exact: true })
     ).toBeVisible();
     await expect(page.getByText(/filingCreated: false/)).toBeVisible();
-    await page.reload();
-    await expect(
-      page.getByText('Ready for next step — no action executed', { exact: true })
-    ).toBeVisible();
-    await page.goBack();
-    await expect(page.getByText('Formal Matter · immutable creation lineage')).toBeVisible();
-
-    await page.goto(
-      `${lite}/?workspaceId=${scenario.workspaceId}&professionalReviewCaseId=${reviewId}#work-professional-review`
+    const completedReviewUrl = page.url();
+    const packageTrigger = page.getByRole('link', { name: 'Start or resume Document Package' });
+    await packageTrigger.focus();
+    await packageTrigger.click();
+    const createResponse = page.waitForResponse(
+      (r) => r.url().endsWith('/api/markreg/document-packages') && r.request().method() === 'POST'
     );
-    await expect(page.getByText(reviewId, { exact: false })).toBeVisible();
-    await page.evaluate((workspace) => {
-      const query = new URLSearchParams(location.search);
-      query.set('workspaceId', workspace);
-      history.pushState(null, '', `${location.pathname}?${query}${location.hash}`);
-      dispatchEvent(new PopStateEvent('popstate'));
-    }, scenario.otherWorkspaceId);
-    await expect(page).not.toHaveURL(/professionalReviewCaseId=/);
-    await expect(page.getByText('No professional review cases')).toBeVisible();
-    expect(observed.length).toBeGreaterThanOrEqual(7);
+    await page.getByRole('button', { name: 'Start Package' }).click();
+    let packageValue = (await (await createResponse).json()) as {
+      documentPackageId: string;
+      version: number;
+      status: string;
+      instructionEntries: Record<string, unknown>[];
+    };
+    expect(packageValue.status).toBe('DRAFT');
+    const packageId = packageValue.documentPackageId;
+    const evidenceResponse = page.waitForResponse((r) =>
+      r.url().endsWith(`/api/markreg/document-packages/${packageId}/documents`)
+    );
+    await page.getByRole('button', { name: 'Record evidence' }).click();
+    packageValue = await (await evidenceResponse).json();
+    const appendResponse = page.waitForResponse((r) =>
+      r.url().endsWith(`/api/markreg/document-packages/${packageId}/instructions`)
+    );
+    await page.getByRole('button', { name: 'Append instruction' }).click();
+    packageValue = await (await appendResponse).json();
+    const firstEntry = String(packageValue.instructionEntries[0]!.instructionEntryId);
+    await page
+      .getByLabel('Structured filing instruction')
+      .fill(`Replacement ${scenario.trademark}`);
+    const supersedeResponse = page.waitForResponse((r) =>
+      r.url().includes(`/instructions/${firstEntry}/supersede`)
+    );
+    await page.getByRole('button', { name: 'Supersede latest instruction' }).click();
+    packageValue = await (await supersedeResponse).json();
+    expect(packageValue.instructionEntries).toHaveLength(2);
+    const packageSaveResponse = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/api/markreg/document-packages/${packageId}`) &&
+        r.request().method() === 'PATCH'
+    );
+    await page.getByRole('button', { name: 'Save Draft' }).click();
+    packageValue = await (await packageSaveResponse).json();
+    const packageUrl = page.url();
+    await page.reload();
+    await expect(page.getByText(packageId, { exact: true })).toBeVisible();
+    const directPackage = await page.context().newPage();
+    await directPackage.goto(packageUrl);
+    await expect(directPackage.getByText(packageId, { exact: true })).toBeVisible();
+    await directPackage.close();
+    const readyResponse = page.waitForResponse((r) =>
+      r.url().endsWith(`/api/markreg/document-packages/${packageId}/mark-ready`)
+    );
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'Mark Ready for Preparation Lock' }).click();
+    packageValue = await (await readyResponse).json();
+    expect(packageValue.status).toBe('READY_FOR_PREPARATION_LOCK');
+    await expect(
+      page.getByText('Ready for Preparation Lock', { exact: true }).first()
+    ).toBeVisible();
+    await expect(page.getByText(/does not authorize filing/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save Draft' })).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(completedReviewUrl);
+    await expect(
+      page.getByRole('link', { name: 'Start or resume Document Package' })
+    ).toBeFocused();
+    await expect(page).not.toHaveURL(/documentPackageId=/);
+    await page.goto(packageUrl);
+    await expect(page.getByText(packageId, { exact: true })).toBeVisible();
+    await page.getByLabel('Workspace').selectOption(scenario.otherWorkspaceId);
+    await expect(page).toHaveURL(new RegExp(`workspaceId=${scenario.otherWorkspaceId}.*#matters`));
+    await expect(page).not.toHaveURL(/documentPackageId=/);
+    await expect(page.getByText(packageId, { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Matters', exact: true })).toBeVisible();
+    const isolatedRead = await page.request.get(
+      `${gateway}/api/markreg/document-packages/${packageId}`,
+      { headers: { 'x-markorbit-workspace-id': scenario.otherWorkspaceId } }
+    );
+    expect(isolatedRead.status()).toBe(404);
     if (test.info().project.name.includes('mobile')) {
       const dimensions = await page.evaluate(() => ({
         body: document.body.scrollWidth,

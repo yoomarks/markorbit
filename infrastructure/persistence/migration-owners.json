@@ -6,7 +6,8 @@
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
     "markreg_formal_matters": "@markorbit/markreg-service",
-    "execution_professional_reviews": "@markorbit/execution-service"
+    "execution_professional_reviews": "@markorbit/execution-service",
+    "markreg_document_packages": "@markorbit/markreg-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -14,6 +15,7 @@
     "0020_markreg_customer_confirmations": "@markorbit/markreg-service",
     "0021_markreg_matter_drafts": "@markorbit/markreg-service",
     "0022_markreg_formal_matters": "@markorbit/markreg-service",
-    "0023_execution_professional_reviews": "@markorbit/execution-service"
+    "0023_execution_professional_reviews": "@markorbit/execution-service",
+    "0024_markreg_document_packages": "@markorbit/markreg-service"
   }
 }

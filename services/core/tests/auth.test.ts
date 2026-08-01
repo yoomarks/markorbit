@@ -67,7 +67,12 @@ describe('authenticated runtime', () => {
       'workspace:read',
       'matter:read',
       'review:read',
-      'review:perform'
+      'review:perform',
+      'document-package:read',
+      'document-package:prepare',
+      'instruction-ledger:read',
+      'instruction-ledger:write',
+      'document-package:mark-ready'
     ]);
     expect(authorize(workspace, 'review:perform')).toBe(workspace);
   });

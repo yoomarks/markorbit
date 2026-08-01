@@ -23,6 +23,7 @@ import {
   PostgresCustomerConfirmationRepository,
   PostgresMatterDraftRepository,
   PostgresFormalMatterRepository,
+  PostgresDocumentPackageService,
   hashSnapshot
 } from '../services/markreg/src/index.js';
 import {
@@ -33,14 +34,16 @@ import {
   createRuntime as createExecution,
   PostgresProfessionalReviewRepository
 } from '../services/execution/src/index.js';
+import {
+  encodeInternalWorkspacePrincipal,
+  type ProfessionalReviewCase
+} from '../packages/contracts/src/index.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 if (!url)
-  throw new Error(
-    'MARKREG_TEST_DATABASE_URL is required for the Professional Review real runtime.'
-  );
+  throw new Error('MARKREG_TEST_DATABASE_URL is required for the Document Package real runtime.');
 const secret = 'task-024-browser-internal-service-secret';
-const origin = 'http://127.0.0.1:4471';
+const origin = 'http://127.0.0.1:4481';
 process.env.WEB_ORIGINS = origin;
 const scenarios = [
   {
@@ -85,6 +88,24 @@ const markregRuntime = () =>
     matterDraftRepository: new PostgresMatterDraftRepository(database.getPool()),
     formalMatterRepository: new PostgresFormalMatterRepository(database, database.getPool()),
     internalServiceSecret: secret,
+    executionUrl: 'http://127.0.0.1:4404',
+    documentPackageService: new PostgresDocumentPackageService(database, database.getPool(), {
+      async get(principal, reviewCaseId, correlationId) {
+        const response = await fetch(
+          `http://127.0.0.1:4404/v1/professional-review-cases/${encodeURIComponent(reviewCaseId)}`,
+          {
+            headers: {
+              'x-markorbit-internal-authorization': secret,
+              'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+              'x-markorbit-workspace-id': principal.workspaceId,
+              ...(correlationId ? { 'x-correlation-id': correlationId } : {})
+            }
+          }
+        );
+        if (!response.ok) throw new Error(`Review source ${response.status}`);
+        return ((await response.json()) as { reviewCase: ProfessionalReviewCase }).reviewCase;
+      }
+    }),
     now: () => at
   });
 let gateway: ReturnType<typeof createGateway>;
@@ -124,7 +145,7 @@ async function main() {
   );
   const matters: Record<string, string> = {};
   for (const scenario of scenarios) {
-    const suffix = `task024_${scenario.name}`;
+    const suffix = `task025_${scenario.name}`;
     const userId = `user_${suffix}`;
     const membershipId = `membership_${suffix}`;
     await workspaces.create({
@@ -140,7 +161,7 @@ async function main() {
     await users.create({
       userId,
       email: `${suffix}@example.test`,
-      displayName: `Task 024 ${scenario.name}`
+      displayName: `Task 025 ${scenario.name}`
     });
     await memberships.create({
       membershipId,
@@ -269,7 +290,7 @@ async function main() {
     authenticationClient: new HttpCoreAuthenticationClient('http://127.0.0.1:4401', secret),
     internalServiceSecret: secret,
     milestoneTestRuntime: true,
-    fixtureUsers: { task024Desktop: 'user_task024_desktop', task024Mobile: 'user_task024_mobile' },
+    fixtureUsers: { task025Desktop: 'user_task025_desktop', task025Mobile: 'user_task025_mobile' },
     csrfSecret: 'task-024-browser-csrf-secret',
     allowedOrigins: [origin]
   });
@@ -283,12 +304,12 @@ async function main() {
       '--host',
       '127.0.0.1',
       '--port',
-      '4471',
+      '4481',
       '--strictPort'
     ],
     { env: { ...process.env, VITE_LITE_GATEWAY_URL: 'http://127.0.0.1:4400' }, stdio: 'inherit' }
   );
-  process.stdout.write(`TASK024_READY ${JSON.stringify({ scenarios, matters })}\n`);
+  process.stdout.write(`TASK025_READY ${JSON.stringify({ scenarios, matters })}\n`);
 }
 async function stop() {
   vite?.kill('SIGTERM');

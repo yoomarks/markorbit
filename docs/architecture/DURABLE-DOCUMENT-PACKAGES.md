@@ -1,0 +1,13 @@
+# Durable Document Package and Instruction Ledger
+
+TASK 025 preserves the frozen Milestone 2 ownership boundary: MarkReg owns the Document Package and its append-only Instruction Ledger. Core owns Sessions and Workspace Principals, Execution owns Professional Review, and MarkReg validates the completed Review through its service contract. Gateway and Lite never read owner tables.
+
+Migration `0024_markreg_document_packages` adds Workspace-scoped `document_packages`, `document_package_items`, `document_instruction_entries`, `document_package_commands`, and `document_package_audit`. There are deliberately no cross-database foreign keys and no binary payload column. A Package captures the exact Formal Matter version/hash and completed Review version/decision fingerprint rather than consulting a later mutable Matter Draft.
+
+The durable lifecycle is exactly `DRAFT` to `READY_FOR_PREPARATION_LOCK`. Readiness records the exact Package version and canonical evidence SHA-256. It creates no Preparation Lock, Filing Authorization, Execution Release, filing task, or submission. Ready rows are terminal for ordinary draft commands; TASK 026 may consume the exact ready version but is not implemented here.
+
+Every mutation is authorized with the Core-derived Workspace Principal and its specific document or instruction permission. The owner scopes every query by Workspace, uses the expected Package version for optimistic compare-and-swap, and records command replay evidence and audit evidence in the same transaction. An identical idempotency replay returns its recorded response; different canonical request evidence for the same key conflicts. Instruction replacements append a new monotonically sequenced entry with `supersedes_entry_id`; prior entries are never updated or deleted.
+
+## Lite interaction contract
+
+The user is a permitted Workspace preparer whose job is to assemble evidence from an immutable completed Review and hand off a ready Package for a later Preparation Lock. The existing Documents and Instructions information architecture presents source lineage, status/version, required-document checklist, evidence editor, and chronological Instruction Ledger. Desktop keeps context and preparation side-by-side; mobile uses a single column without horizontal scrolling. Loading, empty/partial, forbidden, missing, conflict, dependency unavailable, success, and terminal ready states remain distinct. Status is announced as **Ready for Preparation Lock**, never as filing approval or submission. Refresh and direct URL reload owner state; Back returns to Matter context; Workspace switching discards incompatible selection.

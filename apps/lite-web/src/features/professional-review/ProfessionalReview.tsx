@@ -84,6 +84,7 @@ export function ProfessionalReview({
       <ReviewDetail
         value={current}
         client={resolvedClient}
+        workspaceId={workspaceId}
         save={save}
         onBack={() => {
           setSelected(undefined);
@@ -150,20 +151,27 @@ function ReviewDetail({
   value,
   client,
   save,
-  onBack
+  onBack,
+  workspaceId
 }: {
   value: ProfessionalReviewCase;
   client: ProfessionalReviewClient;
   save: (value: ProfessionalReviewCase) => void;
   onBack: () => void;
+  workspaceId: string;
 }) {
   const [rationale, setRationale] = useState('');
   const [professionalFinding, setProfessionalFinding] = useState('');
+  const packageTrigger = useRef<HTMLAnchorElement>(null);
   const blocking = value.checklist.some(
     (item) => item.blocking && !['PASS', 'NOT_APPLICABLE'].includes(item.status)
   );
   const claimed = value.assignment.status === 'CLAIMED';
   const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
+  const restoreFocus = (history.state as { restoreFocus?: string } | null)?.restoreFocus;
+  useEffect(() => {
+    if (complete && restoreFocus === 'document-package-trigger') packageTrigger.current?.focus();
+  }, [complete, restoreFocus]);
   return (
     <section>
       <Button variant="secondary" onClick={onBack}>
@@ -266,6 +274,13 @@ function ReviewDetail({
             orderCreated: false · paymentCreated: false · formalMatterCreated: false ·
             providerAppointed: false · filingCreated: false · customerMessageSent: false
           </Alert>
+          <a
+            ref={packageTrigger}
+            onClick={() => history.replaceState({ restoreFocus: 'document-package-trigger' }, '')}
+            href={`/?documentPackageReviewCaseId=${encodeURIComponent(value.reviewCaseId)}&workspaceId=${encodeURIComponent(workspaceId)}${new URLSearchParams(window.location.search).get('otherWorkspaceId') ? `&otherWorkspaceId=${encodeURIComponent(new URLSearchParams(window.location.search).get('otherWorkspaceId')!)}` : ''}`}
+          >
+            Start or resume Document Package
+          </a>
           <a
             href={`http://127.0.0.1:4372/?professionalReviewCaseId=${encodeURIComponent(value.reviewCaseId)}`}
           >

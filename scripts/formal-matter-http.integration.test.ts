@@ -1,10 +1,6 @@
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  ManagedDatabase,
-  loadMigrationsForOwner,
-  migrate
-} from '../packages/persistence/dist/index.js';
+import { ManagedDatabase } from '../packages/persistence/dist/index.js';
 import {
   AuthenticationService,
   InMemoryMembershipRepository,
@@ -25,6 +21,10 @@ import {
   FormalMatterService,
   hashSnapshot
 } from '../services/markreg/dist/index.js';
+import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from '../services/markreg/tests/support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL,
   required = process.env.MARKREG_POSTGRES_TEST_REQUIRED === '1';
@@ -45,7 +45,7 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'markreg_formal_matter_http_test'
+    migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
   });
   const users = new InMemoryUserRepository(),
     workspaces = new InMemoryWorkspaceRepository(),
@@ -59,10 +59,12 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     clock: () => authenticationNow
   });
   const core = createCore({ port: 0, authentication: auth, internalServiceSecret: secret });
-  let markreg: ReturnType<typeof createMarkReg>,
-    gateway: ReturnType<typeof createGateway>,
+  let markreg: ReturnType<typeof createMarkReg> | undefined,
+    gateway: ReturnType<typeof createGateway> | undefined,
     markregPort = 0,
-    base = '';
+    base = '',
+    databaseStarted = false,
+    coreStarted = false;
   const cookies: Record<string, string> = {};
   const csrf: Record<string, string> = {};
   const confirmations = () => new PostgresCustomerConfirmationRepository(database.getPool());
@@ -184,23 +186,13 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
   }
   beforeAll(async () => {
     await database.start();
+    databaseStarted = true;
     const pool = database.getPool();
-    await pool.query(
-      'DROP TABLE IF EXISTS formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE'
-    );
-    const history = await pool.query<{ migration_history: string | null }>(
-      "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
-    );
-    if (history.rows[0]?.migration_history)
-      await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace=$1', [
-        'markreg_formal_matter_http_test'
-      ]);
-    const owned = await loadMigrationsForOwner(
-      path.resolve('infrastructure/persistence/migrations'),
-      path.resolve('infrastructure/persistence/migration-owners.json'),
-      '@markorbit/markreg-service'
-    );
-    await migrate(pool, 'markreg_formal_matter_http_test', owned);
+    await resetAndMigrateMarkRegTestDatabase({
+      pool,
+      migrationsDirectory: path.resolve('infrastructure/persistence/migrations'),
+      migrationOwners: path.resolve('infrastructure/persistence/migration-owners.json')
+    });
     await workspaces.create({ workspaceId, name: 'Formal Matter HTTP', slug: 'formal-http' });
     await workspaces.create({ workspaceId: otherWorkspaceId, name: 'Other', slug: 'other-http' });
     for (const role of ['WORKSPACE_ADMIN', 'MATTER_MANAGER', 'REVIEWER', 'READ_ONLY']) {
@@ -222,6 +214,7 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
       role: 'WORKSPACE_ADMIN'
     });
     await core.start();
+    coreStarted = true;
     markreg = runtime(0);
     await markreg.start();
     markregPort = markreg.listeningPort!;
@@ -260,10 +253,20 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     }
   });
   afterAll(async () => {
-    await gateway.stop();
-    await markreg.stop();
-    await core.stop();
-    await database.close();
+    const errors: unknown[] = [];
+    for (const stop of [
+      gateway ? () => gateway!.stop() : undefined,
+      markreg ? () => markreg!.stop() : undefined,
+      coreStarted ? () => core.stop() : undefined,
+      databaseStarted ? () => database.close() : undefined
+    ])
+      if (stop)
+        try {
+          await stop();
+        } catch (error) {
+          errors.push(error);
+        }
+    if (errors.length) throw new AggregateError(errors, 'Formal Matter HTTP cleanup failed.');
   });
   it('permits Admin and Matter Manager, reloads, replays, and proves no downstream authority objects', async () => {
     for (const role of ['admin', 'manager']) {
@@ -482,7 +485,7 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
         sourceMatterDraftId: string;
       };
     };
-    await markreg.stop();
+    await markreg!.stop();
     markreg = runtime(markregPort);
     await markreg.start();
     const list = await fetch(
@@ -501,7 +504,7 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
     expect(await read.json()).toMatchObject({ formalMatter: value.formalMatter });
   });
   it('returns 503, not conflict, while MarkReg is unavailable', async () => {
-    await markreg.stop();
+    await markreg!.stop();
     const response = await fetch(`${base}/api/markreg/formal-matters/missing`, {
       headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
     });
@@ -515,7 +518,7 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
       headers: { cookie: cookies.admin!, 'x-markorbit-workspace-id': workspaceId }
     });
     expect(unavailable.status).toBe(503);
-    await markreg.stop();
+    await markreg!.stop();
     await database.start();
     markreg = runtime(markregPort);
     await markreg.start();

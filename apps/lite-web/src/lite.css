@@ -131,6 +131,30 @@
     width: 100%;
   }
 }
+.package-workspace {
+  width: min(1180px, 100%);
+  margin-inline: auto;
+  padding: var(--mo-space-lg);
+  overflow-x: hidden;
+}
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-lg);
+}
+.package-item {
+  display: grid;
+  gap: var(--mo-space-sm);
+  min-width: 0;
+  padding-block: var(--mo-space-md);
+  border-bottom: 1px solid var(--mo-color-border, #d9dee8);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .package-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 640px) {
   .mo-shell:has(.lite-workspace) {
     grid-template-columns: minmax(0, 1fr);

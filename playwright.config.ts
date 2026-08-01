@@ -8,7 +8,8 @@ export default defineConfig({
   testIgnore: [
     /milestone-001-real-runtime\.spec\.ts/,
     /lite-matter-real-runtime\.spec\.ts/,
-    /professional-review-real-runtime\.spec\.ts/
+    /professional-review-real-runtime\.spec\.ts/,
+    /document-package-real-runtime\.spec\.ts/
   ],
   outputDir: 'test-results',
   fullyParallel: true,

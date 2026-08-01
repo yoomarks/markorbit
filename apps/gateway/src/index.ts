@@ -204,6 +204,55 @@ export function createRuntime(options: GatewayOptions = {}) {
       return mapAuthentication(error);
     }
   };
+  const documentPackage = async (r: JsonRequest, mutation: boolean) => {
+    if (!authenticationClient) {
+      if (
+        milestoneTestRuntime ||
+        !(options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+      )
+        return forward(r, r.path.replace('/api/markreg', '/v1'));
+      throw new HttpError(
+        503,
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Authentication service is unavailable.',
+        true
+      );
+    }
+    try {
+      const body = record(r.body ?? {});
+      const workspaceId =
+        typeof body.workspaceId === 'string'
+          ? body.workspaceId
+          : r.headers['x-markorbit-workspace-id'];
+      if (!workspaceId)
+        throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
+      if (mutation) {
+        const user = await authenticationClient.resolve(token(r), correlation(r));
+        requireTrustedOrigin(r.headers.origin, allowedOrigins);
+        validateCsrf(user.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
+      }
+      const principal = await authenticationClient.resolveWorkspace(
+        token(r),
+        workspaceId,
+        correlation(r)
+      );
+      const allowed = mutation
+        ? ([
+            'document-package:prepare',
+            'instruction-ledger:write',
+            'document-package:mark-ready'
+          ] as const)
+        : (['document-package:read', 'instruction-ledger:read'] as const);
+      if (!allowed.some((permission) => principal.permissions.includes(permission)))
+        throw new AuthenticationError(
+          'PERMISSION_DENIED',
+          'Document Package permission is required.'
+        );
+      return forward(r, r.path.replace('/api/markreg', '/v1'), principal);
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
   const forwardReview = async (r: JsonRequest, principal?: WorkspacePrincipal) => {
     const suffix = r.path.replace('/api/lite', '/v1');
     try {
@@ -627,7 +676,14 @@ export function createRuntime(options: GatewayOptions = {}) {
             ['GET', '/api/markreg/document-packages'],
             ['POST', '/api/markreg/document-packages'],
             ['GET', '/api/markreg/document-packages/:documentPackageId'],
+            ['PATCH', '/api/markreg/document-packages/:documentPackageId'],
             ['POST', '/api/markreg/document-packages/:documentPackageId/documents'],
+            ['POST', '/api/markreg/document-packages/:documentPackageId/instructions'],
+            [
+              'POST',
+              '/api/markreg/document-packages/:documentPackageId/instructions/:instructionEntryId/supersede'
+            ],
+            ['POST', '/api/markreg/document-packages/:documentPackageId/mark-ready'],
             [
               'POST',
               '/api/markreg/document-packages/:documentPackageId/documents/:documentItemId/supersede'
@@ -658,7 +714,10 @@ export function createRuntime(options: GatewayOptions = {}) {
         ).map(([method, path]): JsonRoute => ({
           method,
           path,
-          handle: (r: JsonRequest) => forward(r, r.path.replace('/api/markreg', '/v1'))
+          handle: (r: JsonRequest) =>
+            path.startsWith('/api/markreg/document-packages')
+              ? documentPackage(r, method !== 'GET')
+              : forward(r, r.path.replace('/api/markreg', '/v1'))
         })),
         ...[
           '/api/lite/professional-review-cases',

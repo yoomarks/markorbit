@@ -29,17 +29,42 @@ const matrix: Record<Role, readonly Permission[]> = {
     'matter:create',
     'matter:manage',
     'review:read',
-    'review:perform'
+    'review:perform',
+    'document-package:read',
+    'document-package:prepare',
+    'instruction-ledger:read',
+    'instruction-ledger:write',
+    'document-package:mark-ready'
   ],
-  REVIEWER: ['workspace:read', 'matter:read', 'review:read', 'review:perform'],
-  READ_ONLY: ['workspace:read', 'matter:read', 'review:read']
+  REVIEWER: [
+    'workspace:read',
+    'matter:read',
+    'review:read',
+    'review:perform',
+    'document-package:read',
+    'document-package:prepare',
+    'instruction-ledger:read',
+    'instruction-ledger:write',
+    'document-package:mark-ready'
+  ],
+  READ_ONLY: [
+    'workspace:read',
+    'matter:read',
+    'review:read',
+    'document-package:read',
+    'instruction-ledger:read'
+  ]
 };
+export const permissionsForRole = (role: Role): readonly Permission[] => matrix[role];
 const mutations = new Set<Permission>([
   'workspace:manage',
   'membership:manage',
   'matter:create',
   'matter:manage',
-  'review:perform'
+  'review:perform',
+  'document-package:prepare',
+  'instruction-ledger:write',
+  'document-package:mark-ready'
 ]);
 export function hasPermission(
   role: string,

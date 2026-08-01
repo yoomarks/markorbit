@@ -504,6 +504,7 @@ export type DocumentPackageStatus =
   | 'DRAFT'
   | 'NEEDS_DOCUMENTS'
   | 'READY_FOR_CUSTOMER_CONFIRMATION'
+  | 'READY_FOR_PREPARATION_LOCK'
   | 'LOCKED_FOR_PREPARATION'
   | 'STALE'
   | 'WITHDRAWN';
@@ -592,6 +593,14 @@ export interface DocumentItem {
   validationChecks: ReadonlyArray<Readonly<DocumentValidationCheck>>;
   createdAt: string;
   updatedAt: string;
+  /** Durable evidence metadata used by the owner without storing raw file bytes. */
+  displayName?: string;
+  evidenceType?: string;
+  evidenceFingerprint?: string;
+  verificationStatus?: string;
+  structuredNote?: Readonly<Record<string, unknown>>;
+  createdBy?: MarkOrbitId;
+  updatedBy?: MarkOrbitId;
 }
 export interface DocumentPackage {
   schemaVersion: 1;
@@ -613,6 +622,69 @@ export interface DocumentPackage {
   createdAt: string;
   updatedAt: string;
   lockedAt?: string;
+  /** TASK 025 durable source lineage. Legacy fixture packages omit these fields. */
+  workspaceId?: string;
+  formalMatterId?: FormalMatterId;
+  sourceFormalMatterVersion?: number;
+  sourceFormalMatterHash?: string;
+  sourceReviewVersion?: number;
+  sourceCompletedDecisionId?: string;
+  sourceCompletedDecisionHash?: string;
+  createdBy?: MarkOrbitId;
+  updatedBy?: MarkOrbitId;
+  readyAt?: string;
+  readyBy?: MarkOrbitId;
+  canonicalEvidenceHash?: string;
+}
+export interface DurableDocumentEvidenceInput {
+  requirementKey: string;
+  documentType: string;
+  displayName: string;
+  evidenceType: 'FILE_REFERENCE' | 'EXTERNAL_REFERENCE';
+  originalFileName?: string;
+  mediaType?: string;
+  sizeBytes?: number;
+  checksum: string;
+  storageReference?: string;
+  verificationStatus: 'RECORDED' | 'VERIFIED';
+  structuredNote?: Readonly<Record<string, unknown>>;
+}
+export interface DurableInstructionInput {
+  instructionType: string;
+  structuredPayload: Readonly<Record<string, unknown>>;
+  targetJurisdiction?: string;
+  targetClass?: string;
+  targetDocumentItemId?: string;
+  sourceReviewFindingId?: string;
+}
+export interface DurableDocumentPackageView {
+  documentPackageId: DocumentPackageId;
+  workspaceId: string;
+  formalMatterId: FormalMatterId;
+  sourceFormalMatterVersion: number;
+  sourceFormalMatterHash: string;
+  professionalReviewCaseId: ProfessionalReviewCaseId;
+  sourceReviewVersion: number;
+  sourceCompletedDecisionId: string;
+  sourceCompletedDecisionHash: string;
+  status: 'DRAFT' | 'READY_FOR_PREPARATION_LOCK';
+  version: number;
+  schemaVersion: 1;
+  requirements: readonly {
+    requirementKey: string;
+    displayName: string;
+    blocking: boolean;
+  }[];
+  draft: Readonly<Record<string, unknown>>;
+  documentItems: readonly Readonly<Record<string, unknown>>[];
+  instructionEntries: readonly Readonly<Record<string, unknown>>[];
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  readyAt?: string;
+  readyBy?: string;
+  canonicalEvidenceHash?: string;
 }
 export type CustomerInstructionLedgerStatus =
   'DRAFT' | 'CONFIRMED' | 'LOCKED_FOR_PREPARATION' | 'STALE' | 'WITHDRAWN';
@@ -659,6 +731,10 @@ export interface CustomerInstructionEntry {
   confirmedAt?: string;
   supersedesInstructionEntryId?: CustomerInstructionEntryId;
   evidence: ReadonlyArray<Readonly<CustomerInstructionEvidence>>;
+  sequence?: number;
+  actor?: MarkOrbitId;
+  canonicalFingerprint?: string;
+  sourceReviewFindingId?: string;
 }
 export interface CustomerInstructionLedger {
   schemaVersion: 1;

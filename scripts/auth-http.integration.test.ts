@@ -5,6 +5,7 @@ import {
   InMemorySessionRepository,
   InMemoryUserRepository,
   InMemoryWorkspaceRepository,
+  permissionsForRole,
   createRuntime as createCore
 } from '../services/core/dist/index.js';
 import { createRuntime as createGateway } from '../apps/gateway/dist/index.js';
@@ -125,12 +126,18 @@ describe('real Core and Gateway authentication HTTP', () => {
     const context = await fetch(`${base}/api/workspaces/${ids.workspace}/context`, {
       headers: { cookie }
     });
-    expect(await context.json()).toMatchObject({
+    const workspaceContext = (await context.json()) as {
+      workspaceId: string;
+      membershipId: string;
+      role: string;
+      permissions: string[];
+    };
+    expect(workspaceContext).toMatchObject({
       workspaceId: ids.workspace,
       membershipId: ids.membership,
-      role: 'REVIEWER',
-      permissions: ['workspace:read', 'matter:read', 'review:read', 'review:perform']
+      role: 'REVIEWER'
     });
+    expect(workspaceContext.permissions).toEqual(permissionsForRole('REVIEWER'));
   });
   it('rejects absent and invalid cookies', async () => {
     expect((await fetch(`${base}/api/auth/session`)).status).toBe(401);
