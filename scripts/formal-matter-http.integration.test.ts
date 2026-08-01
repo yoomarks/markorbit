@@ -18,6 +18,7 @@ import {
   PostgresCustomerConfirmationRepository,
   PostgresMatterDraftRepository,
   PostgresFormalMatterRepository,
+  PostgresMarkRegAuditRepository,
   FormalMatterService,
   hashSnapshot
 } from '../services/markreg/dist/index.js';
@@ -75,6 +76,7 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
       customerConfirmationRepository: confirmations(),
       matterDraftRepository: drafts(),
       formalMatterRepository: new PostgresFormalMatterRepository(database, database.getPool()),
+      auditRepository: new PostgresMarkRegAuditRepository(database.getPool()),
       internalServiceSecret: secret,
       now: () => at
     });
@@ -430,6 +432,17 @@ suite('real authenticated Formal Matter HTTP vertical slice', () => {
       body: JSON.stringify({ ...conflict.body, expectedMatterDraftVersion: 2 })
     });
     expect(reused.status).toBe(409);
+    const conflictEvidence = await database
+      .getPool()
+      .query(
+        "SELECT (SELECT count(*) FROM formal_matter_commands WHERE idempotency_key=$1) commands, (SELECT count(*) FROM formal_matter_audit WHERE formal_matter_id=(SELECT formal_matter_id FROM formal_matter_commands WHERE idempotency_key=$1)) successes, (SELECT count(*) FROM markreg_denial_audit WHERE reason_code='IDEMPOTENCY_KEY_REUSE' AND operation='FORMAL_MATTER_CREATE') denials",
+        [conflict.body.idempotencyKey]
+      );
+    expect(conflictEvidence.rows[0]).toMatchObject({
+      commands: '1',
+      successes: '1',
+      denials: '1'
+    });
     const stale = await create('admin', 'stale', { expectedMatterDraftVersion: 2 });
     expect(stale.response.status).toBe(409);
     const withdrawn = await seed('withdrawn', { withdrawn: true });

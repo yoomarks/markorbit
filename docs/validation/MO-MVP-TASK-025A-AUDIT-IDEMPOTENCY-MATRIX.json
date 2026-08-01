@@ -1,0 +1,653 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MO-MVP-TASK-025A",
+  "baselineSha": "baebb68867c036d357e187b904b9ba7c26886109",
+  "resolution": "TASK_025_APPROVED_SCOPE_CLOSED_BY_REMEDIATION",
+  "evidenceStatus": "AUDITED_BASELINE; commands must be rerun on final candidate",
+  "requirements": [
+    {
+      "requirementId": "R01",
+      "requirement": "append-only success audit",
+      "classification": "success audit",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [
+        "formal_matter_commands/formal_matter_audit",
+        "professional_review_commands/professional_review_audit",
+        "document_package_commands/document_package_audit"
+      ],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/execution/tests/professional-review-postgres.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts",
+        "services/markreg/tests/document-package-postgres.test.ts",
+        "services/markreg/tests/formal-matter-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "PARTIAL"
+    },
+    {
+      "requirementId": "R02",
+      "requirement": "append-only denial audit",
+      "classification": "denial audit",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "production source and migration absence; no documentation-only satisfaction",
+      "priorResult": "GAP"
+    },
+    {
+      "requirementId": "R03",
+      "requirement": "durable idempotency-key retention",
+      "classification": "idempotency evidence",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [
+        "formal_matter_commands/formal_matter_audit",
+        "professional_review_commands/professional_review_audit",
+        "document_package_commands/document_package_audit"
+      ],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/execution/tests/professional-review-postgres.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts",
+        "services/markreg/tests/document-package-postgres.test.ts",
+        "services/markreg/tests/formal-matter-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "PARTIAL"
+    },
+    {
+      "requirementId": "R04",
+      "requirement": "identical command replay after process restart",
+      "classification": "idempotency evidence",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "production source and migration absence; no documentation-only satisfaction",
+      "priorResult": "GAP"
+    },
+    {
+      "requirementId": "R05",
+      "requirement": "conflicting key reuse rejection",
+      "classification": "idempotency evidence",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [
+        "formal_matter_commands/formal_matter_audit",
+        "professional_review_commands/professional_review_audit",
+        "document_package_commands/document_package_audit"
+      ],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/execution/tests/professional-review-postgres.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts",
+        "services/markreg/tests/document-package-postgres.test.ts",
+        "services/markreg/tests/formal-matter-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "PARTIAL"
+    },
+    {
+      "requirementId": "R06",
+      "requirement": "atomic aggregate + command + audit transaction",
+      "classification": "idempotency evidence",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [
+        "formal_matter_commands/formal_matter_audit",
+        "professional_review_commands/professional_review_audit",
+        "document_package_commands/document_package_audit"
+      ],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/execution/tests/professional-review-postgres.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts",
+        "services/markreg/tests/document-package-postgres.test.ts",
+        "services/markreg/tests/formal-matter-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "PARTIAL"
+    },
+    {
+      "requirementId": "R07",
+      "requirement": "rollback with no partial evidence",
+      "classification": "idempotency evidence",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [
+        "formal_matter_commands/formal_matter_audit",
+        "professional_review_commands/professional_review_audit",
+        "document_package_commands/document_package_audit"
+      ],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/execution/tests/professional-review-postgres.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts",
+        "services/markreg/tests/document-package-postgres.test.ts",
+        "services/markreg/tests/formal-matter-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "PARTIAL"
+    },
+    {
+      "requirementId": "R08",
+      "requirement": "Workspace-scoped audit access",
+      "classification": "ordinary domain state / audit access",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "production source and migration absence; no documentation-only satisfaction",
+      "priorResult": "GAP"
+    },
+    {
+      "requirementId": "R09",
+      "requirement": "Gateway or authenticated service read boundary",
+      "classification": "ordinary domain state / audit access",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "production source and migration absence; no documentation-only satisfaction",
+      "priorResult": "GAP"
+    },
+    {
+      "requirementId": "R10",
+      "requirement": "immutable actor, command, source and timestamp evidence",
+      "classification": "ordinary domain state / audit access",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/execution/src/professional-review-postgres.ts",
+        "services/markreg/src/audit.ts",
+        "services/markreg/src/document-package.ts",
+        "services/markreg/src/formal-matter.ts"
+      ],
+      "migrationTables": [
+        "formal_matter_commands/formal_matter_audit",
+        "professional_review_commands/professional_review_audit",
+        "document_package_commands/document_package_audit"
+      ],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "PARTIAL"
+    },
+    {
+      "requirementId": "R11",
+      "requirement": "explicit process-local event-delivery limitation",
+      "classification": "process-local event fixtures",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "packages/events/src/index.ts",
+        "services/markreg/src/audit.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "SATISFIED"
+    },
+    {
+      "requirementId": "R12",
+      "requirement": "no outbox",
+      "classification": "process-local event fixtures",
+      "productionFiles": [
+        "infrastructure/persistence/migrations",
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "services/markreg/src/audit.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "SATISFIED"
+    },
+    {
+      "requirementId": "R13",
+      "requirement": "no reliable cross-service delivery claim",
+      "classification": "process-local event fixtures",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "packages/events/src/index.ts",
+        "services/markreg/src/audit.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "SATISFIED"
+    },
+    {
+      "requirementId": "R14",
+      "requirement": "no console logs treated as authoritative audit",
+      "classification": "diagnostic logs",
+      "productionFiles": [
+        "infrastructure/persistence/migrations/0025_markreg_audit_hardening.sql",
+        "scripts/validate-persistence-boundaries.mjs",
+        "services/markreg/src/audit.ts"
+      ],
+      "migrationTables": [],
+      "exactTests": [
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts"
+      ],
+      "exactCommand": "pnpm test:audit-idempotency:postgres && pnpm test:audit-idempotency:http && pnpm test:audit-idempotency:restart",
+      "result": "SATISFIED",
+      "remainingGap": "None within the authorized MarkReg/Platform remediation boundary.",
+      "evidenceBasis": "runtime tests/source inspection",
+      "priorResult": "SATISFIED"
+    }
+  ],
+  "durableBoundaries": [
+    {
+      "boundary": "Core User",
+      "ownerService": "Core",
+      "repositoryImplementation": "services/core/src/identity.ts",
+      "migrationTable": "0018 / users",
+      "commandIdempotencyTable": "none",
+      "auditTable": "none",
+      "successAuditBehavior": "none",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "entity/auth semantics; no audit scope",
+      "actorSource": "Core input/session resolution; no durable audit evidence",
+      "requestCorrelationId": "not stored as audit",
+      "idempotencyKeyFingerprint": "none",
+      "replayBehavior": "no claimed durable command replay",
+      "conflictBehavior": "ordinary repository constraints/validation; no command conflict evidence",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "no aggregate+command+audit transaction exists",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "not applicable",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/core/tests/identity-postgres.test.ts or services/core/tests/session-postgres.test.ts",
+      "exactCommand": "pnpm test:identity:postgres / pnpm test:auth:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    },
+    {
+      "boundary": "Core Workspace",
+      "ownerService": "Core",
+      "repositoryImplementation": "services/core/src/identity.ts",
+      "migrationTable": "0018 / workspaces",
+      "commandIdempotencyTable": "none",
+      "auditTable": "none",
+      "successAuditBehavior": "none",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core input/session resolution; no durable audit evidence",
+      "requestCorrelationId": "not stored as audit",
+      "idempotencyKeyFingerprint": "none",
+      "replayBehavior": "no claimed durable command replay",
+      "conflictBehavior": "ordinary repository constraints/validation; no command conflict evidence",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "no aggregate+command+audit transaction exists",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "not applicable",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/core/tests/identity-postgres.test.ts or services/core/tests/session-postgres.test.ts",
+      "exactCommand": "pnpm test:identity:postgres / pnpm test:auth:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    },
+    {
+      "boundary": "Core Membership",
+      "ownerService": "Core",
+      "repositoryImplementation": "services/core/src/identity.ts",
+      "migrationTable": "0018 / workspace_memberships",
+      "commandIdempotencyTable": "none",
+      "auditTable": "none",
+      "successAuditBehavior": "none",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core input/session resolution; no durable audit evidence",
+      "requestCorrelationId": "not stored as audit",
+      "idempotencyKeyFingerprint": "none",
+      "replayBehavior": "no claimed durable command replay",
+      "conflictBehavior": "ordinary repository constraints/validation; no command conflict evidence",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "no aggregate+command+audit transaction exists",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "not applicable",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/core/tests/identity-postgres.test.ts or services/core/tests/session-postgres.test.ts",
+      "exactCommand": "pnpm test:identity:postgres / pnpm test:auth:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    },
+    {
+      "boundary": "Core Session / Principal auth",
+      "ownerService": "Core",
+      "repositoryImplementation": "services/core/src/auth.ts",
+      "migrationTable": "0019 / sessions",
+      "commandIdempotencyTable": "none",
+      "auditTable": "none",
+      "successAuditBehavior": "none",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "entity/auth semantics; no audit scope",
+      "actorSource": "Core input/session resolution; no durable audit evidence",
+      "requestCorrelationId": "not stored as audit",
+      "idempotencyKeyFingerprint": "none",
+      "replayBehavior": "no claimed durable command replay",
+      "conflictBehavior": "ordinary repository constraints/validation; no command conflict evidence",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "no aggregate+command+audit transaction exists",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "not applicable",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/core/tests/identity-postgres.test.ts or services/core/tests/session-postgres.test.ts",
+      "exactCommand": "pnpm test:identity:postgres / pnpm test:auth:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    },
+    {
+      "boundary": "Customer Confirmation",
+      "ownerService": "MarkReg",
+      "repositoryImplementation": "services/markreg/src/customer-confirmation.ts",
+      "migrationTable": "0020 / customer_confirmations",
+      "commandIdempotencyTable": "none",
+      "auditTable": "none",
+      "successAuditBehavior": "none",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core-derived Principal for authenticated service commands",
+      "requestCorrelationId": "not stored as audit",
+      "idempotencyKeyFingerprint": "none",
+      "replayBehavior": "no claimed durable command replay",
+      "conflictBehavior": "ordinary repository constraints/validation; no command conflict evidence",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "no aggregate+command+audit transaction exists",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "not applicable",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/markreg/tests/customer-confirmation-postgres.test.ts",
+      "exactCommand": "pnpm test:customer-confirmation:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    },
+    {
+      "boundary": "Matter Draft",
+      "ownerService": "MarkReg",
+      "repositoryImplementation": "services/markreg/src/matter-draft.ts",
+      "migrationTable": "0021 / matter_drafts",
+      "commandIdempotencyTable": "none",
+      "auditTable": "none",
+      "successAuditBehavior": "none",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core-derived Principal for authenticated service commands",
+      "requestCorrelationId": "not stored as audit",
+      "idempotencyKeyFingerprint": "none",
+      "replayBehavior": "no claimed durable command replay",
+      "conflictBehavior": "ordinary repository constraints/validation; no command conflict evidence",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "no aggregate+command+audit transaction exists",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "not applicable",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/markreg/tests/customer-confirmation-postgres.test.ts",
+      "exactCommand": "pnpm test:customer-confirmation:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    },
+    {
+      "boundary": "Formal Matter + source snapshot",
+      "ownerService": "MarkReg",
+      "repositoryImplementation": "services/markreg/src/formal-matter.ts",
+      "migrationTable": "0022 / formal_matters",
+      "commandIdempotencyTable": "formal_matter_commands",
+      "auditTable": "formal_matter_audit",
+      "successAuditBehavior": "atomic append on governed command",
+      "denialAuditBehavior": "bounded MarkReg governance denial append; separate from authoritative success audit",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core-derived Principal for authenticated service commands",
+      "requestCorrelationId": "stored only by Formal Matter and Document Package success audits",
+      "idempotencyKeyFingerprint": "durable workspace key + fingerprint",
+      "replayBehavior": "repository replay exists; selected tests reconstruct objects, not listeners",
+      "conflictBehavior": "typed conflict; no denial audit",
+      "restartEvidence": "actual listener replacement covered by required HTTP suites",
+      "rollbackEvidence": "covered for selected success paths",
+      "queryReadBoundary": "GET /v1/audit-records behind Gateway GET /api/markreg/audit-records and audit:read",
+      "retentionBehavior": "no cleanup/expiry for command or audit rows",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/markreg/tests/formal-matter-postgres.test.ts",
+      "exactCommand": "pnpm test:formal-matter:postgres",
+      "result": "SATISFIED",
+      "remainingGap": "None within authorized remediation."
+    },
+    {
+      "boundary": "Document Package + document evidence",
+      "ownerService": "MarkReg",
+      "repositoryImplementation": "services/markreg/src/document-package.ts",
+      "migrationTable": "0024 / document_packages + document_package_items",
+      "commandIdempotencyTable": "document_package_commands",
+      "auditTable": "document_package_audit",
+      "successAuditBehavior": "atomic append on governed command",
+      "denialAuditBehavior": "bounded MarkReg governance denial append; separate from authoritative success audit",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core-derived Principal for authenticated service commands",
+      "requestCorrelationId": "stored only by Formal Matter and Document Package success audits",
+      "idempotencyKeyFingerprint": "durable workspace key + fingerprint",
+      "replayBehavior": "repository replay exists; selected tests reconstruct objects, not listeners",
+      "conflictBehavior": "typed conflict; no denial audit",
+      "restartEvidence": "actual listener replacement covered by required HTTP suites",
+      "rollbackEvidence": "covered for selected success paths",
+      "queryReadBoundary": "GET /v1/audit-records behind Gateway GET /api/markreg/audit-records and audit:read",
+      "retentionBehavior": "no cleanup/expiry for command or audit rows",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/markreg/tests/document-package-postgres.test.ts",
+      "exactCommand": "pnpm test:document-package:postgres",
+      "result": "SATISFIED",
+      "remainingGap": "None within authorized remediation."
+    },
+    {
+      "boundary": "Instruction Ledger",
+      "ownerService": "MarkReg",
+      "repositoryImplementation": "services/markreg/src/document-package.ts",
+      "migrationTable": "0024 / document_instruction_entries",
+      "commandIdempotencyTable": "document_package_commands",
+      "auditTable": "document_package_audit",
+      "successAuditBehavior": "atomic append on governed command",
+      "denialAuditBehavior": "bounded MarkReg governance denial append; separate from authoritative success audit",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core-derived Principal for authenticated service commands",
+      "requestCorrelationId": "stored only by Formal Matter and Document Package success audits",
+      "idempotencyKeyFingerprint": "durable workspace key + fingerprint",
+      "replayBehavior": "repository replay exists; selected tests reconstruct objects, not listeners",
+      "conflictBehavior": "typed conflict; no denial audit",
+      "restartEvidence": "actual listener replacement covered by required HTTP suites",
+      "rollbackEvidence": "covered for selected success paths",
+      "queryReadBoundary": "GET /v1/audit-records behind Gateway GET /api/markreg/audit-records and audit:read",
+      "retentionBehavior": "no cleanup/expiry for command or audit rows",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/markreg/tests/document-package-postgres.test.ts",
+      "exactCommand": "pnpm test:document-package:postgres",
+      "result": "SATISFIED",
+      "remainingGap": "None within authorized remediation."
+    },
+    {
+      "boundary": "Professional Review",
+      "ownerService": "Execution",
+      "repositoryImplementation": "services/execution/src/professional-review-postgres.ts",
+      "migrationTable": "0023 / professional_review_cases",
+      "commandIdempotencyTable": "professional_review_commands",
+      "auditTable": "professional_review_audit",
+      "successAuditBehavior": "atomic append on governed command",
+      "denialAuditBehavior": "none",
+      "workspaceScope": "workspace predicate/composite key",
+      "actorSource": "Core-derived Principal for authenticated service commands",
+      "requestCorrelationId": "stored only by Formal Matter and Document Package success audits",
+      "idempotencyKeyFingerprint": "durable workspace key + fingerprint",
+      "replayBehavior": "repository replay exists; selected tests reconstruct objects, not listeners",
+      "conflictBehavior": "typed conflict; no denial audit",
+      "restartEvidence": "INSUFFICIENT: no stop/close/rebuild/start listener proof",
+      "rollbackEvidence": "covered for selected success paths",
+      "queryReadBoundary": "business state only; no authenticated audit query",
+      "retentionBehavior": "no cleanup/expiry for command or audit rows",
+      "eventDeliveryClaim": "process-local/fixture-local only; non-durable; no reliable delivery guarantee",
+      "exactTest": "services/execution/tests/professional-review-postgres.test.ts",
+      "exactCommand": "pnpm test:professional-review:postgres",
+      "result": "OUTSIDE_AUTHORIZED_REMEDIATION",
+      "remainingGap": "No command/audit contract claimed or owner-wide audit explicitly excluded."
+    }
+  ],
+  "totals": {
+    "requirements": 14,
+    "satisfied": 14,
+    "partial": 0,
+    "gap": 0
+  },
+  "selectedPostgresExecution": {
+    "firstRun": {
+      "files": 3,
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    "secondRun": {
+      "files": 3,
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    "command": "pnpm test:audit-idempotency:postgres"
+  },
+  "selectedHttpExecution": {
+    "files": 3,
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "command": "pnpm test:audit-idempotency:http"
+  },
+  "priorResolution": "TASK_025_APPROVED_SCOPE_BLOCKED",
+  "authorizationStatus": "TASK_025_APPROVED_SCOPE_REMEDIATION_AUTHORIZED",
+  "listenerRestartExecution": {
+    "files": 2,
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "command": "pnpm test:audit-idempotency:restart",
+    "scenarios": [
+      "Formal Matter actual listener replacement",
+      "Document Package listener and pool replacement"
+    ]
+  },
+  "authorizedScope": {
+    "owner": "MarkReg/Platform",
+    "commandFamilies": ["Formal Matter", "Document Package"],
+    "successEvidence": ["formal_matter_audit", "document_package_audit"],
+    "denialEvidence": "markreg_denial_audit",
+    "excluded": [
+      "Core-wide audit",
+      "Execution-wide denial audit",
+      "Customer Confirmation command model",
+      "Matter Draft command model"
+    ]
+  }
+}

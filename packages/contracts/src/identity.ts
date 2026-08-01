@@ -20,9 +20,45 @@ export const PERMISSIONS = [
   'document-package:prepare',
   'instruction-ledger:read',
   'instruction-ledger:write',
-  'document-package:mark-ready'
+  'document-package:mark-ready',
+  'audit:read'
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
+export const ROLE_PERMISSION_MATRIX = Object.freeze({
+  WORKSPACE_ADMIN: PERMISSIONS,
+  MATTER_MANAGER: Object.freeze([
+    'workspace:read',
+    'matter:read',
+    'matter:create',
+    'matter:manage',
+    'review:read',
+    'review:perform',
+    'document-package:read',
+    'document-package:prepare',
+    'instruction-ledger:read',
+    'instruction-ledger:write',
+    'document-package:mark-ready',
+    'audit:read'
+  ] as const),
+  REVIEWER: Object.freeze([
+    'workspace:read',
+    'matter:read',
+    'review:read',
+    'review:perform',
+    'document-package:read',
+    'document-package:prepare',
+    'instruction-ledger:read',
+    'instruction-ledger:write',
+    'document-package:mark-ready'
+  ] as const),
+  READ_ONLY: Object.freeze([
+    'workspace:read',
+    'matter:read',
+    'review:read',
+    'document-package:read',
+    'instruction-ledger:read'
+  ] as const)
+} satisfies Readonly<Record<Role, readonly Permission[]>>);
 
 export interface User {
   userId: string;

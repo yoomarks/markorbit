@@ -5,6 +5,7 @@ import {
   PostgresMatterDraftRepository,
   PostgresFormalMatterRepository,
   PostgresDocumentPackageService,
+  PostgresMarkRegAuditRepository,
   DocumentPackageError
 } from './index.js';
 import {
@@ -83,6 +84,7 @@ if (fixtureRuntime) {
     matterDraftRepository: new PostgresMatterDraftRepository(database.getPool()),
     formalMatterRepository: new PostgresFormalMatterRepository(database, database.getPool()),
     documentPackageService,
+    auditRepository: new PostgresMarkRegAuditRepository(database.getPool()),
     internalServiceSecret,
     executionUrl
   });

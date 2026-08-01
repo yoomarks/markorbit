@@ -9,7 +9,7 @@ import type {
   WorkspaceMembership,
   WorkspaceRepository
 } from '@markorbit/contracts';
-import { IdentityError, PERMISSIONS, ROLES } from '@markorbit/contracts';
+import { IdentityError, PERMISSIONS, ROLE_PERMISSION_MATRIX, ROLES } from '@markorbit/contracts';
 import type { QueryClient } from '@markorbit/persistence';
 
 export const normalizeEmail = (value: string) => value.trim().toLowerCase();
@@ -21,40 +21,8 @@ export const normalizeSlug = (value: string) =>
     .replace(/^-|-$/g, '');
 const clone = <T>(v: T): T => structuredClone(v);
 const validRole = (r: string): r is Role => (ROLES as readonly string[]).includes(r);
-const matrix: Record<Role, readonly Permission[]> = {
-  WORKSPACE_ADMIN: PERMISSIONS,
-  MATTER_MANAGER: [
-    'workspace:read',
-    'matter:read',
-    'matter:create',
-    'matter:manage',
-    'review:read',
-    'review:perform',
-    'document-package:read',
-    'document-package:prepare',
-    'instruction-ledger:read',
-    'instruction-ledger:write',
-    'document-package:mark-ready'
-  ],
-  REVIEWER: [
-    'workspace:read',
-    'matter:read',
-    'review:read',
-    'review:perform',
-    'document-package:read',
-    'document-package:prepare',
-    'instruction-ledger:read',
-    'instruction-ledger:write',
-    'document-package:mark-ready'
-  ],
-  READ_ONLY: [
-    'workspace:read',
-    'matter:read',
-    'review:read',
-    'document-package:read',
-    'instruction-ledger:read'
-  ]
-};
+
+const matrix = ROLE_PERMISSION_MATRIX;
 export const permissionsForRole = (role: Role): readonly Permission[] => matrix[role];
 const mutations = new Set<Permission>([
   'workspace:manage',
@@ -78,7 +46,7 @@ export function hasPermission(
   if (!validRole(role) || !(PERMISSIONS as readonly string[]).includes(permission)) return false;
   if (state.userStatus !== 'ACTIVE' || state.membershipStatus !== 'ACTIVE') return false;
   return (
-    matrix[role].includes(permission as Permission) &&
+    (matrix[role] as readonly Permission[]).includes(permission as Permission) &&
     !(state.workspaceStatus === 'ARCHIVED' && mutations.has(permission as Permission))
   );
 }

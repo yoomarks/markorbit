@@ -72,7 +72,11 @@
     "test:document-package:postgres": "pnpm build:document-package-deps && MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1 pnpm --filter @markorbit/markreg-service exec vitest run tests/document-package-postgres.test.ts",
     "test:document-package:http": "pnpm build:document-package-deps && MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1 pnpm exec vitest run scripts/document-package-http.integration.test.ts",
     "test:document-package:no-interception": "pnpm build:document-package-deps && node scripts/validate-document-package-no-interception.mjs",
-    "test:document-package:browser": "pnpm build:document-package-deps && pnpm test:document-package:no-interception && playwright test --config playwright.document-package-real-runtime.config.ts"
+    "test:document-package:browser": "pnpm build:document-package-deps && pnpm test:document-package:no-interception && playwright test --config playwright.document-package-real-runtime.config.ts",
+    "build:audit-idempotency-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/markreg-service... --filter=@markorbit/execution-service... --filter=@markorbit/gateway...",
+    "test:audit-idempotency:postgres": "pnpm build:audit-idempotency-deps && MARKREG_AUDIT_POSTGRES_REQUIRED=1 pnpm --filter @markorbit/markreg-service exec vitest run tests/audit-postgres.test.ts tests/formal-matter-postgres.test.ts tests/document-package-postgres.test.ts",
+    "test:audit-idempotency:http": "pnpm build:audit-idempotency-deps && MARKREG_AUDIT_HTTP_REQUIRED=1 pnpm exec vitest run scripts/audit-idempotency-http.integration.test.ts scripts/formal-matter-http.integration.test.ts scripts/document-package-http.integration.test.ts",
+    "test:audit-idempotency:restart": "pnpm build:audit-idempotency-deps && MARKREG_POSTGRES_TEST_REQUIRED=1 MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1 pnpm exec vitest run scripts/formal-matter-http.integration.test.ts scripts/document-package-http.integration.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

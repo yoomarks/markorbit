@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { describe, expect, it } from 'vitest';
-import { IdentityError, PERMISSIONS, ROLES } from '@markorbit/contracts';
+import { IdentityError, PERMISSIONS, ROLE_PERMISSION_MATRIX, ROLES } from '@markorbit/contracts';
 import {
   hasPermission,
   InMemoryMembershipRepository,
@@ -38,40 +37,9 @@ describe('role permission matrix', () => {
   for (const role of ROLES)
     for (const permission of PERMISSIONS)
       it(`${role} / ${permission}`, () => {
-        const expected = {
-          WORKSPACE_ADMIN: PERMISSIONS,
-          MATTER_MANAGER: [
-            'workspace:read',
-            'matter:read',
-            'matter:create',
-            'matter:manage',
-            'review:read',
-            'review:perform',
-            'document-package:read',
-            'document-package:prepare',
-            'instruction-ledger:read',
-            'instruction-ledger:write',
-            'document-package:mark-ready'
-          ],
-          REVIEWER: [
-            'workspace:read',
-            'matter:read',
-            'review:read',
-            'review:perform',
-            'document-package:read',
-            'document-package:prepare',
-            'instruction-ledger:read',
-            'instruction-ledger:write',
-            'document-package:mark-ready'
-          ],
-          READ_ONLY: [
-            'workspace:read',
-            'matter:read',
-            'review:read',
-            'document-package:read',
-            'instruction-ledger:read'
-          ]
-        }[role].includes(permission as never);
+        const expected = (
+          ROLE_PERMISSION_MATRIX[role] as readonly (typeof PERMISSIONS)[number][]
+        ).includes(permission);
         expect(
           hasPermission(role, permission, {
             userStatus: 'ACTIVE',

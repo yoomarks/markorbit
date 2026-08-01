@@ -35,6 +35,8 @@ jobs:
       AUTH_POSTGRES_TEST_REQUIRED: '1'
       MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
       MARKREG_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_AUDIT_POSTGRES_REQUIRED: '1'
+      MARKREG_AUDIT_HTTP_REQUIRED: '1'
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
@@ -82,6 +84,12 @@ jobs:
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:http
+      - run: pnpm test:audit-idempotency:postgres
+      - run: pnpm test:audit-idempotency:postgres
+      - run: pnpm test:audit-idempotency:http
+      - run: pnpm test:audit-idempotency:restart
+      - run: pnpm test:auth:http
+      - run: pnpm test:gateway-inventory
 
   professional-review-browser:
     runs-on: ubuntu-latest

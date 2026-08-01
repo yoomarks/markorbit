@@ -59,12 +59,21 @@ import {
   type FormalMatterRepository
 } from './formal-matter.js';
 import { DocumentPackageError, type PostgresDocumentPackageService } from './document-package.js';
+import {
+  MarkRegAuditError,
+  type MarkRegAuditOperation,
+  type MarkRegAuditQuery,
+  type MarkRegAuditTarget,
+  type MarkRegDenialReason,
+  type PostgresMarkRegAuditRepository
+} from './audit.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
 export * from './customer-confirmation.js';
 export * from './matter-draft.js';
 export * from './formal-matter.js';
 export * from './document-package.js';
+export * from './audit.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -261,6 +270,7 @@ export interface MarkRegOptions {
   formalMatterRepository?: FormalMatterRepository;
   internalServiceSecret?: string;
   documentPackageService?: PostgresDocumentPackageService;
+  auditRepository?: PostgresMarkRegAuditRepository;
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -441,6 +451,13 @@ export function createRuntime(options: MarkRegOptions = {}) {
       }
       if (error instanceof DocumentPackageError)
         throw new HttpError(error.status, error.code, error.message, error.retryable);
+      if (error instanceof MarkRegAuditError)
+        throw new HttpError(
+          error.code === 'INVALID_AUDIT_QUERY' ? 400 : 503,
+          error.code,
+          error.message,
+          error.code === 'PERSISTENCE_UNAVAILABLE'
+        );
       throw error;
     }
   };
@@ -470,6 +487,58 @@ export function createRuntime(options: MarkRegOptions = {}) {
     options.preparationRepository ?? new InMemoryPreparationRepository();
   const preparation = new PreparationService(preparationRepository, preparationSources, now);
   const durablePackages = options.documentPackageService;
+  const auditRepository = options.auditRepository;
+  const reasonFor = (error: unknown): MarkRegDenialReason | undefined => {
+    const code =
+      error instanceof FormalMatterError || error instanceof DocumentPackageError
+        ? error.code
+        : undefined;
+    if (code === 'PERMISSION_DENIED') return 'PERMISSION_DENIED';
+    if (code === 'WORKSPACE_MISMATCH') return 'CROSS_WORKSPACE_ACCESS';
+    if (code === 'IDEMPOTENCY_CONFLICT') return 'IDEMPOTENCY_KEY_REUSE';
+    if (code === 'STALE_SOURCE' || code === 'STALE_PACKAGE_VERSION') return 'STALE_VERSION';
+    if (code === 'PACKAGE_IMMUTABLE') return 'TERMINAL_STATE_MUTATION';
+    if (code === 'DUPLICATE_SOURCE' || code === 'SOURCE_INELIGIBLE')
+      return 'SOURCE_LINEAGE_CONFLICT';
+    return undefined;
+  };
+  const auditedMutation = async <T>(
+    principal: ReturnType<typeof durablePrincipal>,
+    operation: MarkRegAuditOperation,
+    targetType: MarkRegAuditTarget,
+    targetId: string | undefined,
+    idempotencyKey: string | undefined,
+    command: unknown,
+    correlationId: string | undefined,
+    work: () => Promise<T>
+  ): Promise<T> => {
+    try {
+      return await work();
+    } catch (error) {
+      const reasonCode = reasonFor(error);
+      if (!reasonCode || !auditRepository) throw error;
+      await auditRepository.appendDenial({
+        workspaceId: principal.workspaceId,
+        actorId: principal.userId,
+        actorMembershipId: principal.membershipId,
+        operation,
+        targetType,
+        ...(targetId ? { targetId } : {}),
+        reasonCode,
+        ...(correlationId ? { correlationId } : {}),
+        ...(idempotencyKey
+          ? {
+              idempotencyKeySha256: createHash('sha256').update(idempotencyKey).digest('hex')
+            }
+          : {}),
+        sourceCommandFingerprint: createHash('sha256')
+          .update(JSON.stringify(command ?? null))
+          .digest('hex'),
+        occurredAt: now()
+      });
+      throw error;
+    }
+  };
   const prepared = async (work: () => Promise<unknown>) => {
     try {
       return json(200, await work());
@@ -545,6 +614,91 @@ export function createRuntime(options: MarkRegOptions = {}) {
           }
         },
         {
+          method: 'GET',
+          path: '/v1/audit-records',
+          handle: (request) => {
+            if (!auditRepository)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Audit persistence is unavailable.',
+                true
+              );
+            const principal = durablePrincipal(request);
+            if (!principal.permissions.includes('audit:read'))
+              throw new HttpError(403, 'PERMISSION_DENIED', 'audit:read permission is required.');
+            const limit =
+              request.query.limit === undefined ? undefined : Number(request.query.limit);
+            return durable(async () => ({
+              ...(await auditRepository.list(principal.workspaceId, {
+                ...(request.query.kind
+                  ? { kind: request.query.kind as NonNullable<MarkRegAuditQuery['kind']> }
+                  : {}),
+                ...(request.query.targetType
+                  ? {
+                      targetType: request.query.targetType as NonNullable<
+                        MarkRegAuditQuery['targetType']
+                      >
+                    }
+                  : {}),
+                ...(request.query.targetId ? { targetId: request.query.targetId } : {}),
+                ...(request.query.reasonCode
+                  ? {
+                      reasonCode: request.query.reasonCode as NonNullable<
+                        MarkRegAuditQuery['reasonCode']
+                      >
+                    }
+                  : {}),
+                ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
+                ...(limit !== undefined ? { limit } : {})
+              }))
+            }));
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/audit-denials',
+          handle: (request) => {
+            if (!auditRepository)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Audit persistence is unavailable.',
+                true
+              );
+            const principal = durablePrincipal(request);
+            const body = request.body as {
+              operation: MarkRegAuditOperation;
+              targetType: MarkRegAuditTarget;
+              targetId?: string;
+              reasonCode: MarkRegDenialReason;
+              idempotencyKeySha256?: string;
+              sourceCommandFingerprint?: string;
+            };
+            return durable(() =>
+              auditRepository.appendDenial({
+                workspaceId: principal.workspaceId,
+                actorId: principal.userId,
+                actorMembershipId: principal.membershipId,
+                operation: body.operation,
+                targetType: body.targetType,
+                ...(body.targetId ? { targetId: body.targetId } : {}),
+                reasonCode: body.reasonCode,
+                ...(request.headers['x-correlation-id']
+                  ? { correlationId: request.headers['x-correlation-id'] }
+                  : {}),
+                ...(body.idempotencyKeySha256
+                  ? { idempotencyKeySha256: body.idempotencyKeySha256 }
+                  : {}),
+                ...(body.sourceCommandFingerprint
+                  ? { sourceCommandFingerprint: body.sourceCommandFingerprint }
+                  : {}),
+                occurredAt: now()
+              })
+            );
+          }
+        },
+        {
           method: 'POST',
           path: '/v1/document-packages',
           handle: (r) => {
@@ -557,17 +711,31 @@ export function createRuntime(options: MarkRegOptions = {}) {
               );
             const b = r.body as Record<string, unknown>;
             const text = (value: unknown) => (typeof value === 'string' ? value : '');
+            const principal = durablePrincipal(r);
+            const command = {
+              professionalReviewCaseId: text(b.professionalReviewCaseId),
+              expectedReviewVersion: Number(b.expectedReviewVersion),
+              expectedCompletedDecisionId: text(b.expectedCompletedDecisionId),
+              expectedCompletedDecisionHash: text(b.expectedCompletedDecisionHash),
+              idempotencyKey: r.headers['idempotency-key'] ?? ''
+            };
             return durable(() =>
-              durablePackages.createOrOpen(
-                durablePrincipal(r),
-                {
-                  professionalReviewCaseId: text(b.professionalReviewCaseId),
-                  expectedReviewVersion: Number(b.expectedReviewVersion),
-                  expectedCompletedDecisionId: text(b.expectedCompletedDecisionId),
-                  expectedCompletedDecisionHash: text(b.expectedCompletedDecisionHash),
-                  idempotencyKey: r.headers['idempotency-key'] ?? ''
-                },
-                r.headers['x-correlation-id']
+              auditedMutation(
+                principal,
+                'DOCUMENT_PACKAGE_CREATE',
+                'DOCUMENT_PACKAGE',
+                undefined,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.createOrOpen(
+                    principal,
+                    {
+                      ...command
+                    },
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
@@ -598,12 +766,24 @@ export function createRuntime(options: MarkRegOptions = {}) {
           handle: (r) => {
             if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
             const b = r.body as { expectedVersion: number; draft: Record<string, unknown> };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
-              durablePackages.updateDraft(
-                durablePrincipal(r),
-                r.params.documentPackageId!,
-                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
-                r.headers['x-correlation-id']
+              auditedMutation(
+                principal,
+                'DOCUMENT_PACKAGE_UPDATE_DRAFT',
+                'DOCUMENT_PACKAGE',
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.updateDraft(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
@@ -620,12 +800,24 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 )
               );
             const b = r.body as { expectedVersion: number; evidence: never };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
-              durablePackages.upsertEvidence(
-                durablePrincipal(r),
-                r.params.documentPackageId!,
-                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
-                r.headers['x-correlation-id']
+              auditedMutation(
+                principal,
+                'DOCUMENT_EVIDENCE_UPSERT',
+                'DOCUMENT_EVIDENCE',
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.upsertEvidence(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
@@ -636,12 +828,24 @@ export function createRuntime(options: MarkRegOptions = {}) {
           handle: (r) => {
             if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
             const b = r.body as { expectedVersion: number; instruction: never };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
-              durablePackages.appendInstruction(
-                durablePrincipal(r),
-                r.params.documentPackageId!,
-                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
-                r.headers['x-correlation-id']
+              auditedMutation(
+                principal,
+                'INSTRUCTION_APPEND',
+                'INSTRUCTION_LEDGER',
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.appendInstruction(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
@@ -652,13 +856,25 @@ export function createRuntime(options: MarkRegOptions = {}) {
           handle: (r) => {
             if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
             const b = r.body as { expectedVersion: number; instruction: never };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
-              durablePackages.supersedeInstruction(
-                durablePrincipal(r),
-                r.params.documentPackageId!,
-                r.params.instructionEntryId!,
-                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
-                r.headers['x-correlation-id']
+              auditedMutation(
+                principal,
+                'INSTRUCTION_SUPERSEDE',
+                'INSTRUCTION_LEDGER',
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.supersedeInstruction(
+                    principal,
+                    r.params.documentPackageId!,
+                    r.params.instructionEntryId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
@@ -669,12 +885,24 @@ export function createRuntime(options: MarkRegOptions = {}) {
           handle: (r) => {
             if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
             const b = r.body as { expectedVersion: number };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
-              durablePackages.markReady(
-                durablePrincipal(r),
-                r.params.documentPackageId!,
-                { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' },
-                r.headers['x-correlation-id']
+              auditedMutation(
+                principal,
+                'DOCUMENT_PACKAGE_MARK_READY',
+                'DOCUMENT_PACKAGE',
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.markReady(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
@@ -910,11 +1138,17 @@ export function createRuntime(options: MarkRegOptions = {}) {
                 'INVALID_REQUEST',
                 'Exact source versions and matching Idempotency-Key are required.'
               );
+            const principal = durablePrincipal(request);
             return durable(async () => ({
-              formalMatter: await formalMatters.create(
-                durablePrincipal(request),
+              formalMatter: await auditedMutation(
+                principal,
+                'FORMAL_MATTER_CREATE',
+                'FORMAL_MATTER',
+                undefined,
+                b.idempotencyKey,
                 b,
-                request.headers['x-correlation-id']
+                request.headers['x-correlation-id'],
+                () => formalMatters.create(principal, b, request.headers['x-correlation-id'])
               ),
               consequences: noAutomaticConsequences
             }));
