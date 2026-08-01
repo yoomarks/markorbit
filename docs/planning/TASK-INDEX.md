@@ -80,3 +80,5 @@
   - MarkReg-owned Matter Draft persistence, authenticated existing routes, optimistic concurrency and durable readiness
 - TASK 023 — Mo Lite durable Matter workspace (**implemented in Draft PR**)
   - Authenticated PostgreSQL-backed list/detail, URL recovery, Workspace isolation, and bounded Lite projection
+- TASK 024 — Durable Professional Review vertical slice (**implemented in Draft PR**)
+  - Execution-owned PostgreSQL Review Cases, exact-version drafts, immutable decisions, audit and authenticated Gateway boundary

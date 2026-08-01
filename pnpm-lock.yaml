@@ -317,6 +317,9 @@ importers:
       '@markorbit/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@markorbit/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       '@markorbit/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit

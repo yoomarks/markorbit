@@ -470,6 +470,13 @@ export interface ProfessionalReviewDecision {
 export interface ProfessionalReviewCase {
   schemaVersion: 1;
   reviewCaseId: ProfessionalReviewCaseId;
+  /** Durable owner scope. Legacy Milestone 1 fixtures omit these fields. */
+  workspaceId?: string;
+  formalMatterId?: FormalMatterId;
+  sourceFormalMatterVersion?: number;
+  sourceSnapshotSha256?: string;
+  /** Optimistic version of the Review Case (independent of source versions). */
+  version?: number;
   source: Readonly<MatterDraftReviewSnapshot>;
   status: ProfessionalReviewCaseStatus;
   priority: ProfessionalReviewPriority;
@@ -481,6 +488,8 @@ export interface ProfessionalReviewCase {
   evidence: ReadonlyArray<Readonly<ProfessionalReviewEvidence>>;
   informationRequest?: Readonly<InformationRequestDraft>;
   decision?: Readonly<ProfessionalReviewDecision>;
+  completedAt?: string;
+  completedBy?: MarkOrbitId;
 }
 
 /** Version 1 contracts for MarkReg-owned governed filing preparation. */

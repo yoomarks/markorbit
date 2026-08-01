@@ -15,6 +15,7 @@
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
     "@markorbit/events": "workspace:*",
+    "@markorbit/persistence": "workspace:*",
     "@markorbit/service-kit": "workspace:*"
   },
   "main": "./dist/index.js",

@@ -2,14 +2,18 @@ import { randomUUID } from 'node:crypto';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- HTTP request bodies are validated by the domain service and return typed errors. */
 import {
   parseExecutionCreateCommand,
+  parseInternalWorkspacePrincipal,
+  encodeInternalWorkspacePrincipal,
   type EventEnvelope,
   type ExecutionCreateCommand,
-  type ExecutionRecord
+  type ExecutionRecord,
+  type WorkspacePrincipal
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
 import type {
   MatterDraft,
+  FormalMatter,
   MatterDraftId,
   MatterDraftReviewSnapshot,
   ProfessionalReviewCaseId,
@@ -23,9 +27,11 @@ import {
   InMemoryProfessionalReviewRepository,
   ProfessionalReviewError,
   ProfessionalReviewService,
-  type MatterDraftReviewSource
+  type MatterDraftReviewSource,
+  type ProfessionalReviewRepository
 } from './professional-review.js';
 export * from './professional-review.js';
+export * from './professional-review-postgres.js';
 import {
   FilingGovernanceError,
   FilingGovernanceService,
@@ -63,6 +69,8 @@ export interface ExecutionOptions {
   publisher?: EventPublisher;
   now?: () => string;
   reviewRepository?: InMemoryProfessionalReviewRepository;
+  reviewRepositoryFactory?: (workspaceId: string) => ProfessionalReviewRepository;
+  internalServiceSecret?: string;
   matterDraftSource?: MatterDraftReviewSource;
   markRegUrl?: string;
   filingRepository?: InMemoryFilingGovernanceRepository;
@@ -81,6 +89,47 @@ export function createRuntime(options: ExecutionOptions = {}) {
     matterDraftSource,
     now
   );
+  const reviewPrincipal = (
+    request: { headers: Record<string, string | undefined> },
+    perform = false
+  ) => {
+    if (!options.reviewRepositoryFactory) return undefined;
+    const secret = options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
+    if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
+      throw new HttpError(
+        401,
+        'UNTRUSTED_INTERNAL_CALLER',
+        'Trusted internal authorization is required.'
+      );
+    let principal: WorkspacePrincipal;
+    try {
+      principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
+    } catch {
+      throw new HttpError(
+        401,
+        'INVALID_INTERNAL_PRINCIPAL',
+        'A trusted Workspace Principal is required.'
+      );
+    }
+    const permission = perform ? 'review:perform' : 'review:read';
+    if (!principal.permissions.includes(permission))
+      throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
+    return principal;
+  };
+  const reviewFor = (request: { headers: Record<string, string | undefined> }, perform = false) => {
+    if (!options.reviewRepositoryFactory) return review;
+    const principal = reviewPrincipal(request, perform)!;
+    const secret = options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET!;
+    return new ProfessionalReviewService(
+      options.reviewRepositoryFactory(principal.workspaceId),
+      httpFormalMatterReviewSource(
+        options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105',
+        principal,
+        secret
+      ),
+      now
+    );
+  };
   const filingRepository = options.filingRepository ?? new InMemoryFilingGovernanceRepository();
   const filing = new FilingGovernanceService(
     filingRepository as unknown as FilingAuthorizationRepository,
@@ -278,17 +327,34 @@ export function createRuntime(options: ExecutionOptions = {}) {
           method: 'POST',
           path: '/v1/professional-review-cases',
           handle: async (r) =>
-            mutation(() =>
-              review.create({
-                ...(r.body as any),
+            mutation(() => {
+              const principal = reviewPrincipal(r, true);
+              const body = r.body as any;
+              if (
+                options.reviewRepositoryFactory &&
+                (!body.formalMatterId ||
+                  !Number.isSafeInteger(body.sourceFormalMatterVersion) ||
+                  typeof body.sourceSnapshotSha256 !== 'string' ||
+                  !/^[0-9a-f]{64}$/.test(body.sourceSnapshotSha256))
+              )
+                throw new ProfessionalReviewError(
+                  'INVALID_REVIEW_EVIDENCE',
+                  'Exact Formal Matter identity, version, and hash are required.',
+                  422
+                );
+              return reviewFor(r, true).create({
+                ...body,
+                ...(principal
+                  ? { workspaceId: principal.workspaceId, requestedBy: principal.userId }
+                  : {}),
                 idempotencyKey: r.headers['idempotency-key'] ?? ''
-              })
-            )
+              });
+            })
         },
         {
           method: 'GET',
           path: '/v1/professional-review-cases',
-          handle: async () => json(200, { reviewCases: await review.list() })
+          handle: async (r) => json(200, { reviewCases: await reviewFor(r).list() })
         },
         {
           method: 'GET',
@@ -296,7 +362,9 @@ export function createRuntime(options: ExecutionOptions = {}) {
           handle: async (r) => {
             try {
               return json(200, {
-                reviewCase: await review.get(r.params.reviewCaseId as ProfessionalReviewCaseId)
+                reviewCase: await reviewFor(r).get(
+                  r.params.reviewCaseId as ProfessionalReviewCaseId
+                )
               });
             } catch (e) {
               if (e instanceof ProfessionalReviewError)
@@ -309,38 +377,43 @@ export function createRuntime(options: ExecutionOptions = {}) {
           method: 'POST',
           path: '/v1/professional-review-cases/:reviewCaseId/claim',
           handle: (r) =>
-            mutation(() =>
-              review.claim(
+            mutation(() => {
+              const principal = reviewPrincipal(r, true);
+              return reviewFor(r, true).claim(
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
-                (r.body as any).reviewerId
-              )
-            )
+                principal?.userId ?? (r.body as any).reviewerId,
+                (r.body as any).expectedVersion
+              );
+            })
         },
         {
           method: 'PATCH',
           path: '/v1/professional-review-cases/:reviewCaseId/checklist',
           handle: (r) =>
-            mutation(() =>
-              review.updateChecklist(
+            mutation(() => {
+              const principal = reviewPrincipal(r, true);
+              return reviewFor(r, true).updateChecklist(
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
-                (r.body as any).reviewerId,
-                (r.body as any).updates
-              )
-            )
+                principal?.userId ?? (r.body as any).reviewerId,
+                (r.body as any).updates,
+                (r.body as any).expectedVersion
+              );
+            })
         },
         {
           method: 'POST',
           path: '/v1/professional-review-cases/:reviewCaseId/request-information',
           handle: (r) =>
             mutation(() =>
-              review.requestInformation(
+              reviewFor(r, true).requestInformation(
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
-                (r.body as any).reviewerId,
+                reviewPrincipal(r, true)?.userId ?? (r.body as any).reviewerId,
                 {
                   requestedFields: (r.body as any).requestedFields,
                   reason: (r.body as any).reason,
                   reviewerNote: (r.body as any).reviewerNote
-                }
+                },
+                (r.body as any).expectedVersion
               )
             )
         },
@@ -348,20 +421,25 @@ export function createRuntime(options: ExecutionOptions = {}) {
           method: 'POST',
           path: '/v1/professional-review-cases/:reviewCaseId/complete',
           handle: (r) =>
-            mutation(() =>
-              review.complete(
+            mutation(() => {
+              const principal = reviewPrincipal(r, true);
+              return reviewFor(r, true).complete(
                 r.params.reviewCaseId as ProfessionalReviewCaseId,
-                (r.body as any).reviewerId,
+                principal?.userId ?? (r.body as any).reviewerId,
                 (r.body as any).code,
-                (r.body as any).rationale
-              )
-            )
+                (r.body as any).rationale,
+                (r.body as any).expectedVersion,
+                r.headers['idempotency-key']
+              );
+            })
         },
         {
           method: 'POST',
           path: '/v1/professional-review-cases/:reviewCaseId/withdraw',
           handle: (r) =>
-            mutation(() => review.withdraw(r.params.reviewCaseId as ProfessionalReviewCaseId))
+            mutation(() =>
+              reviewFor(r, true).withdraw(r.params.reviewCaseId as ProfessionalReviewCaseId)
+            )
         },
         {
           method: 'POST',
@@ -488,6 +566,46 @@ function httpMatterDraftSource(baseUrl: string): MatterDraftReviewSource {
         readiness: structuredClone(draft.readiness),
         readinessTimestamp: draft.readiness.evaluatedAt
       } satisfies MatterDraftReviewSnapshot;
+    }
+  };
+}
+
+function httpFormalMatterReviewSource(
+  baseUrl: string,
+  principal: WorkspacePrincipal,
+  secret: string
+): MatterDraftReviewSource {
+  const headers = {
+    'x-markorbit-internal-authorization': secret,
+    'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+    'x-markorbit-workspace-id': principal.workspaceId
+  };
+  return {
+    getMatterDraft() {
+      return Promise.resolve(undefined);
+    },
+    async getFormalMatter(id) {
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}/v1/formal-matters/${encodeURIComponent(id)}`, {
+          headers
+        });
+      } catch {
+        throw new ProfessionalReviewError(
+          'SOURCE_UNAVAILABLE',
+          'Formal Matter source validation is unavailable.',
+          503
+        );
+      }
+      if (response.status === 404) return undefined;
+      if (!response.ok)
+        throw new ProfessionalReviewError(
+          'SOURCE_UNAVAILABLE',
+          'Formal Matter source validation is unavailable.',
+          503
+        );
+      const body = (await response.json()) as { formalMatter?: FormalMatter };
+      return body.formalMatter;
     }
   };
 }

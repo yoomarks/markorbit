@@ -625,7 +625,15 @@ export function LiteApp({
         ) : surface === 'professional-review' ? (
           <ProfessionalReview
             state={state}
-            {...(initialReviewCaseId ? { initialSelected: initialReviewCaseId } : {})}
+            workspaceId={activeWorkspaceId}
+            {...(initialReviewCaseId ||
+            new URLSearchParams(window.location.search).get('professionalReviewCaseId')
+              ? {
+                  initialSelected:
+                    initialReviewCaseId ??
+                    new URLSearchParams(window.location.search).get('professionalReviewCaseId')!
+                }
+              : {})}
           />
         ) : surface === 'execution-release' ? (
           <ExecutionReleaseView

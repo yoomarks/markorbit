@@ -1,0 +1,145 @@
+import { expect, test } from '@playwright/test';
+
+const gateway = 'http://127.0.0.1:4400';
+const lite = 'http://127.0.0.1:4471';
+const scenarios = {
+  'professional-review-desktop': {
+    fixture: 'task024Desktop',
+    workspaceId: '66666666-6666-4666-8666-666666666666',
+    otherWorkspaceId: '77777777-7777-4777-8777-777777777777',
+    trademark: 'DURABLE ORBIT DESKTOP'
+  },
+  'professional-review-mobile-390': {
+    fixture: 'task024Mobile',
+    workspaceId: '88888888-8888-4888-8888-888888888888',
+    otherWorkspaceId: '99999999-9999-4999-8999-999999999999',
+    trademark: 'DURABLE ORBIT MOBILE'
+  }
+} as const;
+
+test.describe('TASK 024 real durable Professional Review path', () => {
+  test('persists exact Review evidence through refresh, direct URL and governed completion', async ({
+    page
+  }) => {
+    const scenario = scenarios[test.info().project.name as keyof typeof scenarios];
+    const observed: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/professional-review-cases')) observed.push(request.url());
+    });
+    const auth = await page.request.post(`${gateway}/__test/auth/session`, {
+      data: { fixture: scenario.fixture }
+    });
+    expect(auth.status()).toBe(201);
+    await page.goto(`${lite}/?workspaceId=${scenario.workspaceId}#matters`);
+    await expect(page.getByRole('heading', { name: 'Matters' })).toBeVisible();
+    await page.getByRole('button', { name: 'View Matter details' }).click();
+    await expect(page.getByRole('heading', { name: scenario.trademark })).toBeVisible();
+    const openResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/lite/professional-review-cases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByRole('button', { name: 'Start or Resume Professional Review' }).click();
+    expect((await openResponse).status()).toBe(200);
+    const reviewId = (await page
+      .getByText(/^Professional Review Case professional-review_/)
+      .textContent())!.replace('Professional Review Case ', '');
+    expect(reviewId).toMatch(/^professional-review_/);
+    await expect(page.getByText('Review version', { exact: true })).toBeVisible();
+
+    const claimResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/lite/professional-review-cases/${reviewId}/claim`) &&
+        response.request().method() === 'POST'
+    );
+    await page.getByRole('button', { name: 'Claim review' }).click();
+    const claimed = await claimResponse;
+    expect(claimed.status()).toBe(200);
+    const claimedReview = (
+      (await claimed.json()) as { reviewCase: { status: string; version: number } }
+    ).reviewCase;
+    expect(claimedReview).toMatchObject({ status: 'IN_REVIEW', version: 2 });
+    await page.getByLabel('Professional finding').fill(`Bounded ${scenario.trademark} finding.`);
+    await expect(page.getByRole('button', { name: 'Save Review Draft' })).toBeVisible();
+
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/lite/professional-review-cases/${reviewId}/checklist`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByRole('button', { name: 'Save Review Draft' }).click();
+    const saved = await saveResponse;
+    expect(saved.status()).toBe(200);
+    const savedReview = ((await saved.json()) as { reviewCase: { version: number } }).reviewCase;
+    expect(savedReview.version).toBe(3);
+    await expect(page.getByLabel('Review decision rationale')).toBeVisible();
+    const detailUrl = page.url();
+    await page.reload();
+    await expect(page.getByText(reviewId, { exact: false })).toBeVisible();
+    await expect(
+      page.locator('dt', { hasText: 'Review version' }).locator('xpath=following-sibling::dd[1]')
+    ).toHaveText('3');
+    await expect(
+      page.getByText(`Bounded ${scenario.trademark} finding.`, { exact: false }).first()
+    ).toBeVisible();
+    const direct = await page.context().newPage();
+    await direct.goto(detailUrl);
+    await expect(direct.getByText(reviewId, { exact: false })).toBeVisible();
+    await expect(
+      direct.locator('dt', { hasText: 'Review version' }).locator('xpath=following-sibling::dd[1]')
+    ).toHaveText('3');
+    await direct.close();
+
+    await page.getByLabel('Review decision rationale').fill('Ready for the next governed step.');
+    const completeResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/lite/professional-review-cases/${reviewId}/complete`) &&
+        response.request().method() === 'POST'
+    );
+    await page.getByRole('button', { name: 'Mark reviewed and ready for next step' }).click();
+    const completed = await completeResponse;
+    expect(completed.status()).toBe(200);
+    const completedReview = (
+      (await completed.json()) as {
+        reviewCase: { reviewCaseId: string; status: string; version: number; decision: unknown };
+      }
+    ).reviewCase;
+    expect(completedReview).toMatchObject({
+      reviewCaseId: reviewId,
+      status: 'REVIEWED_READY_FOR_NEXT_STEP',
+      version: 4,
+      decision: expect.any(Object)
+    });
+    await expect(
+      page.getByText('Ready for next step — no action executed', { exact: true })
+    ).toBeVisible();
+    await expect(page.getByText(/filingCreated: false/)).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByText('Ready for next step — no action executed', { exact: true })
+    ).toBeVisible();
+    await page.goBack();
+    await expect(page.getByText('Formal Matter · immutable creation lineage')).toBeVisible();
+
+    await page.goto(
+      `${lite}/?workspaceId=${scenario.workspaceId}&professionalReviewCaseId=${reviewId}#work-professional-review`
+    );
+    await expect(page.getByText(reviewId, { exact: false })).toBeVisible();
+    await page.evaluate((workspace) => {
+      const query = new URLSearchParams(location.search);
+      query.set('workspaceId', workspace);
+      history.pushState(null, '', `${location.pathname}?${query}${location.hash}`);
+      dispatchEvent(new PopStateEvent('popstate'));
+    }, scenario.otherWorkspaceId);
+    await expect(page).not.toHaveURL(/professionalReviewCaseId=/);
+    await expect(page.getByText('No professional review cases')).toBeVisible();
+    expect(observed.length).toBeGreaterThanOrEqual(7);
+    if (test.info().project.name.includes('mobile')) {
+      const dimensions = await page.evaluate(() => ({
+        body: document.body.scrollWidth,
+        viewport: document.documentElement.clientWidth
+      }));
+      expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
+    }
+  });
+});

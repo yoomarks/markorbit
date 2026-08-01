@@ -162,6 +162,79 @@ describe('professional review', () => {
     await c.service.complete(c.id, 'actor_reviewer', 'MARK_READY_FOR_NEXT_STEP', 'ok');
     await expect(c.service.withdraw(c.id)).rejects.toMatchObject({ code: 'DECISION_IMMUTABLE' });
   });
+  it('allows exactly one concurrent writer for an exact version', async () => {
+    const c = await claimed();
+    const version = (await c.service.get(c.id)).version;
+    const results = await Promise.allSettled([
+      c.service.updateChecklist(c.id, 'actor_reviewer', [], version),
+      c.service.updateChecklist(c.id, 'actor_reviewer', [], version)
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+  });
+  it('returns the immutable result for an identical completion retry', async () => {
+    const c = await claimed();
+    const review = await c.service.get(c.id);
+    const draft = await c.service.updateChecklist(
+      c.id,
+      'actor_reviewer',
+      review.checklist.map((item) => ({ code: item.code, status: 'PASS' })),
+      review.version
+    );
+    const completed = await c.service.complete(
+      c.id,
+      'actor_reviewer',
+      'MARK_READY_FOR_NEXT_STEP',
+      'Exact evidence accepted',
+      draft.version
+    );
+    const replay = await c.service.complete(
+      c.id,
+      'actor_reviewer',
+      'MARK_READY_FOR_NEXT_STEP',
+      'Exact evidence accepted',
+      draft.version
+    );
+    expect(replay).toEqual(completed);
+  });
+  it('replays a keyed completion and rejects conflicting key reuse', async () => {
+    const c = await claimed();
+    const review = await c.service.get(c.id);
+    const draft = await c.service.updateChecklist(
+      c.id,
+      'actor_reviewer',
+      review.checklist.map((item) => ({ code: item.code, status: 'PASS' })),
+      review.version
+    );
+    const completed = await c.service.complete(
+      c.id,
+      'actor_reviewer',
+      'MARK_READY_FOR_NEXT_STEP',
+      'Keyed evidence',
+      draft.version,
+      'complete-key'
+    );
+    await expect(
+      c.service.complete(
+        c.id,
+        'actor_reviewer',
+        'MARK_READY_FOR_NEXT_STEP',
+        'Keyed evidence',
+        draft.version,
+        'complete-key'
+      )
+    ).resolves.toEqual(completed);
+    await expect(
+      c.service.complete(
+        c.id,
+        'actor_reviewer',
+        'MARK_READY_FOR_NEXT_STEP',
+        'Conflicting evidence',
+        draft.version,
+        'complete-key'
+      )
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
   it('withdraws an uncompleted case and prevents review', async () => {
     const c = await claimed();
     await c.service.withdraw(c.id);

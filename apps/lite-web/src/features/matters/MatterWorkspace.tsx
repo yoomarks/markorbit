@@ -231,6 +231,51 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
 }
 function MatterDetail({ matter, onBack }: { matter: FormalMatter; onBack: () => void }) {
   const p = matter.sourceSnapshot.preparation;
+  const [startingReview, setStartingReview] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const startReview = async () => {
+    setStartingReview(true);
+    setReviewError('');
+    try {
+      const session = await fetch(`${gateway}/api/auth/session`, { credentials: 'include' });
+      const auth = (await session.json()) as { csrfToken?: string };
+      const response = await fetch(`${gateway}/api/lite/professional-review-cases`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': `professional-review:${matter.formalMatterId}`,
+          'x-markorbit-workspace-id': matter.workspaceId,
+          ...(auth.csrfToken ? { 'x-markorbit-csrf-token': auth.csrfToken } : {})
+        },
+        body: JSON.stringify({
+          formalMatterId: matter.formalMatterId,
+          sourceFormalMatterVersion: matter.version,
+          sourceSnapshotSha256: matter.snapshotSha256,
+          matterDraftId: matter.sourceMatterDraftId,
+          matterDraftVersion: String(matter.sourceMatterDraftVersion)
+        })
+      });
+      const body = (await response.json()) as {
+        reviewCase?: { reviewCaseId: string; version?: number };
+        message?: string;
+      };
+      if (!response.ok || !body.reviewCase)
+        throw new Error(body.message ?? 'Professional Review could not be started.');
+      const query = current();
+      query.delete('formalMatterId');
+      query.set('professionalReviewCaseId', body.reviewCase.reviewCaseId);
+      query.set('professionalReviewCaseVersion', String(body.reviewCase.version ?? 1));
+      history.pushState(null, '', `${location.pathname}?${query}#work-professional-review`);
+      dispatchEvent(new PopStateEvent('popstate'));
+    } catch (error) {
+      setReviewError(
+        error instanceof Error ? error.message : 'Professional Review could not be started.'
+      );
+    } finally {
+      setStartingReview(false);
+    }
+  };
   return (
     <>
       <Button variant="secondary" onClick={onBack}>
@@ -241,6 +286,14 @@ function MatterDetail({ matter, onBack }: { matter: FormalMatter; onBack: () => 
         description="Formal Matter · immutable creation lineage"
         actions={<Badge>{matter.status}</Badge>}
       />
+      {reviewError && (
+        <Alert tone="danger" title="Professional Review unavailable">
+          {reviewError}
+        </Alert>
+      )}
+      <Button disabled={startingReview} onClick={() => void startReview()}>
+        {startingReview ? 'Starting Review…' : 'Start or Resume Professional Review'}
+      </Button>
       <div className="lite-detail-grid">
         <Card>
           <h2>Current identity</h2>

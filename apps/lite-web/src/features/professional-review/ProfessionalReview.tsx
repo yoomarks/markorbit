@@ -19,25 +19,31 @@ import {
 } from '../../api/professional-review.js';
 
 const reviewerId = 'reviewer_milestone' as MarkOrbitId;
-const defaultProfessionalReviewClient = createProfessionalReviewClient();
 export function ProfessionalReview({
   state,
   initialSelected,
-  client = defaultProfessionalReviewClient
+  client,
+  workspaceId = ''
 }: {
   state: FixtureState;
   initialSelected?: string;
   client?: ProfessionalReviewClient;
+  workspaceId?: string;
 }) {
+  const resolvedClient = useMemo(
+    () => client ?? createProfessionalReviewClient(workspaceId),
+    [client, workspaceId]
+  );
   const [cases, setCases] = useState<ProfessionalReviewCase[]>([]);
   const [selected, setSelected] = useState<string | undefined>(initialSelected);
   const [status, setStatus] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const origin = useRef<string>();
+  const priorWorkspace = useRef(workspaceId);
   const load = async () => {
     try {
-      setCases((await client.list()).reviewCases);
+      setCases((await resolvedClient.list()).reviewCases);
       setLoading(false);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Review queue unavailable.');
@@ -45,8 +51,17 @@ export function ProfessionalReview({
     }
   };
   useEffect(() => {
+    if (priorWorkspace.current !== workspaceId) {
+      priorWorkspace.current = workspaceId;
+      const query = new URLSearchParams(location.search);
+      query.delete('professionalReviewCaseId');
+      query.delete('professionalReviewCaseVersion');
+      history.replaceState(null, '', `${location.pathname}?${query}${location.hash}`);
+      setSelected(undefined);
+      setCases([]);
+    }
     void load();
-  }, []);
+  }, [resolvedClient, workspaceId]);
   const rows = useMemo(
     () => cases.filter((value) => status === 'ALL' || value.status === status),
     [cases, status]
@@ -68,7 +83,7 @@ export function ProfessionalReview({
     return (
       <ReviewDetail
         value={current}
-        client={client}
+        client={resolvedClient}
         save={save}
         onBack={() => {
           setSelected(undefined);
@@ -143,10 +158,11 @@ function ReviewDetail({
   onBack: () => void;
 }) {
   const [rationale, setRationale] = useState('');
+  const [professionalFinding, setProfessionalFinding] = useState('');
   const blocking = value.checklist.some(
     (item) => item.blocking && !['PASS', 'NOT_APPLICABLE'].includes(item.status)
   );
-  const claimed = value.assignment.claimedBy === reviewerId;
+  const claimed = value.assignment.status === 'CLAIMED';
   const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
   return (
     <section>
@@ -164,6 +180,7 @@ function ReviewDetail({
           items={[
             { key: 'Matter Draft ID', value: value.source.matterDraftId },
             { key: 'Matter Draft version', value: value.source.matterDraftVersion },
+            { key: 'Review version', value: String(value.version ?? 1) },
             { key: 'Customer Confirmation', value: value.source.confirmationId },
             { key: 'Customer', value: value.source.customerId }
           ]}
@@ -174,6 +191,7 @@ function ReviewDetail({
         {value.checklist.map((item) => (
           <p key={item.code}>
             <strong>{item.code}</strong>: {item.status} — {item.explanation}
+            {item.reviewerNote ? ` — ${item.reviewerNote}` : ''}
           </p>
         ))}
         {blocking && (
@@ -187,7 +205,7 @@ function ReviewDetail({
         <Button
           onClick={() =>
             void client
-              .claim(value.reviewCaseId, reviewerId)
+              .claim(value.reviewCaseId, reviewerId, value.version ?? 1)
               .then(({ reviewCase }) => save(reviewCase))
           }
         >
@@ -195,23 +213,33 @@ function ReviewDetail({
         </Button>
       )}
       {claimed && blocking && (
-        <Button
-          onClick={() =>
-            void client
-              .checklist(
-                value.reviewCaseId,
-                reviewerId,
-                value.checklist.map((item) => ({
-                  code: item.code,
-                  status: 'PASS',
-                  explanation: 'Exact source evidence reviewed.'
-                }))
-              )
-              .then(({ reviewCase }) => save(reviewCase))
-          }
-        >
-          Complete review checklist
-        </Button>
+        <>
+          <TextInput
+            label="Professional finding"
+            value={professionalFinding}
+            onChange={(event) => setProfessionalFinding(event.target.value)}
+          />
+          <Button
+            disabled={!professionalFinding.trim()}
+            onClick={() =>
+              void client
+                .checklist(
+                  value.reviewCaseId,
+                  reviewerId,
+                  value.checklist.map((item) => ({
+                    code: item.code,
+                    status: 'PASS',
+                    explanation: 'Exact source evidence reviewed.',
+                    reviewerNote: professionalFinding.trim()
+                  })),
+                  value.version ?? 1
+                )
+                .then(({ reviewCase }) => save(reviewCase))
+            }
+          >
+            Save Review Draft
+          </Button>
+        </>
       )}
       {claimed && !blocking && !complete && (
         <>
@@ -224,7 +252,7 @@ function ReviewDetail({
             disabled={!rationale.trim()}
             onClick={() =>
               void client
-                .complete(value.reviewCaseId, reviewerId, rationale)
+                .complete(value.reviewCaseId, reviewerId, rationale, value.version ?? 1)
                 .then(({ reviewCase }) => save(reviewCase))
             }
           >
@@ -234,7 +262,7 @@ function ReviewDetail({
       )}
       {complete && (
         <>
-          <Alert title="Reviewed ready for next step — no action executed">
+          <Alert title="Ready for next step — no action executed">
             orderCreated: false · paymentCreated: false · formalMatterCreated: false ·
             providerAppointed: false · filingCreated: false · customerMessageSent: false
           </Alert>
