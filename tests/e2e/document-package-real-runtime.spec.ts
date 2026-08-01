@@ -114,7 +114,10 @@ test.describe('TASK 025 real durable Document Package path', () => {
       page.getByText('Ready for next step — no action executed', { exact: true })
     ).toBeVisible();
     await expect(page.getByText(/filingCreated: false/)).toBeVisible();
-    await page.getByRole('link', { name: 'Start or resume Document Package' }).click();
+    const completedReviewUrl = page.url();
+    const packageTrigger = page.getByRole('link', { name: 'Start or resume Document Package' });
+    await packageTrigger.focus();
+    await packageTrigger.click();
     const createResponse = page.waitForResponse(
       (r) => r.url().endsWith('/api/markreg/document-packages') && r.request().method() === 'POST'
     );
@@ -173,6 +176,12 @@ test.describe('TASK 025 real durable Document Package path', () => {
     ).toBeVisible();
     await expect(page.getByText(/does not authorize filing/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save Draft' })).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(completedReviewUrl);
+    await expect(
+      page.getByRole('link', { name: 'Start or resume Document Package' })
+    ).toBeFocused();
+    await expect(page).not.toHaveURL(/documentPackageId=/);
     if (test.info().project.name.includes('mobile')) {
       const dimensions = await page.evaluate(() => ({
         body: document.body.scrollWidth,
