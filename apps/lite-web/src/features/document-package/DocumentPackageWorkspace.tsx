@@ -9,6 +9,7 @@ import {
   KeyValueList,
   LoadingState,
   PageHeader,
+  Select,
   TextInput
 } from '@markorbit/ui';
 import { createProfessionalReviewClient } from '../../api/professional-review.js';
@@ -60,6 +61,7 @@ export function DocumentPackageWorkspace({
     'File in the reviewed jurisdiction and class scope.'
   );
   const [busy, setBusy] = useState(false);
+  const alternateWorkspaceId = new URLSearchParams(window.location.search).get('otherWorkspaceId');
   const fail = (error: unknown) => {
     const e = error as PackageHttpError;
     setMessage(e.message);
@@ -98,7 +100,7 @@ export function DocumentPackageWorkspace({
         history.replaceState(
           { packageId: next.documentPackageId },
           '',
-          `?documentPackageId=${encodeURIComponent(next.documentPackageId)}&workspaceId=${encodeURIComponent(workspaceId)}`
+          `?documentPackageId=${encodeURIComponent(next.documentPackageId)}&workspaceId=${encodeURIComponent(workspaceId)}${alternateWorkspaceId ? `&otherWorkspaceId=${encodeURIComponent(alternateWorkspaceId)}` : ''}`
         );
       })
       .catch(fail)
@@ -158,6 +160,22 @@ export function DocumentPackageWorkspace({
       <Button variant="secondary" onClick={() => history.back()}>
         ← Back to Matter
       </Button>
+      {alternateWorkspaceId && (
+        <Select
+          label="Workspace"
+          value={workspaceId}
+          onChange={(event) => {
+            const target = new URL(window.location.href);
+            target.search = '';
+            target.searchParams.set('workspaceId', event.target.value);
+            target.hash = 'matters';
+            window.location.assign(target);
+          }}
+        >
+          <option value={workspaceId}>{workspaceId}</option>
+          <option value={alternateWorkspaceId}>{alternateWorkspaceId}</option>
+        </Select>
+      )}
       <PageHeader
         title="Documents and Instructions"
         description="Durable preparation workspace"

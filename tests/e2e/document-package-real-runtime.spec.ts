@@ -30,8 +30,15 @@ test.describe('TASK 025 real durable Document Package path', () => {
       data: { fixture: scenario.fixture }
     });
     expect(auth.status()).toBe(201);
-    await page.goto(`${lite}/?workspaceId=${scenario.workspaceId}#matters`);
-    await expect(page.getByRole('heading', { name: 'Matters' })).toBeVisible();
+    const sessionCookie = auth.headers()['set-cookie']?.match(/mo_session=([^;]+)/)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    await page
+      .context()
+      .addCookies([{ name: 'mo_session', value: sessionCookie!, domain: '127.0.0.1', path: '/' }]);
+    await page.goto(
+      `${lite}/?workspaceId=${scenario.workspaceId}&otherWorkspaceId=${scenario.otherWorkspaceId}#matters`
+    );
+    await expect(page.getByRole('heading', { name: 'Matters', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'View Matter details' }).click();
     await expect(page.getByRole('heading', { name: scenario.trademark })).toBeVisible();
     const openResponse = page.waitForResponse(
@@ -182,6 +189,18 @@ test.describe('TASK 025 real durable Document Package path', () => {
       page.getByRole('link', { name: 'Start or resume Document Package' })
     ).toBeFocused();
     await expect(page).not.toHaveURL(/documentPackageId=/);
+    await page.goto(packageUrl);
+    await expect(page.getByText(packageId, { exact: true })).toBeVisible();
+    await page.getByLabel('Workspace').selectOption(scenario.otherWorkspaceId);
+    await expect(page).toHaveURL(new RegExp(`workspaceId=${scenario.otherWorkspaceId}.*#matters`));
+    await expect(page).not.toHaveURL(/documentPackageId=/);
+    await expect(page.getByText(packageId, { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Matters', exact: true })).toBeVisible();
+    const isolatedRead = await page.request.get(
+      `${gateway}/api/markreg/document-packages/${packageId}`,
+      { headers: { 'x-markorbit-workspace-id': scenario.otherWorkspaceId } }
+    );
+    expect(isolatedRead.status()).toBe(404);
     if (test.info().project.name.includes('mobile')) {
       const dimensions = await page.evaluate(() => ({
         body: document.body.scrollWidth,

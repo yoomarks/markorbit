@@ -162,11 +162,16 @@ function ReviewDetail({
 }) {
   const [rationale, setRationale] = useState('');
   const [professionalFinding, setProfessionalFinding] = useState('');
+  const packageTrigger = useRef<HTMLAnchorElement>(null);
   const blocking = value.checklist.some(
     (item) => item.blocking && !['PASS', 'NOT_APPLICABLE'].includes(item.status)
   );
   const claimed = value.assignment.status === 'CLAIMED';
   const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
+  const restoreFocus = (history.state as { restoreFocus?: string } | null)?.restoreFocus;
+  useEffect(() => {
+    if (complete && restoreFocus === 'document-package-trigger') packageTrigger.current?.focus();
+  }, [complete, restoreFocus]);
   return (
     <section>
       <Button variant="secondary" onClick={onBack}>
@@ -270,7 +275,9 @@ function ReviewDetail({
             providerAppointed: false · filingCreated: false · customerMessageSent: false
           </Alert>
           <a
-            href={`/?documentPackageReviewCaseId=${encodeURIComponent(value.reviewCaseId)}&workspaceId=${encodeURIComponent(workspaceId)}`}
+            ref={packageTrigger}
+            onClick={() => history.replaceState({ restoreFocus: 'document-package-trigger' }, '')}
+            href={`/?documentPackageReviewCaseId=${encodeURIComponent(value.reviewCaseId)}&workspaceId=${encodeURIComponent(workspaceId)}${new URLSearchParams(window.location.search).get('otherWorkspaceId') ? `&otherWorkspaceId=${encodeURIComponent(new URLSearchParams(window.location.search).get('otherWorkspaceId')!)}` : ''}`}
           >
             Start or resume Document Package
           </a>
