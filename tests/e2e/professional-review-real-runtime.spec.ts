@@ -30,9 +30,32 @@ test.describe('TASK 024 real durable Professional Review path', () => {
       data: { fixture: scenario.fixture }
     });
     expect(auth.status()).toBe(201);
+    const sessionCookie = auth.headers()['set-cookie']?.match(/mo_session=([^;]+)/)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    await page
+      .context()
+      .addCookies([{ name: 'mo_session', value: sessionCookie!, domain: '127.0.0.1', path: '/' }]);
+    const matterListResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/markreg/formal-matters?') &&
+        response.request().method() === 'GET'
+    );
     await page.goto(`${lite}/?workspaceId=${scenario.workspaceId}#matters`);
-    await expect(page.getByRole('heading', { name: 'Matters' })).toBeVisible();
-    await page.getByRole('button', { name: 'View Matter details' }).click();
+    expect(page.url()).not.toMatch(/documentPackageId|professionalReviewCaseId|formalMatterId/);
+    const listed = await matterListResponse;
+    expect(listed.status()).toBe(200);
+    const list = (await listed.json()) as {
+      items: { formalMatterId: string; trademark?: string }[];
+    };
+    const target = list.items.find((matter) => matter.trademark === scenario.trademark);
+    expect(target?.formalMatterId).toMatch(/^formal-matter_/);
+    await expect(page.getByRole('heading', { name: 'Matters', exact: true })).toBeVisible();
+    const matterHeading = page.getByRole('heading', { name: scenario.trademark, exact: true });
+    const matterRow = page.locator('section').filter({ has: matterHeading });
+    await expect(matterRow).toBeVisible();
+    const detailTrigger = matterRow.getByRole('button', { name: 'View Matter details' });
+    await expect(detailTrigger).toBeVisible();
+    await detailTrigger.click();
     await expect(page.getByRole('heading', { name: scenario.trademark })).toBeVisible();
     const openResponse = page.waitForResponse(
       (response) =>

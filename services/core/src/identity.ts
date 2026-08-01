@@ -55,6 +55,7 @@ const matrix: Record<Role, readonly Permission[]> = {
     'instruction-ledger:read'
   ]
 };
+export const permissionsForRole = (role: Role): readonly Permission[] => matrix[role];
 const mutations = new Set<Permission>([
   'workspace:manage',
   'membership:manage',
