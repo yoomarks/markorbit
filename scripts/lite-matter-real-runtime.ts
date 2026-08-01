@@ -73,7 +73,7 @@ async function main() {
   await database.start();
   const pool = database.getPool();
   await pool.query(
-    'DROP TABLE IF EXISTS formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE'
+    'DROP TABLE IF EXISTS document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE'
   );
   const history = await pool.query<{ migration_history: string | null }>(
     "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"

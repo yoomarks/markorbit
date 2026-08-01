@@ -16,14 +16,34 @@ test.describe('TASK 023 real durable Lite Matter path', () => {
       data: { fixture: 'task023' }
     });
     expect(auth.status()).toBe(201);
+    const sessionCookie = auth.headers()['set-cookie']?.match(/mo_session=([^;]+)/)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    await page
+      .context()
+      .addCookies([{ name: 'mo_session', value: sessionCookie!, domain: '127.0.0.1', path: '/' }]);
+    const matterListResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/markreg/formal-matters?') &&
+        response.request().method() === 'GET'
+    );
     await page.goto(`${lite}/?workspaceId=${workspaceId}#matters`);
-    await expect(page.getByRole('heading', { name: 'Matters' })).toBeVisible();
-    await expect(page.getByText('DURABLE ORBIT')).toBeVisible();
+    const listed = await matterListResponse;
+    expect(listed.status()).toBe(200);
+    const list = (await listed.json()) as {
+      items: { formalMatterId: string; trademark?: string }[];
+    };
+    const target = list.items.find((matter) => matter.trademark === 'DURABLE ORBIT');
+    expect(target?.formalMatterId).toMatch(/^formal-matter_/);
+    await expect(page.getByRole('heading', { name: 'Matters', exact: true })).toBeVisible();
+    const matterHeading = page.getByRole('heading', { name: 'DURABLE ORBIT', exact: true });
+    const matterRow = page.locator('section').filter({ has: matterHeading });
+    await expect(matterRow).toBeVisible();
+    const open = matterRow.getByRole('button', { name: 'View Matter details' });
+    await expect(open).toHaveAttribute('data-matter-id', target!.formalMatterId);
     await page.getByLabel('Search Matters').fill('Northstar');
     await page.getByLabel('Status').selectOption('OPEN');
     await page.getByLabel('Matter type').selectOption('TRADEMARK_REGISTRATION');
     await expect(page).toHaveURL(/search=Northstar/);
-    const open = page.getByRole('button', { name: 'View Matter details' });
     const formalMatterId = await open.getAttribute('data-matter-id');
     expect(formalMatterId).toMatch(/^formal-matter_/);
     await open.click();

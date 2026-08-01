@@ -53,6 +53,11 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
   };
   const resetMarkRegTestState = async () => {
     const pool = database.getPool();
+    await pool.query('DROP TABLE IF EXISTS document_package_audit CASCADE');
+    await pool.query('DROP TABLE IF EXISTS document_package_commands CASCADE');
+    await pool.query('DROP TABLE IF EXISTS document_instruction_entries CASCADE');
+    await pool.query('DROP TABLE IF EXISTS document_package_items CASCADE');
+    await pool.query('DROP TABLE IF EXISTS document_packages CASCADE');
     await pool.query('DROP TABLE IF EXISTS formal_matter_audit CASCADE');
     await pool.query('DROP TABLE IF EXISTS formal_matter_commands CASCADE');
     await pool.query('DROP TABLE IF EXISTS formal_matters CASCADE');
