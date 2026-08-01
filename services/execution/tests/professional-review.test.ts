@@ -197,6 +197,44 @@ describe('professional review', () => {
     );
     expect(replay).toEqual(completed);
   });
+  it('replays a keyed completion and rejects conflicting key reuse', async () => {
+    const c = await claimed();
+    const review = await c.service.get(c.id);
+    const draft = await c.service.updateChecklist(
+      c.id,
+      'actor_reviewer',
+      review.checklist.map((item) => ({ code: item.code, status: 'PASS' })),
+      review.version
+    );
+    const completed = await c.service.complete(
+      c.id,
+      'actor_reviewer',
+      'MARK_READY_FOR_NEXT_STEP',
+      'Keyed evidence',
+      draft.version,
+      'complete-key'
+    );
+    await expect(
+      c.service.complete(
+        c.id,
+        'actor_reviewer',
+        'MARK_READY_FOR_NEXT_STEP',
+        'Keyed evidence',
+        draft.version,
+        'complete-key'
+      )
+    ).resolves.toEqual(completed);
+    await expect(
+      c.service.complete(
+        c.id,
+        'actor_reviewer',
+        'MARK_READY_FOR_NEXT_STEP',
+        'Conflicting evidence',
+        draft.version,
+        'complete-key'
+      )
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
   it('withdraws an uncompleted case and prevents review', async () => {
     const c = await claimed();
     await c.service.withdraw(c.id);

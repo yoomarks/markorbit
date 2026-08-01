@@ -57,3 +57,13 @@ test('real-runtime Playwright inventory contains only desktop and mobile golden 
     'real-runtime-mobile-chromium-390'
   ]);
 });
+
+test('Professional Review runtime inventory is isolated to its dedicated desktop and mobile spec', () => {
+  const { entries } = listSuite('playwright.professional-review-real-runtime.config.ts');
+  assert.equal(entries.length, 2);
+  assert.ok(entries.every(({ file }) => file === 'professional-review-real-runtime.spec.ts'));
+  assert.deepEqual(entries.map(({ project }) => project).sort(), [
+    'professional-review-desktop',
+    'professional-review-mobile-390'
+  ]);
+});

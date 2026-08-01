@@ -9,7 +9,8 @@ async function request<T>(
   path: string,
   workspaceId: string,
   method: 'GET' | 'POST' | 'PATCH' = 'GET',
-  body?: unknown
+  body?: unknown,
+  idempotencyKey?: string
 ) {
   let csrf = '';
   if (workspaceId && method !== 'GET') {
@@ -22,7 +23,8 @@ async function request<T>(
     headers: {
       'content-type': 'application/json',
       ...(workspaceId ? { 'x-markorbit-workspace-id': workspaceId } : {}),
-      ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {})
+      ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
+      ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {})
     },
     ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
   });
@@ -91,7 +93,8 @@ export function createProfessionalReviewClient(workspaceId = ''): ProfessionalRe
           code: 'MARK_READY_FOR_NEXT_STEP',
           rationale,
           expectedVersion
-        }
+        },
+        `professional-review-complete:${id}`
       )
   };
 }

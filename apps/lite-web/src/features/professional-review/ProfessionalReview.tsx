@@ -40,6 +40,7 @@ export function ProfessionalReview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const origin = useRef<string>();
+  const priorWorkspace = useRef(workspaceId);
   const load = async () => {
     try {
       setCases((await resolvedClient.list()).reviewCases);
@@ -50,8 +51,17 @@ export function ProfessionalReview({
     }
   };
   useEffect(() => {
+    if (priorWorkspace.current !== workspaceId) {
+      priorWorkspace.current = workspaceId;
+      const query = new URLSearchParams(location.search);
+      query.delete('professionalReviewCaseId');
+      query.delete('professionalReviewCaseVersion');
+      history.replaceState(null, '', `${location.pathname}?${query}${location.hash}`);
+      setSelected(undefined);
+      setCases([]);
+    }
     void load();
-  }, []);
+  }, [resolvedClient, workspaceId]);
   const rows = useMemo(
     () => cases.filter((value) => status === 'ALL' || value.status === status),
     [cases, status]
@@ -217,7 +227,7 @@ function ReviewDetail({
               .then(({ reviewCase }) => save(reviewCase))
           }
         >
-          Complete review checklist
+          Save Review Draft
         </Button>
       )}
       {claimed && !blocking && !complete && (

@@ -11,3 +11,5 @@ The existing canonical lifecycle remains `QUEUED → IN_REVIEW → REVIEWED_READ
 ## Concurrency and authority
 
 Every mutation supplies the exact Review Case version. SQL updates include `workspace_id`, identity, expected version, and `completed_at IS NULL`; therefore only one concurrent writer succeeds. Completion evidence is immutable, and repeat input resolves to the same result. Completion states readiness only and grants no filing approval, authorization, release, or execution authority.
+
+The durable Execution listener constructs a Workspace-scoped PostgreSQL repository only after validating the Gateway's internal credential and signed Core Principal. It derives the actor from that Principal rather than browser input. Formal Matter validation uses MarkReg's authenticated HTTP contract; source failure is a 503-class dependency failure and Execution never reads MarkReg persistence. A restarted listener constructs new repository objects against the same Execution database and reloads the completed Review unchanged.

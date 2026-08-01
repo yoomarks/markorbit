@@ -75,39 +75,55 @@ export class PostgresProfessionalReviewRepository implements ProfessionalReviewR
   }
 
   async findById(id: ProfessionalReviewCaseId) {
-    const result = await this.query.query(
-      'SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases WHERE workspace_id=$1 AND professional_review_case_id=$2',
-      [this.workspaceId, id]
-    );
-    return result.rowCount ? this.map(result.rows[0] as Row) : undefined;
+    try {
+      const result = await this.query.query(
+        'SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases WHERE workspace_id=$1 AND professional_review_case_id=$2',
+        [this.workspaceId, id]
+      );
+      return result.rowCount ? this.map(result.rows[0] as Row) : undefined;
+    } catch (cause) {
+      throw this.unavailable(cause);
+    }
   }
   async list() {
-    const result = await this.query.query(
-      'SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases WHERE workspace_id=$1 ORDER BY updated_at DESC',
-      [this.workspaceId]
-    );
-    return result.rows.map((row) => this.map(row as Row));
+    try {
+      const result = await this.query.query(
+        'SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases WHERE workspace_id=$1 ORDER BY updated_at DESC',
+        [this.workspaceId]
+      );
+      return result.rows.map((row) => this.map(row as Row));
+    } catch (cause) {
+      throw this.unavailable(cause);
+    }
   }
   async findByIdempotencyKey(key: string) {
-    const result = await this.query.query(
-      'SELECT request_fingerprint,professional_review_case_id FROM professional_review_commands WHERE workspace_id=$1 AND idempotency_key=$2',
-      [this.workspaceId, key]
-    );
-    return result.rowCount
-      ? {
-          fingerprint: String((result.rows[0] as Row).request_fingerprint),
-          reviewCaseId: String(
-            (result.rows[0] as Row).professional_review_case_id
-          ) as ProfessionalReviewCaseId
-        }
-      : undefined;
+    try {
+      const result = await this.query.query(
+        'SELECT request_fingerprint,professional_review_case_id FROM professional_review_commands WHERE workspace_id=$1 AND idempotency_key=$2',
+        [this.workspaceId, key]
+      );
+      return result.rowCount
+        ? {
+            fingerprint: String((result.rows[0] as Row).request_fingerprint),
+            reviewCaseId: String(
+              (result.rows[0] as Row).professional_review_case_id
+            ) as ProfessionalReviewCaseId
+          }
+        : undefined;
+    } catch (cause) {
+      throw this.unavailable(cause);
+    }
   }
   async findActiveByMatterDraftVersion(id: never, version: string) {
-    const result = await this.query.query(
-      "SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases WHERE workspace_id=$1 AND review_case->'source'->>'matterDraftId'=$2 AND review_case->'source'->>'matterDraftVersion'=$3 AND status NOT IN ('STALE','WITHDRAWN','REVIEWED_READY_FOR_NEXT_STEP') LIMIT 1",
-      [this.workspaceId, id, version]
-    );
-    return result.rowCount ? this.map(result.rows[0] as Row) : undefined;
+    try {
+      const result = await this.query.query(
+        "SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases WHERE workspace_id=$1 AND review_case->'source'->>'matterDraftId'=$2 AND review_case->'source'->>'matterDraftVersion'=$3 AND status NOT IN ('STALE','WITHDRAWN','REVIEWED_READY_FOR_NEXT_STEP') LIMIT 1",
+        [this.workspaceId, id, version]
+      );
+      return result.rowCount ? this.map(result.rows[0] as Row) : undefined;
+    } catch (cause) {
+      throw this.unavailable(cause);
+    }
   }
   claim(v: ProfessionalReviewCase) {
     return this.save(v, 'REVIEW_DRAFT_UPDATED');
@@ -124,48 +140,62 @@ export class PostgresProfessionalReviewRepository implements ProfessionalReviewR
   withdraw(v: ProfessionalReviewCase) {
     return this.save(v, 'REVIEW_DRAFT_UPDATED');
   }
-  recordDecision(v: ProfessionalReviewCase) {
-    return this.save(v, 'REVIEW_COMPLETED');
+  recordDecision(v: ProfessionalReviewCase, key?: string, fingerprint?: string) {
+    return this.save(v, 'REVIEW_COMPLETED', key, fingerprint);
   }
 
   private async save(
     v: ProfessionalReviewCase,
-    action: 'REVIEW_DRAFT_UPDATED' | 'REVIEW_COMPLETED'
+    action: 'REVIEW_DRAFT_UPDATED' | 'REVIEW_COMPLETED',
+    idempotencyKey?: string,
+    fingerprint?: string
   ) {
     this.assertScope(v);
     const expected = (v.version ?? 1) - 1;
-    const result = await this.query.query(
-      'UPDATE professional_review_cases SET status=$3,version=$4,review_case=$5::jsonb,updated_by=$6,updated_at=$7,completed_at=$8,completed_by=$9 WHERE workspace_id=$1 AND professional_review_case_id=$2 AND version=$10 AND completed_at IS NULL',
-      [
-        this.workspaceId,
-        v.reviewCaseId,
-        v.status,
-        v.version,
-        JSON.stringify(v),
-        v.completedBy ?? v.assignment.claimedBy ?? v.requestedBy,
-        v.updatedAt,
-        v.completedAt ?? null,
-        v.completedBy ?? null,
-        expected
-      ]
-    );
-    if (!result.rowCount)
-      throw new ProfessionalReviewError(
-        'STALE_PROFESSIONAL_REVIEW',
-        'The Review Case changed; reload the exact latest version.',
-        409
-      );
-    await this.query.query(
-      'INSERT INTO professional_review_audit (workspace_id,professional_review_case_id,action,review_version,actor_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)',
-      [
-        this.workspaceId,
-        v.reviewCaseId,
-        action,
-        v.version,
-        v.completedBy ?? v.assignment.claimedBy ?? v.requestedBy,
-        v.updatedAt
-      ]
-    );
+    try {
+      await this.database.transact(async (client) => {
+        const result = await client.query(
+          'UPDATE professional_review_cases SET status=$3,version=$4,review_case=$5::jsonb,updated_by=$6,updated_at=$7,completed_at=$8,completed_by=$9 WHERE workspace_id=$1 AND professional_review_case_id=$2 AND version=$10 AND completed_at IS NULL',
+          [
+            this.workspaceId,
+            v.reviewCaseId,
+            v.status,
+            v.version,
+            JSON.stringify(v),
+            v.completedBy ?? v.assignment.claimedBy ?? v.requestedBy,
+            v.updatedAt,
+            v.completedAt ?? null,
+            v.completedBy ?? null,
+            expected
+          ]
+        );
+        if (!result.rowCount)
+          throw new ProfessionalReviewError(
+            'STALE_PROFESSIONAL_REVIEW',
+            'The Review Case changed; reload the exact latest version.',
+            409
+          );
+        await client.query(
+          'INSERT INTO professional_review_audit (workspace_id,professional_review_case_id,action,review_version,actor_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)',
+          [
+            this.workspaceId,
+            v.reviewCaseId,
+            action,
+            v.version,
+            v.completedBy ?? v.assignment.claimedBy ?? v.requestedBy,
+            v.updatedAt
+          ]
+        );
+        if (action === 'REVIEW_COMPLETED' && idempotencyKey && fingerprint)
+          await client.query(
+            "INSERT INTO professional_review_commands (workspace_id,idempotency_key,request_fingerprint,professional_review_case_id,command_type,response_version,created_at) VALUES ($1,$2,$3,$4,'COMPLETE',$5,$6)",
+            [this.workspaceId, idempotencyKey, fingerprint, v.reviewCaseId, v.version, v.updatedAt]
+          );
+      });
+    } catch (cause) {
+      if (cause instanceof ProfessionalReviewError) throw cause;
+      throw this.unavailable(cause);
+    }
   }
   private assertScope(v: ProfessionalReviewCase) {
     if (v.workspaceId !== this.workspaceId)
@@ -193,5 +223,13 @@ export class PostgresProfessionalReviewRepository implements ProfessionalReviewR
           }
         : {})
     };
+  }
+  private unavailable(cause: unknown) {
+    return new ProfessionalReviewError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Professional Review persistence is unavailable.',
+      503,
+      cause instanceof Error ? { cause: cause.message } : undefined
+    );
   }
 }

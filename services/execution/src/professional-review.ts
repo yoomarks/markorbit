@@ -5,6 +5,8 @@ import type {
   MarkOrbitId,
   MatterDraftId,
   MatterDraftReviewSnapshot,
+  FormalMatter,
+  FormalMatterId,
   ProfessionalReviewCase,
   ProfessionalReviewCaseId,
   ProfessionalReviewChecklistCode,
@@ -26,6 +28,7 @@ export class ProfessionalReviewError extends Error {
 }
 export interface MatterDraftReviewSource {
   getMatterDraft(id: MatterDraftId): Promise<MatterDraftReviewSnapshot | undefined>;
+  getFormalMatter?(id: FormalMatterId, workspaceId: string): Promise<FormalMatter | undefined>;
 }
 interface KeyEntry {
   fingerprint: string;
@@ -43,7 +46,11 @@ export interface ProfessionalReviewRepository {
   claim(value: ProfessionalReviewCase): Promise<void>;
   updateChecklist(value: ProfessionalReviewCase): Promise<void>;
   prepareInformationRequest(value: ProfessionalReviewCase): Promise<void>;
-  recordDecision(value: ProfessionalReviewCase): Promise<void>;
+  recordDecision(
+    value: ProfessionalReviewCase,
+    idempotencyKey?: string,
+    fingerprint?: string
+  ): Promise<void>;
   markStale(value: ProfessionalReviewCase): Promise<void>;
   withdraw(value: ProfessionalReviewCase): Promise<void>;
 }
@@ -98,8 +105,9 @@ export class InMemoryProfessionalReviewRepository implements ProfessionalReviewR
   prepareInformationRequest(v: ProfessionalReviewCase) {
     return this.save(v);
   }
-  recordDecision(v: ProfessionalReviewCase) {
-    return this.save(v);
+  async recordDecision(v: ProfessionalReviewCase, key?: string, fingerprint?: string) {
+    await this.save(v);
+    if (key && fingerprint) this.keys.set(key, { fingerprint, reviewCaseId: v.reviewCaseId });
   }
   markStale(v: ProfessionalReviewCase) {
     return this.save(v);
@@ -156,7 +164,30 @@ export class ProfessionalReviewService {
         );
       return this.required(key.reviewCaseId);
     }
-    const source = await this.source.getMatterDraft(command.matterDraftId);
+    const formalMatter =
+      command.formalMatterId && command.workspaceId && this.source.getFormalMatter
+        ? await this.source.getFormalMatter(command.formalMatterId, command.workspaceId)
+        : undefined;
+    if (command.formalMatterId && this.source.getFormalMatter && !formalMatter)
+      throw new ProfessionalReviewError(
+        'SOURCE_FORMAL_MATTER_NOT_FOUND',
+        'Source Formal Matter was not found.',
+        404
+      );
+    if (
+      formalMatter &&
+      (formalMatter.version !== command.sourceFormalMatterVersion ||
+        formalMatter.snapshotSha256 !== command.sourceSnapshotSha256 ||
+        formalMatter.workspaceId !== command.workspaceId)
+    )
+      throw new ProfessionalReviewError(
+        'SOURCE_VERSION_MISMATCH',
+        'Exact source Formal Matter version and hash are required.',
+        409
+      );
+    const source = formalMatter
+      ? formalMatterReviewSnapshot(formalMatter)
+      : await this.source.getMatterDraft(command.matterDraftId);
     if (!source)
       throw new ProfessionalReviewError(
         'SOURCE_MATTER_DRAFT_NOT_FOUND',
@@ -234,6 +265,30 @@ export class ProfessionalReviewService {
   }
   private async refresh(v: ProfessionalReviewCase) {
     if (['STALE', 'WITHDRAWN', 'REVIEWED_READY_FOR_NEXT_STEP'].includes(v.status)) return;
+    if (v.formalMatterId && v.workspaceId && this.source.getFormalMatter) {
+      let matter: FormalMatter | undefined;
+      try {
+        matter = await this.source.getFormalMatter(v.formalMatterId, v.workspaceId);
+      } catch (cause) {
+        if (cause instanceof ProfessionalReviewError) throw cause;
+        throw new ProfessionalReviewError(
+          'SOURCE_UNAVAILABLE',
+          'Formal Matter source validation is unavailable.',
+          503
+        );
+      }
+      if (!matter)
+        throw new ProfessionalReviewError(
+          'SOURCE_UNAVAILABLE',
+          'Formal Matter source validation is unavailable.',
+          503
+        );
+      if (
+        matter.version === v.sourceFormalMatterVersion &&
+        matter.snapshotSha256 === v.sourceSnapshotSha256
+      )
+        return;
+    }
     const current = await this.source.getMatterDraft(v.source.matterDraftId);
     if (!current || current.matterDraftVersion !== v.source.matterDraftVersion)
       await this.repository.markStale({
@@ -245,6 +300,7 @@ export class ProfessionalReviewService {
   }
   async claim(id: ProfessionalReviewCaseId, reviewerId: MarkOrbitId, expectedVersion?: number) {
     const v = await this.get(id);
+    this.requireExpected(v, expectedVersion);
     this.exact(v, expectedVersion);
     if (v.status !== 'QUEUED')
       throw new ProfessionalReviewError('CASE_NOT_CLAIMABLE', 'Only a queued case may be claimed.');
@@ -273,6 +329,22 @@ export class ProfessionalReviewService {
     expectedVersion?: number
   ) {
     const v = await this.reviewable(id, reviewerId);
+    this.requireExpected(v, expectedVersion);
+    if (
+      !Array.isArray(updates) ||
+      updates.some(
+        (update) =>
+          !update.code ||
+          !v.checklist.some((item) => item.code === update.code) ||
+          (update.status !== undefined &&
+            !['PASS', 'FAIL', 'UNKNOWN', 'NOT_APPLICABLE'].includes(update.status))
+      )
+    )
+      throw new ProfessionalReviewError(
+        'INVALID_REVIEW_EVIDENCE',
+        'Checklist updates must use bounded Review fields and statuses.',
+        422
+      );
     this.exact(v, expectedVersion);
     const at = this.now();
     const next = {
@@ -294,6 +366,7 @@ export class ProfessionalReviewService {
     expectedVersion?: number
   ) {
     const v = await this.reviewable(id, reviewerId);
+    this.requireExpected(v, expectedVersion);
     this.exact(v, expectedVersion);
     if (!input.requestedFields.length)
       throw new ProfessionalReviewError(
@@ -317,8 +390,24 @@ export class ProfessionalReviewService {
     reviewerId: MarkOrbitId,
     code: ProfessionalReviewDecisionCode,
     rationale: string,
-    expectedVersion?: number
+    expectedVersion?: number,
+    idempotencyKey?: string
   ) {
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify({ id, reviewerId, code, rationale, expectedVersion }))
+      .digest('hex');
+    if (idempotencyKey) {
+      const replay = await this.repository.findByIdempotencyKey(idempotencyKey);
+      if (replay) {
+        if (replay.fingerprint !== fingerprint)
+          throw new ProfessionalReviewError(
+            'IDEMPOTENCY_CONFLICT',
+            'Idempotency key has a different completion payload.',
+            409
+          );
+        return this.required(replay.reviewCaseId);
+      }
+    }
     const v = await this.reviewable(id, reviewerId);
     if (v.decision) {
       if (
@@ -329,6 +418,7 @@ export class ProfessionalReviewService {
         return v;
       throw new ProfessionalReviewError('DECISION_IMMUTABLE', 'A completed decision is immutable.');
     }
+    this.requireExpected(v, expectedVersion);
     this.exact(v, expectedVersion);
     if (
       code === 'MARK_READY_FOR_NEXT_STEP' &&
@@ -365,7 +455,7 @@ export class ProfessionalReviewService {
       completedAt: at,
       completedBy: reviewerId
     };
-    await this.repository.recordDecision(next);
+    await this.repository.recordDecision(next, idempotencyKey, fingerprint);
     return next;
   }
   async withdraw(id: ProfessionalReviewCaseId) {
@@ -413,4 +503,26 @@ export class ProfessionalReviewService {
         { expectedVersion, actualVersion: value.version }
       );
   }
+  private requireExpected(value: ProfessionalReviewCase, expectedVersion?: number) {
+    if (value.workspaceId && !Number.isSafeInteger(expectedVersion))
+      throw new ProfessionalReviewError(
+        'INVALID_REVIEW_EVIDENCE',
+        'An exact expected Review version is required.',
+        422
+      );
+  }
+}
+
+function formalMatterReviewSnapshot(matter: FormalMatter): MatterDraftReviewSnapshot {
+  return {
+    schemaVersion: 1,
+    matterDraftId: matter.sourceMatterDraftId,
+    matterDraftVersion: String(matter.sourceMatterDraftVersion),
+    confirmationId: matter.sourceCustomerConfirmationId,
+    customerId: matter.sourceQuoteId,
+    status: matter.sourceSnapshot.matterDraft.status,
+    preparation: structuredClone(matter.sourceSnapshot.preparation),
+    readiness: structuredClone(matter.sourceSnapshot.matterDraft.readiness),
+    readinessTimestamp: matter.sourceSnapshot.matterDraft.readiness.evaluatedAt
+  };
 }

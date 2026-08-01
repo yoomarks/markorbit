@@ -51,7 +51,9 @@ describe('Execution negative paths through real Gateway HTTP', () => {
           now: () => '2026-07-29T12:00:00.000Z'
         })
       );
-      const gatewayUrl = await start(createGateway({ port: 0, executionUrl }));
+      const gatewayUrl = await start(
+        createGateway({ port: 0, executionUrl, milestoneTestRuntime: true })
+      );
       const request = await fixture.http();
       const response = await fetch(`${gatewayUrl}${request.path}`, {
         method: request.method,
