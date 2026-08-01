@@ -281,6 +281,11 @@ function ReviewDetail({
           >
             Start or resume Document Package
           </a>
+          <a
+            href={`http://127.0.0.1:4372/?professionalReviewCaseId=${encodeURIComponent(value.reviewCaseId)}`}
+          >
+            Return to MarkReg Documents and Instructions
+          </a>
         </>
       )}
     </section>

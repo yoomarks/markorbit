@@ -1,10 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import {
-  ManagedDatabase,
-  loadMigrationsForOwner,
-  migrate
-} from '../packages/persistence/src/index.js';
+import { ManagedDatabase } from '../packages/persistence/src/index.js';
 import {
   AuthenticationService,
   InMemoryMembershipRepository,
@@ -25,6 +21,7 @@ import {
   PostgresFormalMatterRepository,
   hashSnapshot
 } from '../services/markreg/src/index.js';
+import { resetAndMigrateMarkRegTestDatabase } from '../services/markreg/tests/support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 if (!url)
@@ -72,22 +69,12 @@ let vite: ChildProcess;
 async function main() {
   await database.start();
   const pool = database.getPool();
-  await pool.query(
-    'DROP TABLE IF EXISTS document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE'
-  );
-  const history = await pool.query<{ migration_history: string | null }>(
-    "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
-  );
-  if (history.rows[0]?.migration_history)
-    await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace=$1', [
-      'lite_matter_browser'
-    ]);
-  const owned = await loadMigrationsForOwner(
-    path.resolve('infrastructure/persistence/migrations'),
-    path.resolve('infrastructure/persistence/migration-owners.json'),
-    '@markorbit/markreg-service'
-  );
-  await migrate(pool, 'lite_matter_browser', owned);
+  await resetAndMigrateMarkRegTestDatabase({
+    pool,
+    namespace: 'lite_matter_browser',
+    migrationsDirectory: path.resolve('infrastructure/persistence/migrations'),
+    migrationOwners: path.resolve('infrastructure/persistence/migration-owners.json')
+  });
   await workspaces.create({ workspaceId, name: 'Northstar IP', slug: 'northstar-task023' });
   await workspaces.create({
     workspaceId: otherWorkspaceId,

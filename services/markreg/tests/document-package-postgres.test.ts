@@ -4,7 +4,6 @@ import type { ProfessionalReviewCase, WorkspacePrincipal } from '@markorbit/cont
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
-  migrate,
   migrationStatus,
   verifyMigrations
 } from '@markorbit/persistence';
@@ -12,6 +11,7 @@ import {
   completedDecisionFingerprint,
   PostgresDocumentPackageService
 } from '../src/document-package.js';
+import { resetAndMigrateMarkRegTestDatabase } from './support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 const required = process.env.MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED === '1';
@@ -129,8 +129,12 @@ suite('PostgreSQL durable Document Package and Instruction Ledger', () => {
     });
   beforeAll(async () => {
     await database.start();
-    const pool = database.getPool();
-    await migrate(pool, namespace, await migrations());
+    await resetAndMigrateMarkRegTestDatabase({
+      pool: database.getPool(),
+      namespace,
+      migrationsDirectory: path.resolve('../../infrastructure/persistence/migrations'),
+      migrationOwners: path.resolve('../../infrastructure/persistence/migration-owners.json')
+    });
   });
   beforeEach(() =>
     database

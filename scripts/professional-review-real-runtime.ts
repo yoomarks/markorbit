@@ -25,6 +25,7 @@ import {
   PostgresFormalMatterRepository,
   hashSnapshot
 } from '../services/markreg/src/index.js';
+import { resetAndMigrateMarkRegTestDatabase } from '../services/markreg/tests/support/markreg-test-database.js';
 import {
   createRuntime as createExecution,
   PostgresProfessionalReviewRepository
@@ -90,21 +91,21 @@ async function main() {
   await database.start();
   const pool = database.getPool();
   await pool.query(
-    'DROP TABLE IF EXISTS document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,professional_review_audit,professional_review_commands,professional_review_cases,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE'
+    'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE'
   );
   const history = await pool.query<{ migration_history: string | null }>(
     "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
   );
   if (history.rows[0]?.migration_history)
     await pool.query(
-      "DELETE FROM markorbit_persistence.migration_history WHERE namespace IN ('lite_matter_browser','professional_review_browser')"
+      "DELETE FROM markorbit_persistence.migration_history WHERE namespace = 'professional_review_browser'"
     );
-  const owned = await loadMigrationsForOwner(
-    path.resolve('infrastructure/persistence/migrations'),
-    path.resolve('infrastructure/persistence/migration-owners.json'),
-    '@markorbit/markreg-service'
-  );
-  await migrate(pool, 'lite_matter_browser', owned);
+  await resetAndMigrateMarkRegTestDatabase({
+    pool,
+    namespace: 'lite_matter_browser',
+    migrationsDirectory: path.resolve('infrastructure/persistence/migrations'),
+    migrationOwners: path.resolve('infrastructure/persistence/migration-owners.json')
+  });
   const executionOwned = await loadMigrationsForOwner(
     path.resolve('infrastructure/persistence/migrations'),
     path.resolve('infrastructure/persistence/migration-owners.json'),

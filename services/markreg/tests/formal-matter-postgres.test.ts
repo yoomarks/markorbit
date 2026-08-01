@@ -4,7 +4,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
-  migrate,
   migrationStatus,
   verifyMigrations
 } from '@markorbit/persistence';
@@ -21,6 +20,7 @@ import {
   type CustomerConfirmationRecord
 } from '../src/customer-confirmation.js';
 import { PostgresMatterDraftRepository, type MatterDraftRecord } from '../src/matter-draft.js';
+import { resetAndMigrateMarkRegTestDatabase } from './support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 const required = process.env.MARKREG_POSTGRES_TEST_REQUIRED === '1';
@@ -138,18 +138,12 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
       );
   beforeAll(async () => {
     await database.start();
-    const pool = database.getPool();
-    await pool.query(
-      'DROP TABLE IF EXISTS formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations CASCADE'
-    );
-    const history = await pool.query<{ migration_history: string | null }>(
-      "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
-    );
-    if (history.rows[0]?.migration_history)
-      await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace=$1', [
-        namespace
-      ]);
-    await migrate(pool, namespace, await migrations());
+    await resetAndMigrateMarkRegTestDatabase({
+      pool: database.getPool(),
+      namespace,
+      migrationsDirectory,
+      migrationOwners
+    });
   });
   beforeEach(truncate);
   afterAll(() => database.close());
@@ -174,7 +168,7 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
   };
   it('applies and verifies owner migration 0022 with no workaround', async () => {
     const owned = await migrations();
-    expect(owned.map((x) => x.version)).toEqual(['0020', '0021', '0022']);
+    expect(owned.map((x) => x.version)).toEqual(['0020', '0021', '0022', '0024']);
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (x) => x.state === 'applied'
