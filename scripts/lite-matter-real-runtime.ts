@@ -21,7 +21,10 @@ import {
   PostgresFormalMatterRepository,
   hashSnapshot
 } from '../services/markreg/src/index.js';
-import { resetAndMigrateMarkRegTestDatabase } from '../services/markreg/tests/support/markreg-test-database.js';
+import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from '../services/markreg/tests/support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 if (!url)
@@ -40,7 +43,7 @@ const database = new ManagedDatabase({
   idleTimeoutMs: 2000,
   statementTimeoutMs: 5000,
   sslMode: 'disable',
-  migrationNamespace: 'lite_matter_browser'
+  migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
 });
 const users = new InMemoryUserRepository(),
   workspaces = new InMemoryWorkspaceRepository(),
@@ -71,7 +74,6 @@ async function main() {
   const pool = database.getPool();
   await resetAndMigrateMarkRegTestDatabase({
     pool,
-    namespace: 'lite_matter_browser',
     migrationsDirectory: path.resolve('infrastructure/persistence/migrations'),
     migrationOwners: path.resolve('infrastructure/persistence/migration-owners.json')
   });

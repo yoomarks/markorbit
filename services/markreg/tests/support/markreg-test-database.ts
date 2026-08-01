@@ -5,6 +5,7 @@ import {
 } from '../../../../packages/persistence/src/index.js';
 
 const MARKREG_RESET_LOCK = 'markorbit:test:markreg-reset';
+export const MARKREG_TEST_MIGRATION_NAMESPACE = 'markreg_test';
 
 /**
  * Test-only boundary for suites that deliberately replay every MarkReg-owned migration.
@@ -12,7 +13,6 @@ const MARKREG_RESET_LOCK = 'markorbit:test:markreg-reset';
  */
 export async function resetAndMigrateMarkRegTestDatabase(input: {
   pool: ReturnType<ManagedDatabase['getPool']>;
-  namespace: string;
   migrationsDirectory: string;
   migrationOwners: string;
 }) {
@@ -41,9 +41,9 @@ export async function resetAndMigrateMarkRegTestDatabase(input: {
     if (history.rows[0]?.migration_history)
       await client.query(
         'DELETE FROM markorbit_persistence.migration_history WHERE namespace = $1',
-        [input.namespace]
+        [MARKREG_TEST_MIGRATION_NAMESPACE]
       );
-    await migrate(input.pool, input.namespace, migrations);
+    await migrate(input.pool, MARKREG_TEST_MIGRATION_NAMESPACE, migrations);
     return migrations;
   } finally {
     await client

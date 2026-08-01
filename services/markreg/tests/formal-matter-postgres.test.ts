@@ -20,7 +20,10 @@ import {
   type CustomerConfirmationRecord
 } from '../src/customer-confirmation.js';
 import { PostgresMatterDraftRepository, type MatterDraftRecord } from '../src/matter-draft.js';
-import { resetAndMigrateMarkRegTestDatabase } from './support/markreg-test-database.js';
+import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from './support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 const required = process.env.MARKREG_POSTGRES_TEST_REQUIRED === '1';
@@ -115,7 +118,7 @@ function draft(source: CustomerConfirmationRecord, suffix: string): MatterDraftR
 }
 
 suite('PostgreSQL Formal Matter migration, repository and service', () => {
-  const namespace = 'markreg_formal_matter_test';
+  const namespace = MARKREG_TEST_MIGRATION_NAMESPACE;
   const database = new ManagedDatabase({
     connection: { url: url! },
     applicationName: 'markreg-formal-matter-test',
@@ -140,7 +143,6 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
     await database.start();
     await resetAndMigrateMarkRegTestDatabase({
       pool: database.getPool(),
-      namespace,
       migrationsDirectory,
       migrationOwners
     });

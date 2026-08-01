@@ -28,6 +28,10 @@ import {
   hashSnapshot
 } from '../services/markreg/dist/index.js';
 import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from '../services/markreg/tests/support/markreg-test-database.js';
+import {
   createRuntime as createExecution,
   PostgresProfessionalReviewRepository
 } from '../services/execution/dist/index.js';
@@ -98,7 +102,7 @@ suite('authenticated durable Document Package HTTP path', () => {
       idleTimeoutMs: 1000,
       statementTimeoutMs: 5000,
       sslMode: 'disable',
-      migrationNamespace: 'task025_http_markreg'
+      migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
     });
   const reviewSource = (db: ManagedDatabase) => ({
     async get(principal: any, reviewCaseId: string, correlationId?: string) {
@@ -347,22 +351,22 @@ suite('authenticated durable Document Package HTTP path', () => {
     await Promise.all([markregDatabase.start(), executionDatabase.start()]);
     const pool = markregDatabase.getPool();
     await pool.query(
-      'DROP TABLE IF EXISTS document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,professional_review_audit,professional_review_commands,professional_review_cases,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE'
+      'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE'
     );
     const history = await pool.query<{ migration_history: string | null }>(
       "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
     );
     if (history.rows[0]?.migration_history)
       await pool.query(
-        "DELETE FROM markorbit_persistence.migration_history WHERE namespace IN ('task025_http_markreg','task025_http_execution')"
+        "DELETE FROM markorbit_persistence.migration_history WHERE namespace = 'task025_http_execution'"
       );
     const directory = path.resolve('infrastructure/persistence/migrations');
     const owners = path.resolve('infrastructure/persistence/migration-owners.json');
-    await migrate(
+    await resetAndMigrateMarkRegTestDatabase({
       pool,
-      'task025_http_markreg',
-      await loadMigrationsForOwner(directory, owners, '@markorbit/markreg-service')
-    );
+      migrationsDirectory: directory,
+      migrationOwners: owners
+    });
     await migrate(
       pool,
       'task025_http_execution',

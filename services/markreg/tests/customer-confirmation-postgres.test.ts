@@ -13,7 +13,10 @@ import {
   runCustomerConfirmationRepositoryContract
 } from './customer-confirmation-repository-contract.js';
 import { PostgresMatterDraftRepository } from '../src/matter-draft.js';
-import { resetAndMigrateMarkRegTestDatabase } from './support/markreg-test-database.js';
+import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from './support/markreg-test-database.js';
 import {
   matterDraftContractRecord,
   runMatterDraftRepositoryContract
@@ -32,7 +35,7 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'markreg_customer_confirmation_test'
+    migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
@@ -51,7 +54,6 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
     await database.start();
     await resetAndMigrateMarkRegTestDatabase({
       pool: database.getPool(),
-      namespace: 'markreg_customer_confirmation_test',
       migrationsDirectory,
       migrationOwners
     });
@@ -78,10 +80,10 @@ suite('PostgreSQL Customer Confirmation persistence', () => {
     expect(loadedVersions.filter((version) => nonMarkRegVersions.includes(version))).toEqual([]);
     expect(
       (
-        await migrationStatus(database.getPool(), 'markreg_customer_confirmation_test', migrations)
+        await migrationStatus(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, migrations)
       ).every((x) => x.state === 'applied')
     ).toBe(true);
-    await verifyMigrations(database.getPool(), 'markreg_customer_confirmation_test', migrations);
+    await verifyMigrations(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, migrations);
   });
   runMatterDraftRepositoryContract('PostgreSQL', async () => {
     await database.getPool().query('TRUNCATE matter_drafts, customer_confirmations');

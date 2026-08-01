@@ -11,7 +11,10 @@ import {
   completedDecisionFingerprint,
   PostgresDocumentPackageService
 } from '../src/document-package.js';
-import { resetAndMigrateMarkRegTestDatabase } from './support/markreg-test-database.js';
+import {
+  MARKREG_TEST_MIGRATION_NAMESPACE,
+  resetAndMigrateMarkRegTestDatabase
+} from './support/markreg-test-database.js';
 
 const url = process.env.MARKREG_TEST_DATABASE_URL;
 const required = process.env.MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED === '1';
@@ -95,7 +98,7 @@ const review: ProfessionalReviewCase = {
 };
 
 suite('PostgreSQL durable Document Package and Instruction Ledger', () => {
-  const namespace = 'markreg_document_package_test';
+  const namespace = MARKREG_TEST_MIGRATION_NAMESPACE;
   const database = new ManagedDatabase({
     connection: { url: url! },
     applicationName: namespace,
@@ -131,7 +134,6 @@ suite('PostgreSQL durable Document Package and Instruction Ledger', () => {
     await database.start();
     await resetAndMigrateMarkRegTestDatabase({
       pool: database.getPool(),
-      namespace,
       migrationsDirectory: path.resolve('../../infrastructure/persistence/migrations'),
       migrationOwners: path.resolve('../../infrastructure/persistence/migration-owners.json')
     });
