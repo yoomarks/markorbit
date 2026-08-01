@@ -3,7 +3,9 @@ import fs from 'node:fs';
 
 const files = [
   'apps/lite-web/src/api/document-package.ts',
-  'apps/lite-web/src/features/document-package/DocumentPackageWorkspace.tsx'
+  'apps/lite-web/src/features/document-package/DocumentPackageWorkspace.tsx',
+  'tests/e2e/document-package-real-runtime.spec.ts',
+  'scripts/document-package-real-runtime.ts'
 ];
 const source = files.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const forbidden of ['page' + '.route(', 'context' + '.route(', 'route' + '.fulfill('])
