@@ -158,10 +158,11 @@ function ReviewDetail({
   onBack: () => void;
 }) {
   const [rationale, setRationale] = useState('');
+  const [professionalFinding, setProfessionalFinding] = useState('');
   const blocking = value.checklist.some(
     (item) => item.blocking && !['PASS', 'NOT_APPLICABLE'].includes(item.status)
   );
-  const claimed = value.assignment.claimedBy === reviewerId;
+  const claimed = value.assignment.status === 'CLAIMED';
   const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
   return (
     <section>
@@ -190,6 +191,7 @@ function ReviewDetail({
         {value.checklist.map((item) => (
           <p key={item.code}>
             <strong>{item.code}</strong>: {item.status} — {item.explanation}
+            {item.reviewerNote ? ` — ${item.reviewerNote}` : ''}
           </p>
         ))}
         {blocking && (
@@ -211,24 +213,33 @@ function ReviewDetail({
         </Button>
       )}
       {claimed && blocking && (
-        <Button
-          onClick={() =>
-            void client
-              .checklist(
-                value.reviewCaseId,
-                reviewerId,
-                value.checklist.map((item) => ({
-                  code: item.code,
-                  status: 'PASS',
-                  explanation: 'Exact source evidence reviewed.'
-                })),
-                value.version ?? 1
-              )
-              .then(({ reviewCase }) => save(reviewCase))
-          }
-        >
-          Save Review Draft
-        </Button>
+        <>
+          <TextInput
+            label="Professional finding"
+            value={professionalFinding}
+            onChange={(event) => setProfessionalFinding(event.target.value)}
+          />
+          <Button
+            disabled={!professionalFinding.trim()}
+            onClick={() =>
+              void client
+                .checklist(
+                  value.reviewCaseId,
+                  reviewerId,
+                  value.checklist.map((item) => ({
+                    code: item.code,
+                    status: 'PASS',
+                    explanation: 'Exact source evidence reviewed.',
+                    reviewerNote: professionalFinding.trim()
+                  })),
+                  value.version ?? 1
+                )
+                .then(({ reviewCase }) => save(reviewCase))
+            }
+          >
+            Save Review Draft
+          </Button>
+        </>
       )}
       {claimed && !blocking && !complete && (
         <>
@@ -251,7 +262,7 @@ function ReviewDetail({
       )}
       {complete && (
         <>
-          <Alert title="Reviewed ready for next step — no action executed">
+          <Alert title="Ready for next step — no action executed">
             orderCreated: false · paymentCreated: false · formalMatterCreated: false ·
             providerAppointed: false · filingCreated: false · customerMessageSent: false
           </Alert>

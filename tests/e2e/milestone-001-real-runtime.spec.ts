@@ -157,14 +157,45 @@ test.describe('Milestone 001 real runtime golden path', () => {
       const reviewId = await id(page, /Professional Review Case (professional-review_[\w-]+)/);
       await expect(page.getByText(lineage.require('matterDraft').id)).toBeVisible();
       await expect(page.getByText(String(lineage.require('matterDraft').version))).toBeVisible();
+      const initialReviewVersion = await id(page, /Review version\s+(\d+)/);
+      const claimResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/api/lite/professional-review-cases/${reviewId}/claim`) &&
+          response.request().method() === 'POST'
+      );
       await page.getByRole('button', { name: 'Claim review' }).click();
-      await page.getByRole('button', { name: 'Complete review checklist' }).click();
+      expect((await claimResponse).status()).toBe(200);
+      await page
+        .getByLabel('Professional finding')
+        .fill('Exact source identity, scope, jurisdiction, and goods evidence reviewed.');
+      await expect(page.getByRole('button', { name: 'Save Review Draft' })).toBeVisible();
+      await expect(page.getByText('Review version', { exact: true })).toBeVisible();
+      expect(await id(page, /Review version\s+(\d+)/)).not.toBe(initialReviewVersion);
+      const saveResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/api/lite/professional-review-cases/${reviewId}/checklist`) &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByRole('button', { name: 'Save Review Draft' }).click();
+      expect((await saveResponse).status()).toBe(200);
+      await expect(page.getByLabel('Review decision rationale')).toBeVisible();
+      const savedReviewVersion = await id(page, /Review version\s+(\d+)/);
       await fill(
         'Review decision rationale',
         'Exact immutable Matter Draft evidence supports the next governed preparation step.'
       );
+      const completionResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/api/lite/professional-review-cases/${reviewId}/complete`) &&
+          response.request().method() === 'POST'
+      );
       await page.getByRole('button', { name: 'Mark reviewed and ready for next step' }).click();
+      expect((await completionResponse).status()).toBe(200);
       await expect(page.getByText('REVIEWED_READY_FOR_NEXT_STEP')).toBeVisible();
+      await expect(
+        page.getByText('Ready for next step — no action executed', { exact: true })
+      ).toBeVisible();
+      expect(await id(page, /Review version\s+(\d+)/)).not.toBe(savedReviewVersion);
       const reviewVersion = await id(page, /Review decision version: (\S+)/);
       lineage.record('professionalReviewCase', { id: reviewId, version: reviewVersion });
       lineage.record('reviewDecision', { id: reviewId, version: reviewVersion });

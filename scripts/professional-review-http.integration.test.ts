@@ -316,6 +316,15 @@ suite('real authenticated durable Professional Review HTTP path', () => {
   });
 
   it('enforces the role, Session and Workspace matrix through real listeners', async () => {
+    const managerToken = cookies.manager!.match(/mo_session=([^;]+)/)![1]!;
+    const managerPrincipal = await authentication.resolveWorkspacePrincipal(
+      managerToken,
+      workspaceId
+    );
+    expect(managerPrincipal.role).toBe('MATTER_MANAGER');
+    expect(managerPrincipal.permissions).toEqual(
+      expect.arrayContaining(['review:read', 'review:perform'])
+    );
     for (const role of ['admin', 'manager', 'reviewer'])
       expect((await open(role, `role_${role}`)).response.status, role).toBe(200);
     const readable = await open('admin', 'readable');

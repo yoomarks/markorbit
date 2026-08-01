@@ -45,7 +45,8 @@ describe('role permission matrix', () => {
             'matter:read',
             'matter:create',
             'matter:manage',
-            'review:read'
+            'review:read',
+            'review:perform'
           ],
           REVIEWER: ['workspace:read', 'matter:read', 'review:read', 'review:perform'],
           READ_ONLY: ['workspace:read', 'matter:read', 'review:read']
