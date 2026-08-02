@@ -83,9 +83,8 @@ test('scenario commands select exact executable evidence and required modes', ()
       'EXECUTION_POSTGRES_TEST_REQUIRED=1'
     ],
     'test:milestone2:tenant-isolation': [
-      'AUTH_POSTGRES_TEST_REQUIRED=1',
-      'MARKREG_AUDIT_HTTP_REQUIRED=1',
-      'EXECUTION_POSTGRES_TEST_REQUIRED=1'
+      'MILESTONE2_TENANT_REQUIRED=1',
+      'scripts/milestone2-tenant-isolation.integration.test.ts'
     ]
   };
   for (const [name, selections] of Object.entries(expected))

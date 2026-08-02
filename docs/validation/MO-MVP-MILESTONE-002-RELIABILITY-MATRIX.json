@@ -732,10 +732,10 @@
     {
       "id": "OUT-001",
       "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
-      "testName": "OUT-001 Core startup database outage",
+      "testName": "OUT-CORE-STARTUP preserves the causal failure then restores Core listener, health and durable identity readiness",
       "command": "pnpm test:milestone2:outage",
       "ownerDatabase": "Core",
-      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -745,16 +745,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "extend to construct the owner listener after database restoration"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "OUT-002",
       "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
-      "testName": "OUT-002 MarkReg startup database outage",
+      "testName": "OUT-MARKREG-STARTUP preserves the causal failure then restores the durable MarkReg listener and reusable port",
       "command": "pnpm test:milestone2:outage",
       "ownerDatabase": "MarkReg",
-      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -764,16 +764,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "extend to construct the owner listener after database restoration"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "OUT-003",
       "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
-      "testName": "OUT-003 Execution startup database outage",
+      "testName": "OUT-EXECUTION-STARTUP preserves the causal failure then restores the durable Execution listener and reusable port",
       "command": "pnpm test:milestone2:outage",
       "ownerDatabase": "Execution",
-      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -783,8 +783,8 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "extend to construct the owner listener after database restoration"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "OUT-004",
@@ -1187,11 +1187,11 @@
     },
     {
       "id": "TEN-001",
-      "testFile": "scripts/formal-matter-http.integration.test.ts",
-      "testName": "allows every matter:read role to list and read with filters and pagination",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-001 returns exact Workspace-scoped Formal Matter, Review, Package and audit lists",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "Workspace-only lists/search",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1201,16 +1201,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-002",
-      "testFile": "scripts/formal-matter-http.integration.test.ts",
-      "testName": "isolates Workspace list/detail and rejects invalid filters",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-002 conceals exact cross-Workspace reads without identity or hash leakage",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "concealed cross-Workspace exact reads",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1220,16 +1220,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-003",
-      "testFile": "scripts/document-package-http.integration.test.ts",
-      "testName": "enforces Core Principal permissions, Sessions, origin and Workspace isolation",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-003 rejects cross-Workspace Review, Package and Instruction mutations with unchanged counts",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "cross-Workspace owner mutations denied",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1239,16 +1239,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-004",
-      "testFile": "scripts/audit-idempotency-http.integration.test.ts",
-      "testName": "does not discover another Workspace or trust forged query context",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-004 ignores forged actor, Membership, role, permission and body/query Workspace authority",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "forged context ignored",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1258,16 +1258,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-005",
-      "testFile": "scripts/formal-matter-http.integration.test.ts",
-      "testName": "denies anonymous, expired and non-member Sessions",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-005 enforces durable anonymous, invalid, expired, revoked, non-member and permission state across Core restart",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "401/403 Session and Membership matrix",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1277,16 +1277,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-006",
-      "testFile": "scripts/audit-idempotency-http.integration.test.ts",
-      "testName": "anonymous and expired Sessions receive 401",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-006 enforces durable audit:read roles and Workspace-scoped success/denial pagination",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "audit role and Session matrix; companion suite tests Admin/Manager/Reviewer/Read Only",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1296,16 +1296,16 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-007",
-      "testFile": "scripts/audit-idempotency-http.integration.test.ts",
-      "testName": "validates bounded filters and pagination",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-007 traverses interleaved pages exactly once and rejects invalid filters without Workspace escape",
       "command": "pnpm test:milestone2:tenant-isolation",
-      "ownerDatabase": "Core + Gateway + owner",
-      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
       "destructiveFilesSerialized": true,
       "expectedEvidence": "pagination cannot cross Workspace",
       "status": "IMPLEMENTED_NOT_EXECUTED",
@@ -1315,8 +1315,8 @@
         "failed": 0,
         "skipped": 0
       },
-      "coverageStatus": "PARTIALLY_COVERED",
-      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
       "id": "TEN-008",
@@ -1397,8 +1397,8 @@
     "Local environment is Node 20.20.2; authoritative validation is configured for Node 22 in CI."
   ],
   "coverageSummary": {
-    "EXECUTABLE_COVERED": 31,
-    "PARTIALLY_COVERED": 10,
+    "EXECUTABLE_COVERED": 41,
+    "PARTIALLY_COVERED": 0,
     "MISSING": 0
   },
   "commandAudit": [

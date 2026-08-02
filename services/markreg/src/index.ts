@@ -744,11 +744,15 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/document-packages',
           handle: (r) =>
-            prepared(async () => ({
-              documentPackages: await preparation.listPackages(
-                new URL(`http://local${r.path}`).searchParams.get('customerId') ?? undefined
-              )
-            }))
+            durablePackages
+              ? durable(async () => ({
+                  documentPackages: await durablePackages.list(durablePrincipal(r))
+                }))
+              : prepared(async () => ({
+                  documentPackages: await preparation.listPackages(
+                    new URL(`http://local${r.path}`).searchParams.get('customerId') ?? undefined
+                  )
+                }))
         },
         {
           method: 'GET',

@@ -18,23 +18,23 @@ Authored scripts, workflow steps, and documentation never count as a pass. The J
 
 ## Scenario-to-test coverage map
 
-| Requirements     | Exact executable evidence                               | Coverage                                                                                   |
-| ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| MIG-001–006      | `scripts/milestone2-migrations.integration.test.ts`     | executable for all three owners; required PostgreSQL execution pending                     |
-| RST-001          | `scripts/milestone2-core-restart.integration.test.ts`   | actual Core listener/pool replacement, exact Principal/Session evidence                    |
-| RST-002          | Formal Matter and Document Package HTTP suites          | actual MarkReg listener replacement and command replay                                     |
-| RST-003          | Professional Review HTTP suite                          | actual Execution listener replacement and immutable completion reload                      |
-| OUT-001–003      | `scripts/milestone2-startup-outage.integration.test.ts` | partial: typed database lifecycle is executable; owner-listener restoration still required |
-| OUT-004/007      | Core restart suite                                      | actual Core pool outage through Gateway and recovered listener                             |
-| OUT-005/008      | Formal Matter HTTP suite                                | actual MarkReg pool outage through Gateway and durable recovery                            |
-| OUT-006/009      | Professional Review HTTP suite                          | actual Execution pool outage through Gateway and durable recovery                          |
-| CON-CORE-001–002 | Core identity/Session PostgreSQL suites                 | durable unique Membership and revoke/use races                                             |
-| CON-MR-001–009   | current MarkReg PostgreSQL/HTTP suites                  | durable optimistic, replay/conflict, sequencing and pagination evidence                    |
-| CON-EX-001–004   | Professional Review PostgreSQL suite                    | durable version/completion/terminal evidence                                               |
-| TEN-001–007      | authenticated HTTP suites                               | partial: Core-derived authority is real, but reused HTTP Core repositories are in-memory   |
-| TEN-008          | dedicated Lite/Review/Package browsers                  | executable Workspace-switch clearing and recovery evidence                                 |
+| Requirements     | Exact executable evidence                                 | Coverage                                                                                          |
+| ---------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| MIG-001–006      | `scripts/milestone2-migrations.integration.test.ts`       | executable for all three owners; required PostgreSQL execution pending                            |
+| RST-001          | `scripts/milestone2-core-restart.integration.test.ts`     | actual Core listener/pool replacement, exact Principal/Session evidence                           |
+| RST-002          | Formal Matter and Document Package HTTP suites            | actual MarkReg listener replacement and command replay                                            |
+| RST-003          | Professional Review HTTP suite                            | actual Execution listener replacement and immutable completion reload                             |
+| OUT-001–003      | `scripts/milestone2-startup-outage.integration.test.ts`   | causal startup failure followed by migrated actual owner listener restoration and reusable ports  |
+| OUT-004/007      | Core restart suite                                        | actual Core pool outage through Gateway and recovered listener                                    |
+| OUT-005/008      | Formal Matter HTTP suite                                  | actual MarkReg pool outage through Gateway and durable recovery                                   |
+| OUT-006/009      | Professional Review HTTP suite                            | actual Execution pool outage through Gateway and durable recovery                                 |
+| CON-CORE-001–002 | Core identity/Session PostgreSQL suites                   | durable unique Membership and revoke/use races                                                    |
+| CON-MR-001–009   | current MarkReg PostgreSQL/HTTP suites                    | durable optimistic, replay/conflict, sequencing and pagination evidence                           |
+| CON-EX-001–004   | Professional Review PostgreSQL suite                      | durable version/completion/terminal evidence                                                      |
+| TEN-001–007      | `scripts/milestone2-tenant-isolation.integration.test.ts` | three owner databases, durable Core Sessions/Memberships and real owner listeners through Gateway |
+| TEN-008          | dedicated Lite/Review/Package browsers                    | executable Workspace-switch clearing and recovery evidence                                        |
 
-The JSON companion is authoritative for exact test names and remaining implementation. It deliberately marks partial coverage rather than inflating suite aliases into acceptance evidence.
+The JSON companion is authoritative for exact test names. All previously partial startup-restoration and TEN-001–007 records now point to focused required-mode executable evidence; execution remains pending PostgreSQL 16.
 
 ## Command audit
 
@@ -44,7 +44,7 @@ The JSON companion is authoritative for exact test names and remaining implement
 | `test:milestone2:restart`               | Core restart plus Formal Matter, Package and Review listener suites                                  | Core/MarkReg/Execution required flags              | combined files serialized                         |
 | `test:milestone2:outage`                | startup outage, Core/MarkReg/Execution actual pool-outage paths                                      | all owners required                                | combined files serialized                         |
 | `test:milestone2:concurrency`           | exact owner PostgreSQL race suites                                                                   | all PostgreSQL required flags                      | combined files serialized                         |
-| `test:milestone2:tenant-isolation`      | auth, audit, Matter, Package and Review authenticated HTTP                                           | Core plus owner required flags                     | reset-owning files serialized                     |
+| `test:milestone2:tenant-isolation`      | focused durable Core → Gateway → MarkReg/Execution suite                                             | three owner URLs; `MILESTONE2_TENANT_REQUIRED=1`   | one destructive file                              |
 | `test:milestone2:markreg-repeatability` | five named groups, two cycles, parsed zero-skip/equal-total guard                                    | one MarkReg database; all MarkReg required flags   | child processes strictly sequential               |
 | `test:milestone2:topology`              | command, database, Playwright inventory/no-interception guards                                       | static                                             | Node test runner                                  |
 | `test:milestone2:browser`               | eight separately invoked desktop/mobile projects                                                     | owner databases supplied by CI                     | one worker, zero retries, one project per process |

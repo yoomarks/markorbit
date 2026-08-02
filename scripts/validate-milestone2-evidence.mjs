@@ -41,6 +41,23 @@ for (const id of required) {
   );
   await access(record.testFile);
 }
+for (const id of [
+  'OUT-001',
+  'OUT-002',
+  'OUT-003',
+  'TEN-001',
+  'TEN-002',
+  'TEN-003',
+  'TEN-004',
+  'TEN-005',
+  'TEN-006',
+  'TEN-007'
+])
+  assert.equal(
+    records.get(id).coverageStatus,
+    'EXECUTABLE_COVERED',
+    `${id} must not regress to partial or missing implementation`
+  );
 assert.equal(
   evidence.eventDeliveryStatement,
   'audit persistence does not imply durable event delivery. There remains no outbox, broker, queue or crash-recovery delivery guarantee.'
