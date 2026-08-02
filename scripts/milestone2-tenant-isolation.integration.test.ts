@@ -220,7 +220,7 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
           hash = (label === 'a' ? 'a' : 'b').repeat(64),
           at = `2026-08-02T00:00:0${n}.000Z`;
         await db.MarkReg.getPool().query(
-          "INSERT INTO formal_matters(formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES($1,$2,'TRADEMARK_REGISTRATION','OPEN',1,$3,1,$4,1,$5,'1',$6,1,$7,$8,$9,$9); INSERT INTO formal_matter_audit(workspace_id,formal_matter_id,action,actor_id,created_at) VALUES($2,$1,'FORMAL_MATTER_CREATED',$8,$9)",
+          "INSERT INTO formal_matters(formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES($1,$2,'TRADEMARK_REGISTRATION','OPEN',1,$3,1,$4,1,$5,'1',$6,1,$7,$8,$9,$9)",
           [
             value.matter,
             workspace,
@@ -232,6 +232,10 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
             users.admin,
             at
           ]
+        );
+        await db.MarkReg.getPool().query(
+          "INSERT INTO formal_matter_audit(workspace_id,formal_matter_id,action,actor_id,created_at) VALUES($1,$2,'FORMAL_MATTER_CREATED',$3,$4)",
+          [workspace, value.matter, users.admin, at]
         );
         const review = {
           reviewCaseId: value.review,

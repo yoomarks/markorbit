@@ -127,8 +127,20 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     await database
       .getPool()
       .query(
-        "INSERT INTO users(user_id,email,normalized_email,display_name) VALUES($1,'prior@example.test','prior@example.test','Prior User'); INSERT INTO workspaces(workspace_id,name,slug) VALUES($2,'Prior Workspace','prior-workspace'); INSERT INTO workspace_memberships(membership_id,workspace_id,user_id,role) VALUES($3,$2,$1,'WORKSPACE_ADMIN')",
-        ids
+        "INSERT INTO users(user_id,email,normalized_email,display_name) VALUES($1,'prior@example.test','prior@example.test','Prior User')",
+        [ids[0]]
+      );
+    await database
+      .getPool()
+      .query(
+        "INSERT INTO workspaces(workspace_id,name,slug) VALUES($1,'Prior Workspace','prior-workspace')",
+        [ids[1]]
+      );
+    await database
+      .getPool()
+      .query(
+        "INSERT INTO workspace_memberships(membership_id,workspace_id,user_id,role) VALUES($1,$2,$3,'WORKSPACE_ADMIN')",
+        [ids[2], ids[1], ids[0]]
       );
     await migrate(database.getPool(), 'core', loaded);
     expect(
@@ -154,8 +166,14 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     await database
       .getPool()
       .query(
-        "INSERT INTO formal_matters(formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES('formal-matter_prior',$1,'TRADEMARK_REGISTRATION','OPEN',1,'confirmation',1,'draft',1,'quote','1','{}',1,$2,'actor',now(),now()); INSERT INTO formal_matter_audit(workspace_id,formal_matter_id,action,actor_id,created_at) VALUES($1,'formal-matter_prior','FORMAL_MATTER_CREATED','actor',now())",
+        "INSERT INTO formal_matters(formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES('formal-matter_prior',$1,'TRADEMARK_REGISTRATION','OPEN',1,'confirmation',1,'draft',1,'quote','1','{}',1,$2,'actor',now(),now())",
         [workspace, 'a'.repeat(64)]
+      );
+    await database
+      .getPool()
+      .query(
+        "INSERT INTO formal_matter_audit(workspace_id,formal_matter_id,action,actor_id,created_at) VALUES($1,'formal-matter_prior','FORMAL_MATTER_CREATED','actor',now())",
+        [workspace]
       );
     const before = (
       await database
