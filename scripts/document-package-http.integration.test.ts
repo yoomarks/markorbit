@@ -12,7 +12,8 @@ import {
   InMemorySessionRepository,
   InMemoryUserRepository,
   InMemoryWorkspaceRepository,
-  createRuntime as createCore
+  createRuntime as createCore,
+  permissionsForRole
 } from '../services/core/dist/index.js';
 import {
   createRuntime as createGateway,
@@ -472,21 +473,18 @@ suite('authenticated durable Document Package HTTP path', () => {
   });
 
   it('enforces Core Principal permissions, Sessions, origin and Workspace isolation', async () => {
-    for (const role of ['admin', 'manager', 'reviewer', 'readonly']) {
-      const token = cookies[role]!.match(/mo_session=([^;]+)/)![1]!;
+    for (const [name, role] of [
+      ['admin', 'WORKSPACE_ADMIN'],
+      ['manager', 'MATTER_MANAGER'],
+      ['reviewer', 'REVIEWER'],
+      ['readonly', 'READ_ONLY']
+    ] as const) {
+      const token = cookies[name]!.match(/mo_session=([^;]+)/)![1]!;
       const principal = await authentication.resolveWorkspacePrincipal(token, workspaceId);
       expect(principal.permissions).toContain('document-package:read');
       expect(principal.permissions).toContain('instruction-ledger:read');
-      if (role === 'readonly')
-        expect(principal.permissions).not.toContain('document-package:prepare');
-      else
-        expect(principal.permissions).toEqual(
-          expect.arrayContaining([
-            'document-package:prepare',
-            'instruction-ledger:write',
-            'document-package:mark-ready'
-          ])
-        );
+      const expected = permissionsForRole(role);
+      expect(principal.permissions).toEqual(expected);
     }
     const source = await createReview('matrix');
     const body = {

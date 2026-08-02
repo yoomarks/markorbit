@@ -17,6 +17,9 @@ const listSuite = (config) => {
 
 test('default Playwright inventory excludes the real-runtime suite', () => {
   const { entries, output } = listSuite('playwright.config.ts');
+  const source = fs.readFileSync('playwright.config.ts', 'utf8');
+  assert.match(source, /testMatch:/u, 'playwright.config.ts needs an exact testMatch');
+  assert.match(source, /retries:\s*0/u, 'playwright.config.ts must not rely on retries');
   assert.equal(entries.length, 32);
   assert.deepEqual([...new Set(entries.map(({ file }) => file))].sort(), [
     'filing-authorization-release.spec.ts',

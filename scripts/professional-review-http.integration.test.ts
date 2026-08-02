@@ -11,7 +11,8 @@ import {
   InMemorySessionRepository,
   InMemoryUserRepository,
   InMemoryWorkspaceRepository,
-  createRuntime as createCore
+  createRuntime as createCore,
+  permissionsForRole
 } from '../services/core/dist/index.js';
 import {
   createRuntime as createGateway,
@@ -343,9 +344,7 @@ suite('real authenticated durable Professional Review HTTP path', () => {
       workspaceId
     );
     expect(managerPrincipal.role).toBe('MATTER_MANAGER');
-    expect(managerPrincipal.permissions).toEqual(
-      expect.arrayContaining(['review:read', 'review:perform'])
-    );
+    expect(managerPrincipal.permissions).toEqual(permissionsForRole('MATTER_MANAGER'));
     for (const role of ['admin', 'manager', 'reviewer'])
       expect((await open(role, `role_${role}`)).response.status, role).toBe(200);
     const readable = await open('admin', 'readable');
