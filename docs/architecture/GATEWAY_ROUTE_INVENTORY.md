@@ -2,6 +2,8 @@
 
 TASK 022 adds canonical authenticated routes `POST /api/markreg/formal-matters` (`matter:create`, Origin, CSRF, exact versions and Idempotency-Key) and `GET /api/markreg/formal-matters/:formalMatterId` (`matter:read`, Workspace scoped).
 
+TASK 025A adds `GET /api/markreg/audit-records`. It requires a real opaque Session, a Core-derived Workspace Principal, and `audit:read`; the Gateway ignores browser-supplied actor, role, permission, and query Workspace claims and forwards only the authenticated Principal Workspace. The route is read-only, bounded, and has no global audit mode.
+
 The source-derived inventory contains **60 runtime routes: 54 Milestone governed/compatibility routes, three authenticated TASK 019 routes, two health routes, and one Milestone test-only evidence route**. The three authentication routes use the real cookie/Core boundary in all environments; the older governed routes remain fixture-only and unauthenticated for the frozen Milestone 1 journeys. Historical audit counts remain historical facts.
 
 `POST /__test/auth/session` is deliberately excluded from the production inventory: it is registered only when `MO_MILESTONE_TEST_RUNTIME=1`, is classified as a test-only bootstrap, and is independently tested as 404 when disabled. The source extractor derives the three production authentication registrations directly from `apps/gateway/src/index.ts`; the JSON is verification metadata, not the source of truth.

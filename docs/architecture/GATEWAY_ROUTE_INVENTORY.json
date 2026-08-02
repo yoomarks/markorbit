@@ -277,6 +277,17 @@
       "httpIntegrationTestFile": "apps/gateway/tests/vertical-slice.test.ts"
     },
     {
+      "method": "GET",
+      "path": "/api/markreg/audit-records",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/audit-idempotency-http.integration.test.ts"
+    },
+    {
       "method": "POST",
       "path": "/api/markreg/customer-confirmations",
       "owner": "markreg",

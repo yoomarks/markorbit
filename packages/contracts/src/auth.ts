@@ -73,7 +73,8 @@ export function parseInternalWorkspacePrincipal(value: string | undefined): Work
           'document-package:prepare',
           'instruction-ledger:read',
           'instruction-ledger:write',
-          'document-package:mark-ready'
+          'document-package:mark-ready',
+          'audit:read'
         ].includes(String(x))
     ) ||
     [p.sessionId, p.userId, p.workspaceId, p.membershipId, p.sessionExpiresAt].some(

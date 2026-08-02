@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AuthenticationError } from '@markorbit/contracts';
+import { AuthenticationError, ROLE_PERMISSION_MATRIX } from '@markorbit/contracts';
 import {
   InMemoryMembershipRepository,
   InMemoryUserRepository,
@@ -63,17 +63,7 @@ describe('authenticated runtime', () => {
     const user = await f.service.resolveSession(i.rawToken);
     expect(user.kind).toBe('AUTHENTICATED_USER');
     const workspace = await f.service.resolveWorkspacePrincipal(i.rawToken, ids.workspace);
-    expect(workspace.permissions).toEqual([
-      'workspace:read',
-      'matter:read',
-      'review:read',
-      'review:perform',
-      'document-package:read',
-      'document-package:prepare',
-      'instruction-ledger:read',
-      'instruction-ledger:write',
-      'document-package:mark-ready'
-    ]);
+    expect(workspace.permissions).toEqual(ROLE_PERMISSION_MATRIX.REVIEWER);
     expect(authorize(workspace, 'review:perform')).toBe(workspace);
   });
   it('fails closed after revocation', async () => {

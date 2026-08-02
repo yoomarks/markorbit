@@ -126,6 +126,41 @@ export function createRuntime(options: GatewayOptions = {}) {
       throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
     }
   };
+  const appendMarkRegDenial = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    reasonCode: 'PERMISSION_DENIED' | 'ORIGIN_REJECTED' | 'CSRF_REJECTED',
+    operation: 'FORMAL_MATTER_CREATE' | 'DOCUMENT_PACKAGE_CREATE'
+  ) => {
+    const key = request.headers['idempotency-key'];
+    const response = await fetch(`${markRegUrl}/v1/audit-denials`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-markorbit-internal-authorization':
+          options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET!,
+        'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+        'x-markorbit-workspace-id': principal.workspaceId,
+        ...(correlation(request) ? { 'x-correlation-id': correlation(request)! } : {})
+      },
+      body: JSON.stringify({
+        operation,
+        targetType: operation === 'FORMAL_MATTER_CREATE' ? 'FORMAL_MATTER' : 'DOCUMENT_PACKAGE',
+        reasonCode,
+        ...(key ? { idempotencyKeySha256: createHash('sha256').update(key).digest('hex') } : {}),
+        sourceCommandFingerprint: createHash('sha256')
+          .update(JSON.stringify(request.body ?? null))
+          .digest('hex')
+      })
+    });
+    if (!response.ok)
+      throw new HttpError(
+        503,
+        'AUDIT_PERSISTENCE_UNAVAILABLE',
+        'The governed denial could not be recorded.',
+        true
+      );
+  };
   const matterDraft = async (
     r: JsonRequest,
     path: string,
@@ -152,17 +187,29 @@ export function createRuntime(options: GatewayOptions = {}) {
         typeof b.workspaceId === 'string' ? b.workspaceId : r.headers['x-markorbit-workspace-id'];
       if (!workspaceId)
         throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
-      if (mutation) {
-        const user = await authenticationClient.resolve(token(r), correlation(r));
-        requireTrustedOrigin(r.headers.origin, allowedOrigins);
-        validateCsrf(user.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
-      }
       const p = await authenticationClient.resolveWorkspace(token(r), workspaceId, correlation(r));
+      if (mutation) {
+        try {
+          requireTrustedOrigin(r.headers.origin, allowedOrigins);
+          validateCsrf(p.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
+        } catch (error) {
+          if (error instanceof AuthenticationError)
+            await appendMarkRegDenial(
+              r,
+              p,
+              error.code === 'UNTRUSTED_ORIGIN' ? 'ORIGIN_REJECTED' : 'CSRF_REJECTED',
+              'FORMAL_MATTER_CREATE'
+            );
+          throw error;
+        }
+      }
       const accepted: readonly (
         'matter:read' | 'matter:create' | 'matter:manage' | 'review:perform'
       )[] = typeof permission === 'string' ? [permission] : permission;
-      if (!accepted.some((value) => p.permissions.includes(value)))
+      if (!accepted.some((value) => p.permissions.includes(value))) {
+        if (mutation) await appendMarkRegDenial(r, p, 'PERMISSION_DENIED', 'FORMAL_MATTER_CREATE');
         throw new AuthenticationError('PERMISSION_DENIED', 'Permission is required.');
+      }
       return forward(r, path, p);
     } catch (error) {
       return mapAuthentication(error);
@@ -226,16 +273,26 @@ export function createRuntime(options: GatewayOptions = {}) {
           : r.headers['x-markorbit-workspace-id'];
       if (!workspaceId)
         throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
-      if (mutation) {
-        const user = await authenticationClient.resolve(token(r), correlation(r));
-        requireTrustedOrigin(r.headers.origin, allowedOrigins);
-        validateCsrf(user.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
-      }
       const principal = await authenticationClient.resolveWorkspace(
         token(r),
         workspaceId,
         correlation(r)
       );
+      if (mutation) {
+        try {
+          requireTrustedOrigin(r.headers.origin, allowedOrigins);
+          validateCsrf(principal.sessionId, csrfSecret, r.headers['x-markorbit-csrf-token']);
+        } catch (error) {
+          if (error instanceof AuthenticationError)
+            await appendMarkRegDenial(
+              r,
+              principal,
+              error.code === 'UNTRUSTED_ORIGIN' ? 'ORIGIN_REJECTED' : 'CSRF_REJECTED',
+              'DOCUMENT_PACKAGE_CREATE'
+            );
+          throw error;
+        }
+      }
       const allowed = mutation
         ? ([
             'document-package:prepare',
@@ -243,11 +300,14 @@ export function createRuntime(options: GatewayOptions = {}) {
             'document-package:mark-ready'
           ] as const)
         : (['document-package:read', 'instruction-ledger:read'] as const);
-      if (!allowed.some((permission) => principal.permissions.includes(permission)))
+      if (!allowed.some((permission) => principal.permissions.includes(permission))) {
+        if (mutation)
+          await appendMarkRegDenial(r, principal, 'PERMISSION_DENIED', 'DOCUMENT_PACKAGE_CREATE');
         throw new AuthenticationError(
           'PERMISSION_DENIED',
           'Document Package permission is required.'
         );
+      }
       return forward(r, r.path.replace('/api/markreg', '/v1'), principal);
     } catch (error) {
       return mapAuthentication(error);
@@ -321,6 +381,41 @@ export function createRuntime(options: GatewayOptions = {}) {
           method: 'GET',
           path: '/api/markreg/formal-matters',
           handle: (r) => matterDraft(r, '/v1/formal-matters', 'matter:read')
+        },
+        {
+          method: 'GET',
+          path: '/api/markreg/audit-records',
+          handle: async (r) => {
+            if (!authenticationClient)
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Authentication service is unavailable.',
+                true
+              );
+            try {
+              const workspaceId = r.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              const principal = await authenticationClient.resolveWorkspace(
+                token(r),
+                workspaceId,
+                correlation(r)
+              );
+              if (!principal.permissions.includes('audit:read'))
+                throw new AuthenticationError(
+                  'PERMISSION_DENIED',
+                  'audit:read permission is required.'
+                );
+              return forward(r, '/v1/audit-records', principal);
+            } catch (error) {
+              return mapAuthentication(error);
+            }
+          }
         },
         {
           method: 'POST',

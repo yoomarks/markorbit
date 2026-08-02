@@ -35,6 +35,13 @@ export async function resetAndMigrateMarkRegTestDatabase(input: {
       await client.query(
         `DROP TABLE IF EXISTS ${ownedTables.map((table) => `"${table}"`).join(',')} CASCADE`
       );
+    const ownedFunctions = migrations.flatMap((migration) =>
+      [...migration.sql.matchAll(/\bCREATE FUNCTION\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
+        (match) => match[1]!
+      )
+    );
+    for (const functionName of ownedFunctions)
+      await client.query(`DROP FUNCTION IF EXISTS "${functionName}"() CASCADE`);
     const history = await client.query<{ migration_history: string | null }>(
       "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
     );

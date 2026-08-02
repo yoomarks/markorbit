@@ -82,3 +82,12 @@
   - Authenticated PostgreSQL-backed list/detail, URL recovery, Workspace isolation, and bounded Lite projection
 - TASK 024 — Durable Professional Review vertical slice (**implemented in Draft PR**)
   - Execution-owned PostgreSQL Review Cases, exact-version drafts, immutable decisions, audit and authenticated Gateway boundary
+- TASK 025 (actual implementation sequence) — Durable Document Package and Instruction Ledger (**represented by `baebb68` / PR #34 metadata**)
+  - MarkReg-owned Document Package, document evidence and Instruction Ledger persistence in migration `0024`
+- TASK 025 (approved delivery-plan objective) — Durable audit, idempotency and event-delivery hardening (**reconciled and closed by authorized TASK 025A remediation**)
+  - The checkout re-used the number for the Document Package implementation; that history is retained rather than rewritten.
+  - Prior audit status: `TASK_025_APPROVED_SCOPE_BLOCKED`; authorization: `TASK_025_APPROVED_SCOPE_REMEDIATION_AUTHORIZED`; final status: `TASK_025_APPROVED_SCOPE_CLOSED_BY_REMEDIATION`.
+  - Evidence: `docs/planning/MO-MVP-MILESTONE-002-IMPLEMENTATION-TRACEABILITY.md` and `docs/validation/MO-MVP-TASK-025A-AUDIT-IDEMPOTENCY-MATRIX.md`.
+  - Owner decision narrowed remediation to MarkReg/Platform Formal Matter and Document Package commands; Core-wide and Execution-wide audit remain outside scope. Migration 0025 adds bounded denial audit and Workspace-scoped authenticated reads.
+- TASK 025A — Milestone 2 plan reconciliation and audit/idempotency gap audit (**completed locally; documentation-only blocked outcome**)
+  - No TASK 026 or TASK 027 work was started.

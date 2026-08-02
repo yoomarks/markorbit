@@ -25,6 +25,7 @@ import {
   PostgresDocumentPackageService,
   PostgresFormalMatterRepository,
   PostgresMatterDraftRepository,
+  PostgresMarkRegAuditRepository,
   hashSnapshot
 } from '../services/markreg/dist/index.js';
 import {
@@ -138,6 +139,7 @@ suite('authenticated durable Document Package HTTP path', () => {
       customerConfirmationRepository: confirmations,
       matterDraftRepository: drafts,
       formalMatterRepository: new PostgresFormalMatterRepository(markregDatabase, pool),
+      auditRepository: new PostgresMarkRegAuditRepository(pool),
       documentPackageService: new PostgresDocumentPackageService(
         markregDatabase,
         pool,
@@ -601,6 +603,17 @@ suite('authenticated durable Document Package HTTP path', () => {
       'package-durable'
     );
     expect(conflict.response.status).toBe(409);
+    const conflictEvidence = await markregDatabase
+      .getPool()
+      .query(
+        "SELECT (SELECT count(*) FROM document_package_commands WHERE workspace_id=$1 AND idempotency_key='package-durable') commands, (SELECT count(*) FROM document_package_audit WHERE workspace_id=$1 AND document_package_id=$2 AND action='PACKAGE_OPENED') successes, (SELECT count(*) FROM markreg_denial_audit WHERE workspace_id=$1 AND reason_code='IDEMPOTENCY_KEY_REUSE' AND operation='DOCUMENT_PACKAGE_CREATE') denials",
+        [workspaceId, packageId]
+      );
+    expect(conflictEvidence.rows[0]).toMatchObject({
+      commands: '1',
+      successes: '1',
+      denials: '1'
+    });
     const blockedDocuments = await request(
       'admin',
       `/api/markreg/document-packages/${packageId}/mark-ready`,

@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "sha": "baebb68867c036d357e187b904b9ba7c26886109",
+    "tree": "20a42b66bff37c2f65da458f6d66aa8a626c47b3",
+    "claim": "SUPPLIED_SYNCHRONIZED_LOCAL_BASELINE_NOT_AUTHORITATIVE_REMOTE_MAIN"
+  },
+  "historyNote": "Approved plan is preserved. Checkout commit/task subjects show numbering drift but do not record an explicit owner rationale; no rationale is inferred.",
+  "tasks": [
+    {
+      "taskId": "TASK_017",
+      "approvedObjective": "Persistence foundation and repository contracts",
+      "actualBranchPrOrMergedImplementation": "0435516 / PR #25 metadata",
+      "actualDurableAggregatesAdded": ["migration runner and transaction harness"],
+      "actualOwnerService": "@markorbit/persistence",
+      "migrationNumbers": [],
+      "acceptanceEvidence": ["docs/tasks/MO-MVP-TASK-017-PERSISTENCE-FOUNDATION.md"],
+      "remainingGaps": [],
+      "approvedObjectiveStatus": "SATISFIED"
+    },
+    {
+      "taskId": "TASK_018",
+      "approvedObjective": "Identity, Workspace and Membership contracts",
+      "actualBranchPrOrMergedImplementation": "c4f6fac + 1cf8743 / PR #26\u201327 metadata",
+      "actualDurableAggregatesAdded": ["User", "Workspace", "Membership"],
+      "actualOwnerService": "Core",
+      "migrationNumbers": ["0018"],
+      "acceptanceEvidence": ["services/core/tests/identity-postgres.test.ts"],
+      "remainingGaps": [],
+      "approvedObjectiveStatus": "SATISFIED"
+    },
+    {
+      "taskId": "TASK_019",
+      "approvedObjective": "Authentication runtime and Gateway principal",
+      "actualBranchPrOrMergedImplementation": "5d71e60 / PR #28 metadata",
+      "actualDurableAggregatesAdded": ["Session", "Principal resolution"],
+      "actualOwnerService": "Core",
+      "migrationNumbers": ["0019"],
+      "acceptanceEvidence": [
+        "services/core/tests/session-postgres.test.ts",
+        "scripts/auth-http.integration.test.ts"
+      ],
+      "remainingGaps": [],
+      "approvedObjectiveStatus": "SATISFIED"
+    },
+    {
+      "taskId": "TASK_020",
+      "approvedObjective": "Formal Matter domain contract",
+      "actualBranchPrOrMergedImplementation": "5bf2ee6 / PR #29 metadata",
+      "actualDurableAggregatesAdded": ["Customer Confirmation"],
+      "actualOwnerService": "MarkReg",
+      "migrationNumbers": ["0020"],
+      "acceptanceEvidence": ["services/markreg/tests/customer-confirmation-postgres.test.ts"],
+      "remainingGaps": [
+        "Actual task is a different durable slice; approved domain-contract pieces arrive across later commits."
+      ],
+      "approvedObjectiveStatus": "PARTIALLY_SATISFIED"
+    },
+    {
+      "taskId": "TASK_021",
+      "approvedObjective": "Formal Matter persistent repository",
+      "actualBranchPrOrMergedImplementation": "0fcec2b / PR #30 metadata",
+      "actualDurableAggregatesAdded": ["Matter Draft"],
+      "actualOwnerService": "MarkReg",
+      "migrationNumbers": ["0021"],
+      "acceptanceEvidence": ["services/markreg/tests/customer-confirmation-postgres.test.ts"],
+      "remainingGaps": [
+        "Actual task persists preparation; Formal Matter repository arrives in actual TASK 022."
+      ],
+      "approvedObjectiveStatus": "PARTIALLY_SATISFIED"
+    },
+    {
+      "taskId": "TASK_022",
+      "approvedObjective": "Explicit Matter creation Service boundary",
+      "actualBranchPrOrMergedImplementation": "4a988c3 / PR #31 metadata",
+      "actualDurableAggregatesAdded": [
+        "Formal Matter",
+        "immutable source snapshot",
+        "command",
+        "success audit"
+      ],
+      "actualOwnerService": "MarkReg",
+      "migrationNumbers": ["0022"],
+      "acceptanceEvidence": [
+        "services/markreg/tests/formal-matter-postgres.test.ts",
+        "scripts/formal-matter-http.integration.test.ts"
+      ],
+      "remainingGaps": ["Denial audit/query hardening remains approved TASK 025 scope."],
+      "approvedObjectiveStatus": "SATISFIED"
+    },
+    {
+      "taskId": "TASK_023",
+      "approvedObjective": "Gateway API and typed client",
+      "actualBranchPrOrMergedImplementation": "e828498 / PR #32 metadata",
+      "actualDurableAggregatesAdded": ["no new aggregate", "Lite Matter projection"],
+      "actualOwnerService": "Gateway / MarkReg",
+      "migrationNumbers": [],
+      "acceptanceEvidence": [
+        "scripts/formal-matter-http.integration.test.ts",
+        "tests/e2e/lite-matter-real-runtime.spec.ts"
+      ],
+      "remainingGaps": [
+        "Formal Matter Gateway work exists, but numbering is a Lite workspace slice."
+      ],
+      "approvedObjectiveStatus": "PARTIALLY_SATISFIED"
+    },
+    {
+      "taskId": "TASK_024",
+      "approvedObjective": "Authenticated MarkReg Web journey",
+      "actualBranchPrOrMergedImplementation": "88a46a3 / PR #33 metadata",
+      "actualDurableAggregatesAdded": ["Professional Review", "command", "success audit"],
+      "actualOwnerService": "Execution",
+      "migrationNumbers": ["0023"],
+      "acceptanceEvidence": [
+        "services/execution/tests/professional-review-postgres.test.ts",
+        "scripts/professional-review-http.integration.test.ts"
+      ],
+      "remainingGaps": [
+        "Actual task is an Execution/Lite Professional Review slice rather than the approved MarkReg Web task."
+      ],
+      "approvedObjectiveStatus": "PARTIALLY_SATISFIED"
+    },
+    {
+      "taskId": "TASK_025",
+      "approvedObjective": "Durable audit, idempotency and event delivery hardening",
+      "actualBranchPrOrMergedImplementation": "baebb68 / PR #34 metadata",
+      "actualDurableAggregatesAdded": [
+        "Document Package",
+        "document evidence/items",
+        "Instruction Ledger",
+        "command",
+        "success audit"
+      ],
+      "actualOwnerService": "MarkReg",
+      "migrationNumbers": ["0024", "0025"],
+      "acceptanceEvidence": [
+        "services/markreg/tests/document-package-postgres.test.ts",
+        "scripts/document-package-http.integration.test.ts",
+        "services/markreg/tests/audit-postgres.test.ts",
+        "scripts/audit-idempotency-http.integration.test.ts",
+        "scripts/formal-matter-http.integration.test.ts",
+        "scripts/document-package-http.integration.test.ts"
+      ],
+      "remainingGaps": [],
+      "approvedObjectiveStatus": "SATISFIED"
+    },
+    {
+      "taskId": "TASK_026",
+      "approvedObjective": "Restart, migration and tenant-isolation matrix",
+      "actualBranchPrOrMergedImplementation": "not started",
+      "actualDurableAggregatesAdded": [],
+      "actualOwnerService": "Quality / Platform",
+      "migrationNumbers": [],
+      "acceptanceEvidence": [],
+      "remainingGaps": ["Explicitly outside TASK 025A."],
+      "approvedObjectiveStatus": "NOT_IMPLEMENTED"
+    },
+    {
+      "taskId": "TASK_027",
+      "approvedObjective": "Milestone 2 integration audit",
+      "actualBranchPrOrMergedImplementation": "not started",
+      "actualDurableAggregatesAdded": [],
+      "actualOwnerService": "Quality / Product",
+      "migrationNumbers": [],
+      "acceptanceEvidence": [],
+      "remainingGaps": ["Explicitly outside TASK 025A."],
+      "approvedObjectiveStatus": "NOT_IMPLEMENTED"
+    }
+  ],
+  "resolution": "TASK_025_APPROVED_SCOPE_CLOSED_BY_REMEDIATION",
+  "migrationsAdded": ["0025_markreg_audit_hardening"],
+  "priorResolution": "TASK_025_APPROVED_SCOPE_BLOCKED",
+  "ownerDecision": {
+    "status": "TASK_025_APPROVED_SCOPE_REMEDIATION_AUTHORIZED",
+    "owner": "MarkReg/Platform",
+    "scope": "Formal Matter and Document Package audit/idempotency hardening only",
+    "excluded": [
+      "Core-wide identity/Session audit",
+      "Execution-wide denial audit",
+      "Customer Confirmation command redefinition",
+      "Matter Draft command redefinition"
+    ]
+  }
+}
