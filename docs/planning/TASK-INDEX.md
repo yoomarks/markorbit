@@ -91,3 +91,6 @@
   - Owner decision narrowed remediation to MarkReg/Platform Formal Matter and Document Package commands; Core-wide and Execution-wide audit remain outside scope. Migration 0025 adds bounded denial audit and Workspace-scoped authenticated reads.
 - TASK 025A — Milestone 2 plan reconciliation and audit/idempotency gap audit (**completed locally; documentation-only blocked outcome**)
   - No TASK 026 or TASK 027 work was started.
+- TASK 026 — Milestone 2 restart, migration and tenant-isolation matrix (**Draft PR implementation; hosted evidence pending**)
+  - Evidence: `docs/tasks/MO-MVP-TASK-026-RESTART-MIGRATION-TENANT-MATRIX.md` and `docs/validation/MO-MVP-MILESTONE-002-RELIABILITY-MATRIX.{md,json}`.
+  - Adds no product scope; owner-database reliability orchestration and exact-head CI evidence only.

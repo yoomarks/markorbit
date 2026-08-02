@@ -1,0 +1,748 @@
+{
+  "taskId": "MO-MVP-TASK-026",
+  "status": "implementation complete; hosted evidence pending",
+  "baseline": {
+    "sha": "f93b8ec74fed67856f316162822be62860058783",
+    "tree": "86e93d3756e452db77aa0a238b358afcf8c77c6a"
+  },
+  "runtimeVersions": {
+    "nodeLocal": "v20.20.2 (validation target is Node 22)",
+    "pnpm": "10.28.1",
+    "postgresql": "16 (CI)"
+  },
+  "databaseTopology": {
+    "Core": "markorbit_core_test",
+    "MarkReg": "markorbit_markreg_test",
+    "Execution": "markorbit_execution_test",
+    "rule": "separate physical databases; destructive files serialized"
+  },
+  "migrationOwners": {
+    "0018_identity_workspace_membership": "@markorbit/core-service",
+    "0019_core_sessions": "@markorbit/core-service",
+    "0020_markreg_customer_confirmations": "@markorbit/markreg-service",
+    "0021_markreg_matter_drafts": "@markorbit/markreg-service",
+    "0022_markreg_formal_matters": "@markorbit/markreg-service",
+    "0023_execution_professional_reviews": "@markorbit/execution-service",
+    "0024_markreg_document_packages": "@markorbit/markreg-service",
+    "0025_markreg_audit_hardening": "@markorbit/markreg-service"
+  },
+  "durableBoundaries": [
+    {
+      "id": "core-user",
+      "ownerService": "Core",
+      "migration": "0018_identity_workspace_membership",
+      "physicalTable": "users",
+      "repository": "PostgresUserRepository",
+      "serviceOperation": "create/findById",
+      "gatewayRoute": null,
+      "workspaceBoundary": "Membership-mediated",
+      "versionOrIdentity": "immutable user_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-workspace",
+      "ownerService": "Core",
+      "migration": "0018_identity_workspace_membership",
+      "physicalTable": "workspaces",
+      "repository": "PostgresWorkspaceRepository",
+      "serviceOperation": "create/findById",
+      "gatewayRoute": "GET /api/workspaces/:workspaceId/context",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "immutable workspace_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-membership",
+      "ownerService": "Core",
+      "migration": "0018_identity_workspace_membership",
+      "physicalTable": "workspace_memberships",
+      "repository": "PostgresMembershipRepository",
+      "serviceOperation": "admit/find",
+      "gatewayRoute": "GET /api/workspaces/:workspaceId/context",
+      "workspaceBoundary": "workspace_id + user_id",
+      "versionOrIdentity": "status/role identity",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-session",
+      "ownerService": "Core",
+      "migration": "0019_core_sessions",
+      "physicalTable": "sessions",
+      "repository": "PostgresSessionRepository",
+      "serviceOperation": "issue/resolve/revoke",
+      "gatewayRoute": "GET /api/auth/session; POST /api/auth/logout",
+      "workspaceBoundary": "resolved Membership Workspace",
+      "versionOrIdentity": "opaque token hash + expiry/revocation",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-role-permissions",
+      "ownerService": "Core",
+      "migration": "contract (no table)",
+      "physicalTable": "derived from workspace_memberships.role",
+      "repository": "canonicalRolePermissions",
+      "serviceOperation": "resolve Principal",
+      "gatewayRoute": "all authenticated Gateway routes",
+      "workspaceBoundary": "Principal Workspace",
+      "versionOrIdentity": "canonical mapping identity",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-customer-confirmation",
+      "ownerService": "MarkReg",
+      "migration": "0020_markreg_customer_confirmations",
+      "physicalTable": "customer_confirmations",
+      "repository": "PostgresCustomerConfirmationRepository",
+      "serviceOperation": "create/read/withdraw",
+      "gatewayRoute": "/api/markreg/customer-confirmations*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "version",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-matter-draft",
+      "ownerService": "MarkReg",
+      "migration": "0021_markreg_matter_drafts",
+      "physicalTable": "matter_drafts",
+      "repository": "PostgresMatterDraftRepository",
+      "serviceOperation": "create/read/update/evaluate",
+      "gatewayRoute": "/api/markreg/matter-drafts*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "optimistic version",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-matter",
+      "ownerService": "MarkReg",
+      "migration": "0022_markreg_formal_matters",
+      "physicalTable": "formal_matters",
+      "repository": "PostgresFormalMatterRepository",
+      "serviceOperation": "create/read/list",
+      "gatewayRoute": "/api/markreg/formal-matters*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "version + formal_matter_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "Workspace-scoped idempotency key",
+      "auditExpectation": "atomic FORMAL_MATTER_CREATED",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-source",
+      "ownerService": "MarkReg",
+      "migration": "0022_markreg_formal_matters",
+      "physicalTable": "formal_matters.source_snapshot",
+      "repository": "PostgresFormalMatterRepository",
+      "serviceOperation": "create/read",
+      "gatewayRoute": "/api/markreg/formal-matters*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "immutable snapshot + SHA-256",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-command",
+      "ownerService": "MarkReg",
+      "migration": "0022_markreg_formal_matters",
+      "physicalTable": "formal_matter_commands",
+      "repository": "PostgresFormalMatterRepository",
+      "serviceOperation": "create replay",
+      "gatewayRoute": "POST /api/markreg/formal-matters",
+      "workspaceBoundary": "workspace_id + idempotency_key",
+      "versionOrIdentity": "request fingerprint",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "identical replay; conflicting reuse rejected",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-audit",
+      "ownerService": "MarkReg",
+      "migration": "0022 + 0025 hardening",
+      "physicalTable": "formal_matter_audit",
+      "repository": "PostgresMarkRegAuditRepository",
+      "serviceOperation": "list audit",
+      "gatewayRoute": "GET /api/markreg/audit-records",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "append-only success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-document-package",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_packages",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "create/read/mutate/mark-ready",
+      "gatewayRoute": "/api/markreg/document-packages*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "optimistic version",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "Workspace-scoped command replay",
+      "auditExpectation": "atomic success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-document-evidence",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_package_items",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "add/update/supersede",
+      "gatewayRoute": "/api/markreg/document-packages/:id/documents*",
+      "workspaceBoundary": "workspace_id + package id",
+      "versionOrIdentity": "version + immutable supersession identity",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-instruction-ledger",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_instruction_entries",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "append/confirm/supersede",
+      "gatewayRoute": "/api/markreg/instruction-ledgers*",
+      "workspaceBoundary": "workspace_id + package id",
+      "versionOrIdentity": "monotonic sequence",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-package-command",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_package_commands",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "command replay",
+      "gatewayRoute": "/api/markreg/document-packages*",
+      "workspaceBoundary": "workspace_id + idempotency_key",
+      "versionOrIdentity": "request fingerprint",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "identical replay; conflicting reuse rejected",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-package-audit",
+      "ownerService": "MarkReg",
+      "migration": "0024 + 0025 hardening",
+      "physicalTable": "document_package_audit",
+      "repository": "PostgresMarkRegAuditRepository",
+      "serviceOperation": "list audit",
+      "gatewayRoute": "GET /api/markreg/audit-records",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "append-only success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-denial-audit",
+      "ownerService": "MarkReg",
+      "migration": "0025_markreg_audit_hardening",
+      "physicalTable": "markreg_denial_audit",
+      "repository": "PostgresMarkRegAuditRepository",
+      "serviceOperation": "record/list denial",
+      "gatewayRoute": "GET /api/markreg/audit-records",
+      "workspaceBoundary": "workspace_id from Principal",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "bounded append-only denial audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "execution-professional-review",
+      "ownerService": "Execution",
+      "migration": "0023_execution_professional_reviews",
+      "physicalTable": "professional_review_cases",
+      "repository": "PostgresProfessionalReviewRepository",
+      "serviceOperation": "create/read/update/complete",
+      "gatewayRoute": "/api/lite/professional-review-cases*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "optimistic version + source hash",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "Workspace-scoped completion command",
+      "auditExpectation": "atomic success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "execution-review-command",
+      "ownerService": "Execution",
+      "migration": "0023_execution_professional_reviews",
+      "physicalTable": "professional_review_commands",
+      "repository": "PostgresProfessionalReviewRepository",
+      "serviceOperation": "command replay",
+      "gatewayRoute": "/api/lite/professional-review-cases*",
+      "workspaceBoundary": "workspace_id + idempotency_key",
+      "versionOrIdentity": "request fingerprint",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "identical replay; conflicting reuse rejected",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "execution-review-audit",
+      "ownerService": "Execution",
+      "migration": "0023_execution_professional_reviews",
+      "physicalTable": "professional_review_audit",
+      "repository": "PostgresProfessionalReviewRepository",
+      "serviceOperation": "mutation audit",
+      "gatewayRoute": null,
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    }
+  ],
+  "commands": [
+    "pnpm test:milestone2:migrations",
+    "pnpm test:milestone2:restart",
+    "pnpm test:milestone2:outage",
+    "pnpm test:milestone2:concurrency",
+    "pnpm test:milestone2:tenant-isolation",
+    "pnpm test:milestone2:markreg-repeatability",
+    "pnpm test:milestone2:reliability"
+  ],
+  "scenarios": [
+    {
+      "id": "MIG-EMPTY",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "MIG-REPEAT",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "MIG-UPGRADE",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "MIG-INTERRUPT",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "MIG-CHECKSUM",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "MIG-OWNERSHIP",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "RESTART-CORE",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "RESTART-MARKREG",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "RESTART-EXECUTION",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "OUTAGE-STARTUP",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "OUTAGE-MIDREQUEST",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "OUTAGE-RECOVERY",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "CONCURRENCY-CORE",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "CONCURRENCY-MARKREG",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "CONCURRENCY-EXECUTION",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "TENANT-AUTH",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "TENANT-AUDIT",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "AUTHORITY-CONSEQUENCES",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "BROWSER-BOUNDARIES",
+      "executed": false,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "repeatability": {
+    "firstRun": {
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    "repeatedRun": {
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "restartEvidence": {
+    "Core": null,
+    "MarkReg": null,
+    "Execution": null
+  },
+  "outageResponseCodes": {},
+  "concurrencyEvidence": [],
+  "tenantRoleSessionMatrix": [],
+  "auditAccessExpected": {
+    "WORKSPACE_ADMIN": 200,
+    "MATTER_MANAGER": 200,
+    "REVIEWER": 403,
+    "READ_ONLY": 403,
+    "anonymous": 401,
+    "expired": 401
+  },
+  "authorityConsequences": {
+    "Order": false,
+    "Payment": false,
+    "Preparation Lock": false,
+    "Filing Authorization": false,
+    "Execution Release": false,
+    "filing task": false,
+    "external filing": false,
+    "application number": false,
+    "external provider appointment": false,
+    "reliable cross-service event delivery": false
+  },
+  "eventDeliveryStatement": "audit persistence does not imply durable event delivery. There remains no outbox, broker, queue or crash-recovery delivery guarantee.",
+  "browserProjectTotals": {},
+  "noInterceptionResults": {},
+  "hostedActions": {
+    "runIds": [],
+    "urls": []
+  },
+  "unresolvedFindings": [
+    "Hosted Actions exact-head totals and URLs are pending Draft PR execution.",
+    "Local environment is Node 20.20.2; authoritative validation is configured for Node 22 in CI."
+  ]
+}
