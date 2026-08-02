@@ -559,152 +559,803 @@
   ],
   "scenarios": [
     {
-      "id": "MIG-EMPTY",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "MIG-001",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-001",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "empty bootstrap, owned relations and readiness for all owners",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "MIG-REPEAT",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "MIG-002",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-002",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "second apply no-op, stable checksums and unique history",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "MIG-UPGRADE",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "MIG-003",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-003",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "committed prior evidence survives additive forward migration",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "MIG-INTERRUPT",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "MIG-004",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-004",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "transaction rollback, absent history, released lock and clean retry",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "MIG-CHECKSUM",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "MIG-005",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-005",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "altered test-loaded checksum fails closed",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "MIG-OWNERSHIP",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "MIG-006",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-006",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "disjoint exhaustive owner migration sets",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "RESTART-CORE",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "RST-001",
+      "testFile": "scripts/milestone2-core-restart.integration.test.ts",
+      "testName": "RST-001 preserves exact Principal and durable Session evidence across actual listener replacement",
+      "command": "pnpm test:milestone2:restart",
+      "ownerDatabase": "Core",
+      "requiredMode": "MILESTONE2_RESTART_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "actual listener unavailable/replaced on same port; exact Principal/Session plus revoked/expired evidence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "RESTART-MARKREG",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "RST-002",
+      "testFile": "scripts/document-package-http.integration.test.ts",
+      "testName": "persists exact evidence and append-only instructions, enforces conflicts, becomes ready, and survives listener replacement",
+      "command": "pnpm test:milestone2:restart",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "actual MarkReg listener replacement and durable Package lineage; Formal Matter replay covered in same command",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "RESTART-EXECUTION",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "RST-003",
+      "testFile": "scripts/professional-review-http.integration.test.ts",
+      "testName": "saves exact drafts, rejects stale/invalid evidence, completes immutably and survives listener restart",
+      "command": "pnpm test:milestone2:restart",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "actual Execution listener replacement and immutable completed Review",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "OUTAGE-STARTUP",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-001",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-001 Core startup database outage",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Core",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "extend to construct the owner listener after database restoration"
     },
     {
-      "id": "OUTAGE-MIDREQUEST",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-002",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-002 MarkReg startup database outage",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "extend to construct the owner listener after database restoration"
     },
     {
-      "id": "OUTAGE-RECOVERY",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-003",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-003 Execution startup database outage",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Execution",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "extend to construct the owner listener after database restoration"
     },
     {
-      "id": "CONCURRENCY-CORE",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-004",
+      "testFile": "scripts/milestone2-core-restart.integration.test.ts",
+      "testName": "OUT-004/007 returns safe 503 for a Core database outage and recovers",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Core",
+      "requiredMode": "MILESTONE2_RESTART_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Gateway read/mutation 503 without leakage or partial Session mutation",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "CONCURRENCY-MARKREG",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-005",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "maps database unavailability to 503 and recovers against the same durable data",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Gateway 503 during closed owner pool and exact durable recovery",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "CONCURRENCY-EXECUTION",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-006",
+      "testFile": "scripts/professional-review-http.integration.test.ts",
+      "testName": "OUT-006/009 maps an actual Execution database outage to 503 and recovers durable evidence",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Gateway read/mutation 503 and sanitized response",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "TENANT-AUTH",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-007",
+      "testFile": "scripts/milestone2-core-restart.integration.test.ts",
+      "testName": "OUT-004/007 returns safe 503 for a Core database outage and recovers",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Core",
+      "requiredMode": "owner required-mode flag",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "prior record reload and valid post-recovery read",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "TENANT-AUDIT",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-008",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "maps database unavailability to 503 and recovers against the same durable data",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "owner required-mode flag",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "prior record reload and valid post-recovery read",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "AUTHORITY-CONSEQUENCES",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "OUT-009",
+      "testFile": "scripts/professional-review-http.integration.test.ts",
+      "testName": "OUT-006/009 maps an actual Execution database outage to 503 and recovers durable evidence",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Execution",
+      "requiredMode": "owner required-mode flag",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "prior record reload and valid post-recovery read",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
     },
     {
-      "id": "BROWSER-BOUNDARIES",
-      "executed": false,
-      "passed": 0,
-      "failed": 0,
-      "skipped": 0
+      "id": "CON-CORE-001",
+      "testFile": "services/core/tests/identity-postgres.test.ts",
+      "testName": "allows exactly one concurrent Membership duplicate",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Core",
+      "requiredMode": "IDENTITY_POSTGRES_TEST_REQUIRED=1; AUTH_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one Membership winner; typed duplicate loser; one row",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-CORE-002",
+      "testFile": "services/core/tests/session-postgres.test.ts",
+      "testName": "CON-CORE-002 serializes a durable Session revoke/use race without partial evidence",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Core",
+      "requiredMode": "IDENTITY_POSTGRES_TEST_REQUIRED=1; AUTH_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "use observes valid serialization; final revoked v2; one row",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-001",
+      "testFile": "services/markreg/tests/formal-matter-postgres.test.ts",
+      "testName": "coalesces concurrent identical commands into one winner and one durable evidence set",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one aggregate/command/success audit",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-002",
+      "testFile": "services/markreg/tests/formal-matter-postgres.test.ts",
+      "testName": "replays the same command and rejects conflicting key reuse and a second key for the exact source",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed conflicting reuse; stable counts",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-003",
+      "testFile": "services/markreg/tests/customer-confirmation-postgres.test.ts",
+      "testName": "allows exactly one concurrent expected-version Matter Draft update winner",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one update winner and stale loser",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-004",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "preserves exact Formal Matter and completed Review lineage after reload and concurrent resume",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one Package identity under concurrent resume",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-005",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "persists bounded evidence, exact versions, and permits one concurrent writer",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one version winner and typed stale loser",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-006",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "serializes concurrent instruction appends without duplicate sequence values",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "unique monotonic sequence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-007",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "marks ready idempotently, freezes evidence, and survives a fresh repository object",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "identical replay without duplicate command/audit",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-008",
+      "testFile": "scripts/document-package-http.integration.test.ts",
+      "testName": "persists exact evidence and append-only instructions, enforces conflicts, becomes ready, and survives listener replacement",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "conflicting reuse rejected and denial audit appended",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-009",
+      "testFile": "services/markreg/tests/audit-postgres.test.ts",
+      "testName": "paginates deterministically without duplicates or gaps",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Workspace-scoped stable pagination after durable writes",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-001",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "allows exactly one concurrent same-version update and rejects the stale writer",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one winner and typed stale loser",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-002",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "returns an identical completion retry and rejects conflicting reuse without rewriting",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "identical completion response and stable counts",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-003",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "returns an identical completion retry and rejects conflicting reuse without rewriting",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed conflict and unchanged evidence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-004",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "prevents edits to a completed Review",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "terminal mutation rejection and unchanged evidence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-001",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "allows every matter:read role to list and read with filters and pagination",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Workspace-only lists/search",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-002",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "isolates Workspace list/detail and rejects invalid filters",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "concealed cross-Workspace exact reads",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-003",
+      "testFile": "scripts/document-package-http.integration.test.ts",
+      "testName": "enforces Core Principal permissions, Sessions, origin and Workspace isolation",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "cross-Workspace owner mutations denied",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-004",
+      "testFile": "scripts/audit-idempotency-http.integration.test.ts",
+      "testName": "does not discover another Workspace or trust forged query context",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "forged context ignored",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-005",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "denies anonymous, expired and non-member Sessions",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "401/403 Session and Membership matrix",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-006",
+      "testFile": "scripts/audit-idempotency-http.integration.test.ts",
+      "testName": "anonymous and expired Sessions receive 401",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "audit role and Session matrix; companion suite tests Admin/Manager/Reviewer/Read Only",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-007",
+      "testFile": "scripts/audit-idempotency-http.integration.test.ts",
+      "testName": "validates bounded filters and pagination",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "pagination cannot cross Workspace",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "PARTIALLY_COVERED",
+      "implementationNeeded": "Core identity in reused HTTP suites is in-memory; implement one fully durable Core Principal tenant harness"
+    },
+    {
+      "id": "TEN-008",
+      "testFile": "tests/e2e/lite-matter-real-runtime.spec.ts",
+      "testName": "uses real authenticated list/detail with URL recovery and no interception",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "browser Workspace switch clears incompatible state",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute browser required mode"
     }
   ],
   "repeatability": {
+    "command": "pnpm test:milestone2:markreg-repeatability",
+    "orchestrator": "scripts/run-markreg-repeatability.mjs",
     "firstRun": {
+      "status": "UNEXECUTED",
       "executed": 0,
       "passed": 0,
       "failed": 0,
       "skipped": 0
     },
     "repeatedRun": {
+      "status": "UNEXECUTED",
       "executed": 0,
       "passed": 0,
       "failed": 0,
       "skipped": 0
-    }
+    },
+    "comparison": "runner fails on skipped tests or total drift"
   },
   "restartEvidence": {
     "Core": null,
@@ -744,5 +1395,72 @@
   "unresolvedFindings": [
     "Hosted Actions exact-head totals and URLs are pending Draft PR execution.",
     "Local environment is Node 20.20.2; authoritative validation is configured for Node 22 in CI."
+  ],
+  "coverageSummary": {
+    "EXECUTABLE_COVERED": 31,
+    "PARTIALLY_COVERED": 10,
+    "MISSING": 0
+  },
+  "commandAudit": [
+    {
+      "command": "migration",
+      "exactScript": "pnpm test:milestone2:migrations",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "restart",
+      "exactScript": "pnpm test:milestone2:restart",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "outage",
+      "exactScript": "pnpm test:milestone2:outage",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "concurrency",
+      "exactScript": "pnpm test:milestone2:concurrency",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "tenant",
+      "exactScript": "pnpm test:milestone2:tenant-isolation",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
   ]
 }

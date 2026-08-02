@@ -87,4 +87,36 @@ integration('PostgreSQL Session repository', () => {
       new PostgresSessionRepository(q).findById('01900000-0000-7000-8000-999999999999')
     ).rejects.toBeDefined();
   });
+  it('CON-CORE-002 serializes a durable Session revoke/use race without partial evidence', async () => {
+    await harness().cleanup();
+    const userId = '01900000-0000-7000-8000-260000000201';
+    const sessionId = '01900000-0000-7000-8000-260000000202';
+    await harness().user(userId);
+    const repository = new PostgresSessionRepository(database.getPool());
+    await repository.create({
+      sessionId,
+      userId,
+      tokenHash: 'c'.repeat(64),
+      status: 'ACTIVE',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      expiresAt: '2027-01-01T00:00:00.000Z',
+      revokedAt: null
+    });
+    const [use, revoke] = await Promise.all([
+      repository.findById(sessionId),
+      repository.revoke(sessionId, 1, '2026-08-02T00:00:00.000Z')
+    ]);
+    expect(['ACTIVE', 'REVOKED']).toContain(use?.status);
+    expect(revoke).toMatchObject({ sessionId, status: 'REVOKED', version: 2 });
+    expect(await repository.findById(sessionId)).toMatchObject({
+      sessionId,
+      status: 'REVOKED',
+      version: 2
+    });
+    expect(
+      (await database.getPool().query('SELECT 1 FROM sessions WHERE session_id=$1', [sessionId]))
+        .rowCount
+    ).toBe(1);
+  });
 });

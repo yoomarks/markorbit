@@ -28,6 +28,9 @@ jobs:
       AUTH_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_core_test
       MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
+      MILESTONE2_MIGRATIONS_REQUIRED: '1'
+      MILESTONE2_RESTART_REQUIRED: '1'
+      MILESTONE2_OUTAGE_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-026-ci-internal-secret-32-bytes
       MO_CSRF_SECRET: task-026-ci-csrf-secret-32-bytes-minimum
       WEB_ORIGINS: https://test.markorbit.local
@@ -47,27 +50,9 @@ jobs:
           CREATE DATABASE markorbit_markreg_test;
           CREATE DATABASE markorbit_execution_test;
           SQL
-      - name: Migration matrix
-        run: pnpm test:milestone2:migrations
-      - name: MarkReg repeatability
-        run: pnpm test:milestone2:markreg-repeatability
-      - name: Listener restart matrix
-        run: pnpm test:milestone2:restart
-      - name: Outage and recovery matrix
-        run: pnpm test:milestone2:outage
-      - name: Concurrency and idempotency matrix
-        run: pnpm test:milestone2:concurrency
-      - name: Tenant-isolation matrix
-        run: pnpm test:milestone2:tenant-isolation
-      - name: Browser topology and no-interception guards
-        run: pnpm test:milestone2:topology
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Existing dedicated browser suites
-        run: |
-          pnpm test:lite-matter:browser
-          pnpm test:professional-review:browser
-          pnpm test:document-package:browser
-          pnpm test:e2e:real-runtime
+      - name: Ordered executable reliability matrix
+        run: pnpm test:milestone2:reliability
       - name: Final workspace check
         run: pnpm check
       - name: Upload failure evidence

@@ -32,9 +32,12 @@ import {
 } from '../services/execution/dist/index.js';
 
 const url = process.env.EXECUTION_TEST_DATABASE_URL;
+const markregUrl = process.env.MARKREG_TEST_DATABASE_URL;
 const required = process.env.EXECUTION_POSTGRES_TEST_REQUIRED === '1';
 if (required && !url) throw new Error('EXECUTION_TEST_DATABASE_URL is required in required mode.');
-const suite = url ? describe : describe.skip;
+if (required && !markregUrl)
+  throw new Error('MARKREG_TEST_DATABASE_URL is required in required mode.');
+const suite = url && markregUrl ? describe : describe.skip;
 const secret = 'task-024-http-internal-service-secret';
 const origin = 'https://review.test.markorbit.local';
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -43,7 +46,7 @@ const at = '2026-07-31T21:00:00.000Z';
 
 suite('real authenticated durable Professional Review HTTP path', () => {
   let authenticationNow = new Date(at);
-  const database = new ManagedDatabase({
+  const executionDatabase = new ManagedDatabase({
     connection: { url: url! },
     applicationName: 'professional-review-http',
     poolMaximum: 15,
@@ -52,6 +55,16 @@ suite('real authenticated durable Professional Review HTTP path', () => {
     statementTimeoutMs: 5000,
     sslMode: 'disable',
     migrationNamespace: 'professional_review_http'
+  });
+  const markregDatabase = new ManagedDatabase({
+    connection: { url: markregUrl! },
+    applicationName: 'professional-review-http-markreg',
+    poolMaximum: 15,
+    connectionTimeoutMs: 2000,
+    idleTimeoutMs: 2000,
+    statementTimeoutMs: 5000,
+    sslMode: 'disable',
+    migrationNamespace: 'professional_review_http_markreg'
   });
   const users = new InMemoryUserRepository();
   const workspaces = new InMemoryWorkspaceRepository();
@@ -71,13 +84,17 @@ suite('real authenticated durable Professional Review HTTP path', () => {
   let base = '';
   const cookies: Record<string, string> = {};
   const csrf: Record<string, string> = {};
-  const confirmations = () => new PostgresCustomerConfirmationRepository(database.getPool());
-  const drafts = () => new PostgresMatterDraftRepository(database.getPool());
+  const confirmations = () => new PostgresCustomerConfirmationRepository(markregDatabase.getPool());
+  const drafts = () => new PostgresMatterDraftRepository(markregDatabase.getPool());
   const executionRuntime = (port: number) =>
     createExecution({
       port,
       reviewRepositoryFactory: (workspace) =>
-        new PostgresProfessionalReviewRepository(database, database.getPool(), workspace),
+        new PostgresProfessionalReviewRepository(
+          executionDatabase,
+          executionDatabase.getPool(),
+          workspace
+        ),
       internalServiceSecret: secret,
       markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`,
       now: () => at
@@ -171,7 +188,7 @@ suite('real authenticated durable Professional Review HTTP path', () => {
       workspace
     );
     return new FormalMatterService(
-      new PostgresFormalMatterRepository(database, database.getPool()),
+      new PostgresFormalMatterRepository(markregDatabase, markregDatabase.getPool()),
       confirmations(),
       drafts(),
       () => at
@@ -202,27 +219,29 @@ suite('real authenticated durable Professional Review HTTP path', () => {
   }
 
   beforeAll(async () => {
-    await database.start();
-    const pool = database.getPool();
-    await pool.query(
+    await executionDatabase.start();
+    await markregDatabase.start();
+    const executionPool = executionDatabase.getPool();
+    const markregPool = markregDatabase.getPool();
+    await executionPool.query(
       'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE'
     );
-    const history = await pool.query<{ migration_history: string | null }>(
+    const history = await executionPool.query<{ migration_history: string | null }>(
       "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
     );
     if (history.rows[0]?.migration_history)
-      await pool.query(
+      await executionPool.query(
         "DELETE FROM markorbit_persistence.migration_history WHERE namespace = 'professional_review_http_execution'"
       );
     const directory = path.resolve('infrastructure/persistence/migrations');
     const owners = path.resolve('infrastructure/persistence/migration-owners.json');
     await resetAndMigrateMarkRegTestDatabase({
-      pool,
+      pool: markregPool,
       migrationsDirectory: directory,
       migrationOwners: owners
     });
     await migrate(
-      pool,
+      executionPool,
       'professional_review_http_execution',
       await loadMigrationsForOwner(directory, owners, '@markorbit/execution-service')
     );
@@ -266,7 +285,7 @@ suite('real authenticated durable Professional Review HTTP path', () => {
       port: 0,
       customerConfirmationRepository: confirmations(),
       matterDraftRepository: drafts(),
-      formalMatterRepository: new PostgresFormalMatterRepository(database, pool),
+      formalMatterRepository: new PostgresFormalMatterRepository(markregDatabase, markregPool),
       internalServiceSecret: secret,
       now: () => at
     });
@@ -313,7 +332,8 @@ suite('real authenticated durable Professional Review HTTP path', () => {
     await execution?.stop();
     await markreg?.stop();
     await core.stop();
-    await database.close();
+    await executionDatabase.close();
+    await markregDatabase.close();
   });
 
   it('enforces the role, Session and Workspace matrix through real listeners', async () => {
@@ -460,6 +480,36 @@ suite('real authenticated durable Professional Review HTTP path', () => {
     );
     expect(afterRestart.status).toBe(200);
     expect(((await afterRestart.json()) as any).reviewCase).toEqual(completed);
+  });
+
+  it('OUT-006/009 maps an actual Execution database outage to 503 and recovers durable evidence', async () => {
+    const opened = await open('reviewer', 'execution_database_outage');
+    expect(opened.response.status).toBe(201);
+    const review = opened.body.reviewCase;
+    await executionDatabase.close();
+    const read = await fetch(`${base}/api/lite/professional-review-cases/${review.reviewCaseId}`, {
+      headers: { cookie: cookies.reviewer!, 'x-markorbit-workspace-id': workspaceId }
+    });
+    expect(read.status).toBe(503);
+    expect(JSON.stringify(await read.json())).not.toMatch(
+      /postgres|127\.0\.0\.1|password|SELECT|ECONN/iu
+    );
+    const mutation = await fetch(
+      `${base}/api/lite/professional-review-cases/${review.reviewCaseId}/claim`,
+      { method: 'POST', headers: headers('reviewer', 'execution-outage-claim'), body: '{}' }
+    );
+    expect(mutation.status).toBe(503);
+    const port = execution.listeningPort!;
+    await execution.stop();
+    await executionDatabase.start();
+    execution = executionRuntime(port);
+    await execution.start();
+    const recovered = await fetch(
+      `${base}/api/lite/professional-review-cases/${review.reviewCaseId}`,
+      { headers: { cookie: cookies.reviewer!, 'x-markorbit-workspace-id': workspaceId } }
+    );
+    expect(recovered.status).toBe(200);
+    expect(((await recovered.json()) as any).reviewCase).toEqual(review);
   });
 
   it('maps unavailable Execution and required MarkReg validation to 503', async () => {
