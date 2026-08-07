@@ -56,7 +56,10 @@ jobs:
           SQL
       - run: pnpm exec playwright install --with-deps chromium
       - name: Ordered executable reliability matrix
-        run: pnpm test:milestone2:reliability
+        run: |
+          mkdir -p .artifacts
+          set -o pipefail
+          pnpm test:milestone2:reliability 2>&1 | tee .artifacts/milestone-2-reliability.log
       - name: Final workspace check
         run: pnpm check
       - name: Upload failure evidence
@@ -65,6 +68,7 @@ jobs:
         with:
           name: milestone-2-reliability-failure
           path: |
+            .artifacts/milestone-2-reliability.log
             playwright-report/
             test-results/
           if-no-files-found: ignore
