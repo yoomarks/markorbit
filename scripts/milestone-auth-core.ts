@@ -14,8 +14,7 @@ if (!internalServiceSecret)
   throw new Error(
     'MO_INTERNAL_SERVICE_SECRET is required for the authenticated milestone runtime.'
   );
-const workspaceId =
-  process.env.MO_MILESTONE_WORKSPACE_ID ?? '55555555-5555-4555-8555-555555555555';
+const workspaceId = process.env.MO_MILESTONE_WORKSPACE_ID ?? '55555555-5555-4555-8555-555555555555';
 const userId = process.env.MO_MILESTONE_USER_ID ?? 'user_milestone_golden';
 const sessionId = process.env.MO_MILESTONE_SESSION_ID;
 const sessionValue = process.env.MO_MILESTONE_SESSION_VALUE;
