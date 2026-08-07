@@ -109,6 +109,7 @@ jobs:
       MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_review_browser
       MARKREG_POSTGRES_TEST_REQUIRED: '1'
       MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED: '1'
+      EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_review_browser
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
@@ -117,6 +118,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Create Execution browser database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_review_browser;'
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:professional-review:browser
       - run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop --reporter=line
