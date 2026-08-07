@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { stripVTControlCharacters } from 'node:util';
 
 const groups = [
   [
@@ -80,7 +81,7 @@ for (let cycle = 1; cycle <= 2; cycle++)
     process.stderr.write(run.stderr ?? '');
     if (run.error) throw run.error;
     if (run.status !== 0) process.exit(run.status ?? 1);
-    const output = `${run.stdout ?? ''}\n${run.stderr ?? ''}`;
+    const output = stripVTControlCharacters(`${run.stdout ?? ''}\n${run.stderr ?? ''}`);
     const passed = [...output.matchAll(/Tests\s+(\d+) passed/gu)].at(-1)?.[1];
     const skipped = /\bskipped\b|\bskip\b/iu.test(output.replace(/0 skipped/gu, ''));
     if (!passed) throw new Error(`No passed-test total was reported for ${name}.`);
