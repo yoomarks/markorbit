@@ -65,6 +65,31 @@ const restored = async (owner: keyof typeof urls) => {
     path.resolve('infrastructure/persistence/migration-owners.json'),
     owners[owner]
   );
+  const tables = [
+    ...new Set(
+      migrations.flatMap((migration) =>
+        [...migration.sql.matchAll(/\bCREATE TABLE\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
+          (match) => match[1]!
+        )
+      )
+    )
+  ];
+  const functions = [
+    ...new Set(
+      migrations.flatMap((migration) =>
+        [...migration.sql.matchAll(/\bCREATE FUNCTION\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
+          (match) => match[1]!
+        )
+      )
+    )
+  ];
+  if (tables.length)
+    await database
+      .getPool()
+      .query(`DROP TABLE IF EXISTS ${tables.map((table) => `"${table}"`).join(',')} CASCADE`);
+  for (const functionName of functions)
+    await database.getPool().query(`DROP FUNCTION IF EXISTS "${functionName}"() CASCADE`);
+  await database.getPool().query('DROP SCHEMA IF EXISTS markorbit_persistence CASCADE');
   await migrate(database.getPool(), `${owner.toLowerCase()}_startup_restored`, migrations);
   await verifyMigrations(database.getPool(), `${owner.toLowerCase()}_startup_restored`, migrations);
   return database;
