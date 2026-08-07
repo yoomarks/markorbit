@@ -54,12 +54,7 @@ await sessions.create({
   version: 1
 });
 
-const authentication = new AuthenticationService({
-  users,
-  workspaces,
-  memberships,
-  sessions
-});
+const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
 const runtime = createRuntime({ port, authentication, internalServiceSecret });
 
 async function shutdown(signal: string) {
