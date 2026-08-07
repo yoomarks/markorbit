@@ -75,12 +75,14 @@ export function ConfirmationMatterFlow({
   const complete = checked.length === codes.length;
   const planId = quote.planSelection.planSelectionId;
   const draftStorageKey = `markreg-matter-draft:${quote.quote.quoteId}`;
+  const formalMatterStorageKey = `${draftStorageKey}:formal-matter`;
   const workspaceId =
     typeof sessionStorage === 'undefined'
       ? undefined
       : (sessionStorage.getItem('markorbit-workspace-id') ?? undefined);
   useEffect(() => {
     if (fixture || !client.getMatterDraft || typeof sessionStorage === 'undefined') return;
+    if (sessionStorage.getItem(formalMatterStorageKey)) return;
     const id = sessionStorage.getItem(draftStorageKey);
     if (!id) return;
     setState('MATTER_DRAFT_LOADING');
@@ -99,16 +101,16 @@ export function ConfirmationMatterFlow({
         setMessage(error instanceof Error ? error.message : message);
         setState('RECOVERABLE_ERROR');
       });
-  }, [client, draftStorageKey, fixture]);
+  }, [client, draftStorageKey, fixture, formalMatterStorageKey]);
   useEffect(() => {
     if (fixture || !client.getFormalMatter || typeof sessionStorage === 'undefined') return;
-    const id = sessionStorage.getItem(`${draftStorageKey}:formal-matter`);
+    const id = sessionStorage.getItem(formalMatterStorageKey);
     if (!id) return;
     void client.getFormalMatter(id).then(({ formalMatter: value }) => {
       setFormalMatter(value);
       setState('FORMAL_MATTER_RECEIPT');
     });
-  }, [client, draftStorageKey, fixture]);
+  }, [client, fixture, formalMatterStorageKey]);
   const confirm = async () => {
     setState('CONFIRMING');
     try {
@@ -510,10 +512,7 @@ export function ConfirmationMatterFlow({
                   })
                   .then(({ formalMatter: value }) => {
                     setFormalMatter(value);
-                    sessionStorage.setItem(
-                      `${draftStorageKey}:formal-matter`,
-                      value.formalMatterId
-                    );
+                    sessionStorage.setItem(formalMatterStorageKey, value.formalMatterId);
                     setState('FORMAL_MATTER_RECEIPT');
                   })
                   .catch((error) => {
