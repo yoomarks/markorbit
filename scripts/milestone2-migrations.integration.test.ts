@@ -89,7 +89,9 @@ const reset = async (database: ManagedDatabase, owner: keyof typeof urls) => {
   const functions = migrationOwnedFunctions(loaded);
   const pool = database.getPool();
   if (tables.length)
-    await pool.query(`DROP TABLE IF EXISTS ${tables.map((table) => `"${table}"`).join(',')} CASCADE`);
+    await pool.query(
+      `DROP TABLE IF EXISTS ${tables.map((table) => `"${table}"`).join(',')} CASCADE`
+    );
   for (const functionName of functions)
     await pool.query(`DROP FUNCTION IF EXISTS "${functionName}"() CASCADE`);
   await pool.query('DROP SCHEMA IF EXISTS markorbit_persistence CASCADE');
