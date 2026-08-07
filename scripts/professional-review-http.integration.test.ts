@@ -87,19 +87,17 @@ suite('real authenticated durable Professional Review HTTP path', () => {
   const csrf: Record<string, string> = {};
   const confirmations = () => new PostgresCustomerConfirmationRepository(markregDatabase.getPool());
   const drafts = () => new PostgresMatterDraftRepository(markregDatabase.getPool());
-  const executionRuntime = (port: number) =>
-    createExecution({
+  const executionRuntime = (port: number) => {
+    const pool = executionDatabase.getPool();
+    return createExecution({
       port,
       reviewRepositoryFactory: (workspace) =>
-        new PostgresProfessionalReviewRepository(
-          executionDatabase,
-          executionDatabase.getPool(),
-          workspace
-        ),
+        new PostgresProfessionalReviewRepository(executionDatabase, pool, workspace),
       internalServiceSecret: secret,
       markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`,
       now: () => at
     });
+  };
   const headers = (role: string, key?: string, workspace = workspaceId) => ({
     'content-type': 'application/json',
     cookie: cookies[role]!,
