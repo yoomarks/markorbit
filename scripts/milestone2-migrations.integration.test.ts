@@ -63,15 +63,37 @@ const open = async (owner: keyof typeof urls) => {
   databases.push(database);
   return database;
 };
-const reset = async (database: ManagedDatabase, owner: keyof typeof urls) => {
-  await database
-    .getPool()
-    .query(
-      `DROP TABLE IF EXISTS ${ownedTables[owner].join(',')} CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE`
-    );
-};
 const migrations = (owner: keyof typeof urls) =>
   loadMigrationsForOwner(migrationDirectory, ownershipFile, packages[owner]);
+const migrationOwnedTables = (loaded: Migration[]) => [
+  ...new Set(
+    loaded.flatMap((migration) =>
+      [...migration.sql.matchAll(/\bCREATE TABLE\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
+        (match) => match[1]!
+      )
+    )
+  )
+];
+const migrationOwnedFunctions = (loaded: Migration[]) => [
+  ...new Set(
+    loaded.flatMap((migration) =>
+      [...migration.sql.matchAll(/\bCREATE FUNCTION\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
+        (match) => match[1]!
+      )
+    )
+  )
+];
+const reset = async (database: ManagedDatabase, owner: keyof typeof urls) => {
+  const loaded = await migrations(owner);
+  const tables = migrationOwnedTables(loaded);
+  const functions = migrationOwnedFunctions(loaded);
+  const pool = database.getPool();
+  if (tables.length)
+    await pool.query(`DROP TABLE IF EXISTS ${tables.map((table) => `"${table}"`).join(',')} CASCADE`);
+  for (const functionName of functions)
+    await pool.query(`DROP FUNCTION IF EXISTS "${functionName}"() CASCADE`);
+  await pool.query('DROP SCHEMA IF EXISTS markorbit_persistence CASCADE');
+};
 afterAll(async () => {
   for (const database of databases.reverse()) await database.close();
 });
@@ -162,6 +184,25 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     const loaded = await migrations('MarkReg');
     const prior = loaded.filter((m) => m.version < '0025');
     await migrate(database.getPool(), 'markreg', prior);
+    const pre0025History = await database
+      .getPool()
+      .query(
+        "SELECT 1 FROM markorbit_persistence.migration_history WHERE namespace='markreg' AND version='0025'"
+      );
+    expect(pre0025History.rowCount).toBe(0);
+    expect(
+      (
+        await database
+          .getPool()
+          .query(
+            "SELECT to_regprocedure('public.reject_markreg_audit_mutation()')::text AS function_name"
+          )
+      ).rows[0].function_name
+    ).toBeNull();
+    expect(
+      (await database.getPool().query("SELECT to_regclass('markreg_denial_audit') AS relation"))
+        .rows[0].relation
+    ).toBeNull();
     const workspace = '01900000-0000-7000-8000-260000000010';
     await database
       .getPool()
