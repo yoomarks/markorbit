@@ -182,7 +182,7 @@ suite.sequential('TASK 026 actual Core listener restart', () => {
       clock: () => new Date('2020-01-01T00:00:00.000Z'),
       tokenGenerator: () => 'e'.repeat(43)
     });
-    const expired = await expiredAuth.issueSession(ids.user, 60);
+    const expired = await expiredAuth.issueSession(ids.user, 300);
     const coreBase = `http://127.0.0.1:${corePort}`;
     const resolve = (token: string) =>
       fetch(`${coreBase}/internal/auth/sessions/resolve`, {
@@ -208,7 +208,13 @@ suite.sequential('TASK 026 actual Core listener restart', () => {
     );
     const mutation = await fetch(`${base}/api/auth/logout`, {
       method: 'POST',
-      headers: { cookie: durableCookie, origin, 'x-markorbit-csrf-token': durableCsrf }
+      headers: {
+        'content-type': 'application/json',
+        cookie: durableCookie,
+        origin,
+        'x-markorbit-csrf-token': durableCsrf
+      },
+      body: '{}'
     });
     expect(mutation.status).toBe(503);
     await replacement!.stop();
