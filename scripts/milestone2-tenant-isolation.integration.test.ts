@@ -396,7 +396,10 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
         JSON.stringify({
           workspaceId: A,
           expectedVersion: 1,
-          instruction: { instructionType: 'FILING_SCOPE', structuredPayload: {} }
+          instruction: {
+            instructionType: 'FILING_SCOPE',
+            structuredPayload: { probe: 'cross-workspace' }
+          }
         })
       ]
     ] as const)
