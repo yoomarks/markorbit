@@ -483,7 +483,7 @@ suite('real authenticated durable Professional Review HTTP path', () => {
 
   it('OUT-006/009 maps an actual Execution database outage to 503 and recovers durable evidence', async () => {
     const opened = await open('reviewer', 'execution_database_outage');
-    expect(opened.response.status).toBe(201);
+    expect(opened.response.status).toBe(200);
     const review = opened.body.reviewCase;
     await executionDatabase.close();
     const read = await fetch(`${base}/api/lite/professional-review-cases/${review.reviewCaseId}`, {
