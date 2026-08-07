@@ -8,8 +8,9 @@ import {
 } from '../services/core/src/index.js';
 
 const port = Number(process.env.PORT ?? '4301');
-const internalServiceSecret =
-  process.env.MO_INTERNAL_SERVICE_SECRET ?? 'milestone-real-runtime-internal-secret-32-bytes';
+const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
+if (!internalServiceSecret)
+  throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the authenticated milestone runtime.');
 const workspaceId =
   process.env.MO_MILESTONE_WORKSPACE_ID ?? '55555555-5555-4555-8555-555555555555';
 const userId = process.env.MO_MILESTONE_USER_ID ?? 'user_milestone_golden';
