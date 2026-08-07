@@ -16,9 +16,11 @@ import {
   createRuntime as createCore
 } from '../services/core/dist/index.js';
 import {
+  PostgresCustomerConfirmationRepository,
   PostgresDocumentPackageService,
   PostgresFormalMatterRepository,
   PostgresMarkRegAuditRepository,
+  PostgresMatterDraftRepository,
   createRuntime as createMarkReg
 } from '../services/markreg/dist/index.js';
 import {
@@ -153,14 +155,17 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
     });
     core = createCore({ port: 0, authentication, internalServiceSecret: secret });
     await core.start();
-    const packageService = new PostgresDocumentPackageService(db.MarkReg, db.MarkReg.getPool(), {
+    const markregPool = db.MarkReg.getPool();
+    const packageService = new PostgresDocumentPackageService(db.MarkReg, markregPool, {
       get: () => Promise.reject(new Error('not used by tenant read matrix'))
     });
     markreg = createMarkReg({
       port: 0,
-      formalMatterRepository: new PostgresFormalMatterRepository(db.MarkReg, db.MarkReg.getPool()),
+      customerConfirmationRepository: new PostgresCustomerConfirmationRepository(markregPool),
+      matterDraftRepository: new PostgresMatterDraftRepository(markregPool),
+      formalMatterRepository: new PostgresFormalMatterRepository(db.MarkReg, markregPool),
       documentPackageService: packageService,
-      auditRepository: new PostgresMarkRegAuditRepository(db.MarkReg.getPool()),
+      auditRepository: new PostgresMarkRegAuditRepository(markregPool),
       internalServiceSecret: secret
     });
     await markreg.start();
