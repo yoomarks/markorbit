@@ -1,3 +1,4 @@
+import { get } from 'node:http';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -40,6 +41,17 @@ const owners = {
   Execution: '@markorbit/execution-service'
 } as const;
 const secret = 'task-026-startup-restoration-secret';
+const probeHealth = (port: number) =>
+  new Promise<number>((resolve, reject) => {
+    const request = get(
+      { hostname: '127.0.0.1', port, path: '/health', agent: false },
+      (response) => {
+        response.resume();
+        response.once('end', () => resolve(response.statusCode ?? 0));
+      }
+    );
+    request.once('error', reject);
+  });
 const bad = (owner: string) =>
   new ManagedDatabase(
     parseDatabaseConfig({
@@ -139,7 +151,7 @@ suite.sequential('TASK 026 owner startup outage and actual listener restoration'
     const runtime = createCore({ port: 0, authentication: auth, internalServiceSecret: secret });
     try {
       await runtime.start();
-      expect((await fetch(`http://127.0.0.1:${runtime.listeningPort}/health`)).status).toBe(200);
+      expect(await probeHealth(runtime.listeningPort)).toBe(200);
       const issued = await auth.issueSession(userId);
       expect(await auth.resolveWorkspacePrincipal(issued.rawToken, workspaceId)).toMatchObject({
         userId,
@@ -150,7 +162,7 @@ suite.sequential('TASK 026 owner startup outage and actual listener restoration'
       await runtime.stop();
       const replacement = createCore({ port, authentication: auth, internalServiceSecret: secret });
       await replacement.start();
-      expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(200);
+      expect(await probeHealth(port)).toBe(200);
       await replacement.stop();
     } finally {
       await runtime.stop().catch(() => undefined);
@@ -168,7 +180,7 @@ suite.sequential('TASK 026 owner startup outage and actual listener restoration'
     });
     try {
       await runtime.start();
-      expect((await fetch(`http://127.0.0.1:${runtime.listeningPort}/health`)).status).toBe(200);
+      expect(await probeHealth(runtime.listeningPort)).toBe(200);
       expect(
         (await database.getPool().query('SELECT count(*)::int AS count FROM formal_matters'))
           .rows[0].count
@@ -181,7 +193,7 @@ suite.sequential('TASK 026 owner startup outage and actual listener restoration'
         internalServiceSecret: secret
       });
       await replacement.start();
-      expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(200);
+      expect(await probeHealth(port)).toBe(200);
       await replacement.stop();
     } finally {
       await runtime.stop().catch(() => undefined);
@@ -200,7 +212,7 @@ suite.sequential('TASK 026 owner startup outage and actual listener restoration'
     });
     try {
       await runtime.start();
-      expect((await fetch(`http://127.0.0.1:${runtime.listeningPort}/health`)).status).toBe(200);
+      expect(await probeHealth(runtime.listeningPort)).toBe(200);
       expect(
         (
           await database
@@ -216,7 +228,7 @@ suite.sequential('TASK 026 owner startup outage and actual listener restoration'
         internalServiceSecret: secret
       });
       await replacement.start();
-      expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(200);
+      expect(await probeHealth(port)).toBe(200);
       await replacement.stop();
     } finally {
       await runtime.stop().catch(() => undefined);
