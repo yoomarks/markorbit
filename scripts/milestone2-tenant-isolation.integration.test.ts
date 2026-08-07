@@ -219,6 +219,42 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
         const value = ids(workspace, `${label}${n}`),
           hash = (label === 'a' ? 'a' : 'b').repeat(64),
           at = `2026-08-02T00:00:0${n}.000Z`;
+        const sourceSnapshot = {
+          schemaVersion: 1,
+          customerConfirmation: {
+            id: `confirmation_${label}${n}`,
+            version: 1,
+            status: 'CONFIRMED'
+          },
+          quote: {
+            id: `quote_${label}${n}`,
+            version: '1',
+            currency: 'USD',
+            totalMinor: 100
+          },
+          matterDraft: {
+            id: `draft_${label}${n}`,
+            version: 1,
+            status: 'READY_FOR_PROFESSIONAL_REVIEW',
+            readiness: {
+              evaluatedAt: at,
+              checks: [],
+              readyForProfessionalReview: true
+            }
+          },
+          preparation: {
+            applicantName: `Tenant ${label.toUpperCase()} Applicant`,
+            applicantAddress: `${n} Orbit Way`,
+            trademark: `TENANT ${label.toUpperCase()} ${n}`,
+            targetJurisdiction: 'US',
+            classes: [9],
+            goodsServices: 'Software',
+            filingBasis: 'USE',
+            representativeRequired: false,
+            documentReferences: [`document_${label}${n}`],
+            commercialScopeUnchanged: true
+          }
+        };
         await db.MarkReg.getPool().query(
           "INSERT INTO formal_matters(formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES($1,$2,'TRADEMARK_REGISTRATION','OPEN',1,$3,1,$4,1,$5,'1',$6,1,$7,$8,$9,$9)",
           [
@@ -227,7 +263,7 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
             `confirmation_${label}${n}`,
             `draft_${label}${n}`,
             `quote_${label}${n}`,
-            JSON.stringify({ trademark: `TENANT ${label.toUpperCase()} ${n}` }),
+            JSON.stringify(sourceSnapshot),
             hash,
             users.admin,
             at
@@ -339,7 +375,11 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
       'idempotency-key': 'tenant-cross-workspace'
     };
     for (const [path, method, body] of [
-      [`/api/lite/professional-review-cases/${ids(B, 'b1').review}/claim`, 'POST', '{}'],
+      [
+        `/api/lite/professional-review-cases/${ids(B, 'b1').review}/claim`,
+        'POST',
+        JSON.stringify({ expectedVersion: 1 })
+      ],
       [
         `/api/markreg/document-packages/${ids(B, 'b1').package}`,
         'PATCH',
