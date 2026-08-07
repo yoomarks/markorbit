@@ -11,7 +11,9 @@ import {
 const port = Number(process.env.PORT ?? '4301');
 const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!internalServiceSecret)
-  throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the authenticated milestone runtime.');
+  throw new Error(
+    'MO_INTERNAL_SERVICE_SECRET is required for the authenticated milestone runtime.'
+  );
 const workspaceId =
   process.env.MO_MILESTONE_WORKSPACE_ID ?? '55555555-5555-4555-8555-555555555555';
 const userId = process.env.MO_MILESTONE_USER_ID ?? 'user_milestone_golden';
@@ -52,7 +54,12 @@ await sessions.create({
   version: 1
 });
 
-const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
+const authentication = new AuthenticationService({
+  users,
+  workspaces,
+  memberships,
+  sessions
+});
 const runtime = createRuntime({ port, authentication, internalServiceSecret });
 
 async function shutdown(signal: string) {
