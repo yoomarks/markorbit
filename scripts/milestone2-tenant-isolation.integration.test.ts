@@ -383,17 +383,18 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
       [
         `/api/lite/professional-review-cases/${ids(B, 'b1').review}/claim`,
         'POST',
-        JSON.stringify({ expectedVersion: 1 })
+        JSON.stringify({ workspaceId: A, expectedVersion: 1 })
       ],
       [
         `/api/markreg/document-packages/${ids(B, 'b1').package}`,
         'PATCH',
-        JSON.stringify({ expectedVersion: 1, draft: { forged: true } })
+        JSON.stringify({ workspaceId: A, expectedVersion: 1, draft: { forged: true } })
       ],
       [
         `/api/markreg/document-packages/${ids(B, 'b1').package}/instructions`,
         'POST',
         JSON.stringify({
+          workspaceId: A,
           expectedVersion: 1,
           instruction: { instructionType: 'FILING_SCOPE', structuredPayload: {} }
         })
