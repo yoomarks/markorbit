@@ -39,9 +39,12 @@ import {
   type ProfessionalReviewCase
 } from '../packages/contracts/src/index.js';
 
-const url = process.env.MARKREG_TEST_DATABASE_URL;
-if (!url)
+const markregUrl = process.env.MARKREG_TEST_DATABASE_URL;
+const executionUrl = process.env.EXECUTION_TEST_DATABASE_URL;
+if (!markregUrl)
   throw new Error('MARKREG_TEST_DATABASE_URL is required for the Document Package real runtime.');
+if (!executionUrl)
+  throw new Error('EXECUTION_TEST_DATABASE_URL is required for the Document Package real runtime.');
 const secret = 'task-024-browser-internal-service-secret';
 const origin = 'http://127.0.0.1:4481';
 process.env.WEB_ORIGINS = origin;
@@ -59,7 +62,7 @@ const scenarios = [
 ] as const;
 const at = '2026-07-31T18:00:00.000Z';
 const database = new ManagedDatabase({
-  connection: { url },
+  connection: { url: markregUrl },
   applicationName: 'lite-matter-browser',
   poolMaximum: 10,
   connectionTimeoutMs: 2000,
@@ -67,6 +70,16 @@ const database = new ManagedDatabase({
   statementTimeoutMs: 5000,
   sslMode: 'disable',
   migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
+});
+const executionDatabase = new ManagedDatabase({
+  connection: { url: executionUrl },
+  applicationName: 'document-package-browser-execution',
+  poolMaximum: 10,
+  connectionTimeoutMs: 2000,
+  idleTimeoutMs: 2000,
+  statementTimeoutMs: 5000,
+  sslMode: 'disable',
+  migrationNamespace: 'document_package_browser_execution'
 });
 const users = new InMemoryUserRepository(),
   workspaces = new InMemoryWorkspaceRepository(),
@@ -112,17 +125,18 @@ let gateway: ReturnType<typeof createGateway>;
 let execution: ReturnType<typeof createExecution>;
 let vite: ChildProcess;
 async function main() {
-  await database.start();
+  await Promise.all([database.start(), executionDatabase.start()]);
   const pool = database.getPool();
-  await pool.query(
+  const executionPool = executionDatabase.getPool();
+  await executionPool.query(
     'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE'
   );
-  const history = await pool.query<{ migration_history: string | null }>(
+  const history = await executionPool.query<{ migration_history: string | null }>(
     "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
   );
   if (history.rows[0]?.migration_history)
-    await pool.query(
-      "DELETE FROM markorbit_persistence.migration_history WHERE namespace = 'professional_review_browser'"
+    await executionPool.query(
+      "DELETE FROM markorbit_persistence.migration_history WHERE namespace = 'document_package_browser_execution'"
     );
   await resetAndMigrateMarkRegTestDatabase({
     pool,
@@ -134,7 +148,7 @@ async function main() {
     path.resolve('infrastructure/persistence/migration-owners.json'),
     '@markorbit/execution-service'
   );
-  await migrate(pool, 'professional_review_browser', executionOwned);
+  await migrate(executionPool, 'document_package_browser_execution', executionOwned);
   const confirmations = new PostgresCustomerConfirmationRepository(pool);
   const drafts = new PostgresMatterDraftRepository(pool);
   const formalMatters = new FormalMatterService(
@@ -277,7 +291,7 @@ async function main() {
   execution = createExecution({
     port: 4404,
     reviewRepositoryFactory: (workspace) =>
-      new PostgresProfessionalReviewRepository(database, pool, workspace),
+      new PostgresProfessionalReviewRepository(executionDatabase, executionPool, workspace),
     internalServiceSecret: secret,
     markRegUrl: 'http://127.0.0.1:4405',
     now: () => at
@@ -317,7 +331,7 @@ async function stop() {
   await execution?.stop();
   await markreg?.stop();
   await core.stop();
-  await database.close();
+  await Promise.all([database.close(), executionDatabase.close()]);
 }
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.once(signal, () => void stop().finally(() => process.exit(0)));
