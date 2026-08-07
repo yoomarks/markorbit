@@ -36,7 +36,9 @@ try {
           env: {
             PORT: String(milestoneAuth.corePort),
             MO_MILESTONE_WORKSPACE_ID: milestoneAuth.workspaceId,
-            MO_MILESTONE_USER_ID: milestoneAuth.userId
+            MO_MILESTONE_USER_ID: milestoneAuth.userId,
+            MO_MILESTONE_SESSION_ID: milestoneAuth.sessionId,
+            MO_MILESTONE_SESSION_VALUE: milestoneAuth.sessionValue
           }
         },
         ...configuration.definitions
