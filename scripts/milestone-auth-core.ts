@@ -4,7 +4,8 @@ import {
   InMemorySessionRepository,
   InMemoryUserRepository,
   InMemoryWorkspaceRepository,
-  createRuntime
+  createRuntime,
+  hashSessionToken
 } from '../services/core/src/index.js';
 
 const port = Number(process.env.PORT ?? '4301');
@@ -14,6 +15,10 @@ if (!internalServiceSecret)
 const workspaceId =
   process.env.MO_MILESTONE_WORKSPACE_ID ?? '55555555-5555-4555-8555-555555555555';
 const userId = process.env.MO_MILESTONE_USER_ID ?? 'user_milestone_golden';
+const sessionId = process.env.MO_MILESTONE_SESSION_ID;
+const sessionValue = process.env.MO_MILESTONE_SESSION_VALUE;
+if (!sessionId || !sessionValue)
+  throw new Error('Authenticated milestone browser session fixture is required.');
 
 const users = new InMemoryUserRepository();
 const workspaces = new InMemoryWorkspaceRepository();
@@ -35,6 +40,16 @@ await memberships.create({
   workspaceId,
   userId,
   role: 'WORKSPACE_ADMIN'
+});
+await sessions.create({
+  sessionId,
+  userId,
+  tokenHash: hashSessionToken(sessionValue),
+  status: 'ACTIVE',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  expiresAt: '2036-01-01T00:00:00.000Z',
+  revokedAt: null,
+  version: 1
 });
 
 const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
