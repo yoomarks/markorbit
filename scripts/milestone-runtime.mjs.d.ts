@@ -6,6 +6,8 @@ export const milestoneAuth: Readonly<{
   coreUrl: string;
   workspaceId: string;
   userId: string;
+  sessionId: string;
+  sessionValue: string;
 }>;
 export const milestoneUrls: Readonly<
   Record<'gateway' | 'capability' | 'execution' | 'markreg' | 'liteWeb' | 'markregWeb', string>
