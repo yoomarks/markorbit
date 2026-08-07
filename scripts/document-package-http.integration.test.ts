@@ -42,10 +42,14 @@ import {
   type ProfessionalReviewCase
 } from '../packages/contracts/dist/index.js';
 
-const url = process.env.MARKREG_TEST_DATABASE_URL;
+const markregUrl = process.env.MARKREG_TEST_DATABASE_URL;
+const executionUrl = process.env.EXECUTION_TEST_DATABASE_URL;
 const required = process.env.MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED === '1';
-if (required && !url) throw new Error('MARKREG_TEST_DATABASE_URL is required in required mode.');
-const suite = url ? describe : describe.skip;
+if (required && !markregUrl)
+  throw new Error('MARKREG_TEST_DATABASE_URL is required in required mode.');
+if (required && !executionUrl)
+  throw new Error('EXECUTION_TEST_DATABASE_URL is required in required mode.');
+const suite = markregUrl && executionUrl ? describe : describe.skip;
 const workspaceId = '25252525-2525-4525-8525-252525252525';
 const otherWorkspaceId = '25252525-2525-4525-8525-252525252526';
 const origin = 'https://package-http.test.markorbit.local';
@@ -67,7 +71,7 @@ suite('authenticated durable Document Package HTTP path', () => {
   let now = new Date(at);
   let markregDatabase: ManagedDatabase;
   const executionDatabase = new ManagedDatabase({
-    connection: { url: url! },
+    connection: { url: executionUrl! },
     applicationName: 'task025-http-execution',
     poolMaximum: 10,
     connectionTimeoutMs: 2000,
@@ -97,7 +101,7 @@ suite('authenticated durable Document Package HTTP path', () => {
   const csrf: Record<string, string> = {};
   const newMarkregDatabase = () =>
     new ManagedDatabase({
-      connection: { url: url! },
+      connection: { url: markregUrl! },
       applicationName: 'task025-http-markreg',
       poolMaximum: 10,
       connectionTimeoutMs: 500,
@@ -106,7 +110,7 @@ suite('authenticated durable Document Package HTTP path', () => {
       sslMode: 'disable',
       migrationNamespace: MARKREG_TEST_MIGRATION_NAMESPACE
     });
-  const reviewSource = (db: ManagedDatabase) => ({
+  const reviewSource = () => ({
     async get(principal: any, reviewCaseId: string, correlationId?: string) {
       try {
         const response = await fetch(
@@ -144,7 +148,7 @@ suite('authenticated durable Document Package HTTP path', () => {
       documentPackageService: new PostgresDocumentPackageService(
         markregDatabase,
         pool,
-        reviewSource(markregDatabase),
+        reviewSource(),
         () => at
       ),
       executionUrl: `http://127.0.0.1:${execution?.listeningPort ?? 0}`,
@@ -352,26 +356,27 @@ suite('authenticated durable Document Package HTTP path', () => {
   beforeAll(async () => {
     markregDatabase = newMarkregDatabase();
     await Promise.all([markregDatabase.start(), executionDatabase.start()]);
-    const pool = markregDatabase.getPool();
-    await pool.query(
+    const markregPool = markregDatabase.getPool();
+    const executionPool = executionDatabase.getPool();
+    await executionPool.query(
       'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE'
     );
-    const history = await pool.query<{ migration_history: string | null }>(
+    const history = await executionPool.query<{ migration_history: string | null }>(
       "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
     );
     if (history.rows[0]?.migration_history)
-      await pool.query(
+      await executionPool.query(
         "DELETE FROM markorbit_persistence.migration_history WHERE namespace = 'task025_http_execution'"
       );
     const directory = path.resolve('infrastructure/persistence/migrations');
     const owners = path.resolve('infrastructure/persistence/migration-owners.json');
     await resetAndMigrateMarkRegTestDatabase({
-      pool,
+      pool: markregPool,
       migrationsDirectory: directory,
       migrationOwners: owners
     });
     await migrate(
-      pool,
+      executionPool,
       'task025_http_execution',
       await loadMigrationsForOwner(directory, owners, '@markorbit/execution-service')
     );
@@ -414,12 +419,13 @@ suite('authenticated durable Document Package HTTP path', () => {
     await markregDatabase.close();
     markreg = await constructMarkreg(markregPort);
     await markreg.start();
+    const executionPoolForRuntime = executionDatabase.getPool();
     execution = createExecution({
       port: 0,
       reviewRepositoryFactory: (workspace) =>
         new PostgresProfessionalReviewRepository(
           executionDatabase,
-          executionDatabase.getPool(),
+          executionPoolForRuntime,
           workspace
         ),
       internalServiceSecret: secret,
@@ -860,12 +866,13 @@ suite('authenticated durable Document Package HTTP path', () => {
       'execution-unavailable'
     );
     expect(unavailableExecution.response.status).toBe(503);
+    const executionPoolForRestart = executionDatabase.getPool();
     execution = createExecution({
       port: executionPort,
       reviewRepositoryFactory: (workspace) =>
         new PostgresProfessionalReviewRepository(
           executionDatabase,
-          executionDatabase.getPool(),
+          executionPoolForRestart,
           workspace
         ),
       internalServiceSecret: secret,
