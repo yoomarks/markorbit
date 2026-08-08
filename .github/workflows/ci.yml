@@ -39,6 +39,7 @@ jobs:
       MARKREG_AUDIT_HTTP_REQUIRED: '1'
       MARKREG_ORDER_POSTGRES_REQUIRED: '1'
       MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
@@ -90,6 +91,7 @@ jobs:
       - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-postgres.test.ts
       - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-service.test.ts
       - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-service-postgres.test.ts
+      - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-matter-conversion-postgres.test.ts
       - run: pnpm test:audit-idempotency:postgres
       - run: pnpm test:audit-idempotency:postgres
       - run: pnpm test:audit-idempotency:http
