@@ -6,19 +6,19 @@ The approved plan remains unchanged. Its TASK 020–024 sequence described Forma
 
 The JSON companion is the normative row-level trace for the pre-TASK-026 reconciliation. Summary of the implementation history, with TASK 026/027 status brought current by the TASK 027 audit:
 
-| Approved task | Actual implementation represented in checkout | Status against approved objective |
-| --- | --- | --- |
-| 017 | `0435516` / PR #25 metadata: PostgreSQL foundation | SATISFIED |
-| 018 | `c4f6fac` plus `1cf8743` / PR #26–27 metadata: Core identity | SATISFIED |
-| 019 | `5d71e60` / PR #28 metadata: authenticated runtime | SATISFIED |
-| 020 | `5bf2ee6` / PR #29 metadata: durable Customer Confirmation | PARTIALLY_SATISFIED |
-| 021 | `0fcec2b` / PR #30 metadata: durable Matter Draft preparation | PARTIALLY_SATISFIED |
-| 022 | `4a988c3` / PR #31 metadata: Formal Matter vertical slice | SATISFIED |
-| 023 | `e828498` / PR #32 metadata: Lite durable Matter workspace | PARTIALLY_SATISFIED |
-| 024 | `88a46a3` / PR #33 metadata: Professional Review | PARTIALLY_SATISFIED |
-| 025 | `baebb68` / PR #34 metadata plus authorized TASK 025A remediation | SATISFIED_BY_RECONCILIATION |
-| 026 | PR #37 / merged `5badc2e`: restart, migration, concurrency and tenant-isolation reliability matrix | SATISFIED |
-| 027 | `docs/audits/MO-MVP-MILESTONE-002-INTEGRATION-AUDIT.md` | IN_AUDIT_PR |
+| Approved task | Actual implementation represented in checkout                                                      | Status against approved objective |
+| ------------- | -------------------------------------------------------------------------------------------------- | --------------------------------- |
+| 017           | `0435516` / PR #25 metadata: PostgreSQL foundation                                                 | SATISFIED                         |
+| 018           | `c4f6fac` plus `1cf8743` / PR #26–27 metadata: Core identity                                       | SATISFIED                         |
+| 019           | `5d71e60` / PR #28 metadata: authenticated runtime                                                 | SATISFIED                         |
+| 020           | `5bf2ee6` / PR #29 metadata: durable Customer Confirmation                                         | PARTIALLY_SATISFIED               |
+| 021           | `0fcec2b` / PR #30 metadata: durable Matter Draft preparation                                      | PARTIALLY_SATISFIED               |
+| 022           | `4a988c3` / PR #31 metadata: Formal Matter vertical slice                                          | SATISFIED                         |
+| 023           | `e828498` / PR #32 metadata: Lite durable Matter workspace                                         | PARTIALLY_SATISFIED               |
+| 024           | `88a46a3` / PR #33 metadata: Professional Review                                                   | PARTIALLY_SATISFIED               |
+| 025           | `baebb68` / PR #34 metadata plus authorized TASK 025A remediation                                  | SATISFIED_BY_RECONCILIATION       |
+| 026           | PR #37 / merged `5badc2e`: restart, migration, concurrency and tenant-isolation reliability matrix | SATISFIED                         |
+| 027           | `docs/audits/MO-MVP-MILESTONE-002-INTEGRATION-AUDIT.md`                                            | IN_AUDIT_PR                       |
 
 “Partially satisfied” compares the historical implementation label to the _approved objective_, not the quality of the differently numbered vertical slice. TASK 025A reconciled that numbering drift and authorized the bounded remediation needed for the approved audit/idempotency objective. TASK 026 then added executable reliability evidence without new product scope.
 
