@@ -28,6 +28,8 @@ const suite = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 const at = '2026-08-08T05:30:00.000Z';
+type ConfirmationEvidenceRow = Record<string, unknown>;
+type RelationRow = { relation: string | null };
 
 suite.sequential('PostgreSQL durable Order repository', () => {
   const database = new ManagedDatabase({
@@ -105,10 +107,10 @@ suite.sequential('PostgreSQL durable Order repository', () => {
     const before = (
       await database
         .getPool()
-        .query(
+        .query<ConfirmationEvidenceRow>(
           "SELECT confirmation_id,source_quote_id,source_quote_version,status,version,source_snapshot_hash FROM customer_confirmations WHERE confirmation_id='confirmation_m3-upgrade'"
         )
-    ).rows[0] as Record<string, unknown>;
+    ).rows[0];
     await migrate(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, owned);
     expect(
       (
@@ -120,9 +122,11 @@ suite.sequential('PostgreSQL durable Order repository', () => {
       ).rows[0]
     ).toEqual(before);
     const relation = (
-      await database.getPool().query("SELECT to_regclass('orders') AS relation")
-    ).rows[0] as { relation: string | null };
-    expect(relation.relation).toBe('orders');
+      await database
+        .getPool()
+        .query<RelationRow>("SELECT to_regclass('orders') AS relation")
+    ).rows[0];
+    expect(relation?.relation).toBe('orders');
   });
 
   runOrderRepositoryContract(
