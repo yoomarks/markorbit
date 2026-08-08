@@ -1,0 +1,35 @@
+name: WP03 format diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format and emit blobs
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/tests/order-permissions.test.ts \
+            services/markreg/src/order-service.ts \
+            services/markreg/tests/order-service-postgres.test.ts \
+            services/markreg/tests/order-service.test.ts
+          for file in \
+            packages/contracts/tests/order-permissions.test.ts \
+            services/markreg/src/order-service.ts \
+            services/markreg/tests/order-service-postgres.test.ts \
+            services/markreg/tests/order-service.test.ts; do
+            echo "BEGIN_BASE64:$file"
+            base64 -w0 "$file"
+            echo
+            echo "END_BASE64:$file"
+          done
