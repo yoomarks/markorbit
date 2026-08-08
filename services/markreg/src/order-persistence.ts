@@ -23,10 +23,7 @@ export class OrderPersistenceError extends Error {
 
 export type OrderPersistenceCommandType = 'CREATE' | 'UPDATE';
 export type OrderAuditAction =
-  | 'ORDER_CREATED'
-  | 'ORDER_STATUS_CHANGED'
-  | 'ORDER_MATTER_LINKED'
-  | 'ORDER_CANCELLED';
+  'ORDER_CREATED' | 'ORDER_STATUS_CHANGED' | 'ORDER_MATTER_LINKED' | 'ORDER_CANCELLED';
 
 export interface OrderAuditRecord {
   workspaceId: string;
@@ -143,7 +140,10 @@ function immutableSourceMatches(current: Order, proposed: Order): boolean {
 
 function validateUpdate(current: Order, proposed: Order, expectedVersion: number): void {
   if (current.version !== expectedVersion || proposed.version !== expectedVersion + 1)
-    throw new OrderPersistenceError('VERSION_CONFLICT', 'Order version does not match expectedVersion.');
+    throw new OrderPersistenceError(
+      'VERSION_CONFLICT',
+      'Order version does not match expectedVersion.'
+    );
   if (!immutableSourceMatches(current, proposed))
     throw new OrderPersistenceError(
       'STALE_SOURCE',
@@ -259,8 +259,9 @@ export class InMemoryOrderRepository implements OrderRepository {
           (!query.status || value.status === query.status) &&
           (!query.customerId || value.customerId === query.customerId)
       )
-      .sort((left, right) =>
-        right.updatedAt.localeCompare(left.updatedAt) || left.orderId.localeCompare(right.orderId)
+      .sort(
+        (left, right) =>
+          right.updatedAt.localeCompare(left.updatedAt) || left.orderId.localeCompare(right.orderId)
       );
     const offset = (query.page - 1) * query.pageSize;
     return Promise.resolve({
@@ -589,8 +590,7 @@ export class PostgresOrderRepository implements OrderRepository {
       const replay = await this.findByIdempotencyKey(value.workspaceId, key);
       if (replay) return this.resolveReplay(replay, fingerprint);
       const current = await this.findById(value.workspaceId, value.orderId);
-      if (!current)
-        throw new OrderPersistenceError('ORDER_NOT_FOUND', 'Order was not found.');
+      if (!current) throw new OrderPersistenceError('ORDER_NOT_FOUND', 'Order was not found.');
       if (current.version !== expectedVersion)
         throw new OrderPersistenceError(
           'VERSION_CONFLICT',
@@ -605,7 +605,9 @@ export class PostgresOrderRepository implements OrderRepository {
   }
 
   private map(row: Row): Order {
-    const matter = row.matter_reference ? clone(row.matter_reference as Order['matter']) : undefined;
+    const matter = row.matter_reference
+      ? clone(row.matter_reference as Order['matter'])
+      : undefined;
     return {
       schemaVersion: 1,
       orderId: String(row.order_id) as OrderId,
@@ -616,7 +618,9 @@ export class PostgresOrderRepository implements OrderRepository {
       customerId: String(row.customer_id) as never,
       channel: String(row.channel) as never,
       relationshipModel: String(row.relationship_model) as never,
-      commercialSourceSnapshot: clone(row.commercial_source_snapshot as Order['commercialSourceSnapshot']),
+      commercialSourceSnapshot: clone(
+        row.commercial_source_snapshot as Order['commercialSourceSnapshot']
+      ),
       commercialSourceSnapshotSha256: String(row.commercial_source_snapshot_sha256),
       ...(matter ? { matter } : {}),
       createdByUserId: String(row.created_by_user_id) as never,

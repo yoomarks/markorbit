@@ -117,9 +117,12 @@ export function runOrderRepositoryContract(
         pageSize: 20,
         total: 1
       });
-      expect(
-        await repository.list(OTHER_ORDER_WORKSPACE_ID, { page: 1, pageSize: 20 })
-      ).toEqual({ items: [], page: 1, pageSize: 20, total: 0 });
+      expect(await repository.list(OTHER_ORDER_WORKSPACE_ID, { page: 1, pageSize: 20 })).toEqual({
+        items: [],
+        page: 1,
+        pageSize: 20,
+        total: 0
+      });
       expect(created.commercialSourceSnapshot).toEqual(value.commercialSourceSnapshot);
       expect(created.commercialSourceSnapshotSha256).toBe(
         hashCommercialSourceSnapshot(value.commercialSourceSnapshot)
@@ -200,7 +203,10 @@ export function runOrderRepositoryContract(
           1,
           'stale-update',
           hashOrderPersistenceValue({ stale: true }),
-          orderAudit({ ...updated, version: 3, status: 'Confirmed' } as Order, 'ORDER_STATUS_CHANGED')
+          orderAudit(
+            { ...updated, version: 3, status: 'Confirmed' } as Order,
+            'ORDER_STATUS_CHANGED'
+          )
         )
       ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
       expect(await repository.findById(ORDER_WORKSPACE_ID, value.orderId)).toEqual(updated);

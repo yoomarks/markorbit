@@ -43,9 +43,7 @@ suite.sequential('PostgreSQL durable Order repository', () => {
   const migrations = () =>
     loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/markreg-service');
   const truncate = () =>
-    database
-      .getPool()
-      .query('TRUNCATE order_audit,order_commands,orders RESTART IDENTITY CASCADE');
+    database.getPool().query('TRUNCATE order_audit,order_commands,orders RESTART IDENTITY CASCADE');
 
   beforeAll(async () => {
     await database.start();
@@ -160,10 +158,12 @@ suite.sequential('PostgreSQL durable Order repository', () => {
       orderAudit(value, 'ORDER_CREATED')
     );
     await expect(
-      database.getPool().query('DELETE FROM order_audit WHERE workspace_id=$1 AND order_id=$2', [
-        ORDER_WORKSPACE_ID,
-        value.orderId
-      ])
+      database
+        .getPool()
+        .query('DELETE FROM order_audit WHERE workspace_id=$1 AND order_id=$2', [
+          ORDER_WORKSPACE_ID,
+          value.orderId
+        ])
     ).rejects.toMatchObject({ code: '55000' });
     expect(await repository.listAudit(ORDER_WORKSPACE_ID, value.orderId)).toHaveLength(1);
   });
