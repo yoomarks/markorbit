@@ -14,28 +14,49 @@ import type {
  */
 export type OrderId = `order_${string}`;
 
-export const orderTypes = ['TRADEMARK_FILING'] as const;
+/** Initial bounded Order type consumed from the canonical Order object vocabulary. */
+export const orderTypes = ['TrademarkFiling'] as const;
 export type OrderType = (typeof orderTypes)[number];
 
+/** Exact canonical Order.status values from B02-CSV-ORDER-STATUS. */
 export const orderStatuses = [
-  'DRAFT',
-  'PENDING_CONFIRMATION',
-  'CONFIRMED',
-  'READY_FOR_MATTER',
-  'MATTER_CREATED',
-  'IN_PROGRESS',
-  'CANCELLED'
+  'Draft',
+  'PendingConfirmation',
+  'Confirmed',
+  'ReadyForMatter',
+  'MatterCreated',
+  'InProgress',
+  'WaitingForCustomer',
+  'Completed',
+  'Cancelled',
+  'Archived',
+  'DeletedReferenceOnly'
 ] as const;
 export type OrderStatus = (typeof orderStatuses)[number];
 
+/** Primary Milestone 3 acceptance path; this constrains implementation, not state truth. */
+export const m3PrimaryOrderPath = [
+  'Draft',
+  'PendingConfirmation',
+  'Confirmed',
+  'ReadyForMatter',
+  'MatterCreated',
+  'InProgress'
+] as const satisfies readonly OrderStatus[];
+
+/** Exact canonical transition matrix from B02-CSV-ORDER-STATUS. */
 export const orderTransitionMatrix = Object.freeze({
-  DRAFT: ['PENDING_CONFIRMATION', 'CANCELLED'],
-  PENDING_CONFIRMATION: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['READY_FOR_MATTER', 'CANCELLED'],
-  READY_FOR_MATTER: ['MATTER_CREATED', 'CANCELLED'],
-  MATTER_CREATED: ['IN_PROGRESS'],
-  IN_PROGRESS: [],
-  CANCELLED: []
+  Draft: ['PendingConfirmation', 'Cancelled', 'Archived'],
+  PendingConfirmation: ['Draft', 'Confirmed', 'Cancelled'],
+  Confirmed: ['ReadyForMatter', 'InProgress', 'Cancelled'],
+  ReadyForMatter: ['MatterCreated', 'InProgress', 'Cancelled'],
+  MatterCreated: ['InProgress', 'Completed', 'Cancelled'],
+  InProgress: ['WaitingForCustomer', 'Completed', 'Cancelled'],
+  WaitingForCustomer: ['InProgress', 'Cancelled'],
+  Completed: ['Archived'],
+  Cancelled: ['Archived'],
+  Archived: [],
+  DeletedReferenceOnly: []
 } as const satisfies Readonly<Record<OrderStatus, readonly OrderStatus[]>>);
 
 export function isOrderStatus(value: unknown): value is OrderStatus {
@@ -123,24 +144,35 @@ export interface OrderMatterReference {
   linkedByUserId: MarkOrbitId;
 }
 
-export interface Order {
+interface OrderBase {
   schemaVersion: 1;
   orderId: OrderId;
   workspaceId: string;
   orderType: OrderType;
-  status: OrderStatus;
   version: number;
   customerId: MarkOrbitId;
   channel: Channel;
   relationshipModel: RelationshipModel;
   commercialSourceSnapshot: Readonly<CommercialSourceSnapshot>;
   commercialSourceSnapshotSha256: string;
-  matter?: Readonly<OrderMatterReference>;
   createdByUserId: MarkOrbitId;
   updatedByUserId: MarkOrbitId;
   createdAt: string;
   updatedAt: string;
 }
+
+/** `MatterCreated` is only representable when a valid Formal Matter reference exists. */
+export type Order = OrderBase &
+  (
+    | {
+        status: 'MatterCreated';
+        matter: Readonly<OrderMatterReference>;
+      }
+    | {
+        status: Exclude<OrderStatus, 'MatterCreated'>;
+        matter?: Readonly<OrderMatterReference>;
+      }
+  );
 
 export interface CreateOrderCommand {
   workspaceId: string;
