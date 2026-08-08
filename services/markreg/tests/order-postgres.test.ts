@@ -122,9 +122,7 @@ suite.sequential('PostgreSQL durable Order repository', () => {
       ).rows[0]
     ).toEqual(before);
     const relation = (
-      await database
-        .getPool()
-        .query<RelationRow>("SELECT to_regclass('orders') AS relation")
+      await database.getPool().query<RelationRow>("SELECT to_regclass('orders') AS relation")
     ).rows[0];
     expect(relation?.relation).toBe('orders');
   });
