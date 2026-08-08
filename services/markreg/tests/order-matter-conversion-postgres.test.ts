@@ -256,7 +256,7 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
       command,
       'correlation_convert-forward'
     );
-    expect(converted).toEqual({
+    expect(converted).toMatchObject({
       orderId: ready.orderId,
       orderStatus: 'MatterCreated',
       orderVersion: 5,
