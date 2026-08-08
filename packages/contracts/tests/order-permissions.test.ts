@@ -29,7 +29,7 @@ describe('Milestone 3 Order permission canon', () => {
       'order:cancel',
       'order:audit:read'
     ] as const;
-    expect(PERMISSIONS).toEqual(expect.arrayContaining(orderPermissions));
+    expect(PERMISSIONS).toEqual(expect.arrayContaining([...orderPermissions]));
     expect(new Set(PERMISSIONS).size).toBe(PERMISSIONS.length);
   });
 
