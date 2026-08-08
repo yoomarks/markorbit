@@ -55,12 +55,16 @@ jobs:
 
           index = Path('services/markreg/src/index.ts')
           text = index.read_text()
-          marker = "export * from './order-service.js';\n"
-          export_line = "export * from './order-matter-conversion.js';\n"
-          if export_line not in text:
+          marker = "export * from './audit.js';\n"
+          order_exports = (
+              "export * from './order-persistence.js';\n"
+              "export * from './order-service.js';\n"
+              "export * from './order-matter-conversion.js';\n"
+          )
+          if "export * from './order-matter-conversion.js';" not in text:
               if marker not in text:
-                  raise SystemExit('order-service export marker not found')
-              text = text.replace(marker, marker + export_line, 1)
+                  raise SystemExit('audit export marker not found')
+              text = text.replace(marker, marker + order_exports, 1)
           index.write_text(text)
 
           ci = Path('.github/workflows/ci.yml')
