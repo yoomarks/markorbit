@@ -93,7 +93,11 @@ export interface OrderProjectionListResponse {
 
 const clone = <T>(value: T): T => structuredClone(value);
 
-function authorize(principal: WorkspacePrincipal, workspaceId: string, permission: Permission): void {
+function authorize(
+  principal: WorkspacePrincipal,
+  workspaceId: string,
+  permission: Permission
+): void {
   if (principal.kind !== 'WORKSPACE')
     throw new OrderServiceError('AUTHENTICATION_REQUIRED', 'A Workspace Principal is required.');
   if (principal.workspaceId !== workspaceId)
@@ -113,7 +117,8 @@ function sourceMatches(command: CreateOrderCommand, source: CommercialSourceSnap
     source.quote.quoteId === command.quoteId &&
     source.quote.quoteVersion === command.expectedQuoteVersion &&
     source.customerConfirmation.confirmationId === command.customerConfirmationId &&
-    source.customerConfirmation.confirmationVersion === command.expectedCustomerConfirmationVersion &&
+    source.customerConfirmation.confirmationVersion ===
+      command.expectedCustomerConfirmationVersion &&
     source.customerConfirmation.status === 'CONFIRMED' &&
     source.channel === command.channel &&
     source.relationshipModel === command.relationshipModel &&
@@ -222,7 +227,11 @@ export class OrderService {
     return this.translate(async () => {
       authorize(principal, command.workspaceId, 'order:create');
       const commandFingerprint = fingerprint('ORDER_CREATE', command);
-      const replay = await this.replay(command.workspaceId, command.idempotencyKey, commandFingerprint);
+      const replay = await this.replay(
+        command.workspaceId,
+        command.idempotencyKey,
+        commandFingerprint
+      );
       if (replay) return project(replay);
       const source = await this.sources.resolve(command);
       if (!source || !sourceMatches(command, source))
@@ -351,7 +360,7 @@ export class OrderService {
     );
   }
 
-  async cancel(
+  cancel(
     principal: WorkspacePrincipal,
     command: CancelOrderCommand,
     correlationId?: string
@@ -389,12 +398,19 @@ export class OrderService {
     return this.translate(async () => {
       authorize(principal, command.workspaceId, permission);
       const commandFingerprint = fingerprint(operation, command);
-      const replay = await this.replay(command.workspaceId, command.idempotencyKey, commandFingerprint);
+      const replay = await this.replay(
+        command.workspaceId,
+        command.idempotencyKey,
+        commandFingerprint
+      );
       if (replay) return project(replay);
       const current = await this.repository.findById(command.workspaceId, command.orderId);
       if (!current) throw new OrderServiceError('ORDER_NOT_FOUND', 'Order was not found.');
       if (current.version !== command.expectedVersion)
-        throw new OrderServiceError('VERSION_CONFLICT', 'Order version does not match expectedVersion.');
+        throw new OrderServiceError(
+          'VERSION_CONFLICT',
+          'Order version does not match expectedVersion.'
+        );
       if (!canTransitionOrder(current.status, toStatus))
         throw new OrderServiceError(
           'INVALID_TRANSITION',
@@ -404,7 +420,10 @@ export class OrderService {
         requireCurrentSource &&
         !(await this.sources.isCurrent(command.workspaceId, current.commercialSourceSnapshot))
       )
-        throw new OrderServiceError('STALE_SOURCE', 'Order commercial source is no longer current.');
+        throw new OrderServiceError(
+          'STALE_SOURCE',
+          'Order commercial source is no longer current.'
+        );
       policy?.(current);
       const at = this.now();
       const next = {
@@ -433,10 +452,7 @@ export class OrderService {
     const replay = await this.repository.findByIdempotencyKey(workspaceId, key);
     if (!replay) return null;
     if (replay.fingerprint !== commandFingerprint)
-      throw new OrderServiceError(
-        'IDEMPOTENCY_CONFLICT',
-        'Idempotency key has conflicting input.'
-      );
+      throw new OrderServiceError('IDEMPOTENCY_CONFLICT', 'Idempotency key has conflicting input.');
     return replay.order;
   }
 
@@ -467,9 +483,13 @@ export class OrderService {
     } catch (error) {
       if (error instanceof OrderServiceError) throw error;
       if (error instanceof OrderPersistenceError) throw mapPersistence(error);
-      throw new OrderServiceError('PERSISTENCE_UNAVAILABLE', 'Order service dependency is unavailable.', {
-        cause: error instanceof Error ? error : undefined
-      });
+      throw new OrderServiceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Order service dependency is unavailable.',
+        {
+          cause: error instanceof Error ? error : undefined
+        }
+      );
     }
   }
 }

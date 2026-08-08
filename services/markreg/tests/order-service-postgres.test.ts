@@ -4,10 +4,7 @@ import { ROLE_PERMISSION_MATRIX, type WorkspacePrincipal } from '@markorbit/cont
 import type { CommercialSourceSnapshot, CreateOrderCommand } from '@markorbit/contracts/order';
 import { ManagedDatabase } from '@markorbit/persistence';
 import { PostgresOrderRepository } from '../src/order-persistence.js';
-import {
-  InMemoryOrderCommercialSourceProvider,
-  OrderService
-} from '../src/order-service.js';
+import { InMemoryOrderCommercialSourceProvider, OrderService } from '../src/order-service.js';
 import {
   MARKREG_TEST_MIGRATION_NAMESPACE,
   resetAndMigrateMarkRegTestDatabase
@@ -120,12 +117,7 @@ suite.sequential('M3-WP-03 PostgreSQL Order service lifecycle', () => {
 
   it('persists exact lifecycle, audit and idempotent command results across a fresh pool', async () => {
     const repository = new PostgresOrderRepository(database, database.getPool());
-    const service = new OrderService(
-      repository,
-      sources,
-      clock,
-      () => 'order_service-postgres'
-    );
+    const service = new OrderService(repository, sources, clock, () => 'order_service-postgres');
     const created = await service.create(principal(), createCommand, 'correlation_create');
     const pendingCommand = {
       workspaceId: WORKSPACE,
@@ -214,10 +206,10 @@ suite.sequential('M3-WP-03 PostgreSQL Order service lifecycle', () => {
   it('fails closed on stale source and preserves the durable version', async () => {
     const repository = new PostgresOrderRepository(database, database.getPool());
     const service = new OrderService(repository, sources, clock, () => 'order_stale-postgres');
-    const created = await service.create(
-      principal(),
-      { ...createCommand, idempotencyKey: 'postgres-stale-create' }
-    );
+    const created = await service.create(principal(), {
+      ...createCommand,
+      idempotencyKey: 'postgres-stale-create'
+    });
     const pending = await service.requestConfirmation(principal(), {
       workspaceId: WORKSPACE,
       orderId: created.orderId,

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ROLE_PERMISSION_MATRIX,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { ROLE_PERMISSION_MATRIX, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { CommercialSourceSnapshot, CreateOrderCommand } from '@markorbit/contracts/order';
 import { InMemoryOrderRepository } from '../src/order-persistence.js';
 import {
@@ -67,7 +64,10 @@ const source = (suffix = 'service'): CommercialSourceSnapshot => ({
   capturedAt: SOURCE_AT
 });
 
-const command = (value: CommercialSourceSnapshot, key = 'order-create-key'): CreateOrderCommand => ({
+const command = (
+  value: CommercialSourceSnapshot,
+  key = 'order-create-key'
+): CreateOrderCommand => ({
   workspaceId: WORKSPACE,
   orderType: 'TrademarkFiling',
   quoteId: value.quote.quoteId,
@@ -256,7 +256,9 @@ describe('M3-WP-03 protected Order service lifecycle', () => {
       })
     ).rejects.toMatchObject({ code: 'INVALID_TRANSITION' });
 
-    expect((await repository.findById(WORKSPACE, draft.orderId))?.status).toBe('PendingConfirmation');
+    expect((await repository.findById(WORKSPACE, draft.orderId))?.status).toBe(
+      'PendingConfirmation'
+    );
   });
 
   it('revalidates exact commercial source before protected forward transitions', async () => {
@@ -277,8 +279,11 @@ describe('M3-WP-03 protected Order service lifecycle', () => {
   });
 
   it('requires complete commercial scope before ReadyForMatter', async () => {
-    const incomplete = source('incomplete');
-    incomplete.commercialScope.goodsServices = [];
+    const base = source('incomplete');
+    const incomplete: CommercialSourceSnapshot = {
+      ...base,
+      commercialScope: { ...base.commercialScope, goodsServices: [] }
+    };
     const { service, value } = fixture(incomplete);
     const confirmed = await toConfirmed(service, value);
     await expect(

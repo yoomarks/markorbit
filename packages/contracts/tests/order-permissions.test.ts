@@ -60,7 +60,9 @@ describe('Milestone 3 Order permission canon', () => {
 
   it('round-trips the new permissions through the internal Principal boundary', () => {
     const manager = principal('MATTER_MANAGER');
-    expect(parseInternalWorkspacePrincipal(encodeInternalWorkspacePrincipal(manager))).toEqual(manager);
+    expect(parseInternalWorkspacePrincipal(encodeInternalWorkspacePrincipal(manager))).toEqual(
+      manager
+    );
   });
 
   it('rejects a forged permission outside the canonical permission vocabulary', () => {
