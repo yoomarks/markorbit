@@ -74,8 +74,6 @@ export * from './matter-draft.js';
 export * from './formal-matter.js';
 export * from './document-package.js';
 export * from './audit.js';
-export * from './order-persistence.js';
-export * from './order-service.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -620,493 +618,1197 @@ export function createRuntime(options: MarkRegOptions = {}) {
           path: '/v1/audit-records',
           handle: (request) => {
             if (!auditRepository)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Audit persistence is unavailable.');
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Audit persistence is unavailable.',
+                true
+              );
             const principal = durablePrincipal(request);
             if (!principal.permissions.includes('audit:read'))
               throw new HttpError(403, 'PERMISSION_DENIED', 'audit:read permission is required.');
-            const query = request.query as MarkRegAuditQuery;
-            return durable(() => auditRepository.list(principal.workspaceId, query));
+            const limit =
+              request.query.limit === undefined ? undefined : Number(request.query.limit);
+            return durable(async () => ({
+              ...(await auditRepository.list(principal.workspaceId, {
+                ...(request.query.kind
+                  ? { kind: request.query.kind as NonNullable<MarkRegAuditQuery['kind']> }
+                  : {}),
+                ...(request.query.targetType
+                  ? {
+                      targetType: request.query.targetType as NonNullable<
+                        MarkRegAuditQuery['targetType']
+                      >
+                    }
+                  : {}),
+                ...(request.query.targetId ? { targetId: request.query.targetId } : {}),
+                ...(request.query.reasonCode
+                  ? {
+                      reasonCode: request.query.reasonCode as NonNullable<
+                        MarkRegAuditQuery['reasonCode']
+                      >
+                    }
+                  : {}),
+                ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
+                ...(limit !== undefined ? { limit } : {})
+              }))
+            }));
           }
         },
         {
           method: 'POST',
-          path: '/v1/intakes',
-          handle: async (request) => {
-            const command = parseIntakeCreateCommand(request.body);
-            assertDirectIntake(command);
-            const fingerprint = JSON.stringify(command);
-            const previous = repository.get(command.idempotencyKey);
-            if (previous) {
-              if (previous.fingerprint !== fingerprint)
-                throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was reused.');
-              if (previous.result) return json(200, previous.result);
-            }
-            const active = inFlight.get(command.idempotencyKey);
-            if (active) {
-              if (active.fingerprint !== fingerprint)
-                throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was reused.');
-              return active.result;
-            }
-            const result = (async () => {
-              const timestamp = now();
-              const intake: Intake = {
-                intakeId: `intake_${randomUUID()}`,
-                channel: command.channel,
-                relationshipModel: command.relationshipModel,
-                status: 'RECEIVED',
-                customerIntent: command.customerIntent,
-                createdAt: timestamp,
-                correlationId: command.correlationId
-              };
-              const created = {
-                schemaVersion: 1 as const,
-                eventId: `event_${randomUUID()}` as const,
-                eventType: 'IntakeCreated' as const,
-                occurredAt: timestamp,
-                correlationId: command.correlationId,
-                actor: command.actor,
-                payload: {
-                  intakeId: intake.intakeId,
-                  channel: intake.channel,
-                  relationshipModel: intake.relationshipModel
-                }
-              } satisfies EventEnvelope<
-                'IntakeCreated',
-                { intakeId: string; channel: string; relationshipModel: string }
-              >;
-              repository.save(command.idempotencyKey, {
-                fingerprint,
-                intake,
-                intakeCreatedPublished: false
-              });
-              await publisher.publish(created);
-              const entry = repository.get(command.idempotencyKey)!;
-              entry.intakeCreatedPublished = true;
-              const capabilityRequest = await post<CapabilityRequest>(
-                `${capabilityUrl}/v1/capability-requests`,
-                {
-                  inputRef: intake.intakeId,
-                  actor: command.actor,
-                  idempotencyKey: `${command.idempotencyKey}:capability`,
-                  correlationId: command.correlationId
-                },
-                `${command.idempotencyKey}:capability`,
-                command.correlationId
-              );
-              const execution = await post<ExecutionRecord>(
-                `${executionUrl}/v1/executions`,
-                {
-                  capabilityRequestId: capabilityRequest.capabilityRequestId,
-                  actor: command.actor,
-                  idempotencyKey: `${command.idempotencyKey}:execution`,
-                  correlationId: command.correlationId
-                },
-                `${command.idempotencyKey}:execution`,
-                command.correlationId
-              );
-              const finalIntake = { ...intake, status: 'RECOMMENDATION_READY' as const };
-              const response: IntakeRecommendationResponse = {
-                intake: finalIntake,
-                recommendation: recommendation(
-                  finalIntake,
-                  [capabilityRequest.capabilityRequestId, execution.executionId],
-                  timestamp
-                ),
-                trace: {
-                  correlationId: command.correlationId,
-                  capabilityRequestId: capabilityRequest.capabilityRequestId,
-                  executionId: execution.executionId,
-                  provenanceRefs: [capabilityRequest.capabilityRequestId, execution.executionId]
-                }
-              };
-              repository.save(command.idempotencyKey, {
-                fingerprint,
-                intake: finalIntake,
-                intakeCreatedPublished: true,
-                result: response
-              });
-              return json(201, response);
-            })().finally(() => inFlight.delete(command.idempotencyKey));
-            inFlight.set(command.idempotencyKey, { fingerprint, result });
-            return result;
-          }
-        },
-        {
-          method: 'POST',
-          path: '/v1/quotes',
-          handle: async (request) => {
-            const command = parseQuoteCreateCommand(request.body);
-            const fingerprint = JSON.stringify(command);
-            const previous = repository.getQuoteEntry(command.idempotencyKey);
-            if (previous) {
-              if (previous.fingerprint !== fingerprint)
-                throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was reused.');
-              return json(200, previous.result);
-            }
-            const active = quoteInFlight.get(command.idempotencyKey);
-            if (active) {
-              if (active.fingerprint !== fingerprint)
-                throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was reused.');
-              return active.result;
-            }
-            const result = (async () => {
-              const recommendation = repository.findRecommendation(
-                command.intakeId,
-                command.recommendationId
-              );
-              if (!recommendation)
-                throw new HttpError(404, 'RECOMMENDATION_NOT_FOUND', 'Recommendation was not found.');
-              const quoted = fixtureQuote(command, now(), pricingRuleVersion);
-              await options.beforeQuotePersist?.(command);
-              repository.supersedeQuotes(command.intakeId, command.recommendationId, quoted.quote.quoteId);
-              repository.saveQuoteEntry(command.idempotencyKey, {
-                fingerprint,
-                result: quoted
-              });
-              return json(201, quoted);
-            })().finally(() => quoteInFlight.delete(command.idempotencyKey));
-            quoteInFlight.set(command.idempotencyKey, { fingerprint, result });
-            return result;
-          }
-        },
-        {
-          method: 'POST',
-          path: '/v1/quotes/:quoteId/confirmations',
+          path: '/v1/audit-denials',
           handle: (request) => {
-            const command = parseQuoteConfirmationCommand(request.body, request.params.quoteId!);
-            const fingerprint = JSON.stringify(command);
-            const prior = repository.getConfirmation(command.idempotencyKey);
-            if (prior) {
-              if (JSON.stringify(prior.value) === fingerprint)
-                throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was reused.');
-              return json(200, prior.value);
-            }
-            const quote = repository.getQuote(command.quoteId);
-            if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
-            if (quote.status !== 'READY')
-              throw new HttpError(409, 'QUOTE_NOT_CONFIRMABLE', 'Quote cannot be confirmed.');
-            const timestamp = now();
-            const confirmation: QuoteConfirmation = {
-              quoteId: quote.quoteId,
-              status: 'CONFIRMED',
-              confirmedAt: timestamp,
-              pendingProfessionalReview: true,
-              orderCreated: noAutomaticConsequences.orderCreated,
-              paymentMade: noAutomaticConsequences.paymentCreated,
-              filingStarted: noAutomaticConsequences.filingCreated
+            if (!auditRepository)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Audit persistence is unavailable.',
+                true
+              );
+            const principal = durablePrincipal(request);
+            const body = request.body as {
+              operation: MarkRegAuditOperation;
+              targetType: MarkRegAuditTarget;
+              targetId?: string;
+              reasonCode: MarkRegDenialReason;
+              idempotencyKeySha256?: string;
+              sourceCommandFingerprint?: string;
             };
-            repository.saveQuote({ ...quote, status: 'CONFIRMED' });
-            repository.saveConfirmation(command.idempotencyKey, confirmation);
-            return json(201, confirmation);
-          }
-        },
-        {
-          method: 'GET',
-          path: '/v1/customer-confirmations/:confirmationId',
-          handle: (request) => {
-            if (!durableConfirmations)
-              throw new HttpError(
-                503,
-                'PERSISTENCE_UNAVAILABLE',
-                'Customer Confirmation persistence is unavailable.'
-              );
-            const principal = durablePrincipal(request);
             return durable(() =>
-              durableConfirmations.get(principal, principal.workspaceId, request.params.confirmationId!)
-            );
-          }
-        },
-        {
-          method: 'POST',
-          path: '/v1/customer-confirmations',
-          handle: (request) => {
-            if (!durableConfirmations)
-              throw new HttpError(
-                503,
-                'PERSISTENCE_UNAVAILABLE',
-                'Customer Confirmation persistence is unavailable.'
-              );
-            const principal = durablePrincipal(request);
-            const input = request.body as Parameters<CustomerConfirmationService['create']>[1];
-            return durable(() =>
-              durableConfirmations.create(principal, { ...input, workspaceId: principal.workspaceId })
-            );
-          }
-        },
-        {
-          method: 'POST',
-          path: '/v1/customer-confirmations/:confirmationId/withdraw',
-          handle: (request) => {
-            if (!durableConfirmations)
-              throw new HttpError(
-                503,
-                'PERSISTENCE_UNAVAILABLE',
-                'Customer Confirmation persistence is unavailable.'
-              );
-            const principal = durablePrincipal(request);
-            const body = request.body as { expectedVersion: number };
-            return durable(() =>
-              durableConfirmations.withdraw(
-                principal,
-                principal.workspaceId,
-                request.params.confirmationId!,
-                body.expectedVersion
-              )
-            );
-          }
-        },
-        {
-          method: 'GET',
-          path: '/v1/matter-drafts/:matterDraftId',
-          handle: (request) => {
-            if (!durableDrafts)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Matter Draft persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            return durable(() =>
-              durableDrafts.get(principal, principal.workspaceId, request.params.matterDraftId!)
-            );
-          }
-        },
-        {
-          method: 'POST',
-          path: '/v1/matter-drafts',
-          handle: (request) => {
-            if (!durableDrafts)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Matter Draft persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const input = request.body as Parameters<MatterDraftService['create']>[1];
-            return durable(() =>
-              durableDrafts.create(principal, { ...input, workspaceId: principal.workspaceId })
-            );
-          }
-        },
-        {
-          method: 'PATCH',
-          path: '/v1/matter-drafts/:matterDraftId',
-          handle: (request) => {
-            if (!durableDrafts)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Matter Draft persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const input = request.body as Parameters<MatterDraftService['update']>[1];
-            return durable(() =>
-              durableDrafts.update(principal, {
-                ...input,
+              auditRepository.appendDenial({
                 workspaceId: principal.workspaceId,
-                matterDraftId: request.params.matterDraftId!
+                actorId: principal.userId,
+                actorMembershipId: principal.membershipId,
+                operation: body.operation,
+                targetType: body.targetType,
+                ...(body.targetId ? { targetId: body.targetId } : {}),
+                reasonCode: body.reasonCode,
+                ...(request.headers['x-correlation-id']
+                  ? { correlationId: request.headers['x-correlation-id'] }
+                  : {}),
+                ...(body.idempotencyKeySha256
+                  ? { idempotencyKeySha256: body.idempotencyKeySha256 }
+                  : {}),
+                ...(body.sourceCommandFingerprint
+                  ? { sourceCommandFingerprint: body.sourceCommandFingerprint }
+                  : {}),
+                occurredAt: now()
               })
             );
           }
         },
         {
-          method: 'GET',
-          path: '/v1/formal-matters',
-          handle: (request) => {
-            if (!formalMatters)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Formal Matter persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const page = Number(request.query.page ?? '1'),
-              pageSize = Number(request.query.pageSize ?? '20');
-            if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100)
-              throw new HttpError(400, 'INVALID_QUERY', 'Invalid pagination.');
-            const query = { page, pageSize } as Parameters<FormalMatterService['list']>[2];
-            if (request.query.status) query.status = request.query.status as never;
-            if (request.query.type) query.type = request.query.type as never;
-            if (request.query.search) query.search = request.query.search;
-            if (request.query.createdFrom) query.createdFrom = request.query.createdFrom;
-            if (request.query.createdTo) query.createdTo = request.query.createdTo;
-            return durable(() => formalMatters.list(principal, principal.workspaceId, query));
-          }
-        },
-        {
-          method: 'GET',
-          path: '/v1/formal-matters/:formalMatterId',
-          handle: (request) => {
-            if (!formalMatters)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Formal Matter persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            return durable(() =>
-              formalMatters.get(principal, principal.workspaceId, request.params.formalMatterId!)
-            );
-          }
-        },
-        {
-          method: 'POST',
-          path: '/v1/formal-matters',
-          handle: (request) => {
-            if (!formalMatters)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Formal Matter persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const body = request.body as CreateFormalMatterCommand;
-            const command: CreateFormalMatterCommand = { ...body, workspaceId: principal.workspaceId };
-            const correlationId = request.headers['x-correlation-id'];
-            return durable(() =>
-              auditedMutation(
-                principal,
-                'FORMAL_MATTER_CREATE',
-                'FORMAL_MATTER',
-                undefined,
-                command.idempotencyKey,
-                command,
-                correlationId,
-                () => formalMatters.create(principal, command, correlationId)
-              )
-            );
-          }
-        },
-        {
-          method: 'GET',
-          path: '/v1/document-packages',
-          handle: (request) => {
-            if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            return durable(() => durablePackages.list(principal));
-          }
-        },
-        {
-          method: 'GET',
-          path: '/v1/document-packages/:packageId',
-          handle: (request) => {
-            if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            return durable(() => durablePackages.get(principal, request.params.packageId!));
-          }
-        },
-        {
           method: 'POST',
           path: '/v1/document-packages',
-          handle: (request) => {
+          handle: (r) => {
             if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const body = request.body as { formalMatterId: string; idempotencyKey: string };
+              return prepared(() =>
+                preparation.createPackage({
+                  ...(r.body as Omit<CreatePackageCommand, 'idempotencyKey'>),
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                })
+              );
+            const b = r.body as Record<string, unknown>;
+            const text = (value: unknown) => (typeof value === 'string' ? value : '');
+            const principal = durablePrincipal(r);
+            const command = {
+              professionalReviewCaseId: text(b.professionalReviewCaseId),
+              expectedReviewVersion: Number(b.expectedReviewVersion),
+              expectedCompletedDecisionId: text(b.expectedCompletedDecisionId),
+              expectedCompletedDecisionHash: text(b.expectedCompletedDecisionHash),
+              idempotencyKey: r.headers['idempotency-key'] ?? ''
+            };
             return durable(() =>
               auditedMutation(
                 principal,
                 'DOCUMENT_PACKAGE_CREATE',
                 'DOCUMENT_PACKAGE',
                 undefined,
-                body.idempotencyKey,
-                body,
-                request.headers['x-correlation-id'],
-                () => durablePackages.create(principal, body.formalMatterId as never, body.idempotencyKey, request.headers['x-correlation-id'])
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.createOrOpen(
+                    principal,
+                    {
+                      ...command
+                    },
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
         },
         {
+          method: 'GET',
+          path: '/v1/document-packages',
+          handle: (r) =>
+            durablePackages
+              ? durable(async () => ({
+                  documentPackages: await durablePackages.list(durablePrincipal(r))
+                }))
+              : prepared(async () => ({
+                  documentPackages: await preparation.listPackages(
+                    new URL(`http://local${r.path}`).searchParams.get('customerId') ?? undefined
+                  )
+                }))
+        },
+        {
+          method: 'GET',
+          path: '/v1/document-packages/:documentPackageId',
+          handle: (r) =>
+            durablePackages
+              ? durable(() => durablePackages.get(durablePrincipal(r), r.params.documentPackageId!))
+              : prepared(() =>
+                  preparation.getPackage(r.params.documentPackageId as `document-package_${string}`)
+                )
+        },
+        {
           method: 'PATCH',
-          path: '/v1/document-packages/:packageId',
-          handle: (request) => {
-            if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const body = request.body as { expectedVersion: number; draft: unknown; idempotencyKey: string };
+          path: '/v1/document-packages/:documentPackageId',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number; draft: Record<string, unknown> };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
               auditedMutation(
                 principal,
                 'DOCUMENT_PACKAGE_UPDATE_DRAFT',
                 'DOCUMENT_PACKAGE',
-                request.params.packageId,
-                body.idempotencyKey,
-                body,
-                request.headers['x-correlation-id'],
-                () => durablePackages.updateDraft(principal, request.params.packageId as never, body.expectedVersion, body.draft, body.idempotencyKey, request.headers['x-correlation-id'])
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.updateDraft(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
         },
         {
-          method: 'PUT',
-          path: '/v1/document-packages/:packageId/documents/:documentId',
-          handle: (request) => {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/documents',
+          handle: (r) => {
             if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const body = request.body as { expectedPackageVersion: number; expectedDocumentVersion?: number; document: unknown; idempotencyKey: string };
+              return prepared(() =>
+                preparation.addDocument(
+                  r.params.documentPackageId as `document-package_${string}`,
+                  r.body as never
+                )
+              );
+            const b = r.body as { expectedVersion: number; evidence: never };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
               auditedMutation(
                 principal,
                 'DOCUMENT_EVIDENCE_UPSERT',
                 'DOCUMENT_EVIDENCE',
-                request.params.documentId,
-                body.idempotencyKey,
-                body,
-                request.headers['x-correlation-id'],
-                () => durablePackages.upsertDocument(principal, request.params.packageId as never, request.params.documentId as never, body.expectedPackageVersion, body.document as never, body.idempotencyKey, body.expectedDocumentVersion, request.headers['x-correlation-id'])
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.upsertEvidence(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
         },
         {
           method: 'POST',
-          path: '/v1/document-packages/:packageId/instructions',
-          handle: (request) => {
-            if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const body = request.body as { expectedVersion: number; instruction: { instructionType: CustomerInstructionType; structuredPayload: unknown; note?: string; supersedesInstructionEntryId?: string }; idempotencyKey: string };
+          path: '/v1/document-packages/:documentPackageId/instructions',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number; instruction: never };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
               auditedMutation(
                 principal,
-                body.instruction.supersedesInstructionEntryId ? 'INSTRUCTION_SUPERSEDE' : 'INSTRUCTION_APPEND',
+                'INSTRUCTION_APPEND',
                 'INSTRUCTION_LEDGER',
-                request.params.packageId,
-                body.idempotencyKey,
-                body,
-                request.headers['x-correlation-id'],
-                () => durablePackages.appendInstruction(principal, request.params.packageId as never, body.expectedVersion, body.instruction, body.idempotencyKey, request.headers['x-correlation-id'])
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.appendInstruction(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
         },
         {
           method: 'POST',
-          path: '/v1/document-packages/:packageId/readiness',
-          handle: (request) => {
-            if (!durablePackages)
-              throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Document Package persistence is unavailable.');
-            const principal = durablePrincipal(request);
-            const body = request.body as { expectedVersion: number; idempotencyKey: string };
+          path: '/v1/document-packages/:documentPackageId/instructions/:instructionEntryId/supersede',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number; instruction: never };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
+            return durable(() =>
+              auditedMutation(
+                principal,
+                'INSTRUCTION_SUPERSEDE',
+                'INSTRUCTION_LEDGER',
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.supersedeInstruction(
+                    principal,
+                    r.params.documentPackageId!,
+                    r.params.instructionEntryId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
+              )
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/document-packages/:documentPackageId/mark-ready',
+          handle: (r) => {
+            if (!durablePackages) throw new HttpError(404, 'ROUTE_NOT_FOUND', 'Route not found.');
+            const b = r.body as { expectedVersion: number };
+            const principal = durablePrincipal(r);
+            const command = { ...b, idempotencyKey: r.headers['idempotency-key'] ?? '' };
             return durable(() =>
               auditedMutation(
                 principal,
                 'DOCUMENT_PACKAGE_MARK_READY',
                 'DOCUMENT_PACKAGE',
-                request.params.packageId,
-                body.idempotencyKey,
-                body,
-                request.headers['x-correlation-id'],
-                () => durablePackages.markReady(principal, request.params.packageId as never, body.expectedVersion, body.idempotencyKey, request.headers['x-correlation-id'])
+                r.params.documentPackageId,
+                command.idempotencyKey,
+                command,
+                r.headers['x-correlation-id'],
+                () =>
+                  durablePackages.markReady(
+                    principal,
+                    r.params.documentPackageId!,
+                    command,
+                    r.headers['x-correlation-id']
+                  )
               )
             );
           }
         },
         {
           method: 'POST',
-          path: '/v1/matter-drafts/from-confirmation',
-          handle: (request) => governed(() => matterFlow.createMatterDraft(request.body as never))
+          path: '/v1/document-packages/:documentPackageId/documents/:documentItemId/supersede',
+          handle: (r) =>
+            prepared(() =>
+              preparation.supersedeDocument(
+                r.params.documentPackageId as `document-package_${string}`,
+                r.params.documentItemId as `document-item_${string}`,
+                r.body as never
+              )
+            )
         },
         {
           method: 'PATCH',
-          path: '/v1/matter-drafts/:matterDraftId/preparation',
-          handle: (request) => governed(() => matterFlow.updatePreparation(request.body as never))
+          path: '/v1/document-packages/:documentPackageId/documents/:documentItemId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.updateDocument(
+                r.params.documentPackageId as `document-package_${string}`,
+                r.params.documentItemId as `document-item_${string}`,
+                r.body as never
+              )
+            )
         },
         {
           method: 'POST',
-          path: '/v1/matter-drafts/:matterDraftId/readiness',
-          handle: (request) => governed(() => matterFlow.evaluateReadiness(request.body as never))
+          path: '/v1/document-packages/:documentPackageId/evaluate',
+          handle: (r) =>
+            prepared(() =>
+              preparation.evaluate(r.params.documentPackageId as `document-package_${string}`)
+            )
         },
         {
           method: 'POST',
-          path: '/v1/preparation-packages',
-          handle: (request) => prepared(() => preparation.createPackage(request.body as CreatePackageCommand))
+          path: '/v1/document-packages/:documentPackageId/withdraw',
+          handle: (r) =>
+            prepared(() =>
+              preparation.withdrawPackage(
+                r.params.documentPackageId as `document-package_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers',
+          handle: (r) =>
+            prepared(() =>
+              preparation.createLedger(
+                (r.body as { documentPackageId: `document-package_${string}` }).documentPackageId
+              )
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/instruction-ledgers/:instructionLedgerId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.getLedger(r.params.instructionLedgerId as `instruction-ledger_${string}`)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/entries',
+          handle: (r) =>
+            prepared(() =>
+              preparation.appendInstruction(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                r.body as never
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/confirm',
+          handle: (r) =>
+            prepared(() =>
+              preparation.confirmInstruction(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                r.params.instructionEntryId as `instruction-entry_${string}`
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/entries/:instructionEntryId/supersede',
+          handle: (r) =>
+            prepared(() =>
+              preparation.appendInstruction(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                {
+                  ...(r.body as {
+                    type: CustomerInstructionType;
+                    structuredValue: Record<string, unknown>;
+                    note?: string;
+                  }),
+                  supersedesInstructionEntryId: r.params
+                    .instructionEntryId as `instruction-entry_${string}`
+                }
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/confirm',
+          handle: (r) =>
+            prepared(() =>
+              preparation.confirmLedger(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`,
+                (r.body as { acknowledgements: never[] }).acknowledgements
+              )
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/instruction-ledgers/:instructionLedgerId/withdraw',
+          handle: (r) =>
+            prepared(() =>
+              preparation.withdrawLedger(
+                r.params.instructionLedgerId as `instruction-ledger_${string}`
+              )
+            )
         },
         {
           method: 'POST',
           path: '/v1/preparation-locks',
-          handle: (request) => prepared(() => preparation.lock(request.body as never))
+          handle: (r) =>
+            prepared(() => {
+              const b = r.body as {
+                documentPackageId: `document-package_${string}`;
+                instructionLedgerId: `instruction-ledger_${string}`;
+              };
+              return preparation.lock(b.documentPackageId, b.instructionLedgerId);
+            })
+        },
+        {
+          method: 'GET',
+          path: '/v1/preparation-locks/:preparationLockId',
+          handle: (r) =>
+            prepared(() =>
+              preparation.getLock(r.params.preparationLockId as `preparation-lock_${string}`)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/preparation-locks/:preparationLockId/validate-current',
+          handle: (r) =>
+            prepared(() =>
+              preparation.validateLockCurrent(
+                r.params.preparationLockId as `preparation-lock_${string}`
+              )
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/formal-matters',
+          async handle(request) {
+            if (!formalMatters)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Formal Matter persistence is unavailable.',
+                true
+              );
+            const workspaceId = request.headers['x-markorbit-workspace-id'];
+            if (!workspaceId)
+              throw new HttpError(
+                400,
+                'INVALID_WORKSPACE_CONTEXT',
+                'Workspace context is required.'
+              );
+            const { status, type, search, createdFrom, createdTo } = request.query;
+            const page = Number(request.query.page ?? '1');
+            const pageSize = Number(request.query.pageSize ?? '20');
+            if (
+              !Number.isSafeInteger(page) ||
+              page < 1 ||
+              !Number.isSafeInteger(pageSize) ||
+              pageSize < 1 ||
+              pageSize > 100 ||
+              (status && status !== 'OPEN') ||
+              (type && type !== 'TRADEMARK_REGISTRATION') ||
+              (search?.length ?? 0) > 100 ||
+              (createdFrom && Number.isNaN(Date.parse(createdFrom))) ||
+              (createdTo && Number.isNaN(Date.parse(createdTo))) ||
+              (createdFrom && createdTo && Date.parse(createdFrom) > Date.parse(createdTo))
+            )
+              throw new HttpError(
+                400,
+                'INVALID_FILTERS',
+                'Matter list filters or pagination are invalid.'
+              );
+            return durable(async () => ({
+              ...(await formalMatters.list(durablePrincipal(request), workspaceId, {
+                page,
+                pageSize,
+                ...(status ? { status: status as 'OPEN' } : {}),
+                ...(type ? { type: type as 'TRADEMARK_REGISTRATION' } : {}),
+                ...(search ? { search } : {}),
+                ...(createdFrom ? { createdFrom } : {}),
+                ...(createdTo ? { createdTo } : {})
+              })),
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/formal-matters',
+          async handle(request) {
+            if (!formalMatters)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Formal Matter persistence is unavailable.',
+                true
+              );
+            const b = request.body as CreateFormalMatterCommand;
+            if (
+              !b.workspaceId ||
+              !b.customerConfirmationId ||
+              !b.matterDraftId ||
+              !b.idempotencyKey ||
+              !Number.isSafeInteger(b.expectedCustomerConfirmationVersion) ||
+              !Number.isSafeInteger(b.expectedMatterDraftVersion) ||
+              request.headers['idempotency-key'] !== b.idempotencyKey
+            )
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Exact source versions and matching Idempotency-Key are required.'
+              );
+            const principal = durablePrincipal(request);
+            return durable(async () => ({
+              formalMatter: await auditedMutation(
+                principal,
+                'FORMAL_MATTER_CREATE',
+                'FORMAL_MATTER',
+                undefined,
+                b.idempotencyKey,
+                b,
+                request.headers['x-correlation-id'],
+                () => formalMatters.create(principal, b, request.headers['x-correlation-id'])
+              ),
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/formal-matters/:formalMatterId',
+          async handle(request) {
+            if (!formalMatters)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Formal Matter persistence is unavailable.',
+                true
+              );
+            const workspaceId = request.headers['x-markorbit-workspace-id'];
+            if (!workspaceId)
+              throw new HttpError(
+                400,
+                'INVALID_WORKSPACE_CONTEXT',
+                'Workspace context is required.'
+              );
+            return durable(async () => ({
+              formalMatter: await formalMatters.get(
+                durablePrincipal(request),
+                workspaceId,
+                request.params.formalMatterId!
+              ),
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/customer-confirmations',
+          async handle(request) {
+            if (durableConfirmations) {
+              const b = request.body as {
+                workspaceId: string;
+                quoteId: string;
+                quoteVersion: string;
+                planId: string;
+                planVersion: string;
+                termsVersion: string;
+                acknowledgements?: { code: string; acknowledged: boolean }[];
+              };
+              return durable(async () => ({
+                confirmation: await durableConfirmations.create(durablePrincipal(request), {
+                  workspaceId: b.workspaceId,
+                  quoteId: b.quoteId,
+                  quoteVersion: b.quoteVersion,
+                  planId: b.planId,
+                  planVersion: b.planVersion,
+                  termsVersion: b.termsVersion,
+                  acknowledgementCodes: (b.acknowledgements ?? [])
+                    .filter((x) => x.acknowledged)
+                    .map((x) => x.code)
+                }),
+                nextAction: 'PREPARE_MATTER_DRAFT',
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Customer Confirmation persistence is unavailable.',
+                true
+              );
+            const body = request.body as ConfirmQuoteCommand;
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== body.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key must match the command.'
+              );
+            return governed(() => matterFlow.confirm(body));
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/customer-confirmations/:confirmationId',
+          async handle(request) {
+            if (durableConfirmations) {
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              return durable(async () => ({
+                confirmation: await durableConfirmations.get(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.confirmationId!
+                ),
+                nextAction: 'NONE',
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Customer Confirmation persistence is unavailable.',
+                true
+              );
+            const value = await matterFlowRepository.getConfirmation(
+              request.params.confirmationId as `confirmation_${string}`
+            );
+            if (!value)
+              throw new HttpError(404, 'CONFIRMATION_NOT_FOUND', 'Confirmation was not found.');
+            return json(200, {
+              confirmation: value,
+              nextAction: value.status === 'CONFIRMED' ? 'PREPARE_MATTER_DRAFT' : 'NONE',
+              consequences: noAutomaticConsequences
+            });
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/customer-confirmations/:confirmationId/withdraw',
+          async handle(request) {
+            if (durableConfirmations) {
+              const b = request.body as { workspaceId: string; expectedVersion: number };
+              return durable(async () => ({
+                confirmation: await durableConfirmations.withdraw(
+                  durablePrincipal(request),
+                  b.workspaceId,
+                  request.params.confirmationId!,
+                  b.expectedVersion
+                ),
+                nextAction: 'NONE',
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Customer Confirmation persistence is unavailable.',
+                true
+              );
+            return governed(async () => ({
+              confirmation: await matterFlowRepository.withdrawConfirmation(
+                request.params.confirmationId as `confirmation_${string}`,
+                now()
+              ),
+              nextAction: 'NONE',
+              consequences: noAutomaticConsequences
+            }));
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts',
+          async handle(request) {
+            if (durableDrafts) {
+              const b = request.body as {
+                workspaceId: string;
+                confirmationId: string;
+                confirmationVersion: number;
+              };
+              if (
+                !b.workspaceId ||
+                !b.confirmationId ||
+                !Number.isSafeInteger(b.confirmationVersion)
+              )
+                throw new HttpError(
+                  400,
+                  'INVALID_REQUEST',
+                  'Workspace, Confirmation and exact version are required.'
+                );
+              return durable(async () => ({
+                matterDraft: await durableDrafts.create(durablePrincipal(request), {
+                  workspaceId: b.workspaceId,
+                  customerConfirmationId: b.confirmationId,
+                  customerConfirmationVersion: b.confirmationVersion
+                }),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
+            return governed(() =>
+              matterFlow.createDraft(
+                (request.body as { confirmationId: `confirmation_${string}` }).confirmationId,
+                (request.body as { confirmationVersion?: string }).confirmationVersion
+              )
+            );
+          }
+        },
+        {
+          method: 'GET',
+          path: '/v1/matter-drafts/:matterDraftId',
+          async handle(request) {
+            if (durableDrafts) {
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              return durable(async () => ({
+                matterDraft: await durableDrafts.get(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
+            const value = await matterFlowRepository.getMatterDraft(
+              request.params.matterDraftId as `matter-draft_${string}`
+            );
+            if (!value)
+              throw new HttpError(404, 'MATTER_DRAFT_NOT_FOUND', 'Matter Draft was not found.');
+            return json(200, { matterDraft: value, consequences: noAutomaticConsequences });
+          }
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/matter-drafts/:matterDraftId',
+          async handle(request) {
+            if (durableDrafts) {
+              const b = request.body as {
+                expectedVersion: number;
+                preparation?: Record<string, unknown>;
+              };
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              if (!Number.isSafeInteger(b.expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
+              return durable(async () => ({
+                matterDraft: await durableDrafts.update(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!,
+                  b.expectedVersion,
+                  (b.preparation ?? b) as never
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
+            return governed(() =>
+              matterFlow.updateDraft(
+                request.params.matterDraftId as `matter-draft_${string}`,
+                request.body as never
+              )
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts/:matterDraftId/evaluate-readiness',
+          async handle(request) {
+            if (durableDrafts) {
+              const b = request.body as { expectedVersion: number };
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              if (!Number.isSafeInteger(b.expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
+              return durable(async () => ({
+                matterDraft: await durableDrafts.evaluate(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!,
+                  b.expectedVersion
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
+            return governed(() =>
+              matterFlow.evaluateReadiness(request.params.matterDraftId as `matter-draft_${string}`)
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/matter-drafts/:matterDraftId/progress',
+          async handle(request) {
+            if (durableDrafts) {
+              const workspaceId = request.headers['x-markorbit-workspace-id'];
+              const expectedVersion = (request.body as { expectedVersion?: number })
+                .expectedVersion;
+              if (!workspaceId)
+                throw new HttpError(
+                  400,
+                  'INVALID_WORKSPACE_CONTEXT',
+                  'Workspace context is required.'
+                );
+              if (!Number.isSafeInteger(expectedVersion))
+                throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion is required.');
+              return durable(async () => ({
+                matterDraft: await durableDrafts.progress(
+                  durablePrincipal(request),
+                  workspaceId,
+                  request.params.matterDraftId!,
+                  expectedVersion!
+                ),
+                consequences: noAutomaticConsequences
+              }));
+            }
+            if (!fixtureRuntime)
+              throw new HttpError(
+                503,
+                'PERSISTENCE_UNAVAILABLE',
+                'Matter Draft persistence is unavailable.',
+                true
+              );
+            return governed(() =>
+              matterFlow.progressDraft(request.params.matterDraftId as `matter-draft_${string}`)
+            );
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/quotes',
+          async handle(request) {
+            let command: QuoteCreateCommand;
+            try {
+              command = parseQuoteCreateCommand(request.body);
+            } catch (error) {
+              throw new HttpError(
+                422,
+                'INVALID_QUOTE_REQUEST',
+                error instanceof Error ? error.message : 'Invalid quote request.'
+              );
+            }
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== command.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key header is required and must match the command.'
+              );
+            const fingerprint = JSON.stringify({
+              ...command,
+              idempotencyKey: undefined,
+              correlationId: undefined
+            });
+            const prior = repository.getQuoteEntry(key);
+            if (prior && prior.fingerprint !== fingerprint)
+              throw new HttpError(
+                409,
+                'IDEMPOTENCY_CONFLICT',
+                'Idempotency key was already used with a different payload.'
+              );
+            if (prior) return json(200, prior.result);
+            const pending = quoteInFlight.get(key);
+            if (pending) {
+              if (pending.fingerprint !== fingerprint)
+                throw new HttpError(
+                  409,
+                  'IDEMPOTENCY_CONFLICT',
+                  'Idempotency key is in use with a different payload.'
+                );
+              return pending.result;
+            }
+            const work = (async () => {
+              const recommendation = repository.findRecommendation(
+                command.intakeId,
+                command.recommendationId
+              );
+              if (!recommendation)
+                throw new HttpError(
+                  422,
+                  'QUOTE_RELATIONSHIP_INVALID',
+                  'The Intake and Recommendation cannot be quoted together.'
+                );
+              if (
+                recommendation.recommendation.status !== 'FIXTURE_ONLY' ||
+                !recommendation.recommendation.options.some(
+                  (option) => option.tier === command.selectedOptionCode
+                )
+              )
+                throw new HttpError(
+                  422,
+                  'QUOTE_OPTION_INVALID',
+                  'The selected option is not eligible for fixture quotation.'
+                );
+              await options.beforeQuotePersist?.(command);
+              const result = fixtureQuote(command, now(), pricingRuleVersion);
+              repository.supersedeQuotes(
+                command.intakeId,
+                command.recommendationId,
+                result.quote.quoteId
+              );
+              repository.saveQuoteEntry(key, { fingerprint, result });
+              return json(201, result);
+            })();
+            quoteInFlight.set(key, { fingerprint, result: work });
+            try {
+              return await work;
+            } finally {
+              quoteInFlight.delete(key);
+            }
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/quotes/:quoteId/confirm',
+          handle(request) {
+            let command;
+            try {
+              command = parseQuoteConfirmationCommand(request.body);
+            } catch (error) {
+              throw new HttpError(
+                422,
+                'INVALID_CONFIRMATION_REQUEST',
+                error instanceof Error ? error.message : 'Invalid confirmation request.'
+              );
+            }
+            if (command.quoteId !== request.params.quoteId)
+              throw new HttpError(
+                422,
+                'QUOTE_ID_MISMATCH',
+                'Quote identifier does not match the route.'
+              );
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== command.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key header is required and must match the command.'
+              );
+            const prior = repository.getConfirmation(key);
+            if (prior && prior.quoteId !== command.quoteId)
+              throw new HttpError(
+                409,
+                'IDEMPOTENCY_CONFLICT',
+                'Idempotency key was already used for another quote.'
+              );
+            if (prior) return json(200, prior.value);
+            const quote = repository.getQuote(command.quoteId);
+            if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
+            const existingConfirmation = repository.findConfirmationByQuote(command.quoteId);
+            if (existingConfirmation) {
+              repository.saveConfirmation(key, existingConfirmation);
+              return json(200, existingConfirmation);
+            }
+            if (quote.status === 'SUPERSEDED')
+              throw new HttpError(409, 'QUOTE_SUPERSEDED', 'This quote is no longer current.');
+            if (quote.status === 'EXPIRED' || Date.parse(quote.validUntil) <= Date.parse(now())) {
+              repository.saveQuote({ ...quote, status: 'EXPIRED' });
+              throw new HttpError(409, 'QUOTE_EXPIRED', 'This quote has expired.');
+            }
+            if (quote.status !== 'READY')
+              throw new HttpError(409, 'QUOTE_NOT_READY', 'This quote cannot be confirmed.');
+            const confirmation: QuoteConfirmation = {
+              quoteId: quote.quoteId,
+              status: 'CONFIRMED',
+              confirmedAt: now(),
+              pendingProfessionalReview: true,
+              orderCreated: false,
+              paymentMade: false,
+              filingStarted: false
+            };
+            repository.saveQuote({ ...quote, status: 'CONFIRMED' });
+            repository.saveConfirmation(key, confirmation);
+            return json(201, confirmation);
+          }
+        },
+        {
+          method: 'POST',
+          path: '/v1/intakes',
+          async handle(request) {
+            let command: IntakeCreateCommand;
+            try {
+              command = parseIntakeCreateCommand(request.body);
+            } catch (error) {
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                error instanceof Error ? error.message : 'Invalid request.'
+              );
+            }
+            try {
+              assertDirectIntake(command);
+            } catch {
+              throw new HttpError(
+                422,
+                'UNSUPPORTED_CHANNEL_RELATIONSHIP',
+                'Only MARKREG_DIRECT with DIRECT is supported.'
+              );
+            }
+            const key = request.headers['idempotency-key'];
+            if (!key || key !== command.idempotencyKey)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'Idempotency-Key header is required and must match the command.'
+              );
+            const fingerprint = JSON.stringify({ ...command, idempotencyKey: undefined });
+            const entry = repository.get(key);
+            if (entry && entry.fingerprint !== fingerprint)
+              throw new HttpError(
+                409,
+                'IDEMPOTENCY_CONFLICT',
+                'Idempotency key was already used with a different payload.'
+              );
+            if (entry?.result) return json(200, entry.result);
+            const pending = inFlight.get(key);
+            if (pending) {
+              if (pending.fingerprint !== fingerprint)
+                throw new HttpError(
+                  409,
+                  'IDEMPOTENCY_CONFLICT',
+                  'Idempotency key is in use with a different payload.'
+                );
+              return pending.result;
+            }
+            const result = (async (): Promise<JsonResult> => {
+              let workingEntry = entry;
+              if (!workingEntry) {
+                const intake: Intake = {
+                  intakeId: `intake_${randomUUID()}`,
+                  channel: command.channel,
+                  relationshipModel: command.relationshipModel,
+                  status: 'RECEIVED',
+                  customerIntent: command.customerIntent,
+                  createdAt: now(),
+                  correlationId: command.correlationId
+                };
+                workingEntry = { fingerprint, intake, intakeCreatedPublished: false };
+                repository.save(key, workingEntry);
+              }
+              if (!workingEntry.intakeCreatedPublished) {
+                const event: EventEnvelope<'markreg.intake.created.v1', Intake> = {
+                  eventId: `event_${randomUUID()}`,
+                  eventType: 'markreg.intake.created.v1',
+                  occurredAt: now(),
+                  correlationId: command.correlationId,
+                  actor: command.actor,
+                  schemaVersion: 1,
+                  payload: workingEntry.intake
+                };
+                await publisher.publish(event);
+                workingEntry.intakeCreatedPublished = true;
+                repository.save(key, workingEntry);
+              }
+              const ownedEntry = workingEntry;
+              try {
+                const capability = await post<CapabilityRequest>(
+                  `${capabilityUrl}/v1/capability-requests`,
+                  {
+                    inputRef: ownedEntry.intake.intakeId,
+                    actor: command.actor,
+                    idempotencyKey: `${key}:capability`,
+                    correlationId: command.correlationId
+                  },
+                  `${key}:capability`,
+                  command.correlationId
+                );
+                const execution = await post<ExecutionRecord>(
+                  `${executionUrl}/v1/executions`,
+                  {
+                    capabilityRequestId: capability.capabilityRequestId,
+                    actor: command.actor,
+                    idempotencyKey: `${key}:execution`,
+                    correlationId: command.correlationId
+                  },
+                  `${key}:execution`,
+                  command.correlationId
+                );
+                const packageValue = recommendation(
+                  ownedEntry.intake,
+                  [capability.capabilityRequestId, execution.executionId],
+                  now()
+                );
+                const readyIntake: Intake = {
+                  ...ownedEntry.intake,
+                  status: 'RECOMMENDATION_READY'
+                };
+                const completedResult: IntakeRecommendationResponse = {
+                  intake: readyIntake,
+                  recommendation: packageValue,
+                  trace: {
+                    correlationId: command.correlationId,
+                    capabilityRequestId: capability.capabilityRequestId,
+                    executionId: execution.executionId,
+                    provenanceRefs: packageValue.provenance
+                  }
+                };
+                const event: EventEnvelope<
+                  'markreg.recommendation.ready.v1',
+                  RecommendationPackage
+                > = {
+                  eventId: `event_${randomUUID()}`,
+                  eventType: 'markreg.recommendation.ready.v1',
+                  occurredAt: now(),
+                  correlationId: command.correlationId,
+                  causationId: execution.executionId,
+                  actor: command.actor,
+                  schemaVersion: 1,
+                  payload: packageValue
+                };
+                await publisher.publish(event);
+                ownedEntry.intake = readyIntake;
+                ownedEntry.result = completedResult;
+                repository.save(key, ownedEntry);
+                return json(201, completedResult);
+              } catch (error) {
+                ownedEntry.intake = { ...ownedEntry.intake, status: 'FAILED' };
+                delete ownedEntry.result;
+                repository.save(key, ownedEntry);
+                throw error;
+              }
+            })();
+            inFlight.set(key, { fingerprint, result });
+            try {
+              return await result;
+            } finally {
+              inFlight.delete(key);
+            }
+          }
         }
       ]
     }
