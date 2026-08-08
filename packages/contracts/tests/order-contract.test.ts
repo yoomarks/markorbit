@@ -123,9 +123,7 @@ describe('Milestone 3 Order contract', () => {
     expect(canTransitionOrder('Archived', 'Draft')).toBe(false);
     expect(canTransitionOrder('DeletedReferenceOnly', 'Draft')).toBe(false);
 
-    expect(() => assertOrderTransition('Confirmed', 'MatterCreated')).toThrow(
-      OrderTransitionError
-    );
+    expect(() => assertOrderTransition('Confirmed', 'MatterCreated')).toThrow(OrderTransitionError);
     try {
       assertOrderTransition('Confirmed', 'MatterCreated');
     } catch (error) {
