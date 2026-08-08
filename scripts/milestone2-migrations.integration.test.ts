@@ -41,7 +41,10 @@ const ownedTables = {
     'document_instruction_entries',
     'document_package_commands',
     'document_package_audit',
-    'markreg_denial_audit'
+    'markreg_denial_audit',
+    'orders',
+    'order_commands',
+    'order_audit'
   ],
   Execution: [
     'professional_review_cases',
@@ -330,6 +333,6 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(8);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(9);
   });
 });
