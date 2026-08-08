@@ -36,9 +36,7 @@ jobs:
               "snapshotSha256: createHash('sha256').update(canonicalFormalMatterSnapshot(snapshot)).digest('hex'),",
               1,
           )
-          needle = """  await client.query(
-            `INSERT INTO formal_matters (
-          """
+          needle = "  await client.query(\n    `INSERT INTO formal_matters ("
           replacement = """  const source = await client.query(
             'SELECT formal_matter_id FROM formal_matters WHERE workspace_id=$1 AND source_matter_draft_id=$2 AND source_matter_draft_version=$3 FOR UPDATE',
             [matter.workspaceId, matter.sourceMatterDraftId, matter.sourceMatterDraftVersion]
@@ -49,8 +47,7 @@ jobs:
               'The exact Matter Draft version already created a Formal Matter.'
             );
           await client.query(
-            `INSERT INTO formal_matters (
-          """
+            `INSERT INTO formal_matters ("""
           if needle not in text:
               raise SystemExit('formal matter insert marker not found')
           text = text.replace(needle, replacement, 1)
@@ -59,11 +56,11 @@ jobs:
           index = Path('services/markreg/src/index.ts')
           text = index.read_text()
           marker = "export * from './order-service.js';\n"
-          export = "export * from './order-matter-conversion.js';\n"
-          if export not in text:
+          export_line = "export * from './order-matter-conversion.js';\n"
+          if export_line not in text:
               if marker not in text:
                   raise SystemExit('order-service export marker not found')
-              text = text.replace(marker, marker + export, 1)
+              text = text.replace(marker, marker + export_line, 1)
           index.write_text(text)
 
           ci = Path('.github/workflows/ci.yml')
