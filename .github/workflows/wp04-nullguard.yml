@@ -1,0 +1,42 @@
+name: WP04 null guards
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Guard count query rows
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/markreg/tests/order-matter-conversion-postgres.test.ts')
+          text = path.read_text()
+          old = ").rows[0].count\n      )"
+          new = ").rows[0]?.count ?? '0'\n      )"
+          if text.count(old) != 3:
+              raise SystemExit(f'expected 3 count row accesses, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+          pnpm exec prettier --write services/markreg/tests/order-matter-conversion-postgres.test.ts
+          pnpm --filter @markorbit/markreg-service typecheck
+      - name: Commit null guards
+        run: |
+          git add services/markreg/tests/order-matter-conversion-postgres.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(wp04): guard count query rows"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
