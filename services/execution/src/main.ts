@@ -18,10 +18,11 @@ if (fixtureRuntime) {
     })
   );
   await database.start();
+  const pool = database.getPool();
   closeDatabase = () => database.close();
   runtime = createRuntime({
     reviewRepositoryFactory: (workspaceId) =>
-      new PostgresProfessionalReviewRepository(database, database.getPool(), workspaceId),
+      new PostgresProfessionalReviewRepository(database, pool, workspaceId),
     ...(process.env.MO_INTERNAL_SERVICE_SECRET
       ? { internalServiceSecret: process.env.MO_INTERNAL_SERVICE_SECRET }
       : {}),

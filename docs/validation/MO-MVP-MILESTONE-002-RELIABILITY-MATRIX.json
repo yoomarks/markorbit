@@ -1,0 +1,1466 @@
+{
+  "taskId": "MO-MVP-TASK-026",
+  "status": "implementation complete; hosted evidence pending",
+  "baseline": {
+    "sha": "f93b8ec74fed67856f316162822be62860058783",
+    "tree": "86e93d3756e452db77aa0a238b358afcf8c77c6a"
+  },
+  "runtimeVersions": {
+    "nodeLocal": "v20.20.2 (validation target is Node 22)",
+    "pnpm": "10.28.1",
+    "postgresql": "16 (CI)"
+  },
+  "databaseTopology": {
+    "Core": "markorbit_core_test",
+    "MarkReg": "markorbit_markreg_test",
+    "Execution": "markorbit_execution_test",
+    "rule": "separate physical databases; destructive files serialized"
+  },
+  "migrationOwners": {
+    "0018_identity_workspace_membership": "@markorbit/core-service",
+    "0019_core_sessions": "@markorbit/core-service",
+    "0020_markreg_customer_confirmations": "@markorbit/markreg-service",
+    "0021_markreg_matter_drafts": "@markorbit/markreg-service",
+    "0022_markreg_formal_matters": "@markorbit/markreg-service",
+    "0023_execution_professional_reviews": "@markorbit/execution-service",
+    "0024_markreg_document_packages": "@markorbit/markreg-service",
+    "0025_markreg_audit_hardening": "@markorbit/markreg-service"
+  },
+  "durableBoundaries": [
+    {
+      "id": "core-user",
+      "ownerService": "Core",
+      "migration": "0018_identity_workspace_membership",
+      "physicalTable": "users",
+      "repository": "PostgresUserRepository",
+      "serviceOperation": "create/findById",
+      "gatewayRoute": null,
+      "workspaceBoundary": "Membership-mediated",
+      "versionOrIdentity": "immutable user_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-workspace",
+      "ownerService": "Core",
+      "migration": "0018_identity_workspace_membership",
+      "physicalTable": "workspaces",
+      "repository": "PostgresWorkspaceRepository",
+      "serviceOperation": "create/findById",
+      "gatewayRoute": "GET /api/workspaces/:workspaceId/context",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "immutable workspace_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-membership",
+      "ownerService": "Core",
+      "migration": "0018_identity_workspace_membership",
+      "physicalTable": "workspace_memberships",
+      "repository": "PostgresMembershipRepository",
+      "serviceOperation": "admit/find",
+      "gatewayRoute": "GET /api/workspaces/:workspaceId/context",
+      "workspaceBoundary": "workspace_id + user_id",
+      "versionOrIdentity": "status/role identity",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-session",
+      "ownerService": "Core",
+      "migration": "0019_core_sessions",
+      "physicalTable": "sessions",
+      "repository": "PostgresSessionRepository",
+      "serviceOperation": "issue/resolve/revoke",
+      "gatewayRoute": "GET /api/auth/session; POST /api/auth/logout",
+      "workspaceBoundary": "resolved Membership Workspace",
+      "versionOrIdentity": "opaque token hash + expiry/revocation",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "core-role-permissions",
+      "ownerService": "Core",
+      "migration": "contract (no table)",
+      "physicalTable": "derived from workspace_memberships.role",
+      "repository": "canonicalRolePermissions",
+      "serviceOperation": "resolve Principal",
+      "gatewayRoute": "all authenticated Gateway routes",
+      "workspaceBoundary": "Principal Workspace",
+      "versionOrIdentity": "canonical mapping identity",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-customer-confirmation",
+      "ownerService": "MarkReg",
+      "migration": "0020_markreg_customer_confirmations",
+      "physicalTable": "customer_confirmations",
+      "repository": "PostgresCustomerConfirmationRepository",
+      "serviceOperation": "create/read/withdraw",
+      "gatewayRoute": "/api/markreg/customer-confirmations*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "version",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-matter-draft",
+      "ownerService": "MarkReg",
+      "migration": "0021_markreg_matter_drafts",
+      "physicalTable": "matter_drafts",
+      "repository": "PostgresMatterDraftRepository",
+      "serviceOperation": "create/read/update/evaluate",
+      "gatewayRoute": "/api/markreg/matter-drafts*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "optimistic version",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-matter",
+      "ownerService": "MarkReg",
+      "migration": "0022_markreg_formal_matters",
+      "physicalTable": "formal_matters",
+      "repository": "PostgresFormalMatterRepository",
+      "serviceOperation": "create/read/list",
+      "gatewayRoute": "/api/markreg/formal-matters*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "version + formal_matter_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "Workspace-scoped idempotency key",
+      "auditExpectation": "atomic FORMAL_MATTER_CREATED",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-source",
+      "ownerService": "MarkReg",
+      "migration": "0022_markreg_formal_matters",
+      "physicalTable": "formal_matters.source_snapshot",
+      "repository": "PostgresFormalMatterRepository",
+      "serviceOperation": "create/read",
+      "gatewayRoute": "/api/markreg/formal-matters*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "immutable snapshot + SHA-256",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-command",
+      "ownerService": "MarkReg",
+      "migration": "0022_markreg_formal_matters",
+      "physicalTable": "formal_matter_commands",
+      "repository": "PostgresFormalMatterRepository",
+      "serviceOperation": "create replay",
+      "gatewayRoute": "POST /api/markreg/formal-matters",
+      "workspaceBoundary": "workspace_id + idempotency_key",
+      "versionOrIdentity": "request fingerprint",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "identical replay; conflicting reuse rejected",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-formal-audit",
+      "ownerService": "MarkReg",
+      "migration": "0022 + 0025 hardening",
+      "physicalTable": "formal_matter_audit",
+      "repository": "PostgresMarkRegAuditRepository",
+      "serviceOperation": "list audit",
+      "gatewayRoute": "GET /api/markreg/audit-records",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "append-only success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-document-package",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_packages",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "create/read/mutate/mark-ready",
+      "gatewayRoute": "/api/markreg/document-packages*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "optimistic version",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "Workspace-scoped command replay",
+      "auditExpectation": "atomic success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-document-evidence",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_package_items",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "add/update/supersede",
+      "gatewayRoute": "/api/markreg/document-packages/:id/documents*",
+      "workspaceBoundary": "workspace_id + package id",
+      "versionOrIdentity": "version + immutable supersession identity",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-instruction-ledger",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_instruction_entries",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "append/confirm/supersede",
+      "gatewayRoute": "/api/markreg/instruction-ledgers*",
+      "workspaceBoundary": "workspace_id + package id",
+      "versionOrIdentity": "monotonic sequence",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-package-command",
+      "ownerService": "MarkReg",
+      "migration": "0024_markreg_document_packages",
+      "physicalTable": "document_package_commands",
+      "repository": "PostgresDocumentPackageService",
+      "serviceOperation": "command replay",
+      "gatewayRoute": "/api/markreg/document-packages*",
+      "workspaceBoundary": "workspace_id + idempotency_key",
+      "versionOrIdentity": "request fingerprint",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "identical replay; conflicting reuse rejected",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-package-audit",
+      "ownerService": "MarkReg",
+      "migration": "0024 + 0025 hardening",
+      "physicalTable": "document_package_audit",
+      "repository": "PostgresMarkRegAuditRepository",
+      "serviceOperation": "list audit",
+      "gatewayRoute": "GET /api/markreg/audit-records",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "append-only success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "markreg-denial-audit",
+      "ownerService": "MarkReg",
+      "migration": "0025_markreg_audit_hardening",
+      "physicalTable": "markreg_denial_audit",
+      "repository": "PostgresMarkRegAuditRepository",
+      "serviceOperation": "record/list denial",
+      "gatewayRoute": "GET /api/markreg/audit-records",
+      "workspaceBoundary": "workspace_id from Principal",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "bounded append-only denial audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "execution-professional-review",
+      "ownerService": "Execution",
+      "migration": "0023_execution_professional_reviews",
+      "physicalTable": "professional_review_cases",
+      "repository": "PostgresProfessionalReviewRepository",
+      "serviceOperation": "create/read/update/complete",
+      "gatewayRoute": "/api/lite/professional-review-cases*",
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "optimistic version + source hash",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "Workspace-scoped completion command",
+      "auditExpectation": "atomic success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "execution-review-command",
+      "ownerService": "Execution",
+      "migration": "0023_execution_professional_reviews",
+      "physicalTable": "professional_review_commands",
+      "repository": "PostgresProfessionalReviewRepository",
+      "serviceOperation": "command replay",
+      "gatewayRoute": "/api/lite/professional-review-cases*",
+      "workspaceBoundary": "workspace_id + idempotency_key",
+      "versionOrIdentity": "request fingerprint",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "identical replay; conflicting reuse rejected",
+      "auditExpectation": "none defined",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    },
+    {
+      "id": "execution-review-audit",
+      "ownerService": "Execution",
+      "migration": "0023_execution_professional_reviews",
+      "physicalTable": "professional_review_audit",
+      "repository": "PostgresProfessionalReviewRepository",
+      "serviceOperation": "mutation audit",
+      "gatewayRoute": null,
+      "workspaceBoundary": "workspace_id",
+      "versionOrIdentity": "append-only audit_id",
+      "restartExpectation": "reload exact durable evidence",
+      "idempotencyExpectation": "not an idempotent command",
+      "auditExpectation": "success audit",
+      "excludedDownstreamConsequences": [
+        "Order",
+        "Payment",
+        "Preparation Lock",
+        "Filing Authorization",
+        "Execution Release",
+        "filing task",
+        "external filing",
+        "application number",
+        "external provider appointment",
+        "reliable cross-service event delivery"
+      ]
+    }
+  ],
+  "commands": [
+    "pnpm test:milestone2:migrations",
+    "pnpm test:milestone2:restart",
+    "pnpm test:milestone2:outage",
+    "pnpm test:milestone2:concurrency",
+    "pnpm test:milestone2:tenant-isolation",
+    "pnpm test:milestone2:markreg-repeatability",
+    "pnpm test:milestone2:reliability"
+  ],
+  "scenarios": [
+    {
+      "id": "MIG-001",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-001",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "empty bootstrap, owned relations and readiness for all owners",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "MIG-002",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-002",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "second apply no-op, stable checksums and unique history",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "MIG-003",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-003",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "committed prior evidence survives additive forward migration",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "MIG-004",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-004",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "transaction rollback, absent history, released lock and clean retry",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "MIG-005",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-005",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "altered test-loaded checksum fails closed",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "MIG-006",
+      "testFile": "scripts/milestone2-migrations.integration.test.ts",
+      "testName": "MIG-006",
+      "command": "pnpm test:milestone2:migrations",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_MIGRATIONS_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "disjoint exhaustive owner migration sets",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "RST-001",
+      "testFile": "scripts/milestone2-core-restart.integration.test.ts",
+      "testName": "RST-001 preserves exact Principal and durable Session evidence across actual listener replacement",
+      "command": "pnpm test:milestone2:restart",
+      "ownerDatabase": "Core",
+      "requiredMode": "MILESTONE2_RESTART_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "actual listener unavailable/replaced on same port; exact Principal/Session plus revoked/expired evidence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "RST-002",
+      "testFile": "scripts/document-package-http.integration.test.ts",
+      "testName": "persists exact evidence and append-only instructions, enforces conflicts, becomes ready, and survives listener replacement",
+      "command": "pnpm test:milestone2:restart",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "actual MarkReg listener replacement and durable Package lineage; Formal Matter replay covered in same command",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "RST-003",
+      "testFile": "scripts/professional-review-http.integration.test.ts",
+      "testName": "saves exact drafts, rejects stale/invalid evidence, completes immutably and survives listener restart",
+      "command": "pnpm test:milestone2:restart",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "actual Execution listener replacement and immutable completed Review",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-001",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-CORE-STARTUP preserves the causal failure then restores Core listener, health and durable identity readiness",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Core",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-002",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-MARKREG-STARTUP preserves the causal failure then restores the durable MarkReg listener and reusable port",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-003",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-EXECUTION-STARTUP preserves the causal failure then restores the durable Execution listener and reusable port",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Execution",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed sanitized startup failure and idempotent cleanup",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-004",
+      "testFile": "scripts/milestone2-core-restart.integration.test.ts",
+      "testName": "OUT-004/007 returns safe 503 for a Core database outage and recovers",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Core",
+      "requiredMode": "MILESTONE2_RESTART_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Gateway read/mutation 503 without leakage or partial Session mutation",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-005",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "maps database unavailability to 503 and recovers against the same durable data",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Gateway 503 during closed owner pool and exact durable recovery",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-006",
+      "testFile": "scripts/professional-review-http.integration.test.ts",
+      "testName": "OUT-006/009 maps an actual Execution database outage to 503 and recovers durable evidence",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Gateway read/mutation 503 and sanitized response",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-007",
+      "testFile": "scripts/milestone2-core-restart.integration.test.ts",
+      "testName": "OUT-004/007 returns safe 503 for a Core database outage and recovers",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Core",
+      "requiredMode": "owner required-mode flag",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "prior record reload and valid post-recovery read",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-008",
+      "testFile": "scripts/formal-matter-http.integration.test.ts",
+      "testName": "maps database unavailability to 503 and recovers against the same durable data",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "owner required-mode flag",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "prior record reload and valid post-recovery read",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "OUT-009",
+      "testFile": "scripts/professional-review-http.integration.test.ts",
+      "testName": "OUT-006/009 maps an actual Execution database outage to 503 and recovers durable evidence",
+      "command": "pnpm test:milestone2:outage",
+      "ownerDatabase": "Execution",
+      "requiredMode": "owner required-mode flag",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "prior record reload and valid post-recovery read",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-CORE-001",
+      "testFile": "services/core/tests/identity-postgres.test.ts",
+      "testName": "allows exactly one concurrent Membership duplicate",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Core",
+      "requiredMode": "IDENTITY_POSTGRES_TEST_REQUIRED=1; AUTH_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one Membership winner; typed duplicate loser; one row",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-CORE-002",
+      "testFile": "services/core/tests/session-postgres.test.ts",
+      "testName": "CON-CORE-002 serializes a durable Session revoke/use race without partial evidence",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Core",
+      "requiredMode": "IDENTITY_POSTGRES_TEST_REQUIRED=1; AUTH_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "use observes valid serialization; final revoked v2; one row",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-001",
+      "testFile": "services/markreg/tests/formal-matter-postgres.test.ts",
+      "testName": "coalesces concurrent identical commands into one winner and one durable evidence set",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one aggregate/command/success audit",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-002",
+      "testFile": "services/markreg/tests/formal-matter-postgres.test.ts",
+      "testName": "replays the same command and rejects conflicting key reuse and a second key for the exact source",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed conflicting reuse; stable counts",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-003",
+      "testFile": "services/markreg/tests/customer-confirmation-postgres.test.ts",
+      "testName": "allows exactly one concurrent expected-version Matter Draft update winner",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one update winner and stale loser",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-004",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "preserves exact Formal Matter and completed Review lineage after reload and concurrent resume",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one Package identity under concurrent resume",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-005",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "persists bounded evidence, exact versions, and permits one concurrent writer",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one version winner and typed stale loser",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-006",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "serializes concurrent instruction appends without duplicate sequence values",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "unique monotonic sequence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-007",
+      "testFile": "services/markreg/tests/document-package-postgres.test.ts",
+      "testName": "marks ready idempotently, freezes evidence, and survives a fresh repository object",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "identical replay without duplicate command/audit",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-008",
+      "testFile": "scripts/document-package-http.integration.test.ts",
+      "testName": "persists exact evidence and append-only instructions, enforces conflicts, becomes ready, and survives listener replacement",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "conflicting reuse rejected and denial audit appended",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-MR-009",
+      "testFile": "services/markreg/tests/audit-postgres.test.ts",
+      "testName": "paginates deterministically without duplicates or gaps",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1; MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED=1; MARKREG_AUDIT_POSTGRES_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Workspace-scoped stable pagination after durable writes",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-001",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "allows exactly one concurrent same-version update and rejects the stale writer",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "one winner and typed stale loser",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-002",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "returns an identical completion retry and rejects conflicting reuse without rewriting",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "identical completion response and stable counts",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-003",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "returns an identical completion retry and rejects conflicting reuse without rewriting",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "typed conflict and unchanged evidence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "CON-EX-004",
+      "testFile": "services/execution/tests/professional-review-postgres.test.ts",
+      "testName": "prevents edits to a completed Review",
+      "command": "pnpm test:milestone2:concurrency",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_POSTGRES_TEST_REQUIRED=1",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "terminal mutation rejection and unchanged evidence",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-001",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-001 returns exact Workspace-scoped Formal Matter, Review, Package and audit lists",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "Workspace-only lists/search",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-002",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-002 conceals exact cross-Workspace reads without identity or hash leakage",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "concealed cross-Workspace exact reads",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-003",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-003 rejects cross-Workspace Review, Package and Instruction mutations with unchanged counts",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "cross-Workspace owner mutations denied",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-004",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-004 ignores forged actor, Membership, role, permission and body/query Workspace authority",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "forged context ignored",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-005",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-005 enforces durable anonymous, invalid, expired, revoked, non-member and permission state across Core restart",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "401/403 Session and Membership matrix",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-006",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-006 enforces durable audit:read roles and Workspace-scoped success/denial pagination",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "audit role and Session matrix; companion suite tests Admin/Manager/Reviewer/Read Only",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-007",
+      "testFile": "scripts/milestone2-tenant-isolation.integration.test.ts",
+      "testName": "TEN-007 traverses interleaved pages exactly once and rejects invalid filters without Workspace escape",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + MarkReg + Execution",
+      "requiredMode": "MILESTONE2_TENANT_REQUIRED=1 with MILESTONE2_*_DATABASE_URL",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "pagination cannot cross Workspace",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute under PostgreSQL 16 required mode"
+    },
+    {
+      "id": "TEN-008",
+      "testFile": "tests/e2e/lite-matter-real-runtime.spec.ts",
+      "testName": "uses real authenticated list/detail with URL recovery and no interception",
+      "command": "pnpm test:milestone2:tenant-isolation",
+      "ownerDatabase": "Core + Gateway + owner",
+      "requiredMode": "AUTH_POSTGRES_TEST_REQUIRED=1 and owner required flags",
+      "destructiveFilesSerialized": true,
+      "expectedEvidence": "browser Workspace switch clears incompatible state",
+      "status": "IMPLEMENTED_NOT_EXECUTED",
+      "totals": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "coverageStatus": "EXECUTABLE_COVERED",
+      "implementationNeeded": "none; execute browser required mode"
+    }
+  ],
+  "repeatability": {
+    "command": "pnpm test:milestone2:markreg-repeatability",
+    "orchestrator": "scripts/run-markreg-repeatability.mjs",
+    "firstRun": {
+      "status": "UNEXECUTED",
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    "repeatedRun": {
+      "status": "UNEXECUTED",
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    "comparison": "runner fails on skipped tests or total drift"
+  },
+  "restartEvidence": {
+    "Core": null,
+    "MarkReg": null,
+    "Execution": null
+  },
+  "outageResponseCodes": {},
+  "concurrencyEvidence": [],
+  "tenantRoleSessionMatrix": [],
+  "auditAccessExpected": {
+    "WORKSPACE_ADMIN": 200,
+    "MATTER_MANAGER": 200,
+    "REVIEWER": 403,
+    "READ_ONLY": 403,
+    "anonymous": 401,
+    "expired": 401
+  },
+  "authorityConsequences": {
+    "Order": false,
+    "Payment": false,
+    "Preparation Lock": false,
+    "Filing Authorization": false,
+    "Execution Release": false,
+    "filing task": false,
+    "external filing": false,
+    "application number": false,
+    "external provider appointment": false,
+    "reliable cross-service event delivery": false
+  },
+  "eventDeliveryStatement": "audit persistence does not imply durable event delivery. There remains no outbox, broker, queue or crash-recovery delivery guarantee.",
+  "browserProjectTotals": {},
+  "noInterceptionResults": {},
+  "hostedActions": {
+    "runIds": [],
+    "urls": []
+  },
+  "unresolvedFindings": [
+    "Hosted Actions exact-head totals and URLs are pending Draft PR execution.",
+    "Local environment is Node 20.20.2; authoritative validation is configured for Node 22 in CI."
+  ],
+  "coverageSummary": {
+    "EXECUTABLE_COVERED": 41,
+    "PARTIALLY_COVERED": 0,
+    "MISSING": 0
+  },
+  "commandAudit": [
+    {
+      "command": "migration",
+      "exactScript": "pnpm test:milestone2:migrations",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "restart",
+      "exactScript": "pnpm test:milestone2:restart",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "outage",
+      "exactScript": "pnpm test:milestone2:outage",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "concurrency",
+      "exactScript": "pnpm test:milestone2:concurrency",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "tenant",
+      "exactScript": "pnpm test:milestone2:tenant-isolation",
+      "evidenceKind": "real tests selected in required mode",
+      "totals": {
+        "status": "UNEXECUTED",
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  ]
+}

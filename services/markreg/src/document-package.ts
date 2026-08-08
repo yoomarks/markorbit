@@ -226,6 +226,24 @@ export class PostgresDocumentPackageService {
     }
   }
 
+  async list(principal: WorkspacePrincipal) {
+    requiredPermission(principal, 'document-package:read');
+    try {
+      const rows = await this.query.query<{ document_package_id: string }>(
+        'SELECT document_package_id FROM document_packages WHERE workspace_id=$1 ORDER BY updated_at DESC,document_package_id',
+        [principal.workspaceId]
+      );
+      return Promise.all(
+        rows.rows.map((row) =>
+          this.load(this.query, principal.workspaceId, row.document_package_id)
+        )
+      );
+    } catch (cause) {
+      if (cause instanceof DocumentPackageError) throw cause;
+      throw this.persistence(cause);
+    }
+  }
+
   async updateDraft(
     principal: WorkspacePrincipal,
     packageId: string,

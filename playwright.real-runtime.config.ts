@@ -1,7 +1,38 @@
+import { createHmac } from 'node:crypto';
 import { defineConfig } from '@playwright/test';
-import { milestonePorts } from './scripts/milestone-runtime.mjs';
+import { milestoneAuth, milestonePorts } from './scripts/milestone-runtime.mjs';
 
 const inCI = Boolean(process.env['CI']);
+const authenticated = Boolean(process.env['MO_INTERNAL_SERVICE_SECRET']);
+const csrfSecret = process.env['MO_CSRF_SECRET'];
+if (authenticated && !csrfSecret)
+  throw new Error('MO_CSRF_SECRET is required when the milestone runtime is authenticated.');
+const authenticatedUse = authenticated
+  ? {
+      extraHTTPHeaders: {
+        'x-markorbit-workspace-id': milestoneAuth.workspaceId,
+        'x-markorbit-csrf-token': createHmac('sha256', csrfSecret!)
+          .update(milestoneAuth.sessionId)
+          .digest('base64url')
+      },
+      storageState: {
+        cookies: [
+          {
+            name: 'mo_session',
+            value: milestoneAuth.sessionValue,
+            domain: '127.0.0.1',
+            path: '/',
+            expires: -1,
+            httpOnly: true,
+            secure: false,
+            sameSite: 'Lax' as const
+          }
+        ],
+        origins: []
+      }
+    }
+  : {};
+
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: /milestone-001-real-runtime\.spec\.ts/,
@@ -16,7 +47,12 @@ export default defineConfig({
   reporter: inCI
     ? [['line'], ['html', { outputFolder: 'playwright-report/real-runtime', open: 'never' }]]
     : 'list',
-  use: { browserName: 'chromium', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  use: {
+    browserName: 'chromium',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    ...authenticatedUse
+  },
   projects: [
     { name: 'real-runtime-desktop-chromium', use: { viewport: { width: 1440, height: 900 } } },
     {

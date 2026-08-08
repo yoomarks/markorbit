@@ -5,16 +5,12 @@ const inCI = Boolean(process.env['CI']);
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testIgnore: [
-    /milestone-001-real-runtime\.spec\.ts/,
-    /lite-matter-real-runtime\.spec\.ts/,
-    /professional-review-real-runtime\.spec\.ts/,
-    /document-package-real-runtime\.spec\.ts/
-  ],
+  testMatch:
+    /(?:filing-authorization-release|lite|markreg|milestone-001-deep-link-recovery|operations)\.spec\.ts/,
   outputDir: 'test-results',
   fullyParallel: true,
   forbidOnly: inCI,
-  retries: inCI ? 2 : 0,
+  retries: 0,
   ...(inCI ? { workers: 2 } : {}),
   timeout: 30_000,
   expect: { timeout: 5_000 },

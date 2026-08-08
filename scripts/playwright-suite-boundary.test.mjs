@@ -17,6 +17,9 @@ const listSuite = (config) => {
 
 test('default Playwright inventory excludes the real-runtime suite', () => {
   const { entries, output } = listSuite('playwright.config.ts');
+  const source = fs.readFileSync('playwright.config.ts', 'utf8');
+  assert.match(source, /testMatch:/u, 'playwright.config.ts needs an exact testMatch');
+  assert.match(source, /retries:\s*0/u, 'playwright.config.ts must not rely on retries');
   assert.equal(entries.length, 32);
   assert.deepEqual([...new Set(entries.map(({ file }) => file))].sort(), [
     'filing-authorization-release.spec.ts',
@@ -69,6 +72,19 @@ test('Professional Review runtime inventory is isolated to its dedicated desktop
   ]);
 });
 
+test('Lite Matter runtime owns only its independent zero-retry desktop and mobile spec', () => {
+  const { entries } = listSuite('playwright.lite-matter-real-runtime.config.ts');
+  assert.equal(entries.length, 2);
+  assert.ok(entries.every(({ file }) => file === 'lite-matter-real-runtime.spec.ts'));
+  assert.deepEqual(entries.map(({ project }) => project).sort(), [
+    'lite-matter-desktop',
+    'lite-matter-mobile-390'
+  ]);
+  const source = fs.readFileSync('playwright.lite-matter-real-runtime.config.ts', 'utf8');
+  assert.match(source, /workers:\s*1/u);
+  assert.match(source, /retries:\s*0/u);
+});
+
 test('Document Package runtime owns only its independent zero-retry desktop and mobile spec', () => {
   const { entries } = listSuite('playwright.document-package-real-runtime.config.ts');
   assert.equal(entries.length, 2);
@@ -83,4 +99,29 @@ test('Document Package runtime owns only its independent zero-retry desktop and 
   const spec = fs.readFileSync('tests/e2e/document-package-real-runtime.spec.ts', 'utf8');
   assert.match(spec, /task025Desktop/u);
   assert.match(spec, /task025Mobile/u);
+});
+
+test('every TASK 026 real-runtime config has exact topology and no interception', () => {
+  for (const [config, spec] of [
+    ['playwright.real-runtime.config.ts', 'tests/e2e/milestone-001-real-runtime.spec.ts'],
+    ['playwright.lite-matter-real-runtime.config.ts', 'tests/e2e/lite-matter-real-runtime.spec.ts'],
+    [
+      'playwright.professional-review-real-runtime.config.ts',
+      'tests/e2e/professional-review-real-runtime.spec.ts'
+    ],
+    [
+      'playwright.document-package-real-runtime.config.ts',
+      'tests/e2e/document-package-real-runtime.spec.ts'
+    ]
+  ]) {
+    const source = fs.readFileSync(config, 'utf8');
+    assert.match(source, /testMatch:/u, `${config} needs an exact testMatch`);
+    assert.match(source, /workers:\s*1/u);
+    assert.match(source, /retries:\s*0/u);
+    assert.doesNotMatch(
+      fs.readFileSync(spec, 'utf8'),
+      /(?:page|context)\.route\s*\(|route\.fulfill\s*\(/u,
+      `${spec} must cross real boundaries`
+    );
+  }
 });

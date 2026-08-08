@@ -171,6 +171,19 @@ suite('PostgreSQL durable Document Package and Instruction Ledger', () => {
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
     expect((await database.getPool().query('SELECT * FROM document_packages')).rowCount).toBe(1);
   });
+  it('lists durable Packages only inside the Core-derived Workspace', async () => {
+    const first = await create('list-a');
+    const secondSource = {
+      ...structuredClone(review),
+      reviewCaseId: 'professional-review_list-b' as const,
+      decision: { ...review.decision!, decidedAt: '2026-08-01T12:00:01.000Z' }
+    };
+    const second = await create('list-b', secondSource);
+    expect(
+      (await service().list(principal())).map((value) => value.documentPackageId).sort()
+    ).toEqual([second.documentPackageId, first.documentPackageId].sort());
+    expect(await service().list({ ...principal(), workspaceId: otherWorkspaceId })).toEqual([]);
+  });
   it('preserves exact Formal Matter and completed Review lineage after reload and concurrent resume', async () => {
     const command = {
       professionalReviewCaseId: review.reviewCaseId,

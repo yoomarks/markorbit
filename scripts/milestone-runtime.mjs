@@ -12,6 +12,16 @@ export const milestonePorts = Object.freeze({
   markregWeb: 4372
 });
 
+const milestoneWorkspaceId = '55555555-5555-4555-8555-555555555555';
+export const milestoneAuth = Object.freeze({
+  corePort: 4301,
+  coreUrl: 'http://127.0.0.1:4301',
+  workspaceId: milestoneWorkspaceId,
+  userId: 'user_milestone_golden',
+  sessionId: '0198a2a0-0000-7000-8000-000000000001',
+  sessionValue: `${milestoneWorkspaceId}.browser-session`
+});
+
 export const milestoneUrls = Object.freeze({
   gateway: `http://127.0.0.1:${milestonePorts.gateway}`,
   capability: `http://127.0.0.1:${milestonePorts.capability}`,
@@ -70,6 +80,7 @@ export function milestoneConfiguration(ports = milestonePorts) {
         PORT: String(ports.gateway),
         MARKREG_URL: urls.markreg,
         EXECUTION_URL: urls.execution,
+        CORE_URL: milestoneAuth.coreUrl,
         WEB_ORIGINS: `${urls.markregWeb},${urls.liteWeb}`,
         MO_MILESTONE_TEST_RUNTIME: '1'
       }
