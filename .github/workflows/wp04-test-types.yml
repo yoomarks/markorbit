@@ -73,6 +73,20 @@ jobs:
               ".query<Record<string, unknown>>('SELECT * FROM matter_drafts WHERE customer_confirmation_id=$1', [",
               1,
           )
+          text = text.replace("      linkedAt: expect.any(String)\n", "", 1)
+          result_end = """    });
+            const storedOrder = await repository.findById(WORKSPACE, ready.orderId);
+          """
+          if result_end not in text:
+              raise SystemExit('conversion result expectation marker not found')
+          text = text.replace(
+              result_end,
+              """    });
+            expect(Number.isFinite(Date.parse(converted.linkedAt))).toBe(true);
+            const storedOrder = await repository.findById(WORKSPACE, ready.orderId);
+          """,
+              1,
+          )
           path.write_text(text)
           PY
           pnpm exec prettier --write services/markreg/tests/order-matter-conversion-postgres.test.ts
