@@ -354,7 +354,7 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
           await database
             .getPool()
             .query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')
-        ).rows[0].count
+        ).rows[0]?.count ?? '0'
       )
     ).toBe(1);
   });
@@ -380,7 +380,7 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
           await database
             .getPool()
             .query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')
-        ).rows[0].count
+        ).rows[0]?.count ?? '0'
       )
     ).toBe(0);
   });
@@ -404,7 +404,7 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
           await database
             .getPool()
             .query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')
-        ).rows[0].count
+        ).rows[0]?.count ?? '0'
       )
     ).toBe(0);
   });
