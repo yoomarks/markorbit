@@ -17,11 +17,11 @@ The merged `main` commit and the final TASK 026 PR head have the same Git tree (
 
 All three hosted workflow families completed successfully on the exact implementation tree:
 
-| Workflow | Run | Result | Relevant jobs |
-| --- | ---: | --- | --- |
-| `validation` | `31231437103` | PASS | `persistence`, `validate`, `professional-review-browser` |
-| `Milestone 2 reliability` | `31231437099` | PASS | `reliability` |
-| `Browser and Visual Validation` | `31231437102` | PASS | `chromium`, `Milestone Real Runtime Validation` |
+| Workflow                        |           Run | Result | Relevant jobs                                            |
+| ------------------------------- | ------------: | ------ | -------------------------------------------------------- |
+| `validation`                    | `31231437103` | PASS   | `persistence`, `validate`, `professional-review-browser` |
+| `Milestone 2 reliability`       | `31231437099` | PASS   | `reliability`                                            |
+| `Browser and Visual Validation` | `31231437102` | PASS   | `chromium`, `Milestone Real Runtime Validation`          |
 
 The reliability job used PostgreSQL 16 and a database-per-owner topology, installed Chromium, ran the ordered executable reliability matrix, and completed the final workspace check. The browser workflow separately passed both the focused Chromium acceptance job and the full Milestone Real Runtime Validation job.
 
@@ -167,27 +167,27 @@ Audit finding: **PASS.**
 
 ## 6. Reliability acceptance matrix
 
-| Acceptance dimension | Evidence | Result |
-| --- | --- | --- |
-| Empty database migration | dedicated migration integration suite under PostgreSQL 16 | PASS |
-| Prior-state migration | migration replay/reconstruction coverage | PASS |
-| Owner migration separation | Core / MarkReg / Execution owner DB topology | PASS |
-| Core restart | actual listener/pool replacement and durable Session/Principal recovery | PASS |
-| MarkReg restart | Formal Matter / Document Package durable HTTP recovery | PASS |
-| Execution restart | Professional Review durable HTTP recovery | PASS |
-| Startup outage | owner service startup failure and restored listener behavior | PASS |
-| Runtime pool outage | Core / MarkReg / Execution outage paths through Gateway | PASS |
-| Concurrent duplicate | deterministic idempotent replay / unique evidence | PASS |
-| Conflicting replay | same key + changed fingerprint rejected | PASS |
-| Stale version | optimistic stale update loses safely | PASS |
-| Tenant isolation | cross-Workspace reads/mutations fail closed | PASS |
-| Restart isolation | durable records remain scoped after runtime replacement | PASS |
-| Repeatability | MarkReg groups execute repeated cycles with stable totals and zero skip guard | PASS |
-| Desktop browser | dedicated real-runtime projects | PASS |
-| Mobile browser | dedicated 390px / mobile real-runtime projects | PASS |
-| Direct URL / refresh | dedicated browser recovery paths | PASS |
-| Workspace switch | stale scoped state is cleared rather than leaked | PASS |
-| Storybook state matrix | state-matrix tests/build/index validation | PASS |
+| Acceptance dimension       | Evidence                                                                      | Result |
+| -------------------------- | ----------------------------------------------------------------------------- | ------ |
+| Empty database migration   | dedicated migration integration suite under PostgreSQL 16                     | PASS   |
+| Prior-state migration      | migration replay/reconstruction coverage                                      | PASS   |
+| Owner migration separation | Core / MarkReg / Execution owner DB topology                                  | PASS   |
+| Core restart               | actual listener/pool replacement and durable Session/Principal recovery       | PASS   |
+| MarkReg restart            | Formal Matter / Document Package durable HTTP recovery                        | PASS   |
+| Execution restart          | Professional Review durable HTTP recovery                                     | PASS   |
+| Startup outage             | owner service startup failure and restored listener behavior                  | PASS   |
+| Runtime pool outage        | Core / MarkReg / Execution outage paths through Gateway                       | PASS   |
+| Concurrent duplicate       | deterministic idempotent replay / unique evidence                             | PASS   |
+| Conflicting replay         | same key + changed fingerprint rejected                                       | PASS   |
+| Stale version              | optimistic stale update loses safely                                          | PASS   |
+| Tenant isolation           | cross-Workspace reads/mutations fail closed                                   | PASS   |
+| Restart isolation          | durable records remain scoped after runtime replacement                       | PASS   |
+| Repeatability              | MarkReg groups execute repeated cycles with stable totals and zero skip guard | PASS   |
+| Desktop browser            | dedicated real-runtime projects                                               | PASS   |
+| Mobile browser             | dedicated 390px / mobile real-runtime projects                                | PASS   |
+| Direct URL / refresh       | dedicated browser recovery paths                                              | PASS   |
+| Workspace switch           | stale scoped state is cleared rather than leaked                              | PASS   |
+| Storybook state matrix     | state-matrix tests/build/index validation                                     | PASS   |
 
 ## 7. Migration and ownership audit
 
@@ -281,21 +281,21 @@ Audit finding: **PASS.**
 
 Milestone 2 must stop at governed internal truth. The following 13 authority consequences are required to remain false for the audited path:
 
-| Consequence | Required value | Audit result |
-| --- | --- | --- |
-| `orderCreated` | `false` | PASS |
-| `paymentCreated` | `false` | PASS |
-| `invoiceCreated` | `false` | PASS |
-| `formalMatterCreated` as a consequence of filing authorization | `false` | PASS |
-| `professionalAppointed` | `false` | PASS |
-| `providerAssignedExternally` | `false` | PASS |
-| `filingCreated` | `false` | PASS |
-| `filingSubmitted` | `false` | PASS |
-| `officialApplicationCreated` | `false` | PASS |
-| `officialApplicationNumberReceived` | `false` | PASS |
-| `customerMessageSent` | `false` | PASS |
-| `externalDocumentSent` | `false` | PASS |
-| `trademarkOfficeContacted` | `false` | PASS |
+| Consequence                                                    | Required value | Audit result |
+| -------------------------------------------------------------- | -------------- | ------------ |
+| `orderCreated`                                                 | `false`        | PASS         |
+| `paymentCreated`                                               | `false`        | PASS         |
+| `invoiceCreated`                                               | `false`        | PASS         |
+| `formalMatterCreated` as a consequence of filing authorization | `false`        | PASS         |
+| `professionalAppointed`                                        | `false`        | PASS         |
+| `providerAssignedExternally`                                   | `false`        | PASS         |
+| `filingCreated`                                                | `false`        | PASS         |
+| `filingSubmitted`                                              | `false`        | PASS         |
+| `officialApplicationCreated`                                   | `false`        | PASS         |
+| `officialApplicationNumberReceived`                            | `false`        | PASS         |
+| `customerMessageSent`                                          | `false`        | PASS         |
+| `externalDocumentSent`                                         | `false`        | PASS         |
+| `trademarkOfficeContacted`                                     | `false`        | PASS         |
 
 The Execution filing-governance tests explicitly preserve a no-authority consequence object through authorization/release preparation. Even when an internal filing execution task draft is prepared by that separate governed code path, it remains internal and the external consequences above remain false.
 
