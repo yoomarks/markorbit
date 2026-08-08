@@ -1,0 +1,192 @@
+{
+  "milestone": "MO-MVP-MILESTONE-003",
+  "planningTask": "TASK 028",
+  "status": "PROPOSED_FOR_OWNER_APPROVAL",
+  "baseline": {
+    "branch": "main",
+    "commit": "cc2a7afcb79056abcf92dbe2fa4467e0c2767f8d",
+    "predecessorAudit": "GO",
+    "predecessorPr": 38,
+    "milestone2TagOrFreezeClaim": false
+  },
+  "direction": {
+    "id": "DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE",
+    "selected": true,
+    "summary": "Introduce a durable governed trademark-service Order and explicit Order-to-Formal-Matter relationship without Payment, Invoice, provider appointment or external filing authority."
+  },
+  "decisionAlternatives": [
+    {
+      "id": "DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE",
+      "decision": "SELECT",
+      "risk": "MEDIUM",
+      "reason": "Closes the canonical commercial-request gap on top of Milestone 2 durable authenticated Matter operations."
+    },
+    {
+      "id": "PAYMENT_AND_INVOICE_TRANSACTION_LAYER",
+      "decision": "DEFER",
+      "risk": "HIGH",
+      "reason": "Canonical Order MVP defers payment processing and invoice lifecycle; finance requires stable Order and party ownership first."
+    },
+    {
+      "id": "EXTERNAL_FILING_EXECUTION",
+      "decision": "DEFER",
+      "risk": "VERY_HIGH",
+      "reason": "Requires protected external authority, provider/office integration and Official Truth semantics not established by Milestone 3."
+    }
+  ],
+  "semanticBoundaries": {
+    "order": "commercial service request",
+    "formalMatter": "professional case truth",
+    "payment": "not owned in Milestone 3",
+    "invoice": "not owned in Milestone 3",
+    "filing": "external authority; not owned in Milestone 3",
+    "requiredDistinction": "Order != Matter != Payment != Invoice != Filing"
+  },
+  "runtimeOwnership": {
+    "Order": "MarkReg for the initial trademark-service implementation",
+    "FormalMatter": "MarkReg",
+    "IdentityWorkspacePrincipal": "Core",
+    "TransportPolicyBoundary": "Gateway",
+    "ProviderNetwork": "MGSN deferred from primary Milestone 3 path"
+  },
+  "canonicalOrderPath": [
+    "Draft",
+    "PendingConfirmation",
+    "Confirmed",
+    "ReadyForMatter",
+    "MatterCreated",
+    "InProgress"
+  ],
+  "primaryAcceptanceJourney": [
+    "authenticate and resolve Workspace Principal",
+    "load exact confirmed Quote and Customer Confirmation source",
+    "create durable Workspace-scoped Order",
+    "explicitly confirm Order",
+    "evaluate Order as ReadyForMatter",
+    "atomically create/link Formal Matter through governed MarkReg operation",
+    "restart runtimes and reload exact Order/Matter IDs and versions",
+    "deny cross-Workspace enumeration and mutation",
+    "prove prohibited finance/provider/external-authority consequences remain false"
+  ],
+  "requiredSourceEvidence": [
+    "Quote ID and exact version",
+    "Customer Confirmation ID and exact version",
+    "Customer/applicant reference",
+    "selected plan/commercial scope",
+    "Channel",
+    "Relationship Model"
+  ],
+  "commercialRelationshipReferences": [
+    "contracting party",
+    "payment receiver",
+    "delivery owner",
+    "communication owner",
+    "customer-facing brand",
+    "professional authority"
+  ],
+  "authorityConsequences": {
+    "orderCreated": "may become true only after explicit governed Order creation",
+    "formalMatterCreated": "may become true only after explicit governed Order-to-Matter command or existing compatible M2 command",
+    "mustRemainFalse": [
+      "paymentCreated",
+      "invoiceCreated",
+      "professionalAppointed",
+      "providerAssignedExternally",
+      "filingCreatedAsExternalFiling",
+      "filingSubmitted",
+      "officialApplicationCreated",
+      "officialApplicationNumberReceived",
+      "customerMessageSentAutomatically",
+      "externalDocumentSent",
+      "trademarkOfficeContacted"
+    ]
+  },
+  "persistence": {
+    "engine": "PostgreSQL 16",
+    "ownerDatabase": "MarkReg",
+    "databasePerOwner": true,
+    "requiredEvidence": [
+      "orders",
+      "commercial source snapshot/checksum",
+      "Order-Matter link evidence",
+      "Workspace-scoped idempotency commands",
+      "append-only success/denial audit"
+    ],
+    "optimisticConcurrency": true,
+    "crossServiceDatabaseReads": false
+  },
+  "eventBoundary": {
+    "processLocalOrderEventsAllowed": true,
+    "durableOutboxRequired": false,
+    "reliableCrossServiceDeliveryClaim": false
+  },
+  "browserAcceptance": {
+    "primaryProduct": "markreg.com",
+    "desktop": true,
+    "mobile390": true,
+    "directUrlRecovery": true,
+    "refreshRecovery": true,
+    "browserBack": true,
+    "workspaceSwitchClearsScopedState": true,
+    "requestInterceptionAllowed": false
+  },
+  "workPackages": [
+    {
+      "id": "M3-WP-01",
+      "name": "Order contract and canonical state boundary",
+      "dependencies": ["TASK 028 approved"]
+    },
+    {
+      "id": "M3-WP-02",
+      "name": "Durable MarkReg Order repository",
+      "dependencies": ["M3-WP-01"]
+    },
+    {
+      "id": "M3-WP-03",
+      "name": "Order service lifecycle and Workspace authorization",
+      "dependencies": ["M3-WP-01", "M3-WP-02"]
+    },
+    {
+      "id": "M3-WP-04",
+      "name": "Atomic governed Order-to-Matter conversion/link",
+      "dependencies": ["M3-WP-02", "M3-WP-03", "existing Formal Matter"]
+    },
+    {
+      "id": "M3-WP-05",
+      "name": "Authenticated Gateway Order API and typed client",
+      "dependencies": ["M3-WP-03", "M3-WP-04"]
+    },
+    {
+      "id": "M3-WP-06",
+      "name": "markreg.com Order journey",
+      "dependencies": ["M3-WP-05"]
+    },
+    {
+      "id": "M3-WP-07",
+      "name": "Migration, restart, concurrency, tenant and browser reliability matrix",
+      "dependencies": ["M3-WP-01", "M3-WP-02", "M3-WP-03", "M3-WP-04", "M3-WP-05", "M3-WP-06"]
+    },
+    {
+      "id": "M3-WP-08",
+      "name": "Independent Milestone 3 integration/authority audit",
+      "dependencies": ["M3-WP-07"]
+    }
+  ],
+  "nonGoals": [
+    "payment processing or settlement",
+    "payment custody or escrow",
+    "invoice issuance or tax accounting",
+    "refunds, chargebacks or revenue recognition",
+    "discount/coupon engine",
+    "external provider appointment",
+    "MGSN public marketplace",
+    "trademark-office integration",
+    "external filing submission",
+    "official application or application-number creation",
+    "automatic customer communications",
+    "durable cross-service outbox/reliable delivery",
+    "generic multi-domain commerce platform"
+  ],
+  "planningOnly": true,
+  "implementationStarted": false
+}
