@@ -16,6 +16,7 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
+      "@markorbit/contracts/order": ["packages/contracts/src/order.ts"],
       "@markorbit/*": ["packages/*/src", "services/*/src", "apps/*/src"]
     }
   }
