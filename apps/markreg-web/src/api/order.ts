@@ -1,8 +1,4 @@
-import type {
-  Channel,
-  MarkOrbitId,
-  RelationshipModel
-} from '@markorbit/contracts';
+import type { Channel, MarkOrbitId, RelationshipModel } from '@markorbit/contracts';
 import type {
   CancelOrderCommand,
   ConfirmOrderCommand,
@@ -65,7 +61,12 @@ export interface OrderMatterConversionView {
 export interface OrderClient {
   create(command: CreateOrderCommand): Promise<OrderView>;
   get(orderId: string): Promise<OrderView>;
-  list(query?: { status?: OrderStatus; customerId?: string; page?: number; pageSize?: number }): Promise<OrderListView>;
+  list(query?: {
+    status?: OrderStatus;
+    customerId?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<OrderListView>;
   requestConfirmation(command: RequestOrderConfirmationCommand): Promise<OrderView>;
   confirm(command: ConfirmOrderCommand): Promise<OrderView>;
   evaluateReadiness(command: EvaluateOrderReadinessCommand): Promise<OrderView>;

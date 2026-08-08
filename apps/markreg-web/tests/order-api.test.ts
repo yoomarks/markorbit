@@ -3,7 +3,12 @@ import type { ApiClient } from '../src/api/client.js';
 import { createOrderClient } from '../src/api/order.js';
 
 class RecordingApi implements ApiClient {
-  readonly calls: { method: string; path: string; body?: unknown; headers?: Record<string, string> }[] = [];
+  readonly calls: {
+    method: string;
+    path: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+  }[] = [];
   post<T>(path: string, body: unknown, headers: Record<string, string>): Promise<T> {
     this.calls.push({ method: 'POST', path, body, headers });
     return Promise.resolve({} as T);
@@ -43,7 +48,12 @@ describe('M3-WP-05 typed Order browser client', () => {
       idempotencyKey: 'create-client'
     });
     await client.get(base.orderId);
-    await client.list({ status: 'ReadyForMatter', customerId: 'customer_client', page: 2, pageSize: 25 });
+    await client.list({
+      status: 'ReadyForMatter',
+      customerId: 'customer_client',
+      page: 2,
+      pageSize: 25
+    });
     await client.requestConfirmation(base);
     await client.confirm(base);
     await client.evaluateReadiness(base);

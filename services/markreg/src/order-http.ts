@@ -20,7 +20,12 @@ import {
   type PostgresOrderMatterConversionService
 } from './order-matter-conversion.js';
 import type { OrderListQuery } from './order-persistence.js';
-import { OrderServiceError, type OrderProjection, type OrderProjectionListResponse, type OrderService } from './order-service.js';
+import {
+  OrderServiceError,
+  type OrderProjection,
+  type OrderProjectionListResponse,
+  type OrderService
+} from './order-service.js';
 
 export interface OrderHttpOptions {
   orderService?: Pick<
@@ -58,7 +63,10 @@ function rejectActorSpoof(body: Readonly<Record<string, unknown>>): void {
     );
 }
 
-function principalFor(request: JsonRequest, internalServiceSecret: string | undefined): WorkspacePrincipal {
+function principalFor(
+  request: JsonRequest,
+  internalServiceSecret: string | undefined
+): WorkspacePrincipal {
   if (
     !internalServiceSecret ||
     request.headers['x-markorbit-internal-authorization'] !== internalServiceSecret
@@ -77,7 +85,11 @@ function principalFor(request: JsonRequest, internalServiceSecret: string | unde
   }
   const headerWorkspace = request.headers['x-markorbit-workspace-id'];
   if (headerWorkspace && headerWorkspace !== principal.workspaceId)
-    throw new HttpError(403, 'WORKSPACE_MISMATCH', 'Workspace context does not match Principal truth.');
+    throw new HttpError(
+      403,
+      'WORKSPACE_MISMATCH',
+      'Workspace context does not match Principal truth.'
+    );
   return principal;
 }
 
@@ -87,14 +99,17 @@ function commandWorkspace(
 ): string {
   const requested = body.workspaceId;
   if (requested !== undefined && requested !== principal.workspaceId)
-    throw new HttpError(403, 'WORKSPACE_MISMATCH', 'Workspace context does not match Principal truth.');
+    throw new HttpError(
+      403,
+      'WORKSPACE_MISMATCH',
+      'Workspace context does not match Principal truth.'
+    );
   return principal.workspaceId;
 }
 
 function idempotencyKey(request: JsonRequest, body: Readonly<Record<string, unknown>>): string {
   const header = request.headers['idempotency-key'];
-  if (!header)
-    throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+  if (!header) throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
   if (body.idempotencyKey !== undefined && body.idempotencyKey !== header)
     throw new HttpError(
       400,
@@ -154,7 +169,10 @@ async function run<T>(status: number, work: () => Promise<T>) {
   }
 }
 
-function expectedVersion(body: Readonly<Record<string, unknown>>, field = 'expectedVersion'): number {
+function expectedVersion(
+  body: Readonly<Record<string, unknown>>,
+  field = 'expectedVersion'
+): number {
   const value = body[field];
   if (!Number.isSafeInteger(value) || Number(value) < 1)
     throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive integer.`);
@@ -267,7 +285,9 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
           expectedVersion: expectedVersion(body),
           idempotencyKey: idempotencyKey(request, body)
         };
-        return run(200, () => orderService(options).confirm(principal, command, correlation(request)));
+        return run(200, () =>
+          orderService(options).confirm(principal, command, correlation(request))
+        );
       }
     },
     {
@@ -345,7 +365,9 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
           reason: requiredText(body, 'reason'),
           idempotencyKey: idempotencyKey(request, body)
         };
-        return run(200, () => orderService(options).cancel(principal, command, correlation(request)));
+        return run(200, () =>
+          orderService(options).cancel(principal, command, correlation(request))
+        );
       }
     }
   ];

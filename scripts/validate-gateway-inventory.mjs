@@ -27,7 +27,8 @@ for (const row of inventory) {
     authOwner ||
     row.path.startsWith('/api/markreg/formal-matters') ||
     row.path.startsWith('/api/markreg/audit-records') ||
-    row.path.startsWith('/api/markreg/document-packages');
+    row.path.startsWith('/api/markreg/document-packages') ||
+    row.path.startsWith('/api/markreg/orders');
   const expected = authOwner
     ? 'auth'
     : row.path.startsWith('/__milestone/')
@@ -52,7 +53,7 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 68);
+assert.equal(source.length, 77);
 assert.equal(
   source.filter(
     (x) =>
@@ -61,8 +62,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  62
+  71
 );
 console.log(
-  'Gateway inventory PASS: 68 runtime routes; authenticated Document Package boundary included; test bootstrap excluded'
+  'Gateway inventory PASS: 77 runtime routes; authenticated Order and Document Package boundaries included; test bootstrap excluded'
 );

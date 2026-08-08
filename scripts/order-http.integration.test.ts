@@ -61,7 +61,12 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
   let orderSequence = 0;
   let matterSequence = 0;
   const now = () => new Date(Date.parse(SOURCE_AT) + tick++ * 60_000).toISOString();
-  const orderService = new OrderService(repository, sources, now, () => `order_wp05-${++orderSequence}` as never);
+  const orderService = new OrderService(
+    repository,
+    sources,
+    now,
+    () => `order_wp05-${++orderSequence}` as never
+  );
   const conversionService = new PostgresOrderMatterConversionService(
     database,
     database.getPool(),
@@ -82,8 +87,17 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
 
   const commercialSource = (suffix: string): CommercialSourceSnapshot => ({
     schemaVersion: 1,
-    quote: { quoteId: `quote_wp05-${suffix}`, quoteVersion: 'quote-v5', currency: 'USD', totalMinor: 96000 },
-    customerConfirmation: { confirmationId: `confirmation_wp05-${suffix}`, confirmationVersion: 3, status: 'CONFIRMED' },
+    quote: {
+      quoteId: `quote_wp05-${suffix}`,
+      quoteVersion: 'quote-v5',
+      currency: 'USD',
+      totalMinor: 96000
+    },
+    customerConfirmation: {
+      confirmationId: `confirmation_wp05-${suffix}`,
+      confirmationVersion: 3,
+      status: 'CONFIRMED'
+    },
     customerId: `customer_wp05-${suffix}`,
     channel: 'MARKREG_DIRECT',
     relationshipModel: 'DIRECT',
@@ -181,43 +195,79 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
     body?: unknown,
     key?: string,
     workspace = workspaceId
-  ) => fetch(`http://127.0.0.1:${gateway.listeningPort}${pathname}`, {
-    method,
-    headers: {
-      ...(token ? { cookie: `mo_session=${token}` } : {}),
-      'x-markorbit-workspace-id': workspace,
-      ...(method === 'POST' ? {
-        origin,
-        ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
-        ...(key ? { 'idempotency-key': key } : {}),
-        'content-type': 'application/json'
-      } : {})
-    },
-    ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {})
-  });
+  ) =>
+    fetch(`http://127.0.0.1:${gateway.listeningPort}${pathname}`, {
+      method,
+      headers: {
+        ...(token ? { cookie: `mo_session=${token}` } : {}),
+        'x-markorbit-workspace-id': workspace,
+        ...(method === 'POST'
+          ? {
+              origin,
+              ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
+              ...(key ? { 'idempotency-key': key } : {}),
+              'content-type': 'application/json'
+            }
+          : {})
+      },
+      ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {})
+    });
 
   async function readyOrder(suffix: string) {
     const source = commercialSource(suffix);
     await seed(source);
-    const create = await request(managerToken, managerCsrf, 'POST', '/api/markreg/orders', {
-      workspaceId,
-      orderType: 'TrademarkFiling',
-      quoteId: source.quote.quoteId,
-      expectedQuoteVersion: source.quote.quoteVersion,
-      customerConfirmationId: source.customerConfirmation.confirmationId,
-      expectedCustomerConfirmationVersion: source.customerConfirmation.confirmationVersion,
-      channel: source.channel,
-      relationshipModel: source.relationshipModel
-    }, `create-${suffix}`);
+    const create = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      '/api/markreg/orders',
+      {
+        workspaceId,
+        orderType: 'TrademarkFiling',
+        quoteId: source.quote.quoteId,
+        expectedQuoteVersion: source.quote.quoteVersion,
+        customerConfirmationId: source.customerConfirmation.confirmationId,
+        expectedCustomerConfirmationVersion: source.customerConfirmation.confirmationVersion,
+        channel: source.channel,
+        relationshipModel: source.relationshipModel
+      },
+      `create-${suffix}`
+    );
     expect(create.status).toBe(201);
-    const draft = await create.json() as { orderId: string; version: number };
-    const pending = await request(managerToken, managerCsrf, 'POST', `/api/markreg/orders/${draft.orderId}/request-confirmation`, { workspaceId, expectedVersion: draft.version }, `pending-${suffix}`);
-    const pendingBody = await pending.json() as { version: number };
-    const confirmed = await request(managerToken, managerCsrf, 'POST', `/api/markreg/orders/${draft.orderId}/confirm`, { workspaceId, expectedVersion: pendingBody.version }, `confirm-${suffix}`);
-    const confirmedBody = await confirmed.json() as { version: number };
-    const ready = await request(managerToken, managerCsrf, 'POST', `/api/markreg/orders/${draft.orderId}/evaluate-readiness`, { workspaceId, expectedVersion: confirmedBody.version }, `ready-${suffix}`);
+    const draft = (await create.json()) as { orderId: string; version: number };
+    const pending = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      `/api/markreg/orders/${draft.orderId}/request-confirmation`,
+      { workspaceId, expectedVersion: draft.version },
+      `pending-${suffix}`
+    );
+    const pendingBody = (await pending.json()) as { version: number };
+    const confirmed = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      `/api/markreg/orders/${draft.orderId}/confirm`,
+      { workspaceId, expectedVersion: pendingBody.version },
+      `confirm-${suffix}`
+    );
+    const confirmedBody = (await confirmed.json()) as { version: number };
+    const ready = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      `/api/markreg/orders/${draft.orderId}/evaluate-readiness`,
+      { workspaceId, expectedVersion: confirmedBody.version },
+      `ready-${suffix}`
+    );
     expect(ready.status).toBe(200);
-    return await ready.json() as { orderId: string; version: number; status: string; source: { snapshotSha256: string } };
+    return (await ready.json()) as {
+      orderId: string;
+      version: number;
+      status: string;
+      source: { snapshotSha256: string };
+    };
   }
 
   beforeAll(async () => {
@@ -228,14 +278,33 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
       migrationOwners: path.resolve('infrastructure/persistence/migration-owners.json')
     });
     await workspaces.create({ workspaceId, name: 'Order Workspace', slug: 'order-workspace' });
-    await workspaces.create({ workspaceId: otherWorkspaceId, name: 'Other Workspace', slug: 'other-order-workspace' });
+    await workspaces.create({
+      workspaceId: otherWorkspaceId,
+      name: 'Other Workspace',
+      slug: 'other-order-workspace'
+    });
     const managerId = '11111111-1111-4111-8111-111111111111';
     const readerId = '22222222-2222-4222-8222-222222222222';
     await users.create({ userId: managerId, email: 'manager@order.test', displayName: 'Manager' });
     await users.create({ userId: readerId, email: 'reader@order.test', displayName: 'Reader' });
-    await memberships.create({ membershipId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', workspaceId, userId: managerId, role: 'MATTER_MANAGER' });
-    await memberships.create({ membershipId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', workspaceId: otherWorkspaceId, userId: managerId, role: 'MATTER_MANAGER' });
-    await memberships.create({ membershipId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', workspaceId, userId: readerId, role: 'READ_ONLY' });
+    await memberships.create({
+      membershipId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      workspaceId,
+      userId: managerId,
+      role: 'MATTER_MANAGER'
+    });
+    await memberships.create({
+      membershipId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      workspaceId: otherWorkspaceId,
+      userId: managerId,
+      role: 'MATTER_MANAGER'
+    });
+    await memberships.create({
+      membershipId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      workspaceId,
+      userId: readerId,
+      role: 'READ_ONLY'
+    });
     const managerSession = await authentication.issueSession(managerId);
     managerToken = managerSession.rawToken;
     managerCsrf = csrfToken(managerSession.session.sessionId, csrfKey);
@@ -247,7 +316,10 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
     gateway = createGateway({
       port: 0,
       markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`,
-      authenticationClient: new HttpCoreAuthenticationClient(`http://127.0.0.1:${core.listeningPort}`, internalKey),
+      authenticationClient: new HttpCoreAuthenticationClient(
+        `http://127.0.0.1:${core.listeningPort}`,
+        internalKey
+      ),
       internalServiceSecret: internalKey,
       csrfSecret: csrfKey,
       allowedOrigins: [origin]
@@ -263,15 +335,47 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
   it('persists the authenticated Draft-to-MatterCreated path and replay', async () => {
     const ready = await readyOrder('forward');
     expect(ready.status).toBe('ReadyForMatter');
-    expect((await request(managerToken, undefined, 'GET', `/api/markreg/orders/${ready.orderId}`)).status).toBe(200);
-    expect((await request(managerToken, undefined, 'GET', '/api/markreg/orders?page=1&pageSize=10')).status).toBe(200);
-    const body = { workspaceId, expectedOrderVersion: ready.version, expectedCommercialSourceSha256: ready.source.snapshotSha256 };
-    const converted = await request(managerToken, managerCsrf, 'POST', `/api/markreg/orders/${ready.orderId}/create-matter`, body, 'convert-forward');
+    expect(
+      (await request(managerToken, undefined, 'GET', `/api/markreg/orders/${ready.orderId}`)).status
+    ).toBe(200);
+    expect(
+      (await request(managerToken, undefined, 'GET', '/api/markreg/orders?page=1&pageSize=10'))
+        .status
+    ).toBe(200);
+    const body = {
+      workspaceId,
+      expectedOrderVersion: ready.version,
+      expectedCommercialSourceSha256: ready.source.snapshotSha256
+    };
+    const converted = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      `/api/markreg/orders/${ready.orderId}/create-matter`,
+      body,
+      'convert-forward'
+    );
     expect(converted.status).toBe(200);
-    const first = await converted.json() as { orderStatus: string; orderVersion: number; linkKind: string; linkedAt: string };
-    expect(first).toMatchObject({ orderStatus: 'MatterCreated', orderVersion: 5, linkKind: 'CREATED_FROM_ORDER' });
+    const first = (await converted.json()) as {
+      orderStatus: string;
+      orderVersion: number;
+      linkKind: string;
+      linkedAt: string;
+    };
+    expect(first).toMatchObject({
+      orderStatus: 'MatterCreated',
+      orderVersion: 5,
+      linkKind: 'CREATED_FROM_ORDER'
+    });
     expect(Number.isFinite(Date.parse(first.linkedAt))).toBe(true);
-    const replay = await request(managerToken, managerCsrf, 'POST', `/api/markreg/orders/${ready.orderId}/create-matter`, body, 'convert-forward');
+    const replay = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      `/api/markreg/orders/${ready.orderId}/create-matter`,
+      body,
+      'convert-forward'
+    );
     expect(await replay.json()).toEqual(first);
   });
 
@@ -289,13 +393,59 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
       channel: value.channel,
       relationshipModel: value.relationshipModel
     };
-    expect((await request(managerToken, managerCsrf, 'POST', '/api/markreg/orders', { ...base, workspaceId: otherWorkspaceId }, 'wrong-workspace')).status).toBe(400);
-    expect((await request(managerToken, managerCsrf, 'POST', '/api/markreg/orders', { ...base, actorId: 'forged' }, 'spoof')).status).toBe(400);
-    expect((await request(readerToken, readerCsrf, 'POST', '/api/markreg/orders', base, 'reader')).status).toBe(403);
-    expect((await request(managerToken, undefined, 'GET', '/api/markreg/orders/order_wp05-missing')).status).toBe(404);
+    expect(
+      (
+        await request(
+          managerToken,
+          managerCsrf,
+          'POST',
+          '/api/markreg/orders',
+          { ...base, workspaceId: otherWorkspaceId },
+          'wrong-workspace'
+        )
+      ).status
+    ).toBe(400);
+    expect(
+      (
+        await request(
+          managerToken,
+          managerCsrf,
+          'POST',
+          '/api/markreg/orders',
+          { ...base, actorId: 'forged' },
+          'spoof'
+        )
+      ).status
+    ).toBe(400);
+    expect(
+      (await request(readerToken, readerCsrf, 'POST', '/api/markreg/orders', base, 'reader')).status
+    ).toBe(403);
+    expect(
+      (await request(managerToken, undefined, 'GET', '/api/markreg/orders/order_wp05-missing'))
+        .status
+    ).toBe(404);
     const ready = await readyOrder('tenant');
-    expect((await request(managerToken, undefined, 'GET', `/api/markreg/orders/${ready.orderId}`, undefined, undefined, otherWorkspaceId)).status).toBe(404);
-    const conflict = await request(managerToken, managerCsrf, 'POST', `/api/markreg/orders/${ready.orderId}/cancel`, { workspaceId, expectedVersion: 1, reason: 'stale browser state' }, 'cancel-stale');
+    expect(
+      (
+        await request(
+          managerToken,
+          undefined,
+          'GET',
+          `/api/markreg/orders/${ready.orderId}`,
+          undefined,
+          undefined,
+          otherWorkspaceId
+        )
+      ).status
+    ).toBe(404);
+    const conflict = await request(
+      managerToken,
+      managerCsrf,
+      'POST',
+      `/api/markreg/orders/${ready.orderId}/cancel`,
+      { workspaceId, expectedVersion: 1, reason: 'stale browser state' },
+      'cancel-stale'
+    );
     expect(conflict.status).toBe(409);
   });
 

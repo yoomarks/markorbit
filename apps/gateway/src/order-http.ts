@@ -119,7 +119,11 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
       );
       if (mutation) {
         requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-        validateCsrf(principal.sessionId, options.csrfSecret, request.headers['x-markorbit-csrf-token']);
+        validateCsrf(
+          principal.sessionId,
+          options.csrfSecret,
+          request.headers['x-markorbit-csrf-token']
+        );
         idempotency(request, body!);
       }
       if (!hasPermissions(principal, permissions))
@@ -140,25 +144,22 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
       );
     try {
       const search = new URLSearchParams(request.query).toString();
-      const response = await fetch(
-        `${options.markRegUrl}${path}${search ? `?${search}` : ''}`,
-        {
-          method: request.method,
-          headers: {
-            'content-type': 'application/json',
-            'x-markorbit-internal-authorization': options.internalServiceSecret,
-            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
-            'x-markorbit-workspace-id': principal.workspaceId,
-            ...(request.headers['x-correlation-id']
-              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
-              : {}),
-            ...(request.headers['idempotency-key']
-              ? { 'idempotency-key': request.headers['idempotency-key'] }
-              : {})
-          },
-          ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
-        }
-      );
+      const response = await fetch(`${options.markRegUrl}${path}${search ? `?${search}` : ''}`, {
+        method: request.method,
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': principal.workspaceId,
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {}),
+          ...(request.headers['idempotency-key']
+            ? { 'idempotency-key': request.headers['idempotency-key'] }
+            : {})
+        },
+        ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
+      });
       return json(response.status, await response.json());
     } catch (error) {
       if (error instanceof HttpError) throw error;
