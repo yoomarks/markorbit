@@ -69,6 +69,7 @@ jobs:
           name: milestone-2-reliability-failure
           path: |
             .artifacts/milestone-2-reliability.log
+            .artifacts/milestone-runtime/
             playwright-report/
             test-results/
           if-no-files-found: ignore
