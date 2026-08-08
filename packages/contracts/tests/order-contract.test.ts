@@ -6,6 +6,7 @@ import {
   explicitMatterCreatedFromOrderAuthorityConsequences,
   explicitOrderCreatedAuthorityConsequences,
   isOrderStatus,
+  m3PrimaryOrderPath,
   orderErrorCodes,
   orderStatuses,
   orderTransitionMatrix,
@@ -61,52 +62,72 @@ const commercialSource = {
 } as const satisfies CommercialSourceSnapshot;
 
 describe('Milestone 3 Order contract', () => {
-  it('locks the initial Order type and canonical publication statuses', () => {
-    expect(orderTypes).toEqual(['TRADEMARK_FILING']);
+  it('consumes the initial Order type and exact canonical publication status values', () => {
+    expect(orderTypes).toEqual(['TrademarkFiling']);
     expect(orderStatuses).toEqual([
-      'DRAFT',
-      'PENDING_CONFIRMATION',
-      'CONFIRMED',
-      'READY_FOR_MATTER',
-      'MATTER_CREATED',
-      'IN_PROGRESS',
-      'CANCELLED'
+      'Draft',
+      'PendingConfirmation',
+      'Confirmed',
+      'ReadyForMatter',
+      'MatterCreated',
+      'InProgress',
+      'WaitingForCustomer',
+      'Completed',
+      'Cancelled',
+      'Archived',
+      'DeletedReferenceOnly'
+    ]);
+    expect(m3PrimaryOrderPath).toEqual([
+      'Draft',
+      'PendingConfirmation',
+      'Confirmed',
+      'ReadyForMatter',
+      'MatterCreated',
+      'InProgress'
     ]);
     expect(new Set(orderStatuses).size).toBe(orderStatuses.length);
     expect(orderStatuses.every(isOrderStatus)).toBe(true);
-    expect(isOrderStatus('PAID')).toBe(false);
-    expect(isOrderStatus('FILED')).toBe(false);
+    expect(isOrderStatus('Paid')).toBe(false);
+    expect(isOrderStatus('Filed')).toBe(false);
+    expect(isOrderStatus('Accepted')).toBe(false);
   });
 
-  it('locks the bounded canonical transition matrix', () => {
+  it('locks the complete B02 canonical Order transition matrix', () => {
     expect(orderTransitionMatrix).toEqual({
-      DRAFT: ['PENDING_CONFIRMATION', 'CANCELLED'],
-      PENDING_CONFIRMATION: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['READY_FOR_MATTER', 'CANCELLED'],
-      READY_FOR_MATTER: ['MATTER_CREATED', 'CANCELLED'],
-      MATTER_CREATED: ['IN_PROGRESS'],
-      IN_PROGRESS: [],
-      CANCELLED: []
+      Draft: ['PendingConfirmation', 'Cancelled', 'Archived'],
+      PendingConfirmation: ['Draft', 'Confirmed', 'Cancelled'],
+      Confirmed: ['ReadyForMatter', 'InProgress', 'Cancelled'],
+      ReadyForMatter: ['MatterCreated', 'InProgress', 'Cancelled'],
+      MatterCreated: ['InProgress', 'Completed', 'Cancelled'],
+      InProgress: ['WaitingForCustomer', 'Completed', 'Cancelled'],
+      WaitingForCustomer: ['InProgress', 'Cancelled'],
+      Completed: ['Archived'],
+      Cancelled: ['Archived'],
+      Archived: [],
+      DeletedReferenceOnly: []
     });
 
-    expect(canTransitionOrder('DRAFT', 'PENDING_CONFIRMATION')).toBe(true);
-    expect(canTransitionOrder('PENDING_CONFIRMATION', 'CONFIRMED')).toBe(true);
-    expect(canTransitionOrder('CONFIRMED', 'READY_FOR_MATTER')).toBe(true);
-    expect(canTransitionOrder('READY_FOR_MATTER', 'MATTER_CREATED')).toBe(true);
-    expect(canTransitionOrder('MATTER_CREATED', 'IN_PROGRESS')).toBe(true);
+    expect(canTransitionOrder('Draft', 'PendingConfirmation')).toBe(true);
+    expect(canTransitionOrder('PendingConfirmation', 'Confirmed')).toBe(true);
+    expect(canTransitionOrder('Confirmed', 'ReadyForMatter')).toBe(true);
+    expect(canTransitionOrder('ReadyForMatter', 'MatterCreated')).toBe(true);
+    expect(canTransitionOrder('MatterCreated', 'InProgress')).toBe(true);
+    expect(canTransitionOrder('InProgress', 'WaitingForCustomer')).toBe(true);
+    expect(canTransitionOrder('Completed', 'Archived')).toBe(true);
+    expect(canTransitionOrder('Cancelled', 'Archived')).toBe(true);
   });
 
-  it('rejects invalid transitions instead of treating finance or filing as Order state', () => {
-    expect(canTransitionOrder('DRAFT', 'CONFIRMED')).toBe(false);
-    expect(canTransitionOrder('CONFIRMED', 'MATTER_CREATED')).toBe(false);
-    expect(canTransitionOrder('MATTER_CREATED', 'CANCELLED')).toBe(false);
-    expect(canTransitionOrder('CANCELLED', 'DRAFT')).toBe(false);
+  it('rejects unlisted transitions instead of treating actions, finance or filing as state', () => {
+    expect(canTransitionOrder('Draft', 'Confirmed')).toBe(false);
+    expect(canTransitionOrder('Confirmed', 'MatterCreated')).toBe(false);
+    expect(canTransitionOrder('Archived', 'Draft')).toBe(false);
+    expect(canTransitionOrder('DeletedReferenceOnly', 'Draft')).toBe(false);
 
-    expect(() => assertOrderTransition('CONFIRMED', 'MATTER_CREATED')).toThrow(
+    expect(() => assertOrderTransition('Confirmed', 'MatterCreated')).toThrow(
       OrderTransitionError
     );
     try {
-      assertOrderTransition('CONFIRMED', 'MATTER_CREATED');
+      assertOrderTransition('Confirmed', 'MatterCreated');
     } catch (error) {
       expect(error).toMatchObject({ code: 'INVALID_TRANSITION' });
     }
@@ -134,10 +155,10 @@ describe('Milestone 3 Order contract', () => {
     expect(commercialSource.sourceSha256).toHaveLength(64);
   });
 
-  it('defines exact-version commands for the complete bounded lifecycle', () => {
+  it('defines exact-version commands for the complete bounded M3 lifecycle', () => {
     const create = {
       workspaceId: 'workspace-order',
-      orderType: 'TRADEMARK_FILING',
+      orderType: 'TrademarkFiling',
       quoteId: commercialSource.quote.quoteId,
       expectedQuoteVersion: commercialSource.quote.quoteVersion,
       customerConfirmationId: commercialSource.customerConfirmation.confirmationId,
