@@ -61,7 +61,7 @@ suite('TASK 025A MarkReg audit PostgreSQL required mode', () => {
       migrationOwners,
       '@markorbit/markreg-service'
     );
-    expect(migrations.at(-1)).toMatchObject({
+    expect(migrations.find((migration) => migration.version === '0025')).toMatchObject({
       version: '0025',
       name: 'markreg_audit_hardening'
     });
