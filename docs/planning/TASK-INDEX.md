@@ -96,7 +96,18 @@
   - Evidence: `docs/tasks/MO-MVP-TASK-026-RESTART-MIGRATION-TENANT-MATRIX.md`, `docs/validation/MO-MVP-MILESTONE-002-RELIABILITY-MATRIX.{md,json}`, and TASK 027 final audit.
   - Hosted successful runs: validation `31231437103`, Milestone 2 reliability `31231437099`, Browser and Visual Validation `31231437102`.
   - Adds no product scope; owner-database reliability orchestration and exact-tree CI evidence only.
-- TASK 027 — Milestone 2 integration audit (**audit branch / Draft PR**)
+- TASK 027 — Milestone 2 integration audit (**merged in PR #38**)
+  - Merge: `cc2a7afcb79056abcf92dbe2fa4467e0c2767f8d`.
   - Recommendation: **GO**.
   - Evidence: `docs/audits/MO-MVP-MILESTONE-002-INTEGRATION-AUDIT.md`.
-  - Does not merge, freeze, tag or publish a release; explicit owner action remains required.
+  - The audit did not freeze, tag or publish Milestone 2; those remain explicit owner actions.
+
+## Milestone 3 planning
+
+- TASK 028 — Milestone 3 scope and architecture lock (**planning Draft PR**)
+  - Proposed direction: `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-003-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M3-WP-01` through `M3-WP-08` in `docs/planning/MO-MVP-MILESTONE-003-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-003-PLAN.json`.
+  - Order becomes the governed commercial service request; Payment, Invoice, provider appointment and external Filing remain outside Milestone 3.
+  - TASK 028 is planning only; implementation starts only after owner approval.
