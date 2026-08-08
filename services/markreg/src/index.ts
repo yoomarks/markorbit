@@ -74,6 +74,9 @@ export * from './matter-draft.js';
 export * from './formal-matter.js';
 export * from './document-package.js';
 export * from './audit.js';
+export * from './order-persistence.js';
+export * from './order-service.js';
+export * from './order-matter-conversion.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
