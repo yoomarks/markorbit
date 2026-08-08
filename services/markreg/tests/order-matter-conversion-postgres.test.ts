@@ -7,10 +7,8 @@ import type {
   CreateOrderCommand
 } from '@markorbit/contracts/order';
 import { ManagedDatabase } from '@markorbit/persistence';
-import {
-  OrderMatterConversionError,
-  PostgresOrderMatterConversionService
-} from '../src/order-matter-conversion.js';
+import { PostgresOrderMatterConversionService } from '../src/order-matter-conversion.js';
+import type { OrderMatterConversionError } from '../src/order-matter-conversion.js';
 import { PostgresOrderRepository } from '../src/order-persistence.js';
 import { InMemoryOrderCommercialSourceProvider, OrderService } from '../src/order-service.js';
 import {
@@ -264,9 +262,9 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
       orderVersion: 5,
       formalMatterId: 'formal-matter_wp04-forward',
       formalMatterVersion: 1,
-      linkKind: 'CREATED_FROM_ORDER',
-      linkedAt: expect.any(String)
+      linkKind: 'CREATED_FROM_ORDER'
     });
+    expect(Number.isFinite(Date.parse(converted.linkedAt))).toBe(true);
     const storedOrder = await repository.findById(WORKSPACE, ready.orderId);
     expect(storedOrder).toMatchObject({
       status: 'MatterCreated',
@@ -277,7 +275,13 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
         linkKind: 'CREATED_FROM_ORDER'
       }
     });
-    const counts = await database.getPool().query(`
+    const counts = await database.getPool().query<{
+      matters: number;
+      matter_commands: number;
+      matter_audits: number;
+      conversion_commands: number;
+      link_audits: number;
+    }>(`
       SELECT
         (SELECT count(*)::int FROM formal_matters) AS matters,
         (SELECT count(*)::int FROM formal_matter_commands) AS matter_commands,
@@ -346,8 +350,11 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     expect(left).toEqual(right);
     expect(
       Number(
-        (await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0]
-          .count
+        (
+          await database
+            .getPool()
+            .query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')
+        ).rows[0].count
       )
     ).toBe(1);
   });
@@ -369,8 +376,11 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     expect((await repository.findById(WORKSPACE, ready.orderId))?.status).toBe('ReadyForMatter');
     expect(
       Number(
-        (await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0]
-          .count
+        (
+          await database
+            .getPool()
+            .query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')
+        ).rows[0].count
       )
     ).toBe(0);
   });
@@ -390,8 +400,11 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     expect((await repository.findById(WORKSPACE, ready.orderId))?.status).toBe('ReadyForMatter');
     expect(
       Number(
-        (await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0]
-          .count
+        (
+          await database
+            .getPool()
+            .query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')
+        ).rows[0].count
       )
     ).toBe(0);
   });
@@ -439,17 +452,23 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     formalMatterId: string,
     workspaceId: string
   ) {
-    const order = (
+    const orderRow = (
       await database
         .getPool()
-        .query('SELECT commercial_source_snapshot FROM orders WHERE order_id=$1', [ready.orderId])
-    ).rows[0].commercial_source_snapshot as CommercialSourceSnapshot;
+        .query<{ commercial_source_snapshot: CommercialSourceSnapshot }>(
+          'SELECT commercial_source_snapshot FROM orders WHERE order_id=$1',
+          [ready.orderId]
+        )
+    ).rows[0];
+    if (!orderRow) throw new Error('Order conversion fixture was not found.');
+    const order = orderRow.commercial_source_snapshot;
     const draft = (
       await database
         .getPool()
-        .query('SELECT * FROM matter_drafts WHERE customer_confirmation_id=$1', [
-          order.customerConfirmation.confirmationId
-        ])
+        .query<Record<string, unknown>>(
+          'SELECT * FROM matter_drafts WHERE customer_confirmation_id=$1',
+          [order.customerConfirmation.confirmationId]
+        )
     ).rows[0] as Record<string, unknown>;
     const snapshot = {
       schemaVersion: 1,
