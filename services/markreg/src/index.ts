@@ -569,9 +569,11 @@ export function createRuntime(options: MarkRegOptions = {}) {
     {
       routes: [
         ...createOrderHttpRoutes({
-          orderService: options.orderService,
-          conversionService: options.orderMatterConversionService,
-          internalServiceSecret
+          ...(options.orderService ? { orderService: options.orderService } : {}),
+          ...(options.orderMatterConversionService
+            ? { conversionService: options.orderMatterConversionService }
+            : {}),
+          ...(internalServiceSecret ? { internalServiceSecret } : {})
         }),
         ...(fixtureRuntime
           ? [

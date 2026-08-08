@@ -353,9 +353,13 @@ export function createRuntime(options: GatewayOptions = {}) {
       routes: [
         ...createGatewayOrderRoutes({
           markRegUrl,
-          authenticationClient,
-          internalServiceSecret:
-            options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
           csrfSecret,
           allowedOrigins
         }),

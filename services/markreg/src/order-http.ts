@@ -1,10 +1,13 @@
 import {
   AuthenticationError,
+  channels,
   parseInternalWorkspacePrincipal,
+  relationshipModels,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import {
   isOrderStatus,
+  orderTypes,
   type CancelOrderCommand,
   type ConfirmOrderCommand,
   type CreateMatterFromOrderCommand,
@@ -186,6 +189,17 @@ function requiredText(body: Readonly<Record<string, unknown>>, field: string): s
   return value;
 }
 
+function requiredEnum<const T extends readonly string[]>(
+  body: Readonly<Record<string, unknown>>,
+  field: string,
+  values: T
+): T[number] {
+  const value = requiredText(body, field);
+  if (!(values as readonly string[]).includes(value))
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} is invalid.`);
+  return value as T[number];
+}
+
 export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonRoute[] {
   return [
     {
@@ -199,7 +213,7 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
         const key = idempotencyKey(request, body);
         const command: CreateOrderCommand = {
           workspaceId,
-          orderType: requiredText(body, 'orderType') as CreateOrderCommand['orderType'],
+          orderType: requiredEnum(body, 'orderType', orderTypes),
           quoteId: requiredText(body, 'quoteId') as CreateOrderCommand['quoteId'],
           expectedQuoteVersion: requiredText(body, 'expectedQuoteVersion'),
           customerConfirmationId: requiredText(
@@ -210,11 +224,8 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
             body,
             'expectedCustomerConfirmationVersion'
           ),
-          channel: requiredText(body, 'channel') as CreateOrderCommand['channel'],
-          relationshipModel: requiredText(
-            body,
-            'relationshipModel'
-          ) as CreateOrderCommand['relationshipModel'],
+          channel: requiredEnum(body, 'channel', channels),
+          relationshipModel: requiredEnum(body, 'relationshipModel', relationshipModels),
           idempotencyKey: key
         };
         return run<Readonly<OrderProjection>>(201, () =>
