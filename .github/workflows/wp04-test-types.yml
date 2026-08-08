@@ -25,27 +25,37 @@ jobs:
           from pathlib import Path
           path = Path('services/markreg/tests/order-matter-conversion-postgres.test.ts')
           text = path.read_text()
+
           text = text.replace(
               "import {\n  OrderMatterConversionError,\n  PostgresOrderMatterConversionService\n} from '../src/order-matter-conversion.js';",
               "import { PostgresOrderMatterConversionService } from '../src/order-matter-conversion.js';\nimport type { OrderMatterConversionError } from '../src/order-matter-conversion.js';",
               1,
           )
-          text = text.replace(
-              "const counts = await database.getPool().query(`\n      SELECT\n        (SELECT count(*)::int FROM formal_matters) AS matters,",
-              "const counts = await database.getPool().query<{\n      matters: number;\n      matter_commands: number;\n      matter_audits: number;\n      conversion_commands: number;\n      link_audits: number;\n    }>(`\n      SELECT\n        (SELECT count(*)::int FROM formal_matters) AS matters,",
-              1,
-          )
+
+          counts_marker = "const counts = await database.getPool().query(`\n      SELECT\n        (SELECT count(*)::int FROM formal_matters) AS matters,"
+          if counts_marker in text:
+              text = text.replace(
+                  counts_marker,
+                  "const counts = await database.getPool().query<{\n      matters: number;\n      matter_commands: number;\n      matter_audits: number;\n      conversion_commands: number;\n      link_audits: number;\n    }>(`\n      SELECT\n        (SELECT count(*)::int FROM formal_matters) AS matters,",
+                  1,
+              )
+
           text = text.replace(
               "database.getPool().query('SELECT count(*) AS count FROM formal_matters')",
               "database.getPool().query<{ count: string }>('SELECT count(*) AS count FROM formal_matters')",
           )
-          old = """    const order = (
-              await database
-                .getPool()
-                .query('SELECT commercial_source_snapshot FROM orders WHERE order_id=$1', [ready.orderId])
-            ).rows[0].commercial_source_snapshot as CommercialSourceSnapshot;
-          """
-          new = """    const orderRow = (
+
+          sql_marker = "'SELECT commercial_source_snapshot FROM orders WHERE order_id=$1'"
+          pos = text.find(sql_marker)
+          if pos < 0:
+              raise SystemExit('compatibility Order SQL marker not found')
+          start = text.rfind('    const order = (', 0, pos)
+          end_marker = ').rows[0].commercial_source_snapshot as CommercialSourceSnapshot;\n'
+          end = text.find(end_marker, pos)
+          if start < 0 or end < 0:
+              raise SystemExit('compatibility Order query bounds not found')
+          end += len(end_marker)
+          replacement = """    const orderRow = (
               await database
                 .getPool()
                 .query<{ commercial_source_snapshot: CommercialSourceSnapshot }>(
@@ -56,9 +66,8 @@ jobs:
             if (!orderRow) throw new Error('Order conversion fixture was not found.');
             const order = orderRow.commercial_source_snapshot;
           """
-          if old not in text:
-              raise SystemExit('compatibility Order query marker not found')
-          text = text.replace(old, new, 1)
+          text = text[:start] + replacement + text[end:]
+
           text = text.replace(
               ".query('SELECT * FROM matter_drafts WHERE customer_confirmation_id=$1', [",
               ".query<Record<string, unknown>>('SELECT * FROM matter_drafts WHERE customer_confirmation_id=$1', [",
