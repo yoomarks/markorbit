@@ -1,4 +1,4 @@
-import type { Permission, Role } from './identity.js';
+import { PERMISSIONS, type Permission, type Role } from './identity.js';
 
 export const SESSION_STATUSES = ['ACTIVE', 'REVOKED'] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
@@ -57,26 +57,7 @@ export function parseInternalWorkspacePrincipal(value: string | undefined): Work
     p.kind !== 'WORKSPACE' ||
     !['WORKSPACE_ADMIN', 'MATTER_MANAGER', 'REVIEWER', 'READ_ONLY'].includes(String(p.role)) ||
     !Array.isArray(p.permissions) ||
-    p.permissions.some(
-      (x) =>
-        ![
-          'workspace:read',
-          'workspace:manage',
-          'membership:read',
-          'membership:manage',
-          'matter:read',
-          'matter:create',
-          'matter:manage',
-          'review:read',
-          'review:perform',
-          'document-package:read',
-          'document-package:prepare',
-          'instruction-ledger:read',
-          'instruction-ledger:write',
-          'document-package:mark-ready',
-          'audit:read'
-        ].includes(String(x))
-    ) ||
+    p.permissions.some((x) => !PERMISSIONS.includes(x as Permission)) ||
     [p.sessionId, p.userId, p.workspaceId, p.membershipId, p.sessionExpiresAt].some(
       (x) => typeof x !== 'string' || x.length === 0
     )
