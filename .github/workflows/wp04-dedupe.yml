@@ -25,20 +25,18 @@ jobs:
           from pathlib import Path
           path = Path('services/markreg/src/order-matter-conversion.ts')
           text = path.read_text()
-          block = """  const source = await client.query(
-            'SELECT formal_matter_id FROM formal_matters WHERE workspace_id=$1 AND source_matter_draft_id=$2 AND source_matter_draft_version=$3 FOR UPDATE',
-            [matter.workspaceId, matter.sourceMatterDraftId, matter.sourceMatterDraftVersion]
-          );
-          if (source.rowCount)
-            throw new OrderMatterConversionError(
-              'DUPLICATE_SOURCE',
-              'The exact Matter Draft version already created a Formal Matter.'
-            );
-          """
-          doubled = block + block
-          if doubled not in text:
-              raise SystemExit('duplicated source guard not found')
-          path.write_text(text.replace(doubled, block, 1))
+          marker = "'SELECT formal_matter_id FROM formal_matters WHERE workspace_id=$1 AND source_matter_draft_id=$2 AND source_matter_draft_version=$3 FOR UPDATE'"
+          first = text.find(marker)
+          second = text.find(marker, first + 1)
+          if first < 0 or second < 0:
+              raise SystemExit('duplicated source query not found')
+          start = text.rfind('  const source = await client.query(', 0, second)
+          end_marker = "      'The exact Matter Draft version already created a Formal Matter.'\n    );\n"
+          end = text.find(end_marker, second)
+          if start < 0 or end < 0:
+              raise SystemExit('duplicated source guard bounds not found')
+          end += len(end_marker)
+          path.write_text(text[:start] + text[end:])
           PY
           pnpm exec prettier --write services/markreg/src/order-matter-conversion.ts
       - name: Commit source dedupe
