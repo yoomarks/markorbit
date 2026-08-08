@@ -462,6 +462,15 @@ async function insertFormalMatter(
       'DUPLICATE_SOURCE',
       'The exact Matter Draft version already created a Formal Matter.'
     );
+  const source = await client.query(
+    'SELECT formal_matter_id FROM formal_matters WHERE workspace_id=$1 AND source_matter_draft_id=$2 AND source_matter_draft_version=$3 FOR UPDATE',
+    [matter.workspaceId, matter.sourceMatterDraftId, matter.sourceMatterDraftVersion]
+  );
+  if (source.rowCount)
+    throw new OrderMatterConversionError(
+      'DUPLICATE_SOURCE',
+      'The exact Matter Draft version already created a Formal Matter.'
+    );
   await client.query(
     `INSERT INTO formal_matters (
       formal_matter_id,workspace_id,kind,status,version,
