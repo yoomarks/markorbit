@@ -1,0 +1,50 @@
+name: WP04 dedupe
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  dedupe:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Remove duplicated guard and format
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/markreg/src/order-matter-conversion.ts')
+          text = path.read_text()
+          block = """  const source = await client.query(
+            'SELECT formal_matter_id FROM formal_matters WHERE workspace_id=$1 AND source_matter_draft_id=$2 AND source_matter_draft_version=$3 FOR UPDATE',
+            [matter.workspaceId, matter.sourceMatterDraftId, matter.sourceMatterDraftVersion]
+          );
+          if (source.rowCount)
+            throw new OrderMatterConversionError(
+              'DUPLICATE_SOURCE',
+              'The exact Matter Draft version already created a Formal Matter.'
+            );
+          """
+          doubled = block + block
+          if doubled not in text:
+              raise SystemExit('duplicated source guard not found')
+          path.write_text(text.replace(doubled, block, 1))
+          PY
+          pnpm exec prettier --write services/markreg/src/order-matter-conversion.ts
+      - name: Commit source dedupe
+        run: |
+          git add services/markreg/src/order-matter-conversion.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(wp04): deduplicate Matter source guard"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
