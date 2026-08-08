@@ -62,6 +62,14 @@ pnpm infra:down
 
 ## Current milestone
 
-`MO-MVP-TASK-001 — Repository Constitution and Monorepo Bootstrap`
+`MO-MVP-TASK-028 — Milestone 3 scope and architecture lock`
 
-> Bootstrap note: the first dependency-install PR must commit `pnpm-lock.yaml` and then switch CI back to `--frozen-lockfile`.
+Milestone 2 completed its merged integration audit with a **GO** recommendation. TASK 028 is a planning-only proposal for the next milestone and recommends `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`: a durable governed Order plus an explicit Order-to-Formal-Matter relationship, while Payment, Invoice, provider appointment and external Filing remain out of scope.
+
+See:
+
+- `docs/planning/MO-MVP-MILESTONE-003-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-003-DELIVERY-PLAN.md`;
+- `docs/planning/MO-MVP-MILESTONE-003-PLAN.json`.
+
+No Milestone 3 implementation starts until the planning direction is approved.
