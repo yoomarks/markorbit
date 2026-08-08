@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type {
   CustomerConfirmationId,
   FormalMatter,
@@ -124,9 +124,7 @@ function commandFingerprint(operation: string, command: object): string {
 }
 
 function mapOrder(row: Row): Order {
-  const matter = row.matter_reference
-    ? clone(row.matter_reference as Order['matter'])
-    : undefined;
+  const matter = row.matter_reference ? clone(row.matter_reference as Order['matter']) : undefined;
   return {
     schemaVersion: 1,
     orderId: String(row.order_id) as OrderId,
@@ -155,7 +153,9 @@ function mapFormalMatter(row: Row): FormalMatter {
     kind: 'TRADEMARK_REGISTRATION',
     status: 'OPEN',
     version: 1,
-    sourceCustomerConfirmationId: String(row.source_customer_confirmation_id) as CustomerConfirmationId,
+    sourceCustomerConfirmationId: String(
+      row.source_customer_confirmation_id
+    ) as CustomerConfirmationId,
     sourceCustomerConfirmationVersion: Number(row.source_customer_confirmation_version),
     sourceMatterDraftId: String(row.source_matter_draft_id) as MatterDraftId,
     sourceMatterDraftVersion: Number(row.source_matter_draft_version),
@@ -268,7 +268,10 @@ function validateCommercialLineage(
     draft.sourceQuoteId !== confirmation.sourceQuoteId ||
     draft.sourceQuoteVersion !== confirmation.sourceQuoteVersion
   )
-    throw new OrderMatterConversionError('SOURCE_INELIGIBLE', 'Matter Draft lineage is inconsistent.');
+    throw new OrderMatterConversionError(
+      'SOURCE_INELIGIBLE',
+      'Matter Draft lineage is inconsistent.'
+    );
   if (
     draft.status !== 'READY_FOR_PROFESSIONAL_REVIEW' ||
     !draft.readiness.readyForProfessionalReview ||
@@ -342,14 +345,20 @@ function buildFormalMatter(
     sourceQuoteVersion: confirmation.sourceQuoteVersion,
     sourceSnapshot: snapshot,
     snapshotSchemaVersion: 1,
-    snapshotSha256: hashOrderPersistenceValue(canonicalFormalMatterSnapshot(snapshot)),
+    snapshotSha256: createHash('sha256')
+      .update(canonicalFormalMatterSnapshot(snapshot))
+      .digest('hex'),
     createdByUserId: principal.userId as MarkOrbitId,
     createdAt: at,
     updatedAt: at
   };
 }
 
-async function selectOrder(client: QueryClient, workspaceId: string, orderId: string): Promise<Order> {
+async function selectOrder(
+  client: QueryClient,
+  workspaceId: string,
+  orderId: string
+): Promise<Order> {
   const selected = await client.query(
     'SELECT * FROM orders WHERE workspace_id=$1 AND order_id=$2 FOR UPDATE',
     [workspaceId, orderId]
@@ -368,7 +377,10 @@ async function selectConfirmation(
     [order.workspaceId, order.commercialSourceSnapshot.customerConfirmation.confirmationId]
   );
   if (!selected.rowCount)
-    throw new OrderMatterConversionError('SOURCE_NOT_FOUND', 'Customer Confirmation was not found.');
+    throw new OrderMatterConversionError(
+      'SOURCE_NOT_FOUND',
+      'Customer Confirmation was not found.'
+    );
   return mapConfirmation(selected.rows[0] as Row);
 }
 
@@ -392,10 +404,7 @@ async function selectMatter(
     [workspaceId, formalMatterId]
   );
   if (!selected.rowCount)
-    throw new OrderMatterConversionError(
-      'FORMAL_MATTER_NOT_FOUND',
-      'Formal Matter was not found.'
-    );
+    throw new OrderMatterConversionError('FORMAL_MATTER_NOT_FOUND', 'Formal Matter was not found.');
   return mapFormalMatter(selected.rows[0] as Row);
 }
 
@@ -444,6 +453,15 @@ async function insertFormalMatter(
       );
     return;
   }
+  const source = await client.query(
+    'SELECT formal_matter_id FROM formal_matters WHERE workspace_id=$1 AND source_matter_draft_id=$2 AND source_matter_draft_version=$3 FOR UPDATE',
+    [matter.workspaceId, matter.sourceMatterDraftId, matter.sourceMatterDraftVersion]
+  );
+  if (source.rowCount)
+    throw new OrderMatterConversionError(
+      'DUPLICATE_SOURCE',
+      'The exact Matter Draft version already created a Formal Matter.'
+    );
   await client.query(
     `INSERT INTO formal_matters (
       formal_matter_id,workspace_id,kind,status,version,
@@ -535,7 +553,16 @@ async function linkOrder(
     );
   await client.query(
     'INSERT INTO order_commands(workspace_id,idempotency_key,request_fingerprint,order_id,command_type,result_version,result_snapshot,created_at) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8)',
-    [next.workspaceId, key, fingerprint, next.orderId, 'UPDATE', next.version, JSON.stringify(next), at]
+    [
+      next.workspaceId,
+      key,
+      fingerprint,
+      next.orderId,
+      'UPDATE',
+      next.version,
+      JSON.stringify(next),
+      at
+    ]
   );
   await client.query(
     'INSERT INTO order_audit(workspace_id,order_id,action,actor_id,from_status,to_status,version,correlation_id,occurred_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
@@ -638,7 +665,11 @@ export class PostgresOrderMatterConversionService {
     } catch (cause) {
       if (cause instanceof OrderMatterConversionError) throw cause;
       if (isConcurrentConflict(cause))
-        return this.resolveConcurrentResult(command.workspaceId, command.idempotencyKey, fingerprint);
+        return this.resolveConcurrentResult(
+          command.workspaceId,
+          command.idempotencyKey,
+          fingerprint
+        );
       throw unavailable(cause);
     }
   }
@@ -693,7 +724,11 @@ export class PostgresOrderMatterConversionService {
     } catch (cause) {
       if (cause instanceof OrderMatterConversionError) throw cause;
       if (isConcurrentConflict(cause))
-        return this.resolveConcurrentResult(command.workspaceId, command.idempotencyKey, fingerprint);
+        return this.resolveConcurrentResult(
+          command.workspaceId,
+          command.idempotencyKey,
+          fingerprint
+        );
       throw unavailable(cause);
     }
   }

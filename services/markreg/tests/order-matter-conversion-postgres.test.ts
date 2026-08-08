@@ -12,10 +12,7 @@ import {
   PostgresOrderMatterConversionService
 } from '../src/order-matter-conversion.js';
 import { PostgresOrderRepository } from '../src/order-persistence.js';
-import {
-  InMemoryOrderCommercialSourceProvider,
-  OrderService
-} from '../src/order-service.js';
+import { InMemoryOrderCommercialSourceProvider, OrderService } from '../src/order-service.js';
 import {
   MARKREG_TEST_MIGRATION_NAMESPACE,
   resetAndMigrateMarkRegTestDatabase
@@ -209,12 +206,7 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     const sources = new InMemoryOrderCommercialSourceProvider();
     sources.put(WORKSPACE, source);
     const repository = new PostgresOrderRepository(database, database.getPool());
-    const service = new OrderService(
-      repository,
-      sources,
-      now,
-      () => `order_wp04-${suffix}`
-    );
+    const service = new OrderService(repository, sources, now, () => `order_wp04-${suffix}`);
     const draft = await service.create(
       principal(),
       createCommand(source, `create-${suffix}`),
@@ -353,7 +345,10 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     ]);
     expect(left).toEqual(right);
     expect(
-      Number((await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0].count)
+      Number(
+        (await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0]
+          .count
+      )
     ).toBe(1);
   });
 
@@ -373,7 +368,10 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     ).rejects.toMatchObject({ code: 'STALE_SOURCE' });
     expect((await repository.findById(WORKSPACE, ready.orderId))?.status).toBe('ReadyForMatter');
     expect(
-      Number((await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0].count)
+      Number(
+        (await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0]
+          .count
+      )
     ).toBe(0);
   });
 
@@ -387,14 +385,14 @@ suite.sequential('M3-WP-04 atomic governed Order-to-Matter conversion', () => {
     `);
     const service = new PostgresOrderMatterConversionService(database, database.getPool(), now);
     await expect(
-      service.createMatterFromOrder(
-        principal(),
-        conversionCommand(ready, 'convert-matter-failure')
-      )
+      service.createMatterFromOrder(principal(), conversionCommand(ready, 'convert-matter-failure'))
     ).rejects.toMatchObject({ code: 'PERSISTENCE_UNAVAILABLE' });
     expect((await repository.findById(WORKSPACE, ready.orderId))?.status).toBe('ReadyForMatter');
     expect(
-      Number((await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0].count)
+      Number(
+        (await database.getPool().query('SELECT count(*) AS count FROM formal_matters')).rows[0]
+          .count
+      )
     ).toBe(0);
   });
 
