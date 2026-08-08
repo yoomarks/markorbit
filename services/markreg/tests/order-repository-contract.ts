@@ -199,14 +199,11 @@ export function runOrderRepositoryContract(
       ).toEqual(updated);
       await expect(
         repository.updateAtomically(
-          { ...updated, version: 3, status: 'Confirmed' } as Order,
+          { ...updated, version: 3, status: 'Confirmed' },
           1,
           'stale-update',
           hashOrderPersistenceValue({ stale: true }),
-          orderAudit(
-            { ...updated, version: 3, status: 'Confirmed' } as Order,
-            'ORDER_STATUS_CHANGED'
-          )
+          orderAudit({ ...updated, version: 3, status: 'Confirmed' }, 'ORDER_STATUS_CHANGED')
         )
       ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
       expect(await repository.findById(ORDER_WORKSPACE_ID, value.orderId)).toEqual(updated);

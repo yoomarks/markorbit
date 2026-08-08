@@ -108,7 +108,7 @@ suite.sequential('PostgreSQL durable Order repository', () => {
         .query(
           "SELECT confirmation_id,source_quote_id,source_quote_version,status,version,source_snapshot_hash FROM customer_confirmations WHERE confirmation_id='confirmation_m3-upgrade'"
         )
-    ).rows[0];
+    ).rows[0] as Record<string, unknown>;
     await migrate(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, owned);
     expect(
       (
@@ -119,9 +119,10 @@ suite.sequential('PostgreSQL durable Order repository', () => {
           )
       ).rows[0]
     ).toEqual(before);
-    expect(
-      (await database.getPool().query("SELECT to_regclass('orders') AS relation")).rows[0].relation
-    ).toBe('orders');
+    const relation = (
+      await database.getPool().query("SELECT to_regclass('orders') AS relation")
+    ).rows[0] as { relation: string | null };
+    expect(relation.relation).toBe('orders');
   });
 
   runOrderRepositoryContract(

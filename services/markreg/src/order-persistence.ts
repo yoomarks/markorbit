@@ -468,10 +468,14 @@ export class PostgresOrderRepository implements OrderRepository {
           orderId: String(value.order_id) as OrderId,
           action: String(value.action) as OrderAuditAction,
           actorId: String(value.actor_id),
-          ...(value.from_status ? { fromStatus: String(value.from_status) as OrderStatus } : {}),
+          ...(typeof value.from_status === 'string'
+            ? { fromStatus: value.from_status as OrderStatus }
+            : {}),
           toStatus: String(value.to_status) as OrderStatus,
           version: Number(value.version),
-          ...(value.correlation_id ? { correlationId: String(value.correlation_id) } : {}),
+          ...(typeof value.correlation_id === 'string'
+            ? { correlationId: value.correlation_id }
+            : {}),
           createdAt: new Date(value.occurred_at as string).toISOString()
         };
       });
