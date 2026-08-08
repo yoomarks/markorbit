@@ -25,34 +25,6 @@ const users = new InMemoryUserRepository();
 const workspaces = new InMemoryWorkspaceRepository();
 const memberships = new InMemoryMembershipRepository(users, workspaces);
 const sessions = new InMemorySessionRepository();
-
-await workspaces.create({
-  workspaceId,
-  name: 'Milestone Golden Path',
-  slug: 'milestone-golden-path'
-});
-await users.create({
-  userId,
-  email: 'milestone-golden@example.test',
-  displayName: 'Milestone Golden Path User'
-});
-await memberships.create({
-  membershipId: 'membership_milestone_golden',
-  workspaceId,
-  userId,
-  role: 'WORKSPACE_ADMIN'
-});
-await sessions.create({
-  sessionId,
-  userId,
-  tokenHash: hashSessionToken(sessionValue),
-  status: 'ACTIVE',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  expiresAt: '2036-01-01T00:00:00.000Z',
-  revokedAt: null,
-  version: 1
-});
-
 const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
 const runtime = createRuntime({ port, authentication, internalServiceSecret });
 
@@ -63,7 +35,40 @@ async function shutdown(signal: string) {
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.once(signal, () => void shutdown(signal));
 
-await runtime.start();
-process.stdout.write(
-  `milestone-auth-core: listening on http://127.0.0.1:${runtime.listeningPort} for ${workspaceId}.\n`
-);
+async function main() {
+  await workspaces.create({
+    workspaceId,
+    name: 'Milestone Golden Path',
+    slug: 'milestone-golden-path'
+  });
+  await users.create({
+    userId,
+    email: 'milestone-golden@example.test',
+    displayName: 'Milestone Golden Path User'
+  });
+  await memberships.create({
+    membershipId: 'membership_milestone_golden',
+    workspaceId,
+    userId,
+    role: 'WORKSPACE_ADMIN'
+  });
+  await sessions.create({
+    sessionId,
+    userId,
+    tokenHash: hashSessionToken(sessionValue),
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    expiresAt: '2036-01-01T00:00:00.000Z',
+    revokedAt: null,
+    version: 1
+  });
+  await runtime.start();
+  process.stdout.write(
+    `milestone-auth-core: listening on http://127.0.0.1:${runtime.listeningPort} for ${workspaceId}.\n`
+  );
+}
+
+void main().catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
+  process.exitCode = 1;
+});
