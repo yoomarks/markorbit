@@ -111,16 +111,4 @@ pkg.scripts['test:order:client'] =
   'pnpm --filter @markorbit/markreg-web exec vitest run tests/order-api.test.ts';
 fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 
-replaceOnce(
-  '.github/workflows/ci.yml',
-  "      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'\n",
-  "      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'\n      MARKREG_ORDER_HTTP_REQUIRED: '1'\n"
-);
-replaceOnce(
-  '.github/workflows/ci.yml',
-  "      - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-matter-conversion-postgres.test.ts\n      - run: pnpm test:audit-idempotency:postgres",
-  "      - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-matter-conversion-postgres.test.ts\n      - name: Run authenticated Order HTTP integration\n        run: pnpm test:order:http\n      - name: Run typed Order browser client tests\n        run: pnpm test:order:client\n      - run: pnpm test:audit-idempotency:postgres"
-);
-
 fs.rmSync('scripts/wp05-bootstrap.mjs');
-fs.rmSync('.github/workflows/wp05-bootstrap.yml');
