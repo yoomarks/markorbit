@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { MarkOrbitId, Permission, WorkspacePrincipal } from '@markorbit/contracts';
 import {
   canTransitionOrder,
   type CancelOrderCommand,
@@ -6,16 +7,12 @@ import {
   type ConfirmOrderCommand,
   type CreateOrderCommand,
   type EvaluateOrderReadinessCommand,
-  type MarkOrbitId,
   type Order,
   type OrderId,
   type OrderMatterReference,
   type OrderStatus,
-  type Permission,
-  type RequestOrderConfirmationCommand,
-  type WorkspacePrincipal
+  type RequestOrderConfirmationCommand
 } from '@markorbit/contracts/order';
-import type { WorkspacePrincipal as CanonicalWorkspacePrincipal } from '@markorbit/contracts';
 import {
   hashCommercialSourceSnapshot,
   hashOrderPersistenceValue,
@@ -96,11 +93,7 @@ export interface OrderProjectionListResponse {
 
 const clone = <T>(value: T): T => structuredClone(value);
 
-function authorize(
-  principal: CanonicalWorkspacePrincipal,
-  workspaceId: string,
-  permission: Permission
-): void {
+function authorize(principal: WorkspacePrincipal, workspaceId: string, permission: Permission): void {
   if (principal.kind !== 'WORKSPACE')
     throw new OrderServiceError('AUTHENTICATION_REQUIRED', 'A Workspace Principal is required.');
   if (principal.workspaceId !== workspaceId)
@@ -380,7 +373,11 @@ export class OrderService {
 
   private async transition(
     principal: WorkspacePrincipal,
-    command: RequestOrderConfirmationCommand | ConfirmOrderCommand | EvaluateOrderReadinessCommand | CancelOrderCommand,
+    command:
+      | RequestOrderConfirmationCommand
+      | ConfirmOrderCommand
+      | EvaluateOrderReadinessCommand
+      | CancelOrderCommand,
     operation: string,
     toStatus: OrderStatus,
     permission: Permission,
