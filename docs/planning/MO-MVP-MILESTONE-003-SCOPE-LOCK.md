@@ -34,11 +34,11 @@ Order is the missing commercial bridge. Adding Payment or external Filing first 
 
 ## 3. Direction comparison
 
-| Option | Outcome | Dependency fit | Risk | Recommendation |
-| --- | --- | --- | --- | --- |
-| **A — Durable Order + Order↔Matter linkage** | durable commercial service request, confirmation, readiness and explicit Matter relationship | directly builds on M2 Auth / Workspace / Quote / Confirmation / Formal Matter | medium | **SELECT** |
-| B — Payment / Invoice transaction layer | settlement, payment-provider and financial records | requires a stable Order and explicit contracting/payment-receiver model first | high | defer |
-| C — External filing execution | provider/office credentials, transmission, official truth | requires A plus protected external-action and provider/office integration | very high | defer |
+| Option                                       | Outcome                                                                                      | Dependency fit                                                                | Risk      | Recommendation |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------- | -------------- |
+| **A — Durable Order + Order↔Matter linkage** | durable commercial service request, confirmation, readiness and explicit Matter relationship | directly builds on M2 Auth / Workspace / Quote / Confirmation / Formal Matter | medium    | **SELECT**     |
+| B — Payment / Invoice transaction layer      | settlement, payment-provider and financial records                                           | requires a stable Order and explicit contracting/payment-receiver model first | high      | defer          |
+| C — External filing execution                | provider/office credentials, transmission, official truth                                    | requires A plus protected external-action and provider/office integration     | very high | defer          |
 
 Milestone 3 chooses A only. Options B and C remain future milestones.
 
@@ -291,16 +291,16 @@ Milestone 3 does **not** include:
 
 To prevent a repeat of the Milestone 2 task-number drift, this scope lock uses milestone-local work-package IDs. Global task numbers should be assigned only after TASK 028 is approved.
 
-| Work package | Objective | Depends on |
-| --- | --- | --- |
-| `M3-WP-01` | Order contract, canonical states, commercial snapshot and authority tests | TASK 028 approved |
-| `M3-WP-02` | MarkReg PostgreSQL Order repository, migrations, idempotency and audit | WP-01 |
-| `M3-WP-03` | Order service commands, transition guards and Workspace authorization | WP-01–02 |
-| `M3-WP-04` | atomic governed Order-to-Matter conversion/link compatibility | WP-02–03 + existing Formal Matter |
-| `M3-WP-05` | authenticated Gateway Order API and typed client | WP-03–04 |
-| `M3-WP-06` | markreg.com Order journey, states and direct-route recovery | WP-05 |
-| `M3-WP-07` | restart/concurrency/tenant/browser reliability matrix | WP-01–06 |
-| `M3-WP-08` | independent Milestone 3 integration/authority audit | WP-07 |
+| Work package | Objective                                                                 | Depends on                        |
+| ------------ | ------------------------------------------------------------------------- | --------------------------------- |
+| `M3-WP-01`   | Order contract, canonical states, commercial snapshot and authority tests | TASK 028 approved                 |
+| `M3-WP-02`   | MarkReg PostgreSQL Order repository, migrations, idempotency and audit    | WP-01                             |
+| `M3-WP-03`   | Order service commands, transition guards and Workspace authorization     | WP-01–02                          |
+| `M3-WP-04`   | atomic governed Order-to-Matter conversion/link compatibility             | WP-02–03 + existing Formal Matter |
+| `M3-WP-05`   | authenticated Gateway Order API and typed client                          | WP-03–04                          |
+| `M3-WP-06`   | markreg.com Order journey, states and direct-route recovery               | WP-05                             |
+| `M3-WP-07`   | restart/concurrency/tenant/browser reliability matrix                     | WP-01–06                          |
+| `M3-WP-08`   | independent Milestone 3 integration/authority audit                       | WP-07                             |
 
 Each work package should remain one bounded branch/PR unless a dependency split is explicitly recorded before implementation.
 

@@ -23,16 +23,16 @@ Milestone-local work-package IDs are used so planning cannot collide with the ex
 
 ## Staged rollout
 
-| Stage | Work package | Deliverable | Acceptance | Rollback boundary |
-| ---: | --- | --- | --- | --- |
-| 1 | `M3-WP-01` | Order contracts, status semantics, commercial snapshot and authority fixtures | compile-time contract tests; canonical transitions; source/version and false-consequence fixtures | additive contracts can be removed while unused |
-| 2 | `M3-WP-02` | MarkReg Order persistence | PostgreSQL migration, memory/Postgres parity, idempotency, version conflict, append-only audit | forward repair after schema is shared |
-| 3 | `M3-WP-03` | Order service lifecycle | create/read/list/confirm/readiness/cancel with Principal reauthorization and server-owned transitions | service operation flags; retain compatible rows |
-| 4 | `M3-WP-04` | Order-to-Matter conversion/link | exact-version atomic Matter create/link, replay/conflict, compatibility link for pre-M3 Matter | retain Order/Matter data; disable orchestration |
-| 5 | `M3-WP-05` | Gateway API + typed client | authenticated HTTP matrix, non-enumerating tenant isolation, actor/workspace spoof rejection | remove route/client only |
-| 6 | `M3-WP-06` | markreg.com Order journey | desktop/mobile explicit create-confirm-ready-createMatter path, direct URL and refresh recovery | UI route/feature boundary |
-| 7 | `M3-WP-07` | reliability matrix | migration/restart/outage/concurrency/tenant/repeatability/browser exact-head evidence | test/orchestration only; defects fixed forward |
-| 8 | `M3-WP-08` | independent integration audit | scope, ownership, authority and reproducibility audit with release recommendation | documentation only |
+| Stage | Work package | Deliverable                                                                   | Acceptance                                                                                            | Rollback boundary                               |
+| ----: | ------------ | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+|     1 | `M3-WP-01`   | Order contracts, status semantics, commercial snapshot and authority fixtures | compile-time contract tests; canonical transitions; source/version and false-consequence fixtures     | additive contracts can be removed while unused  |
+|     2 | `M3-WP-02`   | MarkReg Order persistence                                                     | PostgreSQL migration, memory/Postgres parity, idempotency, version conflict, append-only audit        | forward repair after schema is shared           |
+|     3 | `M3-WP-03`   | Order service lifecycle                                                       | create/read/list/confirm/readiness/cancel with Principal reauthorization and server-owned transitions | service operation flags; retain compatible rows |
+|     4 | `M3-WP-04`   | Order-to-Matter conversion/link                                               | exact-version atomic Matter create/link, replay/conflict, compatibility link for pre-M3 Matter        | retain Order/Matter data; disable orchestration |
+|     5 | `M3-WP-05`   | Gateway API + typed client                                                    | authenticated HTTP matrix, non-enumerating tenant isolation, actor/workspace spoof rejection          | remove route/client only                        |
+|     6 | `M3-WP-06`   | markreg.com Order journey                                                     | desktop/mobile explicit create-confirm-ready-createMatter path, direct URL and refresh recovery       | UI route/feature boundary                       |
+|     7 | `M3-WP-07`   | reliability matrix                                                            | migration/restart/outage/concurrency/tenant/repeatability/browser exact-head evidence                 | test/orchestration only; defects fixed forward  |
+|     8 | `M3-WP-08`   | independent integration audit                                                 | scope, ownership, authority and reproducibility audit with release recommendation                     | documentation only                              |
 
 ## M3-WP-01 — Order contract and canonical state boundary
 
