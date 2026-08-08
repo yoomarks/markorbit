@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Align semantics, exports and CI
+      - name: Align semantics and exports
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -66,32 +66,14 @@ jobs:
                   raise SystemExit('audit export marker not found')
               text = text.replace(marker, marker + order_exports, 1)
           index.write_text(text)
-
-          ci = Path('.github/workflows/ci.yml')
-          text = ci.read_text()
-          env_marker = "      MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED: '1'\n"
-          env_line = "      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'\n"
-          if env_line not in text:
-              if env_marker not in text:
-                  raise SystemExit('WP03 persistence env marker not found')
-              text = text.replace(env_marker, env_marker + env_line, 1)
-          test_marker = "      - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-service-postgres.test.ts\n"
-          test_line = "      - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/order-matter-conversion-postgres.test.ts\n"
-          if test_line not in text:
-              if test_marker not in text:
-                  raise SystemExit('WP03 test marker not found')
-              text = text.replace(test_marker, test_marker + test_line, 1)
-          ci.write_text(text)
           PY
           pnpm exec prettier --write \
             services/markreg/src/order-matter-conversion.ts \
             services/markreg/tests/order-matter-conversion-postgres.test.ts \
             services/markreg/src/index.ts
-      - name: Commit finalized WP04 sources and remove cleanup workflow
+      - name: Commit source cleanup
         run: |
-          git rm .github/workflows/wp04-cleanup.yml
-          git add .github/workflows/ci.yml \
-            services/markreg/src/index.ts \
+          git add services/markreg/src/index.ts \
             services/markreg/src/order-matter-conversion.ts \
             services/markreg/tests/order-matter-conversion-postgres.test.ts
           git config user.name "github-actions[bot]"
