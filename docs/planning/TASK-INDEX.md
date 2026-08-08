@@ -89,8 +89,14 @@
   - Prior audit status: `TASK_025_APPROVED_SCOPE_BLOCKED`; authorization: `TASK_025_APPROVED_SCOPE_REMEDIATION_AUTHORIZED`; final status: `TASK_025_APPROVED_SCOPE_CLOSED_BY_REMEDIATION`.
   - Evidence: `docs/planning/MO-MVP-MILESTONE-002-IMPLEMENTATION-TRACEABILITY.md` and `docs/validation/MO-MVP-TASK-025A-AUDIT-IDEMPOTENCY-MATRIX.md`.
   - Owner decision narrowed remediation to MarkReg/Platform Formal Matter and Document Package commands; Core-wide and Execution-wide audit remain outside scope. Migration 0025 adds bounded denial audit and Workspace-scoped authenticated reads.
-- TASK 025A — Milestone 2 plan reconciliation and audit/idempotency gap audit (**completed locally; documentation-only blocked outcome**)
-  - No TASK 026 or TASK 027 work was started.
-- TASK 026 — Milestone 2 restart, migration and tenant-isolation matrix (**Draft PR implementation; hosted evidence pending**)
-  - Evidence: `docs/tasks/MO-MVP-TASK-026-RESTART-MIGRATION-TENANT-MATRIX.md` and `docs/validation/MO-MVP-MILESTONE-002-RELIABILITY-MATRIX.{md,json}`.
-  - Adds no product scope; owner-database reliability orchestration and exact-head CI evidence only.
+- TASK 025A — Milestone 2 plan reconciliation and audit/idempotency gap audit (**completed; bounded remediation authorized and closed**)
+  - Historical numbering drift remains recorded in the implementation traceability document rather than rewritten.
+- TASK 026 — Milestone 2 restart, migration and tenant-isolation matrix (**merged in PR #37; hosted exact-tree evidence passed**)
+  - Merge: `5badc2ea7e2c074357bef48b268f5359c8f9878f`; implementation tree `4e1a01e770cae99c34161f626c963432551f44f4`.
+  - Evidence: `docs/tasks/MO-MVP-TASK-026-RESTART-MIGRATION-TENANT-MATRIX.md`, `docs/validation/MO-MVP-MILESTONE-002-RELIABILITY-MATRIX.{md,json}`, and TASK 027 final audit.
+  - Hosted successful runs: validation `31231437103`, Milestone 2 reliability `31231437099`, Browser and Visual Validation `31231437102`.
+  - Adds no product scope; owner-database reliability orchestration and exact-tree CI evidence only.
+- TASK 027 — Milestone 2 integration audit (**audit branch / Draft PR**)
+  - Recommendation: **GO**.
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-002-INTEGRATION-AUDIT.md`.
+  - Does not merge, freeze, tag or publish a release; explicit owner action remains required.
