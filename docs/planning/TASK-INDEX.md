@@ -127,14 +127,24 @@
 
 Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confirmed` is not paid and `MatterCreated` is not filed.
 
-## Milestone 4 planning
+## Milestone 4
 
-- TASK 029 — Milestone 4 scope and architecture lock (**proposed for owner approval**)
-  - Recommended direction: `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
+- TASK 029 — Milestone 4 scope and architecture lock (**approved by merge of PR #48**)
+  - Approved direction: `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
   - Scope: `docs/planning/MO-MVP-MILESTONE-004-SCOPE-LOCK.md`.
   - Delivery graph: milestone-local work packages `M4-WP-01` through `M4-WP-09` in `docs/planning/MO-MVP-MILESTONE-004-DELIVERY-PLAN.md`.
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-004-PLAN.json`.
-  - Planning record: `docs/tasks/MO-MVP-TASK-029-MILESTONE-004-SCOPE-LOCK.md`.
-  - Selection rationale: close durable provider execution/return before finance or official filing.
+  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.{md,json}`.
   - Governing locks: Provider Supply Capability is not user Capability evidence; Provider Return is not Official Truth; Payment is not performance/authority/acceptance/completion.
-  - No Milestone 4 implementation starts until this planning direction is approved.
+- M4-WP-01 — Provider execution contracts and canonical authority boundary (**implemented in PR #49**)
+  - Shared contract: `@markorbit/contracts/provider-execution`.
+  - Vocabulary/authority evidence: `docs/architecture/PROVIDER-EXECUTION-AUTHORITY-BOUNDARY.md`.
+  - No persistence, Allocation runtime, Provider Return runtime, finance, legal appointment or Official Truth is created by this work package.
+- M4-WP-02 — Durable authenticated Execution filing-governance source (**next after WP-01 merge**)
+- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**not started**)
+- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**not started**)
+- M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**not started**)
+- M4-WP-06 — Provider Return and exact Execution evidence handoff (**not started**)
+- M4-WP-07 — Authenticated Gateway and controlled operations/provider journey (**not started**)
+- M4-WP-08 — Reliability matrix (**not started**)
+- M4-WP-09 — Independent integration and authority audit (**not started**)
