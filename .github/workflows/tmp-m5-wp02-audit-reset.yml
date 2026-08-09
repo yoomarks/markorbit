@@ -22,22 +22,8 @@ jobs:
           from pathlib import Path
           p = Path('services/execution/tests/evidence-review-postgres.test.ts')
           text = p.read_text()
-          old = '''      await database.getPool().query(
-        `DELETE FROM execution_evidence_review_commands;
-         DELETE FROM execution_evidence_correction_requests;
-         DELETE FROM execution_evidence_review_decisions;
-         DELETE FROM execution_evidence_review_audit;
-         DELETE FROM execution_evidence_review_sources;`
-      );'''
-          new = '''      await database.getPool().query(
-        `TRUNCATE
-           execution_evidence_review_audit,
-           execution_evidence_review_commands,
-           execution_evidence_correction_requests,
-           execution_evidence_review_decisions,
-           execution_evidence_review_sources
-         RESTART IDENTITY CASCADE`
-      );'''
+          old = "      await database.getPool().query(\n        `DELETE FROM execution_evidence_review_commands;\n         DELETE FROM execution_evidence_correction_requests;\n         DELETE FROM execution_evidence_review_decisions;\n         DELETE FROM execution_evidence_review_audit;\n         DELETE FROM execution_evidence_review_sources;`\n      );"
+          new = "      await database.getPool().query(\n        `TRUNCATE\n           execution_evidence_review_audit,\n           execution_evidence_review_commands,\n           execution_evidence_correction_requests,\n           execution_evidence_review_decisions,\n           execution_evidence_review_sources\n         RESTART IDENTITY CASCADE`\n      );"
           if old not in text:
               raise SystemExit('append-only intra-test reset marker missing')
           p.write_text(text.replace(old, new, 1))
