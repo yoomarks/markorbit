@@ -45,7 +45,10 @@ export class PostgresProviderReturnEvidenceRepository implements ExecutionProvid
     }
   }
 
-  async findReceiptForProviderReturn(providerReturnId: ProviderReturnId, providerReturnVersion: number) {
+  async findReceiptForProviderReturn(
+    providerReturnId: ProviderReturnId,
+    providerReturnVersion: number
+  ) {
     try {
       const result = await this.query.query(
         'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE provider_return_id=$1 AND provider_return_version=$2',
@@ -84,7 +87,10 @@ export class PostgresProviderReturnEvidenceRepository implements ExecutionProvid
 
         const exact = await client.query(
           'SELECT evidence_handoff_id,receipt_record FROM execution_provider_return_evidence_receipts WHERE provider_return_id=$1 AND provider_return_version=$2 FOR UPDATE',
-          [receipt.evidenceHandoff.providerReturn.id, receipt.evidenceHandoff.providerReturn.version]
+          [
+            receipt.evidenceHandoff.providerReturn.id,
+            receipt.evidenceHandoff.providerReturn.version
+          ]
         );
         if (exact.rowCount) {
           const existing = (exact.rows[0] as Row)
@@ -134,13 +140,7 @@ export class PostgresProviderReturnEvidenceRepository implements ExecutionProvid
             receipt.receivedAt
           ]
         );
-        await this.insertCommand(
-          client,
-          workspaceId,
-          idempotencyKey,
-          requestFingerprint,
-          receipt
-        );
+        await this.insertCommand(client, workspaceId, idempotencyKey, requestFingerprint, receipt);
         await client.query(
           `INSERT INTO execution_provider_return_evidence_audit(
              workspace_id,evidence_handoff_id,provider_return_id,provider_return_version,

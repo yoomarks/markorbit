@@ -96,7 +96,8 @@ export class PostgresProviderReturnRepository implements ProviderReturnRepositor
         if (expectedSuperseded) {
           if (
             !current.rowCount ||
-            String((current.rows[0] as Row).provider_return_id) !== expectedSuperseded.providerReturnId ||
+            String((current.rows[0] as Row).provider_return_id) !==
+              expectedSuperseded.providerReturnId ||
             Number((current.rows[0] as Row).version) !== expectedSuperseded.version
           )
             throw new ProviderReturnError(

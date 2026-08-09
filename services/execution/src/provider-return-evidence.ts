@@ -200,7 +200,11 @@ export class ProviderReturnEvidenceService {
 
     const release = await this.releases.findById(input.command.executionReleaseId);
     if (!release)
-      throw new ProviderReturnEvidenceError('STALE_SOURCE', 'Execution Release was not found.', 409);
+      throw new ProviderReturnEvidenceError(
+        'STALE_SOURCE',
+        'Execution Release was not found.',
+        409
+      );
     if (
       release.version !== input.command.expectedExecutionReleaseVersion ||
       release.status !== 'RELEASED_FOR_EXECUTION'

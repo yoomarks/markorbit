@@ -31,7 +31,9 @@ import { ProviderReturnService } from '../src/provider-return.js';
 const url = process.env.MGSN_TEST_DATABASE_URL;
 const required = process.env.MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED === '1';
 if (required && !url)
-  throw new Error('MGSN_TEST_DATABASE_URL is required when MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED=1.');
+  throw new Error(
+    'MGSN_TEST_DATABASE_URL is required when MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED=1.'
+  );
 const suite = url ? describe : describe.skip;
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const providerWorkspaceId = '22222222-2222-4222-8222-222222222222';
@@ -79,7 +81,8 @@ suite('M4-WP-06 durable Provider Return and exact evidence handoff', () => {
     new ProviderRegistryService(
       providerRepository(),
       {
-        getWorkspace: (id) => Promise.resolve(core.get(id) ? structuredClone(core.get(id)) : undefined)
+        getWorkspace: (id) =>
+          Promise.resolve(core.get(id) ? structuredClone(core.get(id)) : undefined)
       },
       () => clock,
       () => `provider_wp06_${++providerSequence}`,
@@ -315,7 +318,9 @@ suite('M4-WP-06 durable Provider Return and exact evidence handoff', () => {
          mgsn_providers
        CASCADE`
     );
-    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE');
+    await pool.query(
+      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'
+    );
     await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');
     await pool.query(
       'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'
@@ -417,11 +422,10 @@ suite('M4-WP-06 durable Provider Return and exact evidence handoff', () => {
     const value = await accepted();
     const first = await createReturn(value);
     clock = '2026-08-09T11:10:00.000Z';
-    const corrected = await createReturn(
-      value,
-      'return-correct',
-      { id: first.providerReturnId, version: first.version }
-    );
+    const corrected = await createReturn(value, 'return-correct', {
+      id: first.providerReturnId,
+      version: first.version
+    });
     expect(corrected.providerReturnId).toBe(first.providerReturnId);
     expect(corrected.version).toBe(2);
     expect(corrected.supersedes).toEqual({ id: first.providerReturnId, version: 1 });

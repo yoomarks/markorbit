@@ -133,7 +133,9 @@ function normalizeArtifacts(values: ReadonlyArray<Readonly<ProviderReturnArtifac
     const reference = cleanText(value.reference, `artifacts[${index}].reference`);
     const fileName = value.fileName?.trim();
     const mediaType = value.mediaType?.trim();
-    const sha256 = value.sha256 ? exactSha256(value.sha256, `artifacts[${index}].sha256`) : undefined;
+    const sha256 = value.sha256
+      ? exactSha256(value.sha256, `artifacts[${index}].sha256`)
+      : undefined;
     return {
       reference,
       ...(fileName ? { fileName } : {}),
@@ -247,9 +249,15 @@ export class ProviderReturnService {
         403
       );
     if (provider.operationalStatus !== 'ACTIVE')
-      throw new ProviderReturnError('PROVIDER_SUSPENDED', 'Provider is not operationally active.', 409);
+      throw new ProviderReturnError(
+        'PROVIDER_SUSPENDED',
+        'Provider is not operationally active.',
+        409
+      );
 
-    const current = await this.repository.findCurrentProviderReturnForAllocation(allocation.allocationId);
+    const current = await this.repository.findCurrentProviderReturnForAllocation(
+      allocation.allocationId
+    );
     let superseded: ProviderReturnRecord | undefined;
     let providerReturnId = this.providerReturnIdFactory();
     let version = 1;
@@ -354,9 +362,17 @@ export class ProviderReturnService {
     );
     const providerReturn = await this.repository.findProviderReturn(command.providerReturnId);
     if (!providerReturn)
-      throw new ProviderReturnError('PROVIDER_RETURN_NOT_FOUND', 'Provider Return was not found.', 404);
+      throw new ProviderReturnError(
+        'PROVIDER_RETURN_NOT_FOUND',
+        'Provider Return was not found.',
+        404
+      );
     if (providerReturn.workspaceId !== workspaceId)
-      throw new ProviderReturnError('PERMISSION_DENIED', 'Provider Return belongs to another Workspace.', 403);
+      throw new ProviderReturnError(
+        'PERMISSION_DENIED',
+        'Provider Return belongs to another Workspace.',
+        403
+      );
     if (providerReturn.version !== command.expectedProviderReturnVersion)
       throw new ProviderReturnError(
         'RETURN_SUPERSEDED',
@@ -378,12 +394,19 @@ export class ProviderReturnService {
         409
       );
 
-    const servicePackage = await this.servicePackages.findServicePackage(providerReturn.servicePackage.id);
+    const servicePackage = await this.servicePackages.findServicePackage(
+      providerReturn.servicePackage.id
+    );
     if (!servicePackage || servicePackage.version !== Number(providerReturn.servicePackage.version))
-      throw new ProviderReturnError('STALE_SOURCE', 'Service Package source is no longer exact.', 409);
+      throw new ProviderReturnError(
+        'STALE_SOURCE',
+        'Service Package source is no longer exact.',
+        409
+      );
     if (
       servicePackage.source.executionRelease.id !== command.executionReleaseId ||
-      String(servicePackage.source.executionRelease.version) !== String(command.expectedExecutionReleaseVersion) ||
+      String(servicePackage.source.executionRelease.version) !==
+        String(command.expectedExecutionReleaseVersion) ||
       servicePackage.source.filingExecutionTaskDraft.id !== command.filingExecutionTaskDraftId ||
       String(servicePackage.source.filingExecutionTaskDraft.version) !==
         String(command.expectedFilingExecutionTaskDraftVersion)
@@ -414,9 +437,17 @@ export class ProviderReturnService {
     if (!allocation)
       throw new ProviderReturnError('ALLOCATION_NOT_FOUND', 'Allocation was not found.', 404);
     if (allocation.workspaceId !== workspaceId)
-      throw new ProviderReturnError('PERMISSION_DENIED', 'Allocation belongs to another Workspace.', 403);
+      throw new ProviderReturnError(
+        'PERMISSION_DENIED',
+        'Allocation belongs to another Workspace.',
+        403
+      );
     if (allocation.version !== expectedVersion || allocation.status !== 'ACTIVE')
-      throw new ProviderReturnError('ALLOCATION_NOT_CURRENT', 'Allocation is not current and active.', 409);
+      throw new ProviderReturnError(
+        'ALLOCATION_NOT_CURRENT',
+        'Allocation is not current and active.',
+        409
+      );
     if (allocation.correlationId !== correlationId)
       throw new ProviderReturnError(
         'SOURCE_VERSION_MISMATCH',
@@ -471,12 +502,20 @@ export class ProviderReturnService {
   ) {
     const servicePackage = await this.servicePackages.findServicePackage(servicePackageId);
     if (!servicePackage)
-      throw new ProviderReturnError('SERVICE_PACKAGE_NOT_FOUND', 'Service Package was not found.', 404);
+      throw new ProviderReturnError(
+        'SERVICE_PACKAGE_NOT_FOUND',
+        'Service Package was not found.',
+        404
+      );
     if (
       servicePackage.workspaceId !== workspaceId ||
       servicePackage.servicePackageId !== allocation.servicePackage.id
     )
-      throw new ProviderReturnError('PERMISSION_DENIED', 'Service Package lineage does not match.', 403);
+      throw new ProviderReturnError(
+        'PERMISSION_DENIED',
+        'Service Package lineage does not match.',
+        403
+      );
     if (
       servicePackage.version !== expectedVersion ||
       Number(allocation.servicePackage.version) !== expectedVersion ||

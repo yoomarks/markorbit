@@ -77,10 +77,13 @@ const task: FilingExecutionTaskDraft = {
     classes: ['25'],
     goodsServices: ['clothing'],
     filingBasis: '1(b)',
-    representativeRequirement: 'REVIEW_REQUIRED',
-    documentReferences: ['document_wp06'],
-    instructionReferences: ['instruction_wp06'],
-    executionChannel: 'INTERNAL_MANUAL_PREPARATION'
+    useLockedDocuments: true,
+    representativeUse: 'PERMITTED_WHERE_REQUIRED',
+    permittedFilingChannel: 'INTERNAL_MANUAL_PREPARATION',
+    permittedExecutionWindow: {
+      startsAt: '2026-08-10T09:00:00.000Z',
+      endsAt: '2026-08-10T17:00:00.000Z'
+    }
   },
   jurisdiction: 'US',
   applicant: 'Applicant WP06',
@@ -322,7 +325,9 @@ suite('M4-WP-06 Execution Provider Return evidence handoff', () => {
     await expect(
       database
         .getPool()
-        .query("UPDATE execution_provider_return_evidence_audit SET action='PROVIDER_RETURN_EVIDENCE_RECEIVED'")
+        .query(
+          "UPDATE execution_provider_return_evidence_audit SET action='PROVIDER_RETURN_EVIDENCE_RECEIVED'"
+        )
     ).rejects.toThrow(/append-only/);
   });
 });
