@@ -20,7 +20,7 @@ const groups = [
   {
     id: 'preflight',
     command: 'pnpm',
-    args: ['build:order-journey-deps']
+    args: ['build:audit-idempotency-deps']
   },
   {
     id: 'topology',
@@ -60,19 +60,8 @@ const groups = [
   },
   {
     id: 'outage',
-    command: 'pnpm',
-    args: [
-      'exec',
-      'vitest',
-      'run',
-      '--no-file-parallelism',
-      'scripts/milestone2-startup-outage.integration.test.ts',
-      'services/markreg/tests/order-postgres.test.ts',
-      'services/markreg/tests/order-matter-conversion-postgres.test.ts',
-      '-t',
-      'OUT-MARKREG-STARTUP|maps unavailable reads|maps a database outage'
-    ],
-    env: { MILESTONE2_OUTAGE_REQUIRED: '1' }
+    command: 'node',
+    args: ['scripts/run-order-outage.mjs']
   },
   {
     id: 'concurrency',
@@ -92,17 +81,8 @@ const groups = [
   },
   {
     id: 'tenant',
-    command: 'pnpm',
-    args: [
-      'exec',
-      'vitest',
-      'run',
-      '--no-file-parallelism',
-      'scripts/order-http.integration.test.ts',
-      'services/markreg/tests/order-matter-conversion-postgres.test.ts',
-      '-t',
-      'enforces typed auth, spoof, tenant and conflict boundaries|conceals a cross-Workspace compatibility Matter'
-    ]
+    command: 'node',
+    args: ['scripts/run-order-tenant-isolation.mjs']
   },
   {
     id: 'repeatability',
