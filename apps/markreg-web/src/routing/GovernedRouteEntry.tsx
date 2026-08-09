@@ -1,8 +1,10 @@
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createApiClient } from '../api/client.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
-import { parseMarkregRoute, type MarkregRouteResult } from './markreg-route.js';
+import { OrderJourney } from '../OrderJourney.js';
+import { parseMarkregRoute, type MarkregRoute, type MarkregRouteResult } from './markreg-route.js';
 
 type Loaded = {
   record: Record<string, unknown>;
@@ -23,6 +25,7 @@ const unwrap = (value: unknown): Record<string, unknown> => {
     'quote',
     'confirmation',
     'matterDraft',
+    'formalMatter',
     'reviewCase',
     'preparationLock',
     'filingAuthorization'
@@ -56,7 +59,33 @@ export function GovernedRouteEntry({
   search?: string;
   client?: MarkregClient;
 }) {
-  const parsed: MarkregRouteResult = useMemo(() => parseMarkregRoute(search), [search]);
+  const parsed = parseMarkregRoute(search);
+  if (parsed.kind === 'VALID' && parsed.route.view === 'order')
+    return (
+      <OrderJourney
+        orderId={parsed.route.recordId}
+        expectedVersion={parsed.route.expectedVersion}
+      />
+    );
+  return <GenericGovernedRouteEntry parsed={parsed} client={client} />;
+}
+
+function loadRecord(client: MarkregClient, route: MarkregRoute) {
+  if (route.view === 'formal-matter')
+    return createApiClient().get(
+      `/api/markreg/formal-matters/${encodeURIComponent(route.recordId)}`
+    );
+  if (!client.getGovernedRecord) return Promise.reject(new Error('Governed record reader unavailable.'));
+  return client.getGovernedRecord(route.view, route.recordId);
+}
+
+function GenericGovernedRouteEntry({
+  parsed,
+  client
+}: {
+  parsed: MarkregRouteResult;
+  client: MarkregClient;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ kind: 'LOADING' });
@@ -73,8 +102,7 @@ export function GovernedRouteEntry({
       return;
     }
     setState({ kind: 'LOADING' });
-    client
-      .getGovernedRecord?.(parsed.route.view, parsed.route.recordId)
+    void loadRecord(client, parsed.route)
       .then((value) => {
         const record = unwrap(value);
         const loaded = {
@@ -130,6 +158,10 @@ export function GovernedRouteEntry({
     );
   const loaded = state.loaded;
   const readOnly = ['STALE', 'WITHDRAWN', 'EXPIRED'].includes(loaded.status ?? '');
+  const authorityCopy =
+    parsed.route.view === 'formal-matter'
+      ? 'Viewing a Formal Matter does not create a payment, invoice, professional appointment, external filing or official application.'
+      : 'No Order, filing, submission, appointment, payment, or official application is created by this view.';
   return (
     <main aria-labelledby="governed-route-heading">
       <h1 id="governed-route-heading" ref={heading} tabIndex={-1}>
@@ -157,10 +189,7 @@ export function GovernedRouteEntry({
           <dt>Governed status</dt>
           <dd>{loaded.status ?? 'READY'}</dd>
         </dl>
-        <strong>
-          No Order, filing, submission, appointment, payment, or official application is created by
-          this view.
-        </strong>
+        <strong>{authorityCopy}</strong>
       </Card>
       <p>
         <Button onClick={() => location.reload()}>Reload exact record</Button>{' '}
