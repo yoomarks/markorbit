@@ -1,0 +1,39 @@
+name: PR53 one-shot authority fixture fix
+
+on:
+  push:
+    branches:
+      - agent/m4-wp-05-allocation-provider-acceptance
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m4-wp-05-allocation-provider-acceptance
+      - name: Fix canonical authority consequence assertions
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts')
+          text = path.read_text()
+          old_legal = 'legalProfessionalAppointmentCreated: false'
+          old_truth = 'officialTruthCreated: false'
+          assert text.count(old_legal) == 2, f'expected 2 obsolete legal fields, found {text.count(old_legal)}'
+          assert text.count(old_truth) == 2, f'expected 2 obsolete truth fields, found {text.count(old_truth)}'
+          text = text.replace(old_legal, 'professionalLegallyAppointedAutomatically: false')
+          text = text.replace(old_truth, 'officialApplicationCreated: false')
+          path.write_text(text)
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts
+          git diff --cached --check
+          git commit -m "test(mgsn): align WP05 authority fixture assertions"
+          git push origin HEAD:agent/m4-wp-05-allocation-provider-acceptance
