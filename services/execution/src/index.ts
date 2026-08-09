@@ -428,9 +428,11 @@ export function createRuntime(options: ExecutionOptions = {}) {
               r,
               true,
               (service) =>
-                service.assign(r.params.executionReleaseId as ExecutionReleaseId, {
-                  internalExecutorId: (r.body as any).internalExecutorId
-                }),
+                service.assign(
+                  r.params.executionReleaseId as ExecutionReleaseId,
+                  { internalExecutorId: (r.body as any).internalExecutorId },
+                  (r.body as any).expectedVersion
+                ),
               'executionRelease'
             )
         },

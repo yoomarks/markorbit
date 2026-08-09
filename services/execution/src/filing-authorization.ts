@@ -647,8 +647,19 @@ export class FilingGovernanceService {
     await this.releases.evaluateChecks(next);
     return next;
   }
-  async assign(id: ExecutionReleaseId, assignment: ExecutionReleaseAssignment) {
+  async assign(
+    id: ExecutionReleaseId,
+    assignment: ExecutionReleaseAssignment,
+    expectedVersion?: number
+  ) {
     const value = await this.releaseRecord(id);
+    if (expectedVersion !== undefined && value.version !== expectedVersion)
+      throw new FilingGovernanceError(
+        'STALE_EXECUTION_RELEASE',
+        'Execution Release changed; reload the exact latest version.',
+        409,
+        { expectedVersion, actualVersion: value.version }
+      );
     if (value.status === 'RELEASED_FOR_EXECUTION')
       throw new FilingGovernanceError(
         'EXECUTION_RELEASE_IMMUTABLE',

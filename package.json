@@ -65,6 +65,8 @@
     "test:lite-matter:browser": "pnpm build:lite-matter-deps && pnpm test:lite-matter:no-interception && playwright test --config playwright.lite-matter-real-runtime.config.ts",
     "build:professional-review-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/markreg-service... --filter=@markorbit/execution-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...",
     "test:professional-review:postgres": "pnpm build:professional-review-deps && pnpm --filter @markorbit/execution-service exec vitest run tests/professional-review-postgres.test.ts",
+    "test:filing-governance:auth": "pnpm build:professional-review-deps && pnpm --filter @markorbit/execution-service exec vitest run tests/filing-authorization-auth.test.ts",
+    "test:filing-governance:postgres": "pnpm build:professional-review-deps && EXECUTION_POSTGRES_TEST_REQUIRED=1 pnpm --filter @markorbit/execution-service exec vitest run tests/filing-authorization-postgres.test.ts",
     "test:professional-review:http": "pnpm build:professional-review-deps && pnpm exec vitest run scripts/professional-review-http.integration.test.ts",
     "test:professional-review:no-interception": "pnpm build:professional-review-deps && node scripts/validate-professional-review-no-interception.mjs",
     "test:professional-review:browser": "pnpm test:professional-review:no-interception && playwright test --config playwright.professional-review-real-runtime.config.ts",

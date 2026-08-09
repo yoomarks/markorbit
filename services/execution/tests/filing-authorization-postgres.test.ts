@@ -248,12 +248,15 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
   it('persists confirmation idempotency across service recreation and rejects conflicting reuse', async () => {
     const firstService = service();
     const created = await createAuthorization(firstService, 'confirm-create');
-    const command = {
+    const command: Parameters<FilingGovernanceService['confirmAuthorization']>[1] = {
       acknowledgementCodes: [...codes],
       acknowledgedBy: actorId,
       idempotencyKey: 'confirm-durable'
     };
-    const confirmed = await firstService.confirmAuthorization(created.filingAuthorizationId, command);
+    const confirmed = await firstService.confirmAuthorization(
+      created.filingAuthorizationId,
+      command
+    );
     const freshService = service();
     await expect(
       freshService.confirmAuthorization(created.filingAuthorizationId, command)
@@ -271,8 +274,16 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
     expect(evaluated.version).toBe(created.version + 1);
     const release = await value.getRelease(evaluated.executionReleaseId);
     const results = await Promise.allSettled([
-      value.assign(release.executionReleaseId, { internalExecutorId: 'user_executor_a' }),
-      value.assign(release.executionReleaseId, { internalExecutorId: 'user_executor_b' })
+      value.assign(
+        release.executionReleaseId,
+        { internalExecutorId: 'user_executor_a' },
+        release.version
+      ),
+      value.assign(
+        release.executionReleaseId,
+        { internalExecutorId: 'user_executor_b' },
+        release.version
+      )
     ]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
@@ -301,12 +312,12 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
       })
     );
     const fresh = service();
-    await expect(
-      fresh.getRelease(result.release.executionReleaseId)
-    ).resolves.toEqual(result.release);
-    await expect(
-      fresh.getTaskForRelease(result.release.executionReleaseId)
-    ).resolves.toEqual(result.taskDraft);
+    await expect(fresh.getRelease(result.release.executionReleaseId)).resolves.toEqual(
+      result.release
+    );
+    await expect(fresh.getTaskForRelease(result.release.executionReleaseId)).resolves.toEqual(
+      result.taskDraft
+    );
     await expect(
       fresh.release(result.release.executionReleaseId, {
         decidedBy: actorId,
@@ -339,10 +350,12 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
       sourceFingerprint: 'a'.repeat(64),
       createdAt: at
     });
-    const audit = await database.getPool().query(
-      "SELECT outcome,reason_code,actor_id FROM filing_governance_audit WHERE workspace_id=$1 AND outcome='DENIED'",
-      [workspaceId]
-    );
+    const audit = await database
+      .getPool()
+      .query(
+        "SELECT outcome,reason_code,actor_id FROM filing_governance_audit WHERE workspace_id=$1 AND outcome='DENIED'",
+        [workspaceId]
+      );
     expect(audit.rows).toContainEqual(
       expect.objectContaining({
         outcome: 'DENIED',
@@ -354,17 +367,21 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
 
   it('keeps audit evidence append-only', async () => {
     const created = await createAuthorization();
-    const audit = await database.getPool().query(
-      'SELECT audit_id FROM filing_governance_audit WHERE target_id=$1 ORDER BY audit_id LIMIT 1',
-      [created.filingAuthorizationId]
-    );
+    const audit = await database
+      .getPool()
+      .query(
+        'SELECT audit_id FROM filing_governance_audit WHERE target_id=$1 ORDER BY audit_id LIMIT 1',
+        [created.filingAuthorizationId]
+      );
     const auditId = audit.rows[0]?.audit_id;
     expect(auditId).toBeDefined();
     await expect(
-      database.getPool().query('UPDATE filing_governance_audit SET action=$2 WHERE audit_id=$1', [
-        auditId,
-        'tampered'
-      ])
+      database
+        .getPool()
+        .query('UPDATE filing_governance_audit SET action=$2 WHERE audit_id=$1', [
+          auditId,
+          'tampered'
+        ])
     ).rejects.toThrow(/append-only/);
     await expect(
       database.getPool().query('DELETE FROM filing_governance_audit WHERE audit_id=$1', [auditId])
@@ -382,9 +399,7 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
       code: 'PERSISTENCE_UNAVAILABLE',
       status: 503
     } satisfies Partial<FilingGovernanceError>);
-    await expect(
-      unavailable.findById('filing-authorization_missing')
-    ).rejects.toMatchObject({
+    await expect(unavailable.findById('filing-authorization_missing')).rejects.toMatchObject({
       code: 'PERSISTENCE_UNAVAILABLE',
       status: 503
     } satisfies Partial<FilingGovernanceError>);

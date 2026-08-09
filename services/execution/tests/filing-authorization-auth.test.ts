@@ -8,10 +8,7 @@ import {
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import type { ServiceRuntime } from '@markorbit/service-kit';
-import {
-  createRuntime,
-  InMemoryFilingGovernanceRepository
-} from '../src/index.js';
+import { createRuntime, InMemoryFilingGovernanceRepository } from '../src/index.js';
 
 const at = '2026-08-09T04:15:00.000Z';
 const secret = 'wp02-internal-secret';
@@ -266,9 +263,9 @@ describe('authenticated durable filing governance HTTP boundary', () => {
     );
     const releaseBody = (await releaseCreated.json()) as any;
     const releaseId = releaseBody.executionRelease.executionReleaseId as string;
-    expect((await call(`/v1/execution-releases/${releaseId}/evaluate`, 'POST', {}, headers)).status).toBe(
-      200
-    );
+    expect(
+      (await call(`/v1/execution-releases/${releaseId}/evaluate`, 'POST', {}, headers)).status
+    ).toBe(200);
     expect(
       (
         await call(
