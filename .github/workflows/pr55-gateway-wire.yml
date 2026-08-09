@@ -38,6 +38,13 @@ jobs:
                   raise SystemExit(f'marker not found: {old!r}')
               s = s.replace(old, new, 1)
           p.write_text(s)
+
+          p = Path('services/mgsn/src/http.ts')
+          s = p.read_text()
+          old = 'type Body = Record<string, any>;'
+          if old not in s:
+              raise SystemExit('MGSN body marker not found')
+          p.write_text(s.replace(old, 'type Body = any;', 1))
           PY
       - run: pnpm exec prettier --write apps/gateway/src/index.ts apps/gateway/src/mgsn-http.ts services/mgsn/src/http.ts services/mgsn/src/index.ts
       - run: pnpm --filter @markorbit/mgsn-service typecheck
