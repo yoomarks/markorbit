@@ -48,7 +48,7 @@ Exact remediation head `4c75c837374f1e92e61bc1a612273c94990371cd`:
 - Milestone 2 reliability `31322991650` — PASS;
 - Browser and Visual Validation `31322991646` — PASS.
 
-Merged main `327b61a22ad800250a2d9babe5997eb5a6a9e8eb` independently passed Milestone 4 integration `31323865361` and validation `31323865372` after merge.
+Merged main `327b61a22ad800250a2d9babe5997eb5a6a9e8eb` independently passed Milestone 4 integration `31323865361`, validation `31323865372` and Browser and Visual Validation `31323865383` after merge.
 
 ## Authority boundary
 
