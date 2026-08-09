@@ -1,0 +1,53 @@
+name: WP02 push tested code
+
+on:
+  push:
+    branches: [m4-wp-02-durable-execution-filing-governance]
+
+permissions:
+  contents: write
+
+jobs:
+  push-tested-code:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
+      EXECUTION_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-wp-02-durable-execution-filing-governance
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create Execution test database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_test;'
+      - run: python .github/wp02_complete.py
+      - run: pnpm exec prettier --write services/execution/src/filing-authorization.ts services/execution/src/index.ts services/execution/src/filing-authorization-postgres.ts services/execution/tests/filing-authorization-postgres.test.ts services/execution/tests/filing-authorization-auth.test.ts services/execution/tests/professional-review-postgres.test.ts package.json
+      - run: pnpm --filter @markorbit/contracts typecheck && pnpm --filter @markorbit/execution-service typecheck
+      - run: pnpm build:professional-review-deps
+      - run: pnpm --filter @markorbit/execution-service exec vitest run tests/filing-authorization-auth.test.ts
+      - run: pnpm --filter @markorbit/execution-service exec vitest run tests/filing-authorization-postgres.test.ts
+      - name: Commit tested WP02 code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/execution/src/filing-authorization.ts services/execution/src/index.ts services/execution/src/filing-authorization-postgres.ts services/execution/tests/filing-authorization-postgres.test.ts services/execution/tests/filing-authorization-auth.test.ts services/execution/tests/professional-review-postgres.test.ts package.json
+          git commit -m "test(m4): prove durable authenticated Execution filing governance"
+          git push origin HEAD:m4-wp-02-durable-execution-filing-governance
