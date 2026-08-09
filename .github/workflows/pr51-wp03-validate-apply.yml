@@ -31,7 +31,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - name: Apply WP03 patch
-        run: python scripts/pr51-wp03-apply.py
+        run: |
+          python scripts/pr51-wp03-apply.py
+          python scripts/pr51-wp03-lint-fix.py
       - name: Install and update lockfile
         run: pnpm install --no-frozen-lockfile
       - name: Format supported files
