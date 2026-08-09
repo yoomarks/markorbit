@@ -62,13 +62,9 @@ pnpm infra:down
 
 ## Current milestone
 
-**MO MVP Milestone 4 — Durable Governed Provider Execution and Return — GO**
+**MO MVP Milestone 5 — planning proposed: Durable Evidence Review and Lifecycle Projection**
 
-TASK 029 was approved by merge of PR #48. M4-WP-01 through M4-WP-08 were implemented in PRs #49 through #56. M4-WP-09 performed an independent integration/authority audit in PR #57 and initially returned `FIX` for three bounded runtime-integration findings. PR #58 remediated all three findings and was merged to `main` as `327b61a22ad800250a2d9babe5997eb5a6a9e8eb`.
-
-The remediation exact-head tree and merged `main` tree are identical: `79efcbe2580e7fa372f0c7f5ebefe6f744216416`. On the exact remediation head, Milestone 4 integration, validation, M4 reliability, M3 reliability regression, M2 reliability regression and Browser/Visual Validation all passed. After merge, `main` independently passed Milestone 4 integration `31323865361`, validation `31323865372` and Browser and Visual Validation `31323865383`.
-
-The post-remediation M4-WP-09 rerun recommends **GO**. The approved durable path is now composed and permanently tested:
+Milestone 4 completed its approved engineering scope with an independent **GO** recommendation after the PR #58 integration remediation and M4-WP-09 rerun. The durable provider path now ends at an Execution-owned `PENDING_REVIEW` evidence receipt:
 
 ```text
 current governed Execution source
@@ -81,23 +77,36 @@ current governed Execution source
 -> durable PENDING_REVIEW evidence receipt
 ```
 
-The established authority locks remain in force:
+TASK 030A now proposes the next bounded milestone direction:
 
-- Provider Supply Capability is not user Capability evidence;
-- Provider Return is not Official Truth;
-- Payment is not performance, authority, acceptance or completion;
-- MGSN Allocation/Acceptance is not automatically legal/professional appointment;
-- evidence handoff is not Filing Submission or Formal Matter completion;
-- automatic provider selection and official filing remain outside the M4 authority boundary;
+```text
+PENDING_REVIEW evidence
+-> explicit authorized Evidence Review Decision
+-> correction OR admitted reviewed source
+-> retry-safe Execution-to-MarkReg handoff
+-> durable MarkReg Lifecycle Projection
+-> customer-safe status / timeline / evidence view
+-> explainable Recommended Action
+```
+
+This is a planning proposal only. Implementation must not start until the owner approves the scope by merging the planning PR.
+
+The proposed Milestone 5 authority locks are:
+
+- Evidence Review Decision is internal review truth, not trademark-office acceptance or Official Truth;
+- Provider Return remains evidence, not Official Truth;
+- customer lifecycle status is a projection of governed internal truth, not a hidden official-status source;
+- Recommended Action is advice, not authorization or execution;
+- no Payment/Invoice truth follows from review or lifecycle state;
+- no automatic legal/professional appointment, provider allocation, external Filing Submission, Formal Matter completion or user Capability verification is introduced;
 - no cross-service SQL is permitted.
 
 See:
 
-- `docs/planning/MO-MVP-MILESTONE-004-SCOPE-LOCK.md`;
-- `docs/planning/MO-MVP-MILESTONE-004-DELIVERY-PLAN.md`;
-- `docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.md`;
-- `docs/validation/MO-MVP-MILESTONE-004-RELIABILITY-MATRIX.json`;
-- `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.md`;
-- `docs/tasks/MO-MVP-M4-WP-09-INTEGRATION-AUTHORITY-AUDIT.md`.
+- `docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`;
+- `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`;
+- `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.md`.
 
-The GO recommendation closes the approved Milestone 4 engineering scope. It does not itself create a Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal provider appointment, external Filing or Official Truth. Those remain separate explicit owner actions.
+TASK 030A is planning/architecture only. It does not create a database migration, review decision, lifecycle state, Recommended Action, Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal appointment, external Filing or Official Truth.
