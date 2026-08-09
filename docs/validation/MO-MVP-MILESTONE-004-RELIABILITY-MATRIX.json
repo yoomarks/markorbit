@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "milestone": 4,
+  "workPackage": "M4-WP-08",
+  "direction": "DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN",
+  "aggregate": "scripts/run-milestone4-reliability.mjs",
+  "hostedWorkflow": ".github/workflows/milestone-4-reliability.yml",
+  "authority": {
+    "eligibilityIsNotAllocation": true,
+    "allocationIsNotProviderAcceptance": true,
+    "providerAcceptanceIsNotLegalAppointment": true,
+    "providerReturnIsNotOfficialTruth": true,
+    "evidenceHandoffIsNotFilingSubmission": true,
+    "paymentImplemented": false,
+    "invoiceImplemented": false,
+    "automaticProviderSelectionImplemented": false,
+    "externalFilingImplemented": false,
+    "officialTruthPromotionImplemented": false
+  },
+  "scenarios": [
+    {
+      "id": "M4-AUT-001",
+      "group": "contracts",
+      "testFile": "packages/contracts/tests/provider-execution-contract.test.ts",
+      "testName": "canonical Provider Execution authority consequences remain non-authoritative for legal appointment, payment, filing and Official Truth",
+      "ownerDatabase": "None",
+      "requiredMode": "canonical contract suite",
+      "expectedEvidence": "Provider execution vocabulary and authority consequences remain frozen and machine-tested",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-MIG-001",
+      "group": "provider-return",
+      "testFile": "services/mgsn/tests/provider-return-postgres.test.ts",
+      "testName": "owns and verifies MGSN migrations 0028 through 0031",
+      "ownerDatabase": "MGSN",
+      "requiredMode": "MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Provider Registry, Service Package, Allocation and Provider Return migrations are owner-scoped and verified",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-MIG-002",
+      "group": "execution-evidence",
+      "testFile": "services/execution/tests/provider-return-evidence-postgres.test.ts",
+      "testName": "owns and verifies the Execution evidence migration without weakening prior ownership",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Execution 0032 evidence migration is verified alongside prior Execution-owned schema",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-FSH-001",
+      "group": "allocation",
+      "testFile": "services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts",
+      "testName": "fails closed when Execution source becomes stale after Eligibility Evaluation",
+      "ownerDatabase": "MGSN with bounded Execution source",
+      "requiredMode": "MGSN_ALLOCATION_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "A stale governed Execution source cannot become an active Allocation",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-CON-001",
+      "group": "allocation",
+      "testFile": "services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts",
+      "testName": "serializes concurrent competing Allocation commands so only one becomes active",
+      "ownerDatabase": "MGSN",
+      "requiredMode": "MGSN_ALLOCATION_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Concurrent competing commands produce one active Allocation and one controlled conflict",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-IDM-001",
+      "group": "allocation",
+      "testFile": "services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts",
+      "testName": "creates one explicit Allocation only from exact current ELIGIBLE truth and replays identically",
+      "ownerDatabase": "MGSN",
+      "requiredMode": "MGSN_ALLOCATION_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Identical Allocation command replay is deterministic and does not create duplicate active truth",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-IDN-001",
+      "group": "allocation",
+      "testFile": "services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts",
+      "testName": "binds Provider response to authenticated Provider Workspace identity and rejects spoofing",
+      "ownerDatabase": "MGSN + Core identity reference",
+      "requiredMode": "MGSN_ALLOCATION_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Provider Acceptance identity comes from the authenticated Provider Workspace and spoofing fails closed",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-HIS-001",
+      "group": "allocation",
+      "testFile": "services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts",
+      "testName": "decline preserves Allocation history and permits only explicit reallocation",
+      "ownerDatabase": "MGSN",
+      "requiredMode": "MGSN_ALLOCATION_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Declined Allocation versions remain durable and reallocation is a new explicit command",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-RET-001",
+      "group": "provider-return",
+      "testFile": "services/mgsn/tests/provider-return-postgres.test.ts",
+      "testName": "creates an authenticated evidence-only return and replays identically",
+      "ownerDatabase": "MGSN",
+      "requiredMode": "MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Provider Return provenance, exact lineage and idempotent replay survive repository reconstruction",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-RET-002",
+      "group": "provider-return",
+      "testFile": "services/mgsn/tests/provider-return-postgres.test.ts",
+      "testName": "corrections explicitly supersede the exact current Provider Return while preserving prior versions",
+      "ownerDatabase": "MGSN",
+      "requiredMode": "MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Provider Return correction is additive, versioned and historical evidence remains durable",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-HOF-001",
+      "group": "execution-evidence",
+      "testFile": "services/execution/tests/provider-return-evidence-postgres.test.ts",
+      "testName": "persists one exact reviewable receipt and replays identically after response loss",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Exact Provider Return ID/version/fingerprint handoff produces one retry-safe PENDING_REVIEW receipt",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-HOF-002",
+      "group": "execution-evidence",
+      "testFile": "services/execution/tests/provider-return-evidence-postgres.test.ts",
+      "testName": "fails closed on stale return, changed fingerprint, source mismatch and cross-workspace input",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Stale/superseded Provider Return or Execution lineage cannot create evidence truth",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-AUD-001",
+      "group": "execution-evidence",
+      "testFile": "services/execution/tests/provider-return-evidence-postgres.test.ts",
+      "testName": "keeps evidence audit append-only",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Provider Return evidence audit rows reject mutation",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-TEN-001",
+      "group": "trusted-http",
+      "testFile": "services/mgsn/tests/http-boundary.test.ts",
+      "testName": "trusted MGSN HTTP boundary rejects untrusted caller, cross-Workspace operations and cross-Provider reads",
+      "ownerDatabase": "MGSN boundary with Core Principal",
+      "requiredMode": "trusted internal service secret + Workspace Principal",
+      "expectedEvidence": "MGSN independently revalidates caller and Principal and does not enumerate other Provider Workspaces",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-GWY-001",
+      "group": "gateway",
+      "testFile": "apps/gateway/tests/mgsn-provider-journey.test.ts",
+      "testName": "authenticated Gateway provider journey enforces session, permission, Origin/CSRF, provider identity and idempotency boundaries",
+      "ownerDatabase": "Gateway + bounded MGSN service",
+      "requiredMode": "Core-resolved Workspace Principal",
+      "expectedEvidence": "Browser-facing operations/provider commands reach MGSN only through authenticated controlled transport",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-OUT-001",
+      "group": "gateway",
+      "testFile": "apps/gateway/tests/mgsn-outage.test.ts",
+      "testName": "fails closed with controlled 503 responses when MGSN transport or internal authorization is unavailable",
+      "ownerDatabase": "Gateway transport",
+      "requiredMode": "authenticated Workspace Principal",
+      "expectedEvidence": "MGSN outage/configuration failure is redacted, typed and non-mutating",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M4-REP-001",
+      "group": "repeatability",
+      "testFile": "scripts/run-milestone4-reliability.mjs",
+      "testName": "second-cycle Allocation, Provider Return and Execution evidence suites run against the same owner databases",
+      "ownerDatabase": "MGSN + Execution",
+      "requiredMode": "all M4 required-mode flags",
+      "expectedEvidence": "Critical durable suites pass a second cycle without leaked state or non-repeatable migration assumptions",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    }
+  ]
+}
