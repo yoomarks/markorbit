@@ -209,6 +209,9 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         mgsn_provider_return_audit,
+         mgsn_provider_return_commands,
+         mgsn_provider_returns,
          mgsn_allocation_audit,
          mgsn_allocation_commands,
          mgsn_provider_acceptances,
@@ -222,6 +225,9 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
          mgsn_provider_supply_capabilities,
          mgsn_providers
        CASCADE`
+    );
+    await pool.query(
+      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'
     );
     await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');
     await pool.query(
