@@ -5,7 +5,7 @@
     "pr": 48,
     "mergeCommit": "a1579de77a3471632c0c1de044f49eccbcd7e9a1"
   },
-  "currentWorkPackage": "M4-WP-07",
+  "currentWorkPackage": "M4-WP-08",
   "workPackages": [
     {
       "id": "M4-WP-01",
@@ -93,7 +93,15 @@
     },
     {
       "id": "M4-WP-08",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_IN_PR_56",
+      "evidence": [
+        "docs/validation/MO-MVP-MILESTONE-004-RELIABILITY-MATRIX.json",
+        "scripts/run-milestone4-reliability.mjs",
+        "scripts/validate-milestone4-reliability-matrix.mjs",
+        ".github/workflows/milestone-4-reliability.yml",
+        "apps/gateway/tests/mgsn-outage.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-08-RELIABILITY-MATRIX.md"
+      ]
     },
     {
       "id": "M4-WP-09",
@@ -260,6 +268,31 @@
     "uiChanged": false,
     "paymentOrInvoiceCreated": false,
     "professionalLegallyAppointedAutomatically": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false
+  },
+  "wp08ReliabilityBoundary": {
+    "exactHeadRequired": true,
+    "mgsnAndExecutionOwnerMigrationsVerified": true,
+    "staleExecutionSourceFailsClosed": true,
+    "concurrentAllocationSerialized": true,
+    "durableIdempotencyReplayed": true,
+    "authenticatedProviderIdentityReproved": true,
+    "declineAndReallocationHistoryReproved": true,
+    "providerReturnCorrectionHistoryReproved": true,
+    "exactEvidenceHandoffReproved": true,
+    "appendOnlyAuditReproved": true,
+    "workspaceAndProviderIsolationReproved": true,
+    "gatewayOutageFailsClosedAndRedacted": true,
+    "criticalDurableSuitesRepeatedAgainstSameOwnerDatabases": true,
+    "machineReadableEvidenceProduced": true,
+    "newBusinessStateIntroduced": false,
+    "crossServiceDatabaseRead": false,
+    "paymentOrInvoiceCreated": false,
+    "professionalLegallyAppointedAutomatically": false,
+    "automaticProviderSelectionImplemented": false,
     "filingSubmitted": false,
     "officialTruthCreated": false,
     "formalMatterCompletedAutomatically": false,
