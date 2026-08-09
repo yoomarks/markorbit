@@ -5,7 +5,13 @@
     "pr": 48,
     "mergeCommit": "a1579de77a3471632c0c1de044f49eccbcd7e9a1"
   },
-  "currentWorkPackage": "M4-WP-08",
+  "currentWorkPackage": "M4-WP-09",
+  "currentAuditRecommendation": "FIX",
+  "auditedMergedBaseline": "f1fd652cf4882cd1e0996bd9846995443ca5e967",
+  "auditedImplementationTree": "fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a",
+  "testedHead": "016cb221cf57733df04f56a815eefeb55dffe839",
+  "testedHeadTree": "fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a",
+  "exactTreeIdentity": true,
   "workPackages": [
     {
       "id": "M4-WP-01",
@@ -105,7 +111,12 @@
     },
     {
       "id": "M4-WP-09",
-      "status": "NOT_STARTED"
+      "status": "AUDIT_FIX_REQUIRED",
+      "evidence": [
+        "docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.md",
+        "docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.json",
+        "docs/tasks/MO-MVP-M4-WP-09-INTEGRATION-AUTHORITY-AUDIT.md"
+      ]
     }
   ],
   "wp01AuthorityBoundary": {
@@ -297,5 +308,24 @@
     "officialTruthCreated": false,
     "formalMatterCompletedAutomatically": false,
     "userCapabilityVerifiedAutomatically": false
+  },
+  "wp09AuditBoundary": {
+    "recommendation": "FIX",
+    "semanticAuthorityAudit": "PASS",
+    "persistenceOwnershipAudit": "PASS",
+    "exactTreeEvidenceAudit": "PASS",
+    "durableMgsnRuntimeComposition": "FIX_REQUIRED",
+    "executionEvidenceRuntimeBoundary": "FIX_REQUIRED",
+    "fullDurableRealRuntimePath": "FIX_REQUIRED",
+    "blockingFindingIds": ["M4-INT-001", "M4-INT-002", "M4-E2E-001"],
+    "documentationDrift": "NON_BLOCKING_REMEDIATED",
+    "paymentOrInvoiceCreated": false,
+    "professionalLegallyAppointedAutomatically": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false,
+    "gitTagCreated": false,
+    "releasePublished": false
   }
 }

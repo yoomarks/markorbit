@@ -134,34 +134,34 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
   - Scope: `docs/planning/MO-MVP-MILESTONE-004-SCOPE-LOCK.md`.
   - Delivery graph: milestone-local work packages `M4-WP-01` through `M4-WP-09` in `docs/planning/MO-MVP-MILESTONE-004-DELIVERY-PLAN.md`.
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-004-PLAN.json`.
-  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.{md,json}`.
+  - Current implementation/audit status: `docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.{md,json}`.
   - Governing locks: Provider Supply Capability is not user Capability evidence; Provider Return is not Official Truth; Payment is not performance/authority/acceptance/completion.
-- M4-WP-01 — Provider execution contracts and canonical authority boundary (**implemented in PR #49**)
+- M4-WP-01 — Provider execution contracts and canonical authority boundary (**merged in PR #49**)
   - Shared contract: `@markorbit/contracts/provider-execution`.
   - Vocabulary/authority evidence: `docs/architecture/PROVIDER-EXECUTION-AUTHORITY-BOUNDARY.md`.
-  - No persistence, Allocation runtime, Provider Return runtime, finance, legal appointment or Official Truth is created by this work package.
-- M4-WP-02 — Durable authenticated Execution filing-governance source (**implemented in PR #50**)
+- M4-WP-02 — Durable authenticated Execution filing-governance source (**merged in PR #50**)
   - Execution-owned migration: `0027_execution_filing_governance`.
-  - Durable Filing Authorization, Execution Release and Filing Execution Task Draft with Workspace-scoped idempotency, optimistic concurrency and append-only success/denial audit.
-  - Trusted Workspace Principal controls actor/Workspace truth; conflicting header/body Workspace declarations are denied non-enumerating.
-  - Focused evidence: authenticated boundary 4/4; real PostgreSQL migration/restart/concurrency/audit/outage suite 9/9.
-  - `RELEASED_FOR_EXECUTION` remains internal authority only and does not imply external submission, provider appointment, Payment/Invoice or Official Truth.
-  - Evidence: `docs/tasks/MO-MVP-M4-WP-02-DURABLE-EXECUTION-FILING-GOVERNANCE.md`.
-- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**implemented in PR #51**)
+- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**merged in PR #51**)
   - MGSN-owned migration: `0028_mgsn_provider_registry`.
-  - Durable Provider/Core Workspace reference with unique identity binding, suspension/inactive state, optimistic versioning and idempotency.
-  - Immutable historical Supply Capability versions with effective period, capacity/availability, evidence references and supply-only verification state.
-  - Supply Capability does not create user Capability evidence, professional qualification, Allocation, appointment, Filing, Payment/Invoice or Official Truth.
-  - Evidence: `docs/tasks/MO-MVP-M4-WP-03-DURABLE-MGSN-PROVIDER-REGISTRY.md`.
-- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**implemented in PR #52**)
+- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**merged in PR #52**)
   - MGSN-owned migration: `0029_mgsn_service_package_eligibility`.
-  - Exact governed Execution source admission through a bounded dependency; MGSN performs no Execution/MarkReg database read.
-  - Service Package preserves exact source/version/fingerprint lineage and a distinct deterministic MGSN package fingerprint.
-  - Eligibility policy `mgsn-eligibility-v1` evaluates current exact Supply Capability plus current Provider state with explainable blocking checks, durable replay and append-only audit.
-  - Eligibility creates no Allocation, Provider Acceptance, legal/professional appointment, Filing, Payment/Invoice, Matter completion, user Capability verification or Official Truth.
-  - Evidence: `docs/tasks/MO-MVP-M4-WP-04-SERVICE-PACKAGE-ELIGIBILITY.md`.
-- M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**next after WP-04 merge**)
-- M4-WP-06 — Provider Return and exact Execution evidence handoff (**not started**)
-- M4-WP-07 — Authenticated Gateway and controlled operations/provider journey (**not started**)
-- M4-WP-08 — Reliability matrix (**not started**)
-- M4-WP-09 — Independent integration and authority audit (**not started**)
+- M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**merged in PR #53**)
+  - MGSN-owned migration: `0030_mgsn_allocation_provider_acceptance`.
+  - Allocation is explicit internal MGSN truth and Provider Acceptance is a separate authenticated Provider response.
+- M4-WP-06 — Provider Return and exact Execution evidence handoff components (**merged in PR #54**)
+  - MGSN-owned migration: `0031_mgsn_provider_return`.
+  - Execution-owned migration: `0032_execution_provider_return_evidence`.
+  - Provider Return remains provider evidence; Execution receipt is `PENDING_REVIEW`, not Official Truth.
+- M4-WP-07 — Authenticated Gateway and controlled provider journey boundary (**merged in PR #55**)
+  - Browser session, Workspace Principal, permission, Origin/CSRF, provider identity and trusted internal-call boundaries.
+- M4-WP-08 — Exact-head reliability matrix (**merged in PR #56; exact-tree hosted evidence passed**)
+  - Audited merged baseline: `f1fd652cf4882cd1e0996bd9846995443ca5e967`; implementation tree `fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`.
+  - Final tested head `016cb221cf57733df04f56a815eefeb55dffe839` has the same tree.
+  - Hosted successful runs: validation `31319610739`, Milestone 4 reliability `31319610700`, Milestone 3 reliability `31319610717`, Milestone 2 reliability `31319610695`, Browser and Visual Validation `31319610698`.
+- M4-WP-09 — Independent integration and authority audit (**in progress; recommendation FIX**)
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.{md,json}`.
+  - Blocking findings: normal durable MGSN runtime composition missing; normal durable Execution Provider Return evidence-handoff HTTP boundary missing; required full zero-interception Core + Gateway + Execution + MGSN + owner PostgreSQL provider path missing.
+  - Required next action: bounded M4 integration remediation, then rerun M4-WP-09 against the remediated merged baseline.
+  - No tag, release, deployment freeze, Payment/Invoice, legal appointment, external filing or Official Truth is created by this audit.
+
+Milestone 4 does not yet have a GO recommendation. The established authority locks remain in force throughout remediation.
