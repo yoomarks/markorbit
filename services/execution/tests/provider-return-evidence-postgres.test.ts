@@ -210,6 +210,7 @@ suite('M4-WP-06 Execution Provider Return evidence handoff', () => {
          execution_releases,
          filing_authorizations,
          professional_review_audit,
+         professional_review_commands,
          professional_review_idempotency,
          professional_review_cases
        CASCADE`
