@@ -76,7 +76,10 @@ test('required M3 Order reliability evidence is selected explicitly', () => {
     'MARKREG_ORDER_HTTP_REQUIRED',
     'MILESTONE2_OUTAGE_REQUIRED'
   ])
-    assert.ok(orchestration.includes(requiredMode), `orchestration must fail closed with ${requiredMode}`);
+    assert.ok(
+      orchestration.includes(requiredMode),
+      `orchestration must fail closed with ${requiredMode}`
+    );
 });
 
 test('hosted workflow checks out the exact PR head and keeps owner databases explicit', () => {
