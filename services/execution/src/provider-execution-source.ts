@@ -1,11 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { ProviderExecutionSourceSnapshot } from '@markorbit/contracts/provider-execution';
-import {
-  FilingGovernanceError,
-  type ExecutionReleaseRepository,
-  type FilingAuthorizationRepository,
-  type FilingExecutionTaskDraftRepository,
-  type FilingGovernanceService
+import type {
+  ExecutionReleaseRepository,
+  FilingAuthorizationRepository,
+  FilingExecutionTaskDraftRepository
 } from './filing-authorization.js';
 
 export interface ProviderExecutionSourceVerification {
@@ -48,7 +46,6 @@ function version(value: number | string) {
 
 export class ProviderExecutionSourceVerificationService {
   constructor(
-    private readonly governance: FilingGovernanceService,
     private readonly authorizations: FilingAuthorizationRepository,
     private readonly releases: ExecutionReleaseRepository,
     private readonly tasks: FilingExecutionTaskDraftRepository
@@ -57,19 +54,6 @@ export class ProviderExecutionSourceVerificationService {
   async verifyCurrentSource(
     source: Readonly<ProviderExecutionSourceSnapshot>
   ): Promise<ProviderExecutionSourceVerification> {
-    try {
-      await this.governance.validateTaskCurrent(source.filingExecutionTaskDraft.id);
-    } catch (error) {
-      if (error instanceof FilingGovernanceError) {
-        const missing = error.status === 404 || error.code.endsWith('_NOT_FOUND');
-        return {
-          status: missing ? 'MISSING' : 'STALE',
-          reason: error.message
-        };
-      }
-      throw error;
-    }
-
     const [authorization, release, task] = await Promise.all([
       this.authorizations.findById(source.filingAuthorization.id),
       this.releases.findById(source.executionRelease.id),
