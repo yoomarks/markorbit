@@ -1,0 +1,51 @@
+name: WP06 one-shot format
+
+on:
+  push:
+    branches:
+      - agent/m4-wp-06-provider-return-evidence-handoff
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m4-wp-06-provider-return-evidence-handoff
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Repair exact test fixture and format WP06 files
+        shell: python
+        run: |
+          from pathlib import Path
+          test = Path('services/execution/tests/provider-return-evidence-postgres.test.ts')
+          text = test.read_text()
+          old = """  executionSnapshot: {\n    jurisdiction: 'US',\n    applicantOwnerReference: 'owner_wp06',\n    trademarkReference: 'MARK ORBIT',\n    classes: ['25'],\n    goodsServices: ['clothing'],\n    filingBasis: '1(b)',\n    representativeRequirement: 'REVIEW_REQUIRED',\n    documentReferences: ['document_wp06'],\n    instructionReferences: ['instruction_wp06'],\n    executionChannel: 'INTERNAL_MANUAL_PREPARATION'\n  },"""
+          new = """  executionSnapshot: {\n    jurisdiction: 'US',\n    applicantOwnerReference: 'owner_wp06',\n    trademarkReference: 'MARK ORBIT',\n    classes: ['25'],\n    goodsServices: ['clothing'],\n    filingBasis: '1(b)',\n    useLockedDocuments: true,\n    representativeUse: 'PERMITTED_WHERE_REQUIRED',\n    permittedFilingChannel: 'INTERNAL_MANUAL_PREPARATION',\n    permittedExecutionWindow: {\n      startsAt: '2026-08-10T09:00:00.000Z',\n      endsAt: '2026-08-10T17:00:00.000Z'\n    }\n  },"""
+          assert old in text
+          test.write_text(text.replace(old, new, 1))
+      - run: >-
+          pnpm exec prettier --write
+          docs/planning/MO-MVP-MILESTONE-004-WP06-OWNERSHIP.md
+          services/execution/src/provider-return-evidence-postgres.ts
+          services/execution/src/provider-return-evidence.ts
+          services/execution/tests/provider-return-evidence-postgres.test.ts
+          services/mgsn/src/provider-return-postgres.ts
+          services/mgsn/src/provider-return.ts
+          services/mgsn/tests/provider-return-postgres.test.ts
+      - name: Commit formatted implementation and remove helper
+        run: |
+          rm .github/workflows/wp06-one-shot-format.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "chore: format WP06 implementation"
+          git push origin HEAD:agent/m4-wp-06-provider-return-evidence-handoff
