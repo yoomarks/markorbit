@@ -1,0 +1,38 @@
+name: PR50 fix M2 tenant reset
+
+on:
+  push:
+    branches: [m4-wp-02-durable-execution-filing-governance]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-wp-02-durable-execution-filing-governance
+      - name: Extend Execution test reset for WP-02 tables
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('scripts/milestone2-tenant-isolation.integration.test.ts')
+          text = path.read_text()
+          old = """    await db.Execution.getPool().query(\n      'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'\n    );"""
+          new = """    await db.Execution.getPool().query(\n      'DROP TABLE IF EXISTS filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'\n    );"""
+          if old not in text:
+              raise SystemExit('expected Execution reset block not found')
+          path.write_text(text.replace(old, new, 1))
+      - name: Commit root-cause fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/milestone2-tenant-isolation.integration.test.ts
+          git diff --cached --check
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(m4): isolate Execution tenant migration reset"
+          git push origin HEAD:m4-wp-02-durable-execution-filing-governance
