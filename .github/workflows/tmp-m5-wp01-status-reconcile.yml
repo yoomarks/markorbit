@@ -1,0 +1,96 @@
+name: M5 WP01 one-shot status reconciliation
+
+on:
+  push:
+    branches:
+      - m5-wp-01-evidence-lifecycle-contracts
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-01-evidence-lifecycle-contracts
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Reconcile approved M5 planning status and remove one-shot workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing expected text in {path}: {old!r}')
+              p.write_text(text.replace(old, new))
+
+          replace('docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md',
+                  '- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`',
+                  '- **Status:** `APPROVED_FOR_IMPLEMENTATION`')
+          replace('docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md',
+                  '- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`',
+                  '- **Status:** `APPROVED_FOR_IMPLEMENTATION`')
+          replace('docs/planning/MO-MVP-MILESTONE-005-PLAN.json',
+                  '"status": "PROPOSED_FOR_OWNER_APPROVAL"',
+                  '"status": "APPROVED_FOR_IMPLEMENTATION"')
+          replace('docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md',
+                  '- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`.',
+                  '- **Status:** `APPROVED_BY_PR_60`.')
+          replace('docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md',
+                  '- **Proposed direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.',
+                  '- **Approved direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.')
+          replace('docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md',
+                  'Implementation must not start until the owner approves this scope by merging the planning PR. Merge of this planning task would authorize only the proposed Milestone 5 engineering direction and bounded work-package graph; it would not itself create product/runtime state or authorize any external action.',
+                  'The owner approved this scope by merging PR #60. That merge authorizes the Milestone 5 engineering direction and bounded work-package graph only; implementation proceeds through the approved work packages and the approval does not itself create product/runtime state or authorize any external action.')
+          p = Path('docs/planning/TASK-INDEX.md')
+          text = p.read_text()
+          old = '''## Milestone 5 planning
+
+- TASK 030A — Milestone 5 scope and architecture lock (**proposed for owner approval**)
+  - Numbering note: historical `MO-MVP-TASK-030` remains reserved for Dual-channel Intake; this planning task does not rewrite it.
+  - Proposed direction: `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M5-WP-01` through `M5-WP-08` in `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`.
+  - Proposed loop: `PENDING_REVIEW evidence -> explicit Evidence Review Decision -> reviewed-source admission/correction -> MarkReg Lifecycle Projection -> customer-safe status/timeline -> Recommended Action`.
+  - Governing locks: review admission is not Official Truth or Filing Submission; lifecycle status is an internal governed projection; Recommended Action is advice rather than execution; no Payment/Invoice/legal appointment/automatic completion/Capability escalation.
+  - Planning only: no runtime code, migration, tag, release, deployment freeze or external action is authorized until the owner approves the scope by merging the planning PR.'''
+          new = '''## Milestone 5
+
+- TASK 030A — Milestone 5 scope and architecture lock (**approved by merge of PR #60**)
+  - Numbering note: historical `MO-MVP-TASK-030` remains reserved for Dual-channel Intake; this planning task does not rewrite it.
+  - Approved direction: `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M5-WP-01` through `M5-WP-08` in `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`.
+  - Approved loop: `PENDING_REVIEW evidence -> explicit Evidence Review Decision -> reviewed-source admission/correction -> MarkReg Lifecycle Projection -> customer-safe status/timeline -> Recommended Action`.
+  - Governing locks: review admission is not Official Truth or Filing Submission; lifecycle status is an internal governed projection; Recommended Action is advice rather than execution; no Payment/Invoice/legal appointment/automatic completion/Capability escalation.
+  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.{md,json}`.
+- M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary (**implemented in PR #61**)
+  - Shared contract: `@markorbit/contracts/evidence-lifecycle`.
+  - Authority evidence: `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`.
+  - No runtime migration or external action is introduced by WP-01.'''
+          if old not in text:
+              raise SystemExit('missing expected Milestone 5 Task Index block')
+          p.write_text(text.replace(old, new))
+          PY
+          pnpm exec prettier --write docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md docs/planning/MO-MVP-MILESTONE-005-PLAN.json docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md docs/planning/TASK-INDEX.md
+          git rm .github/workflows/tmp-m5-wp01-status-reconcile.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md docs/planning/MO-MVP-MILESTONE-005-PLAN.json docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md docs/planning/TASK-INDEX.md
+          git commit -m 'docs(m5): reconcile approved milestone status'
+          git push origin HEAD:m5-wp-01-evidence-lifecycle-contracts
