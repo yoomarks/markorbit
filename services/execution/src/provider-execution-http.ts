@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type {
+  EvidenceHandoffId,
   HandoffProviderReturnEvidenceCommand,
   ProviderExecutionSourceSnapshot,
   ProviderReturn
@@ -126,7 +127,7 @@ export function createExecutionProviderInternalRoutes(
         try {
           const receipt = await options
             .providerReturnEvidenceFor(workspaceId)
-            .getReceipt(request.params.evidenceHandoffId! as never);
+            .getReceipt(request.params.evidenceHandoffId! as EvidenceHandoffId);
           if (!receipt || receipt.evidenceHandoff.workspaceId.toLowerCase() !== workspaceId)
             throw new HttpError(
               404,
