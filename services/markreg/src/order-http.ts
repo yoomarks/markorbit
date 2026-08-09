@@ -245,12 +245,9 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
         const status = request.query.status;
         if (status && !isOrderStatus(status))
           throw new HttpError(400, 'INVALID_REQUEST', 'Order status filter is invalid.');
-        const query: OrderListQuery = {
-          page,
-          pageSize,
-          ...(status ? { status } : {}),
-          ...(request.query.customerId ? { customerId: request.query.customerId } : {})
-        };
+        const query: OrderListQuery = { page, pageSize };
+        if (status) query.status = status;
+        if (request.query.customerId) query.customerId = request.query.customerId;
         return run<Readonly<OrderProjectionListResponse>>(200, () =>
           orderService(options).list(principal, principal.workspaceId, query)
         );
