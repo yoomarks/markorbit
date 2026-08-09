@@ -17,7 +17,7 @@
 | M4-WP-06     | Provider Return and exact Execution evidence handoff             | IMPLEMENTED_IN_PR_54  | migrations `0031_mgsn_provider_return` + `0032_execution_provider_return_evidence`; MGSN/Execution PostgreSQL tests |
 | M4-WP-07     | Authenticated Gateway and controlled operations/provider journey | IMPLEMENTED_IN_PR_55  | authenticated Gateway/MGSN HTTP boundaries; provider identity/CSRF/workspace tests                                  |
 | M4-WP-08     | Reliability matrix                                               | IMPLEMENTED_IN_PR_56  | exact-head hosted M4 reliability gate; executable scenario inventory; outage/repeatability evidence                 |
-| M4-WP-09     | Independent integration and authority audit                      | AUDIT_FIX_REQUIRED    | `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.{md,json}`                                                     |
+| M4-WP-09     | Independent integration and authority audit                      | AUDIT_FIX_REQUIRED    | `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.{md,json}`                                                      |
 
 ## Exact-tree evidence through WP-08
 

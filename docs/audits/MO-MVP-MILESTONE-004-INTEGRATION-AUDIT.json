@@ -58,10 +58,7 @@
     {
       "id": "M4-INT-001",
       "title": "Durable MGSN runtime is not composed",
-      "evidence": [
-        "services/mgsn/src/main.ts",
-        "services/mgsn/src/http.ts"
-      ],
+      "evidence": ["services/mgsn/src/main.ts", "services/mgsn/src/http.ts"],
       "requiredRemediation": "Construct normal MGSN runtime services from MGSN-owned PostgreSQL persistence plus bounded Core and Execution adapters."
     },
     {
