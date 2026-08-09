@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- HTTP boundary assertions intentionally inspect JSON fixtures and captured commands. */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- HTTP boundary assertions intentionally inspect JSON fixtures and captured commands. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { ServiceRuntime } from '@markorbit/service-kit';
@@ -92,7 +92,7 @@ describe('M4-WP-07 MGSN trusted HTTP boundary', () => {
       }
     });
     expect(response.status).toBe(401);
-    expect(((await response.json()) as any).code).toBe('UNTRUSTED_INTERNAL_CALLER');
+    expect((await response.json()).code).toBe('UNTRUSTED_INTERNAL_CALLER');
   });
 
   it('requires execution:manage for controlled mutations', async () => {
@@ -105,7 +105,7 @@ describe('M4-WP-07 MGSN trusted HTTP boundary', () => {
       body: JSON.stringify({ workspaceId: customerWorkspaceId })
     });
     expect(response.status).toBe(403);
-    expect(((await response.json()) as any).code).toBe('PERMISSION_DENIED');
+    expect((await response.json()).code).toBe('PERMISSION_DENIED');
   });
 
   it('fails closed when operations target a different Workspace', async () => {
@@ -118,7 +118,7 @@ describe('M4-WP-07 MGSN trusted HTTP boundary', () => {
       body: JSON.stringify({ workspaceId: otherProviderWorkspaceId })
     });
     expect(response.status).toBe(404);
-    expect(((await response.json()) as any).code).toBe('WORKSPACE_MISMATCH');
+    expect((await response.json()).code).toBe('WORKSPACE_MISMATCH');
   });
 
   it('requires and binds the Idempotency-Key for mutations', async () => {
@@ -138,7 +138,7 @@ describe('M4-WP-07 MGSN trusted HTTP boundary', () => {
       })
     });
     expect(response.status).toBe(400);
-    expect(((await response.json()) as any).code).toBe('IDEMPOTENCY_KEY_REQUIRED');
+    expect((await response.json()).code).toBe('IDEMPOTENCY_KEY_REQUIRED');
     expect(captured).toBeUndefined();
   });
 
@@ -172,6 +172,6 @@ describe('M4-WP-07 MGSN trusted HTTP boundary', () => {
       headers: trustedHeaders(principal(otherProviderWorkspaceId))
     });
     expect(response.status).toBe(404);
-    expect(((await response.json()) as any).code).toBe('NOT_FOUND');
+    expect((await response.json()).code).toBe('NOT_FOUND');
   });
 });
