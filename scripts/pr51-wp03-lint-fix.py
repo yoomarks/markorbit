@@ -30,3 +30,8 @@ new = """        getWorkspace: (workspaceId) => {
 if old not in text:
     raise SystemExit('Core Workspace fixture block not found')
 path.write_text(text.replace(old, new, 1))
+
+# Repository diff policy rejects trailing whitespace, including Markdown hard-break spaces.
+evidence = Path('docs/tasks/MO-MVP-M4-WP-03-DURABLE-MGSN-PROVIDER-REGISTRY.md')
+lines = evidence.read_text().splitlines()
+evidence.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
