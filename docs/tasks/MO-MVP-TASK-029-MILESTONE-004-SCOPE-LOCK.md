@@ -3,9 +3,10 @@
 - **Task ID:** MO-MVP-TASK-029
 - **Baseline:** merged `main` at `505962ff146980a64b9cf6e08259068146612d05` after M3-WP-08 / PR #47.
 - **Task type:** planning / architecture decision only.
-- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`.
-- **Objective:** select and bound the next MVP milestone after the Milestone 3 `GO` audit without starting implementation.
-- **Recommended direction:** `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
+- **Status:** `APPROVED_BY_MERGE_PR_48`.
+- **Approval:** PR #48 merged as `a1579de77a3471632c0c1de044f49eccbcd7e9a1`.
+- **Objective:** select and bound the next MVP milestone after the Milestone 3 `GO` audit without starting implementation in this planning task.
+- **Approved direction:** `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
 
 ## Canonical basis
 
@@ -28,7 +29,7 @@ The controlling semantic locks include:
 
 ## Repository gap after Milestone 3
 
-Milestone 3 closes the durable commercial bridge:
+Milestone 3 closed the durable commercial bridge:
 
 ```text
 confirmed commercial source
@@ -37,7 +38,7 @@ confirmed commercial source
 -> Formal Matter
 ```
 
-The Beta delivery loop still lacks durable governed provider execution:
+The Beta delivery loop still lacked durable governed provider execution at the time TASK 029 was approved:
 
 ```text
 governed execution source
@@ -49,9 +50,9 @@ governed execution source
 -> evidence handoff / review
 ```
 
-The current Execution service already contains useful Filing Authorization / Execution Release semantics but still uses in-memory filing-governance persistence. MGSN is still a deployable service skeleton and owns no durable provider-network state yet.
+The baseline Execution service already contained useful Filing Authorization / Execution Release semantics but still used in-memory filing-governance persistence. MGSN was still a deployable service skeleton and owned no durable provider-network state yet.
 
-## Proposed Milestone 4 outcome
+## Approved Milestone 4 outcome
 
 An authenticated authorized actor can take an exact current governed Execution source, create a durable MGSN Service Package, evaluate provider eligibility, explicitly allocate one eligible provider, record provider acceptance, receive a durable Provider Return, and hand the exact return/evidence to Execution for review.
 
@@ -70,16 +71,16 @@ The outcome preserves:
 
 ## Direction decision
 
-TASK 029 selects provider execution/return instead of Payment/Invoice or trademark-office submission because:
+TASK 029 selected provider execution/return instead of Payment/Invoice or trademark-office submission because:
 
 1. it directly closes the next missing MVP Beta loop;
-2. the repository already has durable Matter truth suitable as an upstream boundary;
-3. the existing Execution governance semantics provide a bounded source to harden rather than a blank design;
+2. the repository already had durable Matter truth suitable as an upstream boundary;
+3. the existing Execution governance semantics provided a bounded source to harden rather than a blank design;
 4. MGSN is explicitly the service owner for provider registry, eligibility, allocation, acceptance and return;
 5. Payment/Invoice are not prerequisites for proving provider delivery authority;
 6. external filing remains a higher-risk protected-action milestone that should consume reviewed durable provider/execution evidence rather than precede it.
 
-## Planned work packages
+## Approved work packages
 
 - `M4-WP-01` — Provider execution contracts and canonical authority boundary.
 - `M4-WP-02` — Durable authenticated Execution filing-governance source.
@@ -91,9 +92,11 @@ TASK 029 selects provider execution/return instead of Payment/Invoice or tradema
 - `M4-WP-08` — Reliability and migration matrix.
 - `M4-WP-09` — Independent integration and authority audit.
 
+Subsequent implementation status is recorded in `docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.{md,json}` rather than rewriting this historical planning task.
+
 ## Explicit authority boundary
 
-TASK 029 may approve implementation that creates internal provider-operational truth only through explicit governed commands:
+TASK 029 approved implementation that may create internal provider-operational truth only through explicit governed commands:
 
 - Service Package;
 - Eligibility Evaluation;
@@ -102,7 +105,7 @@ TASK 029 may approve implementation that creates internal provider-operational t
 - Provider Return;
 - evidence handoff/review record.
 
-It does not approve or imply:
+It did not approve or imply:
 
 - payment or settlement;
 - invoice issuance;
@@ -124,27 +127,18 @@ A Provider Return may contain a provider assertion that an external action occur
 - this task record;
 - Task Index and README status reconciliation.
 
-## Allowed changes
+## Allowed changes in TASK 029
 
 Planning, architecture, task-index and repository-status documentation only.
 
-## Prohibited changes
+## Prohibited changes in TASK 029
 
-No product code, shared runtime contract implementation, database migration, provider record, allocation, Provider Return, Gateway route, UI behavior, payment/invoice integration, external filing, Git tag, release or deployment freeze is part of TASK 029.
+No product code, shared runtime contract implementation, database migration, provider record, allocation, Provider Return, Gateway route, UI behavior, payment/invoice integration, external filing, Git tag, release or deployment freeze was part of TASK 029 itself.
 
-## Acceptance
+## Acceptance and post-merge status
 
-TASK 029 is complete when the planning documents consistently state:
+TASK 029 completed when PR #48 merged the planning documents with one approved Milestone 4 direction, ownership boundaries, state/authority semantics, work-package dependency graph, reliability/audit evidence requirements and explicit finance/legal-appointment/external-filing non-goals.
 
-- one selected Milestone 4 direction;
-- why it follows Milestone 3;
-- owner boundaries across Core / MarkReg / Execution / MGSN / Gateway;
-- exact source and provider identity rules;
-- allocation/acceptance/return semantics;
-- Provider Return != Official Truth;
-- work-package dependency graph;
-- reliability/audit evidence requirements;
-- explicit finance/legal-appointment/external-filing non-goals;
-- repository validation passes on the planning branch.
+Merging TASK 029 approved the planning direction for implementation; it did not itself implement provider execution or create a release.
 
-Merging TASK 029 approves the planning direction for implementation. It does not itself implement provider execution or create a release.
+Subsequent implementation reached M4-WP-08 in merged PR #56. M4-WP-09 independently audited that merged baseline and currently recommends **FIX** for bounded runtime-integration gaps before Milestone 4 may receive GO. See `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.{md,json}`.
