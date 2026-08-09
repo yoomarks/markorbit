@@ -80,6 +80,7 @@ describe('M4-WP-08 Gateway reliability boundary', () => {
       port: 0,
       mgsnUrl: 'http://127.0.0.1:1',
       authenticationClient: authentication,
+      internalServiceSecret: '',
       csrfSecret: 'm4-wp08-csrf-secret-32-bytes-minimum',
       allowedOrigins: ['https://ops.markorbit.test']
     });
