@@ -24,17 +24,5 @@ if (!pkg.includes(packageNeedle)) throw new Error('package.json Order script anc
 pkg = pkg.replace(packageNeedle, packageReplacement);
 fs.writeFileSync(packagePath, pkg);
 
-const ciPath = '.github/workflows/ci.yml';
-let ci = fs.readFileSync(ciPath, 'utf8');
-const persistenceNeedle = '      - name: Run typed Order browser client tests\n        run: pnpm test:order:client\n';
-const persistenceReplacement = `${persistenceNeedle}      - name: Run durable Order journey component tests\n        run: pnpm test:order:journey\n`;
-if (!ci.includes(persistenceNeedle)) throw new Error('CI Order client anchor not found');
-ci = ci.replace(persistenceNeedle, persistenceReplacement);
-const browserNeedle = '      - run: node --test scripts/playwright-suite-boundary.test.mjs\n\n  validate:\n';
-const browserReplacement = '      - run: node --test scripts/playwright-suite-boundary.test.mjs\n      - name: Run durable Order journey real runtime\n        run: pnpm test:order:journey:browser\n\n  validate:\n';
-if (!ci.includes(browserNeedle)) throw new Error('CI browser anchor not found');
-ci = ci.replace(browserNeedle, browserReplacement);
-fs.writeFileSync(ciPath, ci);
-
 fs.rmSync('scripts/wp06-wire-ci.mjs');
 fs.rmSync('.github/workflows/wp06-wire-ci.yml');
