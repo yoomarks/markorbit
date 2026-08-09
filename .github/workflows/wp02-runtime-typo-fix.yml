@@ -1,0 +1,39 @@
+name: WP02 runtime typo fix
+
+on:
+  push:
+    branches: [m4-wp-02-durable-execution-filing-governance]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-wp-02-durable-execution-filing-governance
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/execution/src/index.ts')
+          text = p.read_text()
+          text = text.replace('UNTRUSTED_INTERNAL_CALDER', 'UNTRUSTED_INTERNAL_CALLER')
+          text = text.replace('process.env.MARKRK_URL', 'process.env.MARKREG_URL')
+          p.write_text(text)
+          PY
+      - run: pnpm exec prettier --write services/execution/src/index.ts
+      - run: pnpm --filter @markorbit/execution-service typecheck
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/execution/src/index.ts
+          git commit -m "fix(m4): correct durable Execution runtime identifiers"
+          git push origin HEAD:m4-wp-02-durable-execution-filing-governance
