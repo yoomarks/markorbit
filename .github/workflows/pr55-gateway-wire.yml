@@ -1,0 +1,52 @@
+name: PR55 gateway wire
+on:
+  push:
+    branches:
+      - agent/m4-wp-07-authenticated-gateway-provider-journey
+    paths:
+      - .github/workflows/pr55-gateway-wire.yml
+permissions:
+  contents: write
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m4-wp-07-authenticated-gateway-provider-journey
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire MGSN routes into Gateway
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('apps/gateway/src/index.ts')
+          s = p.read_text()
+          replacements = [
+            ("export * from './order-http.js';\n", "export * from './order-http.js';\nexport * from './mgsn-http.js';\n"),
+            ("import { createGatewayOrderRoutes } from './order-http.js';\n", "import { createGatewayOrderRoutes } from './order-http.js';\nimport { createGatewayMgsnRoutes } from './mgsn-http.js';\n"),
+            ("  executionUrl?: string;\n", "  executionUrl?: string;\n  mgsnUrl?: string;\n"),
+            ("  const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';\n", "  const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';\n  const mgsnUrl = options.mgsnUrl ?? process.env.MGSN_URL ?? 'http://127.0.0.1:4106';\n"),
+            ("      routes: [\n        ...createGatewayOrderRoutes({\n", "      routes: [\n        ...createGatewayMgsnRoutes({\n          mgsnUrl,\n          ...(authenticationClient ? { authenticationClient } : {}),\n          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)\n            ? {\n                internalServiceSecret: (options.internalServiceSecret ??\n                  process.env.MO_INTERNAL_SERVICE_SECRET)!\n              }\n            : {}),\n          csrfSecret,\n          allowedOrigins\n        }),\n        ...createGatewayOrderRoutes({\n")
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'marker not found: {old!r}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+      - run: pnpm exec prettier --write apps/gateway/src/index.ts apps/gateway/src/mgsn-http.ts services/mgsn/src/http.ts services/mgsn/src/index.ts
+      - run: pnpm --filter @markorbit/mgsn-service typecheck
+      - run: pnpm --filter @markorbit/gateway typecheck
+      - name: Commit wiring and remove helper workflow
+        run: |
+          rm .github/workflows/pr55-gateway-wire.yml
+          git config user.name "markorbit-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(gateway): wire authenticated MGSN provider routes"
+          git push origin HEAD:agent/m4-wp-07-authenticated-gateway-provider-journey
