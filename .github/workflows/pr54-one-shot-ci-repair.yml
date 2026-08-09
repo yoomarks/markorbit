@@ -1,0 +1,75 @@
+name: PR54 one-shot CI repair
+
+on:
+  push:
+    branches:
+      - agent/m4-wp-06-provider-return-evidence-handoff
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m4-wp-06-provider-return-evidence-handoff
+      - name: Repair forward-compatible database cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(file, old, new):
+              path = Path(file)
+              text = path.read_text()
+              count = text.count(old)
+              assert count == 1, f'{file}: expected one match, found {count}'
+              path.write_text(text.replace(old, new, 1))
+
+          downstream_mgsn = '''      `DROP TABLE IF EXISTS
+         mgsn_provider_return_audit,
+         mgsn_provider_return_commands,
+         mgsn_provider_returns,
+         mgsn_allocation_audit,'''
+          replace_once(
+              'services/mgsn/tests/service-package-eligibility-postgres.test.ts',
+              '''      `DROP TABLE IF EXISTS
+         mgsn_allocation_audit,''',
+              downstream_mgsn,
+          )
+          replace_once(
+              'services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts',
+              '''      `DROP TABLE IF EXISTS
+         mgsn_allocation_audit,''',
+              downstream_mgsn,
+          )
+
+          for file in [
+              'services/mgsn/tests/service-package-eligibility-postgres.test.ts',
+              'services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts',
+          ]:
+              replace_once(
+                  file,
+                  "    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');" if 'allocation-provider' in file else "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'\n    );",
+                  ("    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'\n    );\n"
+                   + ("    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');" if 'allocation-provider' in file else "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'\n    );")),
+              )
+
+          tenant = Path('scripts/milestone2-tenant-isolation.integration.test.ts')
+          text = tenant.read_text()
+          old = "      'DROP TABLE IF EXISTS filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'"
+          new = "      'DROP TABLE IF EXISTS execution_provider_return_evidence_audit,execution_provider_return_evidence_commands,execution_provider_return_evidence_receipts,filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'"
+          assert text.count(old) == 1, f'tenant cleanup match count: {text.count(old)}'
+          tenant.write_text(text.replace(old, new, 1))
+
+          Path('.github/workflows/pr54-one-shot-ci-repair.yml').unlink()
+      - name: Commit repair and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/mgsn/tests/service-package-eligibility-postgres.test.ts services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts scripts/milestone2-tenant-isolation.integration.test.ts .github/workflows/pr54-one-shot-ci-repair.yml
+          git diff --cached --check
+          git commit -m "test: isolate WP06 persistence migrations across legacy suites"
+          git push origin HEAD:agent/m4-wp-06-provider-return-evidence-handoff
