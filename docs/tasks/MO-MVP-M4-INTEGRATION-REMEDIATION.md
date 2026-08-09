@@ -2,9 +2,11 @@
 
 - **Milestone:** MO-MVP-MILESTONE-004
 - **Trigger:** merged M4-WP-09 independent audit / PR #57
-- **Audit recommendation:** `FIX`
-- **Remediation PR:** #58
-- **Status:** `IMPLEMENTED_IN_PR_58_PENDING_MERGE_AND_REAUDIT`
+- **Initial audit recommendation:** `FIX`
+- **Remediation PR:** #58 — merged
+- **Remediated main baseline:** `327b61a22ad800250a2d9babe5997eb5a6a9e8eb`
+- **Re-audit recommendation:** `GO`
+- **Status:** `RESOLVED_AND_REAUDITED_GO`
 
 ## Objective
 
@@ -22,7 +24,7 @@ Core exposes a trusted internal bounded Workspace lookup returning only Core-own
 
 ### Execution
 
-Execution now exposes trusted internal provider-execution routes for:
+Execution exposes trusted internal provider-execution routes for:
 
 - exact current Execution source verification;
 - exact Provider Return evidence handoff;
@@ -32,13 +34,13 @@ The routes use Execution-owned repositories and preserve exact Filing Authorizat
 
 ### MGSN
 
-Normal MGSN runtime composition now wires the durable Provider Registry, Service Package/Eligibility, Allocation/Acceptance and Provider Return services to the MGSN-owned PostgreSQL database. Core identity and Execution source/evidence are consumed only through bounded trusted HTTP dependencies.
+Normal MGSN runtime composition wires the durable Provider Registry, Service Package/Eligibility, Allocation/Acceptance and Provider Return services to the MGSN-owned PostgreSQL database. Core identity and Execution source/evidence are consumed only through bounded trusted HTTP dependencies.
 
 No cross-service SQL is introduced.
 
 ## Permanent integration evidence
 
-`./github` temporary helper workflows are not part of the final remediation diff. Permanent evidence is:
+Permanent evidence is:
 
 - `.github/workflows/milestone-4-integration.yml`;
 - `scripts/m4-provider-runtime.integration.test.ts`.
@@ -73,8 +75,8 @@ This remediation changes integration composition only. It does not change the Mi
 - automatic provider selection remains outside Milestone 4;
 - external trademark-office submission remains outside Milestone 4.
 
-## Acceptance
+## Acceptance result
 
-This remediation is ready to merge only when the exact PR head passes the permanent Milestone 4 integration workflow plus the existing validation, persistence, Milestone 2 reliability, Milestone 3 reliability, Milestone 4 reliability and browser/real-runtime regression gates.
+The exact remediation head `4c75c837374f1e92e61bc1a612273c94990371cd` passed Milestone 4 integration, validation, M2/M3/M4 reliability and Browser/Visual Validation. Its Git tree `79efcbe2580e7fa372f0c7f5ebefe6f744216416` is identical to merged `main` commit `327b61a22ad800250a2d9babe5997eb5a6a9e8eb`.
 
-Merging PR #58 closes the implementation findings but does **not** by itself convert the M4-WP-09 audit recommendation from `FIX` to `GO`. After merge, M4-WP-09 must be rerun independently against the new merged `main` baseline and exact tested tree before Milestone 4 can receive a final `GO` recommendation.
+The independent post-merge M4-WP-09 rerun records `GO`. The three blocking findings are closed.
