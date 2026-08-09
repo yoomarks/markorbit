@@ -107,7 +107,7 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
       'DROP TABLE IF EXISTS order_audit,order_commands,orders,markreg_denial_audit,document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE; DROP FUNCTION IF EXISTS reject_markreg_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
     );
     await db.Execution.getPool().query(
-      'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+      'DROP TABLE IF EXISTS filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
     );
     const directory = path.resolve('infrastructure/persistence/migrations'),
       owners = path.resolve('infrastructure/persistence/migration-owners.json');
