@@ -62,9 +62,9 @@ pnpm infra:down
 
 ## Current milestone
 
-**MO MVP Milestone 5 — planning proposed: Durable Evidence Review and Lifecycle Projection**
+**MO MVP Milestone 5 — implementation active: Durable Evidence Review and Lifecycle Projection**
 
-Milestone 4 completed its approved engineering scope with an independent **GO** recommendation after the PR #58 integration remediation and M4-WP-09 rerun. The durable provider path now ends at an Execution-owned `PENDING_REVIEW` evidence receipt:
+Milestone 4 completed its approved engineering scope with an independent **GO** recommendation after the PR #58 integration remediation and M4-WP-09 rerun. The durable provider path ends at an Execution-owned `PENDING_REVIEW` evidence receipt:
 
 ```text
 current governed Execution source
@@ -77,7 +77,7 @@ current governed Execution source
 -> durable PENDING_REVIEW evidence receipt
 ```
 
-TASK 030A now proposes the next bounded milestone direction:
+TASK 030A was approved by merge of PR #60. The approved Milestone 5 loop is:
 
 ```text
 PENDING_REVIEW evidence
@@ -89,9 +89,9 @@ PENDING_REVIEW evidence
 -> explainable Recommended Action
 ```
 
-This is a planning proposal only. Implementation must not start until the owner approves the scope by merging the planning PR.
+M5-WP-01 is implemented in PR #61 and freezes the shared evidence-review, lifecycle-projection and Recommended Action contracts plus canonical authority and AI boundaries. After WP-01 merges with clean hosted gates, the next approved implementation step is M5-WP-02: durable authenticated Execution Evidence Review Decision and correction-request state.
 
-The proposed Milestone 5 authority locks are:
+The Milestone 5 authority locks are:
 
 - Evidence Review Decision is internal review truth, not trademark-office acceptance or Official Truth;
 - Provider Return remains evidence, not Official Truth;
@@ -103,10 +103,12 @@ The proposed Milestone 5 authority locks are:
 
 See:
 
-- `docs/tasks/MO-MVP-TASK-030A-MILESTONE-005-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md`;
+- `docs/tasks/MO-MVP-M5-WP-01-EVIDENCE-LIFECYCLE-CONTRACTS.md`;
+- `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`;
 - `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`;
 - `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.md`.
 
-TASK 030A is planning/architecture only. It does not create a database migration, review decision, lifecycle state, Recommended Action, Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal appointment, external Filing or Official Truth.
+M5-WP-01 does not create a database migration, durable review decision, lifecycle state, Recommended Action runtime, Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal appointment, external Filing or Official Truth.
