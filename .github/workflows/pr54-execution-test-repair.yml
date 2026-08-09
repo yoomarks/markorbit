@@ -1,0 +1,32 @@
+name: PR54 Execution test repair
+on:
+  push:
+    branches: [agent/m4-wp-06-provider-return-evidence-handoff]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m4-wp-06-provider-return-evidence-handoff
+      - name: Repair Execution migration replay cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/execution/tests/provider-return-evidence-postgres.test.ts')
+          s = p.read_text()
+          old = """         professional_review_audit,\n         professional_review_idempotency,\n         professional_review_cases"""
+          new = """         professional_review_audit,\n         professional_review_commands,\n         professional_review_idempotency,\n         professional_review_cases"""
+          assert s.count(old) == 1, s.count(old)
+          p.write_text(s.replace(old, new, 1))
+          Path('.github/workflows/pr54-execution-test-repair.yml').unlink()
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "test(execution): isolate WP06 evidence migration replay"
+          git push origin HEAD:agent/m4-wp-06-provider-return-evidence-handoff
