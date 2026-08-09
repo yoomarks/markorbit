@@ -33,6 +33,7 @@ Provider Return and evidence handoff remain internal evidence truth. They do not
 - `0032_execution_provider_return_evidence.sql` — Execution-owned evidence receipt, retry-safe command evidence and append-only audit.
 - Historical MGSN and Milestone 2 suites explicitly clean later owned WP06 relations before replaying owner migrations, so test namespaces remain isolated without weakening production migration semantics.
 - The Professional Review real-runtime bootstrap also removes the later Execution-owned WP06 evidence relations/functions before replaying the complete Execution migration set, preserving repeatable browser/runtime validation.
+- The dedicated Execution evidence suite resets the complete pre-existing Professional Review relation set, including command evidence, before replaying all Execution-owned migrations; this prevents namespace leakage while retaining strict create-once migration semantics.
 
 ## Acceptance evidence
 
