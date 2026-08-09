@@ -168,3 +168,15 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
   - No tag, release, deployment freeze, Payment/Invoice, legal appointment, external filing or Official Truth is created by this audit.
 
 Milestone 4 now has a **GO** recommendation for its approved engineering scope. The established authority locks remain in force.
+
+## Milestone 5 planning
+
+- TASK 030A — Milestone 5 scope and architecture lock (**proposed for owner approval**)
+  - Numbering note: historical `MO-MVP-TASK-030` remains reserved for Dual-channel Intake; this planning task does not rewrite it.
+  - Proposed direction: `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M5-WP-01` through `M5-WP-08` in `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`.
+  - Proposed loop: `PENDING_REVIEW evidence -> explicit Evidence Review Decision -> reviewed-source admission/correction -> MarkReg Lifecycle Projection -> customer-safe status/timeline -> Recommended Action`.
+  - Governing locks: review admission is not Official Truth or Filing Submission; lifecycle status is an internal governed projection; Recommended Action is advice rather than execution; no Payment/Invoice/legal appointment/automatic completion/Capability escalation.
+  - Planning only: no runtime code, migration, tag, release, deployment freeze or external action is authorized until the owner approves the scope by merging the planning PR.

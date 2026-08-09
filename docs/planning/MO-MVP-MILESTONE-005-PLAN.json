@@ -1,0 +1,259 @@
+{
+  "milestone": "MO-MVP-MILESTONE-005",
+  "planningTask": "TASK 030A",
+  "status": "PROPOSED_FOR_OWNER_APPROVAL",
+  "baseline": {
+    "source": "M4-WP-09 final GO content",
+    "commit": "1dabf784509cbafba21aa9479c83f657bf8a4f39",
+    "predecessorAudit": "GO",
+    "predecessorPr": 59,
+    "milestone4TagOrFreezeClaim": false
+  },
+  "numbering": {
+    "reasonFor030A": "MO-MVP-TASK-030 is already reserved in the historical Task Index for Dual-channel Intake",
+    "historicalTask030Rewritten": false
+  },
+  "direction": {
+    "id": "DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION",
+    "selected": true,
+    "summary": "Turn exact PENDING_REVIEW provider evidence receipts into explicit durable Execution review decisions, exact reviewed-source handoff, MarkReg-owned customer-safe lifecycle projection and explainable non-executing Recommended Actions without external filing or Official Truth authority."
+  },
+  "decisionAlternatives": [
+    {
+      "id": "DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION",
+      "decision": "SELECT",
+      "risk": "MEDIUM_HIGH",
+      "reason": "Directly continues the M4 PENDING_REVIEW boundary and closes the customer Status/Evidence/Lifecycle Beta loop using reviewed durable truth."
+    },
+    {
+      "id": "CAPABILITY_LEARNING_AND_REFLECTION",
+      "decision": "DEFER",
+      "risk": "MEDIUM_HIGH",
+      "reason": "Capability learning should consume reviewed lifecycle outcomes rather than raw Provider Return evidence; durable reviewed outcome provenance should come first."
+    },
+    {
+      "id": "PAYMENT_AND_INVOICE_TRANSACTION_LAYER",
+      "decision": "DEFER",
+      "risk": "HIGH",
+      "reason": "Finance does not close the reviewed-evidence/customer-lifecycle loop and Payment remains separate from performance, authority and completion."
+    },
+    {
+      "id": "EXTERNAL_FILING_AND_OFFICIAL_TRUTH",
+      "decision": "DEFER",
+      "risk": "VERY_HIGH",
+      "reason": "External filing and office truth require separate protected-action, credential and official-source architecture."
+    },
+    {
+      "id": "BROAD_COMMUNICATIONS_AUTOMATION",
+      "decision": "DEFER",
+      "risk": "MEDIUM",
+      "reason": "Messaging/reminders should consume durable lifecycle and recommendation state rather than own or invent lifecycle truth."
+    }
+  ],
+  "semanticBoundaries": {
+    "providerReturn": "MGSN-owned provider assertion/evidence; not Official Truth",
+    "evidenceReceipt": "Execution-owned durable evidence receipt; PENDING_REVIEW means received for review, not externally verified",
+    "evidenceReviewDecision": "Execution-owned explicit internal review truth bound to an exact receipt version/fingerprint; not office acceptance",
+    "correctionRequest": "Execution-owned review result requesting corrected evidence while preserving historical Provider Return lineage",
+    "reviewedSourceAdmission": "bounded exact reviewed source allowed for downstream internal use; not Filing Submission or Official Truth",
+    "lifecycleEventProjection": "MarkReg-owned customer-relevant projection from governed admitted sources; not a second official source",
+    "currentLifecycleView": "deterministic MarkReg projection of durable lifecycle events",
+    "recommendedAction": "explainable advisory candidate; not authorization or execution",
+    "payment": "not owned in Milestone 5",
+    "invoice": "not owned in Milestone 5",
+    "officialFiling": "deferred external authority"
+  },
+  "runtimeOwnership": {
+    "IdentityWorkspacePrincipal": "Core",
+    "ProviderReturnAndProviderNetwork": "MGSN",
+    "EvidenceReceiptReviewDecisionCorrectionAndReviewedSourceAdmission": "Execution",
+    "FormalMatterLifecycleProjectionRecommendedAction": "MarkReg",
+    "TransportPolicyBoundary": "Gateway",
+    "OperationsAndCustomerUI": "projection/action surfaces only"
+  },
+  "reviewOutcomes": ["ADMITTED_FOR_INTERNAL_USE", "CORRECTION_REQUIRED", "REJECTED"],
+  "reviewRules": {
+    "exactReceiptVersionFingerprintRequired": true,
+    "authorizedReviewerPrincipalRequired": true,
+    "staleOrSupersededEvidenceFailsClosed": true,
+    "conflictingConcurrentDecisionSerialized": true,
+    "durableIdempotencyRequired": true,
+    "immutableProvenanceRequired": true,
+    "providerReturnHistoryMutatedByCorrection": false,
+    "admittedForInternalUseMeansOfficialTruth": false,
+    "admittedForInternalUseMeansFilingSubmitted": false,
+    "aiMayCreateAuthoritativeReviewDecision": false
+  },
+  "lifecycleRules": {
+    "owner": "MarkReg",
+    "rawUnreviewedProviderReturnAdmitted": false,
+    "exactReviewedSourceRequired": true,
+    "appendOrientedEventHistory": true,
+    "deterministicCurrentView": true,
+    "customerSafeProjection": true,
+    "sourceProvenanceRetained": true,
+    "officialApplicationInventedFromProviderAssertion": false,
+    "officialApplicationNumberInventedFromProviderAssertion": false,
+    "officeAcceptanceInventedFromProviderAssertion": false,
+    "formalMatterCompletedAutomatically": false
+  },
+  "recommendedActionRules": {
+    "sourceLifecycleVersionFingerprintRequired": true,
+    "deterministicPolicyVersionRequired": true,
+    "explanationRequired": true,
+    "timingBasisRequiredWhenApplicable": true,
+    "states": ["OPEN", "ACKNOWLEDGED", "DISMISSED", "SUPPRESSED"],
+    "executesExternalAction": false,
+    "createsPaymentOrInvoice": false,
+    "grantsAiProtectedActionAuthority": false
+  },
+  "persistence": {
+    "engine": "PostgreSQL 16",
+    "databasePerOwner": true,
+    "owners": {
+      "Core": "Core DB",
+      "MarkReg": "MarkReg DB",
+      "Execution": "Execution DB",
+      "MGSN": "MGSN DB"
+    },
+    "optimisticConcurrency": true,
+    "workspaceScopedIdempotency": true,
+    "crossServiceDatabaseReads": false,
+    "distributedTransactionClaim": false,
+    "handoffRequirement": "exact-version/fingerprint APIs with safe retry, replay and response-loss recovery"
+  },
+  "primaryAcceptanceJourney": [
+    "authenticate authorized reviewer and customer principals",
+    "load exact current PENDING_REVIEW Execution evidence receipt",
+    "record explicit durable Evidence Review Decision",
+    "when correction is required preserve exact evidence and Provider Return lineage",
+    "when admitted expose exact reviewed source for bounded internal downstream use",
+    "hand reviewed source to MarkReg without cross-service SQL",
+    "persist durable Lifecycle Event and deterministic Current Lifecycle View",
+    "produce explainable non-executing Recommended Action candidate",
+    "render customer-safe status/timeline/action projection",
+    "restart runtimes and replay exact handoff without duplicate business state",
+    "deny cross-Workspace/Matter enumeration and mutation",
+    "prove finance, legal appointment, Filing Submission, Official Truth, automatic Matter completion and Capability consequences remain false"
+  ],
+  "authorityConsequences": {
+    "evidenceReviewDecisionCreated": "may become true only after explicit authorized Execution review command",
+    "correctionRequested": "may become true only after explicit review decision requiring correction",
+    "reviewedSourceAdmitted": "may become true only for exact evidence explicitly admitted for bounded internal use",
+    "lifecycleProjectionCreated": "may become true only after exact admitted reviewed-source handoff",
+    "recommendedActionCreated": "may become true as a non-executing advisory record from governed lifecycle state",
+    "mustRemainFalse": [
+      "paymentCreated",
+      "invoiceCreated",
+      "professionalLegallyAppointedAutomatically",
+      "providerAllocatedAutomatically",
+      "providerAcceptedAutomatically",
+      "filingSubmitted",
+      "officialApplicationCreated",
+      "officialApplicationNumberReceived",
+      "trademarkOfficeAcceptance",
+      "trademarkOfficeContactedAsVerifiedTruth",
+      "formalMatterCompletedAutomatically",
+      "userCapabilityVerifiedAutomatically"
+    ]
+  },
+  "aiBoundary": {
+    "maySummarizeEvidence": true,
+    "mayHighlightInconsistencies": true,
+    "mayDraftReviewNotes": true,
+    "mayExplainLifecycle": true,
+    "maySuggestRecommendedActions": true,
+    "mayAuthoritativelyApproveOrRejectEvidence": false,
+    "mayCertifyProviderReturn": false,
+    "mayPromoteOfficialTruth": false,
+    "maySubmitExternally": false,
+    "mayContactTrademarkOffice": false,
+    "mayCreatePaymentInvoice": false,
+    "mayAutoCompleteMatter": false,
+    "mayAutoVerifyUserCapability": false
+  },
+  "realRuntimeAcceptance": {
+    "core": true,
+    "gateway": true,
+    "execution": true,
+    "mgsn": true,
+    "markreg": true,
+    "ownerPostgresqlDatabases": true,
+    "requestInterceptionAllowed": false,
+    "mobile390ForNewCustomerUi": true,
+    "directUrlRecoveryForNewDurableViews": true,
+    "restartReplayRequired": true
+  },
+  "workPackages": [
+    {
+      "id": "M5-WP-01",
+      "name": "Evidence review, lifecycle and recommendation contracts plus canonical authority boundary",
+      "dependencies": ["TASK 030A approved"]
+    },
+    {
+      "id": "M5-WP-02",
+      "name": "Durable authenticated Execution Evidence Review Decision and correction-request state",
+      "dependencies": ["M5-WP-01", "M4 Execution evidence receipt persistence"]
+    },
+    {
+      "id": "M5-WP-03",
+      "name": "Durable MarkReg Lifecycle Projection from exact admitted reviewed sources",
+      "dependencies": ["M5-WP-01", "M5-WP-02", "existing Formal Matter boundary"]
+    },
+    {
+      "id": "M5-WP-04",
+      "name": "Explainable Recommended Action candidates and acknowledgement/suppression semantics",
+      "dependencies": ["M5-WP-03"]
+    },
+    {
+      "id": "M5-WP-05",
+      "name": "Retry-safe Execution-to-MarkReg reviewed-source handoff and correction/replay loop",
+      "dependencies": ["M5-WP-02", "M5-WP-03", "M4 durable MGSN/Execution runtime"]
+    },
+    {
+      "id": "M5-WP-06",
+      "name": "Authenticated Gateway, Operations review and markreg.com lifecycle/status journey",
+      "dependencies": ["M5-WP-02", "M5-WP-03", "M5-WP-04", "M5-WP-05"]
+    },
+    {
+      "id": "M5-WP-07",
+      "name": "Migration, restart, replay, concurrency, isolation, redaction and browser reliability matrix",
+      "dependencies": ["M5-WP-01", "M5-WP-02", "M5-WP-03", "M5-WP-04", "M5-WP-05", "M5-WP-06"]
+    },
+    {
+      "id": "M5-WP-08",
+      "name": "Independent Milestone 5 integration and authority audit",
+      "dependencies": ["M5-WP-07"]
+    }
+  ],
+  "nonGoals": [
+    "payment processing, settlement, custody, escrow or reconciliation",
+    "invoice issuance, tax, refund, chargeback or revenue recognition",
+    "automatic provider selection or allocation",
+    "automatic professional/legal representative appointment",
+    "trademark-office credential storage or transmission",
+    "automatic or external Filing Submission",
+    "official application or application-number truth",
+    "general trademark-office acceptance/refusal/registration truth ingestion",
+    "automatic Formal Matter completion",
+    "automatic Capability verification or canon mutation from provider/review performance",
+    "broad CRM or messaging automation",
+    "public provider marketplace or star ranking",
+    "production GA claim"
+  ],
+  "goGate": {
+    "durableEvidenceReview": true,
+    "immutableCorrectionAndDecisionProvenance": true,
+    "reviewedSourceHandoff": true,
+    "durableLifecycleProjection": true,
+    "explainableRecommendedActions": true,
+    "authenticatedCustomerAndOperationsPaths": true,
+    "workspaceIsolationAndRedaction": true,
+    "restartReplayIdempotencyConcurrency": true,
+    "zeroInterceptionRealRuntimePath": true,
+    "m2M3M4RegressionsRequired": true,
+    "independentAuditRequired": true
+  },
+  "planningOnly": true,
+  "implementationStarted": false
+}
