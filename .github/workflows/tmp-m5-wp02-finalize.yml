@@ -1,0 +1,113 @@
+name: M5 WP02 one-shot finalizer
+
+on:
+  push:
+    branches:
+      - m5-wp-02-execution-evidence-review
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-02-execution-evidence-review
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Finalize WP02 integration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          index = Path('services/execution/src/index.ts')
+          text = index.read_text()
+          marker = "export * from './provider-return-evidence-postgres.js';\n"
+          if "export * from './evidence-review.js';" not in text:
+              if marker not in text:
+                  raise SystemExit('Execution export marker missing')
+              text = text.replace(marker, marker + "export * from './evidence-review.js';\nexport * from './evidence-review-postgres.js';\n")
+              index.write_text(text)
+
+          package = Path('package.json')
+          data = json.loads(package.read_text())
+          data['scripts']['test:evidence-review:postgres'] = (
+              'pnpm build:professional-review-deps && '
+              'EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED=1 '
+              'pnpm --filter @markorbit/execution-service exec vitest run tests/evidence-review-postgres.test.ts'
+          )
+          package.write_text(json.dumps(data, indent=2) + '\n')
+
+          ci = Path('.github/workflows/ci.yml')
+          text = ci.read_text()
+          env_marker = "      EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'\n"
+          if "EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'" not in text:
+              if env_marker not in text:
+                  raise SystemExit('CI evidence env marker missing')
+              text = text.replace(env_marker, env_marker + "      EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'\n")
+          gate = (
+              "      - name: Run durable Execution Provider Return evidence PostgreSQL suite\n"
+              "        run: pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts\n"
+          )
+          if 'Run durable Execution Evidence Review Decision PostgreSQL suite' not in text:
+              if gate not in text:
+                  raise SystemExit('CI provider-return evidence gate marker missing')
+              text = text.replace(gate, gate + "      - name: Run durable Execution Evidence Review Decision PostgreSQL suite\n        run: pnpm test:evidence-review:postgres\n")
+          ci.write_text(text)
+
+          review_tables = (
+              '         execution_evidence_review_audit,\n'
+              '         execution_evidence_review_commands,\n'
+              '         execution_evidence_correction_requests,\n'
+              '         execution_evidence_review_decisions,\n'
+              '         execution_evidence_review_sources,\n'
+          )
+          for root in (Path('services/execution/tests'), Path('scripts')):
+              for p in root.glob('*.ts'):
+                  text = p.read_text()
+                  if 'execution_provider_return_evidence_audit,' not in text:
+                      continue
+                  if 'execution_evidence_review_audit,' not in text:
+                      text = text.replace('         execution_provider_return_evidence_audit,', review_tables + '         execution_provider_return_evidence_audit,')
+                  if 'reject_execution_provider_return_evidence_audit_mutation()' in text and 'reject_execution_evidence_review_audit_mutation()' not in text:
+                      old = (
+                          "    await pool.query(\n"
+                          "      'DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE'\n"
+                          "    );"
+                      )
+                      if old in text:
+                          text = text.replace(old, "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_execution_evidence_review_audit_mutation() CASCADE'\n    );\n" + old)
+                  p.write_text(text)
+
+          task_index = Path('docs/planning/TASK-INDEX.md')
+          text = task_index.read_text()
+          text = text.replace('  - Current implementation status: .', '  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.{md,json}`.')
+          text = text.replace('  - Shared contract: .', '  - Shared contract: `@markorbit/contracts/evidence-lifecycle`.')
+          text = text.replace('  - Authority evidence: .', '  - Authority evidence: `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`.')
+          if 'M5-WP-02 — Durable authenticated Execution Evidence Review Decision' not in text:
+              anchor = '  - No runtime migration or external action is introduced by WP-01.\n'
+              if anchor not in text:
+                  raise SystemExit('Task Index WP01 anchor missing')
+              text = text.replace(anchor, anchor + '- M5-WP-02 — Durable authenticated Execution Evidence Review Decision (**implemented in PR #62**)\n  - Execution-owned migration: `0033_execution_evidence_review`.\n  - Exact receipt ID/version/fingerprint, authenticated reviewer identity, durable idempotency/concurrency and correction-request provenance.\n  - Review remains internal truth, not Filing Submission or Official Truth.\n')
+          task_index.write_text(text)
+          PY
+          pnpm exec prettier --write services/execution/src/index.ts services/execution/src/evidence-review.ts services/execution/src/evidence-review-postgres.ts services/execution/tests/evidence-review-postgres.test.ts services/execution/tests/*.ts scripts/*.ts infrastructure/persistence/migration-owners.json package.json .github/workflows/ci.yml docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.json docs/planning/TASK-INDEX.md docs/tasks/MO-MVP-M5-WP-02-EXECUTION-EVIDENCE-REVIEW.md
+          pnpm build:professional-review-deps
+          pnpm --filter @markorbit/execution-service typecheck
+          git rm .github/workflows/tmp-m5-wp02-finalize.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat(m5): finalize durable evidence review integration'
+          git push origin HEAD:m5-wp-02-execution-evidence-review
