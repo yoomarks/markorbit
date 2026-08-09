@@ -190,6 +190,7 @@ export interface ProviderAcceptance {
   schemaVersion: 1;
   providerAcceptanceId: ProviderAcceptanceId;
   workspaceId: string;
+  version: number;
   allocation: Readonly<ExactVersionReference<AllocationId>>;
   servicePackage: Readonly<ExactVersionReference<ServicePackageId>>;
   providerId: ProviderId;
@@ -301,7 +302,7 @@ export interface CreateProviderReturnCommand {
   allocationId: AllocationId;
   expectedAllocationVersion: number;
   providerAcceptanceId: ProviderAcceptanceId;
-  expectedProviderAcceptanceVersion: number | string;
+  expectedProviderAcceptanceVersion: number;
   servicePackageId: ServicePackageId;
   expectedServicePackageVersion: number;
   workStatusClaim: string;
