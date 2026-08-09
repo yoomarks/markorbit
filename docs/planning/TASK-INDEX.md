@@ -169,14 +169,18 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
 
 Milestone 4 now has a **GO** recommendation for its approved engineering scope. The established authority locks remain in force.
 
-## Milestone 5 planning
+## Milestone 5
 
-- TASK 030A — Milestone 5 scope and architecture lock (**proposed for owner approval**)
+- TASK 030A — Milestone 5 scope and architecture lock (**approved by merge of PR #60**)
   - Numbering note: historical `MO-MVP-TASK-030` remains reserved for Dual-channel Intake; this planning task does not rewrite it.
-  - Proposed direction: `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
+  - Approved direction: `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
   - Scope: `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`.
   - Delivery graph: milestone-local work packages `M5-WP-01` through `M5-WP-08` in `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`.
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`.
-  - Proposed loop: `PENDING_REVIEW evidence -> explicit Evidence Review Decision -> reviewed-source admission/correction -> MarkReg Lifecycle Projection -> customer-safe status/timeline -> Recommended Action`.
+  - Approved loop: `PENDING_REVIEW evidence -> explicit Evidence Review Decision -> reviewed-source admission/correction -> MarkReg Lifecycle Projection -> customer-safe status/timeline -> Recommended Action`.
   - Governing locks: review admission is not Official Truth or Filing Submission; lifecycle status is an internal governed projection; Recommended Action is advice rather than execution; no Payment/Invoice/legal appointment/automatic completion/Capability escalation.
-  - Planning only: no runtime code, migration, tag, release, deployment freeze or external action is authorized until the owner approves the scope by merging the planning PR.
+  - Current implementation status: .
+- M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary (**implemented in PR #61**)
+  - Shared contract: .
+  - Authority evidence: .
+  - No runtime migration or external action is introduced by WP-01.

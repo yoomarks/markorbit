@@ -2,7 +2,7 @@
 
 - **Milestone:** `MO-MVP-MILESTONE-005`
 - **Planning task:** `MO-MVP-TASK-030A`
-- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`
+- **Status:** `APPROVED_FOR_IMPLEMENTATION`
 - **Direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`
 - **Predecessor gate:** Milestone 4 final independent audit recommends `GO`
 

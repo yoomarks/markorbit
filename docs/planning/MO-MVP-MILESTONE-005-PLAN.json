@@ -1,7 +1,7 @@
 {
   "milestone": "MO-MVP-MILESTONE-005",
   "planningTask": "TASK 030A",
-  "status": "PROPOSED_FOR_OWNER_APPROVAL",
+  "status": "APPROVED_FOR_IMPLEMENTATION",
   "baseline": {
     "source": "M4-WP-09 final GO content",
     "commit": "1dabf784509cbafba21aa9479c83f657bf8a4f39",

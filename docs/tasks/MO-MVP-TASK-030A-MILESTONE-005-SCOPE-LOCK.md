@@ -3,9 +3,9 @@
 - **Task ID:** MO-MVP-TASK-030A
 - **Baseline:** M4-WP-09 final GO content at `1dabf784509cbafba21aa9479c83f657bf8a4f39` / PR #59.
 - **Task type:** planning / architecture decision only.
-- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`.
+- **Status:** `APPROVED_BY_PR_60`.
 - **Objective:** select and bound the next MVP milestone after the Milestone 4 `GO` audit without starting implementation in this planning task.
-- **Proposed direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
+- **Approved direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`.
 
 ## Numbering note
 
@@ -142,4 +142,4 @@ No product code, runtime contract implementation, database migration, review dec
 
 ## Approval gate
 
-Implementation must not start until the owner approves this scope by merging the planning PR. Merge of this planning task would authorize only the proposed Milestone 5 engineering direction and bounded work-package graph; it would not itself create product/runtime state or authorize any external action.
+The owner approved this scope by merging PR #60. That merge authorizes the Milestone 5 engineering direction and bounded work-package graph only; implementation proceeds through the approved work packages and the approval does not itself create product/runtime state or authorize any external action.
