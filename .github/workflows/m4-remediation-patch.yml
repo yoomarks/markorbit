@@ -1,0 +1,94 @@
+name: M4 remediation patch
+
+on:
+  push:
+    branches:
+      - m4-integration-remediation
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-integration-remediation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch runtime composition
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('services/execution/src/index.ts')
+          text = path.read_text()
+          replacements = [
+              (
+                  "import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';",
+                  "import { createServiceRuntime, HttpError, json, type JsonResult, type JsonRoute } from '@markorbit/service-kit';",
+              ),
+              (
+                  "  milestoneTestRuntime?: boolean;\n}",
+                  "  milestoneTestRuntime?: boolean;\n  providerExecutionRoutes?: readonly JsonRoute[];\n}",
+              ),
+              (
+                  "      routes: [\n        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')",
+                  "      routes: [\n        ...(options.providerExecutionRoutes ?? []),\n        ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')",
+              ),
+              (
+                  "export * from './provider-return-evidence-postgres.js';",
+                  "export * from './provider-return-evidence-postgres.js';\nexport * from './provider-execution-source.js';\nexport * from './provider-execution-http.js';\nexport * from './durable-provider-execution.js';",
+              ),
+          ]
+          for old, new in replacements:
+              if old in text:
+                  text = text.replace(old, new, 1)
+              elif new not in text:
+                  raise SystemExit(f'missing execution anchor: {old!r}')
+          path.write_text(text)
+
+          path = Path('services/mgsn/src/provider-registry.ts')
+          text = path.read_text()
+          old = "  | 'PERSISTENCE_UNAVAILABLE';"
+          new = "  | 'PERSISTENCE_UNAVAILABLE'\n  | 'DEPENDENCY_UNAVAILABLE';"
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit('missing provider registry error-code anchor')
+          path.write_text(text)
+          PY
+      - name: Format remediation files
+        run: >-
+          pnpm exec prettier --write
+          services/core/src/index.ts
+          services/core/src/main.ts
+          services/execution/src/index.ts
+          services/execution/src/main.ts
+          services/execution/src/provider-execution-source.ts
+          services/execution/src/provider-execution-http.ts
+          services/execution/src/durable-provider-execution.ts
+          services/mgsn/src/index.ts
+          services/mgsn/src/main.ts
+          services/mgsn/src/provider-registry.ts
+          services/mgsn/src/runtime-dependencies.ts
+          services/mgsn/src/durable-runtime.ts
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/core/src/index.ts services/core/src/main.ts services/execution/src/index.ts services/execution/src/main.ts services/execution/src/provider-execution-source.ts services/execution/src/provider-execution-http.ts services/execution/src/durable-provider-execution.ts services/mgsn/src/index.ts services/mgsn/src/main.ts services/mgsn/src/provider-registry.ts services/mgsn/src/runtime-dependencies.ts services/mgsn/src/durable-runtime.ts
+          git commit -m "feat(m4): wire durable provider integration runtime"
+          git push origin HEAD:m4-integration-remediation
