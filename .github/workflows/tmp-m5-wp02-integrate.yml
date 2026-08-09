@@ -31,14 +31,6 @@ jobs:
           from pathlib import Path
           import json
 
-          def replace(path, old, new):
-              p = Path(path)
-              text = p.read_text()
-              if old not in text:
-                  raise SystemExit(f'missing expected text in {path}: {old!r}')
-              p.write_text(text.replace(old, new))
-
-          # Export the durable WP02 service/repository from the Execution package.
           index = Path('services/execution/src/index.ts')
           text = index.read_text()
           marker = "export * from './provider-return-evidence-postgres.js';\n"
@@ -48,7 +40,6 @@ jobs:
                   raise SystemExit('Execution export marker missing')
               index.write_text(text.replace(marker, addition))
 
-          # Add a permanent root command for the exact PostgreSQL acceptance suite.
           package = Path('package.json')
           data = json.loads(package.read_text())
           data['scripts']['test:evidence-review:postgres'] = (
@@ -58,31 +49,31 @@ jobs:
           )
           package.write_text(json.dumps(data, indent=2) + '\n')
 
-          # Add the WP02 suite to the hosted persistence gate.
           ci = Path('.github/workflows/ci.yml')
           text = ci.read_text()
           if "EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'" not in text:
+              marker = "      EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'\n"
+              if marker not in text:
+                  raise SystemExit('CI evidence env marker missing')
               text = text.replace(
-                  "      EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'\n",
-                  "      EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'\n"
-                  "      EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'\n"
+                  marker,
+                  marker + "      EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'\n"
               )
-          marker = (
+          gate = (
               "      - name: Run durable Execution Provider Return evidence PostgreSQL suite\n"
               "        run: pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts\n"
           )
-          addition = marker + (
-              "      - name: Run durable Execution Evidence Review Decision PostgreSQL suite\n"
-              "        run: pnpm test:evidence-review:postgres\n"
-          )
           if 'Run durable Execution Evidence Review Decision PostgreSQL suite' not in text:
-              if marker not in text:
+              if gate not in text:
                   raise SystemExit('CI provider-return evidence gate marker missing')
-              text = text.replace(marker, addition)
+              text = text.replace(
+                  gate,
+                  gate +
+                  "      - name: Run durable Execution Evidence Review Decision PostgreSQL suite\n"
+                  "        run: pnpm test:evidence-review:postgres\n"
+              )
           ci.write_text(text)
 
-          # Historical Execution suites replay every owner migration in shared test DBs.
-          # Clean later WP02 relations first so strict immutable migrations can replay unchanged.
           cleanup_prefix = (
               '         execution_evidence_review_audit,\n'
               '         execution_evidence_review_commands,\n'
@@ -119,25 +110,32 @@ jobs:
                           )
                   p.write_text(text)
 
-          # Record WP02 in the human Task Index without broadening scope.
           task_index = Path('docs/planning/TASK-INDEX.md')
           text = task_index.read_text()
-          marker = (
-              '- M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary (**implemented in PR #61**)\n'
-              '  - Shared contract: `@markorbit/contracts/evidence-lifecycle`.\n'
-              '  - Authority evidence: `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`.\n'
-              '  - No runtime migration or external action is introduced by WP-01.\n'
+          text = text.replace(
+              '  - Current implementation status: .',
+              '  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.{md,json}`.'
           )
-          addition = marker + (
+          text = text.replace(
+              '  - Shared contract: .',
+              '  - Shared contract: `@markorbit/contracts/evidence-lifecycle`.'
+          )
+          text = text.replace(
+              '  - Authority evidence: .',
+              '  - Authority evidence: `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`.'
+          )
+          wp02 = (
               '- M5-WP-02 — Durable authenticated Execution Evidence Review Decision (**implemented in PR #62**)\n'
               '  - Execution-owned migration: `0033_execution_evidence_review`.\n'
               '  - Exact receipt ID/version/fingerprint, authenticated reviewer identity, durable idempotency/concurrency and correction-request provenance.\n'
               '  - Review remains internal truth, not Filing Submission or Official Truth.\n'
           )
           if 'M5-WP-02 — Durable authenticated Execution Evidence Review Decision' not in text:
-              if marker not in text:
-                  raise SystemExit('Task Index WP01 marker missing')
-              task_index.write_text(text.replace(marker, addition))
+              anchor = '  - No runtime migration or external action is introduced by WP-01.\n'
+              if anchor not in text:
+                  raise SystemExit('Task Index WP01 anchor missing')
+              text = text.replace(anchor, anchor + wp02)
+          task_index.write_text(text)
           PY
           pnpm exec prettier --write \
             services/execution/src/index.ts \
