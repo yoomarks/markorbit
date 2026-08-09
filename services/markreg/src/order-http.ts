@@ -242,12 +242,13 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
         const pageSize = request.query.pageSize === undefined ? 20 : Number(request.query.pageSize);
         if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize))
           throw new HttpError(400, 'INVALID_REQUEST', 'Order pagination is invalid.');
-        if (request.query.status && !isOrderStatus(request.query.status))
+        const status = request.query.status;
+        if (status && !isOrderStatus(status))
           throw new HttpError(400, 'INVALID_REQUEST', 'Order status filter is invalid.');
         const query: OrderListQuery = {
           page,
           pageSize,
-          ...(request.query.status ? { status: request.query.status } : {}),
+          ...(status ? { status } : {}),
           ...(request.query.customerId ? { customerId: request.query.customerId } : {})
         };
         return run<Readonly<OrderProjectionListResponse>>(200, () =>
