@@ -46,7 +46,10 @@ export interface AllocationProviderAcceptanceRepository {
     scopeKey: string,
     idempotencyKey: string
   ): Promise<AllocationProviderAcceptanceReplay | undefined>;
-  findAllocation(allocationId: AllocationId, version?: number): Promise<AllocationRecord | undefined>;
+  findAllocation(
+    allocationId: AllocationId,
+    version?: number
+  ): Promise<AllocationRecord | undefined>;
   findActiveAllocation(servicePackageId: ServicePackageId): Promise<AllocationRecord | undefined>;
   createAllocation(
     record: AllocationRecord,
@@ -554,9 +557,8 @@ export class AllocationProviderAcceptanceService {
   }
 
   private async requireEligibilityEvaluation(eligibilityEvaluationId: EligibilityEvaluationId) {
-    const record = await this.servicePackageEligibility.findEligibilityEvaluation(
-      eligibilityEvaluationId
-    );
+    const record =
+      await this.servicePackageEligibility.findEligibilityEvaluation(eligibilityEvaluationId);
     if (!record)
       throw new AllocationProviderAcceptanceError(
         'ELIGIBILITY_EVALUATION_NOT_FOUND',
@@ -619,7 +621,11 @@ export class AllocationProviderAcceptanceService {
     return record;
   }
 
-  private async allocationReplay(scopeKey: string, idempotencyKey: string, requestFingerprint: string) {
+  private async allocationReplay(
+    scopeKey: string,
+    idempotencyKey: string,
+    requestFingerprint: string
+  ) {
     const replay = await this.repository.findReplay(scopeKey, idempotencyKey);
     if (!replay) return undefined;
     if (replay.fingerprint !== requestFingerprint)
@@ -637,7 +643,11 @@ export class AllocationProviderAcceptanceService {
     return replay.responseRecord;
   }
 
-  private async acceptanceReplay(scopeKey: string, idempotencyKey: string, requestFingerprint: string) {
+  private async acceptanceReplay(
+    scopeKey: string,
+    idempotencyKey: string,
+    requestFingerprint: string
+  ) {
     const replay = await this.repository.findReplay(scopeKey, idempotencyKey);
     if (!replay) return undefined;
     if (replay.fingerprint !== requestFingerprint)

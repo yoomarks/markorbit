@@ -18,9 +18,7 @@ export interface AllocationProviderAcceptanceTransactionHost {
   transact<T>(work: (client: QueryClient) => Promise<T>): Promise<T>;
 }
 
-export class PostgresAllocationProviderAcceptanceRepository
-  implements AllocationProviderAcceptanceRepository
-{
+export class PostgresAllocationProviderAcceptanceRepository implements AllocationProviderAcceptanceRepository {
   constructor(
     private readonly database: AllocationProviderAcceptanceTransactionHost,
     private readonly query: QueryClient
@@ -393,7 +391,8 @@ export class PostgresAllocationProviderAcceptanceRepository
     workspaceId: string,
     targetType: 'ALLOCATION' | 'PROVIDER_ACCEPTANCE',
     targetId: string,
-    action: 'PROVIDER_ALLOCATED' | 'PROVIDER_ACCEPTED' | 'PROVIDER_DECLINED' | 'ALLOCATION_SUPERSEDED',
+    action:
+      'PROVIDER_ALLOCATED' | 'PROVIDER_ACCEPTED' | 'PROVIDER_DECLINED' | 'ALLOCATION_SUPERSEDED',
     recordVersion: number,
     actorId: string,
     sourceFingerprint: string,

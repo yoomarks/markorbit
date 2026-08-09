@@ -192,8 +192,7 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
         sourceValue.servicePackage.servicePackageFingerprintSha256,
       eligibilityEvaluationId: sourceValue.evaluation.eligibilityEvaluationId,
       expectedEligibilityEvaluationVersion: sourceValue.evaluation.version,
-      expectedEligibilityFingerprintSha256:
-        sourceValue.evaluation.deterministicFingerprintSha256,
+      expectedEligibilityFingerprintSha256: sourceValue.evaluation.deterministicFingerprintSha256,
       providerId: sourceValue.provider.providerId,
       providerSupplyCapabilityId: sourceValue.capability.providerSupplyCapabilityId,
       expectedProviderSupplyCapabilityVersion: sourceValue.capability.version,
@@ -447,23 +446,27 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
       await allocationService().getProviderAcceptance(acceptance.providerAcceptanceId)
     ).toEqual(acceptance);
 
-    const audit = await database.getPool().query<{ audit_id: string; action: string }>(
-      'SELECT audit_id::text,action FROM mgsn_allocation_audit ORDER BY audit_id'
-    );
+    const audit = await database
+      .getPool()
+      .query<{ audit_id: string; action: string }>(
+        'SELECT audit_id::text,action FROM mgsn_allocation_audit ORDER BY audit_id'
+      );
     expect(audit.rows.map((row) => row.action)).toEqual([
       'PROVIDER_ALLOCATED',
       'PROVIDER_ACCEPTED'
     ]);
     await expect(
-      database.getPool().query('UPDATE mgsn_allocation_audit SET action=$2 WHERE audit_id=$1', [
-        audit.rows[0]!.audit_id,
-        'PROVIDER_DECLINED'
-      ])
+      database
+        .getPool()
+        .query('UPDATE mgsn_allocation_audit SET action=$2 WHERE audit_id=$1', [
+          audit.rows[0]!.audit_id,
+          'PROVIDER_DECLINED'
+        ])
     ).rejects.toThrow(/append-only/);
     await expect(
-      database.getPool().query('DELETE FROM mgsn_allocation_audit WHERE audit_id=$1', [
-        audit.rows[0]!.audit_id
-      ])
+      database
+        .getPool()
+        .query('DELETE FROM mgsn_allocation_audit WHERE audit_id=$1', [audit.rows[0]!.audit_id])
     ).rejects.toThrow(/append-only/);
   });
 });

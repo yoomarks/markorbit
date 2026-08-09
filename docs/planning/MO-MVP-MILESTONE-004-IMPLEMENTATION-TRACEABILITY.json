@@ -53,7 +53,7 @@
     },
     {
       "id": "M4-WP-05",
-      "status": "IMPLEMENTATION_IN_PROGRESS",
+      "status": "IMPLEMENTED_IN_PR_53",
       "evidence": [
         "infrastructure/persistence/migrations/0030_mgsn_allocation_provider_acceptance.sql",
         "services/mgsn/src/allocation-provider-acceptance.ts",
