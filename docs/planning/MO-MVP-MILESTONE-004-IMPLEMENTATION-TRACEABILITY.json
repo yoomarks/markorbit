@@ -1,0 +1,38 @@
+{
+  "milestone": "MO-MVP-MILESTONE-004",
+  "direction": "DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN",
+  "scopeApproval": {
+    "pr": 48,
+    "mergeCommit": "a1579de77a3471632c0c1de044f49eccbcd7e9a1"
+  },
+  "workPackages": [
+    {
+      "id": "M4-WP-01",
+      "status": "IMPLEMENTED_IN_PR_49",
+      "evidence": [
+        "packages/contracts/src/provider-execution.ts",
+        "packages/contracts/tests/provider-execution-contract.test.ts",
+        "docs/architecture/PROVIDER-EXECUTION-AUTHORITY-BOUNDARY.md",
+        "docs/tasks/MO-MVP-M4-WP-01-PROVIDER-EXECUTION-CONTRACTS.md"
+      ]
+    },
+    { "id": "M4-WP-02", "status": "NOT_STARTED" },
+    { "id": "M4-WP-03", "status": "NOT_STARTED" },
+    { "id": "M4-WP-04", "status": "NOT_STARTED" },
+    { "id": "M4-WP-05", "status": "NOT_STARTED" },
+    { "id": "M4-WP-06", "status": "NOT_STARTED" },
+    { "id": "M4-WP-07", "status": "NOT_STARTED" },
+    { "id": "M4-WP-08", "status": "NOT_STARTED" },
+    { "id": "M4-WP-09", "status": "NOT_STARTED" }
+  ],
+  "wp01AuthorityBoundary": {
+    "eligibilityIsNotAllocation": true,
+    "allocationIsNotProviderAcceptance": true,
+    "providerAcceptanceIsNotLegalAppointment": true,
+    "providerReturnIsNotOfficialTruth": true,
+    "evidenceHandoffIsNotFilingSubmission": true,
+    "evidenceHandoffIsNotFormalMatterCompletion": true,
+    "paymentOrInvoiceCreated": false,
+    "userCapabilityVerifiedAutomatically": false
+  }
+}
