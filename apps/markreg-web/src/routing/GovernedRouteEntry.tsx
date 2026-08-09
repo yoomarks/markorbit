@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createApiClient } from '../api/client.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
+import { CustomerConfirmationOrderEntry } from '../CustomerConfirmationOrderEntry.js';
 import { OrderJourney } from '../OrderJourney.js';
 import { parseMarkregRoute, type MarkregRoute, type MarkregRouteResult } from './markreg-route.js';
 
@@ -65,6 +66,14 @@ export function GovernedRouteEntry({
       <OrderJourney
         orderId={parsed.route.recordId}
         expectedVersion={parsed.route.expectedVersion}
+      />
+    );
+  if (parsed.kind === 'VALID' && parsed.route.view === 'customer-confirmation')
+    return (
+      <CustomerConfirmationOrderEntry
+        confirmationId={parsed.route.recordId}
+        expectedVersion={parsed.route.expectedVersion}
+        client={client}
       />
     );
   return <GenericGovernedRouteEntry parsed={parsed} client={client} />;

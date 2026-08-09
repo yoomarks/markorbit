@@ -1,4 +1,4 @@
-import type { CustomerConfirmation, PlanQuoteResponse } from '@markorbit/contracts';
+import type { CustomerConfirmation } from '@markorbit/contracts';
 import type { OrderStatus } from '@markorbit/contracts/order';
 import {
   Alert,
@@ -20,7 +20,6 @@ import {
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 export interface OrderCommercialSource {
-  quote: PlanQuoteResponse;
   confirmation: CustomerConfirmation;
 }
 
@@ -119,8 +118,10 @@ export function OrderJourney({
     setState('READY');
     if (typeof sessionStorage !== 'undefined')
       sessionStorage.setItem('markreg-order-journey:last-order', value.orderId);
-    if (typeof history !== 'undefined')
-      history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', orderRoute(value));
+    if (typeof history !== 'undefined') {
+      if (mode === 'push') history.pushState(null, '', orderRoute(value));
+      else history.replaceState(null, '', orderRoute(value));
+    }
   };
 
   useEffect(() => {
