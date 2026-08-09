@@ -6,7 +6,7 @@ import {
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import {
-  isOrderStatus,
+  orderStatuses,
   orderTypes,
   type CancelOrderCommand,
   type ConfirmOrderCommand,
@@ -200,6 +200,17 @@ function requiredEnum<const T extends readonly string[]>(
   return match;
 }
 
+function optionalEnum<const T extends readonly string[]>(
+  value: string | undefined,
+  field: string,
+  values: T
+): T[number] | undefined {
+  if (value === undefined) return undefined;
+  const match = values.find((candidate) => candidate === value);
+  if (!match) throw new HttpError(400, 'INVALID_REQUEST', `${field} is invalid.`);
+  return match;
+}
+
 export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonRoute[] {
   return [
     {
@@ -242,9 +253,7 @@ export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonR
         const pageSize = request.query.pageSize === undefined ? 20 : Number(request.query.pageSize);
         if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize))
           throw new HttpError(400, 'INVALID_REQUEST', 'Order pagination is invalid.');
-        const status = request.query.status;
-        if (status && !isOrderStatus(status))
-          throw new HttpError(400, 'INVALID_REQUEST', 'Order status filter is invalid.');
+        const status = optionalEnum(request.query.status, 'Order status filter', orderStatuses);
         const query: OrderListQuery = { page, pageSize };
         if (status) query.status = status;
         if (request.query.customerId) query.customerId = request.query.customerId;
