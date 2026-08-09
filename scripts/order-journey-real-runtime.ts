@@ -21,6 +21,10 @@ import {
   createRuntime as createMarkReg
 } from '../services/markreg/src/index.js';
 import {
+  hashSnapshot,
+  type AcceptedQuoteSnapshot
+} from '../services/markreg/src/customer-confirmation.js';
+import {
   MARKREG_TEST_MIGRATION_NAMESPACE,
   resetAndMigrateMarkRegTestDatabase
 } from '../services/markreg/tests/support/markreg-test-database.js';
@@ -125,6 +129,29 @@ async function seedCommercialSource(
   source: CommercialSourceSnapshot
 ): Promise<void> {
   const pool = database.getPool();
+  const snapshot: AcceptedQuoteSnapshot = {
+    schemaVersion: 1,
+    quoteId: source.quote.quoteId,
+    quoteVersion: source.quote.quoteVersion,
+    planId: source.commercialScope.selectedPlanId,
+    planVersion: source.commercialScope.selectedPlanVersion,
+    currency: source.quote.currency,
+    totalMinor: source.quote.totalMinor,
+    lineItems: [
+      {
+        code: 'SERVICE',
+        description: 'Governed trademark service',
+        category: 'SERVICE_FEE',
+        amountMinor: source.quote.totalMinor
+      }
+    ],
+    termsVersion: 'terms-v1',
+    acknowledgementCodes: ['NO_FILING'],
+    selectedOptionCode: 'B',
+    recommendationId: `recommendation_${source.quote.quoteId}`,
+    assumptions: [],
+    limitations: ['No external filing is created by confirmation.']
+  };
   await pool.query(
     `INSERT INTO customer_confirmations(
       confirmation_id,workspace_id,source_quote_id,source_quote_version,status,version,
@@ -136,30 +163,8 @@ async function seedCommercialSource(
       source.quote.quoteId,
       source.quote.quoteVersion,
       source.customerConfirmation.confirmationVersion,
-      JSON.stringify({
-        schemaVersion: 1,
-        quoteId: source.quote.quoteId,
-        quoteVersion: source.quote.quoteVersion,
-        planId: source.commercialScope.selectedPlanId,
-        planVersion: source.commercialScope.selectedPlanVersion,
-        currency: source.quote.currency,
-        totalMinor: source.quote.totalMinor,
-        lineItems: [
-          {
-            code: 'SERVICE',
-            description: 'Governed trademark service',
-            category: 'SERVICE_FEE',
-            amountMinor: source.quote.totalMinor
-          }
-        ],
-        termsVersion: 'terms-v1',
-        acknowledgementCodes: ['NO_FILING'],
-        selectedOptionCode: 'B',
-        recommendationId: `recommendation_${source.quote.quoteId}`,
-        assumptions: [],
-        limitations: ['No external filing is created by confirmation.']
-      }),
-      'b'.repeat(64),
+      JSON.stringify(snapshot),
+      hashSnapshot(snapshot),
       at
     ]
   );
