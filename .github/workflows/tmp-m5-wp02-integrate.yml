@@ -145,7 +145,6 @@ jobs:
             services/execution/tests/*.ts \
             scripts/*.ts \
             infrastructure/persistence/migration-owners.json \
-            infrastructure/persistence/migrations/0033_execution_evidence_review.sql \
             package.json \
             .github/workflows/ci.yml \
             docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md \
