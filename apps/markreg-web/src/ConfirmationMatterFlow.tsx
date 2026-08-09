@@ -20,6 +20,7 @@ import {
 } from '@markorbit/ui';
 import { useEffect, useMemo, useState } from 'react';
 import type { MarkregClient } from './api/markreg.js';
+import { OrderJourney } from './OrderJourney.js';
 
 export type MatterViewState =
   | 'QUOTE_REVIEW'
@@ -69,6 +70,7 @@ export function ConfirmationMatterFlow({
   const [reviewCase, setReviewCase] = useState<ProfessionalReviewCase>();
   const [formalMatter, setFormalMatter] = useState<FormalMatter>();
   const [savedMessage, setSavedMessage] = useState('');
+  const [orderJourneyOpen, setOrderJourneyOpen] = useState(false);
   const [form, setForm] = useState<MatterDraftPreparation>(
     () => fixture?.draft?.preparation ?? { classes: [], documentReferences: [] }
   );
@@ -111,6 +113,9 @@ export function ConfirmationMatterFlow({
       setState('FORMAL_MATTER_RECEIPT');
     });
   }, [client, fixture, formalMatterStorageKey]);
+  if (orderJourneyOpen && confirmation)
+    return <OrderJourney source={{ quote, confirmation }} />;
+
   const confirm = async () => {
     setState('CONFIRMING');
     try {
@@ -345,7 +350,16 @@ export function ConfirmationMatterFlow({
             This receipt records commercial confirmation only. It is not an Order, appointment,
             approval, or filing.
           </Alert>
-          <Button onClick={() => void createDraft()}>Prepare Matter Draft</Button>
+          <Alert tone="warning" title="Order-first path">
+            The primary direct-customer path now creates a durable Order before Formal Matter.
+            Creating the Order does not create a Payment, Invoice or Filing.
+          </Alert>
+          <div className="markreg-actions">
+            <Button onClick={() => setOrderJourneyOpen(true)}>Create service Order</Button>
+            <Button variant="secondary" onClick={() => void createDraft()}>
+              Prepare Matter Draft
+            </Button>
+          </div>
         </Card>
       </section>
     );
