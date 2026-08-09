@@ -15,7 +15,7 @@ Capture a durable, provider-authenticated work return in MGSN and hand the exact
 ## Required behavior
 
 1. Provider Return requires the exact current ACTIVE Allocation and exact authenticated ACCEPTED Provider Acceptance.
-2. Provider identity comes from authenticated Provider Workspace Principal context, never a caller-supplied provider ID.
+2. Provider identity comes from authenticated Provider Workspace Principal context, never a caller-supplied provider ID. A mismatched authenticated Provider Workspace fails explicitly with `PROVIDER_IDENTITY_MISMATCH`; it is not collapsed into allocation staleness.
 3. A return contains a work-status claim plus at least one artifact or structured assertion.
 4. Corrections are additive versions linked through `supersedes`; historical versions are retained.
 5. Evidence handoff accepts only the exact current Provider Return ID/version/fingerprint and exact admitted Execution Release / Filing Execution Task Draft lineage.
@@ -32,6 +32,7 @@ Provider Return and evidence handoff remain internal evidence truth. They do not
 - `0031_mgsn_provider_return.sql` — MGSN-owned versioned Provider Return, command evidence and append-only audit.
 - `0032_execution_provider_return_evidence.sql` — Execution-owned evidence receipt, retry-safe command evidence and append-only audit.
 - Historical MGSN and Milestone 2 suites explicitly clean later owned WP06 relations before replaying owner migrations, so test namespaces remain isolated without weakening production migration semantics.
+- The Professional Review real-runtime bootstrap also removes the later Execution-owned WP06 evidence relations/functions before replaying the complete Execution migration set, preserving repeatable browser/runtime validation.
 
 ## Acceptance evidence
 
