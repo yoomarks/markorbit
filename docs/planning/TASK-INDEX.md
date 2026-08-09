@@ -119,9 +119,22 @@
 - M3-WP-07 — Reliability and migration matrix (**merged in PR #46; exact-tree hosted evidence passed**)
   - Audited implementation baseline: `60f2a1621ca135ab882794f5f369b038ec136f0c`; tree `be356c3a6efcaaedaec140a70beeb02208173eb7`.
   - Hosted successful runs: validation `31288159702`, Milestone 3 reliability `31288159708`, Milestone 2 reliability `31288159706`, Browser and Visual Validation `31288159705`.
-- M3-WP-08 — Independent integration and authority audit (**GO recommendation**)
+- M3-WP-08 — Independent integration and authority audit (**merged in PR #47; GO recommendation**)
+  - Merge: `505962ff146980a64b9cf6e08259068146612d05`.
   - Evidence: `docs/audits/MO-MVP-MILESTONE-003-INTEGRATION-AUDIT.{md,json}`.
   - No product/runtime behavior is added by this work package.
   - No Git tag, release, deployment freeze, Payment, Invoice, provider appointment or external filing authority is created by the audit.
 
 Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confirmed` is not paid and `MatterCreated` is not filed.
+
+## Milestone 4 planning
+
+- TASK 029 — Milestone 4 scope and architecture lock (**proposed for owner approval**)
+  - Recommended direction: `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-004-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M4-WP-01` through `M4-WP-09` in `docs/planning/MO-MVP-MILESTONE-004-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-004-PLAN.json`.
+  - Planning record: `docs/tasks/MO-MVP-TASK-029-MILESTONE-004-SCOPE-LOCK.md`.
+  - Selection rationale: close durable provider execution/return before finance or official filing.
+  - Governing locks: Provider Supply Capability is not user Capability evidence; Provider Return is not Official Truth; Payment is not performance/authority/acceptance/completion.
+  - No Milestone 4 implementation starts until this planning direction is approved.
