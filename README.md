@@ -62,22 +62,36 @@ pnpm infra:down
 
 ## Current milestone
 
-**MO MVP Milestone 3 — Durable Commercial Order and Matter Linkage**
+**MO MVP Milestone 4 planning — Durable Governed Provider Execution and Return**
 
-TASK 028 / PR #39 approved `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`. M3-WP-01 through M3-WP-07 are merged, and M3-WP-08 independently audits the exact merged implementation with a **GO** recommendation.
+Milestone 3 completed its independent integration/authority audit with a **GO** recommendation. TASK 029 now proposes the next bounded direction: `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
 
-Milestone 3 now proves an authenticated Workspace path from exact confirmed commercial source → durable governed Order → explicit confirmation → `ReadyForMatter` → atomic internal Formal Matter create/link → restart/recovery, while preserving:
+The proposed Milestone 4 closes the next missing Beta delivery loop:
 
-`Order != Matter != Payment != Invoice != Filing`
+```text
+current governed Execution source
+-> durable MGSN Service Package
+-> deterministic Eligibility
+-> explicit Allocation
+-> authenticated Provider Acceptance
+-> durable Provider Return
+-> exact Execution evidence handoff
+```
 
-Payment, Invoice, provider appointment, external Filing and official trademark-office truth remain outside the implemented Milestone 3 authority boundary.
+The proposal preserves the repository locks:
+
+- Provider Supply Capability is not user Capability evidence;
+- Provider Return is not Official Truth;
+- Payment is not performance, authority, acceptance or completion;
+- MGSN Allocation/Acceptance is not automatically legal/professional appointment;
+- automatic official filing remains outside the MVP authority boundary.
 
 See:
 
-- `docs/planning/MO-MVP-MILESTONE-003-SCOPE-LOCK.md`;
-- `docs/planning/MO-MVP-MILESTONE-003-DELIVERY-PLAN.md`;
-- `docs/planning/MO-MVP-MILESTONE-003-IMPLEMENTATION-TRACEABILITY.md`;
-- `docs/validation/MO-MVP-MILESTONE-003-RELIABILITY-MATRIX.md`;
-- `docs/audits/MO-MVP-MILESTONE-003-INTEGRATION-AUDIT.md`.
+- `docs/planning/MO-MVP-MILESTONE-004-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-004-DELIVERY-PLAN.md`;
+- `docs/planning/MO-MVP-MILESTONE-004-PLAN.json`;
+- `docs/tasks/MO-MVP-TASK-029-MILESTONE-004-SCOPE-LOCK.md`;
+- `docs/audits/MO-MVP-MILESTONE-003-INTEGRATION-AUDIT.md` for the predecessor GO evidence.
 
-The M3-WP-08 audit does not create a Git tag, publish a release or freeze a deployment. Any next milestone or external-authority capability requires a separate explicit scope decision.
+TASK 029 is planning-only. No Milestone 4 implementation, real provider allocation, Payment, Invoice, legal appointment, external Filing, Git tag, release or deployment freeze occurs until the scope decision is approved and later work packages explicitly implement the bounded capability.
