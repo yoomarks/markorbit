@@ -153,8 +153,14 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
   - Immutable historical Supply Capability versions with effective period, capacity/availability, evidence references and supply-only verification state.
   - Supply Capability does not create user Capability evidence, professional qualification, Allocation, appointment, Filing, Payment/Invoice or Official Truth.
   - Evidence: `docs/tasks/MO-MVP-M4-WP-03-DURABLE-MGSN-PROVIDER-REGISTRY.md`.
-- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**next after WP-03 merge**)
-- M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**not started**)
+- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**implemented in PR #52**)
+  - MGSN-owned migration: `0029_mgsn_service_package_eligibility`.
+  - Exact governed Execution source admission through a bounded dependency; MGSN performs no Execution/MarkReg database read.
+  - Service Package preserves exact source/version/fingerprint lineage and a distinct deterministic MGSN package fingerprint.
+  - Eligibility policy `mgsn-eligibility-v1` evaluates current exact Supply Capability plus current Provider state with explainable blocking checks, durable replay and append-only audit.
+  - Eligibility creates no Allocation, Provider Acceptance, legal/professional appointment, Filing, Payment/Invoice, Matter completion, user Capability verification or Official Truth.
+  - Evidence: `docs/tasks/MO-MVP-M4-WP-04-SERVICE-PACKAGE-ELIGIBILITY.md`.
+- M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**next after WP-04 merge**)
 - M4-WP-06 — Provider Return and exact Execution evidence handoff (**not started**)
 - M4-WP-07 — Authenticated Gateway and controlled operations/provider journey (**not started**)
 - M4-WP-08 — Reliability matrix (**not started**)

@@ -11,7 +11,8 @@
     "markreg_audit_hardening": "@markorbit/markreg-service",
     "markreg_orders": "@markorbit/markreg-service",
     "execution_filing_governance": "@markorbit/execution-service",
-    "mgsn_provider_registry": "@markorbit/mgsn-service"
+    "mgsn_provider_registry": "@markorbit/mgsn-service",
+    "mgsn_service_package_eligibility": "@markorbit/mgsn-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -24,6 +25,7 @@
     "0025_markreg_audit_hardening": "@markorbit/markreg-service",
     "0026_markreg_orders": "@markorbit/markreg-service",
     "0027_execution_filing_governance": "@markorbit/execution-service",
-    "0028_mgsn_provider_registry": "@markorbit/mgsn-service"
+    "0028_mgsn_provider_registry": "@markorbit/mgsn-service",
+    "0029_mgsn_service_package_eligibility": "@markorbit/mgsn-service"
   }
 }
