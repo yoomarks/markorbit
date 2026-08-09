@@ -45,6 +45,7 @@ jobs:
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
       MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED: '1'
+      MGSN_SERVICE_PACKAGE_POSTGRES_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
       MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
       WEB_ORIGINS: https://test.markorbit.local
@@ -94,6 +95,8 @@ jobs:
         run: pnpm test:filing-governance:postgres
       - name: Run durable MGSN Provider Registry PostgreSQL suite
         run: pnpm test:mgsn-provider-registry:postgres
+      - name: Run durable MGSN Service Package and Eligibility PostgreSQL suite
+        run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/service-package-eligibility-postgres.test.ts
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:http
