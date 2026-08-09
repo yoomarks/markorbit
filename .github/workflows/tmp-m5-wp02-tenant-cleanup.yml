@@ -1,0 +1,35 @@
+name: M5 WP02 one-shot tenant cleanup
+
+on:
+  push:
+    branches:
+      - m5-wp-02-execution-evidence-review
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-02-execution-evidence-review
+      - name: Reset later WP02 relations before historical tenant migration replay
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/milestone2-tenant-isolation.integration.test.ts')
+          text = p.read_text()
+          old = "'DROP TABLE IF EXISTS execution_provider_return_evidence_audit,execution_provider_return_evidence_commands,execution_provider_return_evidence_receipts,filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'"
+          new = "'DROP TABLE IF EXISTS execution_evidence_review_audit,execution_evidence_review_commands,execution_evidence_correction_requests,execution_evidence_review_decisions,execution_evidence_review_sources,execution_provider_return_evidence_audit,execution_provider_return_evidence_commands,execution_provider_return_evidence_receipts,filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_execution_evidence_review_audit_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'"
+          if old not in text:
+              raise SystemExit('tenant Execution reset marker missing')
+          p.write_text(text.replace(old, new, 1))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/milestone2-tenant-isolation.integration.test.ts
+          git commit -m 'test(m5): reset WP02 review state in tenant reliability'
+          git push origin HEAD:m5-wp-02-execution-evidence-review
