@@ -32,7 +32,9 @@ export function providerExecutionSourceFingerprint(
 }
 
 function fingerprintOf(source: Readonly<ProviderExecutionSourceSnapshot>) {
-  const { sourceFingerprintSha256: _fingerprint, ...unsigned } = source;
+  const unsigned = Object.fromEntries(
+    Object.entries(source).filter(([key]) => key !== 'sourceFingerprintSha256')
+  ) as Omit<ProviderExecutionSourceSnapshot, 'sourceFingerprintSha256'>;
   return providerExecutionSourceFingerprint(unsigned);
 }
 
