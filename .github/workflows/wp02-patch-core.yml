@@ -1,0 +1,110 @@
+name: WP02 core patch
+
+on:
+  push:
+    branches: [m4-wp-02-durable-execution-filing-governance]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-wp-02-durable-execution-filing-governance
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Patch durable filing governance core
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing patch anchor in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          path = 'services/execution/src/filing-authorization.ts'
+          replace(path,
+          """export interface FilingExecutionTaskDraftRepository {\n  createFromReleasedExecution(value: FilingExecutionTaskDraft): Promise<void>;\n  findById(id: FilingExecutionTaskDraftId): Promise<FilingExecutionTaskDraft | undefined>;\n  findByExecutionRelease(id: ExecutionReleaseId): Promise<FilingExecutionTaskDraft | undefined>;\n  markStale(value: FilingExecutionTaskDraft): Promise<void>;\n  cancel(value: FilingExecutionTaskDraft): Promise<void>;\n}\n""",
+          """export interface FilingExecutionTaskDraftRepository {\n  createFromReleasedExecution(value: FilingExecutionTaskDraft): Promise<void>;\n  findById(id: FilingExecutionTaskDraftId): Promise<FilingExecutionTaskDraft | undefined>;\n  findByExecutionRelease(id: ExecutionReleaseId): Promise<FilingExecutionTaskDraft | undefined>;\n  markStale(value: FilingExecutionTaskDraft): Promise<void>;\n  cancel(value: FilingExecutionTaskDraft): Promise<void>;\n}\nexport type FilingGovernanceAuditTarget =\n  | 'FILING_AUTHORIZATION'\n  | 'EXECUTION_RELEASE'\n  | 'FILING_EXECUTION_TASK_DRAFT';\nexport interface FilingGovernanceDenial {\n  targetType: FilingGovernanceAuditTarget;\n  targetId?: string;\n  action: string;\n  actorId: string;\n  reasonCode: string;\n  correlationId?: string;\n  sourceFingerprint?: string;\n  createdAt: string;\n}\nexport interface FilingGovernanceAuditRepository {\n  recordDenial(value: FilingGovernanceDenial): Promise<void>;\n}\nexport interface FilingGovernanceRepository\n  extends FilingAuthorizationRepository,\n    ExecutionReleaseRepository,\n    FilingExecutionTaskDraftRepository,\n    FilingGovernanceAuditRepository {}\n""")
+          replace(path,
+          """  private decisionKeys = new Map<string, KeyEntry<ExecutionReleaseId>>();\n""",
+          """  private decisionKeys = new Map<string, KeyEntry<ExecutionReleaseId>>();\n  private denials: FilingGovernanceDenial[] = [];\n""")
+          replace(path,
+          """  snapshotIdempotencyCount() {\n    return this.authorizationKeys.size + this.releaseKeys.size + this.decisionKeys.size;\n  }\n}\n""",
+          """  snapshotIdempotencyCount() {\n    return this.authorizationKeys.size + this.releaseKeys.size + this.decisionKeys.size;\n  }\n  async recordDenial(value: FilingGovernanceDenial) {\n    this.denials.push(clone(value));\n  }\n  snapshotDenials() {\n    return this.denials.map(clone);\n  }\n}\n""")
+          replace(path,
+          """export class FilingGovernanceService {\n  private readonly confirmationKeys = new Map<\n    string,\n    { fingerprint: string; id: FilingAuthorizationId }\n  >();\n  constructor(\n""",
+          """export class FilingGovernanceService {\n  constructor(\n""")
+          replace(path,
+          """    await this.authorizations.create(value, command.idempotencyKey, fp);\n    return value;\n""",
+          """    await this.authorizations.create(value, command.idempotencyKey, fp);\n    const stored = await this.authorizations.findByIdempotencyKey(command.idempotencyKey);\n    return stored ? this.authorization(stored.id as FilingAuthorizationId) : value;\n""")
+          replace(path,
+          """      const expired = { ...value, status: 'EXPIRED' as const, updatedAt: at };\n""",
+          """      const expired = {\n        ...value,\n        status: 'EXPIRED' as const,\n        version: value.version + 1,\n        updatedAt: at\n      };\n""")
+          replace(path,
+          """      const stale = { ...value, status: 'STALE' as const, updatedAt: at };\n""",
+          """      const stale = {\n        ...value,\n        status: 'STALE' as const,\n        version: value.version + 1,\n        updatedAt: at\n      };\n""")
+          replace(path,
+          """    const fp = fingerprint(command);\n    const replay = this.confirmationKeys.get(command.idempotencyKey);\n    if (replay) {\n      if (replay.fingerprint !== fp || replay.id !== id)\n        throw new FilingGovernanceError(\n          'IDEMPOTENCY_CONFLICT',\n          'Idempotency key has a different confirmation payload.'\n        );\n      return this.authorization(id);\n    }\n""",
+          """    const fp = fingerprint(command);\n    const replay = await this.authorizations.findByIdempotencyKey(command.idempotencyKey);\n    if (replay) {\n      if (replay.fingerprint !== fp || replay.id !== id)\n        throw new FilingGovernanceError(\n          'IDEMPOTENCY_CONFLICT',\n          'Idempotency key has a different confirmation payload.'\n        );\n      return this.authorization(id);\n    }\n""")
+          replace(path,
+          """    await this.authorizations.confirm(next, command.idempotencyKey, fp);\n    this.confirmationKeys.set(command.idempotencyKey, { fingerprint: fp, id });\n    return next;\n""",
+          """    await this.authorizations.confirm(next, command.idempotencyKey, fp);\n    return this.authorization(id);\n""")
+          replace(path,
+          """    await this.releases.create(value, command.idempotencyKey, fp);\n    return value;\n""",
+          """    await this.releases.create(value, command.idempotencyKey, fp);\n    const stored = await this.releases.findByIdempotencyKey(command.idempotencyKey);\n    return stored ? this.releaseRecord(stored.id as ExecutionReleaseId) : value;\n""")
+          replace(path,
+          """    const stale = { ...value, status: 'STALE' as const, updatedAt: this.now() };\n""",
+          """    const stale = {\n      ...value,\n      status: 'STALE' as const,\n      version: value.version + 1,\n      updatedAt: this.now()\n    };\n""")
+          replace(path,
+          """    const next = {\n      ...value,\n      checks,\n      status: blocked ? ('BLOCKED' as const) : ('READY_FOR_RELEASE' as const),\n      updatedAt: at\n    };\n""",
+          """    const next = {\n      ...value,\n      checks,\n      status: blocked ? ('BLOCKED' as const) : ('READY_FOR_RELEASE' as const),\n      version: value.version + 1,\n      updatedAt: at\n    };\n""")
+          replace(path,
+          """    const next = {\n      ...value,\n      assignment: { ...clone(assignment), assignedAt: this.now() },\n      updatedAt: this.now()\n    };\n""",
+          """    const next = {\n      ...value,\n      assignment: { ...clone(assignment), assignedAt: this.now() },\n      version: value.version + 1,\n      updatedAt: this.now()\n    };\n""")
+          replace(path,
+          """      const release = await this.releaseRecord(id);\n      return { release, taskDraft: await this.tasks.findByExecutionRelease(id) };\n""",
+          """      const release = await this.releaseRecord(id);\n      let taskDraft = await this.tasks.findByExecutionRelease(id);\n      if (!taskDraft && release.status === 'RELEASED_FOR_EXECUTION') {\n        const auth = await this.authorization(release.filingAuthorizationId);\n        taskDraft = this.buildTaskDraft(release, auth, this.now());\n        await this.tasks.createFromReleasedExecution(taskDraft);\n        taskDraft = await this.tasks.findByExecutionRelease(id);\n      }\n      return { release, taskDraft };\n""")
+          old = """    await this.releases.recordDecision(next, command.idempotencyKey, fp);\n    await this.releases.release(next);\n    const existing = await this.tasks.findByExecutionRelease(id);\n    if (existing) return { release: next, taskDraft: existing };\n    const auth = await this.authorization(value.filingAuthorizationId);\n    const taskDraft: FilingExecutionTaskDraft = {\n      schemaVersion: 1,\n      filingExecutionTaskDraftId: `filing-task-draft_${randomUUID()}`,\n      executionReleaseId: id,\n      filingAuthorizationId: auth.filingAuthorizationId,\n      preparationLockId: auth.preparationLockId,\n      executionSnapshot: clone(auth.scope),\n      jurisdiction: auth.jurisdiction,\n      applicant: auth.applicantOwnerReference,\n      trademark: auth.trademarkReference,\n      classes: auth.classes,\n      goodsServices: auth.goodsServices,\n      filingBasis: auth.filingBasis,\n      documentReferences: auth.preparationSnapshot.documentPackage.documentItems.map(\n        (v) => v.documentReference.fileName\n      ),\n      instructionReferences: auth.preparationSnapshot.instructionLedger.entries.map(\n        (v) => v.instructionEntryId\n      ),\n      representativeRequirement: auth.representativeRequirement,\n      executionChannel: value.requestedExecutionChannel,\n      internalAssigneeReference: value.assignment.internalExecutorId,\n      status: 'PREPARED',\n      createdAt: at\n    };\n    await this.tasks.createFromReleasedExecution(taskDraft);\n    return { release: next, taskDraft };\n"""
+          new = """    await this.releases.recordDecision(next, command.idempotencyKey, fp);\n    const persistedRelease = await this.releaseRecord(id);\n    await this.releases.release(persistedRelease);\n    const existing = await this.tasks.findByExecutionRelease(id);\n    if (existing) return { release: persistedRelease, taskDraft: existing };\n    const auth = await this.authorization(value.filingAuthorizationId);\n    const taskDraft = this.buildTaskDraft(persistedRelease, auth, at);\n    await this.tasks.createFromReleasedExecution(taskDraft);\n    return {\n      release: persistedRelease,\n      taskDraft: (await this.tasks.findByExecutionRelease(id)) ?? taskDraft\n    };\n"""
+          replace(path, old, new)
+          replace(path,
+          """    const next = { ...value, status: 'WITHDRAWN' as const, updatedAt: this.now() };\n""",
+          """    const next = {\n      ...value,\n      status: 'WITHDRAWN' as const,\n      version: value.version + 1,\n      updatedAt: this.now()\n    };\n""")
+          replace(path,
+          """  async getTask(id: FilingExecutionTaskDraftId) {\n""",
+          """  private buildTaskDraft(\n    release: ExecutionRelease,\n    auth: FilingAuthorization,\n    at: string\n  ): FilingExecutionTaskDraft {\n    return {\n      schemaVersion: 1,\n      filingExecutionTaskDraftId: `filing-task-draft_${randomUUID()}`,\n      executionReleaseId: release.executionReleaseId,\n      filingAuthorizationId: auth.filingAuthorizationId,\n      preparationLockId: auth.preparationLockId,\n      executionSnapshot: clone(auth.scope),\n      jurisdiction: auth.jurisdiction,\n      applicant: auth.applicantOwnerReference,\n      trademark: auth.trademarkReference,\n      classes: auth.classes,\n      goodsServices: auth.goodsServices,\n      filingBasis: auth.filingBasis,\n      documentReferences: auth.preparationSnapshot.documentPackage.documentItems.map(\n        (v) => v.documentReference.fileName\n      ),\n      instructionReferences: auth.preparationSnapshot.instructionLedger.entries.map(\n        (v) => v.instructionEntryId\n      ),\n      representativeRequirement: auth.representativeRequirement,\n      executionChannel: release.requestedExecutionChannel,\n      internalAssigneeReference: release.assignment.internalExecutorId!,\n      status: 'PREPARED',\n      createdAt: at\n    };\n  }\n  async getTask(id: FilingExecutionTaskDraftId) {\n""")
+
+          identity = 'packages/contracts/src/identity.ts'
+          replace(identity,
+          """  'review:read',\n  'review:perform',\n  'document-package:read',\n""",
+          """  'review:read',\n  'review:perform',\n  'execution:read',\n  'execution:manage',\n  'document-package:read',\n""")
+          replace(identity,
+          """    'review:read',\n    'review:perform',\n    'document-package:read',\n""",
+          """    'review:read',\n    'review:perform',\n    'execution:read',\n    'execution:manage',\n    'document-package:read',\n""")
+          replace(identity,
+          """    'review:read',\n    'review:perform',\n    'document-package:read',\n""",
+          """    'review:read',\n    'review:perform',\n    'execution:read',\n    'execution:manage',\n    'document-package:read',\n""")
+          replace(identity,
+          """    'review:read',\n    'document-package:read',\n""",
+          """    'review:read',\n    'execution:read',\n    'document-package:read',\n""")
+          PY
+      - run: pnpm exec prettier --write services/execution/src/filing-authorization.ts packages/contracts/src/identity.ts services/execution/src/filing-authorization-postgres.ts infrastructure/persistence/migration-owners.json
+      - run: pnpm --filter @markorbit/contracts typecheck && pnpm --filter @markorbit/execution-service typecheck
+      - name: Commit core patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/execution/src/filing-authorization.ts services/execution/src/filing-authorization-postgres.ts packages/contracts/src/identity.ts infrastructure/persistence/migration-owners.json
+          git commit -m "feat(m4): harden durable filing governance semantics"
+          git push origin HEAD:m4-wp-02-durable-execution-filing-governance
