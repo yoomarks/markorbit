@@ -183,7 +183,15 @@
     {
       "id": "M4-WP-08",
       "name": "Migration, restart, outage, concurrency, isolation, handoff and browser reliability matrix",
-      "dependencies": ["M4-WP-01", "M4-WP-02", "M4-WP-03", "M4-WP-04", "M4-WP-05", "M4-WP-06", "M4-WP-07"]
+      "dependencies": [
+        "M4-WP-01",
+        "M4-WP-02",
+        "M4-WP-03",
+        "M4-WP-04",
+        "M4-WP-05",
+        "M4-WP-06",
+        "M4-WP-07"
+      ]
     },
     {
       "id": "M4-WP-09",

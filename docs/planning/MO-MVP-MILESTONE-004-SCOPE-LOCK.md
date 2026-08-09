@@ -48,12 +48,12 @@ The current baseline contains useful execution-governance semantics for Filing A
 
 ## 3. Direction comparison
 
-| Option | Outcome | Dependency fit | Risk | Recommendation |
-| --- | --- | --- | --- | --- |
-| **A — Durable governed provider execution and return** | durable Execution source, MGSN provider eligibility/allocation/acceptance, Provider Return and evidence handoff | directly continues the M3 Matter boundary and closes the MVP provider-return loop | medium-high | **SELECT** |
-| B — Payment / Invoice transaction layer | settlement, payment-provider and accounting truth | does not close the delivery loop and Payment is explicitly not authority/performance/completion | high | defer |
-| C — External trademark-office filing | transmission, office credentials and official application truth | requires durable execution/provider evidence plus a separate protected external-action boundary | very high | defer |
-| D — Broad lifecycle/communications expansion | reminders, messages and generalized customer status | useful later, but depends on durable execution truth to avoid projecting fixture state | medium | defer |
+| Option                                                 | Outcome                                                                                                         | Dependency fit                                                                                  | Risk        | Recommendation |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------- | -------------- |
+| **A — Durable governed provider execution and return** | durable Execution source, MGSN provider eligibility/allocation/acceptance, Provider Return and evidence handoff | directly continues the M3 Matter boundary and closes the MVP provider-return loop               | medium-high | **SELECT**     |
+| B — Payment / Invoice transaction layer                | settlement, payment-provider and accounting truth                                                               | does not close the delivery loop and Payment is explicitly not authority/performance/completion | high        | defer          |
+| C — External trademark-office filing                   | transmission, office credentials and official application truth                                                 | requires durable execution/provider evidence plus a separate protected external-action boundary | very high   | defer          |
+| D — Broad lifecycle/communications expansion           | reminders, messages and generalized customer status                                                             | useful later, but depends on durable execution truth to avoid projecting fixture state          | medium      | defer          |
 
 Milestone 4 chooses A only.
 

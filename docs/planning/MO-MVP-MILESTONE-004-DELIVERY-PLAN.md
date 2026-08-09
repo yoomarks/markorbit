@@ -28,17 +28,17 @@ Milestone-local work-package IDs avoid collision with the historical global task
 
 ## Staged rollout
 
-| Stage | Work package | Deliverable | Acceptance | Rollback boundary |
-| ---: | --- | --- | --- | --- |
-| 1 | `M4-WP-01` | provider-execution contracts and authority fixtures | publication/canon vocabulary audit, source/version contracts, false Official Truth fixtures | additive contracts removable while unused |
-| 2 | `M4-WP-02` | durable authenticated Execution filing-governance source | PostgreSQL persistence for Filing Authorization / Execution Release / Task Draft, auth, audit, restart | forward repair after shared migration |
-| 3 | `M4-WP-03` | durable MGSN Provider Registry + Supply Capability | owner DB, Core identity reference, version/effective period, suspension, audit | disable MGSN writes; retain rows |
-| 4 | `M4-WP-04` | Service Package + Eligibility | exact Execution source admission, deterministic eligibility, explainable non-mutating evaluation | disable package admission/evaluation |
-| 5 | `M4-WP-05` | Allocation + Provider Acceptance | explicit authorized allocation, provider-authenticated accept/decline, reallocation policy | disable allocation commands |
-| 6 | `M4-WP-06` | Provider Return + Execution evidence handoff | exact accepted allocation lineage, return versioning/correction, idempotent evidence handoff | stop handoff; retain source return |
-| 7 | `M4-WP-07` | authenticated Gateway + controlled operations/provider journey | tenant/provider isolation, typed client, minimal real-runtime workflow, no public marketplace | remove routes/UI only |
-| 8 | `M4-WP-08` | reliability matrix | migration/restart/outage/concurrency/isolation/handoff/repeatability/browser exact-head evidence | test/orchestration only |
-| 9 | `M4-WP-09` | independent integration/authority audit | ownership, semantics, evidence, no finance/no Official Truth leakage, GO/FIX/HOLD | documentation only |
+| Stage | Work package | Deliverable                                                    | Acceptance                                                                                             | Rollback boundary                         |
+| ----: | ------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+|     1 | `M4-WP-01`   | provider-execution contracts and authority fixtures            | publication/canon vocabulary audit, source/version contracts, false Official Truth fixtures            | additive contracts removable while unused |
+|     2 | `M4-WP-02`   | durable authenticated Execution filing-governance source       | PostgreSQL persistence for Filing Authorization / Execution Release / Task Draft, auth, audit, restart | forward repair after shared migration     |
+|     3 | `M4-WP-03`   | durable MGSN Provider Registry + Supply Capability             | owner DB, Core identity reference, version/effective period, suspension, audit                         | disable MGSN writes; retain rows          |
+|     4 | `M4-WP-04`   | Service Package + Eligibility                                  | exact Execution source admission, deterministic eligibility, explainable non-mutating evaluation       | disable package admission/evaluation      |
+|     5 | `M4-WP-05`   | Allocation + Provider Acceptance                               | explicit authorized allocation, provider-authenticated accept/decline, reallocation policy             | disable allocation commands               |
+|     6 | `M4-WP-06`   | Provider Return + Execution evidence handoff                   | exact accepted allocation lineage, return versioning/correction, idempotent evidence handoff           | stop handoff; retain source return        |
+|     7 | `M4-WP-07`   | authenticated Gateway + controlled operations/provider journey | tenant/provider isolation, typed client, minimal real-runtime workflow, no public marketplace          | remove routes/UI only                     |
+|     8 | `M4-WP-08`   | reliability matrix                                             | migration/restart/outage/concurrency/isolation/handoff/repeatability/browser exact-head evidence       | test/orchestration only                   |
+|     9 | `M4-WP-09`   | independent integration/authority audit                        | ownership, semantics, evidence, no finance/no Official Truth leakage, GO/FIX/HOLD                      | documentation only                        |
 
 ## M4-WP-01 — Provider execution contract and authority boundary
 
