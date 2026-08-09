@@ -5,7 +5,7 @@
     "pr": 48,
     "mergeCommit": "a1579de77a3471632c0c1de044f49eccbcd7e9a1"
   },
-  "currentWorkPackage": "M4-WP-06",
+  "currentWorkPackage": "M4-WP-07",
   "workPackages": [
     {
       "id": "M4-WP-01",
@@ -80,7 +80,16 @@
     },
     {
       "id": "M4-WP-07",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_IN_PR_55",
+      "evidence": [
+        "apps/gateway/src/mgsn-http.ts",
+        "apps/gateway/src/index.ts",
+        "apps/gateway/tests/mgsn-provider-journey.test.ts",
+        "services/mgsn/src/http.ts",
+        "services/mgsn/src/index.ts",
+        "services/mgsn/tests/http-boundary.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-07-AUTHENTICATED-GATEWAY-PROVIDER-JOURNEY.md"
+      ]
     },
     {
       "id": "M4-WP-08",
@@ -230,6 +239,29 @@
     "officialApplicationNumberReceived": false,
     "trademarkOfficeAcceptance": false,
     "trademarkOfficeContactedAsVerifiedTruth": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false
+  },
+  "wp07GatewayBoundary": {
+    "browserSessionRequired": true,
+    "trustedOriginAndCsrfRequiredForMutations": true,
+    "operationsReadPermission": "execution:read",
+    "operationsMutationPermission": "execution:manage",
+    "trustedInternalPrincipalForwarding": true,
+    "mgsnRevalidatesInternalCallerAndPrincipal": true,
+    "targetWorkspaceAndProviderWorkspaceSeparated": true,
+    "authenticatedProviderWorkspaceIdentityRequired": true,
+    "callerSuppliedProviderIdentityTrusted": false,
+    "callerSuppliedProviderIdentityRejectedAtGateway": true,
+    "crossProviderReadFailsClosed": true,
+    "idempotencyHeaderBound": true,
+    "crossServiceDatabaseRead": false,
+    "newBusinessStateIntroduced": false,
+    "uiChanged": false,
+    "paymentOrInvoiceCreated": false,
+    "professionalLegallyAppointedAutomatically": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
     "formalMatterCompletedAutomatically": false,
     "userCapabilityVerifiedAutomatically": false
   }
