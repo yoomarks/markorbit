@@ -6,6 +6,7 @@
 - **Predecessor:** Milestone 4 / M4-WP-09 final recommendation `GO`
 - **Proposed direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`
 - **Planning only:** yes
+- **Approval evidence:** exact-head hosted validation is required before this planning proposal is presented as ready to merge.
 
 ## 1. Why this milestone exists
 
