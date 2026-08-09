@@ -5,6 +5,7 @@
     "pr": 48,
     "mergeCommit": "a1579de77a3471632c0c1de044f49eccbcd7e9a1"
   },
+  "currentWorkPackage": "M4-WP-06",
   "workPackages": [
     {
       "id": "M4-WP-01",
@@ -64,7 +65,18 @@
     },
     {
       "id": "M4-WP-06",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_IN_PR_54",
+      "evidence": [
+        "infrastructure/persistence/migrations/0031_mgsn_provider_return.sql",
+        "infrastructure/persistence/migrations/0032_execution_provider_return_evidence.sql",
+        "services/mgsn/src/provider-return.ts",
+        "services/mgsn/src/provider-return-postgres.ts",
+        "services/mgsn/tests/provider-return-postgres.test.ts",
+        "services/execution/src/provider-return-evidence.ts",
+        "services/execution/src/provider-return-evidence-postgres.ts",
+        "services/execution/tests/provider-return-evidence-postgres.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-06-PROVIDER-RETURN-EVIDENCE-HANDOFF.md"
+      ]
     },
     {
       "id": "M4-WP-07",
@@ -186,5 +198,39 @@
     "formalMatterCompletedAutomatically": false,
     "userCapabilityVerifiedAutomatically": false,
     "officialTruthCreated": false
+  },
+  "wp06ProviderReturnBoundary": {
+    "mgsnOwner": "MGSN",
+    "executionOwner": "Execution",
+    "databasePerOwner": true,
+    "mgsnMigration": "0031_mgsn_provider_return",
+    "executionMigration": "0032_execution_provider_return_evidence",
+    "crossServiceDatabaseRead": false,
+    "exactCurrentActiveAllocationRequired": true,
+    "exactAcceptedProviderAcceptanceRequired": true,
+    "authenticatedProviderWorkspaceIdentityRequired": true,
+    "callerSuppliedProviderIdentityTrusted": false,
+    "exactAdmittedServicePackageRequired": true,
+    "providerReturnVersioned": true,
+    "correctionsRequireExplicitSupersedes": true,
+    "historicalReturnVersionsRetained": true,
+    "staleReturnHandoffFailsClosed": true,
+    "exactReturnFingerprintRequired": true,
+    "exactExecutionReleaseRequired": true,
+    "exactFilingExecutionTaskDraftRequired": true,
+    "executionReceiptReviewStatus": "PENDING_REVIEW",
+    "durableIdempotency": true,
+    "responseLossSafeReplay": true,
+    "appendOnlyAudit": true,
+    "providerReturnIsOfficialTruth": false,
+    "paymentOrInvoiceCreated": false,
+    "professionalLegallyAppointedAutomatically": false,
+    "filingSubmitted": false,
+    "officialApplicationCreated": false,
+    "officialApplicationNumberReceived": false,
+    "trademarkOfficeAcceptance": false,
+    "trademarkOfficeContactedAsVerifiedTruth": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false
   }
 }
