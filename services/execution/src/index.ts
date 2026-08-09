@@ -196,7 +196,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
       principal.userId,
       request.headers['x-correlation-id']
     );
-    const audit = adapter as FilingGovernanceAuditRepository;
+    const audit = adapter;
     const deny = async (reasonCode: string) => {
       const body = request.body ?? null;
       await audit.recordDenial({

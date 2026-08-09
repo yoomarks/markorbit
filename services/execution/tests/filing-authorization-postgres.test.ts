@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await -- fixture sources intentionally implement async service boundaries. */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/require-await -- fixture sources intentionally implement async service boundaries and adapter-role casts. */
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PreparationLock } from '@markorbit/contracts';
@@ -369,7 +369,7 @@ suite('PostgreSQL Filing Authorization / Execution Release governance', () => {
     const created = await createAuthorization();
     const audit = await database
       .getPool()
-      .query(
+      .query<{ audit_id: string }>(
         'SELECT audit_id FROM filing_governance_audit WHERE target_id=$1 ORDER BY audit_id LIMIT 1',
         [created.filingAuthorizationId]
       );

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await -- HTTP boundary assertions intentionally inspect decoded JSON fixtures. */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/require-await -- HTTP boundary assertions intentionally inspect decoded JSON fixtures. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   encodeInternalWorkspacePrincipal,

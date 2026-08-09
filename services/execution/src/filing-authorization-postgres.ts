@@ -177,7 +177,7 @@ export class PostgresFilingGovernanceRepository {
   }
 
   /** recordDecision already persists the released state atomically with command/audit evidence. */
-  release(_value: ExecutionRelease): Promise<void> {
+  release(): Promise<void> {
     return Promise.resolve();
   }
 
