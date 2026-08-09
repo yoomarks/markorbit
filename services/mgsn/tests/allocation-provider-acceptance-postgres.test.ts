@@ -314,20 +314,20 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
     expect(allocationAuthorityConsequences).toMatchObject({
       providerAllocated: true,
       providerAccepted: false,
-      legalProfessionalAppointmentCreated: false,
+      professionalLegallyAppointedAutomatically: false,
       paymentCreated: false,
       invoiceCreated: false,
       filingSubmitted: false,
-      officialTruthCreated: false
+      officialApplicationCreated: false
     });
     expect(providerAcceptanceAuthorityConsequences).toMatchObject({
       providerAllocated: true,
       providerAccepted: true,
-      legalProfessionalAppointmentCreated: false,
+      professionalLegallyAppointedAutomatically: false,
       paymentCreated: false,
       invoiceCreated: false,
       filingSubmitted: false,
-      officialTruthCreated: false
+      officialApplicationCreated: false
     });
   });
 
