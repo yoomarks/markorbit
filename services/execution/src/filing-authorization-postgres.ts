@@ -60,7 +60,7 @@ export class PostgresFilingGovernanceRepository {
   async findActiveByPreparationLockVersion(id: PreparationLockId, version: string) {
     try {
       const result = await this.query.query(
-        "SELECT authorization,version,status FROM filing_authorizations WHERE workspace_id=$1 AND preparation_lock_id=$2 AND preparation_lock_version=$3 AND status NOT IN ('WITHDRAWN','STALE','EXPIRED') LIMIT 1",
+        "SELECT authorization_record,version,status FROM filing_authorizations WHERE workspace_id=$1 AND preparation_lock_id=$2 AND preparation_lock_version=$3 AND status NOT IN ('WITHDRAWN','STALE','EXPIRED') LIMIT 1",
         [this.workspaceId, id, version]
       );
       return result.rowCount ? this.mapAuthorization(result.rows[0] as Row) : undefined;
@@ -261,7 +261,7 @@ export class PostgresFilingGovernanceRepository {
   async snapshot() {
     const [authorizations, releases, tasks] = await Promise.all([
       this.query.query(
-        'SELECT authorization,version,status FROM filing_authorizations WHERE workspace_id=$1 ORDER BY filing_authorization_id',
+        'SELECT authorization_record,version,status FROM filing_authorizations WHERE workspace_id=$1 ORDER BY filing_authorization_id',
         [this.workspaceId]
       ),
       this.query.query(
@@ -290,7 +290,7 @@ export class PostgresFilingGovernanceRepository {
         if (await this.replay(client, key, fingerprint)) return;
         await client.query(
           `INSERT INTO filing_authorizations
-             (filing_authorization_id,workspace_id,preparation_lock_id,preparation_lock_version,status,version,authorization,created_by,updated_by,created_at,updated_at)
+             (filing_authorization_id,workspace_id,preparation_lock_id,preparation_lock_version,status,version,authorization_record,created_by,updated_by,created_at,updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$8,$9,$9)`,
           [
             value.filingAuthorizationId,
@@ -413,7 +413,7 @@ export class PostgresFilingGovernanceRepository {
   private async authorization(id: FilingAuthorizationId) {
     try {
       const result = await this.query.query(
-        'SELECT authorization,version,status FROM filing_authorizations WHERE workspace_id=$1 AND filing_authorization_id=$2',
+        'SELECT authorization_record,version,status FROM filing_authorizations WHERE workspace_id=$1 AND filing_authorization_id=$2',
         [this.workspaceId, id]
       );
       return result.rowCount ? this.mapAuthorization(result.rows[0] as Row) : undefined;
@@ -463,7 +463,7 @@ export class PostgresFilingGovernanceRepository {
     const expected = value.version - 1;
     const result = await client.query(
       `UPDATE filing_authorizations
-       SET status=$3,version=$4,authorization=$5::jsonb,updated_by=$6,updated_at=$7
+       SET status=$3,version=$4,authorization_record=$5::jsonb,updated_by=$6,updated_at=$7
        WHERE workspace_id=$1 AND filing_authorization_id=$2 AND version=$8`,
       [
         this.workspaceId,
@@ -652,7 +652,7 @@ export class PostgresFilingGovernanceRepository {
 
   private mapAuthorization(row: Row): FilingAuthorization {
     return {
-      ...(row.authorization as FilingAuthorization),
+      ...(row.authorization_record as FilingAuthorization),
       version: Number(row.version),
       status: String(row.status) as FilingAuthorization['status']
     };

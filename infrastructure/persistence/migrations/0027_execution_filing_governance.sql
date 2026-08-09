@@ -5,7 +5,7 @@ CREATE TABLE filing_authorizations (
   preparation_lock_version text NOT NULL,
   status text NOT NULL CHECK (status IN ('DRAFT','PENDING_CONFIRMATION','AUTHORIZED','WITHDRAWN','STALE','EXPIRED')),
   version integer NOT NULL CHECK (version > 0),
-  authorization jsonb NOT NULL,
+  authorization_record jsonb NOT NULL,
   created_by text NOT NULL,
   updated_by text NOT NULL,
   created_at timestamptz NOT NULL,
