@@ -74,11 +74,7 @@ function database(url: string, applicationName: string, migrationNamespace: stri
 
 suite.sequential('M4 zero-interception durable provider runtime', () => {
   const coreDatabase = database(coreUrl!, 'm4-runtime-core', 'm4_runtime_core');
-  const executionDatabase = database(
-    executionUrl!,
-    'm4-runtime-execution',
-    'm4_runtime_execution'
-  );
+  const executionDatabase = database(executionUrl!, 'm4-runtime-execution', 'm4_runtime_execution');
   const mgsnDatabase = database(mgsnUrl!, 'm4-runtime-mgsn', 'm4_runtime_mgsn');
   let core: ReturnType<typeof createCore>;
   let execution: ReturnType<typeof createExecution>;
@@ -455,8 +451,7 @@ suite.sequential('M4 zero-interception durable provider runtime', () => {
       {
         workspaceId: customerWorkspaceId,
         expectedServicePackageVersion: servicePackage.version,
-        expectedServicePackageFingerprintSha256:
-          servicePackage.servicePackageFingerprintSha256,
+        expectedServicePackageFingerprintSha256: servicePackage.servicePackageFingerprintSha256,
         providerSupplyCapabilityId: capability.providerSupplyCapabilityId,
         expectedProviderSupplyCapabilityVersion: capability.version,
         expectedProviderSupplyCapabilityFingerprintSha256: capability.sourceFingerprintSha256,
@@ -474,8 +469,7 @@ suite.sequential('M4 zero-interception durable provider runtime', () => {
         workspaceId: customerWorkspaceId,
         servicePackageId: servicePackage.servicePackageId,
         expectedServicePackageVersion: servicePackage.version,
-        expectedServicePackageFingerprintSha256:
-          servicePackage.servicePackageFingerprintSha256,
+        expectedServicePackageFingerprintSha256: servicePackage.servicePackageFingerprintSha256,
         eligibilityEvaluationId: eligibility.eligibilityEvaluationId,
         expectedEligibilityEvaluationVersion: eligibility.version,
         expectedEligibilityFingerprintSha256: eligibility.deterministicFingerprintSha256,
