@@ -42,7 +42,14 @@
     },
     {
       "id": "M4-WP-04",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_IN_PR_52",
+      "evidence": [
+        "infrastructure/persistence/migrations/0029_mgsn_service_package_eligibility.sql",
+        "services/mgsn/src/service-package-eligibility.ts",
+        "services/mgsn/src/service-package-eligibility-postgres.ts",
+        "services/mgsn/tests/service-package-eligibility-postgres.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-04-SERVICE-PACKAGE-ELIGIBILITY.md"
+      ]
     },
     {
       "id": "M4-WP-05",
@@ -123,6 +130,32 @@
     "legalProfessionalAppointmentCreated": false,
     "paymentOrInvoiceCreated": false,
     "filingSubmitted": false,
+    "officialTruthCreated": false
+  },
+  "wp04EligibilityBoundary": {
+    "owner": "MGSN",
+    "databasePerOwner": true,
+    "migration": "0029_mgsn_service_package_eligibility",
+    "executionSourceConsumedThroughBoundedDependency": true,
+    "crossServiceDatabaseRead": false,
+    "exactExecutionSourceVersionsPreserved": true,
+    "executionSourceFingerprintPreserved": true,
+    "servicePackageFingerprintDistinct": true,
+    "currentExactSupplyCapabilityRequired": true,
+    "currentProviderOperationalStateEvaluated": true,
+    "deterministicExplainableChecks": true,
+    "boundedPrivateReviewList": true,
+    "durableIdempotency": true,
+    "appendOnlyAudit": true,
+    "staleExecutionSourceFailsClosed": true,
+    "staleSupplyVersionFailsClosed": true,
+    "providerAllocated": false,
+    "providerAccepted": false,
+    "legalProfessionalAppointmentCreated": false,
+    "paymentOrInvoiceCreated": false,
+    "filingSubmitted": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false,
     "officialTruthCreated": false
   }
 }
