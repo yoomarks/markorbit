@@ -1,0 +1,44 @@
+{
+  "milestone": "MO-MVP-MILESTONE-005",
+  "approvedDirection": "DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION",
+  "scopeApproval": {
+    "pullRequest": 60,
+    "mergeCommit": "0de33333246b66d825b56137f87c32266fb5583c"
+  },
+  "milestoneStatus": "IMPLEMENTATION_ACTIVE",
+  "currentWorkPackage": "M5-WP-01",
+  "authorityLocks": {
+    "evidenceReviewDecisionIsOfficialTruth": false,
+    "reviewAdmissionIsFilingSubmission": false,
+    "lifecycleProjectionIsOfficialStatus": false,
+    "recommendedActionAuthorizesExecution": false,
+    "paymentOrInvoiceImplied": false,
+    "legalAppointmentImplied": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false,
+    "crossServiceSqlAllowed": false,
+    "aiMayRecordAuthoritativeReviewDecision": false,
+    "aiMayExecuteRecommendedAction": false,
+    "aiMayCreateOfficialTruth": false
+  },
+  "workPackages": [
+    {
+      "id": "M5-WP-01",
+      "status": "IMPLEMENTED_IN_CURRENT_CHANGESET",
+      "evidence": [
+        "packages/contracts/src/evidence-lifecycle.ts",
+        "packages/contracts/tests/evidence-lifecycle-contract.test.ts",
+        "docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md",
+        "docs/tasks/MO-MVP-M5-WP-01-EVIDENCE-LIFECYCLE-CONTRACTS.md"
+      ]
+    },
+    { "id": "M5-WP-02", "status": "NOT_STARTED" },
+    { "id": "M5-WP-03", "status": "NOT_STARTED" },
+    { "id": "M5-WP-04", "status": "NOT_STARTED" },
+    { "id": "M5-WP-05", "status": "NOT_STARTED" },
+    { "id": "M5-WP-06", "status": "NOT_STARTED" },
+    { "id": "M5-WP-07", "status": "NOT_STARTED" },
+    { "id": "M5-WP-08", "status": "NOT_STARTED" }
+  ],
+  "nextApprovedStepAfterMerge": "M5-WP-02"
+}
