@@ -34,4 +34,4 @@ Provider Return and evidence handoff remain internal evidence truth. They do not
 
 ## Acceptance evidence
 
-Hosted PostgreSQL suites must prove versioning/correction, authenticated provider lineage, idempotent return replay, stale return rejection, exact Execution source validation, response-loss-safe handoff replay, persistence reload and closed authority consequences.
+Hosted PostgreSQL suites must prove versioning/correction, authenticated provider lineage, idempotent return replay, stale return rejection, exact Execution source validation, response-loss-safe handoff replay, persistence reload and closed authority consequences. The WP06 MGSN and Execution PostgreSQL suites are permanent gates in the repository validation workflow.
