@@ -223,7 +223,19 @@ suite('real authenticated durable Professional Review HTTP path', () => {
     const executionPool = executionDatabase.getPool();
     const markregPool = markregDatabase.getPool();
     await executionPool.query(
-      'DROP TABLE IF EXISTS professional_review_audit,professional_review_commands,professional_review_cases CASCADE'
+      `DROP TABLE IF EXISTS
+         filing_execution_task_drafts,
+         execution_releases,
+         filing_authorizations,
+         filing_governance_commands,
+         filing_governance_audit,
+         professional_review_audit,
+         professional_review_commands,
+         professional_review_cases
+       CASCADE`
+    );
+    await executionPool.query(
+      'DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE'
     );
     const history = await executionPool.query<{ migration_history: string | null }>(
       "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"

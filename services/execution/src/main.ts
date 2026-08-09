@@ -1,4 +1,8 @@
-import { createRuntime, PostgresProfessionalReviewRepository } from './index.js';
+import {
+  createRuntime,
+  PostgresFilingGovernanceRepository,
+  PostgresProfessionalReviewRepository
+} from './index.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -23,6 +27,8 @@ if (fixtureRuntime) {
   runtime = createRuntime({
     reviewRepositoryFactory: (workspaceId) =>
       new PostgresProfessionalReviewRepository(database, pool, workspaceId),
+    filingRepositoryFactory: (workspaceId, actorId, correlationId) =>
+      new PostgresFilingGovernanceRepository(database, pool, workspaceId, actorId, correlationId),
     ...(process.env.MO_INTERNAL_SERVICE_SECRET
       ? { internalServiceSecret: process.env.MO_INTERNAL_SERVICE_SECRET }
       : {}),

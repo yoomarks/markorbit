@@ -74,6 +74,21 @@ export interface FilingExecutionTaskDraftRepository {
   markStale(value: FilingExecutionTaskDraft): Promise<void>;
   cancel(value: FilingExecutionTaskDraft): Promise<void>;
 }
+export type FilingGovernanceAuditTarget =
+  'FILING_AUTHORIZATION' | 'EXECUTION_RELEASE' | 'FILING_EXECUTION_TASK_DRAFT';
+export interface FilingGovernanceDenial {
+  targetType: FilingGovernanceAuditTarget;
+  targetId?: string;
+  action: string;
+  actorId: string;
+  reasonCode: string;
+  correlationId?: string;
+  sourceFingerprint?: string;
+  createdAt: string;
+}
+export interface FilingGovernanceAuditRepository {
+  recordDenial(value: FilingGovernanceDenial): Promise<void>;
+}
 export class InMemoryFilingGovernanceRepository {
   private authorizations = new Map<FilingAuthorizationId, FilingAuthorization>();
   private releases = new Map<ExecutionReleaseId, ExecutionRelease>();
@@ -81,6 +96,7 @@ export class InMemoryFilingGovernanceRepository {
   private authorizationKeys = new Map<string, KeyEntry<FilingAuthorizationId>>();
   private releaseKeys = new Map<string, KeyEntry<ExecutionReleaseId>>();
   private decisionKeys = new Map<string, KeyEntry<ExecutionReleaseId>>();
+  private denials: FilingGovernanceDenial[] = [];
   async create(value: FilingAuthorization | ExecutionRelease, key: string, fingerprint: string) {
     if ('filingAuthorizationId' in value && !('executionReleaseId' in value)) {
       this.authorizations.set(value.filingAuthorizationId, clone(value));
@@ -187,6 +203,12 @@ export class InMemoryFilingGovernanceRepository {
   snapshotIdempotencyCount() {
     return this.authorizationKeys.size + this.releaseKeys.size + this.decisionKeys.size;
   }
+  async recordDenial(value: FilingGovernanceDenial) {
+    this.denials.push(clone(value));
+  }
+  snapshotDenials() {
+    return this.denials.map(clone);
+  }
 }
 const acknowledgementCodes: FilingAuthorizationAcknowledgementCode[] = [
   'APPLICANT_OWNER_CONFIRMED',
@@ -274,10 +296,6 @@ function authoritativeScope(
   };
 }
 export class FilingGovernanceService {
-  private readonly confirmationKeys = new Map<
-    string,
-    { fingerprint: string; id: FilingAuthorizationId }
-  >();
   constructor(
     private authorizations: FilingAuthorizationRepository,
     private releases: ExecutionReleaseRepository,
@@ -390,20 +408,31 @@ export class FilingGovernanceService {
       updatedAt: at
     };
     await this.authorizations.create(value, command.idempotencyKey, fp);
-    return value;
+    const stored = await this.authorizations.findByIdempotencyKey(command.idempotencyKey);
+    return stored ? this.authorization(stored.id as FilingAuthorizationId) : value;
   }
   async getAuthorization(id: FilingAuthorizationId) {
     const value = await this.authorization(id);
     if (['WITHDRAWN', 'STALE', 'EXPIRED'].includes(value.status)) return value;
     const at = this.now();
     if (value.expiresAt && Date.parse(at) >= Date.parse(value.expiresAt)) {
-      const expired = { ...value, status: 'EXPIRED' as const, updatedAt: at };
+      const expired = {
+        ...value,
+        status: 'EXPIRED' as const,
+        version: value.version + 1,
+        updatedAt: at
+      };
       await this.authorizations.markExpired(expired);
       return expired;
     }
     const current = await this.source.getPreparationLock(value.preparationLockId);
     if (!current || lockVersion(current) !== value.preparationLockVersion) {
-      const stale = { ...value, status: 'STALE' as const, updatedAt: at };
+      const stale = {
+        ...value,
+        status: 'STALE' as const,
+        version: value.version + 1,
+        updatedAt: at
+      };
       await this.authorizations.markStale(stale);
       return stale;
     }
@@ -418,7 +447,7 @@ export class FilingGovernanceService {
     }
   ) {
     const fp = fingerprint(command);
-    const replay = this.confirmationKeys.get(command.idempotencyKey);
+    const replay = await this.authorizations.findByIdempotencyKey(command.idempotencyKey);
     if (replay) {
       if (replay.fingerprint !== fp || replay.id !== id)
         throw new FilingGovernanceError(
@@ -463,8 +492,7 @@ export class FilingGovernanceService {
       }))
     };
     await this.authorizations.confirm(next, command.idempotencyKey, fp);
-    this.confirmationKeys.set(command.idempotencyKey, { fingerprint: fp, id });
-    return next;
+    return this.authorization(id);
   }
   async withdrawAuthorization(id: FilingAuthorizationId) {
     const value = await this.authorization(id);
@@ -553,7 +581,8 @@ export class FilingGovernanceService {
       updatedAt: at
     };
     await this.releases.create(value, command.idempotencyKey, fp);
-    return value;
+    const stored = await this.releases.findByIdempotencyKey(command.idempotencyKey);
+    return stored ? this.releaseRecord(stored.id as ExecutionReleaseId) : value;
   }
   async listReleases() {
     const values = await this.releases.list();
@@ -570,7 +599,12 @@ export class FilingGovernanceService {
       authorization.version === value.filingAuthorizationVersion
     )
       return value;
-    const stale = { ...value, status: 'STALE' as const, updatedAt: this.now() };
+    const stale = {
+      ...value,
+      status: 'STALE' as const,
+      version: value.version + 1,
+      updatedAt: this.now()
+    };
     await this.releases.markStale(stale);
     const task = await this.tasks.findByExecutionRelease(value.executionReleaseId);
     if (task) await this.tasks.markStale({ ...task, status: 'STALE' });
@@ -607,13 +641,25 @@ export class FilingGovernanceService {
       ...value,
       checks,
       status: blocked ? ('BLOCKED' as const) : ('READY_FOR_RELEASE' as const),
+      version: value.version + 1,
       updatedAt: at
     };
     await this.releases.evaluateChecks(next);
     return next;
   }
-  async assign(id: ExecutionReleaseId, assignment: ExecutionReleaseAssignment) {
+  async assign(
+    id: ExecutionReleaseId,
+    assignment: ExecutionReleaseAssignment,
+    expectedVersion?: number
+  ) {
     const value = await this.releaseRecord(id);
+    if (expectedVersion !== undefined && value.version !== expectedVersion)
+      throw new FilingGovernanceError(
+        'STALE_EXECUTION_RELEASE',
+        'Execution Release changed; reload the exact latest version.',
+        409,
+        { expectedVersion, actualVersion: value.version }
+      );
     if (value.status === 'RELEASED_FOR_EXECUTION')
       throw new FilingGovernanceError(
         'EXECUTION_RELEASE_IMMUTABLE',
@@ -622,6 +668,7 @@ export class FilingGovernanceService {
     const next = {
       ...value,
       assignment: { ...clone(assignment), assignedAt: this.now() },
+      version: value.version + 1,
       updatedAt: this.now()
     };
     await this.releases.updateAssignment(next);
@@ -640,7 +687,14 @@ export class FilingGovernanceService {
           'Idempotency key has a different payload.'
         );
       const release = await this.releaseRecord(id);
-      return { release, taskDraft: await this.tasks.findByExecutionRelease(id) };
+      let taskDraft = await this.tasks.findByExecutionRelease(id);
+      if (!taskDraft && release.status === 'RELEASED_FOR_EXECUTION') {
+        const auth = await this.authorization(release.filingAuthorizationId);
+        taskDraft = this.buildTaskDraft(release, auth, this.now());
+        await this.tasks.createFromReleasedExecution(taskDraft);
+        taskDraft = await this.tasks.findByExecutionRelease(id);
+      }
+      return { release, taskDraft };
     }
     const value = await this.getRelease(id);
     const failed = value.checks.filter((check) => check.blocking && check.status === 'FAIL');
@@ -698,14 +752,43 @@ export class FilingGovernanceService {
       updatedAt: at
     };
     await this.releases.recordDecision(next, command.idempotencyKey, fp);
-    await this.releases.release(next);
+    const persistedRelease = await this.releaseRecord(id);
+    await this.releases.release(persistedRelease);
     const existing = await this.tasks.findByExecutionRelease(id);
-    if (existing) return { release: next, taskDraft: existing };
+    if (existing) return { release: persistedRelease, taskDraft: existing };
     const auth = await this.authorization(value.filingAuthorizationId);
-    const taskDraft: FilingExecutionTaskDraft = {
+    const taskDraft = this.buildTaskDraft(persistedRelease, auth, at);
+    await this.tasks.createFromReleasedExecution(taskDraft);
+    return {
+      release: persistedRelease,
+      taskDraft: (await this.tasks.findByExecutionRelease(id)) ?? taskDraft
+    };
+  }
+  async withdrawRelease(id: ExecutionReleaseId) {
+    const value = await this.releaseRecord(id);
+    if (value.status === 'RELEASED_FOR_EXECUTION')
+      throw new FilingGovernanceError(
+        'EXECUTION_RELEASE_IMMUTABLE',
+        'A released decision is immutable.'
+      );
+    const next = {
+      ...value,
+      status: 'WITHDRAWN' as const,
+      version: value.version + 1,
+      updatedAt: this.now()
+    };
+    await this.releases.withdraw(next);
+    return next;
+  }
+  private buildTaskDraft(
+    release: ExecutionRelease,
+    auth: FilingAuthorization,
+    at: string
+  ): FilingExecutionTaskDraft {
+    return {
       schemaVersion: 1,
       filingExecutionTaskDraftId: `filing-task-draft_${randomUUID()}`,
-      executionReleaseId: id,
+      executionReleaseId: release.executionReleaseId,
       filingAuthorizationId: auth.filingAuthorizationId,
       preparationLockId: auth.preparationLockId,
       executionSnapshot: clone(auth.scope),
@@ -722,24 +805,11 @@ export class FilingGovernanceService {
         (v) => v.instructionEntryId
       ),
       representativeRequirement: auth.representativeRequirement,
-      executionChannel: value.requestedExecutionChannel,
-      internalAssigneeReference: value.assignment.internalExecutorId,
+      executionChannel: release.requestedExecutionChannel,
+      internalAssigneeReference: release.assignment.internalExecutorId!,
       status: 'PREPARED',
       createdAt: at
     };
-    await this.tasks.createFromReleasedExecution(taskDraft);
-    return { release: next, taskDraft };
-  }
-  async withdrawRelease(id: ExecutionReleaseId) {
-    const value = await this.releaseRecord(id);
-    if (value.status === 'RELEASED_FOR_EXECUTION')
-      throw new FilingGovernanceError(
-        'EXECUTION_RELEASE_IMMUTABLE',
-        'A released decision is immutable.'
-      );
-    const next = { ...value, status: 'WITHDRAWN' as const, updatedAt: this.now() };
-    await this.releases.withdraw(next);
-    return next;
   }
   async getTask(id: FilingExecutionTaskDraftId) {
     const value = await this.tasks.findById(id);

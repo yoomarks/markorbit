@@ -85,6 +85,10 @@ jobs:
       - run: pnpm test:professional-review:postgres
       - run: pnpm test:professional-review:postgres
       - run: pnpm test:professional-review:http
+      - name: Run authenticated Execution filing-governance boundary
+        run: pnpm test:filing-governance:auth
+      - name: Run durable Execution filing-governance PostgreSQL suite
+        run: pnpm test:filing-governance:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:http

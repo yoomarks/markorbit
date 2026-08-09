@@ -16,7 +16,19 @@
         "docs/tasks/MO-MVP-M4-WP-01-PROVIDER-EXECUTION-CONTRACTS.md"
       ]
     },
-    { "id": "M4-WP-02", "status": "NOT_STARTED" },
+    {
+      "id": "M4-WP-02",
+      "status": "IMPLEMENTED_IN_PR_50",
+      "evidence": [
+        "infrastructure/persistence/migrations/0027_execution_filing_governance.sql",
+        "services/execution/src/filing-authorization-postgres.ts",
+        "services/execution/src/filing-authorization.ts",
+        "services/execution/src/index.ts",
+        "services/execution/tests/filing-authorization-auth.test.ts",
+        "services/execution/tests/filing-authorization-postgres.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-02-DURABLE-EXECUTION-FILING-GOVERNANCE.md"
+      ]
+    },
     { "id": "M4-WP-03", "status": "NOT_STARTED" },
     { "id": "M4-WP-04", "status": "NOT_STARTED" },
     { "id": "M4-WP-05", "status": "NOT_STARTED" },
@@ -34,5 +46,30 @@
     "evidenceHandoffIsNotFormalMatterCompletion": true,
     "paymentOrInvoiceCreated": false,
     "userCapabilityVerifiedAutomatically": false
+  },
+  "wp02DurabilityBoundary": {
+    "owner": "Execution",
+    "databasePerOwner": true,
+    "migration": "0027_execution_filing_governance",
+    "workspaceScoped": true,
+    "trustedWorkspacePrincipalRequiredForDurableRuntime": true,
+    "serverOwnedActorTruth": true,
+    "headerAndBodyWorkspaceSpoofRejected": true,
+    "durableIdempotency": true,
+    "optimisticConcurrency": true,
+    "restartRecovery": true,
+    "appendOnlySuccessAndDenialAudit": true,
+    "exactPreparationLockLineage": true,
+    "staleInvalidationDurable": true,
+    "releasedForExecutionIsExternalSubmission": false,
+    "externalProviderAssigned": false,
+    "legalProfessionalAppointmentCreated": false,
+    "providerReturnCreated": false,
+    "paymentOrInvoiceCreated": false,
+    "officialTruthCreated": false
+  },
+  "wp02FocusedEvidence": {
+    "authenticatedBoundaryTests": { "passed": 4, "total": 4 },
+    "postgresDurabilityTests": { "passed": 9, "total": 9 }
   }
 }

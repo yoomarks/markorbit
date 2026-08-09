@@ -140,8 +140,14 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
   - Shared contract: `@markorbit/contracts/provider-execution`.
   - Vocabulary/authority evidence: `docs/architecture/PROVIDER-EXECUTION-AUTHORITY-BOUNDARY.md`.
   - No persistence, Allocation runtime, Provider Return runtime, finance, legal appointment or Official Truth is created by this work package.
-- M4-WP-02 — Durable authenticated Execution filing-governance source (**next after WP-01 merge**)
-- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**not started**)
+- M4-WP-02 — Durable authenticated Execution filing-governance source (**implemented in PR #50**)
+  - Execution-owned migration: `0027_execution_filing_governance`.
+  - Durable Filing Authorization, Execution Release and Filing Execution Task Draft with Workspace-scoped idempotency, optimistic concurrency and append-only success/denial audit.
+  - Trusted Workspace Principal controls actor/Workspace truth; conflicting header/body Workspace declarations are denied non-enumerating.
+  - Focused evidence: authenticated boundary 4/4; real PostgreSQL migration/restart/concurrency/audit/outage suite 9/9.
+  - `RELEASED_FOR_EXECUTION` remains internal authority only and does not imply external submission, provider appointment, Payment/Invoice or Official Truth.
+  - Evidence: `docs/tasks/MO-MVP-M4-WP-02-DURABLE-EXECUTION-FILING-GOVERNANCE.md`.
+- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**next after WP-02 merge**)
 - M4-WP-04 — MGSN Service Package and deterministic Eligibility (**not started**)
 - M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**not started**)
 - M4-WP-06 — Provider Return and exact Execution evidence handoff (**not started**)
