@@ -49,7 +49,12 @@ const ownedTables = {
   Execution: [
     'professional_review_cases',
     'professional_review_commands',
-    'professional_review_audit'
+    'professional_review_audit',
+    'filing_authorizations',
+    'execution_releases',
+    'filing_execution_task_drafts',
+    'filing_governance_commands',
+    'filing_governance_audit'
   ]
 } as const;
 const databases: ManagedDatabase[] = [];
@@ -333,6 +338,7 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(9);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(10);
+    expect(sets[2]).toContain('0027_execution_filing_governance');
   });
 });
