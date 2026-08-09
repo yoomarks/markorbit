@@ -6,6 +6,7 @@
     "mergeCommit": "0de33333246b66d825b56137f87c32266fb5583c"
   },
   "milestoneStatus": "IMPLEMENTATION_ACTIVE",
+  "planningStatusReconciled": true,
   "currentWorkPackage": "M5-WP-01",
   "authorityLocks": {
     "evidenceReviewDecisionIsOfficialTruth": false,
