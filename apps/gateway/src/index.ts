@@ -25,6 +25,7 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 export * from './auth.js';
+export * from './order-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -35,6 +36,7 @@ import {
   sessionCookie,
   validateCsrf
 } from './auth.js';
+import { createGatewayOrderRoutes } from './order-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -349,6 +351,18 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...createGatewayOrderRoutes({
+          markRegUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
+        }),
         {
           method: 'GET',
           path: '/api/auth/session',

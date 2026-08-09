@@ -86,7 +86,10 @@
     "test:milestone2:topology": "node --test scripts/milestone2-reliability-command.test.mjs scripts/audit-postgres-command.test.mjs scripts/playwright-suite-boundary.test.mjs",
     "test:milestone2:reliability": "pnpm test:milestone2:topology && pnpm test:milestone2:migrations && pnpm test:milestone2:restart && pnpm test:milestone2:outage && pnpm test:milestone2:concurrency && pnpm test:milestone2:tenant-isolation && pnpm test:milestone2:markreg-repeatability && pnpm test:milestone2:browser && pnpm test:milestone2:evidence",
     "test:milestone2:browser": "pnpm build:document-package-deps && pnpm test:lite-matter:no-interception && pnpm test:professional-review:no-interception && pnpm test:document-package:no-interception && playwright test --config playwright.lite-matter-real-runtime.config.ts --project lite-matter-desktop && playwright test --config playwright.lite-matter-real-runtime.config.ts --project lite-matter-mobile-390 && playwright test --config playwright.professional-review-real-runtime.config.ts --project professional-review-desktop && playwright test --config playwright.professional-review-real-runtime.config.ts --project professional-review-mobile-390 && playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop && playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-mobile-390 && playwright test --config playwright.real-runtime.config.ts --project real-runtime-desktop-chromium && playwright test --config playwright.real-runtime.config.ts --project real-runtime-mobile-chromium-390",
-    "test:milestone2:evidence": "node scripts/validate-milestone2-evidence.mjs"
+    "test:milestone2:evidence": "node scripts/validate-milestone2-evidence.mjs",
+    "build:order-http-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway...",
+    "test:order:http": "pnpm build:order-http-deps && MARKREG_ORDER_HTTP_REQUIRED=1 pnpm exec vitest run --no-file-parallelism scripts/order-http.integration.test.ts",
+    "test:order:client": "pnpm --filter @markorbit/markreg-web exec vitest run tests/order-api.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

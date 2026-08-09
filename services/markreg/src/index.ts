@@ -67,6 +67,7 @@ import {
   type MarkRegDenialReason,
   type PostgresMarkRegAuditRepository
 } from './audit.js';
+import { createOrderHttpRoutes, type OrderHttpOptions } from './order-http.js';
 export * from './matter-flow.js';
 export * from './preparation.js';
 export * from './customer-confirmation.js';
@@ -77,6 +78,7 @@ export * from './audit.js';
 export * from './order-persistence.js';
 export * from './order-service.js';
 export * from './order-matter-conversion.js';
+export * from './order-http.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -274,6 +276,8 @@ export interface MarkRegOptions {
   internalServiceSecret?: string;
   documentPackageService?: PostgresDocumentPackageService;
   auditRepository?: PostgresMarkRegAuditRepository;
+  orderService?: OrderHttpOptions['orderService'];
+  orderMatterConversionService?: OrderHttpOptions['conversionService'];
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -564,6 +568,13 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...createOrderHttpRoutes({
+          ...(options.orderService ? { orderService: options.orderService } : {}),
+          ...(options.orderMatterConversionService
+            ? { conversionService: options.orderMatterConversionService }
+            : {}),
+          ...(internalServiceSecret ? { internalServiceSecret } : {})
+        }),
         ...(fixtureRuntime
           ? [
               {

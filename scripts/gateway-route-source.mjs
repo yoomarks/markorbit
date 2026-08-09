@@ -1,5 +1,7 @@
 import fs from 'node:fs';
-const source = fs.readFileSync(new URL('../apps/gateway/src/index.ts', import.meta.url), 'utf8');
+const source = ['../apps/gateway/src/index.ts', '../apps/gateway/src/order-http.ts']
+  .map((file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8'))
+  .join('\n');
 export function extractGatewayRoutes(sourceText = source) {
   const routes = [];
   const add = (method, path) => {
@@ -8,6 +10,8 @@ export function extractGatewayRoutes(sourceText = source) {
   for (const match of sourceText.matchAll(/\[\s*'(GET|POST|PATCH)'\s*,\s*'([^']+)'\s*(?:,|\])/g))
     add(match[1], match[2]);
   for (const match of sourceText.matchAll(/method:\s*'(GET|POST|PATCH)'\s*,\s*path:\s*'([^']+)'/g))
+    add(match[1], match[2]);
+  for (const match of sourceText.matchAll(/route\(\s*'(GET|POST|PATCH)'\s*,\s*'([^']+)'/g))
     add(match[1], match[2]);
   add('GET', '/health/markreg');
   add('GET', '/health/execution');

@@ -629,6 +629,105 @@
       "httpIntegrationTestFile": "apps/gateway/tests/markreg-negative-path-matrix.test.ts"
     },
     {
+      "method": "GET",
+      "path": "/api/markreg/orders",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/orders/:orderId",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders/:orderId/cancel",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders/:orderId/confirm",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders/:orderId/create-matter",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_AND_FORMAL_MATTER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders/:orderId/evaluate-readiness",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders/:orderId/link-matter",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_AND_FORMAL_MATTER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/orders/:orderId/request-confirmation",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "ORDER_ONLY_NO_PAYMENT_OR_FILING",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
       "method": "POST",
       "path": "/api/markreg/preparation-locks",
       "owner": "markreg",
