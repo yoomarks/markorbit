@@ -1,6 +1,6 @@
-import { Alert, Button, LoadingState, PageHeader } from '@markorbit/ui';
-import { useEffect, useState } from 'react';
 import type { CustomerConfirmation } from '@markorbit/contracts';
+import { Alert, Button, Card, LoadingState, PageHeader } from '@markorbit/ui';
+import { useEffect, useState } from 'react';
 import type { MarkregClient } from './api/markreg.js';
 import { OrderJourney } from './OrderJourney.js';
 
@@ -75,6 +75,37 @@ export function CustomerConfirmationOrderEntry({
           description="The saved confirmation could not be loaded safely."
         />
         <Button onClick={() => setAttempt((value) => value + 1)}>Retry exact confirmation</Button>{' '}
+        <a href="/">Return to MarkReg</a>
+      </main>
+    );
+
+  const hasCommercialSnapshot = Boolean(
+    confirmation &&
+      typeof (confirmation as { quoteSnapshot?: unknown }).quoteSnapshot === 'object' &&
+      (confirmation as { quoteSnapshot?: unknown }).quoteSnapshot
+  );
+
+  if (!hasCommercialSnapshot)
+    return (
+      <main className="markreg-page" aria-label="Governed Customer Confirmation recovery">
+        <PageHeader
+          title="customer-confirmation"
+          description="Exact governed Customer Confirmation recovery."
+        />
+        <Card>
+          <dl>
+            <dt>Exact record ID</dt>
+            <dd>{confirmationId}</dd>
+            <dt>Expected version</dt>
+            <dd>{expectedVersion}</dd>
+            <dt>Governed status</dt>
+            <dd>{confirmation?.status ?? 'CONFIRMED'}</dd>
+          </dl>
+          <strong>
+            No Order, filing, submission, appointment, payment, or official application is created
+            by this view.
+          </strong>
+        </Card>
         <a href="/">Return to MarkReg</a>
       </main>
     );
