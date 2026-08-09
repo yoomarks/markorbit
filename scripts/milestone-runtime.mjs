@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createWriteStream, mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
+import { finished } from 'node:stream/promises';
 
 export const milestonePorts = Object.freeze({
   gateway: 4300,
@@ -200,7 +201,7 @@ export async function startMilestoneRuntime(options = {}) {
     stopPromise = (async () => {
       const errors = [];
       for (const entry of [...children].reverse()) {
-        const { child, log } = entry;
+        const { child, log, outputFinished } = entry;
         try {
           if (child.exitCode === null && child.signalCode === null) {
             try {
@@ -223,6 +224,7 @@ export async function startMilestoneRuntime(options = {}) {
         } catch (error) {
           errors.push(error);
         } finally {
+          await outputFinished;
           await new Promise((resolvePromise) => log.end(resolvePromise));
         }
       }
@@ -247,10 +249,14 @@ export async function startMilestoneRuntime(options = {}) {
         detached,
         stdio: ['ignore', 'pipe', 'pipe']
       });
-      const entry = { ...definition, child, log, detached };
+      child.stdout.pipe(log, { end: false });
+      child.stderr.pipe(log, { end: false });
+      const outputFinished = Promise.all([
+        finished(child.stdout).catch(() => {}),
+        finished(child.stderr).catch(() => {})
+      ]);
+      const entry = { ...definition, child, log, outputFinished, detached };
       children.push(entry);
-      child.stdout.pipe(log);
-      child.stderr.pipe(log);
       await waitForHealth(definition.name, definition.health, child, options.timeoutMs);
     }
     return { children, logDirectory, ports: configuration.ports, urls: configuration.urls, stop };
