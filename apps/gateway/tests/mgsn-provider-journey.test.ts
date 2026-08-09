@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- HTTP vertical-slice assertions intentionally inspect JSON fixtures and captured commands. */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- HTTP vertical-slice assertions intentionally inspect JSON fixtures and captured commands. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
 import type { ServiceRuntime } from '@markorbit/service-kit';
@@ -159,7 +159,7 @@ describe('M4-WP-07 authenticated Gateway provider journey', () => {
       headers: { [PROVIDER_WORKSPACE_HEADER_NAME]: providerWorkspaceId }
     });
     expect(response.status).toBe(401);
-    expect(((await response.json()) as any).code).toBe('AUTHENTICATION_REQUIRED');
+    expect((await response.json()).code).toBe('AUTHENTICATION_REQUIRED');
   });
 
   it('requires trusted Origin and CSRF before operations mutations', async () => {
@@ -213,7 +213,7 @@ describe('M4-WP-07 authenticated Gateway provider journey', () => {
       })
     });
     expect(response.status).toBe(400);
-    expect(((await response.json()) as any).code).toBe('PROVIDER_IDENTITY_PAYLOAD_FORBIDDEN');
+    expect((await response.json()).code).toBe('PROVIDER_IDENTITY_PAYLOAD_FORBIDDEN');
     expect(capturedResponseCommand).toBeUndefined();
   });
 
