@@ -367,11 +367,13 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
 
     const freshDatabaseSource = async () => {
       await database.getPool().query(
-        `DELETE FROM execution_evidence_review_commands;
-         DELETE FROM execution_evidence_correction_requests;
-         DELETE FROM execution_evidence_review_decisions;
-         DELETE FROM execution_evidence_review_audit;
-         DELETE FROM execution_evidence_review_sources;`
+        `TRUNCATE
+           execution_evidence_review_audit,
+           execution_evidence_review_commands,
+           execution_evidence_correction_requests,
+           execution_evidence_review_decisions,
+           execution_evidence_review_sources
+         RESTART IDENTITY CASCADE`
       );
       return service().captureReviewSource(evidenceHandoffId, reviewer);
     };
