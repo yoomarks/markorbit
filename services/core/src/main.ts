@@ -17,13 +17,18 @@ validateInternalServiceSecret(secret, secret);
 const database = new ManagedDatabase(parseDatabaseConfig(process.env));
 await database.start();
 const query = database.getPool();
+const workspaces = new PostgresWorkspaceRepository(query);
 const authentication = new AuthenticationService({
   sessions: new PostgresSessionRepository(query),
   users: new PostgresUserRepository(query),
-  workspaces: new PostgresWorkspaceRepository(query),
+  workspaces,
   memberships: new PostgresMembershipRepository(query)
 });
-const runtime = createRuntime({ authentication, internalServiceSecret: secret });
+const runtime = createRuntime({
+  authentication,
+  workspaces,
+  internalServiceSecret: secret
+});
 
 async function shutdown(signal: string) {
   process.stdout.write(`${runtime.manifest.name}: received ${signal}, stopping.\n`);

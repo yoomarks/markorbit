@@ -99,7 +99,8 @@ export type ProviderRegistryErrorCode =
   | 'INVALID_EFFECTIVE_PERIOD'
   | 'INVALID_CAPACITY'
   | 'IDEMPOTENCY_CONFLICT'
-  | 'PERSISTENCE_UNAVAILABLE';
+  | 'PERSISTENCE_UNAVAILABLE'
+  | 'DEPENDENCY_UNAVAILABLE';
 
 export class ProviderRegistryError extends Error {
   constructor(

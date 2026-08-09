@@ -1,4 +1,4 @@
-import { AuthenticationError } from '@markorbit/contracts';
+import { AuthenticationError, type WorkspaceRepository } from '@markorbit/contracts';
 import {
   createServiceRuntime,
   HttpError,
@@ -17,6 +17,7 @@ export const serviceManifest = Object.freeze({
 export interface CoreRuntimeOptions {
   port?: number;
   authentication?: AuthenticationService;
+  workspaces?: Pick<WorkspaceRepository, 'findById'>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -120,7 +121,26 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               version: revoked.version
             });
           })
-        }
+        },
+        ...(options.workspaces
+          ? [
+              {
+                method: 'GET' as const,
+                path: '/internal/identity/workspaces/:workspaceId',
+                handle: internal(async (request) => {
+                  const workspace = await options.workspaces!.findById(request.params.workspaceId!);
+                  if (!workspace)
+                    throw new HttpError(404, 'WORKSPACE_NOT_FOUND', 'Workspace was not found.');
+                  return json(200, {
+                    workspace: {
+                      workspaceId: workspace.workspaceId,
+                      status: workspace.status
+                    }
+                  });
+                })
+              }
+            ]
+          : [])
       ]
     : [];
   return createServiceRuntime(

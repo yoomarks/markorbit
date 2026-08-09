@@ -1,0 +1,55 @@
+name: Milestone 4 integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  durable-provider-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      M4_RUNTIME_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m4_core
+      M4_RUNTIME_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m4_execution
+      M4_RUNTIME_MGSN_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m4_mgsn
+      M4_RUNTIME_INTEGRATION_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create isolated M4 runtime databases
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE markorbit_m4_core;
+          CREATE DATABASE markorbit_m4_execution;
+          CREATE DATABASE markorbit_m4_mgsn;
+          SQL
+      - name: Build real runtime dependencies
+        run: >-
+          pnpm turbo run build
+          --filter=@markorbit/core-service...
+          --filter=@markorbit/execution-service...
+          --filter=@markorbit/mgsn-service...
+          --filter=@markorbit/gateway...
+      - name: Run zero-interception durable provider path
+        run: pnpm exec vitest run --no-file-parallelism scripts/m4-provider-runtime.integration.test.ts

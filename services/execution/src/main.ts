@@ -1,4 +1,5 @@
 import {
+  createDurableExecutionProviderRoutes,
   createRuntime,
   PostgresFilingGovernanceRepository,
   PostgresProfessionalReviewRepository
@@ -13,6 +14,9 @@ if (fixtureRuntime) {
   const databaseUrl = process.env.EXECUTION_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseUrl)
     throw new Error('EXECUTION_DATABASE_URL is required for the durable Execution runtime.');
+  const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
+  if (!internalServiceSecret || Buffer.byteLength(internalServiceSecret) < 32)
+    throw new Error('MO_INTERNAL_SERVICE_SECRET must contain at least 32 bytes.');
   const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
   const database = new ManagedDatabase(
     parseDatabaseConfig({
@@ -29,9 +33,11 @@ if (fixtureRuntime) {
       new PostgresProfessionalReviewRepository(database, pool, workspaceId),
     filingRepositoryFactory: (workspaceId, actorId, correlationId) =>
       new PostgresFilingGovernanceRepository(database, pool, workspaceId, actorId, correlationId),
-    ...(process.env.MO_INTERNAL_SERVICE_SECRET
-      ? { internalServiceSecret: process.env.MO_INTERNAL_SERVICE_SECRET }
-      : {}),
+    providerExecutionRoutes: createDurableExecutionProviderRoutes({
+      database,
+      internalServiceSecret
+    }),
+    internalServiceSecret,
     ...(process.env.MARKREG_URL ? { markRegUrl: process.env.MARKREG_URL } : {})
   });
 }
