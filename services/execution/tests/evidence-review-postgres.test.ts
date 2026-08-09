@@ -319,7 +319,7 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     const source = await service().captureReviewSource(evidenceHandoffId, reviewer);
     const before = await database
       .getPool()
-      .query(
+      .query<{ receipt_record: unknown }>(
         'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1',
         [evidenceHandoffId]
       );
@@ -343,7 +343,7 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     });
     const after = await database
       .getPool()
-      .query(
+      .query<{ receipt_record: unknown }>(
         'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1',
         [evidenceHandoffId]
       );
