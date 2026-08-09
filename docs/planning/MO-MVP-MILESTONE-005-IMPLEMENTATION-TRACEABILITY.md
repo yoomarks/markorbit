@@ -5,6 +5,8 @@
 **Current work package:** `M5-WP-01` — contract and authority boundary  
 **Milestone status:** `IMPLEMENTATION_ACTIVE`
 
+The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README are reconciled to the approved PR #60 state before WP-01 is presented for merge.
+
 ## Work package status
 
 - **M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary:** `IMPLEMENTED_IN_PR_61`. Evidence: `packages/contracts/src/evidence-lifecycle.ts`, contract tests and authority boundary docs.
