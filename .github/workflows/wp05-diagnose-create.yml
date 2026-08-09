@@ -1,0 +1,24 @@
+name: WP05 diagnose create
+
+on:
+  push:
+    branches: [m3-wp-05-gateway-order-api]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m3-wp-05-gateway-order-api
+      - run: node scripts/wp05-diagnose-create.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test(m3): surface safe Order create HTTP failure"
+          git push origin HEAD:m3-wp-05-gateway-order-api
