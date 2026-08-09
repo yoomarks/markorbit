@@ -2,7 +2,7 @@
 
 - **Milestone:** `MO-MVP-MILESTONE-005`
 - **Planning task:** `MO-MVP-TASK-030A`
-- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`
+- **Status:** `APPROVED_FOR_IMPLEMENTATION`
 - **Predecessor:** Milestone 4 / M4-WP-09 final recommendation `GO`
 - **Proposed direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`
 - **Planning only:** yes
