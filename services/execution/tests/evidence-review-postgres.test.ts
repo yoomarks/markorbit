@@ -137,33 +137,11 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
   });
 
   async function seedReceipt(value = receipt) {
-    const pool = database.getPool();
-    await pool.query(
-      `INSERT INTO execution_provider_return_evidence_receipts(
-         evidence_handoff_id,workspace_id,provider_return_id,provider_return_version,
-         provider_return_fingerprint_sha256,provider_id,provider_workspace_id,provider_actor_id,
-         execution_release_id,execution_release_version,filing_execution_task_draft_id,
-         filing_execution_task_draft_version,correlation_id,review_status,receipt_record,received_at
-       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16)`,
-      [
-        value.evidenceHandoff.evidenceHandoffId,
-        value.evidenceHandoff.workspaceId,
-        value.evidenceHandoff.providerReturn.id,
-        Number(value.evidenceHandoff.providerReturn.version),
-        value.evidenceHandoff.providerReturnFingerprintSha256,
-        value.providerId,
-        value.providerWorkspaceId,
-        value.providerActorId,
-        value.evidenceHandoff.executionRelease.id,
-        Number(value.evidenceHandoff.executionRelease.version),
-        value.evidenceHandoff.filingExecutionTaskDraft.id,
-        String(value.evidenceHandoff.filingExecutionTaskDraft.version),
-        value.evidenceHandoff.correlationId,
-        value.reviewStatus,
-        JSON.stringify(value),
-        value.receivedAt
-      ]
-    );
+    const key = `seed-${value.evidenceHandoff.evidenceHandoffId}`;
+    const requestFingerprint = value.evidenceHandoff.evidenceHandoffId === evidenceHandoffId ? 'e'.repeat(64) : 'f'.repeat(64);
+    await evidenceRepository().saveReceipt(value, key, requestFingerprint);
+    const persisted = await evidenceRepository().findReceipt(value.evidenceHandoff.evidenceHandoffId);
+    expect(persisted).toEqual(value);
   }
 
   async function seedNewerReceipt() {
