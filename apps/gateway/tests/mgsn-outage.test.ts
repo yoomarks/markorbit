@@ -21,7 +21,13 @@ const principal: WorkspacePrincipal = {
 
 const authentication: CoreAuthenticationClient = {
   issue: () => Promise.reject(new Error('not used')),
-  resolve: () => Promise.resolve(principal),
+  resolve: () =>
+    Promise.resolve({
+      kind: 'AUTHENTICATED_USER',
+      sessionId: 'session-m4-wp08',
+      userId: 'user-m4-wp08',
+      sessionExpiresAt: '2026-08-10T00:00:00.000Z'
+    }),
   resolveWorkspace: () => Promise.resolve(principal),
   revoke: () => Promise.resolve()
 };
