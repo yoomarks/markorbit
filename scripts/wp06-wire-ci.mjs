@@ -1,5 +1,21 @@
 import fs from 'node:fs';
 
+const orderPath = 'apps/markreg-web/src/OrderJourney.tsx';
+let order = fs.readFileSync(orderPath, 'utf8');
+const retryNeedle = `        <ErrorState
+          title={copy.title}
+          description={copy.description}
+          onRetry={problem === 'PERMISSION_DENIED' ? undefined : () => void reload()}
+        />`;
+const retryReplacement = `        <ErrorState
+          title={copy.title}
+          description={copy.description}
+          {...(problem === 'PERMISSION_DENIED' ? {} : { onRetry: () => void reload() })}
+        />`;
+if (!order.includes(retryNeedle)) throw new Error('Order retry prop anchor not found');
+order = order.replace(retryNeedle, retryReplacement);
+fs.writeFileSync(orderPath, order);
+
 const packagePath = 'package.json';
 let pkg = fs.readFileSync(packagePath, 'utf8');
 const packageNeedle = '    "test:order:client": "pnpm --filter @markorbit/markreg-web exec vitest run tests/order-api.test.ts"\n';
