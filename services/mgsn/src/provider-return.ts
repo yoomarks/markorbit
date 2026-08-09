@@ -471,13 +471,18 @@ export class ProviderReturnService {
         'Provider Acceptance was not found.',
         404
       );
+    if (acceptance.providerWorkspaceId !== providerWorkspaceId)
+      throw new ProviderReturnError(
+        'PROVIDER_IDENTITY_MISMATCH',
+        'Authenticated provider workspace does not match the Provider Acceptance.',
+        403
+      );
     if (
       acceptance.version !== expectedVersion ||
       acceptance.decision !== 'ACCEPTED' ||
       acceptance.allocation.id !== allocation.allocationId ||
       Number(acceptance.allocation.version) !== allocation.version ||
-      acceptance.providerId !== allocation.provider.providerId ||
-      acceptance.providerWorkspaceId !== providerWorkspaceId
+      acceptance.providerId !== allocation.provider.providerId
     )
       throw new ProviderReturnError(
         'ALLOCATION_NOT_CURRENT',
