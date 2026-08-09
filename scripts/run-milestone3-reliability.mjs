@@ -16,6 +16,11 @@ const common = {
 
 const groups = [
   {
+    id: 'preflight',
+    command: 'pnpm',
+    args: ['build:order-journey-deps']
+  },
+  {
     id: 'topology',
     command: 'node',
     args: ['--test', 'scripts/milestone3-reliability-command.test.mjs']
@@ -55,7 +60,7 @@ const groups = [
     args: [
       '--filter', '@markorbit/markreg-service', 'exec', 'vitest', 'run', '--no-file-parallelism',
       'tests/order-postgres.test.ts', 'tests/order-matter-conversion-postgres.test.ts',
-      '-t', 'replays identical create|serializes concurrent writers|serializes concurrent identical conversion|rejects stale Order version'
+      '-t', 'replays identical create|serializes concurrent writers|serializes concurrent identical conversion|rejects stale Order version|rolls back the Order|rolls back newly created Matter'
     ]
   },
   {
