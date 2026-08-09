@@ -1,0 +1,376 @@
+name: WP02 runtime patch
+
+on:
+  push:
+    branches: [m4-wp-02-durable-execution-filing-governance]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-wp-02-durable-execution-filing-governance
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Patch Execution authenticated durable runtime
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('services/execution/src/index.ts')
+          text = p.read_text()
+          text = text.replace("import { randomUUID } from 'node:crypto';", "import { createHash, randomUUID } from 'node:crypto';", 1)
+          text = text.replace(
+          """  type FilingExecutionTaskDraftRepository\n} from './filing-authorization.js';\nexport * from './filing-authorization.js';\n""",
+          """  type FilingExecutionTaskDraftRepository,\n  type FilingGovernanceAuditRepository\n} from './filing-authorization.js';\nexport * from './filing-authorization.js';\nexport * from './filing-authorization-postgres.js';\n""", 1)
+          text = text.replace(
+          """  filingRepository?: InMemoryFilingGovernanceRepository;\n  preparationLockSource?: PreparationLockSource;\n""",
+          """  filingRepository?: InMemoryFilingGovernanceRepository;\n  filingRepositoryFactory?: (\n    workspaceId: string,\n    actorId: string,\n    correlationId?: string\n  ) => FilingGovernanceAuditRepository;\n  preparationLockSource?: PreparationLockSource;\n""", 1)
+
+          start = text.index("  const filingRepository = options.filingRepository ?? new InMemoryFilingGovernanceRepository();")
+          end = text.index("  const mutation = async (work: () => Promise<unknown>) => {", start)
+          replacement = r'''  const filingRepository = options.filingRepository ?? new InMemoryFilingGovernanceRepository();
+  const legacyFiling = new FilingGovernanceService(
+    filingRepository as unknown as FilingAuthorizationRepository,
+    filingRepository as unknown as ExecutionReleaseRepository,
+    filingRepository as unknown as FilingExecutionTaskDraftRepository,
+    options.preparationLockSource ??
+      httpPreparationLockSource(
+        options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105'
+      ),
+    now
+  );
+  const filingTarget = (request: {
+    path: string;
+    params: Record<string, string>;
+  }): {
+    targetType: 'FILING_AUTHORIZATION' | 'EXECUTION_RELEASE' | 'FILING_EXECUTION_TASK_DRAFT';
+    targetId?: string;
+  } => {
+    const targetId = Object.values(request.params)[0];
+    if (request.path.includes('filing-task-drafts'))
+      return { targetType: 'FILING_EXECUTION_TASK_DRAFT', ...(targetId ? { targetId } : {}) };
+    if (request.path.includes('filing-authorizations'))
+      return { targetType: 'FILING_AUTHORIZATION', ...(targetId ? { targetId } : {}) };
+    return { targetType: 'EXECUTION_RELEASE', ...(targetId ? { targetId } : {}) };
+  };
+  const filingFor = async (
+    request: {
+      method: string;
+      path: string;
+      params: Record<string, string>;
+      body?: unknown;
+      headers: Record<string, string | undefined>;
+    },
+    perform: boolean
+  ) => {
+    if (!options.filingRepositoryFactory)
+      return { service: legacyFiling, principal: undefined as WorkspacePrincipal | undefined };
+    const secret = options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
+    if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
+      throw new HttpError(
+        401,
+        'UNTRUSTED_INTERNAL_CALLER',
+        'Trusted internal authorization is required.'
+      );
+    let principal: WorkspacePrincipal;
+    try {
+      principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
+    } catch {
+      throw new HttpError(
+        401,
+        'INVALID_INTERNAL_PRINCIPAL',
+        'A trusted Workspace Principal is required.'
+      );
+    }
+    const adapter = options.filingRepositoryFactory(
+      principal.workspaceId,
+      principal.userId,
+      request.headers['x-correlation-id']
+    );
+    const audit = adapter as FilingGovernanceAuditRepository;
+    const deny = async (reasonCode: string) => {
+      const body = request.body ?? null;
+      await audit.recordDenial({
+        ...filingTarget(request),
+        action: `${request.method} ${request.path}`,
+        actorId: principal.userId,
+        reasonCode,
+        correlationId: request.headers['x-correlation-id'],
+        sourceFingerprint: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+        createdAt: now()
+      });
+    };
+    const declaredWorkspace =
+      request.headers['x-markorbit-workspace-id'] ??
+      (request.body &&
+      typeof request.body === 'object' &&
+      'workspaceId' in request.body &&
+      typeof (request.body as { workspaceId?: unknown }).workspaceId === 'string'
+        ? (request.body as { workspaceId: string }).workspaceId
+        : undefined);
+    if (declaredWorkspace && declaredWorkspace !== principal.workspaceId) {
+      await deny('WORKSPACE_MISMATCH');
+      throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped execution record was not found.');
+    }
+    const permission = perform ? 'execution:manage' : 'execution:read';
+    if (!principal.permissions.includes(permission)) {
+      await deny('PERMISSION_DENIED');
+      throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
+    }
+    const service = new FilingGovernanceService(
+      adapter as unknown as FilingAuthorizationRepository,
+      adapter as unknown as ExecutionReleaseRepository,
+      adapter as unknown as FilingExecutionTaskDraftRepository,
+      options.preparationLockSource ??
+        httpPreparationLockSource(
+          options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105',
+          principal,
+          secret
+        ),
+      now
+    );
+    return { service, principal };
+  };
+  const filingCall = async (
+    request: {
+      method: string;
+      path: string;
+      params: Record<string, string>;
+      body?: unknown;
+      headers: Record<string, string | undefined>;
+    },
+    perform: boolean,
+    work: (service: FilingGovernanceService, principal?: WorkspacePrincipal) => Promise<unknown>,
+    name = 'filingAuthorization'
+  ) => {
+    try {
+      const { service, principal } = await filingFor(request, perform);
+      return json(200, {
+        [name]: await work(service, principal),
+        consequences: service.consequences
+      });
+    } catch (error) {
+      if (error instanceof FilingGovernanceError)
+        throw new HttpError(error.status, error.code, error.message, false, error.details);
+      throw error;
+    }
+  };
+'''
+          text = text[:start] + replacement + text[end:]
+
+          route_start = text.index("        {\n          method: 'POST',\n          path: '/v1/filing-task-drafts/:filingExecutionTaskDraftId/validate-current',")
+          route_end = text.index("        {\n          method: 'POST',\n          path: '/v1/professional-review-cases',", route_start)
+          routes = r'''        {
+          method: 'POST',
+          path: '/v1/filing-task-drafts/:filingExecutionTaskDraftId/validate-current',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              (service) =>
+                service.validateTaskCurrent(
+                  r.params.filingExecutionTaskDraftId as FilingExecutionTaskDraftId
+                ),
+              'filingExecutionTaskDraft'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/filing-authorizations',
+          handle: (r) =>
+            filingCall(r, true, (service) => {
+              const body = r.body as any;
+              return service.createAuthorization({
+                preparationLockId: body.preparationLockId,
+                preparationLockVersion: body.preparationLockVersion,
+                authorizedParty: body.authorizedParty,
+                authorizationCapacity: body.authorizationCapacity,
+                executionChannel: body.executionChannel,
+                ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
+                idempotencyKey: r.headers['idempotency-key'] ?? ''
+              });
+            })
+        },
+        {
+          method: 'GET',
+          path: '/v1/filing-authorizations/:filingAuthorizationId',
+          handle: (r) =>
+            filingCall(r, false, (service) =>
+              service.getAuthorization(r.params.filingAuthorizationId as FilingAuthorizationId)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/filing-authorizations/:filingAuthorizationId/confirm',
+          handle: (r) =>
+            filingCall(r, true, (service, principal) => {
+              const body = r.body as any;
+              return service.confirmAuthorization(
+                r.params.filingAuthorizationId as FilingAuthorizationId,
+                {
+                  acknowledgementCodes: body.acknowledgementCodes,
+                  acknowledgedBy: principal?.userId ?? body.acknowledgedBy,
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                }
+              );
+            })
+        },
+        {
+          method: 'POST',
+          path: '/v1/filing-authorizations/:filingAuthorizationId/withdraw',
+          handle: (r) =>
+            filingCall(r, true, (service) =>
+              service.withdrawAuthorization(r.params.filingAuthorizationId as FilingAuthorizationId)
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              (service) => {
+                const body = r.body as any;
+                return service.createRelease({
+                  filingAuthorizationId: body.filingAuthorizationId,
+                  filingAuthorizationVersion: body.filingAuthorizationVersion,
+                  requestedExecutionChannel: body.requestedExecutionChannel,
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                });
+              },
+              'executionRelease'
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/execution-releases',
+          handle: (r) =>
+            filingCall(r, false, (service) => service.listReleases(), 'executionReleases')
+        },
+        {
+          method: 'GET',
+          path: '/v1/execution-releases/:executionReleaseId',
+          handle: (r) =>
+            filingCall(
+              r,
+              false,
+              (service) => service.getRelease(r.params.executionReleaseId as ExecutionReleaseId),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases/:executionReleaseId/evaluate',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              (service) => service.evaluate(r.params.executionReleaseId as ExecutionReleaseId),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/execution-releases/:executionReleaseId/assignment',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              (service) =>
+                service.assign(r.params.executionReleaseId as ExecutionReleaseId, {
+                  internalExecutorId: (r.body as any).internalExecutorId
+                }),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases/:executionReleaseId/release',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              (service, principal) => {
+                const body = r.body as any;
+                return service.release(r.params.executionReleaseId as ExecutionReleaseId, {
+                  decidedBy: principal?.userId ?? body.decidedBy,
+                  rationale: body.rationale,
+                  idempotencyKey: r.headers['idempotency-key'] ?? ''
+                });
+              },
+              'releaseResult'
+            )
+        },
+        {
+          method: 'POST',
+          path: '/v1/execution-releases/:executionReleaseId/withdraw',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              (service) => service.withdrawRelease(r.params.executionReleaseId as ExecutionReleaseId),
+              'executionRelease'
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/filing-task-drafts/:filingExecutionTaskDraftId',
+          handle: (r) =>
+            filingCall(
+              r,
+              false,
+              (service) => service.getTask(r.params.filingExecutionTaskDraftId as FilingExecutionTaskDraftId),
+              'filingExecutionTaskDraft'
+            )
+        },
+        {
+          method: 'GET',
+          path: '/v1/execution-releases/:executionReleaseId/filing-task-draft',
+          handle: (r) =>
+            filingCall(
+              r,
+              false,
+              (service) =>
+                service.getTaskForRelease(r.params.executionReleaseId as ExecutionReleaseId),
+              'filingExecutionTaskDraft'
+            )
+        },
+'''
+          text = text[:route_start] + routes + text[route_end:]
+
+          old = """function httpPreparationLockSource(baseUrl: string): PreparationLockSource {\n  return {\n    async getPreparationLock(id: PreparationLockId) {\n      const response = await fetch(`${baseUrl}/v1/preparation-locks/${encodeURIComponent(id)}`);\n"""
+          new = """function httpPreparationLockSource(\n  baseUrl: string,\n  principal?: WorkspacePrincipal,\n  secret?: string\n): PreparationLockSource {\n  const headers =\n    principal && secret\n      ? {\n          'x-markorbit-internal-authorization': secret,\n          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),\n          'x-markorbit-workspace-id': principal.workspaceId\n        }\n      : undefined;\n  return {\n    async getPreparationLock(id: PreparationLockId) {\n      const response = await fetch(`${baseUrl}/v1/preparation-locks/${encodeURIComponent(id)}`, {\n        ...(headers ? { headers } : {})\n      });\n"""
+          if old not in text:
+              raise SystemExit('missing httpPreparationLockSource anchor')
+          text = text.replace(old, new, 1)
+          p.write_text(text)
+
+          p = Path('services/execution/src/main.ts')
+          text = p.read_text()
+          text = text.replace(
+          """import { createRuntime, PostgresProfessionalReviewRepository } from './index.js';\n""",
+          """import {\n  createRuntime,\n  PostgresFilingGovernanceRepository,\n  PostgresProfessionalReviewRepository\n} from './index.js';\n""", 1)
+          text = text.replace(
+          """    reviewRepositoryFactory: (workspaceId) =>\n      new PostgresProfessionalReviewRepository(database, pool, workspaceId),\n""",
+          """    reviewRepositoryFactory: (workspaceId) =>\n      new PostgresProfessionalReviewRepository(database, pool, workspaceId),\n    filingRepositoryFactory: (workspaceId, actorId, correlationId) =>\n      new PostgresFilingGovernanceRepository(\n        database,\n        pool,\n        workspaceId,\n        actorId,\n        correlationId\n      ),\n""", 1)
+          p.write_text(text)
+          PY
+      - run: pnpm exec prettier --write services/execution/src/index.ts services/execution/src/main.ts
+      - run: pnpm --filter @markorbit/contracts typecheck && pnpm --filter @markorbit/execution-service typecheck
+      - name: Commit runtime patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/execution/src/index.ts services/execution/src/main.ts
+          git commit -m "feat(m4): authenticate durable Execution filing governance"
+          git push origin HEAD:m4-wp-02-durable-execution-filing-governance
