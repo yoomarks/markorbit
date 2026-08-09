@@ -93,7 +93,8 @@ The exact remediation head passed every required workflow family:
 After merge, the identical implementation tree on `main` also passed:
 
 - Milestone 4 integration run `31323865361`: **PASS**;
-- validation run `31323865372`: **PASS**, including persistence and professional-review-browser jobs.
+- validation run `31323865372`: **PASS**, including persistence and professional-review-browser jobs;
+- Browser and Visual Validation run `31323865383`: **PASS**, including Milestone Real Runtime Validation.
 
 Audit finding: **PASS — exact-head evidence and post-merge evidence agree.**
 
