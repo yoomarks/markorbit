@@ -101,4 +101,4 @@ WP-01 does not create:
 
 ## Pull request
 
-Implementation PR is recorded in Milestone 5 implementation traceability once opened.
+Implementation: PR #61 — `M5-WP-01 — Evidence review, lifecycle and recommendation contracts`.
