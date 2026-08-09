@@ -62,15 +62,13 @@ pnpm infra:down
 
 ## Current milestone
 
-**MO MVP Milestone 4 — Durable Governed Provider Execution and Return**
+**MO MVP Milestone 4 — Durable Governed Provider Execution and Return — GO**
 
-TASK 029 was approved by merge of PR #48. M4-WP-01 through M4-WP-08 were subsequently implemented in PRs #49 through #56. The merged implementation now contains the domain contracts, owner-specific persistence, provider supply truth, Service Package / Eligibility, explicit Allocation / authenticated Provider Acceptance, Provider Return / Execution evidence receipt components, authenticated Gateway/MGSN transport and an exact-head reliability matrix.
+TASK 029 was approved by merge of PR #48. M4-WP-01 through M4-WP-08 were implemented in PRs #49 through #56. M4-WP-09 performed an independent integration/authority audit in PR #57 and initially returned `FIX` for three bounded runtime-integration findings. PR #58 remediated all three findings and was merged to `main` as `327b61a22ad800250a2d9babe5997eb5a6a9e8eb`.
 
-The final M4-WP-08 head and merged `main` baseline have the same implementation tree. On that exact tree, validation, Milestone 4 reliability, Milestone 3 reliability regression, Milestone 2 reliability regression and Browser and Visual Validation all passed.
+The remediation exact-head tree and merged `main` tree are identical: `79efcbe2580e7fa372f0c7f5ebefe6f744216416`. On the exact remediation head, Milestone 4 integration, validation, M4 reliability, M3 reliability regression, M2 reliability regression and Browser/Visual Validation all passed. After merge, `main` independently passed Milestone 4 integration `31323865361`, validation `31323865372` and Browser and Visual Validation `31323865383`.
 
-M4-WP-09 is now performing the independent integration and authority audit. The audit recommendation is currently **FIX**, because the normal durable MGSN process does not yet compose the WP03–WP06 services, the normal Execution runtime does not yet expose the Provider Return evidence-handoff service, and the repository does not yet prove the approved zero-interception Core + Gateway + Execution + MGSN + owner-PostgreSQL provider path through `PENDING_REVIEW` evidence state.
-
-The required remediation is integration-only and must preserve the established locks:
+The post-remediation M4-WP-09 rerun recommends **GO**. The approved durable path is now composed and permanently tested:
 
 ```text
 current governed Execution source
@@ -80,14 +78,17 @@ current governed Execution source
 -> authenticated Provider Acceptance
 -> durable Provider Return
 -> exact Execution evidence handoff
+-> durable PENDING_REVIEW evidence receipt
 ```
+
+The established authority locks remain in force:
 
 - Provider Supply Capability is not user Capability evidence;
 - Provider Return is not Official Truth;
 - Payment is not performance, authority, acceptance or completion;
 - MGSN Allocation/Acceptance is not automatically legal/professional appointment;
 - evidence handoff is not Filing Submission or Formal Matter completion;
-- automatic official filing remains outside the MVP authority boundary;
+- automatic provider selection and official filing remain outside the M4 authority boundary;
 - no cross-service SQL is permitted.
 
 See:
@@ -99,4 +100,4 @@ See:
 - `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.md`;
 - `docs/tasks/MO-MVP-M4-WP-09-INTEGRATION-AUTHORITY-AUDIT.md`.
 
-No Milestone 4 Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal provider appointment, external Filing or Official Truth is created by the implementation or audit unless a separate explicit owner action and later bounded scope authorizes it.
+The GO recommendation closes the approved Milestone 4 engineering scope. It does not itself create a Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal provider appointment, external Filing or Official Truth. Those remain separate explicit owner actions.
