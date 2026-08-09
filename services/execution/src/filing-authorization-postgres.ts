@@ -11,9 +11,6 @@ import type { QueryClient } from '@markorbit/persistence';
 import {
   FilingGovernanceError,
   type ExecutionReleaseRepository,
-  type FilingAuthorizationRepository,
-  type FilingExecutionTaskDraftRepository,
-  type FilingGovernanceAuditRepository,
   type FilingGovernanceDenial
 } from './filing-authorization.js';
 
@@ -26,13 +23,7 @@ export interface FilingGovernanceTransactionHost {
 }
 
 /** Execution-owned durable adapter. Every query is scoped by the authenticated Workspace. */
-export class PostgresFilingGovernanceRepository
-  implements
-    FilingAuthorizationRepository,
-    ExecutionReleaseRepository,
-    FilingExecutionTaskDraftRepository,
-    FilingGovernanceAuditRepository
-{
+export class PostgresFilingGovernanceRepository {
   constructor(
     private readonly database: FilingGovernanceTransactionHost,
     private readonly query: QueryClient,
@@ -59,7 +50,8 @@ export class PostgresFilingGovernanceRepository
   async findById(
     id: GovernanceId
   ): Promise<FilingAuthorization | ExecutionRelease | FilingExecutionTaskDraft | undefined> {
-    if (id.startsWith('filing-authorization_')) return this.authorization(id as FilingAuthorizationId);
+    if (id.startsWith('filing-authorization_'))
+      return this.authorization(id as FilingAuthorizationId);
     if (id.startsWith('execution-release_')) return this.releaseRecord(id as ExecutionReleaseId);
     if (id.startsWith('filing-task-draft_')) return this.task(id as FilingExecutionTaskDraftId);
     return undefined;
@@ -121,9 +113,13 @@ export class PostgresFilingGovernanceRepository
     return this.saveAuthorization(value, 'FILING_AUTHORIZATION_WITHDRAWN');
   }
 
-  markStale(value: FilingAuthorization | ExecutionRelease | FilingExecutionTaskDraft): Promise<void> {
-    if ('filingExecutionTaskDraftId' in value) return this.saveTask(value, 'FILING_TASK_MARKED_STALE');
-    if ('executionReleaseId' in value) return this.saveRelease(value, 'EXECUTION_RELEASE_MARKED_STALE');
+  markStale(
+    value: FilingAuthorization | ExecutionRelease | FilingExecutionTaskDraft
+  ): Promise<void> {
+    if ('filingExecutionTaskDraftId' in value)
+      return this.saveTask(value, 'FILING_TASK_MARKED_STALE');
+    if ('executionReleaseId' in value)
+      return this.saveRelease(value, 'EXECUTION_RELEASE_MARKED_STALE');
     return this.saveAuthorization(value, 'FILING_AUTHORIZATION_MARKED_STALE');
   }
 
@@ -581,12 +577,7 @@ export class PostgresFilingGovernanceRepository
     }
   }
 
-  private async replay(
-    client: QueryClient,
-    key: string,
-    fingerprint: string,
-    expectedId?: string
-  ) {
+  private async replay(client: QueryClient, key: string, fingerprint: string, expectedId?: string) {
     const result = await client.query(
       'SELECT request_fingerprint,target_id FROM filing_governance_commands WHERE workspace_id=$1 AND idempotency_key=$2 FOR UPDATE',
       [this.workspaceId, key]
@@ -611,10 +602,7 @@ export class PostgresFilingGovernanceRepository
     targetType: 'FILING_AUTHORIZATION' | 'EXECUTION_RELEASE',
     targetId: string,
     commandType:
-      | 'AUTHORIZATION_CREATE'
-      | 'AUTHORIZATION_CONFIRM'
-      | 'RELEASE_CREATE'
-      | 'RELEASE_DECISION',
+      'AUTHORIZATION_CREATE' | 'AUTHORIZATION_CONFIRM' | 'RELEASE_CREATE' | 'RELEASE_DECISION',
     responseVersion: number,
     createdAt: string
   ) {
