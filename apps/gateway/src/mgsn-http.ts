@@ -101,7 +101,9 @@ function forbidProviderIdentityPayload(request: JsonRequest) {
 }
 
 function downstreamPath(path: string, provider: boolean) {
-  return provider ? path.replace('/api/provider', '/v1/provider') : path.replace('/api/mgsn', '/v1');
+  return provider
+    ? path.replace('/api/provider', '/v1/provider')
+    : path.replace('/api/mgsn', '/v1');
 }
 
 export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonRoute[] {
@@ -119,10 +121,10 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
   const resolvePrincipal = async (request: JsonRequest, provider: boolean) => {
     const workspaceId = provider
       ? request.headers[PROVIDER_WORKSPACE_HEADER_NAME]
-      : request.headers['x-markorbit-workspace-id'] ??
+      : (request.headers['x-markorbit-workspace-id'] ??
         (typeof recordBody(request).workspaceId === 'string'
           ? (recordBody(request).workspaceId as string)
-          : undefined);
+          : undefined));
     if (!workspaceId)
       throw new HttpError(
         400,
@@ -139,7 +141,11 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       return mapAuthentication(error);
     }
   };
-  const forward = async (request: JsonRequest, principal: WorkspacePrincipal, provider: boolean) => {
+  const forward = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    provider: boolean
+  ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
         503,
@@ -180,7 +186,11 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       requirePermission(principal, mutation);
       if (mutation) {
         requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-        validateCsrf(principal.sessionId, options.csrfSecret, request.headers['x-markorbit-csrf-token']);
+        validateCsrf(
+          principal.sessionId,
+          options.csrfSecret,
+          request.headers['x-markorbit-csrf-token']
+        );
       }
       return forward(request, principal, provider);
     } catch (error) {

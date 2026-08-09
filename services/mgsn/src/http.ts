@@ -1,8 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- HTTP payloads are normalized immediately and validated by the domain services. */
-import {
-  parseInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   AllocationId,
   EligibilityEvaluationId,
@@ -36,7 +33,7 @@ export interface MgsnHttpOptions {
   services?: MgsnHttpServices;
 }
 
-type Body = Record<string, any>;
+type Body = any;
 
 function bodyOf(request: JsonRequest): Body {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
@@ -46,8 +43,7 @@ function bodyOf(request: JsonRequest): Body {
 
 function requireIdempotency(request: JsonRequest, body: Body) {
   const key = request.headers['idempotency-key'];
-  if (!key)
-    throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+  if (!key) throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
   if (body.idempotencyKey !== undefined && body.idempotencyKey !== key)
     throw new HttpError(
       400,
@@ -132,7 +128,9 @@ export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[]
       path: '/v1/providers',
       handle: async (request) => {
         principalFor(request, false);
-        return json(200, { providers: await operation(() => services().providerRegistry.listProviders()) });
+        return json(200, {
+          providers: await operation(() => services().providerRegistry.listProviders())
+        });
       }
     },
     {
@@ -236,8 +234,8 @@ export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[]
         const record = await operation(() =>
           services().providerRegistry.reviseSupplyCapability({
             ...body,
-            providerSupplyCapabilityId:
-              request.params.providerSupplyCapabilityId! as ProviderSupplyCapabilityId,
+            providerSupplyCapabilityId: request.params
+              .providerSupplyCapabilityId! as ProviderSupplyCapabilityId,
             actorId: principal.userId,
             idempotencyKey: requireIdempotency(request, body)
           })
