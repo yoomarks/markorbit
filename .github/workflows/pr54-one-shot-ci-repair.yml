@@ -17,7 +17,7 @@ jobs:
         with:
           ref: agent/m4-wp-06-provider-return-evidence-handoff
       - name: Repair forward-compatible database cleanup
-        shell: python
+        shell: python {0}
         run: |
           from pathlib import Path
 
@@ -50,12 +50,16 @@ jobs:
               'services/mgsn/tests/service-package-eligibility-postgres.test.ts',
               'services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts',
           ]:
-              replace_once(
-                  file,
-                  "    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');" if 'allocation-provider' in file else "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'\n    );",
-                  ("    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'\n    );\n"
-                   + ("    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');" if 'allocation-provider' in file else "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'\n    );")),
+              old_function = (
+                  "    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');"
+                  if 'allocation-provider' in file
+                  else "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'\n    );"
               )
+              new_function = (
+                  "    await pool.query(\n      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'\n    );\n"
+                  + old_function
+              )
+              replace_once(file, old_function, new_function)
 
           tenant = Path('scripts/milestone2-tenant-isolation.integration.test.ts')
           text = tenant.read_text()
