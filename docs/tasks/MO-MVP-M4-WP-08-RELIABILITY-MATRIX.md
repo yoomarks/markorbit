@@ -41,6 +41,8 @@ No cross-service SQL is introduced. MGSN and Execution continue to own their own
 
 ## Executable evidence
 
+The matrix contains 17 executable scenario records covering authority, migrations, stale-source handling, concurrency, idempotency, authenticated provider identity, historical version retention, Provider Return, evidence handoff, append-only audit, tenant/provider isolation, Gateway controls, outage handling and repeatability.
+
 Static scenario inventory:
 
 - `docs/validation/MO-MVP-MILESTONE-004-RELIABILITY-MATRIX.json`
