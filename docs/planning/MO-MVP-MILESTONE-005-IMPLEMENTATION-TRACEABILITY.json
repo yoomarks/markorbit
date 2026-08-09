@@ -24,7 +24,8 @@
   "workPackages": [
     {
       "id": "M5-WP-01",
-      "status": "IMPLEMENTED_IN_CURRENT_CHANGESET",
+      "status": "IMPLEMENTED_IN_PR_61",
+      "pullRequest": 61,
       "evidence": [
         "packages/contracts/src/evidence-lifecycle.ts",
         "packages/contracts/tests/evidence-lifecycle-contract.test.ts",
