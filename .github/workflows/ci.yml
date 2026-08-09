@@ -44,6 +44,7 @@ jobs:
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'
+      EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'
       MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
       MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED: '1'
       MGSN_SERVICE_PACKAGE_POSTGRES_REQUIRED: '1'
@@ -106,6 +107,8 @@ jobs:
         run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-return-postgres.test.ts
       - name: Run durable Execution Provider Return evidence PostgreSQL suite
         run: pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
+      - name: Run durable Execution Evidence Review Decision PostgreSQL suite
+        run: pnpm test:evidence-review:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:http
