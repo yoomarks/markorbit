@@ -147,8 +147,13 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
   - Focused evidence: authenticated boundary 4/4; real PostgreSQL migration/restart/concurrency/audit/outage suite 9/9.
   - `RELEASED_FOR_EXECUTION` remains internal authority only and does not imply external submission, provider appointment, Payment/Invoice or Official Truth.
   - Evidence: `docs/tasks/MO-MVP-M4-WP-02-DURABLE-EXECUTION-FILING-GOVERNANCE.md`.
-- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**next after WP-02 merge**)
-- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**not started**)
+- M4-WP-03 — Durable MGSN Provider Registry and Supply Capability (**implemented in PR #51**)
+  - MGSN-owned migration: `0028_mgsn_provider_registry`.
+  - Durable Provider/Core Workspace reference with unique identity binding, suspension/inactive state, optimistic versioning and idempotency.
+  - Immutable historical Supply Capability versions with effective period, capacity/availability, evidence references and supply-only verification state.
+  - Supply Capability does not create user Capability evidence, professional qualification, Allocation, appointment, Filing, Payment/Invoice or Official Truth.
+  - Evidence: `docs/tasks/MO-MVP-M4-WP-03-DURABLE-MGSN-PROVIDER-REGISTRY.md`.
+- M4-WP-04 — MGSN Service Package and deterministic Eligibility (**next after WP-03 merge**)
 - M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance (**not started**)
 - M4-WP-06 — Provider Return and exact Execution evidence handoff (**not started**)
 - M4-WP-07 — Authenticated Gateway and controlled operations/provider journey (**not started**)

@@ -8,11 +8,11 @@ import {
   verifyMigrations
 } from '@markorbit/persistence';
 import {
-  ProviderRegistryError,
   ProviderRegistryService,
   isSupplyOperationallyEligibleAt,
   providerRegistryAuthorityConsequences,
-  type CoreWorkspaceIdentityReference
+  type CoreWorkspaceIdentityReference,
+  type ProviderRegistryError
 } from '../src/provider-registry.js';
 import { PostgresProviderRegistryRepository } from '../src/provider-registry-postgres.js';
 
@@ -49,15 +49,14 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
       path.resolve('../../infrastructure/persistence/migration-owners.json'),
       '@markorbit/mgsn-service'
     );
-  const repository = () =>
-    new PostgresProviderRegistryRepository(database, database.getPool());
+  const repository = () => new PostgresProviderRegistryRepository(database, database.getPool());
   const service = () =>
     new ProviderRegistryService(
       repository(),
       {
-        getWorkspace: async (workspaceId) => {
+        getWorkspace: (workspaceId) => {
           const value = core.get(workspaceId);
-          return value ? structuredClone(value) : undefined;
+          return Promise.resolve(value ? structuredClone(value) : undefined);
         }
       },
       () => clock,
@@ -282,9 +281,9 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
     await expect(
       service().getSupplyCapability(capability.providerSupplyCapabilityId, 1)
     ).resolves.toEqual(capability);
-    await expect(service().getSupplyCapability(capability.providerSupplyCapabilityId)).resolves.toEqual(
-      revised
-    );
+    await expect(
+      service().getSupplyCapability(capability.providerSupplyCapabilityId)
+    ).resolves.toEqual(revised);
     await expect(service().reviseSupplyCapability(command)).resolves.toEqual(revised);
     await expect(
       service().reviseSupplyCapability({
@@ -313,11 +312,7 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
       idempotencyKey: 'eligibility-suspend-provider'
     });
     expect(
-      isSupplyOperationallyEligibleAt(
-        suspendedProvider,
-        capability,
-        '2026-08-10T00:00:00.000Z'
-      )
+      isSupplyOperationallyEligibleAt(suspendedProvider, capability, '2026-08-10T00:00:00.000Z')
     ).toBe(false);
     expect(isSupplyOperationallyEligibleAt(provider, capability, '2027-02-01T00:00:00.000Z')).toBe(
       false
@@ -345,15 +340,16 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
         ])
     ).rejects.toThrow(/append-only/);
     await expect(
-      database.getPool().query('DELETE FROM mgsn_provider_registry_audit WHERE audit_id=$1', [auditId])
+      database
+        .getPool()
+        .query('DELETE FROM mgsn_provider_registry_audit WHERE audit_id=$1', [auditId])
     ).rejects.toThrow(/append-only/);
   });
 
   it('maps MGSN database outage to canonical 503-class persistence semantics', async () => {
-    const unavailable = new PostgresProviderRegistryRepository(
-      database,
-      { query: () => Promise.reject(new Error('database unavailable')) } as never
-    );
+    const unavailable = new PostgresProviderRegistryRepository(database, {
+      query: () => Promise.reject(new Error('database unavailable'))
+    } as never);
     await expect(unavailable.findProviderById('provider_missing')).rejects.toMatchObject({
       code: 'PERSISTENCE_UNAVAILABLE',
       status: 503

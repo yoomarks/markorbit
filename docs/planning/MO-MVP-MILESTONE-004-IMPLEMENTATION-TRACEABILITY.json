@@ -29,13 +29,41 @@
         "docs/tasks/MO-MVP-M4-WP-02-DURABLE-EXECUTION-FILING-GOVERNANCE.md"
       ]
     },
-    { "id": "M4-WP-03", "status": "NOT_STARTED" },
-    { "id": "M4-WP-04", "status": "NOT_STARTED" },
-    { "id": "M4-WP-05", "status": "NOT_STARTED" },
-    { "id": "M4-WP-06", "status": "NOT_STARTED" },
-    { "id": "M4-WP-07", "status": "NOT_STARTED" },
-    { "id": "M4-WP-08", "status": "NOT_STARTED" },
-    { "id": "M4-WP-09", "status": "NOT_STARTED" }
+    {
+      "id": "M4-WP-03",
+      "status": "IMPLEMENTED_IN_PR_51",
+      "evidence": [
+        "infrastructure/persistence/migrations/0028_mgsn_provider_registry.sql",
+        "services/mgsn/src/provider-registry.ts",
+        "services/mgsn/src/provider-registry-postgres.ts",
+        "services/mgsn/tests/provider-registry-postgres.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-03-DURABLE-MGSN-PROVIDER-REGISTRY.md"
+      ]
+    },
+    {
+      "id": "M4-WP-04",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M4-WP-05",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M4-WP-06",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M4-WP-07",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M4-WP-08",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M4-WP-09",
+      "status": "NOT_STARTED"
+    }
   ],
   "wp01AuthorityBoundary": {
     "eligibilityIsNotAllocation": true,
@@ -69,7 +97,32 @@
     "officialTruthCreated": false
   },
   "wp02FocusedEvidence": {
-    "authenticatedBoundaryTests": { "passed": 4, "total": 4 },
-    "postgresDurabilityTests": { "passed": 9, "total": 9 }
+    "authenticatedBoundaryTests": {
+      "passed": 4,
+      "total": 4
+    },
+    "postgresDurabilityTests": {
+      "passed": 9,
+      "total": 9
+    }
+  },
+  "wp03DurabilityBoundary": {
+    "owner": "MGSN",
+    "databasePerOwner": true,
+    "migration": "0028_mgsn_provider_registry",
+    "coreWorkspaceIdentityReferencedNotDuplicated": true,
+    "uniqueProviderWorkspaceBinding": true,
+    "versionedSupplyCapabilityHistory": true,
+    "durableIdempotency": true,
+    "optimisticConcurrency": true,
+    "appendOnlyAudit": true,
+    "suspendedOrInactiveSupplyEligible": false,
+    "userCapabilityVerifiedAutomatically": false,
+    "professionalQualifiedAutomatically": false,
+    "providerAllocated": false,
+    "legalProfessionalAppointmentCreated": false,
+    "paymentOrInvoiceCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false
   }
 }

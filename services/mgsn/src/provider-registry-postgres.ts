@@ -1,7 +1,7 @@
 import type {
   ProviderId,
   ProviderSupplyCapabilityId
-} from '@markorbit/contracts';
+} from '@markorbit/contracts/provider-execution';
 import type { QueryClient } from '@markorbit/persistence';
 import {
   ProviderRegistryError,
@@ -23,10 +23,13 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
     private readonly query: QueryClient
   ) {}
 
-  async findReplay(scopeKey: string, idempotencyKey: string): Promise<ProviderRegistryReplay | undefined> {
+  async findReplay(
+    scopeKey: string,
+    idempotencyKey: string
+  ): Promise<ProviderRegistryReplay | undefined> {
     try {
       const result = await this.query.query(
-        'SELECT request_fingerprint,target_type,target_id,response_version FROM mgsn_provider_registry_commands WHERE scope_key=$1 AND idempotency_key=$2',
+        'SELECT request_fingerprint,target_type,target_id,response_version,response_record FROM mgsn_provider_registry_commands WHERE scope_key=$1 AND idempotency_key=$2',
         [scopeKey, idempotencyKey]
       );
       if (!result.rowCount) return undefined;
@@ -35,7 +38,9 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
         fingerprint: String(row.request_fingerprint),
         targetType: String(row.target_type) as ProviderRegistryReplay['targetType'],
         targetId: String(row.target_id),
-        responseVersion: Number(row.response_version)
+        responseVersion: Number(row.response_version),
+        responseRecord: row.response_record as
+          ProviderRegistryRecord | ProviderSupplyCapabilityRecord
       };
     } catch (cause) {
       throw this.unavailable(cause);
@@ -180,7 +185,10 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
     }
   }
 
-  async findSupplyCapability(providerSupplyCapabilityId: ProviderSupplyCapabilityId, version?: number) {
+  async findSupplyCapability(
+    providerSupplyCapabilityId: ProviderSupplyCapabilityId,
+    version?: number
+  ) {
     try {
       const result = await this.query.query(
         version === undefined
@@ -189,7 +197,7 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
         version === undefined ? [providerSupplyCapabilityId] : [providerSupplyCapabilityId, version]
       );
       return result.rowCount
-        ? (result.rows[0] as Row).capability_record as ProviderSupplyCapabilityRecord
+        ? ((result.rows[0] as Row).capability_record as ProviderSupplyCapabilityRecord)
         : undefined;
     } catch (cause) {
       throw this.unavailable(cause);
@@ -308,7 +316,7 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
     requestFingerprint: string
   ) {
     const result = await client.query(
-      'SELECT request_fingerprint,target_type,target_id,response_version FROM mgsn_provider_registry_commands WHERE scope_key=$1 AND idempotency_key=$2 FOR UPDATE',
+      'SELECT request_fingerprint,target_type,target_id,response_version,response_record FROM mgsn_provider_registry_commands WHERE scope_key=$1 AND idempotency_key=$2 FOR UPDATE',
       [scopeKey, idempotencyKey]
     );
     if (!result.rowCount) return undefined;
@@ -323,7 +331,8 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
       fingerprint: String(row.request_fingerprint),
       targetType: String(row.target_type) as ProviderRegistryReplay['targetType'],
       targetId: String(row.target_id),
-      responseVersion: Number(row.response_version)
+      responseVersion: Number(row.response_version),
+      responseRecord: row.response_record as ProviderRegistryRecord | ProviderSupplyCapabilityRecord
     } satisfies ProviderRegistryReplay;
   }
 
@@ -425,7 +434,7 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
 
   private insertAudit(client: QueryClient, record: ProviderRegistryRecord, action: string) {
     return client.query(
-      'INSERT INTO mgsn_provider_registry_audit(provider_workspace_id,target_type,target_id,action,record_version,actor_id,created_at) VALUES($1,\'PROVIDER\',$2,$3,$4,$5,$6)',
+      "INSERT INTO mgsn_provider_registry_audit(provider_workspace_id,target_type,target_id,action,record_version,actor_id,created_at) VALUES($1,'PROVIDER',$2,$3,$4,$5,$6)",
       [
         record.providerWorkspaceId,
         record.providerId,
@@ -443,7 +452,7 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
     action: string
   ) {
     return client.query(
-      'INSERT INTO mgsn_provider_registry_audit(provider_workspace_id,target_type,target_id,action,record_version,actor_id,source_fingerprint,created_at) VALUES($1,\'SUPPLY_CAPABILITY\',$2,$3,$4,$5,$6,$7)',
+      "INSERT INTO mgsn_provider_registry_audit(provider_workspace_id,target_type,target_id,action,record_version,actor_id,source_fingerprint,created_at) VALUES($1,'SUPPLY_CAPABILITY',$2,$3,$4,$5,$6,$7)",
       [
         record.provider.providerWorkspaceId,
         record.providerSupplyCapabilityId,
@@ -460,7 +469,9 @@ export class PostgresProviderRegistryRepository implements ProviderRegistryRepos
     const stored = row.provider_record as ProviderRegistryRecord;
     return {
       ...stored,
-      operationalStatus: String(row.operational_status) as ProviderRegistryRecord['operationalStatus'],
+      operationalStatus: String(
+        row.operational_status
+      ) as ProviderRegistryRecord['operationalStatus'],
       version: Number(row.version),
       updatedBy: String(row.updated_by),
       updatedAt: new Date(row.updated_at as string).toISOString()

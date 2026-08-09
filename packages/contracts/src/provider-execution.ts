@@ -53,7 +53,7 @@ export type ProviderReturnStatus = (typeof providerReturnStatuses)[number];
  */
 export interface ProviderReference {
   providerId: ProviderId;
-  providerWorkspaceId: MarkOrbitId;
+  providerWorkspaceId: string;
   displayName: string;
   operationalStatus: ProviderOperationalStatus;
 }
@@ -194,7 +194,7 @@ export interface ProviderAcceptance {
   allocation: Readonly<ExactVersionReference<AllocationId>>;
   servicePackage: Readonly<ExactVersionReference<ServicePackageId>>;
   providerId: ProviderId;
-  providerWorkspaceId: MarkOrbitId;
+  providerWorkspaceId: string;
   decision: ProviderAcceptanceDecision;
   acknowledgement: string;
   responseFingerprintSha256: string;
@@ -228,7 +228,7 @@ export interface ProviderReturn {
   allocation: Readonly<ExactVersionReference<AllocationId>>;
   providerAcceptance: Readonly<ExactVersionReference<ProviderAcceptanceId>>;
   providerId: ProviderId;
-  providerWorkspaceId: MarkOrbitId;
+  providerWorkspaceId: string;
   workStatusClaim: string;
   artifacts: ReadonlyArray<Readonly<ProviderReturnArtifact>>;
   assertions: ReadonlyArray<Readonly<ProviderAssertion>>;

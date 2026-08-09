@@ -6,12 +6,10 @@ import type {
   ProviderSupplyCapability,
   ProviderSupplyCapabilityId,
   ProviderSupplyCapabilityStatus
-} from '@markorbit/contracts';
+} from '@markorbit/contracts/provider-execution';
 
 export type ProviderSupplyVerificationState =
-  | 'UNVERIFIED'
-  | 'EVIDENCE_RECORDED'
-  | 'VERIFIED_FOR_SUPPLY';
+  'UNVERIFIED' | 'EVIDENCE_RECORDED' | 'VERIFIED_FOR_SUPPLY';
 
 export interface ProviderRegistryRecord extends ProviderReference {
   schemaVersion: 1;
@@ -43,12 +41,15 @@ export interface ProviderRegistryReplay {
   targetType: 'PROVIDER' | 'SUPPLY_CAPABILITY';
   targetId: string;
   responseVersion: number;
+  responseRecord: ProviderRegistryRecord | ProviderSupplyCapabilityRecord;
 }
 
 export interface ProviderRegistryRepository {
   findReplay(scopeKey: string, idempotencyKey: string): Promise<ProviderRegistryReplay | undefined>;
   findProviderById(providerId: ProviderId): Promise<ProviderRegistryRecord | undefined>;
-  findProviderByWorkspaceId(providerWorkspaceId: string): Promise<ProviderRegistryRecord | undefined>;
+  findProviderByWorkspaceId(
+    providerWorkspaceId: string
+  ): Promise<ProviderRegistryRecord | undefined>;
   listProviders(): Promise<ProviderRegistryRecord[]>;
   createProvider(
     record: ProviderRegistryRecord,
@@ -173,8 +174,7 @@ export const providerRegistryAuthorityConsequences = Object.freeze({
   officialTruthCreated: false
 });
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const providerStatuses = new Set<ProviderOperationalStatus>(['ACTIVE', 'SUSPENDED', 'INACTIVE']);
 const supplyStatuses = new Set<ProviderSupplyCapabilityStatus>(['ACTIVE', 'SUSPENDED', 'RETIRED']);
@@ -325,12 +325,7 @@ export class ProviderRegistryService {
       createdAt: at,
       updatedAt: at
     };
-    return this.repository.createProvider(
-      record,
-      scopeKey,
-      idempotencyKey,
-      requestFingerprint
-    );
+    return this.repository.createProvider(record, scopeKey, idempotencyKey, requestFingerprint);
   }
 
   async getProvider(providerId: ProviderId) {
@@ -567,8 +562,8 @@ export class ProviderRegistryService {
         'Idempotency key belongs to a different command family.',
         409
       );
-    const record = await this.repository.findProviderById(replay.targetId as ProviderId);
-    if (!record || record.version !== replay.responseVersion)
+    const record = replay.responseRecord as ProviderRegistryRecord;
+    if (record.providerId !== replay.targetId || record.version !== replay.responseVersion)
       throw new ProviderRegistryError(
         'PERSISTENCE_UNAVAILABLE',
         'Idempotent Provider result is unavailable.',
@@ -592,11 +587,11 @@ export class ProviderRegistryService {
         'Idempotency key belongs to a different command family.',
         409
       );
-    const record = await this.repository.findSupplyCapability(
-      replay.targetId as ProviderSupplyCapabilityId,
-      replay.responseVersion
-    );
-    if (!record)
+    const record = replay.responseRecord as ProviderSupplyCapabilityRecord;
+    if (
+      record.providerSupplyCapabilityId !== replay.targetId ||
+      record.version !== replay.responseVersion
+    )
       throw new ProviderRegistryError(
         'PERSISTENCE_UNAVAILABLE',
         'Idempotent Supply Capability result is unavailable.',
