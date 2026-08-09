@@ -117,7 +117,8 @@ describe('Milestone 4 provider execution contract', () => {
   it('preserves exact existing Execution and Matter source identities and versions', () => {
     const matterId: FormalMatter['formalMatterId'] = source.formalMatter!.id;
     const lockId: PreparationLock['preparationLockId'] = source.preparationLock.id;
-    const authorizationId: FilingAuthorization['filingAuthorizationId'] = source.filingAuthorization.id;
+    const authorizationId: FilingAuthorization['filingAuthorizationId'] =
+      source.filingAuthorization.id;
     const releaseId: ExecutionRelease['executionReleaseId'] = source.executionRelease.id;
     const taskId: FilingExecutionTaskDraft['filingExecutionTaskDraftId'] =
       source.filingExecutionTaskDraft.id;

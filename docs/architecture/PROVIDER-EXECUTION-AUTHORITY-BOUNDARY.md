@@ -97,14 +97,14 @@ MGSN receives these through bounded APIs. Cross-service database reads remain pr
 
 The contract includes explicit stage fixtures proving the following boundaries:
 
-| Explicit internal stage | May become true | Must remain false automatically |
-| --- | --- | --- |
-| Service Package | `servicePackageCreated` | Payment, Invoice, legal appointment, filing/Official Truth, Matter completion, user Capability verification |
-| Eligibility | `eligibilityEvaluated` | Allocation and all external/financial consequences |
-| Allocation | `providerAllocated` | Provider Acceptance, legal appointment and all external/financial consequences |
-| Provider Acceptance | `providerAccepted` | Provider Return, legal appointment and all external/financial consequences |
-| Provider Return | `providerReturnCreated` | Evidence Handoff, filing/Official Truth, Matter completion |
-| Evidence Handoff | `executionEvidenceHandedOff` | filing/Official Truth, Matter completion, Payment/Invoice, user Capability verification |
+| Explicit internal stage | May become true              | Must remain false automatically                                                                             |
+| ----------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Service Package         | `servicePackageCreated`      | Payment, Invoice, legal appointment, filing/Official Truth, Matter completion, user Capability verification |
+| Eligibility             | `eligibilityEvaluated`       | Allocation and all external/financial consequences                                                          |
+| Allocation              | `providerAllocated`          | Provider Acceptance, legal appointment and all external/financial consequences                              |
+| Provider Acceptance     | `providerAccepted`           | Provider Return, legal appointment and all external/financial consequences                                  |
+| Provider Return         | `providerReturnCreated`      | Evidence Handoff, filing/Official Truth, Matter completion                                                  |
+| Evidence Handoff        | `executionEvidenceHandedOff` | filing/Official Truth, Matter completion, Payment/Invoice, user Capability verification                     |
 
 No WP-01 state is equivalent to paid, invoiced, professionally appointed, filed, officially accepted or completed.
 
