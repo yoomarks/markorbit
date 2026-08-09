@@ -23,12 +23,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build service dependencies
+        run: >-
+          pnpm turbo run build
+          --filter=@markorbit/core-service...
+          --filter=@markorbit/execution-service...
+          --filter=@markorbit/mgsn-service...
       - run: pnpm --filter @markorbit/core-service typecheck
       - run: pnpm --filter @markorbit/execution-service typecheck
       - run: pnpm --filter @markorbit/mgsn-service typecheck
       - run: pnpm --filter @markorbit/core-service test
       - run: pnpm --filter @markorbit/execution-service test
       - run: pnpm --filter @markorbit/mgsn-service test
-      - run: pnpm --filter @markorbit/core-service build
-      - run: pnpm --filter @markorbit/execution-service build
-      - run: pnpm --filter @markorbit/mgsn-service build
