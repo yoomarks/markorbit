@@ -1,0 +1,33 @@
+name: WP06 wire CI
+
+on:
+  push:
+    branches: [m3-wp-06-markreg-order-journey]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m3-wp-06-markreg-order-journey
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/wp06-wire-ci.mjs
+      - run: pnpm exec prettier --write apps/markreg-web/src/OrderJourney.tsx apps/markreg-web/src/CustomerConfirmationOrderEntry.tsx apps/markreg-web/src/ConfirmationMatterFlow.tsx apps/markreg-web/src/api/errors.ts apps/markreg-web/src/routing/GovernedRouteEntry.tsx apps/markreg-web/src/routing/markreg-route.ts apps/markreg-web/tests/OrderJourney.test.tsx scripts/order-journey-real-runtime.ts scripts/validate-order-journey-no-interception.mjs tests/e2e/order-journey-real-runtime.spec.ts playwright.order-journey-real-runtime.config.ts package.json .github/workflows/ci.yml
+      - run: pnpm --filter @markorbit/markreg-web typecheck
+      - run: pnpm --filter @markorbit/markreg-web exec vitest run tests/OrderJourney.test.tsx tests/ConfirmationMatterFlow.test.tsx
+      - run: node scripts/validate-order-journey-no-interception.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test(m3): validate durable Order journey"
+          git push origin HEAD:m3-wp-06-markreg-order-journey
