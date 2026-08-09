@@ -49,14 +49,21 @@ export interface ExecutionEvidenceReviewReplay {
 }
 
 export interface ExecutionEvidenceReviewRepository {
-  findSourceByReceiptId(evidenceReceiptId: EvidenceReceiptId): Promise<EvidenceReviewSource | undefined>;
-  findSourceByHandoffId(evidenceHandoffId: EvidenceHandoffId): Promise<EvidenceReviewSource | undefined>;
-  captureSource(
-    source: EvidenceReviewSource,
-    actorId: MarkOrbitId
-  ): Promise<EvidenceReviewSource>;
-  hasNewerReceipt(providerReturnId: ProviderReturnId, providerReturnVersion: number): Promise<boolean>;
-  findReplay(workspaceId: string, idempotencyKey: string): Promise<ExecutionEvidenceReviewReplay | undefined>;
+  findSourceByReceiptId(
+    evidenceReceiptId: EvidenceReceiptId
+  ): Promise<EvidenceReviewSource | undefined>;
+  findSourceByHandoffId(
+    evidenceHandoffId: EvidenceHandoffId
+  ): Promise<EvidenceReviewSource | undefined>;
+  captureSource(source: EvidenceReviewSource, actorId: MarkOrbitId): Promise<EvidenceReviewSource>;
+  hasNewerReceipt(
+    providerReturnId: ProviderReturnId,
+    providerReturnVersion: number
+  ): Promise<boolean>;
+  findReplay(
+    workspaceId: string,
+    idempotencyKey: string
+  ): Promise<ExecutionEvidenceReviewReplay | undefined>;
   findDecisionByReceipt(
     evidenceReceiptId: EvidenceReceiptId
   ): Promise<ExecutionEvidenceReviewDecisionRecord | undefined>;
@@ -145,10 +152,7 @@ function normalizeCorrectionReasons(
     code: cleanText(value.code, `correctionReasons[${index}].code`),
     message: cleanText(value.message, `correctionReasons[${index}].message`),
     evidenceReferences: value.evidenceReferences.map((reference, evidenceIndex) =>
-      cleanText(
-        reference,
-        `correctionReasons[${index}].evidenceReferences[${evidenceIndex}]`
-      )
+      cleanText(reference, `correctionReasons[${index}].evidenceReferences[${evidenceIndex}]`)
     )
   }));
 }
@@ -227,7 +231,10 @@ export class EvidenceReviewService {
       command.expectedEvidenceReceiptFingerprintSha256,
       'expectedEvidenceReceiptFingerprintSha256'
     );
-    if (!Number.isInteger(command.expectedEvidenceReceiptVersion) || command.expectedEvidenceReceiptVersion < 1)
+    if (
+      !Number.isInteger(command.expectedEvidenceReceiptVersion) ||
+      command.expectedEvidenceReceiptVersion < 1
+    )
       throw new EvidenceReviewError(
         'INVALID_INPUT',
         'expectedEvidenceReceiptVersion must be a positive integer.',
@@ -371,7 +378,8 @@ export class EvidenceReviewService {
     principal: Readonly<AuthenticatedEvidenceReviewerPrincipal>
   ) {
     const workspaceId = this.requirePrincipal(principal, false);
-    const request = await this.repository.findCorrectionRequestForDecision(evidenceReviewDecisionId);
+    const request =
+      await this.repository.findCorrectionRequestForDecision(evidenceReviewDecisionId);
     if (!request) return undefined;
     this.assertWorkspace(request.workspaceId, workspaceId);
     return request;
@@ -383,7 +391,10 @@ export class EvidenceReviewService {
   ) {
     const workspaceId = cleanWorkspaceId(principal.workspaceId, 'principal.workspaceId');
     const permission = perform ? 'review:perform' : 'review:read';
-    if (!principal.permissions.includes(permission) && !(perform && principal.permissions.includes('review:perform')))
+    if (
+      !principal.permissions.includes(permission) &&
+      !(perform && principal.permissions.includes('review:perform'))
+    )
       throw new EvidenceReviewError(
         'PERMISSION_DENIED',
         `${permission} permission is required.`,

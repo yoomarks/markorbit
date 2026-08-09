@@ -201,6 +201,11 @@ suite('M4-WP-06 Execution Provider Return evidence handoff', () => {
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         execution_evidence_review_audit,
+         execution_evidence_review_commands,
+         execution_evidence_correction_requests,
+         execution_evidence_review_decisions,
+         execution_evidence_review_sources,
          execution_provider_return_evidence_audit,
          execution_provider_return_evidence_commands,
          execution_provider_return_evidence_receipts,
@@ -214,6 +219,9 @@ suite('M4-WP-06 Execution Provider Return evidence handoff', () => {
          professional_review_idempotency,
          professional_review_cases
        CASCADE`
+    );
+    await pool.query(
+      'DROP FUNCTION IF EXISTS reject_execution_evidence_review_audit_mutation() CASCADE'
     );
     await pool.query(
       'DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE'
@@ -234,6 +242,11 @@ suite('M4-WP-06 Execution Provider Return evidence handoff', () => {
     const pool = database.getPool();
     await pool.query(
       `TRUNCATE
+         execution_evidence_review_audit,
+         execution_evidence_review_commands,
+         execution_evidence_correction_requests,
+         execution_evidence_review_decisions,
+         execution_evidence_review_sources,
          execution_provider_return_evidence_audit,
          execution_provider_return_evidence_commands,
          execution_provider_return_evidence_receipts,

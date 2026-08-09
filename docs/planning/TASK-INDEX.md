@@ -179,8 +179,12 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`.
   - Approved loop: `PENDING_REVIEW evidence -> explicit Evidence Review Decision -> reviewed-source admission/correction -> MarkReg Lifecycle Projection -> customer-safe status/timeline -> Recommended Action`.
   - Governing locks: review admission is not Official Truth or Filing Submission; lifecycle status is an internal governed projection; Recommended Action is advice rather than execution; no Payment/Invoice/legal appointment/automatic completion/Capability escalation.
-  - Current implementation status: .
+  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.{md,json}`.
 - M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary (**implemented in PR #61**)
-  - Shared contract: .
-  - Authority evidence: .
+  - Shared contract: `@markorbit/contracts/evidence-lifecycle`.
+  - Authority evidence: `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`.
   - No runtime migration or external action is introduced by WP-01.
+- M5-WP-02 — Durable authenticated Execution Evidence Review Decision (**implemented in PR #62**)
+  - Execution-owned migration: `0033_execution_evidence_review`.
+  - Exact receipt ID/version/fingerprint, authenticated reviewer identity, durable idempotency/concurrency and correction-request provenance.
+  - Review remains internal truth, not Filing Submission or Official Truth.

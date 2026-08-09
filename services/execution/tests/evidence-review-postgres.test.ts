@@ -96,8 +96,7 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     );
   const evidenceRepository = () =>
     new PostgresProviderReturnEvidenceRepository(database, database.getPool());
-  const reviewRepository = () =>
-    new PostgresEvidenceReviewRepository(database, database.getPool());
+  const reviewRepository = () => new PostgresEvidenceReviewRepository(database, database.getPool());
   const service = () =>
     new EvidenceReviewService(
       reviewRepository(),
@@ -111,8 +110,8 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
   const decisionCommand = (
     source: Awaited<ReturnType<EvidenceReviewService['captureReviewSource']>>,
     key = 'review-wp02',
-    outcome: 'ADMITTED_FOR_INTERNAL_USE' | 'CORRECTION_REQUIRED' | 'REJECTED' =
-      'ADMITTED_FOR_INTERNAL_USE'
+    outcome:
+      'ADMITTED_FOR_INTERNAL_USE' | 'CORRECTION_REQUIRED' | 'REJECTED' = 'ADMITTED_FOR_INTERNAL_USE'
   ) => ({
     workspaceId,
     evidenceReceiptId: source.evidenceReceipt.id,
@@ -320,9 +319,10 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     const source = await service().captureReviewSource(evidenceHandoffId, reviewer);
     const before = await database
       .getPool()
-      .query('SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1', [
-        evidenceHandoffId
-      ]);
+      .query(
+        'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1',
+        [evidenceHandoffId]
+      );
     const decision = await service().recordDecision(
       decisionCommand(source, 'correction-wp02', 'CORRECTION_REQUIRED'),
       reviewer
@@ -331,7 +331,10 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
       id: 'evidence-correction-request_wp02',
       version: 1
     });
-    const correction = await service().getCorrectionRequest(decision.evidenceReviewDecisionId, reviewer);
+    const correction = await service().getCorrectionRequest(
+      decision.evidenceReviewDecisionId,
+      reviewer
+    );
     expect(correction).toMatchObject({
       workspaceId,
       status: 'OPEN',
@@ -340,9 +343,10 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     });
     const after = await database
       .getPool()
-      .query('SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1', [
-        evidenceHandoffId
-      ]);
+      .query(
+        'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1',
+        [evidenceHandoffId]
+      );
     expect(after.rows[0]?.receipt_record).toEqual(before.rows[0]?.receipt_record);
   });
 
@@ -405,7 +409,10 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
 
   it('serializes concurrent conflicting decisions so only one authoritative decision exists', async () => {
     const source = await service().captureReviewSource(evidenceHandoffId, reviewer);
-    const admitted = service().recordDecision(decisionCommand(source, 'concurrent-admit'), reviewer);
+    const admitted = service().recordDecision(
+      decisionCommand(source, 'concurrent-admit'),
+      reviewer
+    );
     const rejected = service().recordDecision(
       decisionCommand(source, 'concurrent-reject', 'REJECTED'),
       reviewer
@@ -429,7 +436,9 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     await expect(
       database
         .getPool()
-        .query("UPDATE execution_evidence_review_audit SET action='EVIDENCE_REVIEW_DECISION_RECORDED'")
+        .query(
+          "UPDATE execution_evidence_review_audit SET action='EVIDENCE_REVIEW_DECISION_RECORDED'"
+        )
     ).rejects.toThrow(/append-only/);
   });
 });

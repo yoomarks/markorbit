@@ -259,7 +259,11 @@ export class PostgresEvidenceReviewRepository implements ExecutionEvidenceReview
           [decision.workspaceId, decision.source.evidenceReceipt.id]
         );
         if (!sourceLock.rowCount)
-          throw new EvidenceReviewError('STALE_SOURCE', 'Evidence review source was not found.', 409);
+          throw new EvidenceReviewError(
+            'STALE_SOURCE',
+            'Evidence review source was not found.',
+            409
+          );
         const sourceRow = sourceLock.rows[0] as Row;
         const storedSource = sourceRow.source_record as EvidenceReviewSource;
         if (

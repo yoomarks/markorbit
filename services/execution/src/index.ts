@@ -52,6 +52,8 @@ export * from './filing-authorization.js';
 export * from './filing-authorization-postgres.js';
 export * from './provider-return-evidence.js';
 export * from './provider-return-evidence-postgres.js';
+export * from './evidence-review.js';
+export * from './evidence-review-postgres.js';
 export * from './provider-execution-source.js';
 export * from './provider-execution-http.js';
 export * from './durable-provider-execution.js';
