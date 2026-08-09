@@ -62,15 +62,12 @@ describe('M4-WP-08 Gateway reliability boundary', () => {
     });
     await runtime.start();
 
-    const response = await fetch(
-      `http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`,
-      {
-        headers: {
-          cookie: 'mo_session=opaque',
-          'x-markorbit-workspace-id': workspaceId
-        }
+    const response = await fetch(`http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`, {
+      headers: {
+        cookie: 'mo_session=opaque',
+        'x-markorbit-workspace-id': workspaceId
       }
-    );
+    });
     const body = (await response.json()) as Record<string, unknown>;
 
     expect(response.status).toBe(503);
@@ -88,15 +85,12 @@ describe('M4-WP-08 Gateway reliability boundary', () => {
     });
     await runtime.start();
 
-    const response = await fetch(
-      `http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`,
-      {
-        headers: {
-          cookie: 'mo_session=opaque',
-          'x-markorbit-workspace-id': workspaceId
-        }
+    const response = await fetch(`http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`, {
+      headers: {
+        cookie: 'mo_session=opaque',
+        'x-markorbit-workspace-id': workspaceId
       }
-    );
+    });
     const body = (await response.json()) as Record<string, unknown>;
 
     expect(response.status).toBe(503);
