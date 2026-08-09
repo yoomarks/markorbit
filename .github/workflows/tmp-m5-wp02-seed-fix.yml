@@ -1,0 +1,42 @@
+name: M5 WP02 one-shot receipt seed fix
+
+on:
+  push:
+    branches:
+      - m5-wp-02-execution-evidence-review
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-02-execution-evidence-review
+      - name: Seed receipts through the production repository path
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/execution/tests/evidence-review-postgres.test.ts')
+          text = p.read_text()
+          start = text.index('  async function seedReceipt(value = receipt) {')
+          end = text.index('\n  async function seedNewerReceipt()', start)
+          replacement = '''  async function seedReceipt(value = receipt) {
+    const key = `seed-${value.evidenceHandoff.evidenceHandoffId}`;
+    const requestFingerprint =
+      value.evidenceHandoff.evidenceHandoffId === evidenceHandoffId ? 'e'.repeat(64) : 'f'.repeat(64);
+    await evidenceRepository().saveReceipt(value, key, requestFingerprint);
+    const persisted = await evidenceRepository().findReceipt(value.evidenceHandoff.evidenceHandoffId);
+    expect(persisted).toEqual(value);
+  }
+'''
+          p.write_text(text[:start] + replacement + text[end:])
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/execution/tests/evidence-review-postgres.test.ts
+          git commit -m 'test(m5): seed review receipts through production repository'
+          git push origin HEAD:m5-wp-02-execution-evidence-review
