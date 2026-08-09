@@ -17,9 +17,7 @@ export interface ServicePackageEligibilityTransactionHost {
   transact<T>(work: (client: QueryClient) => Promise<T>): Promise<T>;
 }
 
-export class PostgresServicePackageEligibilityRepository
-  implements ServicePackageEligibilityRepository
-{
+export class PostgresServicePackageEligibilityRepository implements ServicePackageEligibilityRepository {
   constructor(
     private readonly database: ServicePackageEligibilityTransactionHost,
     private readonly query: QueryClient
@@ -64,7 +62,10 @@ export class PostgresServicePackageEligibilityRepository
       return await this.database.transact(async (client) => {
         const replay = await this.lockReplay(client, scopeKey, idempotencyKey, requestFingerprint);
         if (replay) {
-          if (replay.targetType !== 'SERVICE_PACKAGE' || !('servicePackageId' in replay.responseRecord))
+          if (
+            replay.targetType !== 'SERVICE_PACKAGE' ||
+            !('servicePackageId' in replay.responseRecord)
+          )
             throw new ServicePackageEligibilityError(
               'PERSISTENCE_UNAVAILABLE',
               'Idempotent Service Package result is unavailable.',

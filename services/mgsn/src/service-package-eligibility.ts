@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
+import type { MarkOrbitId } from '@markorbit/contracts';
 import type {
   CreateServicePackageCommand,
   EligibilityCheck,
   EligibilityEvaluation,
   EligibilityEvaluationId,
   EvaluateProviderEligibilityCommand,
-  MarkOrbitId,
   ProviderExecutionErrorCode,
   ProviderExecutionSourceSnapshot,
   ProviderId,
@@ -22,6 +22,7 @@ import type {
 export const MGSN_ELIGIBILITY_POLICY_VERSION = 'mgsn-eligibility-v1';
 
 export interface ServicePackageRecord extends ServicePackage {
+  servicePackageFingerprintSha256: string;
   createdBy: string;
   updatedBy: string;
 }
@@ -320,7 +321,8 @@ export class ServicePackageEligibilityService {
       workspaceId: source.workspaceId,
       version: 1,
       source,
-      sourceFingerprintSha256: packageFingerprint,
+      sourceFingerprintSha256: source.sourceFingerprintSha256,
+      servicePackageFingerprintSha256: packageFingerprint,
       jurisdiction: source.jurisdiction,
       serviceType: source.serviceType,
       serviceScope: source.serviceScope,
@@ -356,10 +358,7 @@ export class ServicePackageEligibilityService {
       command.expectedProviderSupplyCapabilityFingerprintSha256,
       'expectedProviderSupplyCapabilityFingerprintSha256'
     );
-    const scopeKey = eligibilityScope(
-      command.servicePackageId,
-      command.providerSupplyCapabilityId
-    );
+    const scopeKey = eligibilityScope(command.servicePackageId, command.providerSupplyCapabilityId);
     const requestFingerprint = fingerprint({
       command: 'ELIGIBILITY_EVALUATE',
       workspaceId,
@@ -388,7 +387,7 @@ export class ServicePackageEligibilityService {
         'Service Package version changed.',
         409
       );
-    if (servicePackage.sourceFingerprintSha256 !== expectedPackageFingerprint)
+    if (servicePackage.servicePackageFingerprintSha256 !== expectedPackageFingerprint)
       throw new ServicePackageEligibilityError(
         'SOURCE_FINGERPRINT_MISMATCH',
         'Service Package fingerprint changed.',
@@ -422,7 +421,7 @@ export class ServicePackageEligibilityService {
       policyVersion: MGSN_ELIGIBILITY_POLICY_VERSION,
       servicePackageId: servicePackage.servicePackageId,
       servicePackageVersion: servicePackage.version,
-      servicePackageFingerprintSha256: servicePackage.sourceFingerprintSha256,
+      servicePackageFingerprintSha256: servicePackage.servicePackageFingerprintSha256,
       providerId: provider.providerId,
       providerVersion: provider.version,
       providerOperationalStatus: provider.operationalStatus,
@@ -438,7 +437,7 @@ export class ServicePackageEligibilityService {
       workspaceId,
       version: 1,
       servicePackage: { id: servicePackage.servicePackageId, version: servicePackage.version },
-      servicePackageFingerprintSha256: servicePackage.sourceFingerprintSha256,
+      servicePackageFingerprintSha256: servicePackage.servicePackageFingerprintSha256,
       provider: {
         providerId: provider.providerId,
         providerWorkspaceId: provider.providerWorkspaceId,

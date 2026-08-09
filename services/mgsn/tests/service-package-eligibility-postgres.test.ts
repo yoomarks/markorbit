@@ -269,7 +269,9 @@ suite('M4-WP-04 durable Service Package and deterministic Eligibility', () => {
       status: 409
     });
     sourceVerification = { status: 'MISSING', reason: 'Execution source not found.' };
-    await expect(admit(service(), 'missing-package')).rejects.toMatchObject({ code: 'STALE_SOURCE' });
+    await expect(admit(service(), 'missing-package')).rejects.toMatchObject({
+      code: 'STALE_SOURCE'
+    });
     sourceVerification = {
       status: 'CURRENT',
       exactSourceFingerprintSha256: 'b'.repeat(64)
@@ -277,10 +279,12 @@ suite('M4-WP-04 durable Service Package and deterministic Eligibility', () => {
     await expect(admit(service(), 'fingerprint-package')).rejects.toMatchObject({
       code: 'SOURCE_FINGERPRINT_MISMATCH'
     });
-    expect(await servicePackageRepository().findReplay(
-      `service-package:${workspaceA}:${executionFingerprint}`,
-      'stale-package'
-    )).toBeUndefined();
+    expect(
+      await servicePackageRepository().findReplay(
+        `service-package:${workspaceA}:${executionFingerprint}`,
+        'stale-package'
+      )
+    ).toBeUndefined();
   });
 
   it('produces explainable deterministic ELIGIBLE truth without allocating a provider', async () => {
@@ -424,9 +428,9 @@ suite('M4-WP-04 durable Service Package and deterministic Eligibility', () => {
     const { capability } = await createProviderAndCapability();
     const value = service();
     const servicePackage = await admit(value);
-    expect(await value.listCandidateSupplyCapabilities(servicePackage.servicePackageId, 10)).toEqual([
-      capability
-    ]);
+    expect(
+      await value.listCandidateSupplyCapabilities(servicePackage.servicePackageId, 10)
+    ).toEqual([capability]);
     await value.evaluateProviderEligibility({
       workspaceId: workspaceA,
       servicePackageId: servicePackage.servicePackageId,

@@ -134,7 +134,8 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
   it('owns and verifies migration 0028 in the independent MGSN database boundary', async () => {
     const owned = await migrations();
     expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual([
-      '0028_mgsn_provider_registry'
+      '0028_mgsn_provider_registry',
+      '0029_mgsn_service_package_eligibility'
     ]);
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
@@ -148,10 +149,14 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
         "SELECT tablename AS name FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'mgsn_%' ORDER BY tablename"
       );
     expect(relations.rows.map((row) => row.name)).toEqual([
+      'mgsn_eligibility_evaluations',
       'mgsn_provider_registry_audit',
       'mgsn_provider_registry_commands',
       'mgsn_provider_supply_capabilities',
-      'mgsn_providers'
+      'mgsn_providers',
+      'mgsn_service_package_audit',
+      'mgsn_service_package_commands',
+      'mgsn_service_packages'
     ]);
   });
 

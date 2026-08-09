@@ -126,6 +126,7 @@ export interface ServicePackage {
   version: number;
   source: Readonly<ProviderExecutionSourceSnapshot>;
   sourceFingerprintSha256: string;
+  servicePackageFingerprintSha256: string;
   jurisdiction: string;
   serviceType: string;
   serviceScope: readonly string[];
