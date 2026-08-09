@@ -1,0 +1,35 @@
+name: M5 WP02 one-shot lint fix
+
+on:
+  push:
+    branches:
+      - m5-wp-02-execution-evidence-review
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-02-execution-evidence-review
+      - name: Type PostgreSQL receipt-record reads
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/execution/tests/evidence-review-postgres.test.ts')
+          text = p.read_text()
+          old = ".query(\n        'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1',"
+          new = ".query<{ receipt_record: unknown }>(\n        'SELECT receipt_record FROM execution_provider_return_evidence_receipts WHERE evidence_handoff_id=$1',"
+          if text.count(old) != 2:
+              raise SystemExit(f'expected two receipt-record queries, found {text.count(old)}')
+          p.write_text(text.replace(old, new))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/execution/tests/evidence-review-postgres.test.ts
+          git commit -m 'fix(m5): type evidence receipt test reads'
+          git push origin HEAD:m5-wp-02-execution-evidence-review
