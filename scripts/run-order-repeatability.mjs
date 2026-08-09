@@ -40,13 +40,7 @@ const groups = [
   ],
   [
     'Authenticated Order HTTP boundary',
-    [
-      'exec',
-      'vitest',
-      'run',
-      '--no-file-parallelism',
-      'scripts/order-http.integration.test.ts'
-    ]
+    ['exec', 'vitest', 'run', '--no-file-parallelism', 'scripts/order-http.integration.test.ts']
   ]
 ];
 

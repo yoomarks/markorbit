@@ -41,7 +41,8 @@ for (const id of required) {
     'requiredMode',
     'expectedEvidence',
     'coverageStatus'
-  ]) assert.ok(Object.hasOwn(record, key), `${id}.${key} is absent`);
+  ])
+    assert.ok(Object.hasOwn(record, key), `${id}.${key} is absent`);
   assert.equal(record.coverageStatus, 'EXECUTABLE_COVERED');
   await access(record.testFile);
 }

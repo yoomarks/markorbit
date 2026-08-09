@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const runner = await readFile(new URL('./run-milestone3-reliability.mjs', import.meta.url), 'utf8');
-const repeatability = await readFile(new URL('./run-order-repeatability.mjs', import.meta.url), 'utf8');
+const repeatability = await readFile(
+  new URL('./run-order-repeatability.mjs', import.meta.url),
+  'utf8'
+);
 const workflow = await readFile(
   new URL('../.github/workflows/milestone-3-reliability.yml', import.meta.url),
   'utf8'
@@ -54,7 +57,8 @@ test('required M3 Order reliability evidence is selected explicitly', () => {
     'scripts/run-order-repeatability.mjs',
     'test:order:journey:browser',
     'scripts/validate-milestone3-reliability-matrix.mjs'
-  ]) assert.ok(runner.includes(selection), `runner must select ${selection}`);
+  ])
+    assert.ok(runner.includes(selection), `runner must select ${selection}`);
 
   for (const requiredMode of [
     'MARKREG_ORDER_POSTGRES_REQUIRED',
@@ -62,12 +66,19 @@ test('required M3 Order reliability evidence is selected explicitly', () => {
     'MARKREG_ORDER_MATTER_POSTGRES_REQUIRED',
     'MARKREG_ORDER_HTTP_REQUIRED',
     'MILESTONE2_OUTAGE_REQUIRED'
-  ]) assert.ok(runner.includes(requiredMode), `runner must fail closed with ${requiredMode}`);
+  ])
+    assert.ok(runner.includes(requiredMode), `runner must fail closed with ${requiredMode}`);
 });
 
 test('hosted workflow checks out the exact PR head and keeps owner databases explicit', () => {
-  assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u);
-  assert.match(workflow, /M3_EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u);
+  assert.match(
+    workflow,
+    /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u
+  );
+  assert.match(
+    workflow,
+    /M3_EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u
+  );
   assert.match(workflow, /MARKREG_TEST_DATABASE_URL:/u);
   assert.match(workflow, /MILESTONE2_MARKREG_DATABASE_URL:/u);
   assert.match(workflow, /MILESTONE3_STARTUP_DATABASE_URL:/u);

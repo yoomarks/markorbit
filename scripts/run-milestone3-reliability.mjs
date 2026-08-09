@@ -4,7 +4,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 const head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const expectedHead = process.env.M3_EXPECTED_HEAD_SHA?.trim();
 if (expectedHead && head !== expectedHead)
-  throw new Error(`Milestone 3 reliability checkout mismatch: expected ${expectedHead}, got ${head}.`);
+  throw new Error(
+    `Milestone 3 reliability checkout mismatch: expected ${expectedHead}, got ${head}.`
+  );
 
 const common = {
   ...process.env,
@@ -29,28 +31,46 @@ const groups = [
     id: 'migration',
     command: 'pnpm',
     args: [
-      '--filter', '@markorbit/markreg-service', 'exec', 'vitest', 'run', '--no-file-parallelism',
-      'tests/order-postgres.test.ts', '-t', 'applies owner migration|upgrades the prior Milestone 2'
+      '--filter',
+      '@markorbit/markreg-service',
+      'exec',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
+      'tests/order-postgres.test.ts',
+      '-t',
+      'applies owner migration|upgrades the prior Milestone 2'
     ]
   },
   {
     id: 'restart',
     command: 'pnpm',
     args: [
-      '--filter', '@markorbit/markreg-service', 'exec', 'vitest', 'run', '--no-file-parallelism',
-      'tests/order-service-postgres.test.ts', 'tests/order-matter-conversion-postgres.test.ts',
-      '-t', 'persists exact lifecycle|returns exact replay after restart'
+      '--filter',
+      '@markorbit/markreg-service',
+      'exec',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
+      'tests/order-service-postgres.test.ts',
+      'tests/order-matter-conversion-postgres.test.ts',
+      '-t',
+      'persists exact lifecycle|returns exact replay after restart'
     ]
   },
   {
     id: 'outage',
     command: 'pnpm',
     args: [
-      'exec', 'vitest', 'run', '--no-file-parallelism',
+      'exec',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
       'scripts/milestone2-startup-outage.integration.test.ts',
       'services/markreg/tests/order-postgres.test.ts',
       'services/markreg/tests/order-matter-conversion-postgres.test.ts',
-      '-t', 'OUT-MARKREG-STARTUP|maps unavailable reads|maps a database outage'
+      '-t',
+      'OUT-MARKREG-STARTUP|maps unavailable reads|maps a database outage'
     ],
     env: { MILESTONE2_OUTAGE_REQUIRED: '1' }
   },
@@ -58,19 +78,30 @@ const groups = [
     id: 'concurrency',
     command: 'pnpm',
     args: [
-      '--filter', '@markorbit/markreg-service', 'exec', 'vitest', 'run', '--no-file-parallelism',
-      'tests/order-postgres.test.ts', 'tests/order-matter-conversion-postgres.test.ts',
-      '-t', 'replays identical create|serializes concurrent writers|serializes concurrent identical conversion|rejects stale Order version|rolls back the Order|rolls back newly created Matter'
+      '--filter',
+      '@markorbit/markreg-service',
+      'exec',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
+      'tests/order-postgres.test.ts',
+      'tests/order-matter-conversion-postgres.test.ts',
+      '-t',
+      'replays identical create|serializes concurrent writers|serializes concurrent identical conversion|rejects stale Order version|rolls back the Order|rolls back newly created Matter'
     ]
   },
   {
     id: 'tenant',
     command: 'pnpm',
     args: [
-      'exec', 'vitest', 'run', '--no-file-parallelism',
+      'exec',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
       'scripts/order-http.integration.test.ts',
       'services/markreg/tests/order-matter-conversion-postgres.test.ts',
-      '-t', 'enforces typed auth, spoof, tenant and conflict boundaries|conceals a cross-Workspace compatibility Matter'
+      '-t',
+      'enforces typed auth, spoof, tenant and conflict boundaries|conceals a cross-Workspace compatibility Matter'
     ]
   },
   {
@@ -96,18 +127,22 @@ await mkdir('.artifacts', { recursive: true });
 async function persist() {
   await writeFile(
     '.artifacts/milestone-3-reliability-evidence.json',
-    `${JSON.stringify({
-      schemaVersion: 1,
-      milestone: 3,
-      workPackage: 'M3-WP-07',
-      headSha: head,
-      expectedHeadSha: expectedHead ?? null,
-      exactHead: !expectedHead || head === expectedHead,
-      orderIsNotMatter: true,
-      confirmedIsNotPaid: true,
-      matterCreatedIsNotFiled: true,
-      results
-    }, null, 2)}\n`
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        milestone: 3,
+        workPackage: 'M3-WP-07',
+        headSha: head,
+        expectedHeadSha: expectedHead ?? null,
+        exactHead: !expectedHead || head === expectedHead,
+        orderIsNotMatter: true,
+        confirmedIsNotPaid: true,
+        matterCreatedIsNotFiled: true,
+        results
+      },
+      null,
+      2
+    )}\n`
   );
 }
 
