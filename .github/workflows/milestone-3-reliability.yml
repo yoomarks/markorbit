@@ -1,0 +1,78 @@
+name: Milestone 3 reliability
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reliability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      M3_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PERSISTENCE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_persistence_test
+      IDENTITY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_core_test
+      AUTH_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_core_test
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
+      MILESTONE2_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_core_test
+      MILESTONE2_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m3_startup_test
+      MILESTONE2_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
+      MILESTONE3_STARTUP_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m3_startup_test
+      MO_INTERNAL_SERVICE_SECRET: m3-wp07-ci-internal-key-32-bytes
+      MO_CSRF_SECRET: m3-wp07-ci-csrf-key-32-bytes-minimum
+      WEB_ORIGINS: https://test.markorbit.local
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create reliability database topology
+        env: { PGPASSWORD: markorbit-test-only }
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE markorbit_persistence_test;
+          CREATE DATABASE markorbit_core_test;
+          CREATE DATABASE markorbit_markreg_test;
+          CREATE DATABASE markorbit_execution_test;
+          CREATE DATABASE markorbit_m3_startup_test;
+          SQL
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run exact-head M3 reliability matrix
+        run: |
+          mkdir -p .artifacts
+          set -o pipefail
+          node scripts/run-milestone3-reliability.mjs 2>&1 | tee .artifacts/milestone-3-reliability.log
+      - name: Final workspace check
+        run: pnpm check
+      - name: Upload exact-head reliability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-3-reliability-${{ github.run_id }}
+          path: |
+            .artifacts/milestone-3-reliability.log
+            .artifacts/milestone-3-reliability-evidence.json
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

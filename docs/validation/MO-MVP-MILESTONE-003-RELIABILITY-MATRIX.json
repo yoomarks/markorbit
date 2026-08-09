@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "milestone": 3,
+  "workPackage": "M3-WP-07",
+  "direction": "DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE",
+  "aggregate": "scripts/run-milestone3-reliability.mjs",
+  "hostedWorkflow": ".github/workflows/milestone-3-reliability.yml",
+  "authority": {
+    "orderIsNotMatter": true,
+    "confirmedIsNotPaid": true,
+    "matterCreatedIsNotFiled": true,
+    "paymentImplemented": false,
+    "invoiceImplemented": false,
+    "providerAppointmentImplemented": false,
+    "externalFilingImplemented": false
+  },
+  "scenarios": [
+    {
+      "id": "M3-MIG-001",
+      "group": "migration",
+      "testFile": "services/markreg/tests/order-postgres.test.ts",
+      "testName": "applies owner migration 0026 after the complete Milestone 2 MarkReg schema",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Order tables and owner migration history are present and verified",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-MIG-002",
+      "group": "migration",
+      "testFile": "services/markreg/tests/order-postgres.test.ts",
+      "testName": "upgrades the prior Milestone 2 MarkReg schema without rewriting committed evidence",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Prior Customer Confirmation evidence survives the forward Order migration",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-RST-001",
+      "group": "restart",
+      "testFile": "services/markreg/tests/order-service-postgres.test.ts",
+      "testName": "persists exact lifecycle, audit and idempotent command results across a fresh pool",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Draft through ReadyForMatter reloads with exact version and audit trail",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-RST-002",
+      "group": "restart",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "returns exact replay after restart and rejects different input under the same key",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Order-to-Matter result replays identically after a fresh pool",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-OUT-001",
+      "group": "outage",
+      "testFile": "scripts/milestone2-startup-outage.integration.test.ts",
+      "testName": "OUT-MARKREG-STARTUP preserves the causal failure then restores the durable MarkReg listener and reusable port",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MILESTONE2_OUTAGE_REQUIRED=1",
+      "expectedEvidence": "MarkReg owner database startup failure is typed/redacted and listener restoration succeeds on current M3 schema",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-OUT-002",
+      "group": "outage",
+      "testFile": "services/markreg/tests/order-postgres.test.ts",
+      "testName": "maps unavailable reads to the canonical persistence error",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Order repository runtime outage maps to PERSISTENCE_UNAVAILABLE",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-OUT-003",
+      "group": "outage",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "maps a database outage without leaking driver details",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Conversion outage fails closed without leaking driver detail",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-CON-001",
+      "group": "concurrency",
+      "testFile": "services/markreg/tests/order-postgres.test.ts",
+      "testName": "replays identical create, rejects conflicting key reuse and rejects a second Order for the exact source",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Identical replay is deterministic and duplicate source/idempotency conflicts are rejected",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-CON-002",
+      "group": "concurrency",
+      "testFile": "services/markreg/tests/order-postgres.test.ts",
+      "testName": "serializes concurrent writers so one exact expected version wins",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "One optimistic update wins and one fails with VERSION_CONFLICT",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-CON-003",
+      "group": "concurrency",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "serializes concurrent identical conversion so both callers observe one Matter",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Concurrent identical conversion produces one Formal Matter and one stable result",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-CON-004",
+      "group": "concurrency",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "rejects stale Order version or source hash before writing conversion truth",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Stale optimistic version/source writes no Matter truth",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-ATM-001",
+      "group": "concurrency",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "rolls back the Order when Formal Matter creation fails",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Injected Formal Matter create failure leaves Order ReadyForMatter and creates no Matter",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-ATM-002",
+      "group": "concurrency",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "rolls back newly created Matter when Order link audit fails",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Injected Order audit failure leaves no orphan Matter or conversion command",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-TEN-001",
+      "group": "tenant",
+      "testFile": "scripts/order-http.integration.test.ts",
+      "testName": "enforces typed auth, spoof, tenant and conflict boundaries",
+      "ownerDatabase": "Core + MarkReg",
+      "requiredMode": "MARKREG_ORDER_HTTP_REQUIRED=1",
+      "expectedEvidence": "Gateway authentication, actor/workspace truth and cross-Workspace boundaries fail closed",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-TEN-002",
+      "group": "tenant",
+      "testFile": "services/markreg/tests/order-matter-conversion-postgres.test.ts",
+      "testName": "conceals a cross-Workspace compatibility Matter and leaves Order unchanged",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_ORDER_MATTER_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Cross-Workspace Matter link is non-enumerating and non-mutating",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-REP-001",
+      "group": "repeatability",
+      "testFile": "scripts/run-order-repeatability.mjs",
+      "testName": "two-cycle Order repository/service/conversion/HTTP repeatability",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "all Order required-mode flags",
+      "expectedEvidence": "No skipped tests and identical passed-test totals across both cycles",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M3-BRW-001",
+      "group": "browser",
+      "testFile": "tests/e2e/order-journey-real-runtime.spec.ts",
+      "testName": "desktop and mobile durable Order journey real runtime",
+      "ownerDatabase": "Core + MarkReg",
+      "requiredMode": "zero route interception",
+      "expectedEvidence": "Customer Confirmation through MatterCreated survives refresh/direct URL/back/workspace switch on desktop and 390px mobile",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    }
+  ]
+}
