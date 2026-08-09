@@ -31,6 +31,7 @@ Provider Return and evidence handoff remain internal evidence truth. They do not
 
 - `0031_mgsn_provider_return.sql` — MGSN-owned versioned Provider Return, command evidence and append-only audit.
 - `0032_execution_provider_return_evidence.sql` — Execution-owned evidence receipt, retry-safe command evidence and append-only audit.
+- Historical MGSN and Milestone 2 suites explicitly clean later owned WP06 relations before replaying owner migrations, so test namespaces remain isolated without weakening production migration semantics.
 
 ## Acceptance evidence
 
