@@ -30,13 +30,17 @@ test('M3 reliability runner is fail-fast and preserves the required scenario ord
     [...runner.matchAll(/id: '([a-z-]+)'/gu)].map((match) => match[1]),
     ordered
   );
-  assert.doesNotMatch(runner, /Promise\.all|continue-on-error|\|\||setTimeout|sleep/gu);
+  assert.doesNotMatch(runner, /Promise\.all|continue-on-error|setTimeout|sleep/gu);
+  assert.doesNotMatch(runner, /shell\s*:\s*true/gu);
+  assert.match(runner, /if \(run\.status !== 0\) process\.exit/gu);
   assert.match(runner, /M3_EXPECTED_HEAD_SHA/gu);
   assert.match(runner, /git', \['rev-parse', 'HEAD'\]/gu);
 });
 
 test('all combined destructive Vitest invocations are serialized', () => {
-  const invocations = [...runner.matchAll(/'vitest', 'run', '([^']+)'/gu)].map((match) => match[1]);
+  const invocations = [...runner.matchAll(/'vitest',\s*'run',\s*'([^']+)'/gu)].map(
+    (match) => match[1]
+  );
   assert.ok(invocations.length >= 5);
   assert.ok(invocations.every((firstArg) => firstArg === '--no-file-parallelism'));
   assert.doesNotMatch(runner, /--no-isolate|singleThread/gu);
