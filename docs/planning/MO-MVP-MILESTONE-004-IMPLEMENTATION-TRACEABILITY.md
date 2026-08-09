@@ -8,17 +8,17 @@
 **Exact tested remediation head:** `4c75c837374f1e92e61bc1a612273c94990371cd`  
 **Current audit recommendation:** **GO**
 
-| Work package | Approved objective                                               | Implementation status       | Evidence                                                                                                            |
-| ------------ | ---------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| M4-WP-01     | Provider execution contracts and canonical authority boundary    | IMPLEMENTED_IN_PR_49        | `packages/contracts/src/provider-execution.ts`; contract tests; authority boundary docs                             |
-| M4-WP-02     | Durable authenticated Execution filing-governance source         | IMPLEMENTED_IN_PR_50        | migration `0027_execution_filing_governance`; authenticated Execution boundary; PostgreSQL tests                    |
-| M4-WP-03     | Durable MGSN Provider Registry and Supply Capability             | IMPLEMENTED_IN_PR_51        | migration `0028_mgsn_provider_registry`; Provider Registry service/repository/tests                                 |
-| M4-WP-04     | MGSN Service Package and deterministic Eligibility               | IMPLEMENTED_IN_PR_52        | migration `0029_mgsn_service_package_eligibility`; Service Package/Eligibility service/repository/tests             |
-| M4-WP-05     | Explicit Allocation and authenticated Provider Acceptance        | IMPLEMENTED_IN_PR_53        | migration `0030_mgsn_allocation_provider_acceptance`; Allocation/Acceptance service/repository/PostgreSQL tests     |
-| M4-WP-06     | Provider Return and exact Execution evidence handoff             | IMPLEMENTED_IN_PR_54        | migrations `0031_mgsn_provider_return` + `0032_execution_provider_return_evidence`; MGSN/Execution PostgreSQL tests |
-| M4-WP-07     | Authenticated Gateway and controlled operations/provider journey | IMPLEMENTED_IN_PR_55        | authenticated Gateway/MGSN HTTP boundaries; provider identity/CSRF/workspace tests                                  |
-| M4-WP-08     | Reliability matrix                                               | IMPLEMENTED_IN_PR_56        | exact-head hosted M4 reliability gate; executable scenario inventory; outage/repeatability evidence                 |
-| M4-WP-09     | Independent integration and authority audit                      | AUDIT_COMPLETE_GO           | PR #57 initial FIX audit; PR #58 remediation; post-merge rerun; audit md/json                                       |
+## Work package status
+
+- **M4-WP-01 — Provider execution contracts and canonical authority boundary:** `IMPLEMENTED_IN_PR_49`. Evidence: `packages/contracts/src/provider-execution.ts`, contract tests and authority boundary docs.
+- **M4-WP-02 — Durable authenticated Execution filing-governance source:** `IMPLEMENTED_IN_PR_50`. Evidence: migration `0027_execution_filing_governance`, authenticated Execution boundary and PostgreSQL tests.
+- **M4-WP-03 — Durable MGSN Provider Registry and Supply Capability:** `IMPLEMENTED_IN_PR_51`. Evidence: migration `0028_mgsn_provider_registry` and Provider Registry service/repository tests.
+- **M4-WP-04 — MGSN Service Package and deterministic Eligibility:** `IMPLEMENTED_IN_PR_52`. Evidence: migration `0029_mgsn_service_package_eligibility` and Service Package/Eligibility service/repository tests.
+- **M4-WP-05 — Explicit Allocation and authenticated Provider Acceptance:** `IMPLEMENTED_IN_PR_53`. Evidence: migration `0030_mgsn_allocation_provider_acceptance` and Allocation/Acceptance PostgreSQL tests.
+- **M4-WP-06 — Provider Return and exact Execution evidence handoff:** `IMPLEMENTED_IN_PR_54`. Evidence: migrations `0031_mgsn_provider_return` and `0032_execution_provider_return_evidence`, plus MGSN/Execution PostgreSQL tests.
+- **M4-WP-07 — Authenticated Gateway and controlled operations/provider journey:** `IMPLEMENTED_IN_PR_55`. Evidence: authenticated Gateway/MGSN HTTP boundaries and provider identity/CSRF/Workspace tests.
+- **M4-WP-08 — Reliability matrix:** `IMPLEMENTED_IN_PR_56`. Evidence: exact-head hosted M4 reliability gate, executable scenario inventory and outage/repeatability evidence.
+- **M4-WP-09 — Independent integration and authority audit:** `AUDIT_COMPLETE_GO`. Evidence: PR #57 initial `FIX` audit, PR #58 remediation, post-merge rerun and audit MD/JSON.
 
 ## Integration remediation
 
