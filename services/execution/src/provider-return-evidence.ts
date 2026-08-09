@@ -202,7 +202,6 @@ export class ProviderReturnEvidenceService {
     if (!release)
       throw new ProviderReturnEvidenceError('STALE_SOURCE', 'Execution Release was not found.', 409);
     if (
-      release.workspaceId !== workspaceId ||
       release.version !== input.command.expectedExecutionReleaseVersion ||
       release.status !== 'RELEASED_FOR_EXECUTION'
     )
@@ -220,7 +219,6 @@ export class ProviderReturnEvidenceService {
         409
       );
     if (
-      task.workspaceId !== workspaceId ||
       task.executionReleaseId !== release.executionReleaseId ||
       task.status !== 'PREPARED' ||
       String(input.command.expectedFilingExecutionTaskDraftVersion) !== '1'

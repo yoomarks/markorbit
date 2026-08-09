@@ -44,6 +44,8 @@ import {
 } from './filing-authorization.js';
 export * from './filing-authorization.js';
 export * from './filing-authorization-postgres.js';
+export * from './provider-return-evidence.js';
+export * from './provider-return-evidence-postgres.js';
 export const serviceManifest = Object.freeze({
   name: 'execution',
   port: Number(process.env.PORT ?? '4104'),

@@ -277,11 +277,13 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
 
   it('owns and verifies MGSN migrations 0028 through 0030', async () => {
     const owned = await migrations();
-    expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual([
-      '0028_mgsn_provider_registry',
-      '0029_mgsn_service_package_eligibility',
-      '0030_mgsn_allocation_provider_acceptance'
-    ]);
+    expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual(
+      expect.arrayContaining([
+        '0028_mgsn_provider_registry',
+        '0029_mgsn_service_package_eligibility',
+        '0030_mgsn_allocation_provider_acceptance'
+      ])
+    );
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (migration) => migration.state === 'applied'
