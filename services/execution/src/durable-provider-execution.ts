@@ -1,5 +1,10 @@
 import type { ManagedDatabase } from '@markorbit/persistence';
 import type { JsonRoute } from '@markorbit/service-kit';
+import type {
+  ExecutionReleaseRepository,
+  FilingAuthorizationRepository,
+  FilingExecutionTaskDraftRepository
+} from './filing-authorization.js';
 import { PostgresFilingGovernanceRepository } from './filing-authorization-postgres.js';
 import { createExecutionProviderInternalRoutes } from './provider-execution-http.js';
 import { ProviderExecutionSourceVerificationService } from './provider-execution-source.js';
@@ -23,16 +28,32 @@ export function createDurableExecutionProviderRoutes(
       workspaceId,
       'system_mgsn_provider_execution'
     );
+  const repositoriesFor = (workspaceId: string) => {
+    const filing = filingFor(workspaceId);
+    return {
+      authorizations: filing as unknown as FilingAuthorizationRepository,
+      releases: filing as unknown as ExecutionReleaseRepository,
+      tasks: filing as unknown as FilingExecutionTaskDraftRepository
+    };
+  };
 
   return createExecutionProviderInternalRoutes({
     internalServiceSecret: options.internalServiceSecret,
     sourceVerificationFor: (workspaceId) => {
-      const filing = filingFor(workspaceId);
-      return new ProviderExecutionSourceVerificationService(filing, filing, filing);
+      const repositories = repositoriesFor(workspaceId);
+      return new ProviderExecutionSourceVerificationService(
+        repositories.authorizations,
+        repositories.releases,
+        repositories.tasks
+      );
     },
     providerReturnEvidenceFor: (workspaceId) => {
-      const filing = filingFor(workspaceId);
-      return new ProviderReturnEvidenceService(evidenceRepository, filing, filing);
+      const repositories = repositoriesFor(workspaceId);
+      return new ProviderReturnEvidenceService(
+        evidenceRepository,
+        repositories.releases,
+        repositories.tasks
+      );
     }
   });
 }
