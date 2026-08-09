@@ -1,37 +1,33 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "milestone": "MO-MVP-MILESTONE-004",
   "workPackage": "M4-WP-09",
-  "auditDate": "2026-08-09",
+  "auditDate": "2026-08-10",
   "direction": "DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN",
-  "recommendation": "FIX",
-  "auditedMergedBaseline": "f1fd652cf4882cd1e0996bd9846995443ca5e967",
-  "auditedImplementationTree": "fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a",
-  "testedHead": "016cb221cf57733df04f56a815eefeb55dffe839",
-  "testedHeadTree": "fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a",
+  "recommendation": "GO",
+  "previousRecommendation": "FIX",
+  "previousAuditPr": 57,
+  "remediationPr": 58,
+  "auditedMergedBaseline": "327b61a22ad800250a2d9babe5997eb5a6a9e8eb",
+  "auditedImplementationTree": "79efcbe2580e7fa372f0c7f5ebefe6f744216416",
+  "testedHead": "4c75c837374f1e92e61bc1a612273c94990371cd",
+  "testedHeadTree": "79efcbe2580e7fa372f0c7f5ebefe6f744216416",
   "exactTreeIdentity": true,
   "scopeLockPr": 48,
-  "implementationPrs": [49, 50, 51, 52, 53, 54, 55, 56],
+  "implementationPrs": [49, 50, 51, 52, 53, 54, 55, 56, 58],
   "hostedEvidence": {
-    "validation": {
-      "runId": 31319610739,
-      "result": "PASS"
+    "testedHead": {
+      "milestone4Integration": { "runId": 31322991682, "result": "PASS" },
+      "validation": { "runId": 31322991631, "result": "PASS" },
+      "milestone4Reliability": { "runId": 31322991665, "result": "PASS" },
+      "milestone3ReliabilityRegression": { "runId": 31322991659, "result": "PASS" },
+      "milestone2ReliabilityRegression": { "runId": 31322991650, "result": "PASS" },
+      "browserAndVisualValidation": { "runId": 31322991646, "result": "PASS" }
     },
-    "milestone4Reliability": {
-      "runId": 31319610700,
-      "result": "PASS"
-    },
-    "milestone3ReliabilityRegression": {
-      "runId": 31319610717,
-      "result": "PASS"
-    },
-    "milestone2ReliabilityRegression": {
-      "runId": 31319610695,
-      "result": "PASS"
-    },
-    "browserAndVisualValidation": {
-      "runId": 31319610698,
-      "result": "PASS"
+    "mergedMain": {
+      "milestone4Integration": { "runId": 31323865361, "result": "PASS" },
+      "validation": { "runId": 31323865372, "result": "PASS" },
+      "browserAndVisualValidation": { "runId": 31323865383, "result": "PASS" }
     }
   },
   "auditDimensions": {
@@ -47,47 +43,44 @@
     "paymentInvoiceLeakage": "PASS",
     "legalProfessionalAppointmentInference": "PASS",
     "officialTruthFilingInference": "PASS",
-    "exactHeadComponentEvidence": "PASS",
-    "durableMgsnRuntimeComposition": "FIX_REQUIRED",
-    "executionEvidenceRuntimeBoundary": "FIX_REQUIRED",
-    "fullDurableRealRuntimePath": "FIX_REQUIRED",
-    "documentationDrift": "NON_BLOCKING_REMEDIATED",
+    "exactTreeEvidence": "PASS",
+    "durableMgsnRuntimeComposition": "PASS",
+    "executionEvidenceRuntimeBoundary": "PASS",
+    "fullDurableRealRuntimePath": "PASS",
+    "documentationDrift": "PASS",
     "serviceLocalAuthorityMetadataVocabulary": "NON_BLOCKING_DRIFT"
   },
-  "blockingFindings": [
+  "resolvedBlockingFindings": [
     {
       "id": "M4-INT-001",
-      "title": "Durable MGSN runtime is not composed",
-      "evidence": ["services/mgsn/src/main.ts", "services/mgsn/src/http.ts"],
-      "requiredRemediation": "Construct normal MGSN runtime services from MGSN-owned PostgreSQL persistence plus bounded Core and Execution adapters."
+      "status": "RESOLVED_IN_PR_58",
+      "evidence": [
+        "services/mgsn/src/main.ts",
+        "services/mgsn/src/durable-runtime.ts",
+        "services/mgsn/src/runtime-dependencies.ts"
+      ]
     },
     {
       "id": "M4-INT-002",
-      "title": "Execution Provider Return evidence handoff is not exposed in the normal durable runtime",
+      "status": "RESOLVED_IN_PR_58",
       "evidence": [
-        "services/execution/src/provider-return-evidence.ts",
-        "services/execution/src/provider-return-evidence-postgres.ts",
-        "services/execution/src/index.ts",
-        "services/execution/src/main.ts"
-      ],
-      "requiredRemediation": "Expose a trusted internal, idempotent Execution evidence-handoff HTTP boundary backed by Execution-owned PostgreSQL persistence."
+        "services/execution/src/main.ts",
+        "services/execution/src/durable-provider-execution.ts",
+        "services/execution/src/provider-execution-http.ts",
+        "services/execution/src/provider-execution-source.ts"
+      ]
     },
     {
       "id": "M4-E2E-001",
-      "title": "Approved full durable multi-service real-runtime acceptance path is missing",
+      "status": "RESOLVED_IN_PR_58",
       "evidence": [
-        "apps/gateway/tests/mgsn-provider-journey.test.ts",
-        "docs/validation/MO-MVP-MILESTONE-004-RELIABILITY-MATRIX.json"
-      ],
-      "requiredRemediation": "Add exact-head zero-interception evidence through real Core, Gateway, Execution, MGSN and owner PostgreSQL databases to a PENDING_REVIEW evidence receipt."
+        ".github/workflows/milestone-4-integration.yml",
+        "scripts/m4-provider-runtime.integration.test.ts"
+      ]
     }
   ],
+  "blockingFindings": [],
   "nonBlockingFindings": [
-    {
-      "id": "M4-DOC-001",
-      "title": "Current repository status documentation lagged merged M4 implementation",
-      "status": "REMEDIATED_IN_M4_WP_09"
-    },
     {
       "id": "M4-SEM-001",
       "title": "Two service-local authority helper fixtures retain pre-canonical field names",
@@ -111,15 +104,16 @@
     "automaticFormalMatterCompletionImplemented": false,
     "automaticUserCapabilityVerificationImplemented": false
   },
-  "requiredBeforeGo": [
-    "compose durable MGSN normal runtime",
-    "expose durable Execution Provider Return evidence handoff HTTP boundary",
-    "use bounded service adapters without cross-service SQL",
-    "add full zero-interception durable M4 real-runtime path",
-    "retain restart and idempotent replay evidence",
-    "keep all M2/M3/M4 reliability and browser regressions green",
-    "rerun independent M4 authority audit against remediated merged baseline"
+  "goBasis": [
+    "PR #58 composes normal durable MGSN services from MGSN-owned PostgreSQL persistence and bounded Core/Execution HTTP dependencies",
+    "PR #58 exposes trusted Execution exact-source verification and Provider Return evidence handoff backed by Execution-owned PostgreSQL persistence",
+    "the permanent Milestone 4 integration gate proves the authenticated zero-interception Core + Gateway + Execution + MGSN + three-owner-PostgreSQL path to a durable PENDING_REVIEW evidence receipt",
+    "tested PR head and merged main have identical Git tree 79efcbe2580e7fa372f0c7f5ebefe6f744216416",
+    "all required tested-head M2/M3/M4 reliability, validation, browser/visual and M4 integration gates passed",
+    "merged main independently passed M4 integration, validation and Browser/Visual Validation after PR #58 merge",
+    "canonical authority consequences remain non-financial, non-appointment, non-filing and non-Official-Truth"
   ],
+  "requiredBeforeGo": [],
   "ownerActionsPerformed": {
     "gitTagCreated": false,
     "githubReleasePublished": false,

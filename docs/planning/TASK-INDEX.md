@@ -158,10 +158,13 @@ Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confir
   - Audited merged baseline: `f1fd652cf4882cd1e0996bd9846995443ca5e967`; implementation tree `fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`.
   - Final tested head `016cb221cf57733df04f56a815eefeb55dffe839` has the same tree.
   - Hosted successful runs: validation `31319610739`, Milestone 4 reliability `31319610700`, Milestone 3 reliability `31319610717`, Milestone 2 reliability `31319610695`, Browser and Visual Validation `31319610698`.
-- M4-WP-09 — Independent integration and authority audit (**in progress; recommendation FIX**)
+- M4-WP-09 — Independent integration and authority audit (**complete; final recommendation GO**)
+  - Initial PR #57 audit returned `FIX` for three bounded runtime-integration findings.
+  - PR #58 merged durable MGSN/Execution runtime composition plus the permanent zero-interception M4 integration gate.
+  - Re-audited merged baseline: `327b61a22ad800250a2d9babe5997eb5a6a9e8eb`; tree `79efcbe2580e7fa372f0c7f5ebefe6f744216416`.
+  - Exact remediation head `4c75c837374f1e92e61bc1a612273c94990371cd` passed M4 integration, validation, M4/M3/M2 reliability and Browser/Visual Validation.
+  - Merged main independently passed M4 integration `31323865361`, validation `31323865372` and Browser and Visual Validation `31323865383`.
   - Evidence: `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.{md,json}`.
-  - Blocking findings: normal durable MGSN runtime composition missing; normal durable Execution Provider Return evidence-handoff HTTP boundary missing; required full zero-interception Core + Gateway + Execution + MGSN + owner PostgreSQL provider path missing.
-  - Required next action: bounded M4 integration remediation, then rerun M4-WP-09 against the remediated merged baseline.
   - No tag, release, deployment freeze, Payment/Invoice, legal appointment, external filing or Official Truth is created by this audit.
 
-Milestone 4 does not yet have a GO recommendation. The established authority locks remain in force throughout remediation.
+Milestone 4 now has a **GO** recommendation for its approved engineering scope. The established authority locks remain in force.

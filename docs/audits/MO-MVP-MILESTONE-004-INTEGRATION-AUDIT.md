@@ -1,30 +1,25 @@
 # MO MVP Milestone 4 integration and authority audit
 
 - **Work package:** `M4-WP-09`
-- **Audit date:** 2026-08-09
-- **Audited merged baseline:** `f1fd652cf4882cd1e0996bd9846995443ca5e967`
-- **Audited implementation tree:** `fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`
-- **M4-WP-08 exact-head evidence commit:** `016cb221cf57733df04f56a815eefeb55dffe839`
-- **M4-WP-08 implementation tree:** `fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`
-- **M4-WP-08 PR:** #56, merged
-- **Audit recommendation:** **FIX**
+- **Audit date:** 2026-08-10
+- **Approved direction:** `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`
+- **Previous audit:** PR #57 — `FIX`
+- **Integration remediation:** PR #58 — merged
+- **Audited merged baseline:** `327b61a22ad800250a2d9babe5997eb5a6a9e8eb`
+- **Audited implementation tree:** `79efcbe2580e7fa372f0c7f5ebefe6f744216416`
+- **Exact tested remediation head:** `4c75c837374f1e92e61bc1a612273c94990371cd`
+- **Exact tested remediation tree:** `79efcbe2580e7fa372f0c7f5ebefe6f744216416`
+- **Exact tree identity:** **PASS**
+- **Audit recommendation:** **GO**
 - **Freeze / tag / release action:** **NOT PERFORMED** — those remain explicit owner actions.
 
 ## 1. Executive conclusion
 
-Milestone 4 is **not yet recommended GO** for its approved scope `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
+Milestone 4 is now **recommended GO** for its approved scope `DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN`.
 
-The audit confirms that the merged implementation has strong domain-level building blocks and exact-head evidence for Provider Registry, Supply Capability, Service Package admission, deterministic Eligibility, explicit Allocation, authenticated Provider Acceptance, versioned Provider Return, Execution evidence receipt persistence, Gateway authentication, isolation, idempotency, outage behavior and repeatability.
+The first independent M4-WP-09 audit correctly returned `FIX` because the repository had complete domain components but did not yet compose the normal durable MGSN and Execution runtimes into the approved end-to-end provider execution path. PR #58 closed the three blocking findings without expanding authority.
 
-The final M4-WP-08 head `016cb221cf57733df04f56a815eefeb55dffe839` and merged `main` baseline `f1fd652cf4882cd1e0996bd9846995443ca5e967` have the same Git tree `fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`. Hosted exact-head evidence therefore validates the exact implementation contents merged to `main`.
-
-However, the independent integration audit found one release-blocking integration class with three linked manifestations:
-
-1. the production/durable MGSN process starts `createRuntime()` without constructing `MgsnHttpServices`, so protected provider-execution routes fail closed as `MGSN_RUNTIME_UNCONFIGURED` rather than reaching the durable MGSN repositories;
-2. the durable Execution runtime does not compose `ProviderReturnEvidenceService` / `PostgresExecutionProviderReturnEvidenceRepository` into an HTTP boundary that MGSN can call for the exact evidence handoff;
-3. the current Gateway provider-journey test runs live Gateway and MGSN HTTP servers but injects stub domain services and a stub Core authentication client. There is no exact-head acceptance path using real Core + Gateway + Execution + MGSN + owner PostgreSQL databases with zero request interception, as required by the approved M4 delivery plan.
-
-As a result, the repository proves the pieces but does not yet prove the approved integrated runtime loop:
+The post-remediation audit confirms the complete governed path is now composed and permanently tested:
 
 ```text
 current governed Execution source
@@ -34,202 +29,172 @@ current governed Execution source
 -> authenticated Provider Acceptance
 -> durable Provider Return
 -> exact Execution evidence handoff
--> reviewable evidence state
--> restart/recovery
+-> durable PENDING_REVIEW evidence receipt
 ```
 
-The correct audit disposition is therefore **FIX**, not HOLD: no authority corruption or destructive migration defect was found, and the missing work is bounded runtime composition plus exact real-runtime evidence. After that remediation is merged and the exact implementation tree passes the repository gates, M4-WP-09 should be rerun against the remediated merged baseline before any GO recommendation.
+The remediation head `4c75c837374f1e92e61bc1a612273c94990371cd` and merged `main` baseline `327b61a22ad800250a2d9babe5997eb5a6a9e8eb` have the same Git tree `79efcbe2580e7fa372f0c7f5ebefe6f744216416`. The exact implementation contents that passed the required hosted gates are therefore the contents merged to `main`.
 
-## 2. Audit scope
+No release-blocking authority, ownership, persistence, isolation, idempotency, source-lineage or real-runtime finding remains.
 
-This audit evaluates the exact merged Milestone 4 implementation against:
+## 2. Re-audit scope
 
-- `docs/planning/MO-MVP-MILESTONE-004-SCOPE-LOCK.md`;
-- `docs/planning/MO-MVP-MILESTONE-004-DELIVERY-PLAN.md`;
-- `docs/planning/MO-MVP-MILESTONE-004-PLAN.json`;
-- TASK 029 / PR #48 planning approval;
-- M4-WP-01 through M4-WP-08, PRs #49 through #56;
-- `packages/contracts/src/provider-execution.ts` and its contract tests;
-- Execution migrations `0027` and `0032`;
-- MGSN migrations `0028` through `0031`;
-- durable Provider Registry, Service Package/Eligibility, Allocation/Acceptance and Provider Return repositories/services;
-- Execution Provider Return evidence receipt persistence;
-- authenticated Gateway and trusted MGSN HTTP boundaries;
-- the M4-WP-08 reliability inventory, runner and hosted exact-head evidence;
-- the explicit no-finance/no-legal-appointment/no-Official-Truth boundary.
+This rerun re-evaluates the approved Milestone 4 scope and specifically verifies closure of the previous blocking findings:
 
-M4-WP-09 is an audit work package. This PR does not repair the blocking runtime integration, add a migration, introduce product behavior, weaken tests, create a Git tag, publish a release or perform an external action.
+- `M4-INT-001` — durable MGSN runtime composition;
+- `M4-INT-002` — durable Execution Provider Return evidence-handoff boundary;
+- `M4-E2E-001` — full zero-interception durable multi-service acceptance path.
 
-## 3. Approved Milestone 4 outcome
+It also rechecks the frozen Milestone 4 authority boundaries:
 
-The approved primary path is:
+- Provider Supply Capability is not user Capability evidence;
+- Eligibility is not Allocation;
+- Allocation is not Provider Acceptance;
+- Provider Acceptance is not legal/professional appointment;
+- Provider Return is not Official Truth;
+- Evidence Handoff is not Filing Submission;
+- Payment and Invoice are outside M4;
+- automatic provider selection is outside M4;
+- external trademark-office submission is outside M4;
+- automatic Formal Matter completion and automatic user Capability verification remain false.
 
-```text
-Authenticated Workspace / controlled operator
--> exact current Execution source
--> durable MGSN Service Package
--> deterministic Eligibility
--> explicit Allocation
--> authenticated Provider Acceptance
--> durable Provider Return
--> exact Evidence Handoff to Execution
--> reviewable evidence state
--> restart/reload
-```
+This audit changes documentation/evidence status only. It adds no migration, product capability, external action, payment, appointment, filing submission, tag or release.
 
-The path must preserve exact versions/fingerprints, Workspace and Provider isolation, provider identity, idempotency, optimistic concurrency, owner-specific persistence and explicit authority separation.
+## 3. Exact content identity
 
-Audit finding: **FIX REQUIRED — domain components exist, but the durable service processes are not yet composed into this complete runtime path.**
+The final remediation PR head was:
 
-## 4. Content identity of merged main and tested head
+`4c75c837374f1e92e61bc1a612273c94990371cd`
 
-The final M4-WP-08 PR head is:
+Its Git tree was:
 
-`016cb221cf57733df04f56a815eefeb55dffe839`
+`79efcbe2580e7fa372f0c7f5ebefe6f744216416`
 
-Its Git tree is:
+After PR #58 merged, `main` became:
 
-`fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`
-
-The merged `main` baseline is:
-
-`f1fd652cf4882cd1e0996bd9846995443ca5e967`
+`327b61a22ad800250a2d9babe5997eb5a6a9e8eb`
 
 Its Git tree is also:
 
-`fc5b44772dcd51f10f9aaac5495a2d1f33d13e8a`
+`79efcbe2580e7fa372f0c7f5ebefe6f744216416`
 
-Audit finding: **PASS — exact implementation-tree identity established.**
+Audit finding: **PASS — the tested remediation content is exactly the content merged to main.**
 
-## 5. Hosted exact-head gate evidence
+## 4. Hosted exact-head evidence
 
-The final M4-WP-08 head passed the required hosted workflow families:
+The exact remediation head passed every required workflow family:
 
-- validation run `31319610739`: **PASS**;
-- Milestone 4 reliability run `31319610700`: **PASS**;
-- Milestone 3 reliability regression run `31319610717`: **PASS**;
-- Milestone 2 reliability regression run `31319610695`: **PASS**;
-- Browser and Visual Validation run `31319610698`: **PASS**.
+- Milestone 4 integration run `31322991682`: **PASS**;
+- validation run `31322991631`: **PASS**;
+- Milestone 4 reliability run `31322991665`: **PASS**;
+- Milestone 3 reliability regression run `31322991659`: **PASS**;
+- Milestone 2 reliability regression run `31322991650`: **PASS**;
+- Browser and Visual Validation run `31322991646`: **PASS**.
 
-The M4 reliability inventory contains 17 executable scenario records covering canonical authority fixtures, owner migrations, stale-source fail-closed behavior, concurrent Allocation serialization, durable idempotency, Provider identity binding, decline/reallocation history, Provider Return correction history, exact evidence receipt behavior, append-only audit, Workspace/Provider isolation, Gateway outages and repeatability.
+After merge, the identical implementation tree on `main` also passed:
 
-Audit finding: **PASS for the scenarios actually represented by the matrix.** The matrix does not substitute for the missing full durable multi-service runtime path identified in section 16.
+- Milestone 4 integration run `31323865361`: **PASS**;
+- validation run `31323865372`: **PASS**, including persistence and professional-review-browser jobs;
+- Browser and Visual Validation run `31323865383`: **PASS**, including Milestone Real Runtime Validation.
 
-## 6. Work-package integration trace
+Audit finding: **PASS — exact-head evidence and post-merge evidence agree.**
 
-The audited implementation sequence is:
+## 5. M4-INT-001 closure — durable MGSN runtime composition
 
-1. PR #48 — TASK 029 Milestone 4 scope and architecture lock.
-2. PR #49 — M4-WP-01 Provider execution contracts and authority boundary.
-3. PR #50 — M4-WP-02 durable authenticated Execution filing-governance source.
-4. PR #51 — M4-WP-03 durable MGSN Provider Registry and Supply Capability.
-5. PR #52 — M4-WP-04 Service Package and deterministic Eligibility.
-6. PR #53 — M4-WP-05 explicit Allocation and authenticated Provider Acceptance.
-7. PR #54 — M4-WP-06 Provider Return and exact Execution evidence persistence/handoff components.
-8. PR #55 — M4-WP-07 authenticated Gateway and trusted MGSN HTTP boundaries.
-9. PR #56 — M4-WP-08 exact-head reliability matrix.
+The previous audit found that normal `services/mgsn/src/main.ts` started the HTTP runtime without durable `MgsnHttpServices`.
 
-The dependency order follows the approved plan and no migration owner is assigned to the wrong service.
+PR #58 now requires a durable MGSN database and trusted internal service secret, constructs `createDurableMgsnServices(...)`, binds MGSN-owned PostgreSQL persistence and supplies bounded Core and Execution HTTP dependencies before starting `createRuntime(...)`.
 
-Audit finding: **PASS for implementation order and ownership prerequisites.**
+The normal runtime therefore no longer depends on test-only injected domain services to execute Provider Registry, Supply Capability, Service Package/Eligibility, Allocation/Acceptance and Provider Return.
 
-## 7. Provider and Supply Capability semantic fidelity
+Audit finding: **PASS — `M4-INT-001` resolved.**
 
-MGSN Provider identity references Core Workspace identity rather than defining a second authentication or membership system. Provider Supply Capability is versioned private supply-side evidence with operational status, jurisdictions, service types, effective period, capacity/availability and supply-only verification state.
+## 6. M4-INT-002 closure — Execution evidence runtime boundary
 
-The eligibility helper requires an active Provider, active capability, positive availability and effective-period coverage. Supply verification is explicitly `VERIFIED_FOR_SUPPLY`; it is not user Capability evidence and does not update Capability Engine truth.
+The previous audit found that Execution had durable Provider Return evidence components but no normal protected HTTP composition for MGSN to call.
 
-Audit finding: **PASS.**
+PR #58 now composes durable provider-execution routes in normal `services/execution/src/main.ts`. The route bundle uses Execution-owned persistence and exposes trusted internal boundaries for:
 
-### Non-blocking vocabulary drift
+- exact current Execution source verification;
+- Provider Return evidence handoff;
+- bounded evidence receipt lookup used by integration evidence.
 
-Two service-local exported test/helper consequence objects (`providerRegistryAuthorityConsequences` and `servicePackageEligibilityAuthorityConsequences`) retain earlier field names such as `legalProfessionalAppointmentCreated` / `officialTruthCreated`, while the canonical shared `ProviderExecutionAuthorityConsequences` uses the frozen WP-01 vocabulary such as `professionalLegallyAppointedAutomatically` and the explicit Official Truth consequence fields.
+MGSN reaches these functions through bounded HTTP adapters rather than cross-service SQL.
 
-The service-local objects are not used to authorize mutations and all of their external consequences are false. The cross-service contract remains the canonical authority source, so this is **non-blocking semantic-metadata drift**, not an authority escalation. A later cleanup should remove or align duplicate consequence metadata rather than create a second canon.
+Audit finding: **PASS — `M4-INT-002` resolved.**
 
-## 8. Service Package source lineage
+## 7. M4-E2E-001 closure — zero-interception real runtime path
 
-Service Package admission consumes Execution truth only through the bounded `ExecutionSourceAdmissionSource` dependency. Admission normalizes the source, requires the command Workspace and correlation lineage to match, verifies the source is current and requires an exact fingerprint match.
+PR #58 adds permanent evidence:
 
-Eligibility re-verifies the current Execution source before evaluating Provider truth. The admitted snapshot preserves exact Preparation Lock, Filing Authorization, Execution Release, Filing Execution Task Draft, optional Formal Matter, execution window, document/instruction references, Channel/Relationship Model where available and correlation context.
+- `.github/workflows/milestone-4-integration.yml`;
+- `scripts/m4-provider-runtime.integration.test.ts`.
 
-Audit finding: **PASS.**
+The integration gate starts real Core, Gateway, Execution and MGSN HTTP runtimes with separate owner PostgreSQL databases and no request interception or domain-service stubs. It exercises the authenticated provider path through Provider/Supply, Service Package, deterministic Eligibility, explicit Allocation, Provider Acceptance, Provider Return and Execution evidence handoff.
 
-## 9. Deterministic Eligibility
+The terminal durable state is an Execution evidence receipt with `reviewStatus = PENDING_REVIEW`.
 
-Eligibility uses the exact current Service Package version/fingerprint and exact current Supply Capability version/fingerprint. The policy records explainable blocking checks for source currency, Provider match/status, Supply status/verification, jurisdiction, service type, effective window and availability.
+Audit finding: **PASS — `M4-E2E-001` resolved.**
 
-The deterministic fingerprint includes the policy version, exact package/provider/supply versions and resulting checks. Evaluation creates no Allocation as a side effect.
+## 8. Persistence ownership and bounded dependencies
 
-Audit finding: **PASS.**
+Persistence ownership remains unchanged:
 
-## 10. Allocation versus Provider Acceptance
+- Execution owns `0027_execution_filing_governance` and `0032_execution_provider_return_evidence`;
+- MGSN owns `0028_mgsn_provider_registry`, `0029_mgsn_service_package_eligibility`, `0030_mgsn_allocation_provider_acceptance` and `0031_mgsn_provider_return`;
+- Core Workspace identity remains Core-owned truth.
 
-Allocation is an explicit authenticated operator command. The service re-checks current Execution source truth after Eligibility, verifies exact Eligibility/Provider/Supply lineage and prevents more than one current active Allocation for the bounded Service Package path. PostgreSQL constraints and concurrency tests reinforce the service guard.
+The remediation introduces bounded HTTP dependencies between services, not database sharing. Repository persistence-boundary validation and owner-specific PostgreSQL suites remain green.
 
-Provider Acceptance is a separate record. Provider response identity is derived from the authenticated Provider Workspace principal; the provider ID is not accepted from the provider response payload. Decline preserves history, supersedes the active Allocation and permits a later explicit reallocation.
+Audit finding: **PASS — no cross-service SQL or semantic owner transfer.**
 
-Audit finding: **PASS.**
+## 9. Source lineage and deterministic eligibility
 
-## 11. Provider Return provenance and correction semantics
+Service Package admission and later Allocation continue to require current Execution source truth and exact source fingerprint lineage. Eligibility remains deterministic and explainable, tied to exact Service Package and Provider Supply Capability versions/fingerprints.
 
-Provider Return requires the exact current active Allocation, exact authenticated `ACCEPTED` Provider Acceptance and exact admitted Service Package. The authenticated Provider Workspace must resolve to the allocated Provider.
-
-A Return must include at least one artifact or structured assertion. Corrections require an explicit `supersedes` reference to the current return and cannot change the accepted Allocation/Acceptance/Service Package lineage. Historical versions remain durable.
-
-A provider assertion such as an external filing claim remains an assertion inside Provider Return evidence. It is not promoted into Official Truth.
+Eligibility does not allocate a Provider. Allocation remains a separate explicit governed command.
 
 Audit finding: **PASS.**
 
-## 12. Execution evidence receipt semantics
+## 10. Provider identity, acceptance and isolation
 
-`ProviderReturnEvidenceService` accepts only the exact current Provider Return ID/version/fingerprint and matching correlation lineage. It re-checks the exact Execution Release, requires `RELEASED_FOR_EXECUTION`, verifies the prepared Filing Execution Task Draft lineage and persists a receipt with `reviewStatus = PENDING_REVIEW`.
+Provider identity remains derived from the authenticated Provider Workspace principal. Provider-facing response/return commands do not trust caller-supplied Provider identity. Cross-Provider and cross-Workspace access fails closed.
 
-The receipt uses the canonical `evidenceHandoffAuthorityConsequences` fixture, which keeps Payment, Invoice, legal appointment, filing submission, official application/application number, office acceptance/contact, automatic Matter completion and automatic user Capability verification false.
-
-The PostgreSQL repository and M4 reliability evidence prove idempotent replay, response-loss recovery, stale/fingerprint/cross-Workspace rejection and append-only evidence audit.
-
-Audit finding: **PASS at the service/repository boundary; runtime composition is blocking and covered separately in section 16.**
-
-## 13. Authentication, Workspace and Provider isolation
-
-Gateway MGSN routes require a browser session resolved through Core Workspace Principal truth. Mutations require trusted Origin, CSRF and `execution:manage`; reads require `execution:read`. Gateway forwards a trusted internal secret and encoded Principal to MGSN.
-
-Provider-facing routes use a distinct Provider Workspace context. Provider mutations reject caller-supplied `providerId` and `providerWorkspaceId`; MGSN derives provider actor/workspace from the trusted Principal and fails closed on cross-provider reads.
-
-MGSN independently validates the trusted internal caller and Principal rather than trusting Gateway request bodies as authority.
+Provider Acceptance remains separate from Allocation and does not create a legal/professional appointment.
 
 Audit finding: **PASS.**
 
-## 14. Persistence ownership and cross-service SQL
+## 11. Provider Return and evidence semantics
 
-Migration ownership is explicit:
+Provider Return remains versioned provider evidence tied to the exact accepted Allocation and Service Package lineage. Corrections require explicit supersession and preserve history.
 
-- Execution: `0027_execution_filing_governance`, `0032_execution_provider_return_evidence`;
-- MGSN: `0028_mgsn_provider_registry`, `0029_mgsn_service_package_eligibility`, `0030_mgsn_allocation_provider_acceptance`, `0031_mgsn_provider_return`.
+Execution evidence handoff validates exact Return ID/version/fingerprint and exact Execution lineage before persisting a receipt. The receipt remains `PENDING_REVIEW`; it is not Official Truth and does not imply successful external filing.
 
-MGSN consumes Core/Execution truth through bounded interfaces/HTTP context and does not read their databases directly. Execution evidence persistence does not write MGSN tables.
+Audit finding: **PASS.**
 
-The repository persistence-boundary validator and owner-specific PostgreSQL suites pass.
+## 12. Reliability and replay
 
-Audit finding: **PASS — no cross-service SQL or semantic owner transfer identified.**
+Existing M4 reliability evidence continues to prove stale-source fail-closed behavior, concurrent Allocation serialization, durable idempotency, authenticated Provider identity, decline/reallocation history, Provider Return correction history, exact evidence handoff, append-only audit, Workspace/Provider isolation, outage behavior and repeatability.
 
-## 15. Authority-consequence audit
+The new permanent integration gate adds the previously missing service-composition proof without replacing the component reliability matrix.
 
-The canonical shared contract permits the following internal truths to progress only through their explicit governed commands:
+Audit finding: **PASS.**
+
+## 13. Authority-consequence audit
+
+Throughout the complete real-runtime path, the following are permitted only as explicit internal governed truths:
 
 - Service Package created;
 - Eligibility evaluated;
 - Provider allocated;
 - Provider accepted;
 - Provider Return created;
-- Execution evidence handed off.
+- Execution evidence handed off for review.
 
-The following remain false automatically throughout the audited path:
+The following remain false automatically:
 
 - Payment created;
 - Invoice created;
-- professional/legal appointment inferred automatically;
+- professional/legal appointment inferred;
 - filing submitted;
 - official application created;
 - official application number received;
@@ -238,95 +203,37 @@ The following remain false automatically throughout the audited path:
 - automatic Formal Matter completion;
 - automatic user Capability verification.
 
-No AI path creates Allocation, Provider Acceptance, Provider Return certification or Official Truth.
+No AI path gains authority to allocate, accept on behalf of a Provider, certify Provider Return, submit externally or create Official Truth.
 
-Audit finding: **PASS — no financial, legal-representation or Official Truth escalation found.**
+Audit finding: **PASS — no financial, legal-representation, filing or Official Truth escalation.**
 
-## 16. Blocking integration findings
+## 14. Remaining non-blocking drift
 
-### M4-INT-001 — Durable MGSN runtime is not composed
+The earlier audit identified service-local helper consequence objects using older field names while the canonical cross-service authority contract uses the frozen WP-01 vocabulary.
 
-`services/mgsn/src/main.ts` starts `createRuntime()` without supplying `MgsnHttpServices`.
+This remains a cleanup item only. The objects do not authorize mutations, all external consequences remain false, and `packages/contracts/src/provider-execution.ts` remains canonical.
 
-`createMgsnHttpRoutes()` intentionally fails closed with `503 MGSN_RUNTIME_UNCONFIGURED` when those services are absent. This fail-closed behavior is correct as a safety guard, but it means the normal MGSN process cannot currently execute the durable Provider Registry -> Service Package -> Eligibility -> Allocation -> Acceptance -> Provider Return path implemented in the service/repository modules.
+Audit classification: **NON-BLOCKING.**
 
-**Classification: RELEASE BLOCKING.**
+## 15. Blocking findings after remediation
 
-Required remediation: construct the MGSN durable runtime from the MGSN database, owned PostgreSQL repositories, a bounded Core Workspace identity source, a bounded Execution source-verification client and a bounded Execution evidence-handoff client; preserve database-per-owner isolation and the trusted internal authorization boundary.
+None.
 
-### M4-INT-002 — Execution evidence handoff has no durable runtime HTTP boundary
+- `M4-INT-001`: **RESOLVED IN PR #58**;
+- `M4-INT-002`: **RESOLVED IN PR #58**;
+- `M4-E2E-001`: **RESOLVED IN PR #58**.
 
-`ProviderReturnEvidenceService` and its PostgreSQL repository exist and are tested, but the normal Execution runtime does not compose them into a protected route that MGSN can call. `services/execution/src/main.ts` wires durable Professional Review and Filing Governance repositories only.
+## 16. Final recommendation
 
-Therefore the cross-service MGSN -> Execution handoff remains an injected service dependency in tests rather than a runnable durable service-to-service path.
+### Decision: GO
 
-**Classification: RELEASE BLOCKING.**
+The approved Milestone 4 provider-execution loop is now durably composed, bounded by owner-specific persistence, authenticated across Workspace/Provider contexts, fail-closed on stale or mismatched lineage, repeatable under hosted CI and proven end-to-end through a permanent zero-interception real-runtime gate.
 
-Required remediation: expose a trusted internal Execution evidence-handoff endpoint that binds owner persistence, exact current source validation and idempotency, then make the MGSN handoff adapter call it through the bounded service contract. Do not add cross-service SQL or reinterpret the evidence receipt as Official Truth.
+The remediation does not broaden the milestone into finance, legal appointment, automatic provider selection, external filing or Official Truth.
 
-### M4-E2E-001 — Approved full real-runtime acceptance path is missing
+**M4-WP-09 therefore recommends Milestone 4 `GO`.**
 
-The M4 delivery plan requires a real-runtime acceptance path using real Core + Gateway + Execution + MGSN + owner PostgreSQL databases with zero request interception.
-
-`apps/gateway/tests/mgsn-provider-journey.test.ts` starts live Gateway and MGSN HTTP servers, which is useful transport evidence, but injects an in-memory/stub `MgsnHttpServices` object and a stub `CoreAuthenticationClient`. It proves browser-facing policy transport but not the complete durable provider-execution loop.
-
-The M4-WP-08 reliability matrix separately proves durable owner components, but it does not contain a full multi-service durable path that bridges the missing runtime composition above.
-
-**Classification: RELEASE BLOCKING.**
-
-Required remediation: add one exact-head zero-interception integration/real-runtime path that exercises the normal durable service composition through Core/Gateway/Execution/MGSN and owner PostgreSQL databases, including restart/recovery and the final `PENDING_REVIEW` evidence receipt.
-
-## 17. Documentation drift
-
-The audit found repository-status documentation lagging behind merged implementation truth:
-
-- `README.md` still describes Milestone 4 as planning/proposal-only;
-- `docs/planning/TASK-INDEX.md` stops current M4 status after WP-04;
-- TASK 029 still says `PROPOSED_FOR_OWNER_APPROVAL` although PR #48 approved it;
-- M4 implementation traceability still lists WP-08 as current and WP-09 as not started.
-
-This is **non-blocking documentation drift**. The M4-WP-09 audit branch reconciles those current-status documents without rewriting the historical proposal-state meaning of the original scope-lock/delivery-plan/plan artifacts.
-
-Audit classification: **NON-BLOCKING DOCUMENTATION DRIFT — REMEDIATED BY M4-WP-09.**
-
-## 18. Reproducibility statement
-
-The repository already provides reproducible component evidence through:
-
-```bash
-pnpm check
-node scripts/run-milestone4-reliability.mjs
-```
-
-and the owner-specific PostgreSQL modes used by `.github/workflows/milestone-4-reliability.yml`.
-
-Hosted evidence for the audited exact implementation tree is recorded by the successful run IDs in section 5.
-
-After runtime-integration remediation, the remediation must add a repository-defined command for the full durable multi-service provider execution path and place it in hosted exact-head CI. The final audit must cite that exact tested head/tree and successful run.
-
-## 19. Required remediation acceptance
-
-Milestone 4 may be re-audited for GO when one exact merged implementation tree proves all of the following:
-
-1. normal durable MGSN startup constructs Provider Registry, Service Package/Eligibility, Allocation/Acceptance and Provider Return services from MGSN-owned persistence;
-2. MGSN uses bounded HTTP/service adapters for Core identity and Execution source/evidence dependencies, never cross-service SQL;
-3. normal durable Execution startup exposes and persists the exact Provider Return evidence-handoff boundary;
-4. a real authenticated Gateway path reaches the durable MGSN service and provider identity remains Principal-derived;
-5. one zero-interception exact-head integration path reaches `PENDING_REVIEW` Execution evidence through real Core + Gateway + Execution + MGSN + owner PostgreSQL databases;
-6. restart/replay remains deterministic and all existing M2/M3/M4 reliability/browser gates remain green;
-7. canonical no-finance/no-legal-appointment/no-Official-Truth consequences remain false.
-
-No new Payment, Invoice, external filing, trademark-office credential or Official Truth scope is needed to close these findings.
-
-## 20. Final recommendation
-
-### Decision: FIX
-
-Milestone 4's domain model, persistence ownership, source lineage, identity boundaries, idempotency/concurrency controls and authority separation are strong enough to continue with bounded remediation. No evidence supports a HOLD for data corruption, owner-boundary violation or authority escalation.
-
-The milestone nevertheless cannot receive GO while the approved provider-execution loop is not composed in the normal durable service runtime and the required full real-runtime evidence does not exist.
-
-The next repository action should therefore be a narrowly scoped Milestone 4 integration remediation that closes `M4-INT-001`, `M4-INT-002` and `M4-E2E-001`, followed by a rerun of this independent audit against the remediated merged baseline.
+This recommendation means the approved M4 engineering scope is complete enough to close the milestone and proceed to the next owner-approved milestone. It does not itself create a tag, publish a release or perform a production/external action.
 
 ### Owner actions not performed by this audit
 
