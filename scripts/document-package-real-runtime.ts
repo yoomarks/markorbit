@@ -130,6 +130,9 @@ async function main() {
   const executionPool = executionDatabase.getPool();
   await executionPool.query(
     `DROP TABLE IF EXISTS
+         execution_provider_return_evidence_audit,
+         execution_provider_return_evidence_commands,
+         execution_provider_return_evidence_receipts,
        filing_execution_task_drafts,
        execution_releases,
        filing_authorizations,

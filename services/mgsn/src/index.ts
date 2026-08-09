@@ -6,6 +6,8 @@ export * from './service-package-eligibility.js';
 export * from './service-package-eligibility-postgres.js';
 export * from './allocation-provider-acceptance.js';
 export * from './allocation-provider-acceptance-postgres.js';
+export * from './provider-return.js';
+export * from './provider-return-postgres.js';
 
 export const serviceManifest = Object.freeze({
   name: 'mgsn',

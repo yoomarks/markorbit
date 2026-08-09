@@ -117,6 +117,9 @@ async function main() {
   const executionPool = executionDatabase.getPool();
   await executionPool.query(
     `DROP TABLE IF EXISTS
+       execution_provider_return_evidence_audit,
+       execution_provider_return_evidence_commands,
+       execution_provider_return_evidence_receipts,
        filing_execution_task_drafts,
        execution_releases,
        filing_authorizations,
@@ -126,6 +129,9 @@ async function main() {
        professional_review_commands,
        professional_review_cases
      CASCADE`
+  );
+  await executionPool.query(
+    'DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE'
   );
   await executionPool.query(
     'DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE'

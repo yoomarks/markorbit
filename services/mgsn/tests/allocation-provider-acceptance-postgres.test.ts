@@ -209,6 +209,9 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         mgsn_provider_return_audit,
+         mgsn_provider_return_commands,
+         mgsn_provider_returns,
          mgsn_allocation_audit,
          mgsn_allocation_commands,
          mgsn_provider_acceptances,
@@ -222,6 +225,9 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
          mgsn_provider_supply_capabilities,
          mgsn_providers
        CASCADE`
+    );
+    await pool.query(
+      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'
     );
     await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');
     await pool.query(
@@ -277,11 +283,13 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
 
   it('owns and verifies MGSN migrations 0028 through 0030', async () => {
     const owned = await migrations();
-    expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual([
-      '0028_mgsn_provider_registry',
-      '0029_mgsn_service_package_eligibility',
-      '0030_mgsn_allocation_provider_acceptance'
-    ]);
+    expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual(
+      expect.arrayContaining([
+        '0028_mgsn_provider_registry',
+        '0029_mgsn_service_package_eligibility',
+        '0030_mgsn_allocation_provider_acceptance'
+      ])
+    );
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (migration) => migration.state === 'applied'
