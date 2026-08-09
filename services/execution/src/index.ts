@@ -178,7 +178,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
     if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
       throw new HttpError(
         401,
-        'UNTRUSTED_INTERNAL_CALDER',
+        'UNTRUSTED_INTERNAL_CALLER',
         'Trusted internal authorization is required.'
       );
     let principal: WorkspacePrincipal;
@@ -238,7 +238,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
       adapter as unknown as FilingExecutionTaskDraftRepository,
       options.preparationLockSource ??
         httpPreparationLockSource(
-          options.markRegUrl ?? process.env.MARKRK_URL ?? 'http://127.0.0.1:4105',
+          options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105',
           principal,
           secret
         ),
