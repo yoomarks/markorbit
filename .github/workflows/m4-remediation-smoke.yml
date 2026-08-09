@@ -1,0 +1,34 @@
+name: M4 remediation smoke
+
+on:
+  push:
+    branches:
+      - m4-integration-remediation
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-integration-remediation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @markorbit/core-service typecheck
+      - run: pnpm --filter @markorbit/execution-service typecheck
+      - run: pnpm --filter @markorbit/mgsn-service typecheck
+      - run: pnpm --filter @markorbit/core-service test
+      - run: pnpm --filter @markorbit/execution-service test
+      - run: pnpm --filter @markorbit/mgsn-service test
+      - run: pnpm --filter @markorbit/core-service build
+      - run: pnpm --filter @markorbit/execution-service build
+      - run: pnpm --filter @markorbit/mgsn-service build
