@@ -76,7 +76,10 @@ const event = {
   formalMatter: admission.formalMatter,
   version: 1,
   source: {
-    reviewedSourceAdmission: { id: admission.reviewedSourceAdmissionId, version: admission.version },
+    reviewedSourceAdmission: {
+      id: admission.reviewedSourceAdmissionId,
+      version: admission.version
+    },
     admissionFingerprintSha256: admission.admissionFingerprintSha256,
     evidenceReviewDecision: { id: decision.evidenceReviewDecisionId, version: decision.version },
     evidenceReceipt: source.evidenceReceipt,
@@ -112,11 +115,26 @@ const view = {
 
 describe('Milestone 5 evidence lifecycle contract', () => {
   it('locks bounded vocabulary', () => {
-    expect(evidenceReviewOutcomes).toEqual(['ADMITTED_FOR_INTERNAL_USE', 'CORRECTION_REQUIRED', 'REJECTED']);
-    expect(lifecycleProjectionStates).toEqual(['INTERNAL_PROCESSING', 'REVIEWED_PROVIDER_EVIDENCE', 'CUSTOMER_ACTION_NEEDED', 'WAITING_NO_ACTION', 'CORRECTION_OR_REVIEW_ISSUE']);
+    expect(evidenceReviewOutcomes).toEqual([
+      'ADMITTED_FOR_INTERNAL_USE',
+      'CORRECTION_REQUIRED',
+      'REJECTED'
+    ]);
+    expect(lifecycleProjectionStates).toEqual([
+      'INTERNAL_PROCESSING',
+      'REVIEWED_PROVIDER_EVIDENCE',
+      'CUSTOMER_ACTION_NEEDED',
+      'WAITING_NO_ACTION',
+      'CORRECTION_OR_REVIEW_ISSUE'
+    ]);
     expect(recommendedActionStatuses).toEqual(['OPEN', 'ACKNOWLEDGED', 'DISMISSED', 'SUPPRESSED']);
-    const vocabulary = [...evidenceReviewOutcomes, ...lifecycleProjectionStates, ...recommendedActionStatuses];
-    for (const state of ['FILED', 'OFFICIAL', 'PAID', 'INVOICED', 'EXECUTED']) expect(vocabulary).not.toContain(state);
+    const vocabulary = [
+      ...evidenceReviewOutcomes,
+      ...lifecycleProjectionStates,
+      ...recommendedActionStatuses
+    ];
+    for (const state of ['FILED', 'OFFICIAL', 'PAID', 'INVOICED', 'EXECUTED'])
+      expect(vocabulary).not.toContain(state);
   });
 
   it('preserves exact M4 evidence lineage with a distinct review receipt identity', () => {
@@ -175,14 +193,46 @@ describe('Milestone 5 evidence lifecycle contract', () => {
   });
 
   it('locks controlled failure vocabulary', () => {
-    expect(evidenceLifecycleErrorCodes).toEqual(['STALE_SOURCE', 'SOURCE_VERSION_MISMATCH', 'SOURCE_FINGERPRINT_MISMATCH', 'PERMISSION_DENIED', 'POLICY_DENIED', 'IDEMPOTENCY_CONFLICT', 'VERSION_CONFLICT', 'REVIEW_DECISION_NOT_ADMISSIBLE', 'LIFECYCLE_SOURCE_NOT_ADMITTED', 'RECOMMENDATION_SOURCE_STALE', 'PERSISTENCE_UNAVAILABLE', 'DEPENDENCY_UNAVAILABLE']);
+    expect(evidenceLifecycleErrorCodes).toEqual([
+      'STALE_SOURCE',
+      'SOURCE_VERSION_MISMATCH',
+      'SOURCE_FINGERPRINT_MISMATCH',
+      'PERMISSION_DENIED',
+      'POLICY_DENIED',
+      'IDEMPOTENCY_CONFLICT',
+      'VERSION_CONFLICT',
+      'REVIEW_DECISION_NOT_ADMISSIBLE',
+      'LIFECYCLE_SOURCE_NOT_ADMITTED',
+      'RECOMMENDATION_SOURCE_STALE',
+      'PERSISTENCE_UNAVAILABLE',
+      'DEPENDENCY_UNAVAILABLE'
+    ]);
   });
 
   it('keeps all internal stages outside external authority', () => {
-    expect(evidenceReviewAuthorityConsequences).toMatchObject({ evidenceReviewDecisionRecorded: true, reviewedSourceAdmitted: false, filingSubmitted: false });
-    expect(reviewedSourceAdmissionAuthorityConsequences).toMatchObject({ reviewedSourceAdmitted: true, lifecycleProjectionCreated: false, trademarkOfficeAcceptance: false });
-    expect(lifecycleProjectionAuthorityConsequences).toMatchObject({ lifecycleProjectionCreated: true, recommendedActionCreated: false, formalMatterCompletedAutomatically: false });
-    expect(recommendedActionAuthorityConsequences).toMatchObject({ recommendedActionCreated: true, recommendedActionExecutedAutomatically: false, paymentCreated: false, invoiceCreated: false, filingSubmitted: false, userCapabilityVerifiedAutomatically: false });
+    expect(evidenceReviewAuthorityConsequences).toMatchObject({
+      evidenceReviewDecisionRecorded: true,
+      reviewedSourceAdmitted: false,
+      filingSubmitted: false
+    });
+    expect(reviewedSourceAdmissionAuthorityConsequences).toMatchObject({
+      reviewedSourceAdmitted: true,
+      lifecycleProjectionCreated: false,
+      trademarkOfficeAcceptance: false
+    });
+    expect(lifecycleProjectionAuthorityConsequences).toMatchObject({
+      lifecycleProjectionCreated: true,
+      recommendedActionCreated: false,
+      formalMatterCompletedAutomatically: false
+    });
+    expect(recommendedActionAuthorityConsequences).toMatchObject({
+      recommendedActionCreated: true,
+      recommendedActionExecutedAutomatically: false,
+      paymentCreated: false,
+      invoiceCreated: false,
+      filingSubmitted: false,
+      userCapabilityVerifiedAutomatically: false
+    });
   });
 
   it('freezes AI as assistance only', () => {

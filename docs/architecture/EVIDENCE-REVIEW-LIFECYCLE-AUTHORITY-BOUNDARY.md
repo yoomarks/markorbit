@@ -135,12 +135,12 @@ No service may read another service's database. Cross-service transfer uses exac
 
 The shared fixtures make the following consequences test-visible:
 
-| Internal stage | May become true | Must remain false automatically |
-| --- | --- | --- |
-| Evidence Review Decision | review decision recorded | Provider Return certification, Payment/Invoice, legal appointment, Filing Submission, Official Truth, Matter completion, Capability verification |
-| Reviewed Source Admission | reviewed source admitted | all external/financial consequences and office truth |
-| Lifecycle Projection | lifecycle projection created | official application/application-number/office acceptance truth and automatic completion |
-| Recommended Action | recommendation created | recommendation execution, protected external action, Payment/Invoice, legal appointment, filing, Official Truth |
+| Internal stage            | May become true              | Must remain false automatically                                                                                                                  |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Evidence Review Decision  | review decision recorded     | Provider Return certification, Payment/Invoice, legal appointment, Filing Submission, Official Truth, Matter completion, Capability verification |
+| Reviewed Source Admission | reviewed source admitted     | all external/financial consequences and office truth                                                                                             |
+| Lifecycle Projection      | lifecycle projection created | official application/application-number/office acceptance truth and automatic completion                                                         |
+| Recommended Action        | recommendation created       | recommendation execution, protected external action, Payment/Invoice, legal appointment, filing, Official Truth                                  |
 
 No M5 internal state means paid, invoiced, professionally appointed, filed, officially accepted, officially registered or completed.
 
