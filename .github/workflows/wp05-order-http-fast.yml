@@ -1,0 +1,35 @@
+name: WP05 Order HTTP fast
+
+on:
+  push:
+    branches: [m3-wp-05-gateway-order-api]
+
+permissions:
+  contents: read
+
+jobs:
+  order-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_markreg_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_markreg_test"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      MARKREG_ORDER_HTTP_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:order:http
