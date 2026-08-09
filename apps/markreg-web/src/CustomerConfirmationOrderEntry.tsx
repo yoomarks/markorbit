@@ -81,8 +81,8 @@ export function CustomerConfirmationOrderEntry({
 
   const hasCommercialSnapshot = Boolean(
     confirmation &&
-      typeof (confirmation as { quoteSnapshot?: unknown }).quoteSnapshot === 'object' &&
-      (confirmation as { quoteSnapshot?: unknown }).quoteSnapshot
+    typeof (confirmation as { quoteSnapshot?: unknown }).quoteSnapshot === 'object' &&
+    (confirmation as { quoteSnapshot?: unknown }).quoteSnapshot
   );
 
   if (!hasCommercialSnapshot)
