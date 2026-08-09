@@ -1,5 +1,7 @@
-# mgsn
+# MGSN service
 
-Governed provider network, eligibility, allocation, acceptance and return service.
+MGSN owns governed private provider-network operational truth: Provider Registry, Supply Capability, Service Package, Eligibility, Allocation, Provider Acceptance and Provider Return.
 
-This workspace is an independent deployable service. It must not import another service's implementation or read another service's database.
+M4-WP-03 adds the first durable MGSN boundary: Provider Registry and versioned Supply Capability in the MGSN owner database. Provider identity references Core Workspace truth through a bounded service dependency; MGSN does not duplicate Core identity or read another service database.
+
+Provider Supply Capability is private supply-side operating truth only. It is not user Capability evidence, professional qualification, legal appointment, Allocation, Filing, Official Truth, Payment or Invoice truth.

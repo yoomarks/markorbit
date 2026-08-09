@@ -1,5 +1,8 @@
 import { createServiceRuntime } from '@markorbit/service-kit';
 
+export * from './provider-registry.js';
+export * from './provider-registry-postgres.js';
+
 export const serviceManifest = Object.freeze({
   name: 'mgsn',
   port: Number(process.env.PORT ?? '4106'),
