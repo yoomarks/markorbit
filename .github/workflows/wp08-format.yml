@@ -34,3 +34,5 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "style(m3): format WP08 audit documents"
           git push origin HEAD:m3-wp-08-integration-authority-audit
+
+# Temporary formatter for the audit branch; remove before merge.
