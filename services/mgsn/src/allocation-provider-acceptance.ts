@@ -20,6 +20,7 @@ import type {
 } from './provider-registry.js';
 import type {
   EligibilityEvaluationRecord,
+  ExecutionSourceAdmissionSource,
   ServicePackageEligibilityRepository,
   ServicePackageRecord
 } from './service-package-eligibility.js';
@@ -106,21 +107,6 @@ export interface RespondToAllocationServiceCommand extends RespondToAllocationCo
   principal: Readonly<AuthenticatedProviderPrincipal>;
 }
 
-export const allocationProviderAcceptanceAuthorityConsequences = Object.freeze({
-  servicePackageCreated: true,
-  eligibilityEvaluated: true,
-  providerAllocated: true,
-  providerAccepted: true,
-  legalProfessionalAppointmentCreated: false,
-  paymentCreated: false,
-  invoiceCreated: false,
-  filingSubmitted: false,
-  officialApplicationCreated: false,
-  formalMatterCompletedAutomatically: false,
-  userCapabilityVerifiedAutomatically: false,
-  officialTruthCreated: false
-});
-
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const sha256Pattern = /^[0-9a-f]{64}$/;
 
@@ -183,6 +169,7 @@ export class AllocationProviderAcceptanceService {
     private readonly repository: AllocationProviderAcceptanceRepository,
     private readonly servicePackageEligibility: ServicePackageEligibilityRepository,
     private readonly providerRegistry: ProviderRegistryRepository,
+    private readonly executionSource: ExecutionSourceAdmissionSource,
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly allocationIdFactory: () => AllocationId = () => `allocation_${randomUUID()}`,
     private readonly providerAcceptanceIdFactory: () => ProviderAcceptanceId = () =>
@@ -230,6 +217,23 @@ export class AllocationProviderAcceptanceService {
       expectedPackageFingerprint,
       command.correlationId
     );
+    const executionVerification = await this.executionSource.verifyCurrentSource(
+      servicePackage.source
+    );
+    if (executionVerification.status !== 'CURRENT')
+      throw new AllocationProviderAcceptanceError(
+        'STALE_SOURCE',
+        executionVerification.reason ?? 'Execution source is no longer current.',
+        409
+      );
+    if (
+      executionVerification.exactSourceFingerprintSha256 !== servicePackage.sourceFingerprintSha256
+    )
+      throw new AllocationProviderAcceptanceError(
+        'SOURCE_FINGERPRINT_MISMATCH',
+        'Execution source fingerprint changed after Eligibility Evaluation.',
+        409
+      );
 
     const evaluation = await this.requireEligibilityEvaluation(command.eligibilityEvaluationId);
     this.assertEligibilityForAllocation(

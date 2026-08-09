@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { ProviderExecutionSourceSnapshot } from '@markorbit/contracts/provider-execution';
+import {
+  allocationAuthorityConsequences,
+  providerAcceptanceAuthorityConsequences,
+  type ProviderExecutionSourceSnapshot
+} from '@markorbit/contracts/provider-execution';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
@@ -19,10 +23,7 @@ import {
   type ExecutionSourceVerification
 } from '../src/service-package-eligibility.js';
 import { PostgresAllocationProviderAcceptanceRepository } from '../src/allocation-provider-acceptance-postgres.js';
-import {
-  AllocationProviderAcceptanceService,
-  allocationProviderAcceptanceAuthorityConsequences
-} from '../src/allocation-provider-acceptance.js';
+import { AllocationProviderAcceptanceService } from '../src/allocation-provider-acceptance.js';
 
 const url = process.env.MGSN_TEST_DATABASE_URL;
 const required = process.env.MGSN_ALLOCATION_POSTGRES_REQUIRED === '1';
@@ -100,6 +101,7 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
       allocationRepository(),
       packageRepository(),
       providerRepository(),
+      { verifyCurrentSource: () => Promise.resolve(structuredClone(sourceVerification)) },
       () => clock,
       () => `allocation_wp05_${++allocationSequence}`,
       () => `provider-acceptance_wp05_${++acceptanceSequence}`
@@ -309,7 +311,16 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
     await expect(allocate(sourceValue, 'allocation-create', allocationService())).resolves.toEqual(
       allocation
     );
-    expect(allocationProviderAcceptanceAuthorityConsequences).toMatchObject({
+    expect(allocationAuthorityConsequences).toMatchObject({
+      providerAllocated: true,
+      providerAccepted: false,
+      legalProfessionalAppointmentCreated: false,
+      paymentCreated: false,
+      invoiceCreated: false,
+      filingSubmitted: false,
+      officialTruthCreated: false
+    });
+    expect(providerAcceptanceAuthorityConsequences).toMatchObject({
       providerAllocated: true,
       providerAccepted: true,
       legalProfessionalAppointmentCreated: false,
@@ -318,6 +329,21 @@ suite('M4-WP-05 durable Allocation and authenticated Provider Acceptance', () =>
       filingSubmitted: false,
       officialTruthCreated: false
     });
+  });
+
+  it('fails closed when Execution source becomes stale after Eligibility Evaluation', async () => {
+    const sourceValue = await createEligibleSource();
+    sourceVerification = {
+      status: 'STALE',
+      reason: 'Execution Release changed after Eligibility Evaluation.'
+    };
+    await expect(allocate(sourceValue, 'allocation-after-source-stale')).rejects.toMatchObject({
+      code: 'STALE_SOURCE',
+      status: 409
+    });
+    expect(
+      await allocationRepository().findActiveAllocation(sourceValue.servicePackage.servicePackageId)
+    ).toBeUndefined();
   });
 
   it('fails closed when current Provider or Supply truth changed after eligibility', async () => {
