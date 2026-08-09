@@ -19,7 +19,7 @@ import {
 
 async function safeBody(response: Response): Promise<Record<string, unknown>> {
   try {
-    const value = await response.json();
+    const value: unknown = await response.json();
     return value && typeof value === 'object' && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : {};
