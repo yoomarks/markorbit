@@ -3,7 +3,9 @@ export const MARKREG_VIEWS = [
   'recommendation-plan',
   'quote',
   'customer-confirmation',
+  'order',
   'matter-draft',
+  'formal-matter',
   'documents',
   'preparation-lock',
   'filing-authorization'
@@ -33,7 +35,9 @@ const keys: Record<MarkregView, [string, string]> = {
   'recommendation-plan': ['recommendationId', 'recommendationVersion'],
   quote: ['quoteId', 'quoteVersion'],
   'customer-confirmation': ['confirmationId', 'confirmationVersion'],
+  order: ['orderId', 'orderVersion'],
   'matter-draft': ['matterDraftId', 'matterDraftVersion'],
+  'formal-matter': ['formalMatterId', 'formalMatterVersion'],
   documents: ['professionalReviewCaseId', 'reviewDecisionVersion'],
   'preparation-lock': ['preparationLockId', 'preparationLockVersion'],
   'filing-authorization': ['filingAuthorizationId', 'filingAuthorizationVersion']

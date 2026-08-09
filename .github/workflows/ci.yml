@@ -97,6 +97,8 @@ jobs:
         run: pnpm test:order:http
       - name: Run typed Order browser client tests
         run: pnpm test:order:client
+      - name: Run durable Order journey component tests
+        run: pnpm test:order:journey
       - run: pnpm test:audit-idempotency:postgres
       - run: pnpm test:audit-idempotency:postgres
       - run: pnpm test:audit-idempotency:http
@@ -142,6 +144,8 @@ jobs:
       - run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --reporter=line
       - run: pnpm test:document-package:no-interception
       - run: node --test scripts/playwright-suite-boundary.test.mjs
+      - name: Run durable Order journey real runtime
+        run: pnpm test:order:journey:browser
 
   validate:
     runs-on: ubuntu-latest
