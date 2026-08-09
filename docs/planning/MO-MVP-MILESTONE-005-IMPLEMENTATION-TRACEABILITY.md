@@ -7,7 +7,7 @@
 
 ## Work package status
 
-- **M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary:** `IMPLEMENTED_IN_CURRENT_CHANGESET`. Evidence: `packages/contracts/src/evidence-lifecycle.ts`, contract tests and authority boundary docs.
+- **M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary:** `IMPLEMENTED_IN_PR_61`. Evidence: `packages/contracts/src/evidence-lifecycle.ts`, contract tests and authority boundary docs.
 - **M5-WP-02 — Durable authenticated Execution Evidence Review Decision and correction-request state:** `NOT_STARTED`.
 - **M5-WP-03 — Durable MarkReg Lifecycle Projection from exact admitted reviewed sources:** `NOT_STARTED`.
 - **M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics:** `NOT_STARTED`.
