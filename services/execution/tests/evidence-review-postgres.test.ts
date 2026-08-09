@@ -138,9 +138,14 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
 
   async function seedReceipt(value = receipt) {
     const key = `seed-${value.evidenceHandoff.evidenceHandoffId}`;
-    const requestFingerprint = value.evidenceHandoff.evidenceHandoffId === evidenceHandoffId ? 'e'.repeat(64) : 'f'.repeat(64);
+    const requestFingerprint =
+      value.evidenceHandoff.evidenceHandoffId === evidenceHandoffId
+        ? 'e'.repeat(64)
+        : 'f'.repeat(64);
     await evidenceRepository().saveReceipt(value, key, requestFingerprint);
-    const persisted = await evidenceRepository().findReceipt(value.evidenceHandoff.evidenceHandoffId);
+    const persisted = await evidenceRepository().findReceipt(
+      value.evidenceHandoff.evidenceHandoffId
+    );
     expect(persisted).toEqual(value);
   }
 
