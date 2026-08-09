@@ -1,0 +1,49 @@
+name: WP02 runtime patch v3
+
+on:
+  push:
+    branches: [m4-wp-02-durable-execution-filing-governance]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m4-wp-02-durable-execution-filing-governance
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Apply corrected runtime patch
+        run: |
+          python - <<'PY'
+          import base64, re
+          from pathlib import Path
+
+          helper = Path('.github/workflows/wp02-runtime-patch-v2.yml').read_text()
+          match = re.search(r"b64decode\('([^']+)'\)", helper)
+          if not match:
+              raise SystemExit('unable to locate encoded WP02 patch')
+          script = base64.b64decode(match.group(1)).decode()
+          script = script.replace(
+              "        correlationId: request.headers['x-correlation-id'],\n",
+              "        ...(request.headers['x-correlation-id']\n          ? { correlationId: request.headers['x-correlation-id'] }\n          : {}),\n"
+          )
+          script = script.replace('          landle: (r) =>', '          handle: (r) =>')
+          exec(compile(script, '<wp02-runtime-patch-v3>', 'exec'))
+          PY
+      - run: pnpm exec prettier --write services/execution/src/index.ts services/execution/src/main.ts
+      - run: pnpm --filter @markorbit/contracts typecheck && pnpm --filter @markorbit/execution-service typecheck
+      - name: Commit runtime patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/execution/src/index.ts services/execution/src/main.ts
+          git commit -m "feat(m4): authenticate durable Execution filing governance"
+          git push origin HEAD:m4-wp-02-durable-execution-filing-governance
