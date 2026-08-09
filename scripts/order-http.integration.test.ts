@@ -233,8 +233,12 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
       },
       `create-${suffix}`
     );
-    expect(create.status).toBe(201);
-    const draft = (await create.json()) as { orderId: string; version: number };
+    const createBody = (await create.json()) as { orderId?: string; version?: number; code?: string; message?: string };
+    expect({ status: create.status, body: createBody }).toMatchObject({
+      status: 201,
+      body: { orderId: expect.any(String), version: 1 }
+    });
+    const draft = createBody as { orderId: string; version: number };
     const pending = await request(
       managerToken,
       managerCsrf,
