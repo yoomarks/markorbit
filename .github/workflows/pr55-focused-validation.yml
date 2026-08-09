@@ -1,0 +1,40 @@
+name: PR55 focused validation
+on:
+  push:
+    branches:
+      - agent/m4-wp-07-authenticated-gateway-provider-journey
+    paths:
+      - .github/workflows/pr55-focused-validation.yml
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m4-wp-07-authenticated-gateway-provider-journey
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP07 files
+        run: pnpm exec prettier --write apps/gateway/src/index.ts apps/gateway/src/mgsn-http.ts apps/gateway/tests/mgsn-provider-journey.test.ts services/mgsn/src/http.ts services/mgsn/src/index.ts services/mgsn/tests/http-boundary.test.ts docs/tasks/MO-MVP-M4-WP-07-AUTHENTICATED-GATEWAY-PROVIDER-JOURNEY.md docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.md docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.json
+      - run: pnpm --filter @markorbit/mgsn-service typecheck
+      - run: pnpm --filter @markorbit/gateway typecheck
+      - run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/http-boundary.test.ts
+      - run: pnpm --filter @markorbit/gateway exec vitest run tests/mgsn-provider-journey.test.ts
+      - name: Commit validated formatting and remove helper workflow
+        run: |
+          rm .github/workflows/pr55-focused-validation.yml
+          git config user.name "markorbit-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "test: validate authenticated provider journey"
+            git push origin HEAD:agent/m4-wp-07-authenticated-gateway-provider-journey
+          fi
