@@ -102,12 +102,26 @@
   - Evidence: `docs/audits/MO-MVP-MILESTONE-002-INTEGRATION-AUDIT.md`.
   - The audit did not freeze, tag or publish Milestone 2; those remain explicit owner actions.
 
-## Milestone 3 planning
+## Milestone 3
 
-- TASK 028 — Milestone 3 scope and architecture lock (**planning Draft PR**)
-  - Proposed direction: `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`.
+- TASK 028 — Milestone 3 scope and architecture lock (**approved by merge of PR #39**)
+  - Approved direction: `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`.
   - Scope: `docs/planning/MO-MVP-MILESTONE-003-SCOPE-LOCK.md`.
   - Delivery graph: milestone-local work packages `M3-WP-01` through `M3-WP-08` in `docs/planning/MO-MVP-MILESTONE-003-DELIVERY-PLAN.md`.
   - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-003-PLAN.json`.
-  - Order becomes the governed commercial service request; Payment, Invoice, provider appointment and external Filing remain outside Milestone 3.
-  - TASK 028 is planning only; implementation starts only after owner approval.
+  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-003-IMPLEMENTATION-TRACEABILITY.{md,json}`.
+- M3-WP-01 — Order contract and canonical state boundary (**merged in PR #40**)
+- M3-WP-02 — Durable MarkReg Order persistence (**merged in PR #41**)
+- M3-WP-03 — Protected Order service lifecycle (**merged in PR #42**)
+- M3-WP-04 — Atomic governed Order-to-Matter conversion/link (**merged in PR #43**)
+- M3-WP-05 — Authenticated Gateway Order API and typed client (**merged in PR #44**)
+- M3-WP-06 — Durable markreg.com Order journey (**merged in PR #45**)
+- M3-WP-07 — Reliability and migration matrix (**merged in PR #46; exact-tree hosted evidence passed**)
+  - Audited implementation baseline: `60f2a1621ca135ab882794f5f369b038ec136f0c`; tree `be356c3a6efcaaedaec140a70beeb02208173eb7`.
+  - Hosted successful runs: validation `31288159702`, Milestone 3 reliability `31288159708`, Milestone 2 reliability `31288159706`, Browser and Visual Validation `31288159705`.
+- M3-WP-08 — Independent integration and authority audit (**GO recommendation**)
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-003-INTEGRATION-AUDIT.{md,json}`.
+  - No product/runtime behavior is added by this work package.
+  - No Git tag, release, deployment freeze, Payment, Invoice, provider appointment or external filing authority is created by the audit.
+
+Milestone 3 preserves `Order != Matter != Payment != Invoice != Filing`; `Confirmed` is not paid and `MatterCreated` is not filed.

@@ -62,14 +62,22 @@ pnpm infra:down
 
 ## Current milestone
 
-`MO-MVP-TASK-028 — Milestone 3 scope and architecture lock`
+**MO MVP Milestone 3 — Durable Commercial Order and Matter Linkage**
 
-Milestone 2 completed its merged integration audit with a **GO** recommendation. TASK 028 is a planning-only proposal for the next milestone and recommends `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`: a durable governed Order plus an explicit Order-to-Formal-Matter relationship, while Payment, Invoice, provider appointment and external Filing remain out of scope.
+TASK 028 / PR #39 approved `DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE`. M3-WP-01 through M3-WP-07 are merged, and M3-WP-08 independently audits the exact merged implementation with a **GO** recommendation.
+
+Milestone 3 now proves an authenticated Workspace path from exact confirmed commercial source → durable governed Order → explicit confirmation → `ReadyForMatter` → atomic internal Formal Matter create/link → restart/recovery, while preserving:
+
+`Order != Matter != Payment != Invoice != Filing`
+
+Payment, Invoice, provider appointment, external Filing and official trademark-office truth remain outside the implemented Milestone 3 authority boundary.
 
 See:
 
 - `docs/planning/MO-MVP-MILESTONE-003-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-003-DELIVERY-PLAN.md`;
-- `docs/planning/MO-MVP-MILESTONE-003-PLAN.json`.
+- `docs/planning/MO-MVP-MILESTONE-003-IMPLEMENTATION-TRACEABILITY.md`;
+- `docs/validation/MO-MVP-MILESTONE-003-RELIABILITY-MATRIX.md`;
+- `docs/audits/MO-MVP-MILESTONE-003-INTEGRATION-AUDIT.md`.
 
-No Milestone 3 implementation starts until the planning direction is approved.
+The M3-WP-08 audit does not create a Git tag, publish a release or freeze a deployment. Any next milestone or external-authority capability requires a separate explicit scope decision.

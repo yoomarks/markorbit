@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "milestone": "MO-MVP-MILESTONE-003",
+  "direction": "DURABLE_COMMERCIAL_ORDER_AND_MATTER_LINKAGE",
+  "scopeLock": {
+    "task": "TASK 028",
+    "pr": 39,
+    "head": "4074b9b6a53ebf507c39f519b3fb9963dfba0c87",
+    "merge": "46ae8ddc7b3d6e6f44f53bcfdf8bf8a38de78c4d",
+    "status": "APPROVED_BY_MERGE"
+  },
+  "workPackages": [
+    {
+      "id": "M3-WP-01",
+      "pr": 40,
+      "head": "718bdc7ba8fe490df2df0afdb026f5805b411208",
+      "merge": "5c6e8ad00c7a84aaaf995298b07d5ec91f79e587",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-02",
+      "pr": 41,
+      "head": "fcd885532030e0453521f984fd2b8f7f197bc04c",
+      "merge": "dde1d0798fa480644da46d8eac36210683a6a034",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-03",
+      "pr": 42,
+      "head": "a7fcff519f8cbdfa5fe62313a65f5e2485cf5c22",
+      "merge": "b527df8b880e26a8cb98525507f8ac591bb36256",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-04",
+      "pr": 43,
+      "head": "d7d47f0f65dc1fd220176fa29aabf22aa45576e6",
+      "merge": "7667c5731e6042b31a0bf48310f394d5502bb0ca",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-05",
+      "pr": 44,
+      "head": "0ef41d028ab4c94f7c68a5249e3be89562cd9b1f",
+      "merge": "961a4a00e5de51e4a54f3682dbe077c7b5a68c14",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-06",
+      "pr": 45,
+      "head": "71e111613ea713d1d5469ca43af82ae84fb1773c",
+      "merge": "018f4a1d93cd0237feb3b5a9684bb2fbe388c8ee",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-07",
+      "pr": 46,
+      "head": "3d121a4802649a7a92b0b30b1d28eaa82e49562a",
+      "merge": "60f2a1621ca135ab882794f5f369b038ec136f0c",
+      "tree": "be356c3a6efcaaedaec140a70beeb02208173eb7",
+      "status": "MERGED"
+    },
+    {
+      "id": "M3-WP-08",
+      "status": "AUDIT_GO_RECOMMENDATION",
+      "productChanges": false
+    }
+  ],
+  "auditedBaseline": {
+    "commit": "60f2a1621ca135ab882794f5f369b038ec136f0c",
+    "tree": "be356c3a6efcaaedaec140a70beeb02208173eb7",
+    "testedHead": "3d121a4802649a7a92b0b30b1d28eaa82e49562a",
+    "testedHeadTree": "be356c3a6efcaaedaec140a70beeb02208173eb7",
+    "exactTreeIdentity": true
+  },
+  "hostedEvidence": {
+    "validation": 31288159702,
+    "milestone3Reliability": 31288159708,
+    "milestone2ReliabilityRegression": 31288159706,
+    "browserAndVisualValidation": 31288159705,
+    "allPassed": true
+  },
+  "authority": {
+    "governingDistinction": "Order != Matter != Payment != Invoice != Filing",
+    "confirmedMeansPaid": false,
+    "matterCreatedMeansFiled": false,
+    "paymentImplemented": false,
+    "invoiceImplemented": false,
+    "providerAppointmentImplemented": false,
+    "externalFilingImplemented": false,
+    "officialApplicationTruthImplemented": false
+  },
+  "releaseRecommendation": "GO",
+  "tagFreezeReleasePerformed": false
+}
