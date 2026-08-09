@@ -1,0 +1,218 @@
+{
+  "milestone": "MO-MVP-MILESTONE-004",
+  "planningTask": "TASK 029",
+  "status": "PROPOSED_FOR_OWNER_APPROVAL",
+  "baseline": {
+    "branch": "main",
+    "commit": "505962ff146980a64b9cf6e08259068146612d05",
+    "predecessorAudit": "GO",
+    "predecessorPr": 47,
+    "milestone3TagOrFreezeClaim": false
+  },
+  "direction": {
+    "id": "DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN",
+    "selected": true,
+    "summary": "Make the governed Execution-to-MGSN provider delivery loop durable and authenticated through explicit eligibility, allocation, provider acceptance, Provider Return and evidence handoff without Payment, legal appointment or Official Truth authority."
+  },
+  "decisionAlternatives": [
+    {
+      "id": "DURABLE_GOVERNED_PROVIDER_EXECUTION_AND_RETURN",
+      "decision": "SELECT",
+      "risk": "MEDIUM_HIGH",
+      "reason": "Directly continues durable Order/Matter truth and closes the MVP provider-return delivery loop while preserving the no-Official-Truth boundary."
+    },
+    {
+      "id": "PAYMENT_AND_INVOICE_TRANSACTION_LAYER",
+      "decision": "DEFER",
+      "risk": "HIGH",
+      "reason": "Finance does not close the delivery loop and Payment is explicitly not performance, authority, acceptance or completion."
+    },
+    {
+      "id": "EXTERNAL_FILING_EXECUTION",
+      "decision": "DEFER",
+      "risk": "VERY_HIGH",
+      "reason": "Trademark-office submission requires a later protected external-action and Official Truth boundary after durable execution/provider evidence exists."
+    },
+    {
+      "id": "BROAD_LIFECYCLE_AND_COMMUNICATIONS",
+      "decision": "DEFER",
+      "risk": "MEDIUM",
+      "reason": "Customer lifecycle projections should consume durable provider/execution truth rather than expand around fixture operational state."
+    }
+  ],
+  "semanticBoundaries": {
+    "providerSupplyCapability": "private operational supply-side capability evidence; not user Capability evidence",
+    "eligibility": "deterministic suitability result; not allocation",
+    "allocation": "internal governed MGSN assignment decision; not provider acceptance or legal appointment",
+    "providerAcceptance": "provider acceptance of the internal Service Package; not office acceptance",
+    "providerReturn": "structured provider claim/evidence package; not Official Truth",
+    "evidenceHandoff": "reviewable internal evidence transfer to Execution; not Matter completion or filing truth",
+    "payment": "not owned in Milestone 4",
+    "invoice": "not owned in Milestone 4",
+    "officialFiling": "deferred external authority"
+  },
+  "runtimeOwnership": {
+    "IdentityWorkspacePrincipal": "Core",
+    "OrderAndFormalMatter": "MarkReg",
+    "FilingAuthorizationExecutionReleaseTaskDraft": "Execution",
+    "EvidenceReviewBoundary": "Execution",
+    "ProviderRegistrySupplyCapabilityServicePackageEligibilityAllocationAcceptanceProviderReturn": "MGSN",
+    "TransportPolicyBoundary": "Gateway",
+    "ProductAndOperationsUI": "projection/action surfaces only"
+  },
+  "primaryAcceptanceJourney": [
+    "authenticate and resolve authorized Principal",
+    "load exact current governed Execution source",
+    "create durable MGSN Service Package from exact source version/fingerprint",
+    "evaluate deterministic provider eligibility without allocation",
+    "explicitly allocate one current eligible provider",
+    "record authenticated provider acceptance",
+    "record durable Provider Return with provenance and returned evidence",
+    "hand exact Provider Return version/fingerprint to Execution for reviewable evidence",
+    "restart runtimes and reload exact source/package/allocation/return/evidence identities",
+    "deny cross-Workspace/provider enumeration and mutation",
+    "prove Payment, legal appointment, external filing and Official Truth consequences remain false"
+  ],
+  "requiredSourceEvidence": [
+    "Workspace identity",
+    "Formal Matter reference/version where available",
+    "Preparation Lock reference/version where required",
+    "Filing Authorization reference/version",
+    "Execution Release or Filing Execution Task Draft reference/version",
+    "jurisdiction and bounded service scope",
+    "document/instruction references or immutable bounded snapshot",
+    "Channel and Relationship Model lineage where applicable",
+    "source checksum/fingerprint and correlation context",
+    "requested execution window/constraints"
+  ],
+  "authorityConsequences": {
+    "servicePackageCreated": "may become true only after explicit governed MGSN source admission",
+    "eligibilityEvaluated": "may become true without allocation",
+    "providerAllocated": "may become true only after explicit authorized Allocation command",
+    "providerAccepted": "may become true only after authenticated provider acceptance",
+    "providerReturnCreated": "may become true only after explicit provider return command",
+    "executionEvidenceHandedOff": "may become true only after exact idempotent Evidence Handoff",
+    "mustRemainFalse": [
+      "paymentCreated",
+      "invoiceCreated",
+      "professionalLegallyAppointedAutomatically",
+      "filingSubmitted",
+      "officialApplicationCreated",
+      "officialApplicationNumberReceived",
+      "trademarkOfficeAcceptance",
+      "trademarkOfficeContactedAsVerifiedTruth",
+      "formalMatterCompletedAutomatically",
+      "userCapabilityVerifiedAutomatically"
+    ]
+  },
+  "persistence": {
+    "engine": "PostgreSQL 16",
+    "databasePerOwner": true,
+    "owners": {
+      "Core": "Core DB",
+      "MarkReg": "MarkReg DB",
+      "Execution": "Execution DB",
+      "MGSN": "MGSN DB"
+    },
+    "optimisticConcurrency": true,
+    "workspaceScopedIdempotency": true,
+    "crossServiceDatabaseReads": false,
+    "distributedTransactionClaim": false,
+    "handoffRequirement": "exact-version/fingerprint APIs with safe retry and replay"
+  },
+  "providerRules": {
+    "publicMarketplace": false,
+    "publicStarRanking": false,
+    "automaticProfessionalQualification": false,
+    "automaticAiAllocation": false,
+    "providerSupplyCapabilityMayMutateUserCapability": false,
+    "providerReturnMayCreateOfficialTruth": false
+  },
+  "eventBoundary": {
+    "processLocalEventsAllowed": true,
+    "crossServiceHandoffMustBeRedrivable": true,
+    "durableOutboxRequiredByScopeLock": false,
+    "globalExactlyOnceDeliveryClaim": false
+  },
+  "realRuntimeAcceptance": {
+    "core": true,
+    "gateway": true,
+    "execution": true,
+    "mgsn": true,
+    "ownerPostgresqlDatabases": true,
+    "requestInterceptionAllowed": false,
+    "mobile390ForNewUi": true,
+    "directUrlRecoveryForNewDurableViews": true
+  },
+  "workPackages": [
+    {
+      "id": "M4-WP-01",
+      "name": "Provider execution contracts and canonical authority boundary",
+      "dependencies": ["TASK 029 approved"]
+    },
+    {
+      "id": "M4-WP-02",
+      "name": "Durable authenticated Execution filing-governance source",
+      "dependencies": ["M4-WP-01", "existing Filing Authorization / Execution Release semantics"]
+    },
+    {
+      "id": "M4-WP-03",
+      "name": "Durable MGSN Provider Registry and Supply Capability",
+      "dependencies": ["M4-WP-01", "Core identity/Workspace boundary"]
+    },
+    {
+      "id": "M4-WP-04",
+      "name": "MGSN Service Package and deterministic Eligibility",
+      "dependencies": ["M4-WP-02", "M4-WP-03"]
+    },
+    {
+      "id": "M4-WP-05",
+      "name": "Explicit Allocation and authenticated Provider Acceptance",
+      "dependencies": ["M4-WP-04"]
+    },
+    {
+      "id": "M4-WP-06",
+      "name": "Provider Return and exact Execution evidence handoff",
+      "dependencies": ["M4-WP-05", "Execution evidence boundary"]
+    },
+    {
+      "id": "M4-WP-07",
+      "name": "Authenticated Gateway and controlled operations/provider journey",
+      "dependencies": ["M4-WP-02", "M4-WP-03", "M4-WP-04", "M4-WP-05", "M4-WP-06"]
+    },
+    {
+      "id": "M4-WP-08",
+      "name": "Migration, restart, outage, concurrency, isolation, handoff and browser reliability matrix",
+      "dependencies": [
+        "M4-WP-01",
+        "M4-WP-02",
+        "M4-WP-03",
+        "M4-WP-04",
+        "M4-WP-05",
+        "M4-WP-06",
+        "M4-WP-07"
+      ]
+    },
+    {
+      "id": "M4-WP-09",
+      "name": "Independent Milestone 4 integration and authority audit",
+      "dependencies": ["M4-WP-08"]
+    }
+  ],
+  "nonGoals": [
+    "payment processing, settlement, custody or escrow",
+    "invoice issuance, tax, refund, chargeback or revenue recognition",
+    "public MGSN marketplace or star ranking",
+    "automatic provider allocation by AI",
+    "automatic professional/legal representative appointment",
+    "trademark-office credential storage or transmission",
+    "automatic official filing",
+    "official application or application-number truth",
+    "automatic Formal Matter completion from Provider Return",
+    "automatic Capability verification/canon mutation from provider performance",
+    "generic global procurement platform",
+    "production GA claim"
+  ],
+  "planningOnly": true,
+  "implementationStarted": false
+}
