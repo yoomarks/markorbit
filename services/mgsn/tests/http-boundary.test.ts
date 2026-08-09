@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- HTTP boundary assertions intentionally inspect JSON fixtures and captured commands. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { ServiceRuntime } from '@markorbit/service-kit';
 import { createRuntime, type MgsnHttpServices } from '../src/index.js';
 
@@ -57,7 +54,10 @@ function services(): MgsnHttpServices {
     },
     servicePackageEligibility: {
       getServicePackage: () =>
-        Promise.resolve({ servicePackageId: 'service-package_wp07', workspaceId: customerWorkspaceId })
+        Promise.resolve({
+          servicePackageId: 'service-package_wp07',
+          workspaceId: customerWorkspaceId
+        })
     },
     allocationProviderAcceptance: {
       getAllocation: () => Promise.resolve(allocation),

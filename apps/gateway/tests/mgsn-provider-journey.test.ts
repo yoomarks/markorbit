@@ -31,7 +31,11 @@ function principal(workspaceId: string): WorkspacePrincipal {
   return {
     kind: 'WORKSPACE',
     sessionId: `session-${workspaceId}`,
-    userId: readOnly ? 'user_read_only' : workspaceId === providerWorkspaceId ? 'user_provider' : 'user_operator',
+    userId: readOnly
+      ? 'user_read_only'
+      : workspaceId === providerWorkspaceId
+        ? 'user_provider'
+        : 'user_operator',
     workspaceId,
     membershipId: `membership-${workspaceId}`,
     role: readOnly ? 'READ_ONLY' : 'WORKSPACE_ADMIN',
@@ -42,12 +46,13 @@ function principal(workspaceId: string): WorkspacePrincipal {
 
 const authentication: CoreAuthenticationClient = {
   issue: () => Promise.reject(new Error('not used')),
-  resolve: () => Promise.resolve({
-    kind: 'AUTHENTICATED_USER',
-    sessionId: 'session-user',
-    userId: 'user_operator',
-    sessionExpiresAt: '2026-08-10T00:00:00.000Z'
-  }),
+  resolve: () =>
+    Promise.resolve({
+      kind: 'AUTHENTICATED_USER',
+      sessionId: 'session-user',
+      userId: 'user_operator',
+      sessionExpiresAt: '2026-08-10T00:00:00.000Z'
+    }),
   resolveWorkspace: (_token, workspaceId) => Promise.resolve(principal(workspaceId)),
   revoke: () => Promise.resolve()
 };
