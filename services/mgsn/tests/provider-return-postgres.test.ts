@@ -3,7 +3,6 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   providerReturnAuthorityConsequences,
-  type EvidenceHandoffReference,
   type ProviderExecutionSourceSnapshot
 } from '@markorbit/contracts/provider-execution';
 import {
@@ -26,7 +25,10 @@ import {
 import { PostgresAllocationProviderAcceptanceRepository } from '../src/allocation-provider-acceptance-postgres.js';
 import { AllocationProviderAcceptanceService } from '../src/allocation-provider-acceptance.js';
 import { PostgresProviderReturnRepository } from '../src/provider-return-postgres.js';
-import { ProviderReturnService } from '../src/provider-return.js';
+import {
+  ProviderReturnService,
+  type ProviderReturnEvidenceHandoffTarget
+} from '../src/provider-return.js';
 
 const url = process.env.MGSN_TEST_DATABASE_URL;
 const required = process.env.MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED === '1';
@@ -112,22 +114,8 @@ suite('M4-WP-06 durable Provider Return and exact evidence handoff', () => {
       () => `provider-acceptance_wp06_${++acceptanceSequence}`
     );
   const returnRepository = () => new PostgresProviderReturnRepository(database, database.getPool());
-  const evidenceHandoff = {
-    handoffProviderReturnEvidence: (input: {
-      command: {
-        workspaceId: string;
-        providerReturnId: `provider-return_${string}`;
-        expectedProviderReturnVersion: number;
-        expectedProviderReturnFingerprintSha256: string;
-        executionReleaseId: `execution-release_${string}`;
-        expectedExecutionReleaseVersion: number;
-        filingExecutionTaskDraftId: `filing-task-draft_${string}`;
-        expectedFilingExecutionTaskDraftVersion: number | string;
-        idempotencyKey: string;
-        correlationId: typeof correlationId;
-      };
-      providerReturn: { providerReturnId: `provider-return_${string}`; version: number };
-    }): Promise<EvidenceHandoffReference> => {
+  const evidenceHandoff: ProviderReturnEvidenceHandoffTarget = {
+    handoffProviderReturnEvidence: (input) => {
       handoffSequence += 1;
       return Promise.resolve({
         schemaVersion: 1,

@@ -230,12 +230,65 @@ suite('M4-WP-06 Execution Provider Return evidence handoff', () => {
   beforeEach(async () => {
     currentRelease = structuredClone(release);
     currentTask = structuredClone(task);
-    await database.getPool().query(
+    const pool = database.getPool();
+    await pool.query(
       `TRUNCATE
          execution_provider_return_evidence_audit,
          execution_provider_return_evidence_commands,
-         execution_provider_return_evidence_receipts
+         execution_provider_return_evidence_receipts,
+         filing_execution_task_drafts,
+         execution_releases,
+         filing_authorizations
        RESTART IDENTITY CASCADE`
+    );
+    await pool.query(
+      `INSERT INTO filing_authorizations(
+         filing_authorization_id,workspace_id,preparation_lock_id,preparation_lock_version,status,version,
+         authorization_record,created_by,updated_by,created_at,updated_at
+       ) VALUES($1,$2,$3,$4,'AUTHORIZED',2,$5::jsonb,$6,$6,$7,$7)`,
+      [
+        release.filingAuthorizationId,
+        workspaceId,
+        release.preparationLockId,
+        release.preparationLockVersion,
+        JSON.stringify({ filingAuthorizationId: release.filingAuthorizationId, version: 2 }),
+        'user_execution_manager',
+        release.createdAt
+      ]
+    );
+    await pool.query(
+      `INSERT INTO execution_releases(
+         execution_release_id,workspace_id,filing_authorization_id,filing_authorization_version,status,version,
+         release_record,created_by,updated_by,created_at,updated_at
+       ) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$8,$9,$10)`,
+      [
+        release.executionReleaseId,
+        workspaceId,
+        release.filingAuthorizationId,
+        release.filingAuthorizationVersion,
+        release.status,
+        release.version,
+        JSON.stringify(release),
+        'user_execution_manager',
+        release.createdAt,
+        release.updatedAt
+      ]
+    );
+    await pool.query(
+      `INSERT INTO filing_execution_task_drafts(
+         filing_execution_task_draft_id,workspace_id,execution_release_id,filing_authorization_id,status,
+         task_record,created_by,updated_by,created_at,updated_at
+       ) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$7,$8,$8)`,
+      [
+        task.filingExecutionTaskDraftId,
+        workspaceId,
+        task.executionReleaseId,
+        task.filingAuthorizationId,
+        task.status,
+        JSON.stringify(task),
+        'user_execution_manager',
+        task.createdAt
+      ]
     );
   });
 
