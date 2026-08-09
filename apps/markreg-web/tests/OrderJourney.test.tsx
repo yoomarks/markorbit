@@ -2,11 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerConfirmation } from '@markorbit/contracts';
 import { MarkregApiError } from '../src/api/errors.js';
-import type {
-  OrderClient,
-  OrderMatterConversionView,
-  OrderView
-} from '../src/api/order.js';
+import type { OrderClient, OrderMatterConversionView, OrderView } from '../src/api/order.js';
 import { OrderJourney } from '../src/OrderJourney.js';
 
 const workspace = '45454545-4545-4454-8545-454545454545';

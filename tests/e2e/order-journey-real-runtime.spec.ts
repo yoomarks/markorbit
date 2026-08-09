@@ -135,7 +135,9 @@ test.describe('M3-WP-06 real durable Order journey', () => {
       sessionStorage.setItem('markorbit-workspace-id', otherWorkspaceId);
       dispatchEvent(new PopStateEvent('popstate'));
     }, scenario.otherWorkspaceId);
-    await expect(page.getByRole('heading', { name: 'No eligible commercial source' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'No eligible commercial source' })
+    ).toBeVisible();
     expect(new URL(page.url()).search).toBe('');
 
     expect(observedOrderRequests.length).toBeGreaterThanOrEqual(6);

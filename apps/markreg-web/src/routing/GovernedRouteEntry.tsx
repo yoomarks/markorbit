@@ -84,7 +84,8 @@ function loadRecord(client: MarkregClient, route: MarkregRoute) {
     return createApiClient().get(
       `/api/markreg/formal-matters/${encodeURIComponent(route.recordId)}`
     );
-  if (!client.getGovernedRecord) return Promise.reject(new Error('Governed record reader unavailable.'));
+  if (!client.getGovernedRecord)
+    return Promise.reject(new Error('Governed record reader unavailable.'));
   return client.getGovernedRecord(route.view, route.recordId);
 }
 

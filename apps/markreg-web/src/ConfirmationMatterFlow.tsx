@@ -113,8 +113,7 @@ export function ConfirmationMatterFlow({
       setState('FORMAL_MATTER_RECEIPT');
     });
   }, [client, fixture, formalMatterStorageKey]);
-  if (orderJourneyOpen && confirmation)
-    return <OrderJourney source={{ confirmation }} />;
+  if (orderJourneyOpen && confirmation) return <OrderJourney source={{ confirmation }} />;
 
   const confirm = async () => {
     setState('CONFIRMING');

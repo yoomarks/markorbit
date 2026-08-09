@@ -272,7 +272,9 @@ async function main() {
     csrfSecret,
     allowedOrigins: [origin],
     milestoneTestRuntime: true,
-    fixtureUsers: Object.fromEntries(scenarios.map((scenario) => [scenario.fixture, scenario.userId]))
+    fixtureUsers: Object.fromEntries(
+      scenarios.map((scenario) => [scenario.fixture, scenario.userId])
+    )
   });
   await gateway.start();
   vite = spawn(

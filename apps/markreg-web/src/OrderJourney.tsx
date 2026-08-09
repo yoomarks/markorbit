@@ -24,11 +24,7 @@ export interface OrderCommercialSource {
 }
 
 type Problem =
-  | 'STALE_SOURCE'
-  | 'VERSION_CONFLICT'
-  | 'PERMISSION_DENIED'
-  | 'SERVICE_UNAVAILABLE'
-  | 'BLOCKING';
+  'STALE_SOURCE' | 'VERSION_CONFLICT' | 'PERMISSION_DENIED' | 'SERVICE_UNAVAILABLE' | 'BLOCKING';
 
 type JourneyState = 'LOADING' | 'NO_SOURCE' | 'READY' | 'MUTATING';
 
@@ -85,7 +81,8 @@ function problemCopy(problem: Problem) {
     case 'SERVICE_UNAVAILABLE':
       return {
         title: 'Order service temporarily unavailable',
-        description: 'The saved Order is unchanged. Retry the same governed action when the service is available.'
+        description:
+          'The saved Order is unchanged. Retry the same governed action when the service is available.'
       };
     default:
       return {
@@ -286,7 +283,13 @@ export function OrderJourney({
           title="Create service Order"
           description="Create the governed commercial service request from the exact confirmed source."
         />
-        {copy && <ErrorState title={copy.title} description={copy.description} onRetry={() => void create()} />}
+        {copy && (
+          <ErrorState
+            title={copy.title}
+            description={copy.description}
+            onRetry={() => void create()}
+          />
+        )}
         <Card>
           <KeyValueList
             items={[
@@ -319,7 +322,7 @@ export function OrderJourney({
         <ErrorState
           title={copy.title}
           description={copy.description}
-          onRetry={problem === 'PERMISSION_DENIED' ? undefined : () => void reload()}
+          {...(problem === 'PERMISSION_DENIED' ? {} : { onRetry: () => void reload() })}
         />
       )}
       <Card>
@@ -390,7 +393,10 @@ export function OrderJourney({
         <KeyValueList
           items={[
             { key: 'Order', value: 'Created' },
-            { key: 'Formal Matter', value: order.status === 'MatterCreated' ? 'Created' : 'Not created' },
+            {
+              key: 'Formal Matter',
+              value: order.status === 'MatterCreated' ? 'Created' : 'Not created'
+            },
             { key: 'Payment', value: 'Not created' },
             { key: 'Invoice', value: 'Not created' },
             { key: 'Professional appointment', value: 'Not created' },
@@ -450,7 +456,9 @@ function OrderAction({
           : status === 'ReadyForMatter'
             ? { label: 'Create Formal Matter', action: createMatter }
             : undefined;
-  const cancellable = ['Draft', 'PendingConfirmation', 'Confirmed', 'ReadyForMatter'].includes(status);
+  const cancellable = ['Draft', 'PendingConfirmation', 'Confirmed', 'ReadyForMatter'].includes(
+    status
+  );
   return (
     <div className="markreg-actions">
       {primary && (
