@@ -195,9 +195,9 @@ function requiredEnum<const T extends readonly string[]>(
   values: T
 ): T[number] {
   const value = requiredText(body, field);
-  if (!values.some((candidate) => candidate === value))
-    throw new HttpError(400, 'INVALID_REQUEST', `${field} is invalid.`);
-  return value as T[number];
+  const match = values.find((candidate) => candidate === value);
+  if (!match) throw new HttpError(400, 'INVALID_REQUEST', `${field} is invalid.`);
+  return match;
 }
 
 export function createOrderHttpRoutes(options: OrderHttpOptions): readonly JsonRoute[] {
