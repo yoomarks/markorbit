@@ -47,6 +47,9 @@ const ownedTables = {
     'order_audit'
   ],
   Execution: [
+    'execution_provider_return_evidence_receipts',
+    'execution_provider_return_evidence_commands',
+    'execution_provider_return_evidence_audit',
     'professional_review_cases',
     'professional_review_commands',
     'professional_review_audit',
@@ -338,7 +341,8 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(10);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(11);
     expect(sets[2]).toContain('0027_execution_filing_governance');
+    expect(sets[2]).toContain('0032_execution_provider_return_evidence');
   });
 });
