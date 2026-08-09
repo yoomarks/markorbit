@@ -67,7 +67,7 @@ jobs:
           s = p.read_text()
           s = s.replace(
               "  EligibilityEvaluationRecord,\n  ServicePackageEligibilityRepository,\n  ServicePackageRecord\n",
-              "  EligibilityEvaluationRecord,\n  type ExecutionSourceAdmissionSource,\n  ServicePackageEligibilityRepository,\n  ServicePackageRecord\n",
+              "  EligibilityEvaluationRecord,\n  ExecutionSourceAdmissionSource,\n  ServicePackageEligibilityRepository,\n  ServicePackageRecord\n",
               1,
           )
           s, removed = re.subn(
@@ -126,7 +126,6 @@ jobs:
               s = p.read_text(errors='ignore')
               if 'POSTGRES_ONLY_PROOF: clean MGSN SQL owner contains expected runtime tables' not in s:
                   continue
-              # Convert only this test's exact list assertion to arrayContaining.
               pattern = r"(it\('POSTGRES_ONLY_PROOF: clean MGSN SQL owner contains expected runtime tables'[\s\S]*?expect\(relations\.rows\.map\(\(row\) => row\.name\)\)\.toEqual)\(\[([\s\S]*?)\]\);"
               repl = r"\1(\n      expect.arrayContaining([\2])\n    );"
               updated, count = re.subn(pattern, repl, s, count=1)
