@@ -211,15 +211,18 @@ export function createRuntime(options: ExecutionOptions = {}) {
         createdAt: now()
       });
     };
-    const declaredWorkspace =
-      request.headers['x-markorbit-workspace-id'] ??
-      (request.body &&
+    const headerWorkspace = request.headers['x-markorbit-workspace-id'];
+    const bodyWorkspace =
+      request.body &&
       typeof request.body === 'object' &&
       'workspaceId' in request.body &&
       typeof (request.body as { workspaceId?: unknown }).workspaceId === 'string'
         ? (request.body as { workspaceId: string }).workspaceId
-        : undefined);
-    if (declaredWorkspace && declaredWorkspace !== principal.workspaceId) {
+        : undefined;
+    if (
+      (headerWorkspace && headerWorkspace !== principal.workspaceId) ||
+      (bodyWorkspace && bodyWorkspace !== principal.workspaceId)
+    ) {
       await deny('WORKSPACE_MISMATCH');
       throw new HttpError(
         404,
