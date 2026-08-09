@@ -18,6 +18,7 @@
     "paths": {
       "@markorbit/contracts/order": ["packages/contracts/src/order.ts"],
       "@markorbit/contracts/provider-execution": ["packages/contracts/src/provider-execution.ts"],
+      "@markorbit/contracts/evidence-lifecycle": ["packages/contracts/src/evidence-lifecycle.ts"],
       "@markorbit/*": ["packages/*/src", "services/*/src", "apps/*/src"]
     }
   }
