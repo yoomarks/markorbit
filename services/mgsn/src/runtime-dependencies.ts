@@ -109,9 +109,7 @@ export class HttpExecutionSourceAdmissionSource implements ExecutionSourceAdmiss
   }
 }
 
-export class HttpProviderReturnEvidenceHandoffTarget
-  implements ProviderReturnEvidenceHandoffTarget
-{
+export class HttpProviderReturnEvidenceHandoffTarget implements ProviderReturnEvidenceHandoffTarget {
   constructor(
     private readonly executionUrl: string,
     private readonly internalServiceSecret: string
@@ -147,7 +145,9 @@ export class HttpProviderReturnEvidenceHandoffTarget
     if (!response.ok)
       throw new ProviderReturnError(
         response.status >= 500 ? 'DEPENDENCY_UNAVAILABLE' : 'SOURCE_VERSION_MISMATCH',
-        typeof body.message === 'string' ? body.message : 'Execution evidence handoff was rejected.',
+        typeof body.message === 'string'
+          ? body.message
+          : 'Execution evidence handoff was rejected.',
         response.status >= 500 ? 503 : response.status
       );
     const evidenceHandoff = body.evidenceHandoff as EvidenceHandoffReference | undefined;

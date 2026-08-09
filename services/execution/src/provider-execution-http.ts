@@ -45,7 +45,11 @@ function workspaceOf(request: JsonRequest, body?: Body) {
 
 function requireInternal(request: JsonRequest, secret: string) {
   if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
-    throw new HttpError(401, 'UNTRUSTED_INTERNAL_CALLER', 'Trusted internal authorization is required.');
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
 }
 
 function ensureWorkspace(workspaceId: string, actual: unknown) {
@@ -97,8 +101,7 @@ export function createExecutionProviderInternalRoutes(
         const body = bodyOf(request);
         const command = body.command as HandoffProviderReturnEvidenceCommand | undefined;
         const providerReturn = body.providerReturn as
-          | (ProviderReturn & { providerActorId: string })
-          | undefined;
+          (ProviderReturn & { providerActorId: string }) | undefined;
         if (!command || !providerReturn)
           throw new HttpError(400, 'INVALID_REQUEST', 'command and providerReturn are required.');
         const workspaceId = workspaceOf(request, body);
@@ -125,7 +128,11 @@ export function createExecutionProviderInternalRoutes(
             .providerReturnEvidenceFor(workspaceId)
             .getReceipt(request.params.evidenceHandoffId! as never);
           if (!receipt || receipt.evidenceHandoff.workspaceId.toLowerCase() !== workspaceId)
-            throw new HttpError(404, 'NOT_FOUND', 'Provider Return evidence receipt was not found.');
+            throw new HttpError(
+              404,
+              'NOT_FOUND',
+              'Provider Return evidence receipt was not found.'
+            );
           return json(200, { receipt });
         } catch (error) {
           if (error instanceof HttpError) throw error;

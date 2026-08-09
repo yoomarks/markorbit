@@ -10,7 +10,13 @@ import {
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
-import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import {
+  createServiceRuntime,
+  HttpError,
+  json,
+  type JsonResult,
+  type JsonRoute
+} from '@markorbit/service-kit';
 import type {
   MatterDraft,
   FormalMatter,
@@ -46,6 +52,9 @@ export * from './filing-authorization.js';
 export * from './filing-authorization-postgres.js';
 export * from './provider-return-evidence.js';
 export * from './provider-return-evidence-postgres.js';
+export * from './provider-execution-source.js';
+export * from './provider-execution-http.js';
+export * from './durable-provider-execution.js';
 export const serviceManifest = Object.freeze({
   name: 'execution',
   port: Number(process.env.PORT ?? '4104'),
@@ -85,6 +94,7 @@ export interface ExecutionOptions {
   ) => FilingGovernanceAuditRepository;
   preparationLockSource?: PreparationLockSource;
   milestoneTestRuntime?: boolean;
+  providerExecutionRoutes?: readonly JsonRoute[];
 }
 export function createRuntime(options: ExecutionOptions = {}) {
   const repository = options.repository ?? new InMemoryExecutionRepository();
@@ -299,6 +309,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...(options.providerExecutionRoutes ?? []),
         ...((options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1')
           ? [
               {
