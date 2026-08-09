@@ -2,10 +2,7 @@ import { createServer } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
 import type { ServiceRuntime } from '@markorbit/service-kit';
-import {
-  createRuntime as createGateway,
-  type CoreAuthenticationClient
-} from '../src/index.js';
+import { createRuntime as createGateway, type CoreAuthenticationClient } from '../src/index.js';
 
 const secret = 'm4-wp08-internal-secret-32-bytes-minimum';
 const workspaceId = '11111111-1111-4111-8111-111111111111';
@@ -65,12 +62,15 @@ describe('M4-WP-08 Gateway reliability boundary', () => {
     });
     await runtime.start();
 
-    const response = await fetch(`http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`, {
-      headers: {
-        cookie: 'mo_session=opaque',
-        'x-markorbit-workspace-id': workspaceId
+    const response = await fetch(
+      `http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`,
+      {
+        headers: {
+          cookie: 'mo_session=opaque',
+          'x-markorbit-workspace-id': workspaceId
+        }
       }
-    });
+    );
     const body = (await response.json()) as Record<string, unknown>;
 
     expect(response.status).toBe(503);
@@ -88,12 +88,15 @@ describe('M4-WP-08 Gateway reliability boundary', () => {
     });
     await runtime.start();
 
-    const response = await fetch(`http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`, {
-      headers: {
-        cookie: 'mo_session=opaque',
-        'x-markorbit-workspace-id': workspaceId
+    const response = await fetch(
+      `http://127.0.0.1:${runtime.listeningPort}/api/mgsn/providers`,
+      {
+        headers: {
+          cookie: 'mo_session=opaque',
+          'x-markorbit-workspace-id': workspaceId
+        }
       }
-    });
+    );
     const body = (await response.json()) as Record<string, unknown>;
 
     expect(response.status).toBe(503);
