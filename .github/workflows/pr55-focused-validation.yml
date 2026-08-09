@@ -22,6 +22,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Format WP07 files
         run: pnpm exec prettier --write apps/gateway/src/index.ts apps/gateway/src/mgsn-http.ts apps/gateway/tests/mgsn-provider-journey.test.ts services/mgsn/src/http.ts services/mgsn/src/index.ts services/mgsn/tests/http-boundary.test.ts docs/tasks/MO-MVP-M4-WP-07-AUTHENTICATED-GATEWAY-PROVIDER-JOURNEY.md docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.md docs/planning/MO-MVP-MILESTONE-004-IMPLEMENTATION-TRACEABILITY.json
+      - run: pnpm build
       - run: pnpm --filter @markorbit/mgsn-service typecheck
       - run: pnpm --filter @markorbit/gateway typecheck
       - run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/http-boundary.test.ts
