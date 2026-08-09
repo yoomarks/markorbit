@@ -56,29 +56,12 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
   const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
   const core = createCore({ port: 0, authentication, internalServiceSecret: internalKey });
   const sources = new InMemoryOrderCommercialSourceProvider();
-  const repository = new PostgresOrderRepository(database, database.getPool());
+  let repository!: PostgresOrderRepository;
   let tick = 0;
   let orderSequence = 0;
   let matterSequence = 0;
   const now = () => new Date(Date.parse(SOURCE_AT) + tick++ * 60_000).toISOString();
-  const orderService = new OrderService(
-    repository,
-    sources,
-    now,
-    () => `order_wp05-${++orderSequence}` as never
-  );
-  const conversionService = new PostgresOrderMatterConversionService(
-    database,
-    database.getPool(),
-    now,
-    () => `formal-matter_wp05-${++matterSequence}` as never
-  );
-  let markreg = createMarkReg({
-    port: 0,
-    internalServiceSecret: internalKey,
-    orderService,
-    orderMatterConversionService: conversionService
-  });
+  let markreg!: ReturnType<typeof createMarkReg>;
   let gateway: ReturnType<typeof createGateway>;
   let managerToken = '';
   let managerCsrf = '';
@@ -276,6 +259,25 @@ suite.sequential('M3-WP-05 authenticated Order HTTP boundary', () => {
 
   beforeAll(async () => {
     await database.start();
+    repository = new PostgresOrderRepository(database, database.getPool());
+    const orderService = new OrderService(
+      repository,
+      sources,
+      now,
+      () => `order_wp05-${++orderSequence}` as never
+    );
+    const conversionService = new PostgresOrderMatterConversionService(
+      database,
+      database.getPool(),
+      now,
+      () => `formal-matter_wp05-${++matterSequence}` as never
+    );
+    markreg = createMarkReg({
+      port: 0,
+      internalServiceSecret: internalKey,
+      orderService,
+      orderMatterConversionService: conversionService
+    });
     await resetAndMigrateMarkRegTestDatabase({
       pool: database.getPool(),
       migrationsDirectory: path.resolve('infrastructure/persistence/migrations'),
