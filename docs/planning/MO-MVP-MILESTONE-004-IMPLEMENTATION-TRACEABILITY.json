@@ -53,7 +53,14 @@
     },
     {
       "id": "M4-WP-05",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_IN_PR_53",
+      "evidence": [
+        "infrastructure/persistence/migrations/0030_mgsn_allocation_provider_acceptance.sql",
+        "services/mgsn/src/allocation-provider-acceptance.ts",
+        "services/mgsn/src/allocation-provider-acceptance-postgres.ts",
+        "services/mgsn/tests/allocation-provider-acceptance-postgres.test.ts",
+        "docs/tasks/MO-MVP-M4-WP-05-ALLOCATION-PROVIDER-ACCEPTANCE.md"
+      ]
     },
     {
       "id": "M4-WP-06",
@@ -151,6 +158,28 @@
     "staleSupplyVersionFailsClosed": true,
     "providerAllocated": false,
     "providerAccepted": false,
+    "legalProfessionalAppointmentCreated": false,
+    "paymentOrInvoiceCreated": false,
+    "filingSubmitted": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false,
+    "officialTruthCreated": false
+  },
+  "wp05AllocationBoundary": {
+    "owner": "MGSN",
+    "databasePerOwner": true,
+    "migration": "0030_mgsn_allocation_provider_acceptance",
+    "exactEligibleResultRequired": true,
+    "currentProviderAndSupplyRequiredAtAllocation": true,
+    "oneCurrentActiveAllocationPerServicePackage": true,
+    "concurrentAllocationSerialized": true,
+    "authenticatedProviderWorkspaceIdentityRequired": true,
+    "callerSuppliedProviderIdentityTrusted": false,
+    "providerDeclinePreservesHistoricalAllocationVersion": true,
+    "providerDeclineEnablesExplicitReallocation": true,
+    "durableIdempotency": true,
+    "appendOnlyAudit": true,
+    "providerReturnCreated": false,
     "legalProfessionalAppointmentCreated": false,
     "paymentOrInvoiceCreated": false,
     "filingSubmitted": false,

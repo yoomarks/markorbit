@@ -172,6 +172,10 @@ suite('M4-WP-04 durable Service Package and deterministic Eligibility', () => {
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         mgsn_allocation_audit,
+         mgsn_allocation_commands,
+         mgsn_provider_acceptances,
+         mgsn_allocations,
          mgsn_service_package_audit,
          mgsn_service_package_commands,
          mgsn_eligibility_evaluations,
@@ -212,6 +216,10 @@ suite('M4-WP-04 durable Service Package and deterministic Eligibility', () => {
     core.set(workspaceA, { workspaceId: workspaceA, status: 'ACTIVE' });
     await database.getPool().query(
       `TRUNCATE
+         mgsn_allocation_audit,
+         mgsn_allocation_commands,
+         mgsn_provider_acceptances,
+         mgsn_allocations,
          mgsn_service_package_audit,
          mgsn_service_package_commands,
          mgsn_eligibility_evaluations,
@@ -228,10 +236,12 @@ suite('M4-WP-04 durable Service Package and deterministic Eligibility', () => {
 
   it('owns and verifies MGSN migrations 0028 and 0029 in one owner database', async () => {
     const owned = await migrations();
-    expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual([
-      '0028_mgsn_provider_registry',
-      '0029_mgsn_service_package_eligibility'
-    ]);
+    expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual(
+      expect.arrayContaining([
+        '0028_mgsn_provider_registry',
+        '0029_mgsn_service_package_eligibility'
+      ])
+    );
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (migration) => migration.state === 'applied'
