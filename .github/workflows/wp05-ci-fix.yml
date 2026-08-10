@@ -1,0 +1,84 @@
+name: WP05 scoped CI repair
+
+on:
+  push:
+    branches:
+      - m5-wp-05-reviewed-source-handoff
+    paths:
+      - .github/workflows/wp05-ci-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-05-reviewed-source-handoff
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Add WP05 tables to destructive Execution test resets
+        shell: python
+        run: |
+          from pathlib import Path
+
+          targets = [
+              Path("scripts/document-package-http.integration.test.ts"),
+              Path("scripts/professional-review-http.integration.test.ts"),
+              Path("scripts/document-package-real-runtime.ts"),
+              Path("scripts/professional-review-real-runtime.ts"),
+          ]
+          marker = "`DROP TABLE IF EXISTS\n"
+          addition = (
+              "         execution_reviewed_source_handoff_audit,\n"
+              "         execution_reviewed_source_handoffs,\n"
+              "         execution_reviewed_source_admission_commands,\n"
+              "         execution_reviewed_source_admissions,\n"
+          )
+          for path in targets:
+              text = path.read_text()
+              if "execution_reviewed_source_admissions" in text:
+                  continue
+              if marker not in text:
+                  raise SystemExit(f"missing expected reset marker in {path}")
+              path.write_text(text.replace(marker, marker + addition, 1))
+
+      - name: Format scoped files with repository Prettier
+        run: >-
+          pnpm exec prettier --write
+          services/execution/src/reviewed-source-handoff.ts
+          scripts/document-package-http.integration.test.ts
+          scripts/professional-review-http.integration.test.ts
+          scripts/document-package-real-runtime.ts
+          scripts/professional-review-real-runtime.ts
+
+      - run: pnpm format:check
+
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/execution/src/reviewed-source-handoff.ts \
+            scripts/document-package-http.integration.test.ts \
+            scripts/professional-review-http.integration.test.ts \
+            scripts/document-package-real-runtime.ts \
+            scripts/professional-review-real-runtime.ts
+          if git diff --cached --quiet; then
+            echo "No repair changes needed"
+            exit 0
+          fi
+          git commit -m "fix(m5-wp05): reset reviewed-source tables in shared test DBs"
+          git push origin HEAD:m5-wp-05-reviewed-source-handoff
