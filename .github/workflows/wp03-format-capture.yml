@@ -14,31 +14,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: pnpm/action-setup@v4
-        with: { version: 10.28.1 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - name: Format WP03 files
-        run: >-
-          pnpm exec prettier --write
-          services/markreg/src/lifecycle-projection.ts
-          services/markreg/tests/formal-matter-postgres.test.ts
-          services/markreg/tests/lifecycle-projection-postgres.test.ts
-      - name: Commit exact formatting only when needed
+      - name: Reconcile WP03 task index
         run: |
-          if git diff --quiet -- \
-            services/markreg/src/lifecycle-projection.ts \
-            services/markreg/tests/formal-matter-postgres.test.ts \
-            services/markreg/tests/lifecycle-projection-postgres.test.ts; then
-            echo 'WP03 files already match repository Prettier.'
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'docs/planning/TASK-INDEX.md';
+          let text = fs.readFileSync(path, 'utf8');
+          if (!text.includes('- M5-WP-03 — Durable MarkReg Lifecycle Projection')) {
+            if (!text.endsWith('\n')) text += '\n';
+            text += [
+              '- M5-WP-03 — Durable MarkReg Lifecycle Projection from exact admitted reviewed sources (**implemented in PR #64**)',
+              '  - MarkReg-owned migration: `0034_markreg_lifecycle_projection`.',
+              '  - Exact Reviewed Source Admission provenance, append-only lifecycle events, deterministic current view and durable idempotency/replay.',
+              '  - Lifecycle Projection remains internal governed truth with `officialStatusVerified = false`; no filing or official application/status truth is created.',
+              ''
+            ].join('\n');
+            fs.writeFileSync(path, text);
+          }
+          NODE
+      - name: Commit task index only when needed
+        run: |
+          if git diff --quiet -- docs/planning/TASK-INDEX.md; then
+            echo 'WP03 task index is already reconciled.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            services/markreg/src/lifecycle-projection.ts \
-            services/markreg/tests/formal-matter-postgres.test.ts \
-            services/markreg/tests/lifecycle-projection-postgres.test.ts
-          git commit -m 'style(markreg): format WP03 lifecycle projection'
+          git add docs/planning/TASK-INDEX.md
+          git commit -m 'docs(planning): add M5 WP03 task index entry'
           git push origin HEAD:${{ github.head_ref }}
