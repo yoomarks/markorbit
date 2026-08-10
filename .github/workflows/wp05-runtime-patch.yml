@@ -1,0 +1,61 @@
+name: WP05 runtime patch
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'm5-wp-05-reviewed-source-handoff'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add bounded extraRoutes injection to MarkReg runtime
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'services/markreg/src/index.ts';
+          let source = fs.readFileSync(file, 'utf8');
+          const replacements = [
+            [
+              "import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';",
+              "import {\n  createServiceRuntime,\n  HttpError,\n  json,\n  type JsonResult,\n  type JsonRoute\n} from '@markorbit/service-kit';"
+            ],
+            [
+              "  orderMatterConversionService?: OrderHttpOptions['conversionService'];\n}",
+              "  orderMatterConversionService?: OrderHttpOptions['conversionService'];\n  extraRoutes?: readonly JsonRoute[];\n}"
+            ],
+            [
+              "      routes: [\n        ...createOrderHttpRoutes({",
+              "      routes: [\n        ...(options.extraRoutes ?? []),\n        ...createOrderHttpRoutes({"
+            ]
+          ];
+          for (const [before, after] of replacements) {
+            if (source.includes(before)) source = source.replace(before, after);
+            else if (!source.includes(after)) throw new Error(`Missing WP05 runtime patch anchor: ${before}`);
+          }
+          fs.writeFileSync(file, source);
+          NODE
+          pnpm exec prettier --write services/markreg/src/index.ts
+      - name: Commit runtime injection
+        run: |
+          if ! git diff --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add services/markreg/src/index.ts
+            git commit -m "feat(markreg): allow bounded internal runtime routes"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
