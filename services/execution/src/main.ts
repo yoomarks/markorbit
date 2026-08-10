@@ -5,7 +5,6 @@ import {
   PostgresProfessionalReviewRepository
 } from './index.js';
 import { PostgresEvidenceReviewRepository } from './evidence-review-postgres.js';
-import { PostgresProviderReturnEvidenceRepository } from './provider-return-evidence-postgres.js';
 import {
   PostgresReviewedSourceAdmissionRepository,
   ReviewedSourceAdmissionService,
@@ -72,11 +71,6 @@ if (fixtureRuntime) {
     internalServiceSecret,
     markRegUrl
   });
-
-  // Keep the provider evidence repository initialized through the same owner database.
-  // The instance is intentionally not shared with admission writes, which consume only
-  // the governed Evidence Review Decision repository rather than raw Provider Return truth.
-  void new PostgresProviderReturnEvidenceRepository(database, pool);
 }
 
 async function shutdown(signal: string) {
