@@ -64,7 +64,7 @@ The view has its own monotonically increasing projection version and fingerprint
 - a second key for the same exact semantic projection reuses the existing event;
 - a conflicting semantic projection for an already-consumed exact admission fails with `VERSION_CONFLICT`.
 
-Formal Matter locking serializes per-Matter event version allocation and protects deterministic concurrent writes.
+Formal Matter locking occurs before replay inspection, serializing per-Matter first-use retries, event version allocation and current-view updates. Concurrent identical retries therefore converge on the same committed command/event/view result rather than racing on an initially absent idempotency row.
 
 ## Read boundary
 
@@ -98,6 +98,7 @@ Creating or reading a Lifecycle Projection does not automatically create:
 - exact admitted-source provenance retention;
 - durable restart/reload of lifecycle event and current view;
 - idempotent command replay and exact-admission deduplication;
+- concurrent identical first-use retries coalesce to one event, one view and one command;
 - conflicting idempotency/admission rejection;
 - missing, stale-exactness and cross-Workspace source failure;
 - Workspace-bounded reads;
