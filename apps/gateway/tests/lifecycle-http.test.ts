@@ -52,7 +52,7 @@ const authenticationClient = {
       return Promise.reject(new AuthenticationError('INVALID_SESSION', 'Session expired.'));
     const principal = workspacePrincipal(token);
     return Promise.resolve({
-      kind: 'USER',
+      kind: 'AUTHENTICATED_USER',
       sessionId: principal.sessionId,
       userId: principal.userId,
       sessionExpiresAt: principal.sessionExpiresAt
