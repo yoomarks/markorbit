@@ -268,6 +268,28 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
     expect(counts.rows[0]).toMatchObject({ events: '1', commands: '2' });
   });
 
+  it('coalesces concurrent identical first-use retries into one durable lifecycle result', async () => {
+    const formalMatterId = await insertMatter('concurrent');
+    const reader = new FixtureAdmissionReader();
+    const source = admission('concurrent', formalMatterId);
+    reader.add(source);
+    const { service } = fixture(reader);
+    const projection = command(source, { idempotencyKey: 'project-concurrent' });
+
+    const [first, second] = await Promise.all([
+      service.project(projection),
+      service.project(projection)
+    ]);
+
+    expect(second).toEqual(first);
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*) FROM markreg_lifecycle_events) events,(SELECT count(*) FROM markreg_lifecycle_views) views,(SELECT count(*) FROM markreg_lifecycle_commands) commands'
+      );
+    expect(counts.rows[0]).toMatchObject({ events: '1', views: '1', commands: '1' });
+  });
+
   it('rejects conflicting key reuse and a conflicting projection for an already consumed admission', async () => {
     const formalMatterId = await insertMatter('conflict');
     const reader = new FixtureAdmissionReader();

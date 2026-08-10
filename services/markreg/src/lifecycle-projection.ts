@@ -213,20 +213,6 @@ export class PostgresLifecycleProjectionRepository implements LifecycleProjectio
   ): Promise<LifecycleProjectionRecordResult> {
     try {
       return await this.database.transact(async (client) => {
-        const replay = await client.query(
-          'SELECT request_fingerprint,result_snapshot FROM markreg_lifecycle_commands WHERE workspace_id=$1 AND idempotency_key=$2 FOR UPDATE',
-          [value.workspaceId, idempotencyKey]
-        );
-        if (replay.rowCount) {
-          const row = replay.rows[0] as Row;
-          if (String(row.request_fingerprint) !== requestFingerprint)
-            throw new LifecycleProjectionError(
-              'IDEMPOTENCY_CONFLICT',
-              'Idempotency key has a different lifecycle projection payload.'
-            );
-          return clone(row.result_snapshot as LifecycleProjectionRecordResult);
-        }
-
         const lockedMatter = await client.query(
           'SELECT version FROM formal_matters WHERE workspace_id=$1 AND formal_matter_id=$2 FOR UPDATE',
           [value.workspaceId, value.formalMatterId]
@@ -241,6 +227,22 @@ export class PostgresLifecycleProjectionRepository implements LifecycleProjectio
             'SOURCE_VERSION_MISMATCH',
             'Formal Matter version changed before lifecycle projection could be recorded.'
           );
+
+        // Serialize all lifecycle writes for one exact Formal Matter before checking replay.
+        // This closes the race where two first-use retries both observe a missing command row.
+        const replay = await client.query(
+          'SELECT request_fingerprint,result_snapshot FROM markreg_lifecycle_commands WHERE workspace_id=$1 AND idempotency_key=$2 FOR UPDATE',
+          [value.workspaceId, idempotencyKey]
+        );
+        if (replay.rowCount) {
+          const row = replay.rows[0] as Row;
+          if (String(row.request_fingerprint) !== requestFingerprint)
+            throw new LifecycleProjectionError(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency key has a different lifecycle projection payload.'
+            );
+          return clone(row.result_snapshot as LifecycleProjectionRecordResult);
+        }
 
         const duplicate = await client.query(
           'SELECT * FROM markreg_lifecycle_events WHERE workspace_id=$1 AND reviewed_source_admission_id=$2 AND reviewed_source_admission_version=$3 AND admission_fingerprint_sha256=$4',
