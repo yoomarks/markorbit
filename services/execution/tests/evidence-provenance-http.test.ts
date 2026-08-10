@@ -33,41 +33,46 @@ function principal(permissions: WorkspacePrincipal['permissions'], workspace = w
 
 async function stack() {
   const admissionService = {
-    getAdmission: async (requestedWorkspaceId: string, requestedAdmissionId: string) =>
-      requestedWorkspaceId === workspaceId && requestedAdmissionId === admissionId
-        ? {
-            reviewedSourceAdmissionId: admissionId,
-            workspaceId,
-            reviewDecision: { id: 'evidence-review-decision_wp06', version: 1 },
-            admittedEvidenceReferences: ['artifact://provider/wp06/receipt.pdf']
-          }
-        : undefined
+    getAdmission: (requestedWorkspaceId: string, requestedAdmissionId: string) =>
+      Promise.resolve(
+        requestedWorkspaceId === workspaceId && requestedAdmissionId === admissionId
+          ? {
+              reviewedSourceAdmissionId: admissionId,
+              workspaceId,
+              reviewDecision: { id: 'evidence-review-decision_wp06', version: 1 },
+              admittedEvidenceReferences: ['artifact://provider/wp06/receipt.pdf']
+            }
+          : undefined
+      )
   } as unknown as ReviewedSourceAdmissionService;
   const reviewService = {
-    getDecision: async () => ({
-      evidenceReviewDecisionId: 'evidence-review-decision_wp06',
-      workspaceId,
-      outcome: 'ADMITTED_FOR_INTERNAL_USE',
-      rationale: 'Reviewed evidence is suitable for bounded internal lifecycle use.'
-    }),
-    getCorrectionRequest: async () => ({
-      correctionRequestId: 'evidence-correction-request_wp06',
-      status: 'OPEN',
-      reasons: [
-        {
-          code: 'ARTIFACT_HASH_MISSING',
-          message: 'Corrected source was requested.',
-          evidenceReferences: ['artifact://provider/wp06/receipt.pdf']
-        }
-      ]
-    })
+    getDecision: () =>
+      Promise.resolve({
+        evidenceReviewDecisionId: 'evidence-review-decision_wp06',
+        workspaceId,
+        outcome: 'ADMITTED_FOR_INTERNAL_USE',
+        rationale: 'Reviewed evidence is suitable for bounded internal lifecycle use.'
+      }),
+    getCorrectionRequest: () =>
+      Promise.resolve({
+        correctionRequestId: 'evidence-correction-request_wp06',
+        status: 'OPEN',
+        reasons: [
+          {
+            code: 'ARTIFACT_HASH_MISSING',
+            message: 'Corrected source was requested.',
+            evidenceReferences: ['artifact://provider/wp06/receipt.pdf']
+          }
+        ]
+      })
   } as unknown as EvidenceReviewService;
   const handoffService = {
-    getDelivery: async () => ({
-      status: 'DELIVERED',
-      attemptCount: 2,
-      markRegIdempotencyKey: 'wp05-reviewed-source:reviewed-source-admission_wp06:v1'
-    })
+    getDelivery: () =>
+      Promise.resolve({
+        status: 'DELIVERED',
+        attemptCount: 2,
+        markRegIdempotencyKey: 'wp05-reviewed-source:reviewed-source-admission_wp06:v1'
+      })
   } as unknown as ReviewedSourceHandoffService;
   const runtime = createServiceRuntime(
     { name: 'execution-wp06-provenance-test', port: 0, version: '1' },
