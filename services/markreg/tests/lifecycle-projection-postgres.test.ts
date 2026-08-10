@@ -35,7 +35,10 @@ const projectedAt = '2026-08-10T00:30:00.000Z';
 const sha = (character: string) => character.repeat(64);
 
 class FixtureAdmissionReader implements ReviewedSourceAdmissionReader {
-  private readonly admissions = new Map<ReviewedSourceAdmissionId, ReviewedSourceAdmissionEnvelope>();
+  private readonly admissions = new Map<
+    ReviewedSourceAdmissionId,
+    ReviewedSourceAdmissionEnvelope
+  >();
 
   add(admission: ReviewedSourceAdmissionEnvelope) {
     this.admissions.set(admission.reviewedSourceAdmissionId, structuredClone(admission));
@@ -122,30 +125,32 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
 
   async function insertMatter(suffix: string, workspace = workspaceId) {
     const formalMatterId = `formal-matter_${suffix}` as FormalMatterId;
-    await database.getPool().query(
-      'INSERT INTO formal_matters (formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,1,$5,1,$6,1,$7,$8,$9::jsonb,1,$10,$11,$12,$12)',
-      [
-        formalMatterId,
-        workspace,
-        'TRADEMARK_REGISTRATION',
-        'OPEN',
-        `confirmation_${suffix}`,
-        `matter-draft_${suffix}`,
-        `quote_${suffix}`,
-        'quote-v1',
-        JSON.stringify({
-          preparation: {
-            applicantName: 'Orbit Ltd',
-            trademark: 'ORBIT',
-            targetJurisdiction: 'US',
-            classes: [9]
-          }
-        }),
-        sha('f'),
-        `user_${suffix}`,
-        '2026-08-10T00:00:00.000Z'
-      ]
-    );
+    await database
+      .getPool()
+      .query(
+        'INSERT INTO formal_matters (formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,1,$5,1,$6,1,$7,$8,$9::jsonb,1,$10,$11,$12,$12)',
+        [
+          formalMatterId,
+          workspace,
+          'TRADEMARK_REGISTRATION',
+          'OPEN',
+          `confirmation_${suffix}`,
+          `matter-draft_${suffix}`,
+          `quote_${suffix}`,
+          'quote-v1',
+          JSON.stringify({
+            preparation: {
+              applicantName: 'Orbit Ltd',
+              trademark: 'ORBIT',
+              targetJurisdiction: 'US',
+              classes: [9]
+            }
+          }),
+          sha('f'),
+          `user_${suffix}`,
+          '2026-08-10T00:00:00.000Z'
+        ]
+      );
     return formalMatterId;
   }
 
@@ -175,7 +180,8 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
       state: 'REVIEWED_PROVIDER_EVIDENCE',
       eventCode: 'PROVIDER_EVIDENCE_REVIEWED',
       customerSafeLabel: 'Evidence reviewed',
-      customerSafeSummary: 'Reviewed provider evidence is available for internal lifecycle tracking.',
+      customerSafeSummary:
+        'Reviewed provider evidence is available for internal lifecycle tracking.',
       occurredAt: '2026-08-10T00:20:00.000Z',
       idempotencyKey: `project-${source.reviewedSourceAdmissionId}`,
       correlationId: source.correlationId,
@@ -254,9 +260,11 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
       command(source, { idempotencyKey: 'project-replay-2' })
     );
     expect(duplicate.event.lifecycleEventId).toBe(first.event.lifecycleEventId);
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*) FROM markreg_lifecycle_events) events,(SELECT count(*) FROM markreg_lifecycle_commands) commands'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*) FROM markreg_lifecycle_events) events,(SELECT count(*) FROM markreg_lifecycle_commands) commands'
+      );
     expect(counts.rows[0]).toMatchObject({ events: '1', commands: '2' });
   });
 
@@ -275,7 +283,9 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
           customerSafeSummary: 'Different payload.'
         })
       )
-    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' } satisfies Partial<LifecycleProjectionError>);
+    ).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT'
+    } satisfies Partial<LifecycleProjectionError>);
     await expect(
       service.project(
         command(source, {
@@ -284,7 +294,9 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
           eventCode: 'CUSTOMER_ACTION_REQUIRED'
         })
       )
-    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' } satisfies Partial<LifecycleProjectionError>);
+    ).rejects.toMatchObject({
+      code: 'VERSION_CONFLICT'
+    } satisfies Partial<LifecycleProjectionError>);
   });
 
   it('fails closed for missing, wrong-Workspace, version-mismatched and fingerprint-mismatched sources', async () => {
@@ -412,10 +424,10 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
     await expect(
       database
         .getPool()
-        .query('UPDATE markreg_lifecycle_events SET customer_safe_label=$1 WHERE lifecycle_event_id=$2', [
-          'mutated',
-          result.event.lifecycleEventId
-        ])
+        .query(
+          'UPDATE markreg_lifecycle_events SET customer_safe_label=$1 WHERE lifecycle_event_id=$2',
+          ['mutated', result.event.lifecycleEventId]
+        )
     ).rejects.toMatchObject({ code: '55000' });
   });
 });

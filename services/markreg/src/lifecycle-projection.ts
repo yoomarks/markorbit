@@ -104,8 +104,7 @@ function fingerprint(value: unknown): string {
 
 function cleanText(value: string, field: string, maximum = 2000): string {
   const cleaned = value.trim();
-  if (!cleaned)
-    throw new LifecycleProjectionError('INVALID_INPUT', `${field} is required.`, 422);
+  if (!cleaned) throw new LifecycleProjectionError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
     throw new LifecycleProjectionError(
       'INVALID_INPUT',
@@ -161,7 +160,9 @@ function sameVersion(left: number | string, right: number | string): boolean {
   return String(left) === String(right);
 }
 
-function lifecycleSource(admission: Readonly<ReviewedSourceAdmissionEnvelope>): LifecycleProjectionSource {
+function lifecycleSource(
+  admission: Readonly<ReviewedSourceAdmissionEnvelope>
+): LifecycleProjectionSource {
   return {
     reviewedSourceAdmission: {
       id: admission.reviewedSourceAdmissionId,
@@ -258,7 +259,11 @@ export class PostgresLifecycleProjectionRepository implements LifecycleProjectio
               'The exact Reviewed Source Admission already produced a different lifecycle event.'
             );
           const event = this.mapEvent(duplicateRow);
-          const currentView = await this.findCurrentView(client, value.workspaceId, value.formalMatterId);
+          const currentView = await this.findCurrentView(
+            client,
+            value.workspaceId,
+            value.formalMatterId
+          );
           if (!currentView)
             throw new LifecycleProjectionError(
               'PERSISTENCE_UNAVAILABLE',
@@ -350,23 +355,21 @@ export class PostgresLifecycleProjectionRepository implements LifecycleProjectio
           if (!candidateBecomesCurrent(event, priorEvent)) currentEvent = priorEvent;
         }
 
-        const viewWithoutFingerprint: Omit<
-          CurrentLifecycleView,
-          'lifecycleViewFingerprintSha256'
-        > = {
-          schemaVersion: 1,
-          lifecycleViewId: previousView?.lifecycleViewId ?? value.viewId,
-          workspaceId: value.workspaceId,
-          formalMatter: clone(currentEvent.formalMatter),
-          version: (previousView?.version ?? 0) + 1,
-          currentEvent: { id: currentEvent.lifecycleEventId, version: currentEvent.version },
-          currentEventFingerprintSha256: currentEvent.lifecycleEventFingerprintSha256,
-          state: currentEvent.state,
-          customerSafeLabel: currentEvent.customerSafeLabel,
-          customerSafeSummary: currentEvent.customerSafeSummary,
-          officialStatusVerified: false,
-          updatedAt: value.projectedAt
-        };
+        const viewWithoutFingerprint: Omit<CurrentLifecycleView, 'lifecycleViewFingerprintSha256'> =
+          {
+            schemaVersion: 1,
+            lifecycleViewId: previousView?.lifecycleViewId ?? value.viewId,
+            workspaceId: value.workspaceId,
+            formalMatter: clone(currentEvent.formalMatter),
+            version: (previousView?.version ?? 0) + 1,
+            currentEvent: { id: currentEvent.lifecycleEventId, version: currentEvent.version },
+            currentEventFingerprintSha256: currentEvent.lifecycleEventFingerprintSha256,
+            state: currentEvent.state,
+            customerSafeLabel: currentEvent.customerSafeLabel,
+            customerSafeSummary: currentEvent.customerSafeSummary,
+            officialStatusVerified: false,
+            updatedAt: value.projectedAt
+          };
         const currentView: CurrentLifecycleView = {
           ...viewWithoutFingerprint,
           lifecycleViewFingerprintSha256: fingerprint(viewWithoutFingerprint)
@@ -569,11 +572,7 @@ export class LifecycleProjectionService {
     );
     const eventCode = cleanText(command.eventCode, 'eventCode', 200);
     const customerSafeLabel = cleanText(command.customerSafeLabel, 'customerSafeLabel', 300);
-    const customerSafeSummary = cleanText(
-      command.customerSafeSummary,
-      'customerSafeSummary',
-      2000
-    );
+    const customerSafeSummary = cleanText(command.customerSafeSummary, 'customerSafeSummary', 2000);
     const occurredAt = exactTimestamp(command.occurredAt, 'occurredAt');
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
     const correlationId = cleanText(command.correlationId, 'correlationId', 200);
@@ -608,7 +607,10 @@ export class LifecycleProjectionService {
         'SOURCE_VERSION_MISMATCH',
         'Exact Reviewed Source Admission version is required.'
       );
-    if (exactSha256(admission.admissionFingerprintSha256, 'admission.admissionFingerprintSha256') !== admissionFingerprint)
+    if (
+      exactSha256(admission.admissionFingerprintSha256, 'admission.admissionFingerprintSha256') !==
+      admissionFingerprint
+    )
       throw new LifecycleProjectionError(
         'SOURCE_FINGERPRINT_MISMATCH',
         'Reviewed Source Admission fingerprint does not match the exact admitted source.'
