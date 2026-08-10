@@ -202,7 +202,9 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
     ...createGatewayLifecycleRoutes({
       markRegUrl: options.markRegUrl,
       executionUrl: options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104',
-      ...(options.authenticationClient ? { authenticationClient: options.authenticationClient } : {}),
+      ...(options.authenticationClient
+        ? { authenticationClient: options.authenticationClient }
+        : {}),
       ...(options.internalServiceSecret
         ? { internalServiceSecret: options.internalServiceSecret }
         : {}),

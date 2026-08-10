@@ -11,10 +11,7 @@ import {
   LifecycleProjectionError,
   type LifecycleProjectionService
 } from './lifecycle-projection.js';
-import {
-  RecommendedActionError,
-  type RecommendedActionService
-} from './recommended-action.js';
+import { RecommendedActionError, type RecommendedActionService } from './recommended-action.js';
 
 type Body = Record<string, unknown>;
 
@@ -119,8 +116,7 @@ async function requireMatter(
   formalMatterId: FormalMatterId
 ) {
   const matter = await repository.findById(workspaceId, formalMatterId);
-  if (!matter)
-    throw new HttpError(404, 'FORMAL_MATTER_NOT_FOUND', 'Formal Matter was not found.');
+  if (!matter) throw new HttpError(404, 'FORMAL_MATTER_NOT_FOUND', 'Formal Matter was not found.');
   return matter;
 }
 
@@ -190,7 +186,11 @@ export function createMarkRegLifecycleSurfaceRoutes(
         const idempotencyKey = body.idempotencyKey;
         const correlationId = body.correlationId;
         if (!Number.isInteger(expectedVersion) || Number(expectedVersion) < 1)
-          throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion must be a positive integer.');
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'expectedVersion must be a positive integer.'
+          );
         if (targetStatus !== 'ACKNOWLEDGED' && targetStatus !== 'DISMISSED')
           throw new HttpError(
             400,

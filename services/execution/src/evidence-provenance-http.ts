@@ -75,18 +75,14 @@ export function createExecutionEvidenceProvenanceRoutes(
       path: '/internal/reviewed-source-admissions/:reviewedSourceAdmissionId/provenance',
       handle: async (request) => {
         const principal = operationsPrincipal(request, options.internalServiceSecret);
-        const reviewedSourceAdmissionId =
-          request.params.reviewedSourceAdmissionId! as ReviewedSourceAdmissionId;
+        const reviewedSourceAdmissionId = request.params
+          .reviewedSourceAdmissionId! as ReviewedSourceAdmissionId;
         try {
           const admission = await options
             .admissionServiceFor(principal.workspaceId)
             .getAdmission(principal.workspaceId, reviewedSourceAdmissionId);
           if (!admission)
-            throw new HttpError(
-              404,
-              'NOT_FOUND',
-              'Reviewed Source Admission was not found.'
-            );
+            throw new HttpError(404, 'NOT_FOUND', 'Reviewed Source Admission was not found.');
           const reviewerPrincipal = {
             workspaceId: principal.workspaceId,
             userId: principal.userId as MarkOrbitId,

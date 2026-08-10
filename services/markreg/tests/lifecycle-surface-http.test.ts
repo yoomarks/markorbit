@@ -129,8 +129,7 @@ async function stack(options?: { noAction?: boolean; staleMutation?: boolean }) 
     listEvents: async () => [structuredClone(event)]
   } as unknown as LifecycleProjectionService;
   const recommendations = {
-    getCustomerProjection: async () =>
-      options?.noAction ? null : structuredClone(customerAction),
+    getCustomerProjection: async () => (options?.noAction ? null : structuredClone(customerAction)),
     getForOperations: async () => structuredClone(action),
     transition: async () => {
       if (options?.staleMutation)

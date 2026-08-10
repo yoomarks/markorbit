@@ -171,9 +171,12 @@ function browserHeaders(token: string) {
 describe('M5-WP-06 Gateway lifecycle boundary', () => {
   it('keeps customer reads separate from Operations provenance permission', async () => {
     const base = await stack();
-    const customer = await fetch(`${base}/api/markreg/formal-matters/formal-matter_wp06/lifecycle`, {
-      headers: browserHeaders('customer')
-    });
+    const customer = await fetch(
+      `${base}/api/markreg/formal-matters/formal-matter_wp06/lifecycle`,
+      {
+        headers: browserHeaders('customer')
+      }
+    );
     expect(customer.status).toBe(200);
     expect(await customer.json()).toMatchObject({ noAction: true });
 

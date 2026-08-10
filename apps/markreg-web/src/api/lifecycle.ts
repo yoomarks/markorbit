@@ -69,9 +69,7 @@ export function createCustomerLifecycleClient(
   };
   return {
     get(formalMatterId) {
-      return api.get(
-        `/api/markreg/formal-matters/${encodeURIComponent(formalMatterId)}/lifecycle`
-      );
+      return api.get(`/api/markreg/formal-matters/${encodeURIComponent(formalMatterId)}/lifecycle`);
     },
     acknowledge(actionId, expectedVersion) {
       return transition(actionId, expectedVersion, 'acknowledge');

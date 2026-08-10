@@ -10,10 +10,7 @@ import {
   StatusBadge,
   TopBar
 } from '@markorbit/ui';
-import {
-  loadOperationsLifecycle,
-  type OperationsLifecycleProvenance
-} from './lifecycle.js';
+import { loadOperationsLifecycle, type OperationsLifecycleProvenance } from './lifecycle.js';
 
 export function OperationsApp() {
   const [formalMatterId, setFormalMatterId] = useState('');
@@ -121,8 +118,8 @@ export function OperationsApp() {
         {provenance && (
           <>
             <Alert tone="info" title="Internal governed provenance">
-              This view is review and projection evidence. It is not trademark-office status,
-              filing authority, payment truth or proof of submission.
+              This view is review and projection evidence. It is not trademark-office status, filing
+              authority, payment truth or proof of submission.
             </Alert>
             <Card>
               <h3>Current lifecycle</h3>

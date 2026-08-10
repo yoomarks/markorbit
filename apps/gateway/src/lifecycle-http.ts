@@ -206,10 +206,7 @@ export function createGatewayLifecycleRoutes(
     return json(200, { ...markReg.body, reviewSources });
   };
 
-  const transition = async (
-    request: JsonRequest,
-    targetStatus: 'ACKNOWLEDGED' | 'DISMISSED'
-  ) => {
+  const transition = async (request: JsonRequest, targetStatus: 'ACKNOWLEDGED' | 'DISMISSED') => {
     const principal = await authenticate(request, ['matter:manage'], true);
     const body = bodyRecord(request);
     const expectedVersion = body.expectedVersion;
@@ -224,7 +221,8 @@ export function createGatewayLifecycleRoutes(
         'INVALID_REQUEST',
         'Request idempotencyKey must match Idempotency-Key header.'
       );
-    const correlationId = request.headers['x-correlation-id'] ?? `lifecycle-action:${idempotencyKey}`;
+    const correlationId =
+      request.headers['x-correlation-id'] ?? `lifecycle-action:${idempotencyKey}`;
     const result = await forwardMarkReg(
       request,
       principal,
