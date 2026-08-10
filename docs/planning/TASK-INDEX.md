@@ -192,3 +192,7 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - MarkReg-owned migration: `0034_markreg_lifecycle_projection`.
   - Exact Reviewed Source Admission provenance, append-only lifecycle events, deterministic current view and durable idempotency/replay.
   - Lifecycle Projection remains internal governed truth with `officialStatusVerified = false`; no filing or official application/status truth is created.
+- M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics (**implemented in PR #65**)
+  - MarkReg-owned migration: `0035_markreg_recommended_actions`.
+  - Exact Lifecycle View ID/version/fingerprint plus deterministic `recommended-action-policy-v1` govern candidate generation.
+  - OPEN / ACKNOWLEDGED / DISMISSED / SUPPRESSED remain advisory state only; `executionAuthorized = false` and no filing, Payment/Invoice or Official Truth is created.
