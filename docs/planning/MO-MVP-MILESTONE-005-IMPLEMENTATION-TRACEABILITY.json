@@ -7,7 +7,7 @@
   },
   "milestoneStatus": "IMPLEMENTATION_ACTIVE",
   "planningStatusReconciled": true,
-  "currentWorkPackage": "M5-WP-05",
+  "currentWorkPackage": "M5-WP-06",
   "authorityLocks": {
     "evidenceReviewDecisionIsOfficialTruth": false,
     "reviewAdmissionIsFilingSubmission": false,
@@ -83,7 +83,20 @@
     },
     {
       "id": "M5-WP-06",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED_IN_PR_67",
+      "pullRequest": 67,
+      "evidence": [
+        "services/markreg/src/lifecycle-surface-http.ts",
+        "services/execution/src/evidence-provenance-http.ts",
+        "apps/gateway/src/lifecycle-http.ts",
+        "apps/markreg-web/src/LifecyclePanel.tsx",
+        "apps/operations-console/src/App.tsx",
+        "services/markreg/tests/lifecycle-surface-http.test.ts",
+        "services/execution/tests/evidence-provenance-http.test.ts",
+        "apps/gateway/tests/lifecycle-http.test.ts",
+        "apps/markreg-web/tests/LifecyclePanel.test.tsx",
+        "docs/tasks/MO-MVP-M5-WP-06-AUTHENTICATED-LIFECYCLE-SURFACES.md"
+      ]
     },
     {
       "id": "M5-WP-07",
@@ -94,6 +107,6 @@
       "status": "NOT_STARTED"
     }
   ],
-  "nextApprovedStepAfterMerge": "M5-WP-06",
+  "nextApprovedStepAfterMerge": "M5-WP-07",
   "alsoDependencyUnblockedAfterMerge": []
 }
