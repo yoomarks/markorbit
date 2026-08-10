@@ -1,0 +1,138 @@
+name: WP03 concurrency hardening
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Apply bounded concurrency hardening
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const sourcePath = 'services/markreg/src/lifecycle-projection.ts';
+          let source = fs.readFileSync(sourcePath, 'utf8');
+          const replayBlock = `        const replay = await client.query(
+                    'SELECT request_fingerprint,result_snapshot FROM markreg_lifecycle_commands WHERE workspace_id=$1 AND idempotency_key=$2 FOR UPDATE',
+                    [value.workspaceId, idempotencyKey]
+                  );
+                  if (replay.rowCount) {
+                    const row = replay.rows[0] as Row;
+                    if (String(row.request_fingerprint) !== requestFingerprint)
+                      throw new LifecycleProjectionError(
+                        'IDEMPOTENCY_CONFLICT',
+                        'Idempotency key has a different lifecycle projection payload.'
+                      );
+                    return clone(row.result_snapshot as LifecycleProjectionRecordResult);
+                  }
+
+                  const lockedMatter = await client.query(
+                    'SELECT version FROM formal_matters WHERE workspace_id=$1 AND formal_matter_id=$2 FOR UPDATE',
+                    [value.workspaceId, value.formalMatterId]
+                  );
+                  if (!lockedMatter.rowCount)
+                    throw new LifecycleProjectionError(
+                      'LIFECYCLE_SOURCE_NOT_ADMITTED',
+                      'Formal Matter is unavailable in the requested Workspace.'
+                    );
+                  if (!sameVersion(Number((lockedMatter.rows[0] as Row).version), value.formalMatterVersion))
+                    throw new LifecycleProjectionError(
+                      'SOURCE_VERSION_MISMATCH',
+                      'Formal Matter version changed before lifecycle projection could be recorded.'
+                    );`;
+          const serializedBlock = `        const lockedMatter = await client.query(
+                    'SELECT version FROM formal_matters WHERE workspace_id=$1 AND formal_matter_id=$2 FOR UPDATE',
+                    [value.workspaceId, value.formalMatterId]
+                  );
+                  if (!lockedMatter.rowCount)
+                    throw new LifecycleProjectionError(
+                      'LIFECYCLE_SOURCE_NOT_ADMITTED',
+                      'Formal Matter is unavailable in the requested Workspace.'
+                    );
+                  if (!sameVersion(Number((lockedMatter.rows[0] as Row).version), value.formalMatterVersion))
+                    throw new LifecycleProjectionError(
+                      'SOURCE_VERSION_MISMATCH',
+                      'Formal Matter version changed before lifecycle projection could be recorded.'
+                    );
+
+                  // Serialize all lifecycle writes for one exact Formal Matter before checking replay.
+                  // This closes the race where two first-use retries both observe a missing command row.
+                  const replay = await client.query(
+                    'SELECT request_fingerprint,result_snapshot FROM markreg_lifecycle_commands WHERE workspace_id=$1 AND idempotency_key=$2 FOR UPDATE',
+                    [value.workspaceId, idempotencyKey]
+                  );
+                  if (replay.rowCount) {
+                    const row = replay.rows[0] as Row;
+                    if (String(row.request_fingerprint) !== requestFingerprint)
+                      throw new LifecycleProjectionError(
+                        'IDEMPOTENCY_CONFLICT',
+                        'Idempotency key has a different lifecycle projection payload.'
+                      );
+                    return clone(row.result_snapshot as LifecycleProjectionRecordResult);
+                  }`;
+          if (!source.includes('Serialize all lifecycle writes for one exact Formal Matter')) {
+            if (!source.includes(replayBlock)) throw new Error('Expected lifecycle append block not found.');
+            source = source.replace(replayBlock, serializedBlock);
+            fs.writeFileSync(sourcePath, source);
+          }
+
+          const testPath = 'services/markreg/tests/lifecycle-projection-postgres.test.ts';
+          let test = fs.readFileSync(testPath, 'utf8');
+          if (!test.includes('coalesces concurrent identical first-use retries')) {
+            const anchor = `  it('rejects conflicting key reuse and a conflicting projection for an already consumed admission', async () => {`;
+            if (!test.includes(anchor)) throw new Error('Expected lifecycle test anchor not found.');
+            const concurrent = `  it('coalesces concurrent identical first-use retries into one durable lifecycle result', async () => {
+              const formalMatterId = await insertMatter('concurrent');
+              const reader = new FixtureAdmissionReader();
+              const source = admission('concurrent', formalMatterId);
+              reader.add(source);
+              const { service } = fixture(reader);
+              const projection = command(source, { idempotencyKey: 'project-concurrent' });
+
+              const [first, second] = await Promise.all([
+                service.project(projection),
+                service.project(projection)
+              ]);
+
+              expect(second).toEqual(first);
+              const counts = await database
+                .getPool()
+                .query(
+                  'SELECT (SELECT count(*) FROM markreg_lifecycle_events) events,(SELECT count(*) FROM markreg_lifecycle_views) views,(SELECT count(*) FROM markreg_lifecycle_commands) commands'
+                );
+              expect(counts.rows[0]).toMatchObject({ events: '1', views: '1', commands: '1' });
+            });
+
+          `;
+            test = test.replace(anchor, concurrent + anchor);
+            fs.writeFileSync(testPath, test);
+          }
+          NODE
+          pnpm exec prettier --write \
+            services/markreg/src/lifecycle-projection.ts \
+            services/markreg/tests/lifecycle-projection-postgres.test.ts
+      - name: Commit hardening only when needed
+        run: |
+          if git diff --quiet -- services/markreg/src/lifecycle-projection.ts services/markreg/tests/lifecycle-projection-postgres.test.ts; then
+            echo 'Concurrency hardening already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/markreg/src/lifecycle-projection.ts services/markreg/tests/lifecycle-projection-postgres.test.ts
+          git commit -m 'fix(markreg): serialize lifecycle idempotent writes'
+          git push origin HEAD:${{ github.head_ref }}
