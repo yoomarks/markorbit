@@ -121,7 +121,7 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
     await database
       .getPool()
       .query(
-        'INSERT INTO markreg_lifecycle_events (lifecycle_event_id,workspace_id,formal_matter_id,formal_matter_version,version,reviewed_source_admission_id,reviewed_source_admission_version,admission_fingerprint_sha256,source_provenance,state,event_code,customer_safe_label,customer_safe_summary,occurred_at,projected_at,lifecycle_event_fingerprint_sha256,official_status_verified,correlation_id,projection_request_fingerprint) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,false,$15,$16)',
+        'INSERT INTO markreg_lifecycle_events (lifecycle_event_id,workspace_id,formal_matter_id,formal_matter_version,version,reviewed_source_admission_id,reviewed_source_admission_version,admission_fingerprint_sha256,source_provenance,state,event_code,customer_safe_label,customer_safe_summary,occurred_at,projected_at,lifecycle_event_fingerprint_sha256,official_status_verified,correlation_id,projection_request_fingerprint) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15,false,$16,$17)',
         [
           eventId,
           workspaceId,
