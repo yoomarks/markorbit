@@ -53,6 +53,10 @@ const ownedTables = {
     'order_audit'
   ],
   Execution: [
+    'execution_reviewed_source_admissions',
+    'execution_reviewed_source_admission_commands',
+    'execution_reviewed_source_handoffs',
+    'execution_reviewed_source_handoff_audit',
     'execution_evidence_review_sources',
     'execution_evidence_review_decisions',
     'execution_evidence_correction_requests',
@@ -352,11 +356,12 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(14);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(15);
     expect(sets[1]).toContain('0034_markreg_lifecycle_projection');
     expect(sets[1]).toContain('0035_markreg_recommended_actions');
     expect(sets[2]).toContain('0027_execution_filing_governance');
     expect(sets[2]).toContain('0032_execution_provider_return_evidence');
     expect(sets[2]).toContain('0033_execution_evidence_review');
+    expect(sets[2]).toContain('0036_execution_reviewed_source_handoff');
   });
 });

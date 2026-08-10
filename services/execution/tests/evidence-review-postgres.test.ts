@@ -169,6 +169,10 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         execution_reviewed_source_handoff_audit,
+         execution_reviewed_source_handoffs,
+         execution_reviewed_source_admission_commands,
+         execution_reviewed_source_admissions,
          execution_evidence_review_audit,
          execution_evidence_review_commands,
          execution_evidence_correction_requests,
@@ -208,6 +212,10 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     const pool = database.getPool();
     await pool.query(
       `TRUNCATE
+         execution_reviewed_source_handoff_audit,
+         execution_reviewed_source_handoffs,
+         execution_reviewed_source_admission_commands,
+         execution_reviewed_source_admissions,
          execution_evidence_review_audit,
          execution_evidence_review_commands,
          execution_evidence_correction_requests,
@@ -368,7 +376,11 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     const freshDatabaseSource = async () => {
       await database.getPool().query(
         `TRUNCATE
-           execution_evidence_review_audit,
+           execution_reviewed_source_handoff_audit,
+         execution_reviewed_source_handoffs,
+         execution_reviewed_source_admission_commands,
+         execution_reviewed_source_admissions,
+         execution_evidence_review_audit,
            execution_evidence_review_commands,
            execution_evidence_correction_requests,
            execution_evidence_review_decisions,
