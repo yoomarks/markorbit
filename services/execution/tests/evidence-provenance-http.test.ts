@@ -96,9 +96,12 @@ function headers(value: WorkspacePrincipal) {
 describe('M5-WP-06 Execution evidence provenance route', () => {
   it('requires review:perform rather than customer/read-only permissions', async () => {
     const base = await stack();
-    const denied = await fetch(`${base}/internal/reviewed-source-admissions/${admissionId}/provenance`, {
-      headers: headers(principal(['matter:read', 'review:read']))
-    });
+    const denied = await fetch(
+      `${base}/internal/reviewed-source-admissions/${admissionId}/provenance`,
+      {
+        headers: headers(principal(['matter:read', 'review:read']))
+      }
+    );
     expect(denied.status).toBe(403);
     expect(await denied.json()).toMatchObject({ code: 'PERMISSION_DENIED' });
   });

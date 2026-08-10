@@ -44,9 +44,7 @@ const authenticationClient = {
     if (token === 'expired')
       return Promise.reject(new AuthenticationError('INVALID_SESSION', 'Session expired.'));
     if (requestedWorkspaceId !== workspaceId)
-      return Promise.reject(
-        new AuthenticationError('MEMBERSHIP_REQUIRED', 'Membership required.')
-      );
+      return Promise.reject(new AuthenticationError('MEMBERSHIP_REQUIRED', 'Membership required.'));
     return Promise.resolve(workspacePrincipal(token));
   },
   resolve(token: string): Promise<AuthenticatedUserPrincipal> {

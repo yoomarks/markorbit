@@ -3,10 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LifecyclePanel } from '../src/LifecyclePanel.js';
-import type {
-  CustomerLifecycleClient,
-  CustomerLifecycleSurface
-} from '../src/api/lifecycle.js';
+import type { CustomerLifecycleClient, CustomerLifecycleSurface } from '../src/api/lifecycle.js';
 
 const surface: CustomerLifecycleSurface = {
   lifecycle: {
@@ -74,14 +71,19 @@ describe('M5-WP-06 customer lifecycle panel', () => {
 
   it('acknowledges the exact recommendation version and reloads without executing it', async () => {
     const user = userEvent.setup();
-    const after = { ...surface, recommendedAction: { ...surface.recommendedAction!, status: 'ACKNOWLEDGED' as const, version: 4 } };
+    const after = {
+      ...surface,
+      recommendedAction: {
+        ...surface.recommendedAction!,
+        status: 'ACKNOWLEDGED' as const,
+        version: 4
+      }
+    };
     const api = client();
     api.get.mockResolvedValueOnce(surface).mockResolvedValueOnce(after);
     render(<LifecyclePanel formalMatterId="formal-matter_wp06" client={api} />);
     await user.click(await screen.findByRole('button', { name: 'Acknowledge' }));
-    await waitFor(() =>
-      expect(api.acknowledge).toHaveBeenCalledWith('recommended-action_wp06', 3)
-    );
+    await waitFor(() => expect(api.acknowledge).toHaveBeenCalledWith('recommended-action_wp06', 3));
     expect(await screen.findByText('Status: ACKNOWLEDGED')).toBeVisible();
   });
 
