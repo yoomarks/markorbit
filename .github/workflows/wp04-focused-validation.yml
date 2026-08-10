@@ -23,15 +23,62 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Apply bounded WP04 source hardening
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'services/markreg/src/recommended-action.ts';
+          let source = fs.readFileSync(file, 'utf8');
+          const replaceOnce = (oldText, newText, marker) => {
+            if (source.includes(oldText)) {
+              source = source.replace(oldText, newText);
+              return;
+            }
+            if (source.includes(marker)) return;
+            throw new Error(`WP04 patch anchor missing: ${marker}`);
+          };
+
+          replaceOnce(
+            `function withFingerprint(\n  value: Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>\n): RecommendedAction {\n  return {\n    ...value,\n    recommendedActionFingerprintSha256: fingerprint(value)\n  };\n}\n`,
+            `function withFingerprint(\n  value: Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>\n): RecommendedAction {\n  return {\n    ...value,\n    recommendedActionFingerprintSha256: fingerprint(value)\n  };\n}\n\nfunction refingerprint(\n  action: Readonly<RecommendedAction>,\n  updates: Partial<Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>>\n): RecommendedAction {\n  const { recommendedActionFingerprintSha256, ...withoutFingerprint } = action;\n  void recommendedActionFingerprintSha256;\n  return withFingerprint({ ...withoutFingerprint, ...updates });\n}\n`,
+            'function refingerprint('
+          );
+
+          replaceOnce(
+            `            formalMatter: structuredClone(value.view.formalMatter),`,
+            `            formalMatter: {\n              id: value.view.formalMatter.id,\n              version: String(value.view.formalMatter.version)\n            },`,
+            'version: String(value.view.formalMatter.version)'
+          );
+
+          replaceOnce(
+            `          action = withFingerprint({\n            ...currentAction,\n            version: currentAction.version + 1,\n            status: 'SUPPRESSED',\n            updatedAt: value.recordedAt,\n            recommendedActionFingerprintSha256: undefined as never\n          });`,
+            `          action = refingerprint(currentAction, {\n            version: currentAction.version + 1,\n            status: 'SUPPRESSED',\n            updatedAt: value.recordedAt\n          });`,
+            'action = refingerprint(currentAction, {'
+          );
+
+          replaceOnce(
+            `        if (action.version !== value.expectedVersion)\n          throw new RecommendedActionError(\n            'VERSION_CONFLICT',\n            'Recommended Action version changed before the transition could be recorded.'\n          );\n        if (\n          action.sourceLifecycleView.id !== currentView.lifecycleViewId ||\n          Number(action.sourceLifecycleView.version) !== currentView.version ||\n          action.sourceLifecycleViewFingerprintSha256 !== currentView.lifecycleViewFingerprintSha256\n        )\n          throw new RecommendedActionError(\n            'RECOMMENDATION_SOURCE_STALE',\n            'Recommended Action is bound to a stale Lifecycle View.'\n          );\n\n        const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);\n        if (replay) {\n          if (String(replay.request_fingerprint) !== value.requestFingerprint)\n            throw new RecommendedActionError(\n              'IDEMPOTENCY_CONFLICT',\n              'Idempotency key has a different Recommended Action transition payload.'\n            );\n          return structuredClone(replay.result_snapshot as RecommendedActionEvaluationResult);\n        }\n`,
+            `        const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);\n        if (replay) {\n          if (String(replay.request_fingerprint) !== value.requestFingerprint)\n            throw new RecommendedActionError(\n              'IDEMPOTENCY_CONFLICT',\n              'Idempotency key has a different Recommended Action transition payload.'\n            );\n          return structuredClone(replay.result_snapshot as RecommendedActionEvaluationResult);\n        }\n\n        if (action.version !== value.expectedVersion)\n          throw new RecommendedActionError(\n            'VERSION_CONFLICT',\n            'Recommended Action version changed before the transition could be recorded.'\n          );\n        if (\n          action.sourceLifecycleView.id !== currentView.lifecycleViewId ||\n          Number(action.sourceLifecycleView.version) !== currentView.version ||\n          action.sourceLifecycleViewFingerprintSha256 !== currentView.lifecycleViewFingerprintSha256\n        )\n          throw new RecommendedActionError(\n            'RECOMMENDATION_SOURCE_STALE',\n            'Recommended Action is bound to a stale Lifecycle View.'\n          );\n`,
+            "const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);\n        if (replay)"
+          );
+
+          replaceOnce(
+            `            : withFingerprint({\n                ...action,\n                version: action.version + 1,\n                status: value.targetStatus,\n                updatedAt: value.recordedAt,\n                recommendedActionFingerprintSha256: undefined as never\n              });`,
+            `            : refingerprint(action, {\n                version: action.version + 1,\n                status: value.targetStatus,\n                updatedAt: value.recordedAt\n              });`,
+            ': refingerprint(action, {'
+          );
+
+          fs.writeFileSync(file, source);
+          NODE
       - name: Format WP04 files
         run: pnpm exec prettier --write services/markreg/src/recommended-action.ts services/markreg/tests/recommended-action-postgres.test.ts
-      - name: Commit exact formatter output
+      - name: Commit bounded WP04 source fixes
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add services/markreg/src/recommended-action.ts services/markreg/tests/recommended-action-postgres.test.ts
-          git commit -m "style(markreg): format WP04 recommended actions"
+          git commit -m "fix(markreg): harden Recommended Action replay and fingerprints"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
       - run: pnpm --filter @markorbit/markreg-service typecheck
       - run: pnpm --filter @markorbit/markreg-service lint
