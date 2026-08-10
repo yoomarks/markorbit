@@ -68,7 +68,7 @@ suite.sequential('TASK 026 actual Core listener restart', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     const migrations = await loadMigrationsForOwner(
       path.resolve('infrastructure/persistence/migrations'),

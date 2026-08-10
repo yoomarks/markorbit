@@ -7,6 +7,12 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 import type { AuthenticationService } from './auth.js';
+import { uuidV7 } from './auth.js';
+import {
+  fingerprintCoreIntakeRequest,
+  parseCoreIntakeRequest,
+  type KnowledgeIntakeRepository
+} from './knowledge-intake.js';
 
 export const serviceManifest = Object.freeze({
   name: 'core',
@@ -18,6 +24,7 @@ export interface CoreRuntimeOptions {
   port?: number;
   authentication?: AuthenticationService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
+  knowledgeIntakes?: KnowledgeIntakeRepository;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -140,7 +147,52 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
                 })
               }
             ]
-          : [])
+          : []),
+        {
+          method: 'POST' as const,
+          path: '/internal/knowledge/ready-packages/intakes',
+          handle: internal(async (request) => {
+            const idempotencyKey = request.headers['idempotency-key'];
+            if (typeof idempotencyKey !== 'string' || !idempotencyKey.trim())
+              throw new HttpError(
+                400,
+                'IDEMPOTENCY_KEY_REQUIRED',
+                'Idempotency-Key header is required.'
+              );
+            const intakeRequest = parseCoreIntakeRequest(request.body);
+            if (!intakeRequest)
+              throw new HttpError(400, 'INVALID_REQUEST', 'Request body is invalid.');
+            if (!options.workspaces || !options.knowledgeIntakes)
+              throw new HttpError(
+                503,
+                'KNOWLEDGE_INTAKE_SERVICE_UNAVAILABLE',
+                'Knowledge intake service is unavailable.',
+                true
+              );
+            if (!(await options.workspaces.findById(intakeRequest.workspaceId)))
+              throw new HttpError(404, 'WORKSPACE_NOT_FOUND', 'Workspace was not found.');
+            const requestSha256 = fingerprintCoreIntakeRequest(intakeRequest);
+            const stored = await options.knowledgeIntakes.createOrFind({
+              intakeId: uuidV7(),
+              idempotencyKey,
+              request: intakeRequest,
+              requestSha256,
+              status: 'RECEIVED',
+              receivedAt: new Date().toISOString()
+            });
+            if (stored.intake.requestSha256 !== requestSha256)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_INTAKE_IDEMPOTENCY_CONFLICT',
+                'Idempotency-Key was already used for a different request.'
+              );
+            return json(stored.created ? 201 : 200, {
+              intakeId: stored.intake.intakeId,
+              status: stored.intake.status,
+              readyPackageId: stored.intake.request.readyPackageId
+            });
+          })
+        }
       ]
     : [];
   return createServiceRuntime(
@@ -150,3 +202,4 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
 }
 export * from './identity.js';
 export * from './auth.js';
+export * from './knowledge-intake.js';

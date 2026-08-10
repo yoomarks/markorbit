@@ -32,6 +32,7 @@
     "build:auth-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/gateway...",
     "test:auth": "pnpm build:auth-deps && pnpm --filter @markorbit/core-service exec vitest run tests/auth.test.ts tests/session-memory-contract.test.ts && pnpm --filter @markorbit/gateway exec vitest run tests/auth-boundary.test.ts",
     "test:auth:postgres": "pnpm build:auth-deps && pnpm --filter @markorbit/core-service test:auth:postgres",
+    "test:knowledge-intake:postgres": "pnpm build:identity-postgres-deps && pnpm --filter @markorbit/core-service test:knowledge-intake:postgres",
     "test:auth:http": "pnpm build:auth-deps && pnpm exec vitest run scripts/auth-http.integration.test.ts",
     "build:customer-confirmation-deps": "turbo run build --filter=@markorbit/core-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway...",
     "test:customer-confirmation": "pnpm build:customer-confirmation-deps && pnpm --filter @markorbit/markreg-service exec vitest run tests/customer-confirmation.test.ts tests/customer-confirmation-memory-contract.test.ts",
