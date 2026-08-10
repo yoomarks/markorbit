@@ -1,0 +1,51 @@
+name: WP05 static fix
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  static:
+    if: github.head_ref == 'm5-wp-05-reviewed-source-handoff'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP05 sources
+        run: |
+          pnpm exec prettier --write \
+            scripts/milestone5-reviewed-source-handoff.integration.test.ts \
+            services/execution/src/reviewed-source-handoff.ts \
+            services/markreg/src/lifecycle-handoff-http.ts
+      - name: Commit formatting
+        run: |
+          if ! git diff --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add \
+              scripts/milestone5-reviewed-source-handoff.integration.test.ts \
+              services/execution/src/reviewed-source-handoff.ts \
+              services/markreg/src/lifecycle-handoff-http.ts
+            git commit -m "style(wp05): format reviewed source handoff"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
+      - name: Run focused lint and typecheck
+        run: |
+          pnpm --filter @markorbit/execution-service lint
+          pnpm --filter @markorbit/execution-service typecheck
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
+          pnpm exec eslint scripts/milestone5-reviewed-source-handoff.integration.test.ts
+          pnpm exec tsc --noEmit
