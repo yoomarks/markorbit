@@ -1,0 +1,63 @@
+name: WP04 fixture fix
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'm5-wp-04-recommended-actions'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_wp04_fixture
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_wp04_fixture"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_fixture
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Bind lifecycle event fingerprint in fixture INSERT
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'services/markreg/tests/recommended-action-postgres.test.ts';
+          let source = fs.readFileSync(file, 'utf8');
+          const oldText = "VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,false,$15,$16)'";
+          const newText = "VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15,false,$16,$17)'";
+          if (source.includes(oldText)) source = source.replace(oldText, newText);
+          else if (!source.includes(newText)) throw new Error('WP04 lifecycle fixture INSERT anchor missing');
+          fs.writeFileSync(file, source);
+          NODE
+          pnpm exec prettier --write services/markreg/tests/recommended-action-postgres.test.ts
+      - name: Commit fixture-only fix
+        run: |
+          if ! git diff --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add services/markreg/tests/recommended-action-postgres.test.ts
+            git commit -m "test(markreg): bind WP04 lifecycle fixture fingerprint"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
+      - name: Run focused WP04 PostgreSQL suite
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/recommended-action-postgres.test.ts
