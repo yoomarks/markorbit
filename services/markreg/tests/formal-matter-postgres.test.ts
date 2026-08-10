@@ -137,7 +137,7 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
     database
       .getPool()
       .query(
-        'TRUNCATE formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations RESTART IDENTITY'
+        'TRUNCATE markreg_lifecycle_commands, markreg_lifecycle_views, markreg_lifecycle_events, formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations RESTART IDENTITY'
       );
   beforeAll(async () => {
     await database.start();
@@ -170,7 +170,15 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
   };
   it('applies and verifies owner migration 0022 with no workaround', async () => {
     const owned = await migrations();
-    expect(owned.map((x) => x.version)).toEqual(['0020', '0021', '0022', '0024', '0025', '0026']);
+    expect(owned.map((x) => x.version)).toEqual([
+      '0020',
+      '0021',
+      '0022',
+      '0024',
+      '0025',
+      '0026',
+      '0034'
+    ]);
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (x) => x.state === 'applied'

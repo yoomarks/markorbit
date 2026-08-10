@@ -66,7 +66,8 @@ suite.sequential('PostgreSQL durable Order repository', () => {
       '0022',
       '0024',
       '0025',
-      '0026'
+      '0026',
+      '0034'
     ]);
     expect(
       (await migrationStatus(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, owned)).every(
