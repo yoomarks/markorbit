@@ -1,0 +1,122 @@
+name: WP06 format and inventory repair
+
+on:
+  push:
+    branches:
+      - m5-wp-06-authenticated-lifecycle-journey
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[wp06-inventory-repaired]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-06-authenticated-lifecycle-journey
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Repair source-derived Gateway inventory
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const sourcePath = 'scripts/gateway-route-source.mjs';
+          let source = fs.readFileSync(sourcePath, 'utf8');
+          source = source.replace(
+            "const source = ['../apps/gateway/src/index.ts', '../apps/gateway/src/order-http.ts']\n  .map((file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8'))",
+            "const source = [\n  '../apps/gateway/src/index.ts',\n  '../apps/gateway/src/order-http.ts',\n  '../apps/gateway/src/lifecycle-http.ts'\n].map((file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8'))"
+          );
+          fs.writeFileSync(sourcePath, source);
+
+          const validatorPath = 'scripts/validate-gateway-inventory.mjs';
+          let validator = fs.readFileSync(validatorPath, 'utf8');
+          validator = validator.replace(
+            "    row.path.startsWith('/api/markreg/orders');",
+            "    row.path.startsWith('/api/markreg/orders') ||\n    row.path.startsWith('/api/markreg/recommended-actions') ||\n    row.path.startsWith('/api/operations/');"
+          );
+          validator = validator.replace('assert.equal(source.length, 77);', 'assert.equal(source.length, 81);');
+          validator = validator.replace(').length,\n  71\n);', ').length,\n  75\n);');
+          validator = validator.replace(
+            "'Gateway inventory PASS: 77 runtime routes; authenticated Order and Document Package boundaries included; test bootstrap excluded'",
+            "'Gateway inventory PASS: 81 runtime routes; authenticated Order, Document Package and Lifecycle boundaries included; test bootstrap excluded'"
+          );
+          fs.writeFileSync(validatorPath, validator);
+
+          const inventoryPath = 'docs/architecture/GATEWAY_ROUTE_INVENTORY.json';
+          const inventory = JSON.parse(fs.readFileSync(inventoryPath, 'utf8'));
+          const additions = [
+            {
+              method: 'GET',
+              path: '/api/markreg/formal-matters/:formalMatterId/lifecycle',
+              owner: 'markreg',
+              namespaceClass: 'AUTHENTICATED_RUNTIME',
+              authenticationMode: 'COOKIE_AUTHENTICATED',
+              environmentScope: 'ALL_ENVIRONMENTS',
+              idempotencyRequirement: 'NOT_APPLICABLE_READ',
+              authorityConsequenceResponse: 'NONE_EXTERNAL',
+              httpIntegrationTestFile: 'apps/gateway/tests/lifecycle-http.test.ts'
+            },
+            {
+              method: 'POST',
+              path: '/api/markreg/recommended-actions/:recommendedActionId/acknowledge',
+              owner: 'markreg',
+              namespaceClass: 'AUTHENTICATED_RUNTIME',
+              authenticationMode: 'COOKIE_AUTHENTICATED',
+              environmentScope: 'ALL_ENVIRONMENTS',
+              idempotencyRequirement: 'REQUIRED_FOR_MUTATION',
+              authorityConsequenceResponse: 'NONE_EXTERNAL',
+              httpIntegrationTestFile: 'apps/gateway/tests/lifecycle-http.test.ts'
+            },
+            {
+              method: 'POST',
+              path: '/api/markreg/recommended-actions/:recommendedActionId/dismiss',
+              owner: 'markreg',
+              namespaceClass: 'AUTHENTICATED_RUNTIME',
+              authenticationMode: 'COOKIE_AUTHENTICATED',
+              environmentScope: 'ALL_ENVIRONMENTS',
+              idempotencyRequirement: 'REQUIRED_FOR_MUTATION',
+              authorityConsequenceResponse: 'NONE_EXTERNAL',
+              httpIntegrationTestFile: 'apps/gateway/tests/lifecycle-http.test.ts'
+            },
+            {
+              method: 'GET',
+              path: '/api/operations/formal-matters/:formalMatterId/lifecycle-provenance',
+              owner: 'markreg',
+              namespaceClass: 'AUTHENTICATED_RUNTIME',
+              authenticationMode: 'COOKIE_AUTHENTICATED',
+              environmentScope: 'ALL_ENVIRONMENTS',
+              idempotencyRequirement: 'NOT_APPLICABLE_READ',
+              authorityConsequenceResponse: 'NONE_EXTERNAL',
+              httpIntegrationTestFile: 'apps/gateway/tests/lifecycle-http.test.ts'
+            }
+          ];
+          const byKey = new Map(inventory.routes.map((route) => [`${route.method} ${route.path}`, route]));
+          for (const route of additions) byKey.set(`${route.method} ${route.path}`, route);
+          inventory.routes = [...byKey.values()].sort((a, b) =>
+            `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`)
+          );
+          fs.writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
+          NODE
+      - name: Format WP06 changes
+        run: pnpm exec prettier --write apps/gateway/src/lifecycle-http.ts apps/gateway/src/order-http.ts apps/gateway/tests/lifecycle-http.test.ts apps/markreg-web/src/api/lifecycle.ts apps/markreg-web/src/LifecyclePanel.tsx apps/markreg-web/src/routing/GovernedRouteEntry.tsx apps/operations-console/src/App.tsx apps/operations-console/src/lifecycle.ts services/execution/src/evidence-provenance-http.ts services/execution/src/main.ts services/markreg/src/lifecycle-surface-http.ts services/markreg/src/main.ts services/markreg/tests/lifecycle-surface-http.test.ts scripts/gateway-route-source.mjs scripts/validate-gateway-inventory.mjs docs/architecture/GATEWAY_ROUTE_INVENTORY.json
+      - name: Verify inventory
+        run: pnpm test:gateway-inventory
+      - name: Commit repair
+        run: |
+          git config user.name "yoomarks"
+          git config user.email "lukeluccas6292643@gmail.com"
+          git add apps services scripts docs/architecture/GATEWAY_ROUTE_INVENTORY.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore(wp06): format lifecycle surfaces and register routes [wp06-inventory-repaired]"
+          git push origin HEAD:m5-wp-06-authenticated-lifecycle-journey
