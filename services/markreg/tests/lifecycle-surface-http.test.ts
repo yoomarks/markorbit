@@ -119,30 +119,35 @@ const customerAction: RecommendedActionCustomerProjection = {
 
 async function stack(options?: { noAction?: boolean; staleMutation?: boolean }) {
   const formalMatters = {
-    findById: async (requestedWorkspace: string, id: string) =>
-      requestedWorkspace === workspaceId && id === formalMatterId
-        ? ({ formalMatterId, workspaceId } as FormalMatter)
-        : null
+    findById: (requestedWorkspace: string, id: string) =>
+      Promise.resolve(
+        requestedWorkspace === workspaceId && id === formalMatterId
+          ? ({ formalMatterId, workspaceId } as FormalMatter)
+          : null
+      )
   } as unknown as FormalMatterRepository;
   const lifecycle = {
-    getCurrentView: async () => structuredClone(view),
-    listEvents: async () => [structuredClone(event)]
+    getCurrentView: () => Promise.resolve(structuredClone(view)),
+    listEvents: () => Promise.resolve([structuredClone(event)])
   } as unknown as LifecycleProjectionService;
   const recommendations = {
-    getCustomerProjection: async () => (options?.noAction ? null : structuredClone(customerAction)),
-    getForOperations: async () => structuredClone(action),
-    transition: async () => {
+    getCustomerProjection: () =>
+      Promise.resolve(options?.noAction ? null : structuredClone(customerAction)),
+    getForOperations: () => Promise.resolve(structuredClone(action)),
+    transition: () => {
       if (options?.staleMutation)
-        throw new RecommendedActionError(
-          'VERSION_CONFLICT',
-          'Recommended Action version changed before transition.'
+        return Promise.reject(
+          new RecommendedActionError(
+            'VERSION_CONFLICT',
+            'Recommended Action version changed before transition.'
+          )
         );
-      return {
+      return Promise.resolve({
         sourceLifecycleView: action.sourceLifecycleView,
         sourceLifecycleViewFingerprintSha256: action.sourceLifecycleViewFingerprintSha256,
         policyVersion: action.policyVersion,
         action: { ...structuredClone(action), status: 'ACKNOWLEDGED' as const, version: 4 }
-      };
+      });
     }
   } as unknown as RecommendedActionService;
   const runtime = createServiceRuntime(
