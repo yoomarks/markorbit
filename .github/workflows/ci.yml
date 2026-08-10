@@ -111,6 +111,8 @@ jobs:
         run: pnpm test:evidence-review:postgres
       - name: Run durable MarkReg Lifecycle Projection PostgreSQL suite
         run: pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts
+      - name: Run durable MarkReg Recommended Action PostgreSQL suite
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/recommended-action-postgres.test.ts
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:http
