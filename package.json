@@ -97,7 +97,8 @@
     "test:order:journey:no-interception": "node scripts/validate-order-journey-no-interception.mjs",
     "test:order:journey:browser": "pnpm build:order-journey-deps && pnpm test:order:journey:no-interception && playwright test --config playwright.order-journey-real-runtime.config.ts",
     "build:mgsn-provider-registry-deps": "turbo run build --filter=@markorbit/mgsn-service...",
-    "test:mgsn-provider-registry:postgres": "pnpm build:mgsn-provider-registry-deps && MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED=1 pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-registry-postgres.test.ts"
+    "test:mgsn-provider-registry:postgres": "pnpm build:mgsn-provider-registry-deps && MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED=1 pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-registry-postgres.test.ts",
+    "test:evidence-review:postgres": "pnpm build:professional-review-deps && EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED=1 pnpm --filter @markorbit/execution-service exec vitest run tests/evidence-review-postgres.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

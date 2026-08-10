@@ -15,7 +15,8 @@
     "mgsn_service_package_eligibility": "@markorbit/mgsn-service",
     "mgsn_allocation_provider_acceptance": "@markorbit/mgsn-service",
     "mgsn_provider_return": "@markorbit/mgsn-service",
-    "execution_provider_return_evidence": "@markorbit/execution-service"
+    "execution_provider_return_evidence": "@markorbit/execution-service",
+    "execution_evidence_review": "@markorbit/execution-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -32,6 +33,7 @@
     "0029_mgsn_service_package_eligibility": "@markorbit/mgsn-service",
     "0030_mgsn_allocation_provider_acceptance": "@markorbit/mgsn-service",
     "0031_mgsn_provider_return": "@markorbit/mgsn-service",
-    "0032_execution_provider_return_evidence": "@markorbit/execution-service"
+    "0032_execution_provider_return_evidence": "@markorbit/execution-service",
+    "0033_execution_evidence_review": "@markorbit/execution-service"
   }
 }
