@@ -55,7 +55,7 @@ describe('M5-WP-06 customer lifecycle panel', () => {
   it('shows only customer-safe lifecycle, bounded timeline and explicit authority language', async () => {
     const api = client();
     render(<LifecyclePanel formalMatterId="formal-matter_wp06" client={api} />);
-    expect(await screen.findByText('Action required')).toBeVisible();
+    expect(await screen.findAllByText('Action required')).toHaveLength(2);
     expect(screen.getByText('Review required action')).toBeVisible();
     expect(screen.getByText(/not trademark-office status or proof of filing/i)).toBeVisible();
     expect(screen.getByText(/does not execute, file or pay/i)).toBeVisible();
