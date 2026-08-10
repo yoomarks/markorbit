@@ -26,7 +26,13 @@ import {
   AuthenticationError
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
-import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import {
+  createServiceRuntime,
+  HttpError,
+  json,
+  type JsonResult,
+  type JsonRoute
+} from '@markorbit/service-kit';
 import {
   InMemoryMatterFlowRepository,
   MatterFlowError,
@@ -278,6 +284,7 @@ export interface MarkRegOptions {
   auditRepository?: PostgresMarkRegAuditRepository;
   orderService?: OrderHttpOptions['orderService'];
   orderMatterConversionService?: OrderHttpOptions['conversionService'];
+  extraRoutes?: readonly JsonRoute[];
 }
 async function post<T>(url: string, body: unknown, key: string, correlationId: string): Promise<T> {
   let response: Response;
@@ -568,6 +575,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...(options.extraRoutes ?? []),
         ...createOrderHttpRoutes({
           ...(options.orderService ? { orderService: options.orderService } : {}),
           ...(options.orderMatterConversionService
