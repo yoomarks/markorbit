@@ -202,4 +202,3 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Durable sender state is persisted before transport; stable MarkReg idempotency survives receiver unavailability, response loss and restart replay.
   - Corrected newer evidence requires a new explicit review/admission identity; cross-Workspace handoff and changed retry payloads fail closed.
   - Execution and MarkReg remain database-isolated; no filing, Payment/Invoice, Recommended Action execution or Official Truth authority is added.
-

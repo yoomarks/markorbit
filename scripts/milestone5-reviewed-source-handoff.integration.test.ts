@@ -566,10 +566,10 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     class UnavailableReceiver implements MarkRegLifecycleProjectionClient {
       async project(_command: Parameters<MarkRegLifecycleProjectionClient['project']>[0]) {
         throw new ReviewedSourceHandoffError(
-'DEPENDENCY_UNAVAILABLE',
-'simulated receiver unavailable after sender handoff commit',
-503,
-true
+          'DEPENDENCY_UNAVAILABLE',
+          'simulated receiver unavailable after sender handoff commit',
+          503,
+          true
         );
       }
     }
@@ -594,9 +594,9 @@ true
     expect(
       Number(
         (
-await markRegDatabase
-  .getPool()
-  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+          await markRegDatabase
+            .getPool()
+            .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
         ).rows[0]!.count
       )
     ).toBe(0);
@@ -617,9 +617,9 @@ await markRegDatabase
     expect(
       Number(
         (
-await markRegDatabase
-  .getPool()
-  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+          await markRegDatabase
+            .getPool()
+            .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
         ).rows[0]!.count
       )
     ).toBe(1);
@@ -665,9 +665,9 @@ await markRegDatabase
     expect(
       Number(
         (
-await markRegDatabase
-  .getPool()
-  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+          await markRegDatabase
+            .getPool()
+            .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
         ).rows[0]!.count
       )
     ).toBe(1);
@@ -677,9 +677,9 @@ await markRegDatabase
       {
         method: 'POST',
         headers: {
-'content-type': 'application/json',
-'x-markorbit-internal-authorization': secret,
-'x-markorbit-workspace-id': otherWorkspaceId
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': secret,
+          'x-markorbit-workspace-id': otherWorkspaceId
         },
         body: JSON.stringify({ command: firstCommand })
       }
@@ -736,14 +736,13 @@ await markRegDatabase
     expect(
       Number(
         (
-await markRegDatabase
-  .getPool()
-  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+          await markRegDatabase
+            .getPool()
+            .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
         ).rows[0]!.count
       )
     ).toBe(2);
 
     await Promise.all([executionRuntime.stop(), markRegRuntime.stop()]);
   });
-
 });
