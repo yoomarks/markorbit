@@ -232,6 +232,15 @@ function withFingerprint(
   };
 }
 
+function refingerprint(
+  action: Readonly<RecommendedAction>,
+  updates: Partial<Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>>
+): RecommendedAction {
+  const { recommendedActionFingerprintSha256, ...withoutFingerprint } = action;
+  void recommendedActionFingerprintSha256;
+  return withFingerprint({ ...withoutFingerprint, ...updates });
+}
+
 export class PostgresRecommendedActionRepository implements RecommendedActionRepository {
   constructor(
     private readonly database: TransactionHost,
@@ -315,7 +324,10 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
             schemaVersion: 1,
             recommendedActionId: currentAction?.recommendedActionId ?? value.actionId,
             workspaceId: value.view.workspaceId,
-            formalMatter: structuredClone(value.view.formalMatter),
+            formalMatter: {
+              id: value.view.formalMatter.id,
+              version: String(value.view.formalMatter.version)
+            },
             version: (currentAction?.version ?? 0) + 1,
             sourceLifecycleView: {
               id: value.view.lifecycleViewId,
@@ -348,12 +360,10 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
             value.recordedAt
           );
         } else if (currentAction && currentAction.status !== 'SUPPRESSED') {
-          action = withFingerprint({
-            ...currentAction,
+          action = refingerprint(currentAction, {
             version: currentAction.version + 1,
             status: 'SUPPRESSED',
-            updatedAt: value.recordedAt,
-            recommendedActionFingerprintSha256: undefined as never
+            updatedAt: value.recordedAt
           });
           await client.query(
             'UPDATE markreg_recommended_actions SET version=$3,status=$4,recommended_action_fingerprint_sha256=$5,updated_at=$6 WHERE workspace_id=$1 AND recommended_action_id=$2',
@@ -440,6 +450,16 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
             'Recommended Action was not found in the requested Workspace.',
             404
           );
+        const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);
+        if (replay) {
+          if (String(replay.request_fingerprint) !== value.requestFingerprint)
+            throw new RecommendedActionError(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency key has a different Recommended Action transition payload.'
+            );
+          return structuredClone(replay.result_snapshot as RecommendedActionEvaluationResult);
+        }
+
         if (action.version !== value.expectedVersion)
           throw new RecommendedActionError(
             'VERSION_CONFLICT',
@@ -455,16 +475,6 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
             'Recommended Action is bound to a stale Lifecycle View.'
           );
 
-        const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);
-        if (replay) {
-          if (String(replay.request_fingerprint) !== value.requestFingerprint)
-            throw new RecommendedActionError(
-              'IDEMPOTENCY_CONFLICT',
-              'Idempotency key has a different Recommended Action transition payload.'
-            );
-          return structuredClone(replay.result_snapshot as RecommendedActionEvaluationResult);
-        }
-
         if (!this.transitionAllowed(action.status, value.targetStatus))
           throw new RecommendedActionError(
             'INVALID_TRANSITION',
@@ -474,12 +484,10 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
         const updated =
           action.status === value.targetStatus
             ? action
-            : withFingerprint({
-                ...action,
+            : refingerprint(action, {
                 version: action.version + 1,
                 status: value.targetStatus,
-                updatedAt: value.recordedAt,
-                recommendedActionFingerprintSha256: undefined as never
+                updatedAt: value.recordedAt
               });
         if (updated !== action) {
           await client.query(
