@@ -11,6 +11,20 @@ jobs:
   wp04:
     if: github.head_ref == 'm5-wp-04-recommended-actions'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_wp04
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_wp04"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,62 +37,95 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply bounded WP04 source hardening
+      - name: Apply bounded WP04 lint and migration-baseline fixes
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const file = 'services/markreg/src/recommended-action.ts';
-          let source = fs.readFileSync(file, 'utf8');
-          const replaceOnce = (oldText, newText, marker) => {
+          const patch = (path, oldText, newText, marker) => {
+            let source = fs.readFileSync(path, 'utf8');
             if (source.includes(oldText)) {
               source = source.replace(oldText, newText);
+              fs.writeFileSync(path, source);
               return;
             }
             if (source.includes(marker)) return;
-            throw new Error(`WP04 patch anchor missing: ${marker}`);
+            throw new Error(`WP04 patch anchor missing in ${path}: ${marker}`);
           };
 
-          replaceOnce(
-            `function withFingerprint(\n  value: Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>\n): RecommendedAction {\n  return {\n    ...value,\n    recommendedActionFingerprintSha256: fingerprint(value)\n  };\n}\n`,
-            `function withFingerprint(\n  value: Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>\n): RecommendedAction {\n  return {\n    ...value,\n    recommendedActionFingerprintSha256: fingerprint(value)\n  };\n}\n\nfunction refingerprint(\n  action: Readonly<RecommendedAction>,\n  updates: Partial<Omit<RecommendedAction, 'recommendedActionFingerprintSha256'>>\n): RecommendedAction {\n  const { recommendedActionFingerprintSha256, ...withoutFingerprint } = action;\n  void recommendedActionFingerprintSha256;\n  return withFingerprint({ ...withoutFingerprint, ...updates });\n}\n`,
-            'function refingerprint('
+          patch(
+            'services/markreg/src/recommended-action.ts',
+            `      ...(row.timing_basis ? { timingBasis: String(row.timing_basis) } : {}),`,
+            `      ...(typeof row.timing_basis === 'string' ? { timingBasis: row.timing_basis } : {}),`,
+            "typeof row.timing_basis === 'string'"
           );
-
-          replaceOnce(
-            `            formalMatter: structuredClone(value.view.formalMatter),`,
-            `            formalMatter: {\n              id: value.view.formalMatter.id,\n              version: String(value.view.formalMatter.version)\n            },`,
-            'version: String(value.view.formalMatter.version)'
+          patch(
+            'services/markreg/tests/recommended-action-postgres.test.ts',
+            `  CurrentLifecycleView,\n  LifecycleProjectionSource,\n  LifecycleProjectionState,\n  RecommendedActionId\n`,
+            `  CurrentLifecycleView,\n  LifecycleProjectionSource,\n  LifecycleProjectionState\n`,
+            `  LifecycleProjectionState\n} from '@markorbit/contracts/evidence-lifecycle';`
           );
-
-          replaceOnce(
-            `          action = withFingerprint({\n            ...currentAction,\n            version: currentAction.version + 1,\n            status: 'SUPPRESSED',\n            updatedAt: value.recordedAt,\n            recommendedActionFingerprintSha256: undefined as never\n          });`,
-            `          action = refingerprint(currentAction, {\n            version: currentAction.version + 1,\n            status: 'SUPPRESSED',\n            updatedAt: value.recordedAt\n          });`,
-            'action = refingerprint(currentAction, {'
+          patch(
+            'services/markreg/tests/recommended-action-postgres.test.ts',
+            `      () => 'recommended-action_fixture' as RecommendedActionId`,
+            `      () => 'recommended-action_fixture'`,
+            `      () => 'recommended-action_fixture'\n`
           );
-
-          replaceOnce(
-            `        if (action.version !== value.expectedVersion)\n          throw new RecommendedActionError(\n            'VERSION_CONFLICT',\n            'Recommended Action version changed before the transition could be recorded.'\n          );\n        if (\n          action.sourceLifecycleView.id !== currentView.lifecycleViewId ||\n          Number(action.sourceLifecycleView.version) !== currentView.version ||\n          action.sourceLifecycleViewFingerprintSha256 !== currentView.lifecycleViewFingerprintSha256\n        )\n          throw new RecommendedActionError(\n            'RECOMMENDATION_SOURCE_STALE',\n            'Recommended Action is bound to a stale Lifecycle View.'\n          );\n\n        const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);\n        if (replay) {\n          if (String(replay.request_fingerprint) !== value.requestFingerprint)\n            throw new RecommendedActionError(\n              'IDEMPOTENCY_CONFLICT',\n              'Idempotency key has a different Recommended Action transition payload.'\n            );\n          return structuredClone(replay.result_snapshot as RecommendedActionEvaluationResult);\n        }\n`,
-            `        const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);\n        if (replay) {\n          if (String(replay.request_fingerprint) !== value.requestFingerprint)\n            throw new RecommendedActionError(\n              'IDEMPOTENCY_CONFLICT',\n              'Idempotency key has a different Recommended Action transition payload.'\n            );\n          return structuredClone(replay.result_snapshot as RecommendedActionEvaluationResult);\n        }\n\n        if (action.version !== value.expectedVersion)\n          throw new RecommendedActionError(\n            'VERSION_CONFLICT',\n            'Recommended Action version changed before the transition could be recorded.'\n          );\n        if (\n          action.sourceLifecycleView.id !== currentView.lifecycleViewId ||\n          Number(action.sourceLifecycleView.version) !== currentView.version ||\n          action.sourceLifecycleViewFingerprintSha256 !== currentView.lifecycleViewFingerprintSha256\n        )\n          throw new RecommendedActionError(\n            'RECOMMENDATION_SOURCE_STALE',\n            'Recommended Action is bound to a stale Lifecycle View.'\n          );\n`,
-            "const replay = await this.findReplay(client, value.workspaceId, value.idempotencyKey);\n        if (replay)"
+          patch(
+            '.github/workflows/ci.yml',
+            `      - name: Run durable MarkReg Lifecycle Projection PostgreSQL suite\n        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts\n`,
+            `      - name: Run durable MarkReg Lifecycle Projection PostgreSQL suite\n        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts\n      - name: Run durable MarkReg Recommended Action PostgreSQL suite\n        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/recommended-action-postgres.test.ts\n`,
+            'Run durable MarkReg Recommended Action PostgreSQL suite'
           );
-
-          replaceOnce(
-            `            : withFingerprint({\n                ...action,\n                version: action.version + 1,\n                status: value.targetStatus,\n                updatedAt: value.recordedAt,\n                recommendedActionFingerprintSha256: undefined as never\n              });`,
-            `            : refingerprint(action, {\n                version: action.version + 1,\n                status: value.targetStatus,\n                updatedAt: value.recordedAt\n              });`,
-            ': refingerprint(action, {'
+          patch(
+            'services/markreg/tests/formal-matter-postgres.test.ts',
+            `'TRUNCATE markreg_lifecycle_commands, markreg_lifecycle_views, markreg_lifecycle_events, formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations RESTART IDENTITY'`,
+            `'TRUNCATE markreg_recommended_action_commands, markreg_recommended_action_audit, markreg_recommended_actions, markreg_lifecycle_commands, markreg_lifecycle_views, markreg_lifecycle_events, formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations RESTART IDENTITY'`,
+            'TRUNCATE markreg_recommended_action_commands, markreg_recommended_action_audit, markreg_recommended_actions'
           );
-
-          fs.writeFileSync(file, source);
+          patch(
+            'services/markreg/tests/order-postgres.test.ts',
+            `      '0026',\n      '0034'\n`,
+            `      '0026',\n      '0034',\n      '0035'\n`,
+            `      '0035'\n`
+          );
+          patch(
+            'scripts/milestone2-migrations.integration.test.ts',
+            `    'markreg_denial_audit',\n    'markreg_lifecycle_commands',`,
+            `    'markreg_denial_audit',\n    'markreg_recommended_action_commands',\n    'markreg_recommended_action_audit',\n    'markreg_recommended_actions',\n    'markreg_lifecycle_commands',`,
+            `    'markreg_recommended_actions',\n    'markreg_lifecycle_commands',`
+          );
+          patch(
+            'scripts/milestone2-migrations.integration.test.ts',
+            `    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(13);\n    expect(sets[1]).toContain('0034_markreg_lifecycle_projection');`,
+            `    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(14);\n    expect(sets[1]).toContain('0034_markreg_lifecycle_projection');\n    expect(sets[1]).toContain('0035_markreg_recommended_actions');`,
+            `expect(sets[1]).toContain('0035_markreg_recommended_actions');`
+          );
+          patch(
+            'scripts/milestone2-tenant-isolation.integration.test.ts',
+            `'DROP TABLE IF EXISTS markreg_lifecycle_commands,markreg_lifecycle_views,markreg_lifecycle_events,order_audit,`,
+            `'DROP TABLE IF EXISTS markreg_recommended_action_commands,markreg_recommended_action_audit,markreg_recommended_actions,markreg_lifecycle_commands,markreg_lifecycle_views,markreg_lifecycle_events,order_audit,`,
+            'DROP TABLE IF EXISTS markreg_recommended_action_commands,markreg_recommended_action_audit,markreg_recommended_actions'
+          );
           NODE
-      - name: Format WP04 files
-        run: pnpm exec prettier --write services/markreg/src/recommended-action.ts services/markreg/tests/recommended-action-postgres.test.ts
-      - name: Commit bounded WP04 source fixes
+      - name: Format WP04 changed files
+        run: >-
+          pnpm exec prettier --write
+          .github/workflows/ci.yml
+          services/markreg/src/recommended-action.ts
+          services/markreg/tests/recommended-action-postgres.test.ts
+          services/markreg/tests/formal-matter-postgres.test.ts
+          services/markreg/tests/order-postgres.test.ts
+          scripts/milestone2-migrations.integration.test.ts
+          scripts/milestone2-tenant-isolation.integration.test.ts
+      - name: Commit bounded WP04 baseline fixes
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add services/markreg/src/recommended-action.ts services/markreg/tests/recommended-action-postgres.test.ts
-          git commit -m "fix(markreg): harden Recommended Action replay and fingerprints"
+          git add .github/workflows/ci.yml services/markreg/src/recommended-action.ts services/markreg/tests/recommended-action-postgres.test.ts services/markreg/tests/formal-matter-postgres.test.ts services/markreg/tests/order-postgres.test.ts scripts/milestone2-migrations.integration.test.ts scripts/milestone2-tenant-isolation.integration.test.ts
+          git commit -m "test(markreg): reconcile WP04 migration and regression baselines"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
       - run: pnpm --filter @markorbit/markreg-service typecheck
       - run: pnpm --filter @markorbit/markreg-service lint
+      - name: Run focused Recommended Action PostgreSQL suite
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/recommended-action-postgres.test.ts
