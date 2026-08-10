@@ -3,11 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FormalMatterId, WorkspacePrincipal } from '@markorbit/contracts';
 import { evidenceHandoffAuthorityConsequences } from '@markorbit/contracts/provider-execution';
 import type { ReviewedSourceAdmissionEnvelope } from '@markorbit/contracts/evidence-lifecycle';
-import {
-  ManagedDatabase,
-  loadMigrationsForOwner,
-  migrate
-} from '@markorbit/persistence';
+import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
 import { EvidenceReviewService } from '../services/execution/src/evidence-review.js';
 import { PostgresEvidenceReviewRepository } from '../services/execution/src/evidence-review-postgres.js';
@@ -84,11 +80,7 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
   const migrationsDirectory = path.resolve('infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('infrastructure/persistence/migration-owners.json');
   const executionMigrations = () =>
-    loadMigrationsForOwner(
-      migrationsDirectory,
-      migrationOwners,
-      '@markorbit/execution-service'
-    );
+    loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/execution-service');
   const markRegMigrations = () =>
     loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/markreg-service');
 
@@ -108,11 +100,7 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
 
   beforeAll(async () => {
     await Promise.all([executionDatabase.start(), markRegDatabase.start()]);
-    await migrate(
-      executionDatabase.getPool(),
-      'm5_wp05_execution',
-      await executionMigrations()
-    );
+    await migrate(executionDatabase.getPool(), 'm5_wp05_execution', await executionMigrations());
     await migrate(markRegDatabase.getPool(), 'm5_wp05_markreg', await markRegMigrations());
   });
 
@@ -185,7 +173,10 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
         schemaVersion: 1,
         evidenceHandoffId: `evidence-handoff_${suffix}`,
         workspaceId,
-        providerReturn: { id: `provider-return_${suffix.split('-')[0]}`, version: providerReturnVersion },
+        providerReturn: {
+          id: `provider-return_${suffix.split('-')[0]}`,
+          version: providerReturnVersion
+        },
         providerReturnFingerprintSha256: sha(fingerprintCharacter),
         executionRelease: { id: 'execution-release_wp05', version: 3 },
         filingExecutionTaskDraft: { id: 'filing-task-draft_wp05', version: 1 },
@@ -231,7 +222,10 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
       () => `evidence-review-decision_${suffix}`,
       () => `evidence-correction-request_${suffix}`
     );
-    const source = await service.captureReviewSource(value.evidenceHandoff.evidenceHandoffId, reviewer);
+    const source = await service.captureReviewSource(
+      value.evidenceHandoff.evidenceHandoffId,
+      reviewer
+    );
     const decision = await service.recordDecision(
       {
         workspaceId,
@@ -313,7 +307,9 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     );
   }
 
-  function deliveryCommand(admission: ReviewedSourceAdmissionEnvelope): DeliverReviewedSourceCommand {
+  function deliveryCommand(
+    admission: ReviewedSourceAdmissionEnvelope
+  ): DeliverReviewedSourceCommand {
     return {
       workspaceId,
       reviewedSourceAdmissionId: admission.reviewedSourceAdmissionId,
@@ -332,9 +328,9 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     };
   }
 
-  async function startExecutionRuntime(
-    current: { service?: ReviewedSourceHandoffService }
-  ): Promise<ServiceRuntime> {
+  async function startExecutionRuntime(current: {
+    service?: ReviewedSourceHandoffService;
+  }): Promise<ServiceRuntime> {
     const admission = admissionService();
     const runtime = createServiceRuntime(
       { name: 'execution-wp05-test', port: 0, version: '1' },
@@ -361,16 +357,9 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
           internalServiceSecret: secret,
           lifecycleServiceFor: (requestedWorkspaceId) =>
             new LifecycleProjectionService(
-              new PostgresLifecycleProjectionRepository(
-                markRegDatabase,
-                markRegDatabase.getPool()
-              ),
+              new PostgresLifecycleProjectionRepository(markRegDatabase, markRegDatabase.getPool()),
               new PostgresFormalMatterRepository(markRegDatabase, markRegDatabase.getPool()),
-              new HttpReviewedSourceAdmissionReader(
-                executionBaseUrl,
-                secret,
-                requestedWorkspaceId
-              ),
+              new HttpReviewedSourceAdmissionReader(executionBaseUrl, secret, requestedWorkspaceId),
               () => fixedNow
             )
         })
@@ -396,7 +385,11 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
   it('recovers from MarkReg response loss across restart without duplicate lifecycle state', async () => {
     const formalMatterId = 'formal-matter_wp05-loss' as FormalMatterId;
     await insertMatter(formalMatterId);
-    const reviewed = await review(receipt('loss-v1', 1, 'a'), 'loss-v1', 'ADMITTED_FOR_INTERNAL_USE');
+    const reviewed = await review(
+      receipt('loss-v1', 1, 'a'),
+      'loss-v1',
+      'ADMITTED_FOR_INTERNAL_USE'
+    );
     const admission = await admit(reviewed.decision, formalMatterId, 'admit-loss');
     const handoff = { service: undefined as ReviewedSourceHandoffService | undefined };
     let executionRuntime = await startExecutionRuntime(handoff);
@@ -426,14 +419,16 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     const first = await deliverOverHttp(executionBaseUrl, command);
     expect(first.response.status).toBe(503);
     expect(first.body).toMatchObject({ code: 'DEPENDENCY_UNAVAILABLE', retryable: true });
-    expect(await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)).toMatchObject({
+    expect(
+      await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)
+    ).toMatchObject({
       status: 'PENDING',
       attemptCount: 1,
       lastErrorCode: 'DEPENDENCY_UNAVAILABLE'
     });
-    const committed = await markRegDatabase.getPool().query(
-      'SELECT lifecycle_event_id FROM markreg_lifecycle_events'
-    );
+    const committed = await markRegDatabase
+      .getPool()
+      .query('SELECT lifecycle_event_id FROM markreg_lifecycle_events');
     expect(committed.rowCount).toBe(1);
     const committedEventId = String(committed.rows[0]!.lifecycle_event_id);
 
@@ -451,14 +446,18 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     expect(retry.body).toMatchObject({
       result: { event: { lifecycleEventId: committedEventId, officialStatusVerified: false } }
     });
-    expect(await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)).toMatchObject({
+    expect(
+      await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)
+    ).toMatchObject({
       status: 'DELIVERED',
       attemptCount: 2
     });
     expect(
       Number(
         (
-          await markRegDatabase.getPool().query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+          await markRegDatabase
+            .getPool()
+            .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
         ).rows[0]!.count
       )
     ).toBe(1);
@@ -469,14 +468,18 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     const replay = await deliverOverHttp(restartedExecutionUrl, command);
     expect(replay.response.status).toBe(200);
     expect(replay.body).toEqual(retry.body);
-    expect(await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)).toMatchObject({
+    expect(
+      await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)
+    ).toMatchObject({
       status: 'DELIVERED',
       attemptCount: 2
     });
     expect(
       Number(
         (
-          await markRegDatabase.getPool().query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+          await markRegDatabase
+            .getPool()
+            .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
         ).rows[0]!.count
       )
     ).toBe(1);
@@ -500,12 +503,16 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     await insertMatter(formalMatterId);
     const firstReceipt = receipt('correction-v1', 1, 'a');
     const correction = await review(firstReceipt, 'correction-v1', 'CORRECTION_REQUIRED');
-    await expect(admit(correction.decision, formalMatterId, 'admit-correction-v1')).rejects.toMatchObject({
+    await expect(
+      admit(correction.decision, formalMatterId, 'admit-correction-v1')
+    ).rejects.toMatchObject({
       code: 'REVIEW_DECISION_NOT_ADMISSIBLE'
     } satisfies Partial<ReviewedSourceHandoffError>);
-    const correctionRows = await executionDatabase.getPool().query(
-      'SELECT correction_request_id,status,evidence_review_decision_id FROM execution_evidence_correction_requests'
-    );
+    const correctionRows = await executionDatabase
+      .getPool()
+      .query(
+        'SELECT correction_request_id,status,evidence_review_decision_id FROM execution_evidence_correction_requests'
+      );
     expect(correctionRows.rows).toMatchObject([
       {
         correction_request_id: 'evidence-correction-request_correction-v1',
@@ -529,9 +536,9 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
     });
     expect(
       (
-        await executionDatabase.getPool().query(
-          'SELECT correction_request_id,status FROM execution_evidence_correction_requests'
-        )
+        await executionDatabase
+          .getPool()
+          .query('SELECT correction_request_id,status FROM execution_evidence_correction_requests')
       ).rows
     ).toEqual([
       {

@@ -58,7 +58,13 @@ export interface MarkRegLifecycleHandoffRouteOptions {
 
 function lifecycleError(error: unknown): never {
   if (error instanceof LifecycleProjectionError)
-    throw new HttpError(error.status, error.code, error.message, error.status >= 500, error.details);
+    throw new HttpError(
+      error.status,
+      error.code,
+      error.message,
+      error.status >= 500,
+      error.details
+    );
   throw error;
 }
 
@@ -119,7 +125,9 @@ export class HttpReviewedSourceAdmissionReader implements ReviewedSourceAdmissio
       throw new Error(`Execution Reviewed Source Admission transport returned ${response.status}.`);
     const payload = (await response.json()) as { admission?: ReviewedSourceAdmissionEnvelope };
     if (!payload.admission)
-      throw new Error('Execution Reviewed Source Admission transport returned an invalid response.');
+      throw new Error(
+        'Execution Reviewed Source Admission transport returned an invalid response.'
+      );
     return payload.admission;
   }
 }

@@ -226,12 +226,14 @@ function sameVersion(left: number | string, right: number | string): boolean {
 }
 
 function normalizeReferences(values: readonly string[]): string[] {
-  return [...new Set(values.map((value, index) => cleanText(value, `admittedEvidenceReferences[${index}]`, 1000)))].sort();
+  return [
+    ...new Set(
+      values.map((value, index) => cleanText(value, `admittedEvidenceReferences[${index}]`, 1000))
+    )
+  ].sort();
 }
 
-export class PostgresReviewedSourceAdmissionRepository
-  implements ReviewedSourceAdmissionRepository
-{
+export class PostgresReviewedSourceAdmissionRepository implements ReviewedSourceAdmissionRepository {
   constructor(
     private readonly database: ReviewedSourceTransactionHost,
     private readonly query: QueryClient
@@ -954,7 +956,10 @@ export class ReviewedSourceHandoffService {
       command.reviewedSourceAdmissionId
     );
     if (!admission)
-      throw new ReviewedSourceHandoffError('STALE_SOURCE', 'Reviewed Source Admission was not found.');
+      throw new ReviewedSourceHandoffError(
+        'STALE_SOURCE',
+        'Reviewed Source Admission was not found.'
+      );
     if (admission.version !== admissionVersion)
       throw new ReviewedSourceHandoffError(
         'SOURCE_VERSION_MISMATCH',
