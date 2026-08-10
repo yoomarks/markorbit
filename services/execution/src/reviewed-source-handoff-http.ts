@@ -1,5 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
+import { parseInternalWorkspacePrincipal } from '@markorbit/contracts';
 import type {
+  AdmitReviewedSourceCommand,
   ProjectLifecycleEventCommand,
   ReviewedSourceAdmissionId
 } from '@markorbit/contracts/evidence-lifecycle';
@@ -69,6 +71,36 @@ export function createExecutionReviewedSourceInternalRoutes(
   options: ExecutionReviewedSourceInternalRouteOptions
 ): JsonRoute[] {
   return [
+    {
+      method: 'POST',
+      path: '/internal/reviewed-source-admissions',
+      handle: async (request) => {
+        requireInternal(request, options.internalServiceSecret);
+        const body = bodyOf(request);
+        const command = body.command as AdmitReviewedSourceCommand | undefined;
+        if (!command) throw new HttpError(400, 'INVALID_REQUEST', 'command is required.');
+        const workspaceId = workspaceOf(request, body);
+        ensureWorkspace(workspaceId, command.workspaceId);
+        let principal;
+        try {
+          principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
+        } catch {
+          throw new HttpError(
+            401,
+            'INVALID_INTERNAL_PRINCIPAL',
+            'A trusted Workspace Principal is required.'
+          );
+        }
+        ensureWorkspace(workspaceId, principal.workspaceId);
+        try {
+          return json(201, {
+            admission: await options.admissionServiceFor(workspaceId).admit(command, principal)
+          });
+        } catch (error) {
+          return handoffError(error);
+        }
+      }
+    },
     {
       method: 'GET',
       path: '/internal/reviewed-source-admissions/:reviewedSourceAdmissionId',
