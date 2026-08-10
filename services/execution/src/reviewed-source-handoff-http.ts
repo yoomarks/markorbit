@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { parseInternalWorkspacePrincipal } from '@markorbit/contracts';
+import { parseInternalWorkspacePrincipal, type MarkOrbitId } from '@markorbit/contracts';
 import type {
   AdmitReviewedSourceCommand,
   ProjectLifecycleEventCommand,
@@ -92,9 +92,15 @@ export function createExecutionReviewedSourceInternalRoutes(
           );
         }
         ensureWorkspace(workspaceId, principal.workspaceId);
+        const reviewerPrincipal = {
+          ...principal,
+          userId: principal.userId as MarkOrbitId
+        };
         try {
           return json(201, {
-            admission: await options.admissionServiceFor(workspaceId).admit(command, principal)
+            admission: await options
+              .admissionServiceFor(workspaceId)
+              .admit(command, reviewerPrincipal)
           });
         } catch (error) {
           return handoffError(error);
