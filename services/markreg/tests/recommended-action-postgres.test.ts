@@ -10,8 +10,7 @@ import type { FormalMatterId } from '@markorbit/contracts';
 import type {
   CurrentLifecycleView,
   LifecycleProjectionSource,
-  LifecycleProjectionState,
-  RecommendedActionId
+  LifecycleProjectionState
 } from '@markorbit/contracts/evidence-lifecycle';
 import { PostgresLifecycleProjectionRepository } from '../src/lifecycle-projection.js';
 import {
@@ -178,7 +177,7 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
       lifecycle,
       undefined,
       () => recordedAt,
-      () => 'recommended-action_fixture' as RecommendedActionId
+      () => 'recommended-action_fixture'
     );
     return { repository, service };
   }

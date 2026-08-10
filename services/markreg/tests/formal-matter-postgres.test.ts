@@ -137,7 +137,7 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
     database
       .getPool()
       .query(
-        'TRUNCATE markreg_lifecycle_commands, markreg_lifecycle_views, markreg_lifecycle_events, formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations RESTART IDENTITY'
+        'TRUNCATE markreg_recommended_action_commands, markreg_recommended_action_audit, markreg_recommended_actions, markreg_lifecycle_commands, markreg_lifecycle_views, markreg_lifecycle_events, formal_matter_audit, formal_matter_commands, formal_matters, matter_drafts, customer_confirmations RESTART IDENTITY'
       );
   beforeAll(async () => {
     await database.start();

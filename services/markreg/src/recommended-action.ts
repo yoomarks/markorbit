@@ -784,7 +784,7 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
       title: String(row.title),
       explanation: String(row.explanation),
       ...(row.due_at ? { dueAt: new Date(row.due_at as string).toISOString() } : {}),
-      ...(row.timing_basis ? { timingBasis: String(row.timing_basis) } : {}),
+      ...(typeof row.timing_basis === 'string' ? { timingBasis: row.timing_basis } : {}),
       status: String(row.status) as RecommendedActionStatus,
       recommendedActionFingerprintSha256: String(row.recommended_action_fingerprint_sha256),
       executionAuthorized: false,
