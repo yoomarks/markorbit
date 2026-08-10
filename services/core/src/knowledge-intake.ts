@@ -23,6 +23,8 @@ const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonEmpty = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
+const canonicalUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
 
 export function parseCoreIntakeRequest(value: unknown): CoreIntakeRequest | null {
   if (
@@ -39,6 +41,7 @@ export function parseCoreIntakeRequest(value: unknown): CoreIntakeRequest | null
     !nonEmpty(evidence.stagingDocumentId) ||
     !nonEmpty(value.readyPackageId) ||
     !nonEmpty(value.workspaceId) ||
+    !canonicalUuid(value.workspaceId) ||
     !nonEmpty(value.digest) ||
     !nonEmpty(value.submittedAt) ||
     !Number.isFinite(Date.parse(value.submittedAt))

@@ -113,6 +113,17 @@ describe('Knowledge ReadyPackage intake HTTP boundary', () => {
     expect(repository.count()).toBe(0);
   });
 
+  it('rejects a non-UUID standalone Knowledge workspace ID before persistence', async () => {
+    const { runtime, repository } = await start();
+    const result = await post(runtime, {
+      ...valid,
+      workspaceId: 'wsp_01H00000000000000000000000'
+    });
+    expect(result.response.status).toBe(400);
+    expect(result.json.code).toBe('INVALID_REQUEST');
+    expect(repository.count()).toBe(0);
+  });
+
   it('replays the original intake across a service restart without a duplicate', async () => {
     const repository = new MemoryKnowledgeIntakeRepository();
     const firstRuntime = (await start(repository)).runtime;

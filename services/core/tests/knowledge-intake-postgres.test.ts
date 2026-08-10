@@ -15,10 +15,12 @@ import {
   type KnowledgeIntake
 } from '../src/knowledge-intake.js';
 
-const url = process.env.IDENTITY_TEST_DATABASE_URL;
-const required = process.env.IDENTITY_POSTGRES_TEST_REQUIRED === '1';
+const url = process.env.KNOWLEDGE_INTAKE_TEST_DATABASE_URL;
+const required = process.env.KNOWLEDGE_INTAKE_POSTGRES_TEST_REQUIRED === '1';
 if (required && !url)
-  throw new Error('IDENTITY_POSTGRES_TEST_REQUIRED=1 requires IDENTITY_TEST_DATABASE_URL.');
+  throw new Error(
+    'KNOWLEDGE_INTAKE_POSTGRES_TEST_REQUIRED=1 requires KNOWLEDGE_INTAKE_TEST_DATABASE_URL.'
+  );
 const integration = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');

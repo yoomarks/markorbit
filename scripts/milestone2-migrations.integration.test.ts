@@ -29,7 +29,7 @@ const packages = {
 } as const;
 const namespaces = { Core: 'core', MarkReg: 'markreg', Execution: 'execution' } as const;
 const ownedTables = {
-  Core: ['users', 'workspaces', 'workspace_memberships', 'sessions'],
+  Core: ['users', 'workspaces', 'workspace_memberships', 'sessions', 'knowledge_intakes'],
   MarkReg: [
     'customer_confirmations',
     'matter_drafts',
@@ -356,7 +356,8 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(15);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(16);
+    expect(sets[0]).toContain('0037_core_knowledge_intakes');
     expect(sets[1]).toContain('0034_markreg_lifecycle_projection');
     expect(sets[1]).toContain('0035_markreg_recommended_actions');
     expect(sets[2]).toContain('0027_execution_filing_governance');
