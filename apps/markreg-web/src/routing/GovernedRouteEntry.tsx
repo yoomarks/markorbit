@@ -4,6 +4,7 @@ import { createApiClient } from '../api/client.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
 import { CustomerConfirmationOrderEntry } from '../CustomerConfirmationOrderEntry.js';
+import { LifecyclePanel } from '../LifecyclePanel.js';
 import { OrderJourney } from '../OrderJourney.js';
 import { parseMarkregRoute, type MarkregRoute, type MarkregRouteResult } from './markreg-route.js';
 
@@ -201,6 +202,12 @@ function GenericGovernedRouteEntry({
         </dl>
         <strong>{authorityCopy}</strong>
       </Card>
+      {parsed.route.view === 'formal-matter' && (
+        <LifecyclePanel
+          formalMatterId={parsed.route.recordId}
+          disabled={state.kind === 'VERSION_MISMATCH' || readOnly}
+        />
+      )}
       <p>
         <Button onClick={() => location.reload()}>Reload exact record</Button>{' '}
         <a href="/">Back to MarkReg workspace</a>

@@ -486,6 +486,17 @@
       "httpIntegrationTestFile": "scripts/formal-matter-http.integration.test.ts"
     },
     {
+      "method": "GET",
+      "path": "/api/markreg/formal-matters/:formalMatterId/lifecycle",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/lifecycle-http.test.ts"
+    },
+    {
       "method": "POST",
       "path": "/api/markreg/instruction-ledgers",
       "owner": "markreg",
@@ -781,6 +792,39 @@
       "idempotencyRequirement": "NOT_APPLICABLE_READ",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
       "httpIntegrationTestFile": "apps/gateway/tests/governed-read-routes.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/recommended-actions/:recommendedActionId/acknowledge",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/lifecycle-http.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/recommended-actions/:recommendedActionId/dismiss",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/lifecycle-http.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/operations/formal-matters/:formalMatterId/lifecycle-provenance",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/lifecycle-http.test.ts"
     },
     {
       "method": "GET",
