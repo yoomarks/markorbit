@@ -226,14 +226,16 @@ function sameVersion(left: number | string, right: number | string): boolean {
 }
 
 function normalizeReferences(values: readonly string[]): string[] {
-  return [
-    ...new Set(
-      values.map((value, index) => cleanText(value, `admittedEvidenceReferences[${index}]`, 1000))
-    )
-  ].sort();
+  return [...new Set(values.map((value, index) => cleanText(value, `admittedEvidenceReferences[${index}]`, 1000)))].sort();
 }
 
-export class PostgresReviewedSourceAdmissionRepository implements ReviewedSourceAdmissionRepository {
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+export class PostgresReviewedSourceAdmissionRepository
+  implements ReviewedSourceAdmissionRepository
+{
   constructor(
     private readonly database: ReviewedSourceTransactionHost,
     private readonly query: QueryClient
@@ -722,6 +724,7 @@ export class PostgresReviewedSourceAdmissionRepository implements ReviewedSource
   }
 
   private mapDelivery(row: Row): ReviewedSourceHandoffRecord {
+    const lastErrorCode = optionalString(row.last_error_code);
     return {
       workspaceId: String(row.workspace_id),
       reviewedSourceAdmissionId: String(
@@ -733,7 +736,7 @@ export class PostgresReviewedSourceAdmissionRepository implements ReviewedSource
       status: String(row.status) as ReviewedSourceHandoffStatus,
       attemptCount: Number(row.attempt_count),
       lastAttemptAt: new Date(row.last_attempt_at as string).toISOString(),
-      ...(row.last_error_code ? { lastErrorCode: String(row.last_error_code) } : {}),
+      ...(lastErrorCode ? { lastErrorCode } : {}),
       ...(row.delivered_at
         ? { deliveredAt: new Date(row.delivered_at as string).toISOString() }
         : {}),
@@ -956,10 +959,7 @@ export class ReviewedSourceHandoffService {
       command.reviewedSourceAdmissionId
     );
     if (!admission)
-      throw new ReviewedSourceHandoffError(
-        'STALE_SOURCE',
-        'Reviewed Source Admission was not found.'
-      );
+      throw new ReviewedSourceHandoffError('STALE_SOURCE', 'Reviewed Source Admission was not found.');
     if (admission.version !== admissionVersion)
       throw new ReviewedSourceHandoffError(
         'SOURCE_VERSION_MISMATCH',
