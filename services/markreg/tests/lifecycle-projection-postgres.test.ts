@@ -124,7 +124,7 @@ suite('PostgreSQL MarkReg lifecycle projection', () => {
   afterAll(() => database.close());
 
   async function insertMatter(suffix: string, workspace = workspaceId) {
-    const formalMatterId = `formal-matter_${suffix}` as FormalMatterId;
+    const formalMatterId = `formal-matter_${suffix}`;
     await database
       .getPool()
       .query(
