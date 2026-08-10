@@ -37,6 +37,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @markorbit/persistence build
       - name: Bind lifecycle event fingerprint in fixture INSERT
         run: |
           node <<'NODE'
