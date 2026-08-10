@@ -212,7 +212,10 @@ function exactSource(view: Readonly<CurrentLifecycleView>) {
   };
 }
 
-function sameActionSource(action: Readonly<RecommendedAction>, view: Readonly<CurrentLifecycleView>) {
+function sameActionSource(
+  action: Readonly<RecommendedAction>,
+  view: Readonly<CurrentLifecycleView>
+) {
   return (
     action.sourceLifecycleView.id === view.lifecycleViewId &&
     Number(action.sourceLifecycleView.version) === view.version &&
@@ -426,7 +429,11 @@ export class PostgresRecommendedActionRepository implements RecommendedActionRep
           );
         const formalMatterId = String((located.rows[0] as Row).formal_matter_id) as FormalMatterId;
         const currentView = await this.lockCurrentView(client, value.workspaceId, formalMatterId);
-        const action = await this.findByIdForUpdate(client, value.workspaceId, value.recommendedActionId);
+        const action = await this.findByIdForUpdate(
+          client,
+          value.workspaceId,
+          value.recommendedActionId
+        );
         if (!action)
           throw new RecommendedActionError(
             'RECOMMENDATION_NOT_FOUND',
@@ -793,7 +800,11 @@ export class RecommendedActionService {
     command: Readonly<RegenerateRecommendedActionCommand>
   ): Promise<RecommendedActionEvaluationResult> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
-    const formalMatterId = cleanText(command.formalMatterId, 'formalMatterId', 200) as FormalMatterId;
+    const formalMatterId = cleanText(
+      command.formalMatterId,
+      'formalMatterId',
+      200
+    ) as FormalMatterId;
     const expectedVersion = exactVersion(
       command.expectedLifecycleViewVersion,
       'expectedLifecycleViewVersion'
@@ -898,7 +909,10 @@ export class RecommendedActionService {
     workspaceId: string,
     formalMatterId: FormalMatterId
   ): Promise<RecommendedActionCustomerProjection | null> {
-    const action = await this.repository.findByMatter(cleanWorkspaceId(workspaceId), formalMatterId);
+    const action = await this.repository.findByMatter(
+      cleanWorkspaceId(workspaceId),
+      formalMatterId
+    );
     if (!action || action.status === 'SUPPRESSED') return null;
     return {
       recommendedActionId: action.recommendedActionId,

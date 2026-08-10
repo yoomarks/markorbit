@@ -72,23 +72,25 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
 
   async function insertMatter(suffix: string) {
     const formalMatterId: FormalMatterId = `formal-matter_${suffix}`;
-    await database.getPool().query(
-      'INSERT INTO formal_matters (formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,1,$5,1,$6,1,$7,$8,$9::jsonb,1,$10,$11,$12,$12)',
-      [
-        formalMatterId,
-        workspaceId,
-        'TRADEMARK_REGISTRATION',
-        'OPEN',
-        `confirmation_${suffix}`,
-        `matter-draft_${suffix}`,
-        `quote_${suffix}`,
-        'quote-v1',
-        JSON.stringify({ preparation: { applicantName: 'Orbit Ltd', trademark: 'ORBIT' } }),
-        sha('f'),
-        `user_${suffix}`,
-        '2026-08-10T01:00:00.000Z'
-      ]
-    );
+    await database
+      .getPool()
+      .query(
+        'INSERT INTO formal_matters (formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,1,$5,1,$6,1,$7,$8,$9::jsonb,1,$10,$11,$12,$12)',
+        [
+          formalMatterId,
+          workspaceId,
+          'TRADEMARK_REGISTRATION',
+          'OPEN',
+          `confirmation_${suffix}`,
+          `matter-draft_${suffix}`,
+          `quote_${suffix}`,
+          'quote-v1',
+          JSON.stringify({ preparation: { applicantName: 'Orbit Ltd', trademark: 'ORBIT' } }),
+          sha('f'),
+          `user_${suffix}`,
+          '2026-08-10T01:00:00.000Z'
+        ]
+      );
     return formalMatterId;
   }
 
@@ -117,45 +119,49 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
         : state === 'CORRECTION_OR_REVIEW_ISSUE'
           ? 'Reviewed evidence indicates a correction or review issue.'
           : 'No customer action is currently required.';
-    await database.getPool().query(
-      'INSERT INTO markreg_lifecycle_events (lifecycle_event_id,workspace_id,formal_matter_id,formal_matter_version,version,reviewed_source_admission_id,reviewed_source_admission_version,admission_fingerprint_sha256,source_provenance,state,event_code,customer_safe_label,customer_safe_summary,occurred_at,projected_at,lifecycle_event_fingerprint_sha256,official_status_verified,correlation_id,projection_request_fingerprint) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,false,$15,$16)',
-      [
-        eventId,
-        workspaceId,
-        formalMatterId,
-        '1',
-        version,
-        source.reviewedSourceAdmission.id,
-        source.admissionFingerprintSha256,
-        JSON.stringify(source),
-        state,
-        `EVENT_${suffix}_${version}`,
-        state === 'CUSTOMER_ACTION_NEEDED' ? 'Action needed' : 'Lifecycle updated',
-        summary,
-        `2026-08-10T01:0${version}:00.000Z`,
-        `2026-08-10T01:1${version}:00.000Z`,
-        eventFingerprint,
-        `correlation_${suffix}`,
-        sha('9')
-      ]
-    );
-    await database.getPool().query(
-      'INSERT INTO markreg_lifecycle_views (lifecycle_view_id,workspace_id,formal_matter_id,formal_matter_version,version,current_event_id,current_event_version,current_event_fingerprint_sha256,state,customer_safe_label,customer_safe_summary,lifecycle_view_fingerprint_sha256,official_status_verified,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$5,$7,$8,$9,$10,$11,false,$12) ON CONFLICT (workspace_id,formal_matter_id) DO UPDATE SET version=EXCLUDED.version,current_event_id=EXCLUDED.current_event_id,current_event_version=EXCLUDED.current_event_version,current_event_fingerprint_sha256=EXCLUDED.current_event_fingerprint_sha256,state=EXCLUDED.state,customer_safe_label=EXCLUDED.customer_safe_label,customer_safe_summary=EXCLUDED.customer_safe_summary,lifecycle_view_fingerprint_sha256=EXCLUDED.lifecycle_view_fingerprint_sha256,updated_at=EXCLUDED.updated_at',
-      [
-        viewId,
-        workspaceId,
-        formalMatterId,
-        '1',
-        version,
-        eventId,
-        eventFingerprint,
-        state,
-        state === 'CUSTOMER_ACTION_NEEDED' ? 'Action needed' : 'Lifecycle updated',
-        summary,
-        viewFingerprint,
-        `2026-08-10T01:1${version}:00.000Z`
-      ]
-    );
+    await database
+      .getPool()
+      .query(
+        'INSERT INTO markreg_lifecycle_events (lifecycle_event_id,workspace_id,formal_matter_id,formal_matter_version,version,reviewed_source_admission_id,reviewed_source_admission_version,admission_fingerprint_sha256,source_provenance,state,event_code,customer_safe_label,customer_safe_summary,occurred_at,projected_at,lifecycle_event_fingerprint_sha256,official_status_verified,correlation_id,projection_request_fingerprint) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,false,$15,$16)',
+        [
+          eventId,
+          workspaceId,
+          formalMatterId,
+          '1',
+          version,
+          source.reviewedSourceAdmission.id,
+          source.admissionFingerprintSha256,
+          JSON.stringify(source),
+          state,
+          `EVENT_${suffix}_${version}`,
+          state === 'CUSTOMER_ACTION_NEEDED' ? 'Action needed' : 'Lifecycle updated',
+          summary,
+          `2026-08-10T01:0${version}:00.000Z`,
+          `2026-08-10T01:1${version}:00.000Z`,
+          eventFingerprint,
+          `correlation_${suffix}`,
+          sha('9')
+        ]
+      );
+    await database
+      .getPool()
+      .query(
+        'INSERT INTO markreg_lifecycle_views (lifecycle_view_id,workspace_id,formal_matter_id,formal_matter_version,version,current_event_id,current_event_version,current_event_fingerprint_sha256,state,customer_safe_label,customer_safe_summary,lifecycle_view_fingerprint_sha256,official_status_verified,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$5,$7,$8,$9,$10,$11,false,$12) ON CONFLICT (workspace_id,formal_matter_id) DO UPDATE SET version=EXCLUDED.version,current_event_id=EXCLUDED.current_event_id,current_event_version=EXCLUDED.current_event_version,current_event_fingerprint_sha256=EXCLUDED.current_event_fingerprint_sha256,state=EXCLUDED.state,customer_safe_label=EXCLUDED.customer_safe_label,customer_safe_summary=EXCLUDED.customer_safe_summary,lifecycle_view_fingerprint_sha256=EXCLUDED.lifecycle_view_fingerprint_sha256,updated_at=EXCLUDED.updated_at',
+        [
+          viewId,
+          workspaceId,
+          formalMatterId,
+          '1',
+          version,
+          eventId,
+          eventFingerprint,
+          state,
+          state === 'CUSTOMER_ACTION_NEEDED' ? 'Action needed' : 'Lifecycle updated',
+          summary,
+          viewFingerprint,
+          `2026-08-10T01:1${version}:00.000Z`
+        ]
+      );
     const view = await new PostgresLifecycleProjectionRepository(
       database,
       database.getPool()
@@ -247,9 +253,11 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
     expect(duplicate.action).toEqual(first.action);
     expect(
       (
-        await database.getPool().query(
-          'SELECT (SELECT count(*) FROM markreg_recommended_actions) actions,(SELECT count(*) FROM markreg_recommended_action_audit) audits,(SELECT count(*) FROM markreg_recommended_action_commands) commands'
-        )
+        await database
+          .getPool()
+          .query(
+            'SELECT (SELECT count(*) FROM markreg_recommended_actions) actions,(SELECT count(*) FROM markreg_recommended_action_audit) audits,(SELECT count(*) FROM markreg_recommended_action_commands) commands'
+          )
       ).rows[0]
     ).toEqual({ actions: '1', audits: '1', commands: '2' });
   });
@@ -288,7 +296,9 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
     });
     const audit = await database
       .getPool()
-      .query('SELECT event_type,action_version FROM markreg_recommended_action_audit ORDER BY audit_id');
+      .query(
+        'SELECT event_type,action_version FROM markreg_recommended_action_audit ORDER BY audit_id'
+      );
     expect(audit.rows).toMatchObject([
       { event_type: 'GENERATED', action_version: 1 },
       { event_type: 'ACKNOWLEDGED', action_version: 2 },
@@ -387,9 +397,11 @@ suite('PostgreSQL MarkReg Recommended Actions', () => {
     expect(result.action).toBeNull();
     expect(
       (
-        await database.getPool().query(
-          'SELECT (SELECT count(*) FROM markreg_recommended_actions) actions,(SELECT count(*) FROM markreg_recommended_action_audit) audits,(SELECT count(*) FROM markreg_recommended_action_commands) commands'
-        )
+        await database
+          .getPool()
+          .query(
+            'SELECT (SELECT count(*) FROM markreg_recommended_actions) actions,(SELECT count(*) FROM markreg_recommended_action_audit) audits,(SELECT count(*) FROM markreg_recommended_action_commands) commands'
+          )
       ).rows[0]
     ).toEqual({ actions: '0', audits: '0', commands: '1' });
   });
