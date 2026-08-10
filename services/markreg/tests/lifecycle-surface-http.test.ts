@@ -111,7 +111,7 @@ const customerAction: RecommendedActionCustomerProjection = {
   version: action.version,
   title: action.title,
   explanation: action.explanation,
-  timingBasis: action.timingBasis,
+  timingBasis: 'No deadline inferred.',
   status: action.status,
   executionAuthorized: false,
   updatedAt: action.updatedAt
