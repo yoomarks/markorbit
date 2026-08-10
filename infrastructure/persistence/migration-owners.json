@@ -40,6 +40,7 @@
     "0033_execution_evidence_review": "@markorbit/execution-service",
     "0034_markreg_lifecycle_projection": "@markorbit/markreg-service",
     "0035_markreg_recommended_actions": "@markorbit/markreg-service",
-    "0036_execution_reviewed_source_handoff": "@markorbit/execution-service"
+    "0036_execution_reviewed_source_handoff": "@markorbit/execution-service",
+    "0037_core_knowledge_intakes": "@markorbit/core-service"
   }
 }

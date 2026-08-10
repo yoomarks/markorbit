@@ -1,0 +1,10 @@
+{
+  "readyPackageId": "ready-package_example",
+  "workspaceId": "018f0000-0000-7000-8000-000000000002",
+  "digest": "example-digest",
+  "evidence": {
+    "artifactIds": ["artifact_one", "artifact_two"],
+    "stagingDocumentId": "staging-document_example"
+  },
+  "submittedAt": "2026-08-10T12:00:00.000Z"
+}

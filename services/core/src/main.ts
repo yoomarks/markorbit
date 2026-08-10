@@ -10,6 +10,7 @@ import {
   PostgresWorkspaceRepository
 } from './identity.js';
 import { createRuntime } from './index.js';
+import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -27,6 +28,7 @@ const authentication = new AuthenticationService({
 const runtime = createRuntime({
   authentication,
   workspaces,
+  knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   internalServiceSecret: secret
 });
 
