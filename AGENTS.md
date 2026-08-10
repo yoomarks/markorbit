@@ -1,6 +1,16 @@
 # AGENTS.md
 
-These rules apply to ChatGPT, Codex and human contributors working in this repository.
+These rules apply to ChatGPT, Codex, AI Agents and human contributors working in this repository.
+
+`AGENTS.md` is the single authoritative repository-level engineering and Agent instruction source. Do not create parallel `CLAUDE.md`, duplicate Agent rule files, or competing engineering standards unless a future tool requires a narrow compatibility shim that points back here.
+
+Default engineering behavior:
+
+**Root cause + Minimum change + Reuse + Verification + Scope discipline**
+
+Core principle:
+
+**Use the smallest, most direct, verifiable change that solves the real problem. Do not add code, abstraction, files, dependencies or architecture merely to make an implementation look more sophisticated.**
 
 ## 1. Canonical basis
 
@@ -18,9 +28,16 @@ Key locks:
 - External protected actions require explicit review and approval.
 - A Workplace retains its customer relationship, private context and permissions.
 
-## 2. Repository discipline
+## 2. Repository and scope discipline
 
 - One task, one bounded outcome, one branch and one pull request.
+- Before changing code, identify the actual failure, execution path, SQL/config/workflow involved and confirmed root cause.
+- Do not make broad changes before the root cause is known.
+- Prefer root-cause repair over local compatibility handling, and local compatibility handling over temporary workarounds.
+- Do not swallow errors, skip critical logic, delete tests, relax failure conditions, bypass integrity checks, or hard-code around a real defect just to make tests pass.
+- Make only changes required for the current goal. If three lines solve the problem, do not change thirty.
+- Do not opportunistically refactor directories, rewrite modules, add frameworks or abstraction layers, rename unrelated code, format the whole repository, or clean unrelated technical debt.
+- If another issue blocks the task, fix it. If it does not block the task, record it and keep it out of scope.
 - Do not modify unrelated workspaces.
 - Do not create a second shared contract when one already exists.
 - Services own their data and expose it only through contracts.
@@ -29,7 +46,29 @@ Key locks:
 - No automatic formal-state mutation from an AI response or Provider Return.
 - No automatic Capability verification or canon mutation from task completion.
 
-## 3. UI work
+## 3. Reuse and complexity control
+
+Before adding implementation, use this order:
+
+1. Reuse an existing repository implementation if one exists.
+2. Reuse an existing function, module, tool or infrastructure capability.
+3. Prefer the language/runtime standard library or native platform capability.
+4. Prefer an already-installed dependency.
+5. Add a new dependency or subsystem only when the verified problem actually requires it.
+
+Avoid unnecessary wrappers, one-off abstraction layers, speculative plugin systems, premature generalization, premature modularization, or code written for imagined future requirements.
+
+**Solve today's verified problem, not tomorrow's imagined problem.**
+
+Minimum change never means reduced engineering quality. Do not weaken data integrity, security checks, permissions, required error handling, transaction consistency, idempotency, backward compatibility, required logging, tests, migration safety, API contracts, or user-data protection.
+
+Before every commit or PR update, perform a complexity review:
+
+> Is this implementation more complex than the current verified problem requires?
+
+If yes, simplify it. Check specifically for unnecessary abstractions, files, dependencies, duplicated capabilities, unrelated edits and speculative future-facing code.
+
+## 4. UI work
 
 Every UI task MUST load and follow the available `ui-design` skill before implementation.
 
@@ -48,7 +87,7 @@ Use the shared UI package for primitives, not for Product-owned workflow meaning
 
 Figma is a design handoff and Code Connect surface. It is not a substitute for the `ui-design` skill, contracts, Storybook or tests.
 
-## 4. Codex task shape
+## 5. Codex / Agent task shape and execution behavior
 
 Every task prompt must include:
 
@@ -66,9 +105,23 @@ Every task prompt must include:
 12. Non-goals
 13. Expected PR title
 
-## 5. Quality gate
+Agents should act by default when the task is clear and required repository access is available. Information that can be confirmed from the repository, logs, tests, CI or project documentation should be read directly instead of repeatedly asking the user.
 
-A PR is not ready until these pass:
+Default execution loop:
+
+**Read → locate → confirm root cause → modify → test → fix → retest → complete.**
+
+Avoid replacing execution with long speculative discussion. Ask the user only when a genuine product, authority, destructive-action or scope decision cannot be resolved from existing sources.
+
+## 6. Verification and CI
+
+A change is not complete because the code looks correct. Run the checks that apply to the change, including unit/integration tests, lint, typecheck, build, Docker/database/migration validation and hosted GitHub Actions where relevant.
+
+For bug fixes, reproduce when practical:
+
+**failure before fix → change → passing verification after fix**
+
+A PR is not ready until these repository gates pass:
 
 ```bash
 pnpm format:check
@@ -79,3 +132,48 @@ pnpm build
 ```
 
 New behavior requires tests. New contract behavior requires fixtures. New user journeys require Playwright coverage when a UI exists.
+
+When CI fails:
+
+1. Read the current failing log.
+2. Identify the first real root cause.
+3. Make the smallest correct fix.
+4. Validate in the relevant local or hosted environment.
+5. Re-run CI.
+6. Repeat until the required checks pass.
+
+Do not merely explain a CI failure without fixing it when the task and access permit execution. Do not refactor an entire related module because one CI check failed.
+
+## 7. Git and pull-request discipline
+
+Before commit or PR update, inspect the diff and confirm:
+
+- only necessary files changed;
+- no unrelated edits or generated junk are present;
+- no temporary debug code, files or workflows remain;
+- no dependency or lockfile change exists without a real need;
+- the implementation cannot be made materially simpler without weakening correctness.
+
+PR descriptions should focus on:
+
+- the problem;
+- the root cause;
+- the necessary change;
+- validation performed;
+- explicit non-goals or remaining blockers when relevant.
+
+Avoid process-heavy narration that does not help review the change.
+
+## 8. Reporting behavior
+
+Reduce fragmented progress reporting during development. Unless a real user decision is required, complete a coherent stage before reporting.
+
+Final development reports should stay concise and state:
+
+- what was completed;
+- the key files or behavior changed;
+- whether tests and CI passed;
+- any remaining blocker;
+- the next approved step.
+
+Do not narrate every search, command or internal reasoning step.
