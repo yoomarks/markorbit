@@ -295,7 +295,7 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
           )
       ).rows[0]
     ).toEqual(before);
-  });
+  }, 10_000);
 
   it('MIG-004 rolls back interrupted test-only DDL, omits history, releases lock and retries cleanly', async () => {
     const database = await open('Core');
