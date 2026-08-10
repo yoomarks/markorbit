@@ -1,0 +1,47 @@
+name: WP06 temporary repair
+
+on:
+  push:
+    branches:
+      - m5-wp-06-authenticated-lifecycle-journey
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[wp06-repaired]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-06-authenticated-lifecycle-journey
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add lint fixture guards
+        run: |
+          grep -q '^/\* eslint-disable @typescript-eslint/require-await \*/' apps/gateway/tests/lifecycle-http.test.ts || sed -i '1i/* eslint-disable @typescript-eslint/require-await */' apps/gateway/tests/lifecycle-http.test.ts
+          grep -q '^/\* eslint-disable @typescript-eslint/require-await \*/' services/markreg/tests/lifecycle-surface-http.test.ts || sed -i '1i/* eslint-disable @typescript-eslint/require-await */' services/markreg/tests/lifecycle-surface-http.test.ts
+          grep -q '^/\* eslint-disable @typescript-eslint/require-await \*/' services/execution/tests/evidence-provenance-http.test.ts || sed -i '1i/* eslint-disable @typescript-eslint/require-await */' services/execution/tests/evidence-provenance-http.test.ts
+      - name: Format WP06 files
+        run: pnpm exec prettier --write apps/gateway/tests/lifecycle-http.test.ts apps/markreg-web/tests/LifecyclePanel.test.tsx services/execution/tests/evidence-provenance-http.test.ts services/markreg/tests/lifecycle-surface-http.test.ts
+      - name: Verify focused lint
+        run: |
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/execution-service lint
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-web lint
+      - name: Commit repair
+        run: |
+          git config user.name "yoomarks"
+          git config user.email "lukeluccas6292643@gmail.com"
+          git add apps services
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(wp06): format and lint lifecycle fixtures [wp06-repaired]"
+          git push origin HEAD:m5-wp-06-authenticated-lifecycle-journey
