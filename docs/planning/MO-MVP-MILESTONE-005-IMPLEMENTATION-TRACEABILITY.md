@@ -2,10 +2,10 @@
 
 **Approved direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`  
 **Scope approval:** PR #60, merge `0de33333246b66d825b56137f87c32266fb5583c`  
-**Current work package:** `M5-WP-05` — retry-safe Execution-to-MarkReg Reviewed Source handoff and correction/replay loop  
+**Current work package:** `M5-WP-07` — migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix  
 **Milestone status:** `IMPLEMENTATION_ACTIVE`
 
-The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01.
+The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01. This traceability record is now current through the active WP-07 reliability package.
 
 ## Work package status
 
@@ -14,8 +14,8 @@ The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, T
 - **M5-WP-03 — Durable MarkReg Lifecycle Projection from exact admitted reviewed sources:** `IMPLEMENTED_IN_PR_64`. Evidence: migration `0034_markreg_lifecycle_projection`, MarkReg lifecycle projection repository/service, PostgreSQL acceptance tests and WP-03 task record.
 - **M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics:** `IMPLEMENTED_IN_PR_65`. Evidence: migration `0035_markreg_recommended_actions`, deterministic policy/repository/service, PostgreSQL acceptance tests and WP-04 task record.
 - **M5-WP-05 — Retry-safe Execution-to-MarkReg reviewed-evidence handoff and correction/replay loop:** `IMPLEMENTED_IN_PR_66`. Evidence: migration `0036_execution_reviewed_source_handoff`, trusted Execution/MarkReg HTTP bridge, dual-database real-runtime acceptance suite and WP-05 task record.
-- **M5-WP-06 — Authenticated Gateway, operations review surface and markreg.com lifecycle/status journey:** `NOT_STARTED`.
-- **M5-WP-07 — Migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix:** `NOT_STARTED`.
+- **M5-WP-06 — Authenticated Gateway, operations review surface and markreg.com lifecycle/status journey:** `IMPLEMENTED_IN_PR_67`. Evidence: MarkReg lifecycle surface, Execution provenance surface, Gateway lifecycle HTTP boundary, markreg.com `LifecyclePanel`, operations console integration and focused HTTP/UI tests.
+- **M5-WP-07 — Migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix:** `IMPLEMENTATION_IN_PR_69`. Evidence: machine-readable reliability matrix, exact-head runner, inventory validator, dedicated hosted workflow and WP-07 task record.
 - **M5-WP-08 — Independent Milestone 5 integration and authority audit:** `NOT_STARTED`.
 
 ## WP-01 canonical contract lock
@@ -42,7 +42,7 @@ The contract keeps these truths separate:
 
 ## WP-02 durable review boundary
 
-Execution now owns durable review state over exact M4 evidence receipts:
+Execution owns durable review state over exact M4 evidence receipts:
 
 ```text
 PENDING_REVIEW receipt
@@ -63,7 +63,7 @@ The source remains exact and fail-closed: receipt ID/version/fingerprint, Eviden
 
 ## WP-03 durable lifecycle projection boundary
 
-MarkReg now owns durable lifecycle projection over one exact canonical `ReviewedSourceAdmissionEnvelope`:
+MarkReg owns durable lifecycle projection over one exact canonical `ReviewedSourceAdmissionEnvelope`:
 
 ```text
 exact Reviewed Source Admission
@@ -82,11 +82,9 @@ Exact command retries replay the committed event/view result. A second key for t
 
 `officialStatusVerified` remains fixed to `false`. Lifecycle Projection does not create filing, official application/application-number, office acceptance or Official Truth.
 
-The real retry-safe Execution-to-MarkReg transport and correction/replay loop remain M5-WP-05 rather than being hidden inside WP-03.
-
 ## WP-04 durable Recommended Action boundary
 
-MarkReg now evaluates one fixed deterministic policy over the exact current `CurrentLifecycleView`:
+MarkReg evaluates one fixed deterministic policy over the exact current `CurrentLifecycleView`:
 
 ```text
 exact current Lifecycle View ID/version/fingerprint
@@ -109,7 +107,7 @@ Recommended Action persistence does not contact a trademark office, submit a fil
 
 ## WP-05 retry-safe reviewed-source handoff boundary
 
-Execution now persists the exact Reviewed Source Admission and one durable sender handoff before any MarkReg network call:
+Execution persists the exact Reviewed Source Admission and one durable sender handoff before any MarkReg network call:
 
 ```text
 ADMITTED_FOR_INTERNAL_USE review decision
@@ -126,6 +124,32 @@ Correction history remains immutable. `CORRECTION_REQUIRED` decisions cannot be 
 
 Execution and MarkReg use independent owner databases in the acceptance suite. MarkReg reads the exact reviewed-source envelope through Execution HTTP rather than SQL. The transport retains decision/receipt/Provider Return/Formal Matter/fingerprint/correlation provenance and never creates Filing Submission, Payment/Invoice truth or Official Truth.
 
+## WP-06 authenticated lifecycle surfaces
+
+WP-06 exposes the governed M5 truth through bounded authenticated surfaces without moving semantic ownership into Gateway or UI:
+
+```text
+MarkReg Lifecycle Projection / Recommended Action
+-> trusted MarkReg lifecycle HTTP surface
+-> authenticated Gateway customer lifecycle API
+-> customer-safe markreg.com LifecyclePanel
+
+Execution review provenance
+-> trusted Execution provenance HTTP surface
+-> Gateway operations-only provenance API
+-> operations review surface
+```
+
+Customer reads receive redacted lifecycle/status/timeline and Recommended Action projections. Internal source fingerprints and provider-return provenance remain outside the customer projection. Operations provenance requires the stronger review permission. Mutations retain authenticated Session/Workspace Principal, Origin/CSRF and exact-version checks; Recommended Action acknowledgement remains a status transition, not execution authorization.
+
+## WP-07 exact-head reliability gate
+
+WP-07 adds no new product state. It composes the existing M5 contract, PostgreSQL acceptance, retry/restart, concurrency, isolation, HTTP/UI and real-runtime browser tests into one mandatory exact-head evidence chain.
+
+The machine-readable inventory is `docs/validation/MO-MVP-MILESTONE-005-RELIABILITY-MATRIX.json`. `scripts/run-milestone5-reliability.mjs` refuses a checkout that does not match `M5_EXPECTED_HEAD_SHA`, runs the focused groups, repeats critical durable suites against the same owner databases and writes `.artifacts/milestone-5-reliability-evidence.json`. `.github/workflows/milestone-5-reliability.yml` provisions separate Execution and MarkReg PostgreSQL databases and installs Chromium for the existing desktop/mobile real-runtime Playwright path.
+
+The gate explicitly preserves the permanent M5 authority consequences: review is not Official Truth, admission is not Filing Submission, lifecycle projection is not Official Status, Recommended Action is not execution authority, and no Payment/Invoice/legal appointment/automatic completion/Capability verification/cross-service SQL is introduced.
+
 ## Ownership boundary
 
 - Core owns identity, Workspace, Session, Principal and permission truth.
@@ -141,4 +165,4 @@ AI may summarize evidence, highlight inconsistencies, draft review notes, explai
 
 ## Next implementation step
 
-After M5-WP-05 passes exact-head hosted gates and merges, the next dependency-ordered implementation step is `M5-WP-06` — authenticated Gateway, operations review surface and markreg.com lifecycle/status journey. WP-06 must consume the governed WP-05 transport and existing MarkReg projections without changing semantic ownership or creating execution authority.
+M5-WP-08 remains `NOT_STARTED`. It may begin only after M5-WP-07 passes the exact-head Milestone 5 reliability workflow and the repository's existing hosted gates on the same final PR head, then merges with explicit owner authorization. WP-08 is the independent integration and authority audit; it must not be folded into this reliability implementation PR.
