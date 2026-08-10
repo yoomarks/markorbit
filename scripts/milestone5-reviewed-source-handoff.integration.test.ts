@@ -547,4 +547,203 @@ suite('M5-WP-05 retry-safe Execution-to-MarkReg Reviewed Source handoff', () => 
       }
     ]);
   });
+
+  it('persists sender handoff before receiver availability and retries without duplicate state', async () => {
+    const formalMatterId = 'formal-matter_wp05-unavailable' as FormalMatterId;
+    await insertMatter(formalMatterId);
+    const reviewed = await review(
+      receipt('unavailable-v1', 1, 'd'),
+      'unavailable-v1',
+      'ADMITTED_FOR_INTERNAL_USE'
+    );
+    const admission = await admit(
+      reviewed.decision,
+      formalMatterId,
+      'admit-unavailable',
+      'reviewed-source-admission_wp05-unavailable'
+    );
+
+    class UnavailableReceiver implements MarkRegLifecycleProjectionClient {
+      async project(_command: Parameters<MarkRegLifecycleProjectionClient['project']>[0]) {
+        throw new ReviewedSourceHandoffError(
+'DEPENDENCY_UNAVAILABLE',
+'simulated receiver unavailable after sender handoff commit',
+503,
+true
+        );
+      }
+    }
+
+    const handoff = {
+      service: new ReviewedSourceHandoffService(
+        reviewedSourceRepository(),
+        new UnavailableReceiver(),
+        () => fixedNow
+      )
+    };
+    const executionRuntime = await startExecutionRuntime(handoff);
+    const executionBaseUrl = `http://127.0.0.1:${executionRuntime.listeningPort}`;
+    const command = deliveryCommand(admission);
+
+    const first = await deliverOverHttp(executionBaseUrl, command);
+    expect(first.response.status).toBe(503);
+    expect(first.body).toMatchObject({ code: 'DEPENDENCY_UNAVAILABLE', retryable: true });
+    expect(
+      await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)
+    ).toMatchObject({ status: 'PENDING', attemptCount: 1 });
+    expect(
+      Number(
+        (
+await markRegDatabase
+  .getPool()
+  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+        ).rows[0]!.count
+      )
+    ).toBe(0);
+
+    const markRegRuntime = await startMarkRegRuntime(executionBaseUrl);
+    const markRegBaseUrl = `http://127.0.0.1:${markRegRuntime.listeningPort}`;
+    handoff.service = new ReviewedSourceHandoffService(
+      reviewedSourceRepository(),
+      new HttpMarkRegLifecycleProjectionClient(markRegBaseUrl, secret),
+      () => fixedNow
+    );
+
+    const retry = await deliverOverHttp(executionBaseUrl, command);
+    expect(retry.response.status).toBe(200);
+    expect(
+      await reviewedSourceRepository().getDelivery(workspaceId, admission.reviewedSourceAdmissionId)
+    ).toMatchObject({ status: 'DELIVERED', attemptCount: 2 });
+    expect(
+      Number(
+        (
+await markRegDatabase
+  .getPool()
+  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+        ).rows[0]!.count
+      )
+    ).toBe(1);
+
+    await Promise.all([executionRuntime.stop(), markRegRuntime.stop()]);
+  });
+
+  it('fails closed on changed retry and cross-Workspace handoff while newer reviewed source remains current', async () => {
+    const formalMatterId = 'formal-matter_wp05-freshness' as FormalMatterId;
+    await insertMatter(formalMatterId);
+    const firstReviewed = await review(
+      receipt('freshness-v1', 1, 'd'),
+      'freshness-v1',
+      'ADMITTED_FOR_INTERNAL_USE'
+    );
+    const firstAdmission = await admit(
+      firstReviewed.decision,
+      formalMatterId,
+      'admit-freshness-v1',
+      'reviewed-source-admission_wp05-freshness-v1'
+    );
+    const handoff = { service: undefined as ReviewedSourceHandoffService | undefined };
+    const executionRuntime = await startExecutionRuntime(handoff);
+    const executionBaseUrl = `http://127.0.0.1:${executionRuntime.listeningPort}`;
+    const markRegRuntime = await startMarkRegRuntime(executionBaseUrl);
+    const markRegBaseUrl = `http://127.0.0.1:${markRegRuntime.listeningPort}`;
+    handoff.service = new ReviewedSourceHandoffService(
+      reviewedSourceRepository(),
+      new HttpMarkRegLifecycleProjectionClient(markRegBaseUrl, secret),
+      () => fixedNow
+    );
+
+    const firstCommand = deliveryCommand(firstAdmission);
+    const firstDelivery = await deliverOverHttp(executionBaseUrl, firstCommand);
+    expect(firstDelivery.response.status).toBe(200);
+
+    const changedRetry = await deliverOverHttp(executionBaseUrl, {
+      ...firstCommand,
+      customerSafeSummary: 'A changed retry payload must not reuse the committed idempotency key.'
+    });
+    expect(changedRetry.response.status).toBe(409);
+    expect(changedRetry.body).toMatchObject({ code: 'VERSION_CONFLICT' });
+    expect(
+      Number(
+        (
+await markRegDatabase
+  .getPool()
+  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+        ).rows[0]!.count
+      )
+    ).toBe(1);
+
+    const crossWorkspace = await fetch(
+      `${executionBaseUrl}/internal/reviewed-source-handoffs/deliver`,
+      {
+        method: 'POST',
+        headers: {
+'content-type': 'application/json',
+'x-markorbit-internal-authorization': secret,
+'x-markorbit-workspace-id': otherWorkspaceId
+        },
+        body: JSON.stringify({ command: firstCommand })
+      }
+    );
+    expect(crossWorkspace.status).toBe(404);
+    expect(await crossWorkspace.json()).toMatchObject({ code: 'WORKSPACE_MISMATCH' });
+
+    const correctedReviewed = await review(
+      receipt('freshness-v2', 2, 'c'),
+      'freshness-v2',
+      'ADMITTED_FOR_INTERNAL_USE'
+    );
+    const correctedAdmission = await admit(
+      correctedReviewed.decision,
+      formalMatterId,
+      'admit-freshness-v2',
+      'reviewed-source-admission_wp05-freshness-v2'
+    );
+    expect(correctedAdmission.reviewedSourceAdmissionId).not.toBe(
+      firstAdmission.reviewedSourceAdmissionId
+    );
+
+    const correctedDelivery = await deliverOverHttp(executionBaseUrl, {
+      ...deliveryCommand(correctedAdmission),
+      occurredAt: '2026-08-10T03:30:00.000Z'
+    });
+    expect(correctedDelivery.response.status).toBe(200);
+
+    const currentAfterCorrection = await markRegDatabase.getPool().query(
+      `SELECT e.reviewed_source_admission_id
+         FROM markreg_lifecycle_views v
+         JOIN markreg_lifecycle_events e
+ ON e.workspace_id=v.workspace_id AND e.lifecycle_event_id=v.current_event_id
+        WHERE v.workspace_id=$1 AND v.formal_matter_id=$2`,
+      [workspaceId, formalMatterId]
+    );
+    expect(currentAfterCorrection.rows[0]!.reviewed_source_admission_id).toBe(
+      correctedAdmission.reviewedSourceAdmissionId
+    );
+
+    const staleReplay = await deliverOverHttp(executionBaseUrl, firstCommand);
+    expect(staleReplay.response.status).toBe(200);
+    const currentAfterStaleReplay = await markRegDatabase.getPool().query(
+      `SELECT e.reviewed_source_admission_id
+         FROM markreg_lifecycle_views v
+         JOIN markreg_lifecycle_events e
+ ON e.workspace_id=v.workspace_id AND e.lifecycle_event_id=v.current_event_id
+        WHERE v.workspace_id=$1 AND v.formal_matter_id=$2`,
+      [workspaceId, formalMatterId]
+    );
+    expect(currentAfterStaleReplay.rows[0]!.reviewed_source_admission_id).toBe(
+      correctedAdmission.reviewedSourceAdmissionId
+    );
+    expect(
+      Number(
+        (
+await markRegDatabase
+  .getPool()
+  .query('SELECT count(*) AS count FROM markreg_lifecycle_events')
+        ).rows[0]!.count
+      )
+    ).toBe(2);
+
+    await Promise.all([executionRuntime.stop(), markRegRuntime.stop()]);
+  });
+
 });

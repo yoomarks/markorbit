@@ -7,7 +7,7 @@
   },
   "milestoneStatus": "IMPLEMENTATION_ACTIVE",
   "planningStatusReconciled": true,
-  "currentWorkPackage": "M5-WP-04",
+  "currentWorkPackage": "M5-WP-05",
   "authorityLocks": {
     "evidenceReviewDecisionIsOfficialTruth": false,
     "reviewAdmissionIsFilingSubmission": false,
@@ -68,11 +68,32 @@
         "docs/tasks/MO-MVP-M5-WP-04-RECOMMENDED-ACTIONS.md"
       ]
     },
-    { "id": "M5-WP-05", "status": "NOT_STARTED" },
-    { "id": "M5-WP-06", "status": "NOT_STARTED" },
-    { "id": "M5-WP-07", "status": "NOT_STARTED" },
-    { "id": "M5-WP-08", "status": "NOT_STARTED" }
+    {
+      "id": "M5-WP-05",
+      "status": "IMPLEMENTED_IN_PR_66",
+      "pullRequest": 66,
+      "evidence": [
+        "infrastructure/persistence/migrations/0036_execution_reviewed_source_handoff.sql",
+        "services/execution/src/reviewed-source-handoff.ts",
+        "services/execution/src/reviewed-source-handoff-http.ts",
+        "services/markreg/src/lifecycle-handoff-http.ts",
+        "scripts/milestone5-reviewed-source-handoff.integration.test.ts",
+        "docs/tasks/MO-MVP-M5-WP-05-REVIEWED-SOURCE-HANDOFF.md"
+      ]
+    },
+    {
+      "id": "M5-WP-06",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M5-WP-07",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "M5-WP-08",
+      "status": "NOT_STARTED"
+    }
   ],
-  "nextApprovedStepAfterMerge": "M5-WP-05",
+  "nextApprovedStepAfterMerge": "M5-WP-06",
   "alsoDependencyUnblockedAfterMerge": []
 }

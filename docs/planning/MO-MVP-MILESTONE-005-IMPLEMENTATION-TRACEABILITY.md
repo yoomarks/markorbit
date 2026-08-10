@@ -2,7 +2,7 @@
 
 **Approved direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`  
 **Scope approval:** PR #60, merge `0de33333246b66d825b56137f87c32266fb5583c`  
-**Current work package:** `M5-WP-04` — explainable, non-executing Recommended Actions from exact governed lifecycle state  
+**Current work package:** `M5-WP-05` — retry-safe Execution-to-MarkReg Reviewed Source handoff and correction/replay loop  
 **Milestone status:** `IMPLEMENTATION_ACTIVE`
 
 The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01.
@@ -13,7 +13,7 @@ The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, T
 - **M5-WP-02 — Durable authenticated Execution Evidence Review Decision and correction-request state:** `IMPLEMENTED_IN_PR_62`. Evidence: migration `0033_execution_evidence_review`, Execution review service/repository and PostgreSQL acceptance tests.
 - **M5-WP-03 — Durable MarkReg Lifecycle Projection from exact admitted reviewed sources:** `IMPLEMENTED_IN_PR_64`. Evidence: migration `0034_markreg_lifecycle_projection`, MarkReg lifecycle projection repository/service, PostgreSQL acceptance tests and WP-03 task record.
 - **M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics:** `IMPLEMENTED_IN_PR_65`. Evidence: migration `0035_markreg_recommended_actions`, deterministic policy/repository/service, PostgreSQL acceptance tests and WP-04 task record.
-- **M5-WP-05 — Retry-safe Execution-to-MarkReg reviewed-evidence handoff and correction/replay loop:** `NOT_STARTED`.
+- **M5-WP-05 — Retry-safe Execution-to-MarkReg reviewed-evidence handoff and correction/replay loop:** `IMPLEMENTED_IN_PR_66`. Evidence: migration `0036_execution_reviewed_source_handoff`, trusted Execution/MarkReg HTTP bridge, dual-database real-runtime acceptance suite and WP-05 task record.
 - **M5-WP-06 — Authenticated Gateway, operations review surface and markreg.com lifecycle/status journey:** `NOT_STARTED`.
 - **M5-WP-07 — Migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix:** `NOT_STARTED`.
 - **M5-WP-08 — Independent Milestone 5 integration and authority audit:** `NOT_STARTED`.
@@ -107,6 +107,26 @@ Customer-safe projection hides internal source fingerprint and policy provenance
 
 Recommended Action persistence does not contact a trademark office, submit a filing, create Payment/Invoice truth, mutate Official Truth, appoint a legal representative, complete a Formal Matter automatically or verify user Capability. AI output is not accepted as authoritative recommendation persistence input in WP-04.
 
+
+## WP-05 retry-safe reviewed-source handoff boundary
+
+Execution now persists the exact Reviewed Source Admission and one durable sender handoff before any MarkReg network call:
+
+```text
+ADMITTED_FOR_INTERNAL_USE review decision
+-> exact Reviewed Source Admission
+-> durable PENDING sender handoff + stable MarkReg idempotency key
+-> trusted Workspace-scoped HTTP
+-> MarkReg LifecycleProjectionService
+-> DELIVERED response snapshot or retryable PENDING state
+```
+
+Receiver unavailability after sender persistence leaves the handoff retryable. Response loss after MarkReg commits is recovered by replaying the same MarkReg idempotency key, so receiver restart and sender restart do not duplicate lifecycle business state. A changed retry payload fails closed and cross-Workspace delivery is rejected at the internal transport boundary.
+
+Correction history remains immutable. `CORRECTION_REQUIRED` decisions cannot be admitted. Corrected newer provider evidence must create a new Evidence Receipt, explicit review decision and distinct Reviewed Source Admission. Once the newer admission is current in MarkReg, replay of an older already-committed handoff returns its stored result and does not replace the newer Current Lifecycle View.
+
+Execution and MarkReg use independent owner databases in the acceptance suite. MarkReg reads the exact reviewed-source envelope through Execution HTTP rather than SQL. The transport retains decision/receipt/Provider Return/Formal Matter/fingerprint/correlation provenance and never creates Filing Submission, Payment/Invoice truth or Official Truth.
+
 ## Ownership boundary
 
 - Core owns identity, Workspace, Session, Principal and permission truth.
@@ -122,4 +142,4 @@ AI may summarize evidence, highlight inconsistencies, draft review notes, explai
 
 ## Next implementation step
 
-After M5-WP-04 merges with clean hosted gates, the next dependency-ordered implementation step is `M5-WP-05` — retry-safe Execution-to-MarkReg reviewed-source handoff and correction/replay loop. WP-05 must wire the existing Execution admission boundary to the MarkReg lifecycle projection without cross-service SQL or hidden distributed-transaction claims.
+After M5-WP-05 passes exact-head hosted gates and merges, the next dependency-ordered implementation step is `M5-WP-06` — authenticated Gateway, operations review surface and markreg.com lifecycle/status journey. WP-06 must consume the governed WP-05 transport and existing MarkReg projections without changing semantic ownership or creating execution authority.
