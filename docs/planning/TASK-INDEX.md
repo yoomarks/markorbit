@@ -188,3 +188,7 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Execution-owned migration: `0033_execution_evidence_review`.
   - Exact receipt ID/version/fingerprint, authenticated reviewer identity, durable idempotency/concurrency and correction-request provenance.
   - Review remains internal truth, not Filing Submission or Official Truth.
+- M5-WP-03 — Durable MarkReg Lifecycle Projection from exact admitted reviewed sources (**implemented in PR #64**)
+  - MarkReg-owned migration: `0034_markreg_lifecycle_projection`.
+  - Exact Reviewed Source Admission provenance, append-only lifecycle events, deterministic current view and durable idempotency/replay.
+  - Lifecycle Projection remains internal governed truth with `officialStatusVerified = false`; no filing or official application/status truth is created.
