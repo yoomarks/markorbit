@@ -20,11 +20,11 @@ import {
   createMarkRegLifecycleHandoffRoutes,
   HttpReviewedSourceAdmissionReader
 } from './lifecycle-handoff-http.js';
-import { createMarkRegLifecycleSurfaceRoutes } from './lifecycle-surface-http.js';
 import {
   PostgresRecommendedActionRepository,
   RecommendedActionService
 } from './recommended-action.js';
+import { createMarkRegLifecycleSurfaceRoutes } from './lifecycle-surface-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -102,7 +102,7 @@ if (fixtureRuntime) {
       formalMatterRepository,
       new HttpReviewedSourceAdmissionReader(executionUrl, internalServiceSecret, workspaceId)
     );
-  const recommendedActionServiceFor = (_workspaceId: string) =>
+  const recommendedActionServiceFor = () =>
     new RecommendedActionService(recommendedActionRepository, lifecycleRepository);
   const lifecycleRoutes = createMarkRegLifecycleHandoffRoutes({
     internalServiceSecret,
