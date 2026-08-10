@@ -2,7 +2,7 @@
 
 **Approved direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`  
 **Scope approval:** PR #60, merge `0de33333246b66d825b56137f87c32266fb5583c`  
-**Current work package:** `M5-WP-03` — durable MarkReg Lifecycle Projection from exact admitted reviewed sources  
+**Current work package:** `M5-WP-04` — explainable, non-executing Recommended Actions from exact governed lifecycle state  
 **Milestone status:** `IMPLEMENTATION_ACTIVE`
 
 The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01.
@@ -12,7 +12,7 @@ The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, T
 - **M5-WP-01 — Evidence review, lifecycle and recommendation contracts plus canonical authority boundary:** `IMPLEMENTED_IN_PR_61`. Evidence: `packages/contracts/src/evidence-lifecycle.ts`, contract tests and authority boundary docs.
 - **M5-WP-02 — Durable authenticated Execution Evidence Review Decision and correction-request state:** `IMPLEMENTED_IN_PR_62`. Evidence: migration `0033_execution_evidence_review`, Execution review service/repository and PostgreSQL acceptance tests.
 - **M5-WP-03 — Durable MarkReg Lifecycle Projection from exact admitted reviewed sources:** `IMPLEMENTED_IN_PR_64`. Evidence: migration `0034_markreg_lifecycle_projection`, MarkReg lifecycle projection repository/service, PostgreSQL acceptance tests and WP-03 task record.
-- **M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics:** `NOT_STARTED`.
+- **M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics:** `IMPLEMENTED_IN_PR_65`. Evidence: migration `0035_markreg_recommended_actions`, deterministic policy/repository/service, PostgreSQL acceptance tests and WP-04 task record.
 - **M5-WP-05 — Retry-safe Execution-to-MarkReg reviewed-evidence handoff and correction/replay loop:** `NOT_STARTED`.
 - **M5-WP-06 — Authenticated Gateway, operations review surface and markreg.com lifecycle/status journey:** `NOT_STARTED`.
 - **M5-WP-07 — Migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix:** `NOT_STARTED`.
@@ -84,6 +84,29 @@ Exact command retries replay the committed event/view result. A second key for t
 
 The real retry-safe Execution-to-MarkReg transport and correction/replay loop remain M5-WP-05 rather than being hidden inside WP-03.
 
+## WP-04 durable Recommended Action boundary
+
+MarkReg now evaluates one fixed deterministic policy over the exact current `CurrentLifecycleView`:
+
+```text
+exact current Lifecycle View ID/version/fingerprint
+-> recommended-action-policy-v1
+-> deterministic candidate or no candidate
+-> one durable Workspace/Formal Matter action slot
+-> OPEN | ACKNOWLEDGED | DISMISSED | SUPPRESSED
+-> append-oriented audit + durable command replay
+```
+
+`CUSTOMER_ACTION_NEEDED` deterministically yields `CUSTOMER_ACTION_REQUIRED`. `CORRECTION_OR_REVIEW_ISSUE` deterministically yields `REVIEW_CORRECTION_ISSUE`. Other current lifecycle states yield no recommendation candidate. The policy does not infer a due date when governed lifecycle evidence contains none; `timingBasis` explicitly records that no deadline was inferred.
+
+Every persisted recommendation remains bound to the exact source Lifecycle View ID/version/fingerprint and deterministic policy version. A newer lifecycle view makes a prior recommendation stale for first-use status transitions. Re-evaluation against a newer no-action state suppresses the current action; a later actionable lifecycle state regenerates the same stable action slot with a new version and exact new provenance.
+
+Regeneration and status transitions are durable and idempotent. Repository mutation locks the current Lifecycle View before recommendation mutation. Concurrent identical first-use regeneration converges on one business action and one authoritative audit result; exact command retries replay their committed result without authorizing execution.
+
+Customer-safe projection hides internal source fingerprint and policy provenance and omits suppressed actions. Operations-safe reads retain governed provenance. `executionAuthorized` is fixed to `false` in the shared contract and database constraint.
+
+Recommended Action persistence does not contact a trademark office, submit a filing, create Payment/Invoice truth, mutate Official Truth, appoint a legal representative, complete a Formal Matter automatically or verify user Capability. AI output is not accepted as authoritative recommendation persistence input in WP-04.
+
 ## Ownership boundary
 
 - Core owns identity, Workspace, Session, Principal and permission truth.
@@ -99,4 +122,4 @@ AI may summarize evidence, highlight inconsistencies, draft review notes, explai
 
 ## Next implementation step
 
-After M5-WP-03 merges with clean hosted gates, the next dependency-ordered implementation step is `M5-WP-04` — explainable, non-executing Recommended Action candidates and acknowledgement/suppression semantics. M5-WP-05 also becomes dependency-unblocked by WP-03, but remains a separate work package and must not be folded into WP-04.
+After M5-WP-04 merges with clean hosted gates, the next dependency-ordered implementation step is `M5-WP-05` — retry-safe Execution-to-MarkReg reviewed-source handoff and correction/replay loop. WP-05 must wire the existing Execution admission boundary to the MarkReg lifecycle projection without cross-service SQL or hidden distributed-transaction claims.

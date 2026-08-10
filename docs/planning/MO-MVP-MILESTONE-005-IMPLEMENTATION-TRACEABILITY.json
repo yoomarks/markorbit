@@ -7,7 +7,7 @@
   },
   "milestoneStatus": "IMPLEMENTATION_ACTIVE",
   "planningStatusReconciled": true,
-  "currentWorkPackage": "M5-WP-03",
+  "currentWorkPackage": "M5-WP-04",
   "authorityLocks": {
     "evidenceReviewDecisionIsOfficialTruth": false,
     "reviewAdmissionIsFilingSubmission": false,
@@ -57,12 +57,22 @@
         "docs/tasks/MO-MVP-M5-WP-03-MARKREG-LIFECYCLE-PROJECTION.md"
       ]
     },
-    { "id": "M5-WP-04", "status": "NOT_STARTED" },
+    {
+      "id": "M5-WP-04",
+      "status": "IMPLEMENTED_IN_PR_65",
+      "pullRequest": 65,
+      "evidence": [
+        "infrastructure/persistence/migrations/0035_markreg_recommended_actions.sql",
+        "services/markreg/src/recommended-action.ts",
+        "services/markreg/tests/recommended-action-postgres.test.ts",
+        "docs/tasks/MO-MVP-M5-WP-04-RECOMMENDED-ACTIONS.md"
+      ]
+    },
     { "id": "M5-WP-05", "status": "NOT_STARTED" },
     { "id": "M5-WP-06", "status": "NOT_STARTED" },
     { "id": "M5-WP-07", "status": "NOT_STARTED" },
     { "id": "M5-WP-08", "status": "NOT_STARTED" }
   ],
-  "nextApprovedStepAfterMerge": "M5-WP-04",
-  "alsoDependencyUnblockedAfterMerge": ["M5-WP-05"]
+  "nextApprovedStepAfterMerge": "M5-WP-05",
+  "alsoDependencyUnblockedAfterMerge": []
 }
