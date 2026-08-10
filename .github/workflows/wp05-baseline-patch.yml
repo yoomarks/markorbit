@@ -1,0 +1,104 @@
+name: WP05 migration baseline patch
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'm5-wp-05-reviewed-source-handoff'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Synchronize Execution owner migration resets and M2 baselines
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const executionTests = [
+            'services/execution/tests/professional-review-postgres.test.ts',
+            'services/execution/tests/filing-authorization-postgres.test.ts',
+            'services/execution/tests/provider-return-evidence-postgres.test.ts',
+            'services/execution/tests/evidence-review-postgres.test.ts'
+          ];
+          const newTables = [
+            'execution_reviewed_source_handoff_audit',
+            'execution_reviewed_source_handoffs',
+            'execution_reviewed_source_admission_commands',
+            'execution_reviewed_source_admissions'
+          ];
+          for (const file of executionTests) {
+            let source = fs.readFileSync(file, 'utf8');
+            if (!source.includes('execution_reviewed_source_handoff_audit')) {
+              source = source.replaceAll(
+                '         execution_evidence_review_audit,',
+                `${newTables.map((name) => `         ${name},`).join('\n')}\n         execution_evidence_review_audit,`
+              );
+            }
+            fs.writeFileSync(file, source);
+          }
+
+          const tenantFile = 'scripts/milestone2-tenant-isolation.integration.test.ts';
+          let tenant = fs.readFileSync(tenantFile, 'utf8');
+          if (!tenant.includes('DROP TABLE IF EXISTS execution_reviewed_source_handoff_audit')) {
+            tenant = tenant.replace(
+              'DROP TABLE IF EXISTS execution_evidence_review_audit,',
+              `DROP TABLE IF EXISTS ${newTables.join(',')},execution_evidence_review_audit,`
+            );
+          }
+          fs.writeFileSync(tenantFile, tenant);
+
+          const migrationsFile = 'scripts/milestone2-migrations.integration.test.ts';
+          let migrations = fs.readFileSync(migrationsFile, 'utf8');
+          if (!migrations.includes("    'execution_reviewed_source_admissions',")) {
+            migrations = migrations.replace(
+              "  Execution: [\n    'execution_evidence_review_sources',",
+              `  Execution: [\n${newTables.slice().reverse().map((name) => `    '${name}',`).join('\n')}\n    'execution_evidence_review_sources',`
+            );
+          }
+          migrations = migrations.replace(
+            'expect(sets.reduce((count, set) => count + set.size, 0)).toBe(14);',
+            'expect(sets.reduce((count, set) => count + set.size, 0)).toBe(15);'
+          );
+          if (!migrations.includes("expect(sets[2]).toContain('0036_execution_reviewed_source_handoff');")) {
+            migrations = migrations.replace(
+              "    expect(sets[2]).toContain('0033_execution_evidence_review');",
+              "    expect(sets[2]).toContain('0033_execution_evidence_review');\n    expect(sets[2]).toContain('0036_execution_reviewed_source_handoff');"
+            );
+          }
+          fs.writeFileSync(migrationsFile, migrations);
+          NODE
+          pnpm exec prettier --write \
+            services/execution/tests/professional-review-postgres.test.ts \
+            services/execution/tests/filing-authorization-postgres.test.ts \
+            services/execution/tests/provider-return-evidence-postgres.test.ts \
+            services/execution/tests/evidence-review-postgres.test.ts \
+            scripts/milestone2-tenant-isolation.integration.test.ts \
+            scripts/milestone2-migrations.integration.test.ts
+      - name: Commit migration baseline synchronization
+        run: |
+          if ! git diff --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add \
+              services/execution/tests/professional-review-postgres.test.ts \
+              services/execution/tests/filing-authorization-postgres.test.ts \
+              services/execution/tests/provider-return-evidence-postgres.test.ts \
+              services/execution/tests/evidence-review-postgres.test.ts \
+              scripts/milestone2-tenant-isolation.integration.test.ts \
+              scripts/milestone2-migrations.integration.test.ts
+            git commit -m "test(persistence): include WP05 Execution migration baselines"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
