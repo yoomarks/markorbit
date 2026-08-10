@@ -4,7 +4,10 @@ import {
   PostgresFilingGovernanceRepository,
   PostgresProfessionalReviewRepository
 } from './index.js';
+import { EvidenceReviewService } from './evidence-review.js';
 import { PostgresEvidenceReviewRepository } from './evidence-review-postgres.js';
+import { createExecutionEvidenceProvenanceRoutes } from './evidence-provenance-http.js';
+import { PostgresProviderReturnEvidenceRepository } from './provider-return-evidence-postgres.js';
 import {
   PostgresReviewedSourceAdmissionRepository,
   ReviewedSourceAdmissionService,
@@ -40,7 +43,12 @@ if (fixtureRuntime) {
   const pool = database.getPool();
   closeDatabase = () => database.close();
 
+  const evidenceReceiptRepository = new PostgresProviderReturnEvidenceRepository(database, pool);
   const evidenceReviewRepository = new PostgresEvidenceReviewRepository(database, pool);
+  const evidenceReviewService = new EvidenceReviewService(
+    evidenceReviewRepository,
+    evidenceReceiptRepository
+  );
   const reviewedSourceRepository = new PostgresReviewedSourceAdmissionRepository(database, pool);
   const reviewedSourceAdmissionService = new ReviewedSourceAdmissionService(
     reviewedSourceRepository,
@@ -55,6 +63,12 @@ if (fixtureRuntime) {
     admissionServiceFor: () => reviewedSourceAdmissionService,
     handoffServiceFor: () => reviewedSourceHandoffService
   });
+  const evidenceProvenanceRoutes = createExecutionEvidenceProvenanceRoutes({
+    internalServiceSecret,
+    admissionServiceFor: () => reviewedSourceAdmissionService,
+    handoffServiceFor: () => reviewedSourceHandoffService,
+    evidenceReviewServiceFor: () => evidenceReviewService
+  });
 
   runtime = createRuntime({
     reviewRepositoryFactory: (workspaceId) =>
@@ -66,7 +80,8 @@ if (fixtureRuntime) {
         database,
         internalServiceSecret
       }),
-      ...reviewedSourceRoutes
+      ...reviewedSourceRoutes,
+      ...evidenceProvenanceRoutes
     ],
     internalServiceSecret,
     markRegUrl
