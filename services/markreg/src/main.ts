@@ -12,6 +12,14 @@ import {
   encodeInternalWorkspacePrincipal,
   type ProfessionalReviewCase
 } from '@markorbit/contracts';
+import {
+  LifecycleProjectionService,
+  PostgresLifecycleProjectionRepository
+} from './lifecycle-projection.js';
+import {
+  createMarkRegLifecycleHandoffRoutes,
+  HttpReviewedSourceAdmissionReader
+} from './lifecycle-handoff-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -34,12 +42,14 @@ if (fixtureRuntime) {
     })
   );
   await database.start();
+  const pool = database.getPool();
   closeDatabase = () => database.close();
   const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
   const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   if (!internalServiceSecret)
     throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
-  const documentPackageService = new PostgresDocumentPackageService(database, database.getPool(), {
+  const formalMatterRepository = new PostgresFormalMatterRepository(database, pool);
+  const documentPackageService = new PostgresDocumentPackageService(database, pool, {
     async get(principal, reviewCaseId, correlationId) {
       let response: Response;
       try {
@@ -79,14 +89,24 @@ if (fixtureRuntime) {
       return ((await response.json()) as { reviewCase: ProfessionalReviewCase }).reviewCase;
     }
   });
-  runtime = createRuntime({
-    customerConfirmationRepository: new PostgresCustomerConfirmationRepository(database.getPool()),
-    matterDraftRepository: new PostgresMatterDraftRepository(database.getPool()),
-    formalMatterRepository: new PostgresFormalMatterRepository(database, database.getPool()),
-    documentPackageService,
-    auditRepository: new PostgresMarkRegAuditRepository(database.getPool()),
+  const lifecycleRoutes = createMarkRegLifecycleHandoffRoutes({
     internalServiceSecret,
-    executionUrl
+    lifecycleServiceFor: (workspaceId) =>
+      new LifecycleProjectionService(
+        new PostgresLifecycleProjectionRepository(database, pool),
+        formalMatterRepository,
+        new HttpReviewedSourceAdmissionReader(executionUrl, internalServiceSecret, workspaceId)
+      )
+  });
+  runtime = createRuntime({
+    customerConfirmationRepository: new PostgresCustomerConfirmationRepository(pool),
+    matterDraftRepository: new PostgresMatterDraftRepository(pool),
+    formalMatterRepository,
+    documentPackageService,
+    auditRepository: new PostgresMarkRegAuditRepository(pool),
+    internalServiceSecret,
+    executionUrl,
+    extraRoutes: lifecycleRoutes
   });
 }
 

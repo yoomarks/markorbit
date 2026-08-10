@@ -45,6 +45,9 @@ jobs:
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'
       EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'
+      M5_REVIEWED_SOURCE_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_execution_test
+      M5_REVIEWED_SOURCE_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_markreg_test
+      M5_REVIEWED_SOURCE_HANDOFF_POSTGRES_REQUIRED: '1'
       MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
       MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED: '1'
       MGSN_SERVICE_PACKAGE_POSTGRES_REQUIRED: '1'
@@ -70,6 +73,8 @@ jobs:
           CREATE DATABASE markorbit_auth_test;
           CREATE DATABASE markorbit_markreg_test;
           CREATE DATABASE markorbit_execution_test;
+          CREATE DATABASE markorbit_wp05_execution_test;
+          CREATE DATABASE markorbit_wp05_markreg_test;
           CREATE DATABASE markorbit_mgsn_test;
           SQL
       - run: pnpm db:test:bootstrap
@@ -113,6 +118,8 @@ jobs:
         run: pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts
       - name: Run durable MarkReg Recommended Action PostgreSQL suite
         run: pnpm --filter @markorbit/markreg-service exec vitest run tests/recommended-action-postgres.test.ts
+      - name: Run retry-safe Execution-to-MarkReg Reviewed Source handoff integration
+        run: pnpm exec vitest run scripts/milestone5-reviewed-source-handoff.integration.test.ts
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:postgres
       - run: pnpm test:document-package:http
