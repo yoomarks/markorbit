@@ -40,26 +40,32 @@ function workspacePrincipal(token: string): WorkspacePrincipal {
 }
 
 const authenticationClient = {
-  async resolveWorkspace(token: string, requestedWorkspaceId: string) {
-    if (token === 'expired') throw new AuthenticationError('INVALID_SESSION', 'Session expired.');
+  resolveWorkspace(token: string, requestedWorkspaceId: string) {
+    if (token === 'expired')
+      return Promise.reject(new AuthenticationError('INVALID_SESSION', 'Session expired.'));
     if (requestedWorkspaceId !== workspaceId)
-      throw new AuthenticationError('MEMBERSHIP_REQUIRED', 'Membership required.');
-    return workspacePrincipal(token);
+      return Promise.reject(
+        new AuthenticationError('MEMBERSHIP_REQUIRED', 'Membership required.')
+      );
+    return Promise.resolve(workspacePrincipal(token));
   },
-  async resolve(token: string): Promise<AuthenticatedUserPrincipal> {
-    if (token === 'expired') throw new AuthenticationError('INVALID_SESSION', 'Session expired.');
+  resolve(token: string): Promise<AuthenticatedUserPrincipal> {
+    if (token === 'expired')
+      return Promise.reject(new AuthenticationError('INVALID_SESSION', 'Session expired.'));
     const principal = workspacePrincipal(token);
-    return {
+    return Promise.resolve({
       kind: 'USER',
       sessionId: principal.sessionId,
       userId: principal.userId,
       sessionExpiresAt: principal.sessionExpiresAt
-    };
+    });
   },
-  async issue() {
-    throw new Error('not used');
+  issue() {
+    return Promise.reject(new Error('not used'));
   },
-  async revoke() {}
+  revoke() {
+    return Promise.resolve();
+  }
 } as CoreAuthenticationClient;
 
 async function start(runtime: ServiceRuntime) {
