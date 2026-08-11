@@ -71,7 +71,9 @@ const validTimestamp = (value: unknown): value is string =>
 const nonNegativeSafeInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
-export function parseReadyPackageContentExportV1(value: unknown): ReadyPackageContentExportV1 | null {
+export function parseReadyPackageContentExportV1(
+  value: unknown
+): ReadyPackageContentExportV1 | null {
   if (
     !record(value) ||
     !exactKeys(value, [
