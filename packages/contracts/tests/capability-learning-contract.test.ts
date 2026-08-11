@@ -19,7 +19,9 @@ describe('M6-WP-01 capability learning contracts', () => {
     expect(capabilityObservationSourceOwners).toEqual(['EXECUTION', 'MARKREG']);
     expect(capabilityObservationSourceOwners).not.toContain('MGSN');
     expect(capabilityObservationSourceKinds).not.toContain('PROVIDER_RETURN');
-    expect(capabilityObservationSourceKinds).not.toContain('PROVIDER_SUPPLY_CAPABILITY');
+    expect(capabilityObservationSourceKinds).not.toContain(
+      'PROVIDER_SUPPLY_CAPABILITY'
+    );
   });
 
   it('keeps all reflection dispositions explicit', () => {
@@ -72,7 +74,10 @@ describe('M6-WP-01 capability learning contracts', () => {
       version: 1,
       runtimeCapability: { id: 'runtime-capability_tm-application', version: 1 },
       ledgerEntries: [
-        { id: 'capability-ledger_entry-1', sourceFingerprintSha256: 'b'.repeat(64) }
+        {
+          id: 'capability-ledger_entry-1',
+          sourceFingerprintSha256: 'b'.repeat(64)
+        }
       ],
       explanation: 'Governed evidence supports a private reflection candidate.',
       proposedPrivateReflection: 'I have recent reviewed experience in this workflow.',
