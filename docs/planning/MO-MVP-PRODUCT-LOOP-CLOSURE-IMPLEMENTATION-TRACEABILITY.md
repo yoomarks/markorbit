@@ -8,16 +8,14 @@
 
 ## Work-package traceability
 
-| Work package | Result | Repository evidence |
-|---|---|---|
-| PLC-WP-01 — Product mainline, contracts and ownership boundary | DONE | merged PR #75; `docs/architecture/PRODUCT-LOOP-AUTHORITY-BOUNDARY.md` |
-| PLC-WP-02 — Durable Product-owned Content preparation state | DONE | merged PR #76; Lite PostgreSQL content preparation |
-| PLC-WP-03 — Durable candidate and qualification path | DONE | merged PR #77; Lite PostgreSQL Candidate + explicit Qualification |
-| PLC-WP-04 — Formal Opportunity to existing work handoff | DONE | merged PR #78; MarkReg Formal Opportunity + Intake handoff |
-| PLC-WP-05 — Lite Today -> Prepared Action real-runtime journey | DONE | merged PR #79; real Today/Gateway Product-loop path |
-| PLC-WP-06 — Feedback and Product-loop observability | DONE | merged PR #81; durable Product-loop feedback |
-| PLC-WP-07 — Reliability and browser matrix | DONE | merged PR #82; exact-tree hosted reliability/browser evidence |
-| PLC-WP-08 — Independent Product-loop and authority audit | COMPLETE_FOR_OWNER_REVIEW | `docs/audits/MO-MVP-PLC-WP-08-INDEPENDENT-PRODUCT-LOOP-AUTHORITY-AUDIT.{md,json}`; verdict `GO` |
+- `PLC-WP-01 — Product mainline, contracts and ownership boundary`: `DONE`; merged PR #75; evidence in `docs/architecture/PRODUCT-LOOP-AUTHORITY-BOUNDARY.md`.
+- `PLC-WP-02 — Durable Product-owned Content preparation state`: `DONE`; merged PR #76; Lite PostgreSQL content preparation.
+- `PLC-WP-03 — Durable candidate and qualification path`: `DONE`; merged PR #77; Lite PostgreSQL Candidate + explicit Qualification.
+- `PLC-WP-04 — Formal Opportunity to existing work handoff`: `DONE`; merged PR #78; MarkReg Formal Opportunity + Intake handoff.
+- `PLC-WP-05 — Lite Today -> Prepared Action real-runtime journey`: `DONE`; merged PR #79; real Today/Gateway Product-loop path.
+- `PLC-WP-06 — Feedback and Product-loop observability`: `DONE`; merged PR #81; durable Product-loop feedback.
+- `PLC-WP-07 — Reliability and browser matrix`: `DONE`; merged PR #82; exact-tree hosted reliability/browser evidence.
+- `PLC-WP-08 — Independent Product-loop and authority audit`: `COMPLETE_FOR_OWNER_REVIEW`; evidence in `docs/audits/MO-MVP-PLC-WP-08-INDEPENDENT-PRODUCT-LOOP-AUTHORITY-AUDIT.{md,json}`; verdict `GO`.
 
 ## Exact-tree runtime evidence
 
