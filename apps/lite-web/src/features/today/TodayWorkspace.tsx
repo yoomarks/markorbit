@@ -12,8 +12,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader,
-  StatusBadge
+  PageHeader
 } from '@markorbit/ui';
 import { createTodayClient, TodayHttpError, type TodayClient } from '../../api/product-loop.js';
 import './today.css';
@@ -93,7 +92,7 @@ function RecommendationList({
             <strong>{recommendation.title}</strong>
             <span>{recommendation.explanation}</span>
             <span className="today-recommendation__footer">
-              <StatusBadge status={recommendation.status} />
+              <Badge>{recommendation.status}</Badge>
               {preparedActions[0] ? <small>{actionStatus(preparedActions[0])}</small> : null}
             </span>
           </button>
@@ -183,7 +182,7 @@ function PreparedActionPanel({
             {journey.preparedAction.preparedActionId} · v{journey.preparedAction.version}
           </p>
         </div>
-        <StatusBadge status={journey.handoffState} />
+        <Badge>{actionStatus(journey)}</Badge>
       </div>
       <p>{journey.preparedAction.summary}</p>
       <div className="today-confirmation-effect" role="note" aria-label="Confirmation effect">
@@ -437,7 +436,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
                 </Card>
                 <PreparedActionPanel
                   recommendation={item.recommendation}
-                  journey={journey}
+                  {...(journey ? { journey } : {})}
                   busy={busy}
                   onPrepare={() => void prepare()}
                   onConfirm={() => void confirm()}
