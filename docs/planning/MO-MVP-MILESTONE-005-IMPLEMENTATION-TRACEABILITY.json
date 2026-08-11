@@ -5,9 +5,9 @@
     "pullRequest": 60,
     "mergeCommit": "0de33333246b66d825b56137f87c32266fb5583c"
   },
-  "milestoneStatus": "IMPLEMENTATION_ACTIVE",
+  "milestoneStatus": "AUDIT_GO_PENDING_PR_70_MERGE",
   "planningStatusReconciled": true,
-  "currentWorkPackage": "M5-WP-07",
+  "currentWorkPackage": "M5-WP-08",
   "authorityLocks": {
     "evidenceReviewDecisionIsOfficialTruth": false,
     "reviewAdmissionIsFilingSubmission": false,
@@ -100,8 +100,9 @@
     },
     {
       "id": "M5-WP-07",
-      "status": "IMPLEMENTATION_IN_PR_69",
+      "status": "MERGED_IN_PR_69",
       "pullRequest": 69,
+      "mergeCommit": "48a3c223a51b381da83d181f9d0cb70bb812a82c",
       "evidence": [
         "docs/validation/MO-MVP-MILESTONE-005-RELIABILITY-MATRIX.json",
         "scripts/validate-milestone5-reliability-matrix.mjs",
@@ -112,9 +113,24 @@
     },
     {
       "id": "M5-WP-08",
-      "status": "NOT_STARTED"
+      "status": "AUDIT_GO_IN_PR_70_PENDING_FINAL_HEAD_VALIDATION",
+      "pullRequest": 70,
+      "auditedCodeHeadSha": "f79002d81329de2ae80c777e391f1b025f014e79",
+      "initialRecommendation": "FIX",
+      "finalRecommendation": "GO",
+      "evidence": [
+        "docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.md",
+        "docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.json",
+        ".github/workflows/milestone-5-integration.yml",
+        "scripts/m5-evidence-lifecycle-runtime.integration.test.ts",
+        "services/execution/src/evidence-review-queue-postgres.ts",
+        "services/execution/src/evidence-provenance-http.ts",
+        "apps/gateway/src/lifecycle-http.ts",
+        "apps/operations-console/src/App.tsx",
+        "services/markreg/src/lifecycle-handoff-http.ts"
+      ]
     }
   ],
-  "nextApprovedStepAfterMerge": "M5-WP-08",
+  "nextApprovedStepAfterMerge": "NONE_WITHIN_APPROVED_MILESTONE_5_SCOPE",
   "alsoDependencyUnblockedAfterMerge": []
 }
