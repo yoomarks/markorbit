@@ -323,8 +323,9 @@ export class PostgresRuntimeCapabilityRegistry {
           'SELECT runtime_capability_definition_id FROM capability_runtime_identities WHERE capability_id=$1',
           [accepted.capabilityId]
         );
-        let runtimeCapabilityDefinitionId = identity.rows[0]?.runtime_capability_definition_id as
-          RuntimeCapabilityDefinitionId | undefined;
+        const identityRow = identity.rows[0] as
+          { runtime_capability_definition_id: RuntimeCapabilityDefinitionId } | undefined;
+        let runtimeCapabilityDefinitionId = identityRow?.runtime_capability_definition_id;
         const createdAt = new Date(this.now()).toISOString();
         if (!runtimeCapabilityDefinitionId) {
           runtimeCapabilityDefinitionId = this.idFactory();
@@ -337,7 +338,9 @@ export class PostgresRuntimeCapabilityRegistry {
           'SELECT COALESCE(MAX(version),0) AS current_version FROM capability_runtime_definitions WHERE runtime_capability_definition_id=$1',
           [runtimeCapabilityDefinitionId]
         );
-        const version = Number(versionResult.rows[0]?.current_version ?? 0) + 1;
+        const versionRow = versionResult.rows[0] as
+          { current_version: number | string } | undefined;
+        const version = Number(versionRow?.current_version ?? 0) + 1;
         const definition: RuntimeCapabilityDefinition = {
           schemaVersion: 1,
           runtimeCapabilityDefinitionId,
