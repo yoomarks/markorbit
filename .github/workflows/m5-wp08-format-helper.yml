@@ -1,21 +1,20 @@
 name: M5 WP08 format helper
 
 on:
-  push:
-    branches: [m5-wp-08-integration-authority-audit]
+  pull_request:
 
 permissions:
   contents: write
 
 jobs:
   format:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: m5-wp-08-integration-authority-audit
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
@@ -33,6 +32,8 @@ jobs:
           services/markreg/src/main.ts
           apps/operations-console/src/lifecycle.ts
           apps/operations-console/src/App.tsx
+          scripts/m5-evidence-lifecycle-runtime.integration.test.ts
+          .github/workflows/milestone-5-integration.yml
       - name: Commit formatting if needed
         run: |
           if git diff --quiet; then
@@ -48,6 +49,8 @@ jobs:
             services/markreg/src/lifecycle-handoff-http.ts \
             services/markreg/src/main.ts \
             apps/operations-console/src/lifecycle.ts \
-            apps/operations-console/src/App.tsx
+            apps/operations-console/src/App.tsx \
+            scripts/m5-evidence-lifecycle-runtime.integration.test.ts \
+            .github/workflows/milestone-5-integration.yml
           git commit -m "style(m5): format WP-08 remediation"
-          git push origin HEAD:m5-wp-08-integration-authority-audit
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
