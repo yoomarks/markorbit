@@ -13,6 +13,8 @@ export interface KnowledgeIntake {
 
 export interface KnowledgeIntakeRepository {
   createOrFind(intake: KnowledgeIntake): Promise<{ intake: KnowledgeIntake; created: boolean }>;
+  findById(intakeId: string): Promise<KnowledgeIntake | null>;
+  markAccepted(intakeId: string): Promise<KnowledgeIntake | null>;
 }
 
 const keysExactly = (value: Record<string, unknown>, expected: string[]) => {
@@ -66,6 +68,7 @@ export const fingerprintCoreIntakeRequest = (request: CoreIntakeRequest) =>
 const clone = <T>(value: T): T => structuredClone(value);
 export class MemoryKnowledgeIntakeRepository implements KnowledgeIntakeRepository {
   private readonly rows = new Map<string, KnowledgeIntake>();
+
   async createOrFind(candidate: KnowledgeIntake) {
     await Promise.resolve();
     const existing = this.rows.get(candidate.idempotencyKey);
@@ -73,6 +76,24 @@ export class MemoryKnowledgeIntakeRepository implements KnowledgeIntakeRepositor
     this.rows.set(candidate.idempotencyKey, clone(candidate));
     return { intake: clone(candidate), created: true };
   }
+
+  async findById(intakeId: string) {
+    await Promise.resolve();
+    const value = [...this.rows.values()].find((row) => row.intakeId === intakeId);
+    return value ? clone(value) : null;
+  }
+
+  async markAccepted(intakeId: string) {
+    await Promise.resolve();
+    const entry = [...this.rows.entries()].find(([, row]) => row.intakeId === intakeId);
+    if (!entry) return null;
+    const [key, current] = entry;
+    if (current.status === 'REJECTED') return clone(current);
+    const accepted = { ...current, status: 'ACCEPTED' as const };
+    this.rows.set(key, accepted);
+    return clone(accepted);
+  }
+
   count() {
     return this.rows.size;
   }
@@ -90,6 +111,7 @@ const mapRow = (row: Row): KnowledgeIntake => ({
 
 export class PostgresKnowledgeIntakeRepository implements KnowledgeIntakeRepository {
   constructor(private readonly query: QueryClient) {}
+
   async createOrFind(candidate: KnowledgeIntake) {
     const request = candidate.request;
     const result = await this.query.query(
@@ -117,5 +139,24 @@ export class PostgresKnowledgeIntakeRepository implements KnowledgeIntakeReposit
     );
     const row = result.rows[0] as Row & { created: boolean };
     return { intake: mapRow(row), created: row.created };
+  }
+
+  async findById(intakeId: string) {
+    const result = await this.query.query('SELECT * FROM knowledge_intakes WHERE intake_id=$1', [
+      intakeId
+    ]);
+    return result.rows[0] ? mapRow(result.rows[0] as Row) : null;
+  }
+
+  async markAccepted(intakeId: string) {
+    const updated = await this.query.query(
+      `UPDATE knowledge_intakes
+       SET status='ACCEPTED'
+       WHERE intake_id=$1 AND status IN ('RECEIVED','ACCEPTED')
+       RETURNING *`,
+      [intakeId]
+    );
+    if (updated.rows[0]) return mapRow(updated.rows[0] as Row);
+    return this.findById(intakeId);
   }
 }
