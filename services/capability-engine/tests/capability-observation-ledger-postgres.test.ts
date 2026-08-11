@@ -73,6 +73,7 @@ class FakeSourceAuthority implements CapabilityObservationSourceAuthority {
   async verify(
     locator: Readonly<CapabilityObservationSourceLocator>
   ): Promise<GovernedCapabilityObservationSourceAssertion> {
+    await Promise.resolve();
     this.calls += 1;
     if (this.mode === 'OUTAGE')
       throw new CapabilityObservationSourceError(
