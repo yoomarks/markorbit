@@ -35,9 +35,11 @@ function decision() {
   };
 }
 
+const resolvedDecision = () => Promise.resolve(decision() as never);
+
 describe('M6-WP-03 Execution Capability Observation source route', () => {
   it('returns only owner-controlled attribution for the exact persisted review decision', async () => {
-    const reader = { findDecisionById: vi.fn(async () => decision() as never) };
+    const reader = { findDecisionById: vi.fn(resolvedDecision) };
     const route = createExecutionCapabilityObservationSourceRoutes({
       internalServiceSecret: secret,
       evidenceReviewReader: reader
@@ -78,7 +80,7 @@ describe('M6-WP-03 Execution Capability Observation source route', () => {
   it('fails closed on missing, stale-version and stale-fingerprint source reads', async () => {
     const missing = createExecutionCapabilityObservationSourceRoutes({
       internalServiceSecret: secret,
-      evidenceReviewReader: { findDecisionById: vi.fn(async () => undefined) }
+      evidenceReviewReader: { findDecisionById: vi.fn(() => Promise.resolve(undefined)) }
     })[0]!;
     await expect(missing.handle(request())).rejects.toMatchObject({
       status: 404,
@@ -87,7 +89,7 @@ describe('M6-WP-03 Execution Capability Observation source route', () => {
 
     const exact = createExecutionCapabilityObservationSourceRoutes({
       internalServiceSecret: secret,
-      evidenceReviewReader: { findDecisionById: vi.fn(async () => decision() as never) }
+      evidenceReviewReader: { findDecisionById: vi.fn(resolvedDecision) }
     })[0]!;
     await expect(
       exact.handle(
@@ -109,7 +111,7 @@ describe('M6-WP-03 Execution Capability Observation source route', () => {
   it('never accepts body identity fields because the read route derives identity from owner state', async () => {
     const route = createExecutionCapabilityObservationSourceRoutes({
       internalServiceSecret: secret,
-      evidenceReviewReader: { findDecisionById: vi.fn(async () => decision() as never) }
+      evidenceReviewReader: { findDecisionById: vi.fn(resolvedDecision) }
     })[0]!;
     const result = await route.handle(
       request({
