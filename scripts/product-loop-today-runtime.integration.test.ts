@@ -1,8 +1,15 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
-import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
+import {
+  encodeInternalWorkspacePrincipal,
+  type WorkspacePrincipal
+} from '../packages/contracts/dist/index.js';
+import {
+  ManagedDatabase,
+  loadMigrationsForOwner,
+  migrate
+} from '../packages/persistence/dist/index.js';
 import {
   PostgresLiteContentPreparationStore,
   type ProductLoopSourceAuthority
@@ -15,7 +22,7 @@ import {
 } from '../services/lite/src/prepared-action.js';
 import { createLiteProductLoopRoutes } from '../services/lite/src/http.js';
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
-import { createServiceRuntime } from '@markorbit/service-kit';
+import { createServiceRuntime } from '../packages/service-kit/dist/index.js';
 
 const url = process.env.LITE_TODAY_TEST_DATABASE_URL;
 const required = process.env.LITE_TODAY_POSTGRES_TEST_REQUIRED === '1';
