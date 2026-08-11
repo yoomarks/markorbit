@@ -46,9 +46,11 @@ await database.start();
 const pool = database.getPool();
 
 const unavailableSourceAuthority: ProductLoopSourceAuthority = {
-  async resolve() {
-    throw new Error(
-      'Upstream Product-loop source creation is not exposed through the WP-05 browser runtime.'
+  resolve() {
+    return Promise.reject(
+      new Error(
+        'Upstream Product-loop source creation is not exposed through the WP-05 browser runtime.'
+      )
     );
   }
 };
@@ -63,9 +65,11 @@ const candidateStore = new PostgresLiteCandidateQualificationStore(
   pool,
   unavailableSourceAuthority,
   {
-    async isAccessible() {
-      throw new Error(
-        'Customer relationship mutation is not exposed through the WP-05 browser runtime.'
+    isAccessible() {
+      return Promise.reject(
+        new Error(
+          'Customer relationship mutation is not exposed through the WP-05 browser runtime.'
+        )
       );
     }
   }

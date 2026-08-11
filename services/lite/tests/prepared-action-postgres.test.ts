@@ -240,22 +240,24 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     const count = await database
       .getPool()
       .query('SELECT count(*)::int AS count FROM lite_content_opportunities');
-    expect(count.rows[0]?.count).toBe(1);
+    expect((count.rows[0] as { count?: number } | undefined)?.count).toBe(1);
   });
 
   it('keeps confirmation durable when the owner is unavailable, then retries without a second confirmation', async () => {
     const { journey } = await prepare();
     let calls = 0;
     const authority: PreparedActionHandoffAuthority = {
-      async perform(action) {
+      perform(action) {
         calls += 1;
-        if (calls === 1) throw new Error('owner temporarily unavailable');
-        return handoffResult({
-          preparedAction: action,
-          owner: 'LITE',
-          ownerRecord: { id: 'content-opportunity_retry', version: 1 },
-          completedAt: '2026-08-11T10:10:00.000Z'
-        });
+        if (calls === 1) return Promise.reject(new Error('owner temporarily unavailable'));
+        return Promise.resolve(
+          handoffResult({
+            preparedAction: action,
+            owner: 'LITE',
+            ownerRecord: { id: 'content-opportunity_retry', version: 1 },
+            completedAt: '2026-08-11T10:10:00.000Z'
+          })
+        );
       }
     };
     const command = {
@@ -283,7 +285,9 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     const confirmationCount = await database
       .getPool()
       .query('SELECT count(*)::int AS count FROM lite_prepared_action_confirmations');
-    expect(confirmationCount.rows[0]?.count).toBe(1);
+    expect(
+      (confirmationCount.rows[0] as { count?: number } | undefined)?.count
+    ).toBe(1);
 
     const retried = await new PreparedActionJourneyService(
       preparedStore(),
@@ -294,7 +298,9 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     const confirmationCountAfter = await database
       .getPool()
       .query('SELECT count(*)::int AS count FROM lite_prepared_action_confirmations');
-    expect(confirmationCountAfter.rows[0]?.count).toBe(1);
+    expect(
+      (confirmationCountAfter.rows[0] as { count?: number } | undefined)?.count
+    ).toBe(1);
   });
 
   it('fails stale fingerprints closed and keeps Workspace reads isolated', async () => {
