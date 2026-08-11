@@ -6,6 +6,7 @@ import {
 } from './index.js';
 import { EvidenceReviewService } from './evidence-review.js';
 import { PostgresEvidenceReviewRepository } from './evidence-review-postgres.js';
+import { PostgresEvidenceReviewQueueReader } from './evidence-review-queue-postgres.js';
 import { createExecutionEvidenceProvenanceRoutes } from './evidence-provenance-http.js';
 import { PostgresProviderReturnEvidenceRepository } from './provider-return-evidence-postgres.js';
 import {
@@ -45,6 +46,7 @@ if (fixtureRuntime) {
 
   const evidenceReceiptRepository = new PostgresProviderReturnEvidenceRepository(database, pool);
   const evidenceReviewRepository = new PostgresEvidenceReviewRepository(database, pool);
+  const evidenceReviewQueue = new PostgresEvidenceReviewQueueReader(pool);
   const evidenceReviewService = new EvidenceReviewService(
     evidenceReviewRepository,
     evidenceReceiptRepository
@@ -67,7 +69,8 @@ if (fixtureRuntime) {
     internalServiceSecret,
     admissionServiceFor: () => reviewedSourceAdmissionService,
     handoffServiceFor: () => reviewedSourceHandoffService,
-    evidenceReviewServiceFor: () => evidenceReviewService
+    evidenceReviewServiceFor: () => evidenceReviewService,
+    reviewQueueFor: () => evidenceReviewQueue
   });
 
   runtime = createRuntime({
