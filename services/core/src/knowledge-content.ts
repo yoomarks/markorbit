@@ -57,7 +57,7 @@ export interface KnowledgeContentExportRepository {
 }
 
 const IDS = {
-  readyPackage: /^rdp_[0-9A-HJKMNP-TV-Z]{26}$/u,
+  readyPackage: /^rdp_[A-Za-z0-9][A-Za-z0-9_-]*$/u,
   workspace: /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u,
   source: /^src_[0-9A-HJKMNP-TV-Z]{26}$/u,
   conversionRun: /^cvr_[0-9A-HJKMNP-TV-Z]{26}$/u,
@@ -284,8 +284,8 @@ export class PostgresKnowledgeContentExportRepository implements KnowledgeConten
         knowledge_workspace_id,source_id,raw_artifact_id,raw_artifact_sha256,
         staging_document_id,staging_sha256,export_sha256,export_json,received_at
       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14)
-      ON CONFLICT (intake_id) DO UPDATE SET intake_id=knowledge_content_exports.intake_id
-      RETURNING *, (xmax = 0) AS created`,
+      ON CONFLICT (intake_id) DO NOTHING
+      RETURNING *`,
       [
         candidate.intakeId,
         candidate.workspaceId,
@@ -303,8 +303,14 @@ export class PostgresKnowledgeContentExportRepository implements KnowledgeConten
         candidate.receivedAt
       ]
     );
-    const row = result.rows[0] as Row & { created: boolean };
-    return { contentExport: mapRow(row), created: row.created };
+    if (result.rows[0]) {
+      return { contentExport: mapRow(result.rows[0] as Row), created: true };
+    }
+    const existing = await this.findByIntakeId(candidate.intakeId);
+    if (!existing) {
+      throw new Error('Knowledge content export conflict row disappeared.');
+    }
+    return { contentExport: existing, created: false };
   }
 
   async findByIntakeId(intakeId: string) {
