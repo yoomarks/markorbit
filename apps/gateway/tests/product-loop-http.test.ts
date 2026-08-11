@@ -71,7 +71,16 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     const init = downstream.mock.calls[0]?.[1] as RequestInit;
     const headers = init.headers as Record<string, string>;
     expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
-    expect(headers['x-markorbit-principal']).toContain(principal.userId);
+    const encodedPrincipal = headers['x-markorbit-principal'];
+    expect(encodedPrincipal).toBeTruthy();
+    const envelope = JSON.parse(Buffer.from(encodedPrincipal!, 'base64url').toString('utf8')) as {
+      schemaVersion: 1;
+      principal: WorkspacePrincipal;
+    };
+    expect(envelope).toMatchObject({
+      schemaVersion: 1,
+      principal: { userId: principal.userId, workspaceId: principal.workspaceId }
+    });
   });
 
   it('rejects client actor spoof fields before any Lite mutation', async () => {
