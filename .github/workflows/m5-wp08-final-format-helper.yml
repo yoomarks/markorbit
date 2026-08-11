@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Format final WP-08 files
+      - name: Format final WP-08 source and test files
         run: >-
           pnpm exec prettier --write
           services/execution/src/evidence-review-queue-postgres.ts
@@ -35,8 +35,6 @@ jobs:
           scripts/m5-evidence-lifecycle-runtime.integration.test.ts
           scripts/validate-gateway-inventory.mjs
           docs/architecture/GATEWAY_ROUTE_INVENTORY.json
-          .github/workflows/milestone-5-integration.yml
-          .github/workflows/milestone-5-reliability.yml
       - name: Commit formatting if needed
         run: |
           if git diff --quiet; then
@@ -55,8 +53,6 @@ jobs:
             apps/operations-console/src/App.tsx \
             scripts/m5-evidence-lifecycle-runtime.integration.test.ts \
             scripts/validate-gateway-inventory.mjs \
-            docs/architecture/GATEWAY_ROUTE_INVENTORY.json \
-            .github/workflows/milestone-5-integration.yml \
-            .github/workflows/milestone-5-reliability.yml
+            docs/architecture/GATEWAY_ROUTE_INVENTORY.json
           git commit -m "style(m5): format final WP-08 remediation"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
