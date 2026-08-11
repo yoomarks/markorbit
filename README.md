@@ -60,9 +60,9 @@ pnpm infra:up
 pnpm infra:down
 ```
 
-## Current milestone
+## Current milestone and sequencing
 
-**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 scope planning is proposed.**
+**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 scope is owner-approved but runtime implementation has not started. TASK 031B audits Product-loop conformance and proposes a bounded Product Loop Closure stage before M6-WP-01.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -85,11 +85,11 @@ current governed Execution source
 
 The M5 authority locks remain permanent: Evidence Review Decision is not Official Truth; reviewed-source admission is not Filing Submission; Lifecycle Projection is not Official Status; Recommended Action does not authorize execution; no Payment/Invoice, legal appointment, automatic Matter completion, automatic Capability verification or cross-service SQL follows from the lifecycle path.
 
-### Proposed Milestone 6 — Durable Capability Learning and Private Reflection
+### Approved Milestone 6 — Durable Capability Learning and Private Reflection
 
-TASK 031A proposes `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION` as the next MVP direction. M5 explicitly deferred Capability learning until reviewed governed outcomes existed; that prerequisite is now complete.
+PR #71 merged as `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`, approving TASK 031A and the direction `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
 
-The proposed M6 loop is:
+The approved M6 loop is:
 
 ```text
 accepted Capability Canon version
@@ -102,7 +102,7 @@ accepted Capability Canon version
 -> authenticated Lite Capability Center
 ```
 
-The proposal preserves the repository's Capability authority locks:
+The M6 authority locks remain:
 
 - Reflection Candidate is not canonical truth;
 - accepted private reflection is not verified professional Capability;
@@ -113,10 +113,22 @@ The proposal preserves the repository's Capability authority locks:
 - Capability Twin is a private read model, not an autonomous identity or protected-action authority;
 - no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
 
-TASK 031A is planning-only. No M6 runtime implementation, migration, Gateway route or Lite Capability UI change is authorized until the planning PR is merged. After approval, the next implementation step is `M6-WP-01` — Capability learning contracts and canonical authority boundary.
+M6 approval is preserved. TASK 031B changes only proposed **execution precedence**, not M6 semantics or authority:
+
+```text
+M1-M5 governed execution backbone
+-> Product Loop Closure: Lite Today -> Recommendation -> Prepared Action -> Confirmation -> Handoff -> Feedback
+-> resume approved M6-WP-01
+```
+
+The Product Loop Conformance Audit found that Content and Opportunity remain unclosed while application/execution loops are already deep, and that the confirmed Lite mainline is not a set of equal parallel modules. The immediate Product correction is therefore to prove the Today-driven user loop rather than simply implement every navigation label as another module.
+
+Merge of the TASK 031B planning/audit PR accepts that resequencing and authorizes `PLC-WP-01` only. It does not itself create runtime Product state or authorize publication, outreach, Opportunity promotion, Payment/Invoice, provider appointment, Filing Submission, Official Truth, Capability verification or Canon mutation.
 
 See:
 
+- `docs/audits/MO-MVP-PRODUCT-LOOP-CONFORMANCE-AUDIT.md`;
+- `docs/planning/MO-MVP-PRODUCT-LOOP-CLOSURE-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`;
