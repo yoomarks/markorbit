@@ -17,31 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: plc-wp-05-lite-today-prepared-action
-      - name: Patch exact TypeScript findings
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('apps/lite-web/src/features/today/TodayWorkspace.tsx')
-          text = p.read_text()
-          old = """      <ErrorState
-        title={permission ? 'Today access denied' : 'Lite Today unavailable'}
-        description={error.message}
-        onRetry={permission ? undefined : () => void reload()}
-      />"""
-          new = """      <ErrorState
-        title={permission ? 'Today access denied' : 'Lite Today unavailable'}
-        description={error.message}
-        {...(!permission ? { onRetry: () => void reload() } : {})}
-      />"""
-          if old not in text:
-              raise SystemExit('ErrorState exact-optional anchor missing')
-          text = text.replace(old, new, 1)
-          old = "tone={error.status === 409 || error.status === 422 ? 'warning' : 'danger'}"
-          if old not in text:
-              raise SystemExit('Alert tone anchor missing')
-          text = text.replace(old, 'tone="warning"', 1)
-          p.write_text(text)
-          Path('.github/workflows/wp05-fix-today-types.yml').unlink()
+      - run: python scripts/wp05-fix-today-types.py
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
