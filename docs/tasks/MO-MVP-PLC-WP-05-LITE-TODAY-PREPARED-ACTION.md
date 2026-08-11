@@ -283,3 +283,7 @@ Merge accepts only the real authenticated Lite Today -> Recommendation -> Prepar
 Merge does not authorize WP-06 feedback semantics, M6 runtime, automatic outreach/publication, Intake/Order/Matter creation, Payment, appointment, filing or Official Truth.
 
 After merge, `PLC-WP-06 — Feedback and Product-loop observability` is the next planned package.
+
+## 16. Hosted CI remediation log
+
+The first Draft PR exact-head run passed workspace and persistence-boundary validation but exposed one mechanical integration omission from the Core Principal identity correction: the Content Review and Candidate Qualification command types had already been widened to the authoritative Core principal string, while two call sites still invoked the legacy `cleanMarkOrbitId` validator. Those exact call sites were changed to the existing `cleanPrincipalId` validator. No business authority, Product-loop transition or automatic consequence was broadened to make CI pass.
