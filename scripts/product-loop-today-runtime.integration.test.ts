@@ -53,7 +53,7 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'wp05_http'
+    migrationNamespace: 'lite_today_test'
   });
   const migrationsDirectory = path.resolve('infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('infrastructure/persistence/migration-owners.json');
@@ -82,7 +82,7 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
       );
     await migrate(
       database.getPool(),
-      'wp05_http',
+      'lite_today_test',
       await loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/lite-service')
     );
     await database.getPool().query(
