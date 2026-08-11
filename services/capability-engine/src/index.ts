@@ -7,6 +7,11 @@ import {
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
+import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
+
+export * from './runtime-capability-http.js';
+export * from './runtime-capability-registry.js';
 
 export const serviceManifest = Object.freeze({
   name: 'capability-engine',
@@ -34,12 +39,25 @@ export interface CapabilityEngineOptions {
   repository?: InMemoryCapabilityRequestRepository;
   publisher?: EventPublisher;
   now?: () => string;
+  runtimeCapabilityRegistry?: PostgresRuntimeCapabilityRegistry;
+  internalServiceSecret?: string;
 }
 export function createRuntime(options: CapabilityEngineOptions = {}) {
   const repository = options.repository ?? new InMemoryCapabilityRequestRepository();
   const publisher = options.publisher ?? new InMemoryEventPublisher();
   const now = options.now ?? (() => new Date().toISOString());
   const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
+  if (Boolean(options.runtimeCapabilityRegistry) !== Boolean(options.internalServiceSecret))
+    throw new Error(
+      'runtimeCapabilityRegistry and internalServiceSecret must be configured together.'
+    );
+  const runtimeCapabilityRoutes =
+    options.runtimeCapabilityRegistry && options.internalServiceSecret
+      ? createRuntimeCapabilityRoutes({
+          registry: options.runtimeCapabilityRegistry,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -117,7 +135,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
               inFlight.delete(header);
             }
           }
-        }
+        },
+        ...runtimeCapabilityRoutes
       ]
     }
   );

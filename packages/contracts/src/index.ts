@@ -1202,3 +1202,4 @@ export function parseRecommendationPackage(value: unknown): RecommendationPackag
 export * from './identity.js';
 export * from './auth.js';
 export * from './knowledge-intake.js';
+export * from './capability-learning.js';
