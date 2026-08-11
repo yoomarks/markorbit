@@ -52,6 +52,11 @@ jobs:
           SQL
       - name: Build runtime dependencies
         run: pnpm build
+      - name: Link root integration workspace packages
+        run: |
+          mkdir -p node_modules/@markorbit
+          ln -sfn ../../packages/contracts node_modules/@markorbit/contracts
+          ln -sfn ../../packages/persistence node_modules/@markorbit/persistence
       - name: Run zero-interception M5 evidence lifecycle path
         run: |
           mkdir -p .artifacts
