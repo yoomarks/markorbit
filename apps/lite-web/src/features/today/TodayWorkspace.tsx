@@ -371,7 +371,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
       <ErrorState
         title={permission ? 'Today access denied' : 'Lite Today unavailable'}
         description={error.message}
-        onRetry={permission ? undefined : () => void reload()}
+        {...(!permission ? { onRetry: () => void reload() } : {})}
       />
     );
   }
@@ -397,7 +397,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
       ) : null}
       {error ? (
         <Alert
-          tone={error.status === 409 || error.status === 422 ? 'warning' : 'danger'}
+          tone="warning"
           title={
             error.code === 'DEPENDENCY_UNAVAILABLE' ? 'Confirmed · handoff pending' : error.code
           }
