@@ -9,8 +9,6 @@ import {
   type OpportunityQualificationDecision,
   type OpportunityQualificationDecisionId,
   type OpportunityQualificationOutcome,
-  type ProductLoopSourceKind,
-  type ProductLoopSourceOwner,
   type ProductLoopSourceReference
 } from '@markorbit/contracts/product-loop';
 import type { QueryClient } from '@markorbit/persistence';
@@ -218,8 +216,8 @@ function sourceKey(source: Readonly<ProductLoopSourceReference>): string {
 }
 
 function normalizedLocator(locator: Readonly<ProductLoopSourceLocator>): ProductLoopSourceLocator {
-  const owner = locator.owner as ProductLoopSourceOwner;
-  const kind = locator.kind as ProductLoopSourceKind;
+  const owner = locator.owner;
+  const kind = locator.kind;
   if (!productLoopSourceOwners.includes(owner) || !productLoopSourceKinds.includes(kind))
     throw new LiteCandidateQualificationError(
       'INVALID_INPUT',
@@ -589,7 +587,10 @@ export class PostgresLiteCandidateQualificationStore {
     return candidate;
   }
 
-  private async insertCandidate(client: QueryClient, candidate: OpportunityCandidate): Promise<void> {
+  private async insertCandidate(
+    client: QueryClient,
+    candidate: OpportunityCandidate
+  ): Promise<void> {
     await client.query(
       'INSERT INTO lite_opportunity_candidates (workspace_id,opportunity_candidate_id,version,customer_id,status,opportunity_candidate_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)',
       [

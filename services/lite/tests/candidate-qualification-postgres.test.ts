@@ -178,9 +178,9 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
     expect(
       await afterRestart.findCandidate(workspaceId, created.opportunityCandidateId, 1)
     ).toEqual(created);
-    expect(await afterRestart.findLatestCandidate(workspaceId, created.opportunityCandidateId)).toEqual(
-      disposition.currentCandidate
-    );
+    expect(
+      await afterRestart.findLatestCandidate(workspaceId, created.opportunityCandidateId)
+    ).toEqual(disposition.currentCandidate);
     expect(
       await afterRestart.findQualificationDecision(workspaceId, created.opportunityCandidateId)
     ).toEqual(disposition.decision);
@@ -258,9 +258,9 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
       expect(failure.reason).toBeInstanceOf(LiteCandidateQualificationError);
       expect((failure.reason as LiteCandidateQualificationError).code).toBe('VERSION_CONFLICT');
     }
-    expect((await service.findLatestCandidate(workspaceId, created.opportunityCandidateId))?.version).toBe(
-      2
-    );
+    expect(
+      (await service.findLatestCandidate(workspaceId, created.opportunityCandidateId))?.version
+    ).toBe(2);
     expect(
       await database
         .getPool()
