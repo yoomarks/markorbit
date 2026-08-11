@@ -21,9 +21,7 @@ export interface KnowledgeReadyPackageContentRepository {
 
 const clone = <T>(value: T): T => structuredClone(value);
 
-export class MemoryKnowledgeReadyPackageContentRepository
-  implements KnowledgeReadyPackageContentRepository
-{
+export class MemoryKnowledgeReadyPackageContentRepository implements KnowledgeReadyPackageContentRepository {
   private readonly rows = new Map<string, KnowledgeReadyPackageContent>();
 
   async createOrFind(candidate: KnowledgeReadyPackageContent) {
@@ -46,17 +44,13 @@ function stable(value: unknown): string {
     return `{${Object.keys(value as Record<string, unknown>)
       .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
       .sort()
-      .map(
-        (key) =>
-          `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`
-      )
+      .map((key) => `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`)
       .join(',')}}`;
   }
   return JSON.stringify(value);
 }
 
-const sha256 = (value: string | Uint8Array) =>
-  createHash('sha256').update(value).digest('hex');
+const sha256 = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 
 export function fingerprintReadyPackageContentExport(value: ReadyPackageContentExportV1): string {
   return sha256(serializeReadyPackageContentExportV1(value));
@@ -132,9 +126,7 @@ const mapRow = (row: Row): KnowledgeReadyPackageContent => ({
   consumedAt: (row.consumed_at as Date).toISOString()
 });
 
-export class PostgresKnowledgeReadyPackageContentRepository
-  implements KnowledgeReadyPackageContentRepository
-{
+export class PostgresKnowledgeReadyPackageContentRepository implements KnowledgeReadyPackageContentRepository {
   constructor(private readonly query: QueryClient) {}
 
   async createOrFind(candidate: KnowledgeReadyPackageContent) {
