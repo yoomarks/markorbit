@@ -57,8 +57,6 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await expect(
       page.getByText(`rdp_wp07-browser-primary-${workspaceId}`, { exact: true })
     ).toBeVisible();
-    await expect(page.getByText('Execution authorized', { exact: true })).toBeVisible();
-    await expect(page.getByText('No', { exact: true })).toBeVisible();
 
     const prepareResponse = page.waitForResponse(
       (response) =>
@@ -71,6 +69,8 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
 
     await expect(page.getByRole('heading', { name: 'Prepared Action', exact: true })).toBeVisible();
     await expect(page.getByText('Confirmation effect', { exact: true })).toBeVisible();
+    await expect(page.getByText('Execution authorized', { exact: true })).toBeVisible();
+    await expect(page.getByText('No', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm and hand off' })).toBeEnabled();
 
     const confirmResponse = page.waitForResponse(
