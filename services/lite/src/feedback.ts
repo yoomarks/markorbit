@@ -257,6 +257,36 @@ export class PostgresProductLoopFeedbackStore {
     }
   }
 
+  async listPendingPackages(workspaceIdValue: string, limit = 20): Promise<PublishPackage[]> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      throw new ProductLoopFeedbackError('INVALID_INPUT', 'limit must be between 1 and 100.', 422);
+    try {
+      const result = await this.query.query(
+        `SELECT p.document_json
+         FROM lite_publish_packages p
+         LEFT JOIN lite_product_loop_use_feedback f
+           ON f.workspace_id=p.workspace_id
+          AND f.publish_package_id=p.publish_package_id
+          AND f.publish_package_version=p.version
+         WHERE p.workspace_id=$1 AND f.product_loop_feedback_id IS NULL
+         ORDER BY p.created_at DESC,p.publish_package_id ASC
+         LIMIT $2`,
+        [workspaceId, limit]
+      );
+      return result.rows.map((row) => rowDocument<PublishPackage>(row as Row)!);
+    } catch (error) {
+      if (error instanceof ProductLoopFeedbackError) throw error;
+      throw new ProductLoopFeedbackError(
+        'PERSISTENCE_UNAVAILABLE',
+        'PublishPackage feedback queue is unavailable.',
+        503,
+        undefined,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
   async sourceReference(
     workspaceIdValue: string,
     feedbackIdValue: ProductLoopFeedbackId
