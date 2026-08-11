@@ -1,0 +1,48 @@
+name: Agent CORE-M1 M2 Inventory Fix
+
+on:
+  push:
+    branches:
+      - agent/core-m1-ready-package-content-consumption
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/core-m1-ready-package-content-consumption
+      - name: Update governed Core migration inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/milestone2-migrations.integration.test.ts')
+          text = path.read_text()
+          old = "  Core: ['users', 'workspaces', 'workspace_memberships', 'sessions', 'knowledge_intakes'],"
+          new = "  Core: [\n    'users',\n    'workspaces',\n    'workspace_memberships',\n    'sessions',\n    'knowledge_intakes',\n    'knowledge_content_exports'\n  ],"
+          if old not in text:
+              raise SystemExit('Core table inventory anchor not found')
+          text = text.replace(old, new, 1)
+          if "toBe(16)" not in text:
+              raise SystemExit('migration-count anchor not found')
+          text = text.replace("toBe(16)", "toBe(17)", 1)
+          anchor = "    expect(sets[0]).toContain('0037_core_knowledge_intakes');"
+          if anchor not in text:
+              raise SystemExit('Core migration expectation anchor not found')
+          text = text.replace(
+              anchor,
+              anchor + "\n    expect(sets[0]).toContain('0038_core_knowledge_content_exports');",
+              1,
+          )
+          path.write_text(text)
+          PY
+          npx prettier --write scripts/milestone2-migrations.integration.test.ts
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/milestone2-migrations.integration.test.ts
+          git commit -m "test(core-m1): include content export migration in M2 inventory"
+          git push origin HEAD:agent/core-m1-ready-package-content-consumption
