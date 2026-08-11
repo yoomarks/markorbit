@@ -24,7 +24,7 @@ export interface ExecutionEvidenceProvenanceRouteOptions {
   admissionServiceFor(workspaceId: string): ReviewedSourceAdmissionService;
   handoffServiceFor(workspaceId: string): ReviewedSourceHandoffService;
   evidenceReviewServiceFor(workspaceId: string): EvidenceReviewService;
-  reviewQueueFor(workspaceId: string): EvidenceReviewQueueReader;
+  reviewQueueFor?(workspaceId: string): EvidenceReviewQueueReader;
 }
 
 type Permission = 'review:read' | 'review:perform';
@@ -137,6 +137,13 @@ export function createExecutionEvidenceProvenanceRoutes(
       path: '/internal/evidence-review/queue',
       handle: async (request) => {
         const principal = operationsPrincipal(request, options.internalServiceSecret, 'review:read');
+        if (!options.reviewQueueFor)
+          throw new HttpError(
+            503,
+            'DEPENDENCY_UNAVAILABLE',
+            'Execution evidence review queue is unavailable.',
+            true
+          );
         const requestedLimit = Number(request.query.limit ?? '100');
         if (!Number.isFinite(requestedLimit) || requestedLimit < 1)
           throw new HttpError(400, 'INVALID_REQUEST', 'limit must be a positive number.');
