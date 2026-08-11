@@ -214,7 +214,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               );
             const intake = await options.knowledgeIntakes.findById(request.params.intakeId!);
             if (!intake)
-              throw new HttpError(404, 'KNOWLEDGE_INTAKE_NOT_FOUND', 'Knowledge intake was not found.');
+              throw new HttpError(
+                404,
+                'KNOWLEDGE_INTAKE_NOT_FOUND',
+                'Knowledge intake was not found.'
+              );
             const contentExport = parseReadyPackageContentExportV1(request.body);
             if (!contentExport)
               throw new HttpError(
