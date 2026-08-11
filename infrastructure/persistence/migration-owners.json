@@ -19,7 +19,8 @@
     "execution_evidence_review": "@markorbit/execution-service",
     "execution_reviewed_source_handoff": "@markorbit/execution-service",
     "markreg_lifecycle_projection": "@markorbit/markreg-service",
-    "markreg_recommended_actions": "@markorbit/markreg-service"
+    "markreg_recommended_actions": "@markorbit/markreg-service",
+    "lite_content_preparation": "@markorbit/lite-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -42,6 +43,7 @@
     "0035_markreg_recommended_actions": "@markorbit/markreg-service",
     "0036_execution_reviewed_source_handoff": "@markorbit/execution-service",
     "0037_core_knowledge_intakes": "@markorbit/core-service",
-    "0038_core_knowledge_intake_contents": "@markorbit/core-service"
+    "0038_core_knowledge_intake_contents": "@markorbit/core-service",
+    "0039_lite_content_preparation": "@markorbit/lite-service"
   }
 }

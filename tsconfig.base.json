@@ -22,6 +22,7 @@
       "@markorbit/contracts/knowledge-content-export": [
         "packages/contracts/src/knowledge-content-export.ts"
       ],
+      "@markorbit/contracts/product-loop": ["packages/contracts/src/product-loop.ts"],
       "@markorbit/*": ["packages/*/src", "services/*/src", "apps/*/src"]
     }
   }
