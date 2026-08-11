@@ -1,0 +1,36 @@
+name: WP06 format harness
+
+on:
+  push:
+    branches:
+      - plc-wp-06-feedback-observability
+    paths:
+      - '.github/workflows/wp06-format-harness.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: plc-wp-06-feedback-observability
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write scripts/product-loop-today-real-runtime.ts
+      - name: Commit and remove one-shot workflow
+        run: |
+          rm .github/workflows/wp06-format-harness.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'style: format WP-05 feedback harness injection'
+          git push origin HEAD:plc-wp-06-feedback-observability
