@@ -14,7 +14,7 @@ const principal: WorkspacePrincipal = {
   permissions: ['workspace:read', 'matter:manage']
 };
 const auth = {
-  resolveWorkspace: vi.fn(async () => principal)
+  resolveWorkspace: vi.fn(() => Promise.resolve(principal))
 };
 const options = {
   liteUrl: 'http://lite.test',
@@ -39,12 +39,16 @@ afterEach(() => {
 
 describe('Gateway Lite Product-loop transport boundary', () => {
   it('forwards authenticated Workspace Principal on Today reads', async () => {
-    const downstream = vi.fn(async (_url: string, init: RequestInit) =>
-      new Response(JSON.stringify({ schemaVersion: 1, workspaceId, items: [] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
-    );
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/today');
+      expect(init.method).toBe('GET');
+      return Promise.resolve(
+        new Response(JSON.stringify({ schemaVersion: 1, workspaceId, items: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
     vi.stubGlobal('fetch', downstream);
     const result = await route('GET', '/api/lite/today').handle({
       method: 'GET',
