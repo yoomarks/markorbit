@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:postgres": "vitest run tests/identity-postgres.test.ts",
     "test:auth:postgres": "vitest run tests/session-postgres.test.ts",
-    "test:knowledge-intake:postgres": "vitest run tests/knowledge-intake-postgres.test.ts",
+    "test:knowledge-intake:postgres": "vitest run --no-file-parallelism tests/knowledge-intake-postgres.test.ts tests/knowledge-content-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
