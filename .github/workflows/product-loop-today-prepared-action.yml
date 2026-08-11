@@ -1,5 +1,6 @@
 name: Product Loop Today Prepared Action
 
+# Exact-head gate for the authenticated Today -> Prepared Action -> owner handoff journey.
 on:
   workflow_dispatch:
   pull_request:
