@@ -27,7 +27,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Align legacy shell acceptance with authenticated Today boundary
         run: >-
-          python -c "from pathlib import Path; p=Path('tests/e2e/lite.spec.ts'); s=p.read_text(); s=s.replace('Lite Today provides its fixed semantic navigation and responsive workspace @visual','Lite shell provides its fixed semantic navigation and responsive fixture workspace @visual',1); s=s.replace('await page.goto(urls.lite);','await page.goto(`${urls.lite}#work-customers`);',1); s=s.replace("await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();","await expect(page.getByRole('heading', { level: 1, name: 'Customers' })).toBeVisible();",1); p.write_text(s)"
+          python -c "from pathlib import Path; p=Path('tests/e2e/lite.spec.ts'); s=p.read_text(); s=s.replace('Lite Today provides its fixed semantic navigation and responsive workspace @visual','Lite shell provides its fixed semantic navigation and responsive fixture workspace @visual',1); s=s.replace('await page.goto(urls.lite);',\"await page.goto(urls.lite + '#work-customers');\",1); s=s.replace(\"await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();\",\"await expect(page.getByRole('heading', { level: 1, name: 'Customers' })).toBeVisible();\",1); p.write_text(s)"
       - run: pnpm exec prettier --write tests/e2e/lite.spec.ts
       - name: Commit and remove one-shot workflow
         run: |
