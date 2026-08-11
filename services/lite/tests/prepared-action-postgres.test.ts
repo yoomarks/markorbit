@@ -232,9 +232,9 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     expect(ownerCalls).toBe(1);
 
     const afterRestart = new PreparedActionJourneyService(preparedStore(), authority);
-    expect(await afterRestart.findJourney(workspaceId, journey.preparedAction.preparedActionId)).toEqual(
-      completed
-    );
+    expect(
+      await afterRestart.findJourney(workspaceId, journey.preparedAction.preparedActionId)
+    ).toEqual(completed);
     expect(await afterRestart.confirmAndHandoff(command)).toEqual(completed);
     expect(ownerCalls).toBe(1);
     const count = await database
@@ -285,9 +285,7 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     const confirmationCount = await database
       .getPool()
       .query('SELECT count(*)::int AS count FROM lite_prepared_action_confirmations');
-    expect(
-      (confirmationCount.rows[0] as { count?: number } | undefined)?.count
-    ).toBe(1);
+    expect((confirmationCount.rows[0] as { count?: number } | undefined)?.count).toBe(1);
 
     const retried = await new PreparedActionJourneyService(
       preparedStore(),
@@ -298,9 +296,7 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     const confirmationCountAfter = await database
       .getPool()
       .query('SELECT count(*)::int AS count FROM lite_prepared_action_confirmations');
-    expect(
-      (confirmationCountAfter.rows[0] as { count?: number } | undefined)?.count
-    ).toBe(1);
+    expect((confirmationCountAfter.rows[0] as { count?: number } | undefined)?.count).toBe(1);
   });
 
   it('fails stale fingerprints closed and keeps Workspace reads isolated', async () => {

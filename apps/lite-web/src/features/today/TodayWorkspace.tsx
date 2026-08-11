@@ -426,7 +426,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
                       <p className="today-eyebrow">{kindLabel(item.recommendation.kind)}</p>
                       <h1>{item.recommendation.title}</h1>
                     </div>
-                    <StatusBadge status={item.recommendation.status} />
+                    <Badge>{item.recommendation.status}</Badge>
                   </div>
                   <p>{item.recommendation.explanation}</p>
                   <p className="today-muted">

@@ -1,6 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import { ManagedDatabase, loadMigrationsForOwner, migrate } from '../packages/persistence/src/index.js';
+import {
+  ManagedDatabase,
+  loadMigrationsForOwner,
+  migrate
+} from '../packages/persistence/src/index.js';
 import {
   AuthenticationService,
   InMemoryMembershipRepository,
@@ -28,8 +32,7 @@ import {
 import { createLiteProductLoopRoutes } from '../services/lite/src/http.js';
 
 const url = process.env.LITE_TODAY_TEST_DATABASE_URL;
-if (!url)
-  throw new Error('LITE_TODAY_TEST_DATABASE_URL is required for the Today real runtime.');
+if (!url) throw new Error('LITE_TODAY_TEST_DATABASE_URL is required for the Today real runtime.');
 
 const secret = 'wp05-browser-internal-service-secret-32-bytes';
 const csrfSecret = 'wp05-browser-csrf-secret-32-bytes-minimum';

@@ -59,8 +59,7 @@ test.describe('PLC-WP-05 real durable Lite Today path', () => {
     await expect(page).toHaveURL(/preparedActionId=prepared-action_/);
 
     const confirmResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith('/confirm') && response.request().method() === 'POST'
+      (response) => response.url().endsWith('/confirm') && response.request().method() === 'POST'
     );
     await page.getByRole('button', { name: 'Confirm and hand off' }).click();
     expect((await confirmResponse).status()).toBe(200);

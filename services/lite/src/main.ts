@@ -165,8 +165,7 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
       idempotencyKey,
       {
         formalOpportunityVersion: plan.formalOpportunity.version,
-        expectedFormalOpportunityFingerprintSha256:
-          plan.expectedFormalOpportunityFingerprintSha256,
+        expectedFormalOpportunityFingerprintSha256: plan.expectedFormalOpportunityFingerprintSha256,
         relationshipModel: plan.relationshipModel,
         customerIntent: plan.customerIntent,
         confirmedByPrincipalId: confirmation.confirmedByPrincipalId

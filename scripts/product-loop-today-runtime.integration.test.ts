@@ -1,15 +1,8 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
-import {
-  ManagedDatabase,
-  loadMigrationsForOwner,
-  migrate
-} from '@markorbit/persistence';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import {
   PostgresLiteContentPreparationStore,
   type ProductLoopSourceAuthority
@@ -83,11 +76,7 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
     await migrate(
       database.getPool(),
       'wp05_http',
-      await loadMigrationsForOwner(
-        migrationsDirectory,
-        migrationOwners,
-        '@markorbit/lite-service'
-      )
+      await loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/lite-service')
     );
     await database.getPool().query(
       `INSERT INTO workspaces(workspace_id,name,slug) VALUES
