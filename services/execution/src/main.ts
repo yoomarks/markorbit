@@ -4,6 +4,7 @@ import {
   PostgresFilingGovernanceRepository,
   PostgresProfessionalReviewRepository
 } from './index.js';
+import { createExecutionCapabilityObservationSourceRoutes } from './capability-observation-source-http.js';
 import { EvidenceReviewService } from './evidence-review.js';
 import { PostgresEvidenceReviewRepository } from './evidence-review-postgres.js';
 import { PostgresEvidenceReviewQueueReader } from './evidence-review-queue-postgres.js';
@@ -72,6 +73,10 @@ if (fixtureRuntime) {
     evidenceReviewServiceFor: () => evidenceReviewService,
     reviewQueueFor: () => evidenceReviewQueue
   });
+  const capabilityObservationSourceRoutes = createExecutionCapabilityObservationSourceRoutes({
+    internalServiceSecret,
+    evidenceReviewReader: evidenceReviewRepository
+  });
 
   runtime = createRuntime({
     reviewRepositoryFactory: (workspaceId) =>
@@ -84,7 +89,8 @@ if (fixtureRuntime) {
         internalServiceSecret
       }),
       ...reviewedSourceRoutes,
-      ...evidenceProvenanceRoutes
+      ...evidenceProvenanceRoutes,
+      ...capabilityObservationSourceRoutes
     ],
     internalServiceSecret,
     markRegUrl
