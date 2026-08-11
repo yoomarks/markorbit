@@ -222,7 +222,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               );
             const intake = await options.knowledgeIntakes.findById(intakeId);
             if (!intake)
-              throw new HttpError(404, 'KNOWLEDGE_INTAKE_NOT_FOUND', 'Knowledge intake was not found.');
+              throw new HttpError(
+                404,
+                'KNOWLEDGE_INTAKE_NOT_FOUND',
+                'Knowledge intake was not found.'
+              );
             const issue = validateReadyPackageContentExport(intake, contentExport);
             if (issue) throw new HttpError(409, issue.code, issue.message);
             const exportSha256 = fingerprintReadyPackageContentExport(contentExport);
