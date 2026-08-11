@@ -355,9 +355,7 @@ suite('PostgreSQL MarkReg Formal Opportunity handoff', () => {
       service.prepareIntakeHandoff({ ...handoff, idempotencyKey: 'handoff-concurrent-2' })
     ]);
     expect([left, right].filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    const losing = [left, right].find((result) => result.status === 'rejected') as
-      | PromiseRejectedResult
-      | undefined;
+    const losing = [left, right].find((result) => result.status === 'rejected');
     expect(losing?.reason).toMatchObject({ code: 'VERSION_CONFLICT' });
 
     const other = await database
