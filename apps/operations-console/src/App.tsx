@@ -97,7 +97,7 @@ export function OperationsApp() {
 
   const chooseItem = (item: EvidenceReviewQueueItem) => {
     setSelectedHandoffId(item.receipt.evidenceHandoff.evidenceHandoffId);
-    setSource(item.source ?? null);
+    setSource(null);
     setDecision(null);
     setAdmission(null);
     setReviewStatus(null);
