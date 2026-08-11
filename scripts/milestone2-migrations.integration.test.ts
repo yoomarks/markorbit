@@ -55,6 +55,9 @@ const ownedTables = {
     'markreg_lifecycle_commands',
     'markreg_lifecycle_events',
     'markreg_lifecycle_views',
+    'markreg_formal_opportunity_commands',
+    'markreg_formal_trademark_service_opportunities',
+    'markreg_intake_handoffs',
     'orders',
     'order_commands',
     'order_audit'
@@ -363,11 +366,12 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(17);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(18);
     expect(sets[0]).toContain('0037_core_knowledge_intakes');
     expect(sets[0]).toContain('0038_core_knowledge_intake_contents');
     expect(sets[1]).toContain('0034_markreg_lifecycle_projection');
     expect(sets[1]).toContain('0035_markreg_recommended_actions');
+    expect(sets[1]).toContain('0041_markreg_formal_opportunity_handoff');
     expect(sets[2]).toContain('0027_execution_filing_governance');
     expect(sets[2]).toContain('0032_execution_provider_return_evidence');
     expect(sets[2]).toContain('0033_execution_evidence_review');

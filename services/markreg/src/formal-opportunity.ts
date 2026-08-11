@@ -121,14 +121,9 @@ function cleanWorkspaceId(value: string): string {
 
 function cleanText(value: string, field: string, maximum: number): string {
   const cleaned = value.trim();
-  if (!cleaned)
-    throw new FormalOpportunityError('INVALID_INPUT', `${field} is required.`, 422);
+  if (!cleaned) throw new FormalOpportunityError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
-    throw new FormalOpportunityError(
-      'INVALID_INPUT',
-      `${field} exceeds the allowed length.`,
-      422
-    );
+    throw new FormalOpportunityError('INVALID_INPUT', `${field} exceeds the allowed length.`, 422);
   return cleaned;
 }
 
@@ -141,11 +136,7 @@ function cleanMarkOrbitId(value: MarkOrbitId, field: string): MarkOrbitId {
 
 function exactVersion(value: number, field: string): number {
   if (!Number.isInteger(value) || value < 1)
-    throw new FormalOpportunityError(
-      'INVALID_INPUT',
-      `${field} must be a positive integer.`,
-      422
-    );
+    throw new FormalOpportunityError('INVALID_INPUT', `${field} must be a positive integer.`, 422);
   return value;
 }
 
@@ -373,7 +364,9 @@ export class PostgresFormalOpportunityStore {
             'VERSION_CONFLICT',
             `Formal Opportunity is at version ${current.version}, not ${formalOpportunity.version}.`
           );
-        if (current.formalOpportunityFingerprintSha256 !== expectedFormalOpportunityFingerprintSha256)
+        if (
+          current.formalOpportunityFingerprintSha256 !== expectedFormalOpportunityFingerprintSha256
+        )
           throw new FormalOpportunityError(
             'SOURCE_FINGERPRINT_MISMATCH',
             'Formal Opportunity fingerprint no longer matches the confirmed handoff.'
@@ -388,7 +381,10 @@ export class PostgresFormalOpportunityStore {
             'STALE_SOURCE',
             'The confirmed relationship model differs from the Formal Opportunity.'
           );
-        if (current.proposedCustomerIntent && !sameIntent(current.proposedCustomerIntent, customerIntent))
+        if (
+          current.proposedCustomerIntent &&
+          !sameIntent(current.proposedCustomerIntent, customerIntent)
+        )
           throw new FormalOpportunityError(
             'STALE_SOURCE',
             'The confirmed customer intent differs from the Formal Opportunity proposal.'
@@ -564,7 +560,8 @@ export class PostgresFormalOpportunityStore {
     if (
       decision.candidate.id !== candidate.opportunityCandidateId ||
       Number(decision.candidate.version) !== candidate.version ||
-      decision.expectedCandidateFingerprintSha256 !== candidate.opportunityCandidateFingerprintSha256
+      decision.expectedCandidateFingerprintSha256 !==
+        candidate.opportunityCandidateFingerprintSha256
     )
       throw new FormalOpportunityError(
         'STALE_SOURCE',
@@ -692,7 +689,11 @@ export class PostgresFormalOpportunityStore {
       [workspaceId, opportunityId]
     );
     if (!result.rowCount)
-      throw new FormalOpportunityError('NOT_FOUND', 'Formal Opportunity origin was not found.', 404);
+      throw new FormalOpportunityError(
+        'NOT_FOUND',
+        'Formal Opportunity origin was not found.',
+        404
+      );
     return String((result.rows[0] as Row).source_candidate_fingerprint_sha256);
   }
 

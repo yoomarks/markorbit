@@ -294,9 +294,11 @@ suite('PostgreSQL MarkReg Formal Opportunity handoff', () => {
       })
     ).rejects.toMatchObject({ code: 'SOURCE_FINGERPRINT_MISMATCH' });
 
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*)::int FROM markreg_formal_trademark_service_opportunities) AS opportunities,(SELECT count(*)::int FROM markreg_intake_handoffs) AS handoffs'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_formal_trademark_service_opportunities) AS opportunities,(SELECT count(*)::int FROM markreg_intake_handoffs) AS handoffs'
+      );
     expect(counts.rows[0]).toMatchObject({ opportunities: 0, handoffs: 0 });
   });
 
@@ -305,11 +307,17 @@ suite('PostgreSQL MarkReg Formal Opportunity handoff', () => {
     const command = createCommand();
     const [left, right] = await Promise.allSettled([
       service.createFormalOpportunity(command),
-      service.createFormalOpportunity({ ...command, idempotencyKey: 'formal-opportunity-create-002' })
+      service.createFormalOpportunity({
+        ...command,
+        idempotencyKey: 'formal-opportunity-create-002'
+      })
     ]);
     const fulfilled = [left, right].filter(
-      (result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof service.createFormalOpportunity>>> =>
-        result.status === 'fulfilled'
+      (
+        result
+      ): result is PromiseFulfilledResult<
+        Awaited<ReturnType<typeof service.createFormalOpportunity>>
+      > => result.status === 'fulfilled'
     );
     const rejected = [left, right].filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected'
