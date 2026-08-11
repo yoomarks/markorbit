@@ -1,0 +1,146 @@
+name: Product Loop Closure Reliability
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/product-loop-closure-reliability.yml'
+      - 'docs/tasks/MO-MVP-PLC-WP-07-RELIABILITY-BROWSER-MATRIX.md'
+      - 'services/lite/**'
+      - 'services/markreg/**'
+      - 'apps/gateway/**'
+      - 'apps/lite-web/**'
+      - 'packages/contracts/src/product-loop.ts'
+      - 'infrastructure/persistence/migrations/**'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'scripts/product-loop-closure-reliability.integration.test.ts'
+      - 'scripts/product-loop-closure-real-runtime.ts'
+      - 'scripts/validate-product-loop-closure-no-interception.mjs'
+      - 'tests/e2e/product-loop-closure-real-runtime.spec.ts'
+      - 'playwright.product-loop-closure-real-runtime.config.ts'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  owner-reliability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_lite_content
+      LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CANDIDATE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_lite_candidate
+      LITE_CANDIDATE_POSTGRES_TEST_REQUIRED: '1'
+      LITE_FEEDBACK_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_lite_feedback
+      LITE_FEEDBACK_POSTGRES_TEST_REQUIRED: '1'
+      LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_lite_prepared
+      LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_FORMAL_OPPORTUNITY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_markreg_formal
+      MARKREG_FORMAL_OPPORTUNITY_POSTGRES_TEST_REQUIRED: '1'
+      LITE_PRODUCT_LOOP_CLOSURE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_lite_integration
+      MARKREG_PRODUCT_LOOP_CLOSURE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_markreg_integration
+      PRODUCT_LOOP_CLOSURE_RELIABILITY_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create database-per-owner test topology
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE markorbit_wp07_lite_content;
+          CREATE DATABASE markorbit_wp07_lite_candidate;
+          CREATE DATABASE markorbit_wp07_lite_feedback;
+          CREATE DATABASE markorbit_wp07_lite_prepared;
+          CREATE DATABASE markorbit_wp07_markreg_formal;
+          CREATE DATABASE markorbit_wp07_lite_integration;
+          CREATE DATABASE markorbit_wp07_markreg_integration;
+          SQL
+      - name: Validate ownership and formatting
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm format:check
+      - name: Build Product-loop dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Lint and typecheck Product-loop owners
+        run: |
+          pnpm --filter @markorbit/lite-service lint
+          pnpm --filter @markorbit/lite-service typecheck
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/lite-web lint
+          pnpm --filter @markorbit/lite-web typecheck
+      - name: Run focused Lite reliability matrix
+        run: |
+          pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/candidate-qualification-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/product-loop-feedback-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+      - name: Run focused MarkReg reliability matrix
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/formal-opportunity-postgres.test.ts
+      - name: Run Gateway Product-loop permission and transport matrix
+        run: pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
+      - name: Run two-owner Product-loop closure integration
+        run: pnpm exec vitest run scripts/product-loop-closure-reliability.integration.test.ts
+
+  browser-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_wp07_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_wp07_browser"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      LITE_PRODUCT_LOOP_CLOSURE_BROWSER_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp07_browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate browser source has no interception
+        run: node scripts/validate-product-loop-closure-no-interception.mjs
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build real-runtime browser dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Run desktop and 390px mobile Product-loop closure
+        run: pnpm exec playwright test -c playwright.product-loop-closure-real-runtime.config.ts
