@@ -49,7 +49,9 @@ export function OperationsApp() {
   const [reviewMatterId, setReviewMatterId] = useState('');
   const [reviewMatterVersion, setReviewMatterVersion] = useState('1');
   const [evidenceReferences, setEvidenceReferences] = useState('');
-  const [lifecycleState, setLifecycleState] = useState<LifecycleState>('REVIEWED_PROVIDER_EVIDENCE');
+  const [lifecycleState, setLifecycleState] = useState<LifecycleState>(
+    'REVIEWED_PROVIDER_EVIDENCE'
+  );
   const [eventCode, setEventCode] = useState('PROVIDER_EVIDENCE_REVIEWED');
   const [customerSafeLabel, setCustomerSafeLabel] = useState('Evidence reviewed');
   const [customerSafeSummary, setCustomerSafeSummary] = useState(
@@ -148,7 +150,8 @@ export function OperationsApp() {
 
   const project = () =>
     runReviewAction('projection', async () => {
-      if (!admission) throw new Error('Admit the reviewed source before projecting lifecycle state.');
+      if (!admission)
+        throw new Error('Admit the reviewed source before projecting lifecycle state.');
       const result = await deliverReviewedSource({
         admission: admission.admission,
         state: lifecycleState,
@@ -228,9 +231,9 @@ export function OperationsApp() {
           description="Review exact PENDING_REVIEW evidence, record an explicit decision and, only when admitted, project bounded lifecycle state."
         />
         <Alert tone="info" title="Human-governed internal truth">
-          Reviewer identity comes from the authenticated Workspace Principal. Review admission is not
-          Filing Submission, Official Truth, payment, legal appointment or proof of trademark-office
-          action.
+          Reviewer identity comes from the authenticated Workspace Principal. Review admission is
+          not Filing Submission, Official Truth, payment, legal appointment or proof of
+          trademark-office action.
         </Alert>
         <Card>
           <h3>1. Review queue</h3>
@@ -307,7 +310,10 @@ export function OperationsApp() {
                 />
               </div>
             )}
-            <Button disabled={reviewBusy !== null || !rationale.trim()} onClick={() => void decide()}>
+            <Button
+              disabled={reviewBusy !== null || !rationale.trim()}
+              onClick={() => void decide()}
+            >
               {reviewBusy === 'decision' ? 'Recording…' : 'Record review decision'}
             </Button>
           </Card>
@@ -349,7 +355,9 @@ export function OperationsApp() {
               />
             </div>
             <div>
-              <label htmlFor="evidence-references">Admitted evidence references, one per line</label>
+              <label htmlFor="evidence-references">
+                Admitted evidence references, one per line
+              </label>
               <textarea
                 id="evidence-references"
                 value={evidenceReferences}
@@ -388,7 +396,11 @@ export function OperationsApp() {
             </select>
             <div>
               <label htmlFor="event-code">Event code</label>
-              <input id="event-code" value={eventCode} onChange={(event) => setEventCode(event.target.value)} />
+              <input
+                id="event-code"
+                value={eventCode}
+                onChange={(event) => setEventCode(event.target.value)}
+              />
             </div>
             <div>
               <label htmlFor="customer-label">Customer-safe label</label>
@@ -508,18 +520,23 @@ export function OperationsApp() {
                       label: 'Review decision',
                       value: reviewSource.reviewDecision.evidenceReviewDecisionId
                     },
-                    { label: 'Outcome', value: reviewSource.reviewDecision.outcome ?? 'Unavailable' },
+                    {
+                      label: 'Outcome',
+                      value: reviewSource.reviewDecision.outcome ?? 'Unavailable'
+                    },
                     {
                       label: 'Rationale',
                       value: reviewSource.reviewDecision.rationale ?? 'Unavailable'
                     },
                     {
                       label: 'Evidence receipt',
-                      value: reviewSource.admission.evidenceSource?.evidenceReceipt?.id ?? 'Unavailable'
+                      value:
+                        reviewSource.admission.evidenceSource?.evidenceReceipt?.id ?? 'Unavailable'
                     },
                     {
                       label: 'Provider Return',
-                      value: reviewSource.admission.evidenceSource?.providerReturn?.id ?? 'Unavailable'
+                      value:
+                        reviewSource.admission.evidenceSource?.providerReturn?.id ?? 'Unavailable'
                     },
                     {
                       label: 'Handoff',

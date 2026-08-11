@@ -40,9 +40,7 @@ export class PostgresEvidenceReviewQueueReader implements EvidenceReviewQueueRea
         const value = row as Row;
         const source = value.source_record as EvidenceReviewSource | null | undefined;
         return {
-          receipt: structuredClone(
-            value.receipt_record as ExecutionProviderReturnEvidenceReceipt
-          ),
+          receipt: structuredClone(value.receipt_record as ExecutionProviderReturnEvidenceReceipt),
           ...(source ? { source: structuredClone(source) } : {})
         };
       });

@@ -79,7 +79,8 @@ function operationsPrincipal(
     throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped record was not found.');
   const allowed =
     permission === 'review:read'
-      ? principal.permissions.includes('review:read') || principal.permissions.includes('review:perform')
+      ? principal.permissions.includes('review:read') ||
+        principal.permissions.includes('review:perform')
       : principal.permissions.includes('review:perform');
   if (!allowed)
     throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
@@ -136,7 +137,11 @@ export function createExecutionEvidenceProvenanceRoutes(
       method: 'GET',
       path: '/internal/evidence-review/queue',
       handle: async (request) => {
-        const principal = operationsPrincipal(request, options.internalServiceSecret, 'review:read');
+        const principal = operationsPrincipal(
+          request,
+          options.internalServiceSecret,
+          'review:read'
+        );
         if (!options.reviewQueueFor)
           throw new HttpError(
             503,
@@ -149,10 +154,9 @@ export function createExecutionEvidenceProvenanceRoutes(
           throw new HttpError(400, 'INVALID_REQUEST', 'limit must be a positive number.');
         try {
           return json(200, {
-            items: await options.reviewQueueFor(principal.workspaceId).list(
-              principal.workspaceId,
-              requestedLimit
-            )
+            items: await options
+              .reviewQueueFor(principal.workspaceId)
+              .list(principal.workspaceId, requestedLimit)
           });
         } catch (error) {
           return mapError(error);

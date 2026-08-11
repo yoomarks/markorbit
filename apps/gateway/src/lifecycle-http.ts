@@ -199,7 +199,12 @@ export function createGatewayLifecycleRoutes(
       return { response, body: await payload(response) };
     } catch (error) {
       if (error instanceof HttpError) throw error;
-      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Execution review service is unavailable.', true);
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'Execution review service is unavailable.',
+        true
+      );
     }
   };
 
@@ -311,7 +316,11 @@ export function createGatewayLifecycleRoutes(
       path: '/api/operations/evidence-review/queue',
       handle: async (request) => {
         const principal = await authenticate(request, ['review:read']);
-        const result = await forwardExecution(request, principal, '/internal/evidence-review/queue');
+        const result = await forwardExecution(
+          request,
+          principal,
+          '/internal/evidence-review/queue'
+        );
         return json(result.response.status, result.body);
       }
     },
