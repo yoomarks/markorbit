@@ -41,6 +41,11 @@ jobs:
           text = text.replace(old, new, 1)
           text = text.replace('    async resolve(requestWorkspaceId, locator) {', '    resolve(requestWorkspaceId, locator) {', 1)
           text = text.replace('      return structuredClone(source);', '      return Promise.resolve(structuredClone(source));', 1)
+          text = text.replace(
+              ".query('SELECT count(*)::int AS count FROM lite_publish_packages')",
+              ".query<{ count: number }>('SELECT count(*)::int AS count FROM lite_publish_packages')",
+              1,
+          )
           path.write_text(text)
           PY
       - name: Format WP02 files
