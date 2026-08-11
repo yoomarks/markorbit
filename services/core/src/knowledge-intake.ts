@@ -13,6 +13,7 @@ export interface KnowledgeIntake {
 
 export interface KnowledgeIntakeRepository {
   createOrFind(intake: KnowledgeIntake): Promise<{ intake: KnowledgeIntake; created: boolean }>;
+  findById(intakeId: string): Promise<KnowledgeIntake | null>;
 }
 
 const keysExactly = (value: Record<string, unknown>, expected: string[]) => {
@@ -73,6 +74,11 @@ export class MemoryKnowledgeIntakeRepository implements KnowledgeIntakeRepositor
     this.rows.set(candidate.idempotencyKey, clone(candidate));
     return { intake: clone(candidate), created: true };
   }
+  async findById(intakeId: string) {
+    await Promise.resolve();
+    const intake = [...this.rows.values()].find((candidate) => candidate.intakeId === intakeId);
+    return intake ? clone(intake) : null;
+  }
   count() {
     return this.rows.size;
   }
@@ -117,5 +123,13 @@ export class PostgresKnowledgeIntakeRepository implements KnowledgeIntakeReposit
     );
     const row = result.rows[0] as Row & { created: boolean };
     return { intake: mapRow(row), created: row.created };
+  }
+  async findById(intakeId: string) {
+    const result = await this.query.query(
+      'SELECT * FROM knowledge_intakes WHERE intake_id=$1 LIMIT 1',
+      [intakeId]
+    );
+    const row = result.rows[0] as Row | undefined;
+    return row ? mapRow(row) : null;
   }
 }
