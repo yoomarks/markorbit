@@ -1,0 +1,32 @@
+name: M5 WP08 YAML format export
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format workflow copies with repository Prettier
+        run: |
+          pnpm exec prettier --write .github/workflows/milestone-5-integration.yml .github/workflows/milestone-5-reliability.yml
+          mkdir -p .artifacts/m5-wp08-workflows
+          cp .github/workflows/milestone-5-integration.yml .artifacts/m5-wp08-workflows/
+          cp .github/workflows/milestone-5-reliability.yml .artifacts/m5-wp08-workflows/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m5-wp08-formatted-workflows-${{ github.run_id }}
+          path: .artifacts/m5-wp08-workflows
+          retention-days: 1
