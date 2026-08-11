@@ -133,7 +133,7 @@ function workspaceId() {
   return value;
 }
 
-function mutationHeaders(idempotencyKey?: string) {
+function mutationHeaders(idempotencyKey?: string, correlationId?: string) {
   const csrf = sessionStorage.getItem('markorbit-csrf-token');
   if (!csrf) throw new Error('Refresh your authenticated session before changing review state.');
   return {
@@ -143,7 +143,7 @@ function mutationHeaders(idempotencyKey?: string) {
     ...(idempotencyKey
       ? {
           'Idempotency-Key': idempotencyKey,
-          'X-Correlation-ID': idempotencyKey
+          'X-Correlation-ID': correlationId ?? idempotencyKey
         }
       : {})
   };
@@ -227,7 +227,7 @@ export async function recordEvidenceReviewDecision(
   const response = await fetcher(`${baseUrl()}/api/operations/evidence-review/decisions`, {
     method: 'POST',
     credentials: 'include',
-    headers: mutationHeaders(key),
+    headers: mutationHeaders(key, input.source.correlationId),
     body: JSON.stringify({
       evidenceReceiptId: input.source.evidenceReceipt.id,
       expectedEvidenceReceiptVersion: input.source.evidenceReceipt.version,
@@ -253,7 +253,7 @@ export async function admitReviewedSource(
   const response = await fetcher(`${baseUrl()}/api/operations/reviewed-source-admissions`, {
     method: 'POST',
     credentials: 'include',
-    headers: mutationHeaders(key),
+    headers: mutationHeaders(key, input.decision.source.correlationId),
     body: JSON.stringify({
       evidenceReviewDecisionId: input.decision.evidenceReviewDecisionId,
       expectedEvidenceReviewDecisionVersion: input.decision.version,
@@ -285,7 +285,7 @@ export async function deliverReviewedSource(
   const response = await fetcher(`${baseUrl()}/api/operations/reviewed-source-handoffs/deliver`, {
     method: 'POST',
     credentials: 'include',
-    headers: mutationHeaders(key),
+    headers: mutationHeaders(key, input.admission.correlationId),
     body: JSON.stringify({
       reviewedSourceAdmissionId: input.admission.reviewedSourceAdmissionId,
       expectedReviewedSourceAdmissionVersion: input.admission.version,
