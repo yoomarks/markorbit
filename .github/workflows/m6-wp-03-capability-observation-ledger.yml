@@ -8,6 +8,7 @@ on:
       - 'services/capability-engine/**'
       - 'services/execution/src/capability-observation-source-http.ts'
       - 'services/execution/src/main.ts'
+      - 'services/execution/tests/capability-observation-source-http.test.ts'
       - 'infrastructure/persistence/migrations/**'
       - 'infrastructure/persistence/migration-owners.json'
       - 'docs/tasks/MO-MVP-M6-WP-03-CAPABILITY-OBSERVATION-LEDGER.md'
@@ -59,6 +60,8 @@ jobs:
           pnpm --filter @markorbit/execution-service lint
           pnpm --filter @markorbit/execution-service typecheck
       - name: Run governed source authority tests
-        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-observation-source.test.ts
+        run: |
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-observation-source.test.ts
+          pnpm --filter @markorbit/execution-service exec vitest run tests/capability-observation-source-http.test.ts
       - name: Run real PostgreSQL Observation Ledger tests
         run: pnpm --filter @markorbit/capability-engine test:observation-ledger:postgres
