@@ -219,7 +219,11 @@ integration('M6-WP-03 PostgreSQL Capability Observation Ledger', () => {
          (SELECT count(*)::int FROM capability_ledger_entries) ledger_entries,
          (SELECT count(*)::int FROM capability_observation_admission_audit WHERE decision='ACCEPTED') accepted_audits`
     );
-    expect(counts.rows[0]).toMatchObject({ observations: 1, ledger_entries: 1, accepted_audits: 1 });
+    expect(counts.rows[0]).toMatchObject({
+      observations: 1,
+      ledger_entries: 1,
+      accepted_audits: 1
+    });
   });
 
   it('derives Workspace and subject from owner truth and rejects caller identity spoof fields', async () => {
@@ -244,8 +248,10 @@ integration('M6-WP-03 PostgreSQL Capability Observation Ledger', () => {
       )
     ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
     expect(authority.calls).toBe(0);
-    expect((await database.getPool().query('SELECT count(*)::int count FROM capability_observations')).rows[0])
-      .toMatchObject({ count: 0 });
+    expect(
+      (await database.getPool().query('SELECT count(*)::int count FROM capability_observations'))
+        .rows[0]
+    ).toMatchObject({ count: 0 });
   });
 
   it('rejects raw Provider Return and Provider Supply Capability source families before owner lookup', async () => {
@@ -299,9 +305,11 @@ integration('M6-WP-03 PostgreSQL Capability Observation Ledger', () => {
       authority.mode = mode;
       await expect(ledger.admit(command(definition), key)).rejects.toMatchObject({ code });
     }
-    const denied = await database.getPool().query<{ denial_code: string }>(
-      "SELECT denial_code FROM capability_observation_admission_audit WHERE decision='DENIED' ORDER BY audit_id"
-    );
+    const denied = await database
+      .getPool()
+      .query<{ denial_code: string }>(
+        "SELECT denial_code FROM capability_observation_admission_audit WHERE decision='DENIED' ORDER BY audit_id"
+      );
     expect(denied.rows.map((row) => row.denial_code)).toEqual([
       'SOURCE_VERSION_MISMATCH',
       'SOURCE_FINGERPRINT_MISMATCH',
@@ -440,9 +448,11 @@ integration('M6-WP-03 PostgreSQL Capability Observation Ledger', () => {
     expect(authority.calls).toBe(0);
     expect(
       (
-        await database.getPool().query<{ denial_code: string }>(
-          "SELECT denial_code FROM capability_observation_admission_audit WHERE idempotency_key='missing-runtime-version'"
-        )
+        await database
+          .getPool()
+          .query<{ denial_code: string }>(
+            "SELECT denial_code FROM capability_observation_admission_audit WHERE idempotency_key='missing-runtime-version'"
+          )
       ).rows[0]
     ).toMatchObject({ denial_code: 'RUNTIME_CAPABILITY_NOT_FOUND' });
   });

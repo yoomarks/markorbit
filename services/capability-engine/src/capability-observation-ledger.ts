@@ -99,7 +99,11 @@ function fingerprint(value: unknown): string {
   return createHash('sha256').update(stableSerialize(value)).digest('hex');
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allowedSet = new Set(allowed);
   const extras = Object.keys(value).filter((key) => !allowedSet.has(key));
   if (extras.length)
@@ -141,7 +145,11 @@ export function normalizeCapabilityObservationAdmissionCommand(
   idempotencyKeyValue: unknown
 ): NormalizedCommand {
   if (!record(value))
-    throw new CapabilityObservationLedgerError('INVALID_INPUT', 'Request body must be an object.', 422);
+    throw new CapabilityObservationLedgerError(
+      'INVALID_INPUT',
+      'Request body must be an object.',
+      422
+    );
   exactKeys(value, ['runtimeCapability', 'source'], 'request');
   if (!record(value.runtimeCapability))
     throw new CapabilityObservationLedgerError(
@@ -150,11 +158,7 @@ export function normalizeCapabilityObservationAdmissionCommand(
       422
     );
   exactKeys(value.runtimeCapability, ['id', 'version'], 'runtimeCapability');
-  const runtimeCapabilityId = requiredText(
-    value.runtimeCapability.id,
-    'runtimeCapability.id',
-    100
-  );
+  const runtimeCapabilityId = requiredText(value.runtimeCapability.id, 'runtimeCapability.id', 100);
   if (!RUNTIME_ID.test(runtimeCapabilityId))
     throw new CapabilityObservationLedgerError(
       'INVALID_INPUT',
@@ -279,10 +283,7 @@ export class PostgresCapabilityObservationLedger {
       runtimeCapability: command.runtimeCapability,
       source: command.source
     });
-    const earlyReplay = await this.findReplay(
-      command.idempotencyKey,
-      requestFingerprintSha256
-    );
+    const earlyReplay = await this.findReplay(command.idempotencyKey, requestFingerprintSha256);
     if (earlyReplay) return earlyReplay;
 
     try {

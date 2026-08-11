@@ -58,9 +58,7 @@ describe('M6-WP-03 Execution Capability Observation source route', () => {
       },
       subjectAttributionAuthority: 'OWNER_SOURCE'
     });
-    expect(reader.findDecisionById).toHaveBeenCalledWith(
-      'evidence-review-decision_governed-001'
-    );
+    expect(reader.findDecisionById).toHaveBeenCalledWith('evidence-review-decision_governed-001');
   });
 
   it('requires trusted internal authorization', async () => {
@@ -92,7 +90,9 @@ describe('M6-WP-03 Execution Capability Observation source route', () => {
       evidenceReviewReader: { findDecisionById: vi.fn(async () => decision() as never) }
     })[0]!;
     await expect(
-      exact.handle(request({ params: { sourceId: decision().evidenceReviewDecisionId, version: '2' } }))
+      exact.handle(
+        request({ params: { sourceId: decision().evidenceReviewDecisionId, version: '2' } })
+      )
     ).rejects.toMatchObject({ status: 409, code: 'SOURCE_VERSION_MISMATCH' });
     await expect(
       exact.handle(

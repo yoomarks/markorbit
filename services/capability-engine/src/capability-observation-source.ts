@@ -104,9 +104,7 @@ function exactSourceReference(value: unknown): CapabilityObservationSourceRefere
   };
 }
 
-export class HttpExecutionCapabilityObservationSourceAuthority
-  implements CapabilityObservationSourceAuthority
-{
+export class HttpExecutionCapabilityObservationSourceAuthority implements CapabilityObservationSourceAuthority {
   constructor(
     private readonly executionUrl: string,
     private readonly internalServiceSecret: string,
@@ -119,10 +117,7 @@ export class HttpExecutionCapabilityObservationSourceAuthority
   async verify(
     locator: Readonly<CapabilityObservationSourceLocator>
   ): Promise<GovernedCapabilityObservationSourceAssertion> {
-    if (
-      locator.owner !== 'EXECUTION' ||
-      locator.kind !== 'EXECUTION_EVIDENCE_REVIEW_DECISION'
-    )
+    if (locator.owner !== 'EXECUTION' || locator.kind !== 'EXECUTION_EVIDENCE_REVIEW_DECISION')
       throw new CapabilityObservationSourceError(
         'SOURCE_NOT_ALLOWED',
         'M6-WP-03 admits only Execution Evidence Review Decisions.',

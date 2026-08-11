@@ -37,13 +37,7 @@ function idempotencyKey(request: JsonRequest): string {
 
 function mapError(error: unknown): never {
   if (error instanceof CapabilityObservationLedgerError)
-    throw new HttpError(
-      error.status,
-      error.code,
-      error.message,
-      error.retryable,
-      error.details
-    );
+    throw new HttpError(error.status, error.code, error.message, error.retryable, error.details);
   throw error;
 }
 
