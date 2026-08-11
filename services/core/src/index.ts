@@ -204,7 +204,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
           })
         },
         {
-          method: 'PUT' as const,
+          method: 'POST' as const,
           path: '/internal/knowledge/ready-packages/intakes/:intakeId/content',
           handle: internal(async (request) => {
             const intakeId = request.params.intakeId;
