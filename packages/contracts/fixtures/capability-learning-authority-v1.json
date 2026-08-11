@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "fixture": "M6-WP-01-CAPABILITY-LEARNING-AUTHORITY",
+  "observedEvidence": {
+    "canonicalTruth": false,
+    "capabilityVerified": false,
+    "publicProfilePublished": false,
+    "publicScoreCreated": false,
+    "permissionChanged": false,
+    "roleChanged": false,
+    "providerSupplyCapabilityConverted": false,
+    "rawProviderReturnConverted": false,
+    "paymentOrInvoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "externalActionExecuted": false
+  },
+  "reflectionCandidate": {
+    "canonicalTruth": false,
+    "capabilityVerified": false,
+    "publicProfilePublished": false,
+    "publicScoreCreated": false,
+    "permissionChanged": false,
+    "roleChanged": false,
+    "providerSupplyCapabilityConverted": false,
+    "rawProviderReturnConverted": false,
+    "paymentOrInvoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "externalActionExecuted": false
+  },
+  "acceptedPrivateReflection": {
+    "canonicalTruth": false,
+    "capabilityVerified": false,
+    "publicProfilePublished": false,
+    "publicScoreCreated": false,
+    "permissionChanged": false,
+    "roleChanged": false,
+    "providerSupplyCapabilityConverted": false,
+    "rawProviderReturnConverted": false,
+    "paymentOrInvoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "externalActionExecuted": false
+  }
+}

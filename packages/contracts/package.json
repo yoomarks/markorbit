@@ -32,11 +32,15 @@
     "./data-engine": {
       "types": "./dist/data-engine.d.ts",
       "import": "./dist/data-engine.js"
+    },
+    "./capability-learning": {
+      "types": "./dist/capability-learning.d.ts",
+      "import": "./dist/capability-learning.js"
     }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/order.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/product-loop.ts src/data-engine.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/order.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/product-loop.ts src/data-engine.ts src/capability-learning.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
