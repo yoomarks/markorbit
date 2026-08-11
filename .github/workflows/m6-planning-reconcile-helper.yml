@@ -1,21 +1,20 @@
 name: M6 planning reconcile helper
 
 on:
-  push:
-    branches: [m6-scope-capability-learning]
+  pull_request:
 
 permissions:
   contents: write
 
 jobs:
   reconcile:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: m6-scope-capability-learning
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
@@ -109,4 +108,4 @@ There is no additional implementation work package inside Milestone 5. The next 
             exit 0
           fi
           git commit -m 'docs(m6): reconcile M5 closure and M6 planning'
-          git push origin HEAD:m6-scope-capability-learning
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
