@@ -1,6 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import { ManagedDatabase, loadMigrationsForOwner, migrate } from '../packages/persistence/src/index.js';
+import {
+  ManagedDatabase,
+  loadMigrationsForOwner,
+  migrate
+} from '../packages/persistence/src/index.js';
 import {
   AuthenticationService,
   InMemoryMembershipRepository,
