@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 scope is owner-approved but runtime implementation has not started. TASK 031B audits Product-loop conformance and proposes a bounded Product Loop Closure stage before M6-WP-01.**
+**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 is owner-approved but deliberately sequenced after the owner-approved Product Loop Closure stage. PLC-WP-01 is the current authorized implementation task.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -84,6 +84,40 @@ current governed Execution source
 ```
 
 The M5 authority locks remain permanent: Evidence Review Decision is not Official Truth; reviewed-source admission is not Filing Submission; Lifecycle Projection is not Official Status; Recommended Action does not authorize execution; no Payment/Invoice, legal appointment, automatic Matter completion, automatic Capability verification or cross-service SQL follows from the lifecycle path.
+
+### Approved Product Loop Closure — current stage
+
+PR #73 merged as `f0afbcd7f37cfe4524793a30e4c4fc84dcc3fb13`, accepting `RESEQUENCE_BEFORE_M6_WP01` and authorizing `PLC-WP-01` as the next implementation task.
+
+The Product Loop Closure stage exists to prove the canonical Lite mainline as a real Product loop:
+
+```text
+Today
+-> traceable Recommendation
+-> Prepared Action
+-> explicit User Confirmation
+-> Product / Workflow Handoff
+-> Outcome / Feedback
+```
+
+At least one acceptance journey must close Content and Opportunity into existing work:
+
+```text
+trusted trademark / client / work context
+-> traceable source
+-> Content Opportunity
+-> bounded Content preparation
+-> Human Review
+-> prepared PublishPackage
+-> manual use/publication feedback or signal
+-> Opportunity Candidate
+-> explicit Qualification
+-> Formal Trademark Service Opportunity
+-> MarkReg intake/work handoff
+-> existing Matter / Execution / outcome path
+```
+
+The stage does not authorize automatic publication, customer outreach, generic CRM/platform extraction, universal Artifact/Opportunity/Workplace services, Payment/Invoice, provider appointment, external Filing Submission or Official Truth.
 
 ### Approved Milestone 6 — Durable Capability Learning and Private Reflection
 
@@ -113,26 +147,23 @@ The M6 authority locks remain:
 - Capability Twin is a private read model, not an autonomous identity or protected-action authority;
 - no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
 
-M6 approval is preserved. TASK 031B changes only proposed **execution precedence**, not M6 semantics or authority:
+M6 approval is preserved. Only its execution precedence changed:
 
 ```text
 M1-M5 governed execution backbone
--> Product Loop Closure: Lite Today -> Recommendation -> Prepared Action -> Confirmation -> Handoff -> Feedback
--> resume approved M6-WP-01
+-> Product Loop Closure
+-> resume approved M6-WP-01 after Product Loop Closure GO
 ```
-
-The Product Loop Conformance Audit found that Content and Opportunity remain unclosed while application/execution loops are already deep, and that the confirmed Lite mainline is not a set of equal parallel modules. The immediate Product correction is therefore to prove the Today-driven user loop rather than simply implement every navigation label as another module.
-
-Merge of the TASK 031B planning/audit PR accepts that resequencing and authorizes `PLC-WP-01` only. It does not itself create runtime Product state or authorize publication, outreach, Opportunity promotion, Payment/Invoice, provider appointment, Filing Submission, Official Truth, Capability verification or Canon mutation.
 
 See:
 
 - `docs/audits/MO-MVP-PRODUCT-LOOP-CONFORMANCE-AUDIT.md`;
 - `docs/planning/MO-MVP-PRODUCT-LOOP-CLOSURE-PLAN.md`;
+- `docs/architecture/PRODUCT-LOOP-AUTHORITY-BOUNDARY.md`;
+- `docs/tasks/MO-MVP-PLC-WP-01-PRODUCT-MAINLINE-CONTRACTS-OWNERSHIP.md`;
 - `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`;
-- `docs/tasks/MO-MVP-TASK-031A-MILESTONE-006-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md`;
 - `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.md`;
 - `AGENTS.md`.
