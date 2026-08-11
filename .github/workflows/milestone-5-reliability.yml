@@ -71,23 +71,3 @@ jobs:
             .artifacts/milestone-5-reliability-evidence.json
           if-no-files-found: ignore
           retention-days: 14
-
-  format-m6-plan-diagnostic:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
-      - uses: pnpm/action-setup@v4
-        with: { version: 10.28.1 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier diff
-        run: |
-          pnpm exec prettier --write docs/planning/MO-MVP-MILESTONE-006-PLAN.json
-          git diff -- docs/planning/MO-MVP-MILESTONE-006-PLAN.json
-          test -z "$(git status --porcelain -- docs/planning/MO-MVP-MILESTONE-006-PLAN.json)"
