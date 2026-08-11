@@ -209,9 +209,22 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Evidence: `docs/validation/MO-MVP-MILESTONE-005-RELIABILITY-MATRIX.json`, `scripts/run-milestone5-reliability.mjs`, `scripts/validate-milestone5-reliability-matrix.mjs`, `.github/workflows/milestone-5-reliability.yml` and the WP-07 task record.
   - Uses separate Execution and MarkReg PostgreSQL databases and the existing desktop/mobile real-runtime browser path; critical durable suites are repeated on the same owner databases.
   - No new product state, Payment/Invoice, legal appointment, filing authority, Official Truth, automatic completion, Capability verification or cross-service SQL is introduced.
-- M5-WP-08 — Independent Milestone 5 integration and authority audit (**GO in PR #70; pending final documentation-head validation**)
+- M5-WP-08 — Independent Milestone 5 integration and authority audit (**merged in PR #70; final recommendation GO**)
+  - Merge: `242b34f806711df608a7178b238104289e65bb00`.
   - Initial audit recommendation: **FIX** for two bounded integration gaps in the Operations review journey and real lifecycle-to-Recommended-Action composition.
-  - PR #70 closes the gaps with an authenticated explicit review/admission/handoff path, real Recommended Action regeneration and a permanent zero-interception M5 integration gate.
-  - Audited code head `f79002d81329de2ae80c777e391f1b025f014e79` passed all eight hosted gates.
+  - PR #70 closed the gaps with an authenticated explicit review/admission/handoff path, real Recommended Action regeneration and a permanent zero-interception M5 integration gate.
+  - Final documentation head `4807c4d13759e11b954b896daf4b10aa841700e0` passed M5 integration `31448370214`, M5 reliability `31448370139`, validation `31448370194`, Browser/Visual `31448370136`, M4 integration `31448370159`, M4 reliability `31448370144`, M3 reliability `31448370168` and M2 reliability `31448370132`.
   - Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}`.
-  - No Payment/Invoice, legal appointment, Filing Submission, external filing, Official Truth, automatic Matter completion, Capability verification or cross-service SQL is created. Merge remains an explicit owner action.
+  - No Payment/Invoice, legal appointment, Filing Submission, external filing, Official Truth, automatic Matter completion, Capability verification or cross-service SQL is created.
+
+## Milestone 6 planning
+
+- TASK 031A — Milestone 6 scope and architecture lock (**proposed for approval**)
+  - Numbering note: historical `MO-MVP-TASK-031` remains reserved for Jurisdiction Recommendation; this planning task does not rewrite it.
+  - Proposed direction: `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M6-WP-01` through `M6-WP-08` in `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`.
+  - Proposed loop: `accepted Capability Canon version -> governed work observation -> private Capability Ledger -> private Reflection Candidate -> explicit subject-user disposition -> private Capability Profile/Twin -> Lite Capability Center`.
+  - Governing locks: Reflection Candidate is not canonical truth; accepted private reflection is not verified Capability; Provider Supply Capability and raw Provider Return are not direct user Capability evidence; no automatic Canon mutation, public ranking, permission escalation, Payment/Invoice, legal appointment, Filing Submission or Official Truth.
+  - Planning only: no M6 runtime implementation starts until the TASK 031A planning PR is approved by merge.

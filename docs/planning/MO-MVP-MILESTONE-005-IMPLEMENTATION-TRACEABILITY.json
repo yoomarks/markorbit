@@ -5,9 +5,26 @@
     "pullRequest": 60,
     "mergeCommit": "0de33333246b66d825b56137f87c32266fb5583c"
   },
-  "milestoneStatus": "AUDIT_GO_PENDING_PR_70_MERGE",
+  "milestoneStatus": "ENGINEERING_SCOPE_COMPLETE_GO",
   "planningStatusReconciled": true,
   "currentWorkPackage": "M5-WP-08",
+  "completion": {
+    "finalRecommendation": "GO",
+    "pullRequest": 70,
+    "mergeCommit": "242b34f806711df608a7178b238104289e65bb00",
+    "finalDocumentationHead": "4807c4d13759e11b954b896daf4b10aa841700e0",
+    "mergedAt": "2026-08-11T01:26:30Z",
+    "hostedEvidence": {
+      "milestone5Integration": 31448370214,
+      "milestone5Reliability": 31448370139,
+      "validation": 31448370194,
+      "browserAndVisualValidation": 31448370136,
+      "milestone4Integration": 31448370159,
+      "milestone4Reliability": 31448370144,
+      "milestone3Reliability": 31448370168,
+      "milestone2Reliability": 31448370132
+    }
+  },
   "authorityLocks": {
     "evidenceReviewDecisionIsOfficialTruth": false,
     "reviewAdmissionIsFilingSubmission": false,
@@ -113,9 +130,11 @@
     },
     {
       "id": "M5-WP-08",
-      "status": "AUDIT_GO_IN_PR_70_PENDING_FINAL_HEAD_VALIDATION",
+      "status": "MERGED_IN_PR_70_AUDIT_GO",
       "pullRequest": 70,
+      "mergeCommit": "242b34f806711df608a7178b238104289e65bb00",
       "auditedCodeHeadSha": "f79002d81329de2ae80c777e391f1b025f014e79",
+      "finalDocumentationHeadSha": "4807c4d13759e11b954b896daf4b10aa841700e0",
       "initialRecommendation": "FIX",
       "finalRecommendation": "GO",
       "evidence": [
@@ -131,6 +150,8 @@
       ]
     }
   ],
-  "nextApprovedStepAfterMerge": "NONE_WITHIN_APPROVED_MILESTONE_5_SCOPE",
-  "alsoDependencyUnblockedAfterMerge": []
+  "nextApprovedStepAfterMerge": "M6_SCOPE_APPROVAL_PROPOSAL_TASK_031A",
+  "alsoDependencyUnblockedAfterMerge": [
+    "Capability learning may now consume reviewed governed outcomes after separate Milestone 6 scope approval"
+  ]
 }
