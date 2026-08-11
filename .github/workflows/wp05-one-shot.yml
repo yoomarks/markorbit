@@ -100,7 +100,6 @@ jobs:
 
           p = Path('services/markreg/src/formal-opportunity.ts')
           text = p.read_text()
-          text = text.replace(',\n  type MarkOrbitId,',' ,') if False else text
           text = text.replace('  type MarkOrbitId,\n','')
           text = text.replace('  promotedByPrincipalId: MarkOrbitId;','  promotedByPrincipalId: string;')
           text = text.replace('  confirmedByPrincipalId: MarkOrbitId;','  confirmedByPrincipalId: string;')
@@ -122,8 +121,8 @@ jobs:
 
           # Remove this workflow from the final diff.
           Path('.github/workflows/wp05-one-shot.yml').unlink()
-      - name: Refresh lockfile
-        run: pnpm install --lockfile-only
+      - name: Install and refresh lockfile
+        run: pnpm install --no-frozen-lockfile
       - name: Format touched files
         run: >-
           pnpm exec prettier --write
