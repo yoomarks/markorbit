@@ -36,8 +36,8 @@ describe('ReadyPackage Content Export V1 consumer contract', () => {
       stagingDocument: { ...(value.stagingDocument as object), mediaType: 'text/plain' }
     })
   ])('rejects data outside the frozen V1 shape', async (change) => {
-    expect(parseReadyPackageContentExportV1(change((await fixture()) as Record<string, unknown>))).toBe(
-      null
-    );
+    expect(
+      parseReadyPackageContentExportV1(change((await fixture()) as Record<string, unknown>))
+    ).toBe(null);
   });
 });
