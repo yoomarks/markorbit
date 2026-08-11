@@ -10,6 +10,7 @@ import {
   PostgresWorkspaceRepository
 } from './identity.js';
 import { createRuntime } from './index.js';
+import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
@@ -29,6 +30,7 @@ const runtime = createRuntime({
   authentication,
   workspaces,
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
+  knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   internalServiceSecret: secret
 });
 
