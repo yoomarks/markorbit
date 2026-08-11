@@ -96,7 +96,9 @@ describe('Gateway Lite Product-loop transport boundary', () => {
       ) as { principal: WorkspacePrincipal };
       expect(envelope.principal.userId).toBe(principal.userId);
       expect(headers['idempotency-key']).toBe('feedback-1');
-      expect(JSON.parse(String(init.body))).not.toHaveProperty('recordedByPrincipalId');
+      expect(typeof init.body).toBe('string');
+      const forwardedBody = JSON.parse(init.body as string) as Record<string, unknown>;
+      expect(forwardedBody).not.toHaveProperty('recordedByPrincipalId');
       return Promise.resolve(
         new Response(
           JSON.stringify({
