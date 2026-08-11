@@ -7,7 +7,11 @@ import type {
   ProductLoopSourceReference,
   ProductLoopUseFeedback
 } from '../packages/contracts/src/product-loop.js';
-import { ManagedDatabase, loadMigrationsForOwner, migrate } from '../packages/persistence/src/index.js';
+import {
+  ManagedDatabase,
+  loadMigrationsForOwner,
+  migrate
+} from '../packages/persistence/src/index.js';
 import { createServiceRuntime } from '../packages/service-kit/src/index.js';
 import {
   PostgresLiteCandidateQualificationStore,
