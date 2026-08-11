@@ -3,7 +3,7 @@ import { createRuntime, PostgresRuntimeCapabilityRegistry } from './index.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
-let runtime;
+let runtime: ReturnType<typeof createRuntime>;
 
 if (milestoneFixtureMode) {
   runtime = createRuntime();
