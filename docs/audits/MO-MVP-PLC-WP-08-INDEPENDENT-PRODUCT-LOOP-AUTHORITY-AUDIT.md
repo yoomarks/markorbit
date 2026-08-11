@@ -140,17 +140,15 @@ The merged WP-07 PR head `26dcd84dc4e27e9c66536ced168b1efb0c55e036` has tree `23
 
 Hosted exact-tree results:
 
-| Gate | Run | Result |
-|---|---:|---|
-| Product Loop Closure Reliability | `31511957597` | PASS |
-| validation | `31511957587` | PASS |
-| Browser and Visual Validation | `31511957667` | PASS |
-| Milestone 2 reliability | `31511957572` | PASS |
-| Milestone 3 reliability | `31511957565` | PASS |
-| Milestone 4 integration | `31511957570` | PASS |
-| Milestone 4 reliability | `31511957635` | PASS |
-| Milestone 5 integration | `31511957655` | PASS |
-| Milestone 5 reliability | `31511957668` | PASS |
+- Product Loop Closure Reliability `31511957597` — `PASS`.
+- validation `31511957587` — `PASS`.
+- Browser and Visual Validation `31511957667` — `PASS`.
+- Milestone 2 reliability `31511957572` — `PASS`.
+- Milestone 3 reliability `31511957565` — `PASS`.
+- Milestone 4 integration `31511957570` — `PASS`.
+- Milestone 4 reliability `31511957635` — `PASS`.
+- Milestone 5 integration `31511957655` — `PASS`.
+- Milestone 5 reliability `31511957668` — `PASS`.
 
 The Product Loop Closure Reliability workflow proves two-owner PostgreSQL persistence, restart/recovery, exact replay/idempotency, stale-state/concurrency rejection, Workspace/customer isolation, permission/transport denial, exact provenance and the cross-owner HTTP authority boundary.
 
@@ -160,52 +158,48 @@ The permanent Playwright config contains both a 1440x900 desktop project and a 3
 
 ## 5. Authority matrix
 
-| Lock | Result |
-|---|---|
-| Recommendation != authorization | PASS |
-| Prepared Action != executed action | PASS |
-| Content Draft != approved content | PASS |
-| Human Review approval != publication | PASS |
-| PublishPackage != Published | PASS |
-| user-reported use != MarkOrbit-executed action | PASS |
-| user-reported use != independently verified outcome | PASS |
-| Opportunity Candidate != Formal Opportunity | PASS |
-| Qualification Decision != formal owner mutation | PASS |
-| Formal Opportunity != Intake / Order / Matter / Payment / Filing | PASS |
-| Evidence Review Decision != Official Truth | PASS — inherited M5 lock unaffected |
-| reviewed-source admission != Filing Submission | PASS — inherited M5 lock unaffected |
-| Lifecycle Projection != Official Status | PASS — inherited M5 lock unaffected |
-| Recommended Action does not authorize execution | PASS — inherited M5 lock unaffected |
-| Provider Return != Official Truth | PASS — inherited M4 lock unaffected |
-| Product/work evidence != Capability verification | PASS |
-| Reflection Candidate != canonical truth | PASS — M6 not started |
-| no automatic Capability verification | PASS |
-| no automatic Capability Canon mutation | PASS |
-| no automatic protected external action | PASS |
-| no cross-service SQL | PASS |
+- Recommendation != authorization — `PASS`.
+- Prepared Action != executed action — `PASS`.
+- Content Draft != approved content — `PASS`.
+- Human Review approval != publication — `PASS`.
+- PublishPackage != Published — `PASS`.
+- user-reported use != MarkOrbit-executed action — `PASS`.
+- user-reported use != independently verified outcome — `PASS`.
+- Opportunity Candidate != Formal Opportunity — `PASS`.
+- Qualification Decision != formal owner mutation — `PASS`.
+- Formal Opportunity != Intake / Order / Matter / Payment / Filing — `PASS`.
+- Evidence Review Decision != Official Truth — `PASS`; inherited M5 lock unaffected.
+- reviewed-source admission != Filing Submission — `PASS`; inherited M5 lock unaffected.
+- Lifecycle Projection != Official Status — `PASS`; inherited M5 lock unaffected.
+- Recommended Action does not authorize execution — `PASS`; inherited M5 lock unaffected.
+- Provider Return != Official Truth — `PASS`; inherited M4 lock unaffected.
+- Product/work evidence != Capability verification — `PASS`.
+- Reflection Candidate != canonical truth — `PASS`; M6 not started.
+- no automatic Capability verification — `PASS`.
+- no automatic Capability Canon mutation — `PASS`.
+- no automatic protected external action — `PASS`.
+- no cross-service SQL — `PASS`.
 
 ## 6. Product-loop completion matrix
 
-| Requirement | Result |
-|---|---|
-| Real Lite Today-driven journey | PASS |
-| Traceable Recommendation | PASS |
-| Durable Prepared Action | PASS |
-| Explicit confirmation | PASS |
-| Content preparation with exact provenance | PASS |
-| Human Review before PublishPackage | PASS |
-| PublishPackage != Published | PASS |
-| Durable Candidate | PASS |
-| Explicit Qualification | PASS |
-| MarkReg Formal Opportunity owner mutation | PASS |
-| Confirmed MarkReg Intake handoff | PASS |
-| Outcome/feedback returns to Today | PASS |
-| Workspace isolation | PASS |
-| restart/replay/idempotency/concurrency | PASS |
-| desktop + 390px real runtime | PASS |
-| no interception/fixture fallback on acceptance path | PASS |
-| M2–M5 regression evidence | PASS |
-| no speculative shared extraction | PASS |
+- Real Lite Today-driven journey — `PASS`.
+- Traceable Recommendation — `PASS`.
+- Durable Prepared Action — `PASS`.
+- Explicit confirmation — `PASS`.
+- Content preparation with exact provenance — `PASS`.
+- Human Review before PublishPackage — `PASS`.
+- PublishPackage != Published — `PASS`.
+- Durable Candidate — `PASS`.
+- Explicit Qualification — `PASS`.
+- MarkReg Formal Opportunity owner mutation — `PASS`.
+- Confirmed MarkReg Intake handoff — `PASS`.
+- Outcome/feedback returns to Today — `PASS`.
+- Workspace isolation — `PASS`.
+- restart/replay/idempotency/concurrency — `PASS`.
+- desktop + 390px real runtime — `PASS`.
+- no interception/fixture fallback on acceptance path — `PASS`.
+- M2–M5 regression evidence — `PASS`.
+- no speculative shared extraction — `PASS`.
 
 ## 7. Findings
 
