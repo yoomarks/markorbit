@@ -1,0 +1,277 @@
+{
+  "milestone": "MO-MVP-MILESTONE-006",
+  "planningTask": "TASK 031A",
+  "status": "PROPOSED_FOR_APPROVAL",
+  "baseline": {
+    "source": "M5-WP-08 final GO merge",
+    "commit": "242b34f806711df608a7178b238104289e65bb00",
+    "predecessorAudit": "GO",
+    "predecessorPr": 70,
+    "milestone5TagOrFreezeClaim": false
+  },
+  "numbering": {
+    "reasonFor031A": "MO-MVP-TASK-031 is already reserved in the historical Task Index for Jurisdiction Recommendation",
+    "historicalTask031Rewritten": false
+  },
+  "direction": {
+    "id": "DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION",
+    "selected": true,
+    "summary": "Turn exact governed work outcomes into private Capability observations, append-oriented Ledger evidence, explainable Reflection Candidates, explicit subject-user dispositions and deterministic private Capability Profile/Twin projections without automatic verification, Canon mutation or public ranking."
+  },
+  "decisionAlternatives": [
+    {
+      "id": "DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION",
+      "decision": "SELECT",
+      "risk": "MEDIUM_HIGH",
+      "reason": "Milestone 5 deliberately deferred Capability learning until reviewed lifecycle outcomes existed; those governed sources now exist and the Product Lock still requires the Capability learning Beta loop."
+    },
+    {
+      "id": "PAYMENT_AND_INVOICE_TRANSACTION_LAYER",
+      "decision": "DEFER",
+      "risk": "HIGH",
+      "reason": "Finance remains separate from Capability evidence, performance, authority and completion."
+    },
+    {
+      "id": "EXTERNAL_FILING_AND_OFFICIAL_TRUTH",
+      "decision": "DEFER",
+      "risk": "VERY_HIGH",
+      "reason": "External filing and Official Truth require separate protected-action, credential and official-source architecture."
+    },
+    {
+      "id": "PUBLIC_PROFESSIONAL_REPUTATION_AND_MARKETPLACE",
+      "decision": "DEFER",
+      "risk": "HIGH",
+      "reason": "Private Capability reflection semantics and privacy must be proven before any public ranking, rating or marketplace product is considered."
+    },
+    {
+      "id": "AUTONOMOUS_CAPABILITY_TWIN_EXECUTION",
+      "decision": "DEFER",
+      "risk": "VERY_HIGH",
+      "reason": "The M6 Capability Twin is a private read model and receives no independent action or permission authority."
+    },
+    {
+      "id": "BROAD_CONTENT_AND_OPPORTUNITY_EXPANSION",
+      "decision": "DEFER",
+      "risk": "MEDIUM",
+      "reason": "M6 closes the Capability learning loop only; Content Studio and Opportunity Center expansion remain separately bounded work."
+    }
+  ],
+  "semanticBoundaries": {
+    "capabilityCanon": "accepted canonical Capability semantics and version lineage; runtime work evidence cannot mutate it automatically",
+    "runtimeCapabilityDefinition": "Capability Engine-owned durable operational projection of one exact accepted Canon identity/version",
+    "capabilityObservation": "private exact source-linked observation of governed work exposure/participation; not proficiency or qualification truth",
+    "capabilityLedgerEntry": "Capability Engine-owned append-oriented private evidence history; not canonical Capability truth",
+    "reflectionCandidate": "private explainable candidate; not canonical truth and not verified Capability",
+    "reflectionDisposition": "explicit authenticated subject-user decision over one exact candidate version",
+    "capabilityProfile": "private deterministic projection from accepted reflection/ledger state; not certification or public score",
+    "capabilityTwin": "private Capability-focused projection; not autonomous identity, agent, professional appointment or permission source",
+    "providerSupplyCapability": "MGSN provider-network truth; never direct user Capability evidence",
+    "providerReturn": "MGSN provider assertion/evidence; never direct user Capability evidence",
+    "payment": "not owned in Milestone 6",
+    "invoice": "not owned in Milestone 6",
+    "officialFiling": "deferred external authority"
+  },
+  "runtimeOwnership": {
+    "IdentityWorkspacePrincipal": "Core",
+    "RuntimeCapabilityRegistryObservationLedgerReflectionProfileTwin": "Capability Engine",
+    "ProfessionalReviewAndGovernedWorkEvidence": "Execution",
+    "FormalMatterAndLifecycleContext": "MarkReg",
+    "ProviderReturnAndProviderSupplyCapability": "MGSN",
+    "TransportPolicyBoundary": "Gateway",
+    "LiteCapabilityCenter": "projection/action surface only"
+  },
+  "sourceAdmissionRules": {
+    "exactRuntimeCapabilityVersionRequired": true,
+    "exactGovernedSourceIdentityVersionFingerprintRequired": true,
+    "authenticatedWorkspacePrincipalRequired": true,
+    "subjectIdentityFromTrustedSourceOrPrincipal": true,
+    "requestBodyIdentityIsAuthority": false,
+    "rawProviderReturnAllowed": false,
+    "providerSupplyCapabilityAllowed": false,
+    "paymentOrInvoiceAllowed": false,
+    "taskCompletionWithoutGovernedEvidenceAllowed": false,
+    "aiAssertionWithoutGovernedSourceAllowed": false,
+    "staleOrMismatchedSourceFailsClosed": true,
+    "crossWorkspaceOrSubjectAdmissionFailsClosed": true,
+    "durableIdempotencyRequired": true,
+    "crossServiceDatabaseReads": false
+  },
+  "reflectionRules": {
+    "privateByDefault": true,
+    "exactLedgerProvenanceRequired": true,
+    "exactRuntimeCapabilityVersionRequired": true,
+    "explanationRequired": true,
+    "modelPromptVersionProvenanceRequiredWhenAiUsed": true,
+    "candidateIsCanonicalTruth": false,
+    "candidateVerifiesCapability": false,
+    "aiMayAcceptDisposition": false,
+    "aiMayMutateCanon": false,
+    "dispositions": ["ACCEPTED", "REJECTED", "DEFERRED"],
+    "normalDispositionActor": "AUTHENTICATED_SUBJECT_USER",
+    "staleCandidateDispositionFailsClosed": true,
+    "durableIdempotencyRequired": true,
+    "optimisticConcurrencyRequired": true
+  },
+  "profileTwinRules": {
+    "private": true,
+    "deterministicFromDurableHistory": true,
+    "acceptedReflectionMeansVerifiedCapability": false,
+    "publicRatingOrRanking": false,
+    "professionalCertification": false,
+    "mutatesCapabilityCanon": false,
+    "mutatesCorePermissions": false,
+    "autonomousActionAuthority": false,
+    "restartRebuildRequired": true
+  },
+  "aiBoundary": {
+    "maySummarizeLedgerEvidence": true,
+    "mayIdentifyPatternsOrGaps": true,
+    "mayDraftReflectionCandidate": true,
+    "mayExplainCandidate": true,
+    "maySuggestNonExecutingLearningNextSteps": true,
+    "mayChooseOrSpoofSubjectIdentity": false,
+    "mayAdmitRawEvidence": false,
+    "mayDispositionCandidate": false,
+    "mayVerifyCapability": false,
+    "mayAssignPublicScoreOrRank": false,
+    "mayMutateCapabilityCanon": false,
+    "mayMutateCorePermissions": false,
+    "mayExecuteExternalAction": false
+  },
+  "primaryAcceptanceJourney": [
+    "authenticate one Lite subject user through Core Session and Workspace Principal",
+    "load one exact accepted runtime Capability definition/version",
+    "load one exact governed Execution/MarkReg reviewed work source",
+    "admit one exact Capability Observation without caller-controlled subject identity",
+    "persist one append-oriented private Capability Ledger entry",
+    "generate one explainable private Reflection Candidate with exact provenance",
+    "record one explicit ACCEPTED subject-user disposition",
+    "rebuild one deterministic private Capability Profile and Twin projection",
+    "render the private Capability Center through Gateway and Lite",
+    "restart runtimes and replay exact admission/disposition without duplicate business state",
+    "deny raw Provider Return and Provider Supply Capability as direct user Capability evidence",
+    "deny cross-Workspace/subject reads and mutations",
+    "prove verification, Canon mutation, public ranking, permission escalation, finance, legal appointment, filing and Official Truth consequences remain false"
+  ],
+  "authorityConsequences": {
+    "runtimeCapabilityDefinitionCreated": "may become true only from explicit accepted Canon/version admission",
+    "capabilityObservationAdmitted": "may become true only from an exact allowed governed source",
+    "capabilityLedgerEntryCreated": "may become true only after exact Observation admission",
+    "reflectionCandidateCreated": "may become true as private non-canonical/non-verified candidate state",
+    "reflectionDispositionRecorded": "may become true only after explicit authenticated subject-user action",
+    "privateProfileTwinUpdated": "may become true only from durable accepted private reflection state",
+    "mustRemainFalse": [
+      "capabilityVerifiedAutomatically",
+      "capabilityCanonMutatedAutomatically",
+      "publicCapabilityScoreCreated",
+      "publicProfessionalRankCreated",
+      "professionalCertificationCreated",
+      "coreRoleOrPermissionEscalatedAutomatically",
+      "providerSupplyCapabilityConvertedToUserCapability",
+      "rawProviderReturnConvertedToUserCapability",
+      "paymentCreated",
+      "invoiceCreated",
+      "professionalLegallyAppointedAutomatically",
+      "filingSubmitted",
+      "officialTruthCreated",
+      "externalActionExecutedByCapabilityTwin"
+    ]
+  },
+  "persistence": {
+    "engine": "PostgreSQL 16",
+    "databasePerOwner": true,
+    "capabilityEngineOwnsLearningState": true,
+    "optimisticConcurrency": true,
+    "workspaceAndSubjectScopedIdempotency": true,
+    "appendOrientedLedgerHistory": true,
+    "crossServiceDatabaseReads": false,
+    "distributedTransactionClaim": false,
+    "sourceRequirement": "bounded authenticated owner APIs/contracts with exact identity/version/fingerprint or equivalent stable provenance"
+  },
+  "realRuntimeAcceptance": {
+    "core": true,
+    "gateway": true,
+    "capabilityEngine": true,
+    "executionOrMarkregGovernedSource": true,
+    "lite": true,
+    "ownerPostgresqlDatabases": true,
+    "requestInterceptionAllowed": false,
+    "mobile390ForNewCapabilityUi": true,
+    "directUrlRecoveryForNewDurableViews": true,
+    "restartReplayRequired": true
+  },
+  "workPackages": [
+    {
+      "id": "M6-WP-01",
+      "name": "Capability learning contracts and canonical authority boundary",
+      "dependencies": ["TASK 031A approved"]
+    },
+    {
+      "id": "M6-WP-02",
+      "name": "Durable runtime Capability Registry and version lineage",
+      "dependencies": ["M6-WP-01"]
+    },
+    {
+      "id": "M6-WP-03",
+      "name": "Durable Capability Observation Ledger and governed source admission",
+      "dependencies": ["M6-WP-01", "M6-WP-02", "Core Principal", "governed Execution/MarkReg source API"]
+    },
+    {
+      "id": "M6-WP-04",
+      "name": "Private Reflection Candidate generation",
+      "dependencies": ["M6-WP-02", "M6-WP-03"]
+    },
+    {
+      "id": "M6-WP-05",
+      "name": "Explicit Reflection Disposition and private Profile/Twin projection",
+      "dependencies": ["M6-WP-04", "Core Principal"]
+    },
+    {
+      "id": "M6-WP-06",
+      "name": "Authenticated Gateway and Lite Capability Center",
+      "dependencies": ["M6-WP-03", "M6-WP-04", "M6-WP-05"]
+    },
+    {
+      "id": "M6-WP-07",
+      "name": "Reliability, privacy, replay, isolation, concurrency and browser matrix",
+      "dependencies": ["M6-WP-01", "M6-WP-02", "M6-WP-03", "M6-WP-04", "M6-WP-05", "M6-WP-06"]
+    },
+    {
+      "id": "M6-WP-08",
+      "name": "Independent Milestone 6 integration and authority audit",
+      "dependencies": ["M6-WP-07"]
+    }
+  ],
+  "nonGoals": [
+    "automatic Capability verification or certification",
+    "automatic Capability Canon mutation",
+    "public Capability profile, marketplace, star rating or reputation score",
+    "HR or employee performance scoring",
+    "legal or professional qualification/appointment",
+    "automatic Core permission or role escalation",
+    "Provider Supply Capability to user Capability conversion",
+    "raw Provider Return to user Capability conversion",
+    "payment processing, settlement, custody, escrow or Invoice issuance",
+    "trademark-office credentials, Filing Submission or Official Truth ingestion",
+    "autonomous Capability Twin protected-action authority",
+    "broad Content Studio or Opportunity Center implementation",
+    "production GA claim"
+  ],
+  "goGate": {
+    "durableRuntimeCapabilityVersionLineage": true,
+    "exactGovernedObservationAdmission": true,
+    "privateAppendOrientedLedger": true,
+    "explainablePrivateReflectionCandidates": true,
+    "explicitSubjectUserDisposition": true,
+    "deterministicPrivateProfileTwin": true,
+    "workspaceSubjectIsolationAndPrivacy": true,
+    "restartReplayIdempotencyConcurrency": true,
+    "zeroInterceptionRealRuntimePath": true,
+    "m2M3M4M5RegressionsRequired": true,
+    "independentAuditRequired": true,
+    "automaticVerificationMustRemainFalse": true,
+    "canonMutationMustRemainFalse": true
+  },
+  "planningOnly": true,
+  "implementationStarted": false
+}
