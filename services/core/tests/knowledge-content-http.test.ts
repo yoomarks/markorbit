@@ -95,7 +95,7 @@ async function putContent(
 afterEach(async () => Promise.all(runtimes.splice(0).map((runtime) => runtime.stop())));
 
 describe('ReadyPackage content consumption HTTP boundary', () => {
-  it('stores verified immutable content without changing the intake acceptance status', async () => {
+  it('stores verified immutable content and accepts the intake', async () => {
     const content = await fixture();
     const { runtime, knowledgeIntakes, knowledgeContents } = await start();
     const { intakeId } = await createIntake(runtime, content);
@@ -104,11 +104,24 @@ describe('ReadyPackage content consumption HTTP boundary', () => {
     expect(result.json).toEqual({
       intakeId,
       readyPackageId: content.readyPackageId,
-      status: 'STORED',
+      status: 'ACCEPTED',
       exportSha256: fingerprintReadyPackageContentExport(content)
     });
     expect(knowledgeContents.count()).toBe(1);
-    expect((await knowledgeIntakes.findById(intakeId))?.status).toBe('RECEIVED');
+    expect((await knowledgeIntakes.findById(intakeId))?.status).toBe('ACCEPTED');
+  });
+
+  it('allows the content route to exceed the shared 64 KiB JSON limit', async () => {
+    const content = await fixture();
+    const { runtime } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const oversized = {
+      ...content,
+      stagingDocument: { ...content.stagingDocument, content: 'x'.repeat(70 * 1024) }
+    };
+    const result = await putContent(runtime, intakeId, oversized);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_STAGING_INTEGRITY_MISMATCH');
   });
 
   it('replays the exact immutable export without a duplicate', async () => {

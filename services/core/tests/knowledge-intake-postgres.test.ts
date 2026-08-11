@@ -121,6 +121,20 @@ integration('PostgreSQL Knowledge intake repository', () => {
     expect(count.rows[0]!.count).toBe(1);
   });
 
+  it('persists the ACCEPTED intake transition across database restart', async () => {
+    const original = candidate('accepted-transition');
+    const repository = new PostgresKnowledgeIntakeRepository(database.getPool());
+    await repository.createOrFind(original);
+    expect((await repository.markAccepted(original.intakeId))?.status).toBe('ACCEPTED');
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+    expect(
+      (await new PostgresKnowledgeIntakeRepository(database.getPool()).findById(original.intakeId))
+        ?.status
+    ).toBe('ACCEPTED');
+  });
+
   it('allows exactly one concurrent same-key/same-body creation', async () => {
     const repository = new PostgresKnowledgeIntakeRepository(database.getPool());
     const results = await Promise.all([

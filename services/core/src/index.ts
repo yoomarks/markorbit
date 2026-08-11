@@ -206,6 +206,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         {
           method: 'POST' as const,
           path: '/internal/knowledge/ready-packages/intakes/:intakeId/content',
+          bodyLimitBytes: 12 * 1024 * 1024,
           handle: internal(async (request) => {
             const intakeId = request.params.intakeId;
             if (typeof intakeId !== 'string' || !canonicalUuid(intakeId))
@@ -244,10 +245,17 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
                 'KNOWLEDGE_CONTENT_IMMUTABILITY_CONFLICT',
                 'This intake already has a different immutable ReadyPackage content export.'
               );
+            const accepted = await options.knowledgeIntakes.markAccepted(intakeId);
+            if (!accepted || accepted.status !== 'ACCEPTED')
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_INTAKE_NOT_ACCEPTABLE',
+                'Knowledge intake cannot transition to ACCEPTED.'
+              );
             return json(stored.created ? 201 : 200, {
               intakeId,
               readyPackageId: stored.content.readyPackageId,
-              status: 'STORED',
+              status: accepted.status,
               exportSha256: stored.content.exportSha256
             });
           })
