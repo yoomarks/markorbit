@@ -330,6 +330,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/service-kit
 
+  services/lite:
+    dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@markorbit/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+
   services/markreg:
     dependencies:
       '@markorbit/contracts':

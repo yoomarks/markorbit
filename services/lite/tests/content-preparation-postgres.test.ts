@@ -55,7 +55,7 @@ suite('PostgreSQL Lite Content preparation', () => {
     correlationId: 'correlation_ready-package-001'
   };
   const sourceAuthority: ProductLoopSourceAuthority = {
-    async resolve(requestWorkspaceId, locator) {
+    resolve(requestWorkspaceId, locator) {
       if (requestWorkspaceId !== workspaceId && requestWorkspaceId !== otherWorkspaceId)
         throw new Error('unexpected workspace');
       if (
@@ -64,7 +64,7 @@ suite('PostgreSQL Lite Content preparation', () => {
         locator.sourceId !== source.sourceId
       )
         throw new Error('unexpected source locator');
-      return structuredClone(source);
+      return Promise.resolve(structuredClone(source));
     }
   };
   let tick = 0;
@@ -89,17 +89,16 @@ suite('PostgreSQL Lite Content preparation', () => {
 
   beforeAll(async () => {
     await database.start();
-    const coreMigrations = await loadMigrationsForOwner(
-      migrationsDirectory,
-      migrationOwners,
-      '@markorbit/core-service'
-    );
+    await database
+      .getPool()
+      .query(
+        'CREATE TABLE IF NOT EXISTS workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)'
+      );
     const liteMigrations = await loadMigrationsForOwner(
       migrationsDirectory,
       migrationOwners,
       '@markorbit/lite-service'
     );
-    await migrate(database.getPool(), 'lite_content_test_core', coreMigrations);
     await migrate(database.getPool(), 'lite_content_test', liteMigrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug) VALUES
@@ -112,9 +111,11 @@ suite('PostgreSQL Lite Content preparation', () => {
 
   beforeEach(async () => {
     tick = 0;
-    await database.getPool().query(
-      'TRUNCATE lite_content_preparation_commands,lite_publish_packages,lite_content_review_decisions,lite_content_drafts,lite_content_opportunities,lite_today_recommendations CASCADE'
-    );
+    await database
+      .getPool()
+      .query(
+        'TRUNCATE lite_content_preparation_commands,lite_publish_packages,lite_content_review_decisions,lite_content_drafts,lite_content_opportunities,lite_today_recommendations CASCADE'
+      );
   });
 
   afterAll(() => database.close());
@@ -224,10 +225,12 @@ suite('PostgreSQL Lite Content preparation', () => {
     expect(prepared.status).toBe('PREPARED');
     expect(prepared.externalPublishExecuted).toBe(false);
 
-    const history = await database.getPool().query(
-      'SELECT version,document_json->>\'body\' AS body FROM lite_content_drafts WHERE workspace_id=$1 AND content_draft_id=$2 ORDER BY version',
-      [workspaceId, draft1.contentDraftId]
-    );
+    const history = await database
+      .getPool()
+      .query(
+        "SELECT version,document_json->>'body' AS body FROM lite_content_drafts WHERE workspace_id=$1 AND content_draft_id=$2 ORDER BY version",
+        [workspaceId, draft1.contentDraftId]
+      );
     expect(history.rows).toMatchObject([
       { version: 1, body: 'First bounded draft.' },
       { version: 2, body: 'Second bounded draft with review-ready wording.' },
@@ -332,7 +335,7 @@ suite('PostgreSQL Lite Content preparation', () => {
     expect(
       await database
         .getPool()
-        .query('SELECT count(*)::int AS count FROM lite_publish_packages')
+        .query<{ count: number }>('SELECT count(*)::int AS count FROM lite_publish_packages')
         .then((result) => result.rows[0]?.count)
     ).toBe(0);
   });

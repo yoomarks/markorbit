@@ -259,12 +259,19 @@ function normalizeSource(
   locator: Readonly<ProductLoopSourceLocator>,
   value: Readonly<ProductLoopSourceReference>
 ): ProductLoopSourceReference {
-  if (!productLoopSourceOwners.includes(value.owner) || !productLoopSourceKinds.includes(value.kind))
+  if (
+    !productLoopSourceOwners.includes(value.owner) ||
+    !productLoopSourceKinds.includes(value.kind)
+  )
     throw new LiteContentPreparationError(
       'STALE_SOURCE',
       'The source authority returned an unsupported Product-loop source.'
     );
-  if (value.owner !== locator.owner || value.kind !== locator.kind || value.sourceId !== locator.sourceId)
+  if (
+    value.owner !== locator.owner ||
+    value.kind !== locator.kind ||
+    value.sourceId !== locator.sourceId
+  )
     throw new LiteContentPreparationError(
       'STALE_SOURCE',
       'The source authority returned a different source than requested.'
@@ -280,10 +287,7 @@ function normalizeSource(
     kind: value.kind,
     sourceId,
     sourceVersion,
-    sourceFingerprintSha256: exactSha256(
-      value.sourceFingerprintSha256,
-      'sourceFingerprintSha256'
-    ),
+    sourceFingerprintSha256: exactSha256(value.sourceFingerprintSha256, 'sourceFingerprintSha256'),
     observedAt: exactTimestamp(value.observedAt, 'observedAt'),
     ...(value.correlationId
       ? { correlationId: cleanMarkOrbitId(value.correlationId, 'correlationId') }
@@ -380,8 +384,15 @@ export class PostgresLiteContentPreparationStore {
     command: Readonly<AcceptContentOpportunityCommand>
   ): Promise<ContentOpportunity> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
-    const recommendationId = cleanText(command.recommendation.id, 'recommendation.id', 300) as TodayRecommendationId;
-    const recommendationVersion = exactVersion(command.recommendation.version, 'recommendation.version');
+    const recommendationId = cleanText(
+      command.recommendation.id,
+      'recommendation.id',
+      300
+    ) as TodayRecommendationId;
+    const recommendationVersion = exactVersion(
+      command.recommendation.version,
+      'recommendation.version'
+    );
     const expectedFingerprint = exactSha256(
       command.expectedRecommendationFingerprintSha256,
       'expectedRecommendationFingerprintSha256'
@@ -405,7 +416,10 @@ export class PostgresLiteContentPreparationStore {
       'ACCEPT_CONTENT_OPPORTUNITY',
       requestFingerprint,
       async (client) => {
-        await this.resourceLock(client, `${workspaceId}:${recommendationId}:${recommendationVersion}:content-opportunity`);
+        await this.resourceLock(
+          client,
+          `${workspaceId}:${recommendationId}:${recommendationVersion}:content-opportunity`
+        );
         const recommendation = await this.recommendation(
           client,
           workspaceId,
@@ -492,7 +506,10 @@ export class PostgresLiteContentPreparationStore {
       'CREATE_CONTENT_DRAFT',
       requestFingerprint,
       async (client) => {
-        await this.resourceLock(client, `${workspaceId}:${opportunityId}:${opportunityVersion}:draft-root`);
+        await this.resourceLock(
+          client,
+          `${workspaceId}:${opportunityId}:${opportunityVersion}:draft-root`
+        );
         const opportunity = await this.opportunity(
           client,
           workspaceId,
@@ -599,7 +616,9 @@ export class PostgresLiteContentPreparationStore {
     );
   }
 
-  async recordReview(command: Readonly<RecordContentReviewCommand>): Promise<ContentReviewDecision> {
+  async recordReview(
+    command: Readonly<RecordContentReviewCommand>
+  ): Promise<ContentReviewDecision> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const draftId = cleanText(command.contentDraft.id, 'contentDraft.id', 300) as ContentDraftId;
     const draftVersion = exactVersion(command.contentDraft.version, 'contentDraft.version');
@@ -957,7 +976,11 @@ export class PostgresLiteContentPreparationStore {
     );
     const value = rowDocument<TodayRecommendation>(result.rows[0] as Row | undefined);
     if (!value)
-      throw new LiteContentPreparationError('NOT_FOUND', 'Today Recommendation was not found.', 404);
+      throw new LiteContentPreparationError(
+        'NOT_FOUND',
+        'Today Recommendation was not found.',
+        404
+      );
     return value;
   }
 
