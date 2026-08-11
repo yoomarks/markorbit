@@ -47,7 +47,7 @@ export function milestoneConfiguration(ports = milestonePorts) {
       port: ports.capability,
       health: `${urls.capability}/health`,
       args: ['--filter', '@markorbit/capability-engine', 'dev'],
-      env: { PORT: String(ports.capability) }
+      env: { PORT: String(ports.capability), MO_MILESTONE_TEST_RUNTIME: '1' }
     },
     {
       name: 'markreg',
