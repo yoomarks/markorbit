@@ -1,0 +1,28 @@
+name: Agent WP02 Format Preview
+
+on:
+  push:
+    branches:
+      - plc-wp-02-durable-content-preparation
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: plc-wp-02-durable-content-preparation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm exec prettier --write .github/workflows/product-loop-content-preparation.yml
+          git diff -- .github/workflows/product-loop-content-preparation.yml
