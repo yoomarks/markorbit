@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
+import type { CoreAuthenticationClient } from '../src/auth.js';
 import { createGatewayProductLoopRoutes } from '../src/product-loop-http.js';
 
 const workspaceId = '27272727-2727-4272-8272-272727272727';
@@ -13,8 +14,12 @@ const principal: WorkspacePrincipal = {
   role: 'WORKSPACE_ADMIN',
   permissions: ['workspace:read', 'matter:manage']
 };
-const auth = {
-  resolveWorkspace: vi.fn(() => Promise.resolve(principal))
+const resolveWorkspace = vi.fn(() => Promise.resolve(principal));
+const auth: CoreAuthenticationClient = {
+  issue: () => Promise.reject(new Error('issue is not expected in this test')),
+  resolve: () => Promise.reject(new Error('resolve is not expected in this test')),
+  resolveWorkspace,
+  revoke: () => Promise.resolve()
 };
 const options = {
   liteUrl: 'http://lite.test',
@@ -58,10 +63,11 @@ describe('Gateway Lite Product-loop transport boundary', () => {
       headers: {
         cookie: 'mo_session=token',
         'x-markorbit-workspace-id': workspaceId
-      }
+      },
+      body: undefined
     });
     expect(result.status).toBe(200);
-    expect(auth.resolveWorkspace).toHaveBeenCalledWith('token', workspaceId, undefined);
+    expect(resolveWorkspace).toHaveBeenCalledWith('token', workspaceId, undefined);
     const init = downstream.mock.calls[0]?.[1] as RequestInit;
     const headers = init.headers as Record<string, string>;
     expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
