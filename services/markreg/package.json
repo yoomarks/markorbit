@@ -6,7 +6,7 @@
   "description": "Dual-channel international trademark recommendation, order and Matter service.",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/index.ts src/main.ts src/lifecycle-projection.ts src/lifecycle-handoff-http.ts src/lifecycle-surface-http.ts src/recommended-action.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/lifecycle-projection.ts src/lifecycle-handoff-http.ts src/lifecycle-surface-http.ts src/recommended-action.ts src/formal-opportunity.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -40,6 +40,10 @@
     "./recommended-action": {
       "types": "./dist/recommended-action.d.ts",
       "import": "./dist/recommended-action.js"
+    },
+    "./formal-opportunity": {
+      "types": "./dist/formal-opportunity.d.ts",
+      "import": "./dist/formal-opportunity.js"
     }
   }
 }
