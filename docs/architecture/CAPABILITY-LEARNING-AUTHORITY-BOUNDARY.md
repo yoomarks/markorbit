@@ -23,21 +23,21 @@ The loop is evidence-backed reflection. It is not automatic professional verific
 
 ## 2. Ownership
 
-| State / responsibility | Owner |
-| --- | --- |
-| User, Workspace, Membership, Session, Principal, permission truth | Core |
-| accepted Capability Canon | accepted Canon source / owner-governed publication process |
-| runtime Capability Definition/version projection | Capability Engine |
-| admitted Capability Observation | Capability Engine after source-owner verification |
-| private Capability Ledger | Capability Engine |
-| private Reflection Candidate | Capability Engine |
-| Reflection Disposition | Capability Engine; decision authority is the authenticated subject user |
-| private Capability Profile / Twin | Capability Engine |
-| professional/review work evidence | Execution |
-| Formal Matter / reviewed lifecycle source context | MarkReg |
-| Provider Return / Provider Supply Capability | MGSN |
-| authenticated transport policy | Gateway |
-| private product projection/action surface | Lite |
+| State / responsibility                                            | Owner                                                                   |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| User, Workspace, Membership, Session, Principal, permission truth | Core                                                                    |
+| accepted Capability Canon                                         | accepted Canon source / owner-governed publication process              |
+| runtime Capability Definition/version projection                  | Capability Engine                                                       |
+| admitted Capability Observation                                   | Capability Engine after source-owner verification                       |
+| private Capability Ledger                                         | Capability Engine                                                       |
+| private Reflection Candidate                                      | Capability Engine                                                       |
+| Reflection Disposition                                            | Capability Engine; decision authority is the authenticated subject user |
+| private Capability Profile / Twin                                 | Capability Engine                                                       |
+| professional/review work evidence                                 | Execution                                                               |
+| Formal Matter / reviewed lifecycle source context                 | MarkReg                                                                 |
+| Provider Return / Provider Supply Capability                      | MGSN                                                                    |
+| authenticated transport policy                                    | Gateway                                                                 |
+| private product projection/action surface                         | Lite                                                                    |
 
 No service may read another owning service's database. Cross-service evidence moves through bounded authenticated APIs/contracts with exact source identity/version/fingerprint.
 
