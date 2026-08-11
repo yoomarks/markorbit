@@ -106,7 +106,8 @@ if (fixtureRuntime) {
     new RecommendedActionService(recommendedActionRepository, lifecycleRepository);
   const lifecycleRoutes = createMarkRegLifecycleHandoffRoutes({
     internalServiceSecret,
-    lifecycleServiceFor
+    lifecycleServiceFor,
+    recommendedActionServiceFor
   });
   const lifecycleSurfaceRoutes = createMarkRegLifecycleSurfaceRoutes({
     internalServiceSecret,
