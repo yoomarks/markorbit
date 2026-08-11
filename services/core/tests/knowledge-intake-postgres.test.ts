@@ -110,9 +110,9 @@ integration('PostgreSQL Knowledge intake repository', () => {
     );
     expect(replay).toMatchObject({ created: false, intake: { intakeId: original.intakeId } });
     expect(replay.intake.receivedAt).toBe(original.receivedAt);
-    expect(await new PostgresKnowledgeIntakeRepository(database.getPool()).findById(original.intakeId)).toEqual(
-      replay.intake
-    );
+    expect(
+      await new PostgresKnowledgeIntakeRepository(database.getPool()).findById(original.intakeId)
+    ).toEqual(replay.intake);
     const count = await database
       .getPool()
       .query<{ count: number }>(
