@@ -19,9 +19,7 @@ describe('M6-WP-01 capability learning contracts', () => {
     expect(capabilityObservationSourceOwners).toEqual(['EXECUTION', 'MARKREG']);
     expect(capabilityObservationSourceOwners).not.toContain('MGSN');
     expect(capabilityObservationSourceKinds).not.toContain('PROVIDER_RETURN');
-    expect(capabilityObservationSourceKinds).not.toContain(
-      'PROVIDER_SUPPLY_CAPABILITY'
-    );
+    expect(capabilityObservationSourceKinds).not.toContain('PROVIDER_SUPPLY_CAPABILITY');
   });
 
   it('keeps all reflection dispositions explicit', () => {
