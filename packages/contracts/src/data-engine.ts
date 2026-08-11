@@ -67,10 +67,7 @@ function record(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function exactStringArray(
-  value: unknown,
-  expected: readonly string[]
-): boolean {
+function exactStringArray(value: unknown, expected: readonly string[]): boolean {
   return (
     Array.isArray(value) &&
     value.length === expected.length &&
@@ -78,30 +75,16 @@ function exactStringArray(
   );
 }
 
-export function parseDataEngineFactEnvelope(
-  value: unknown
-): DataEngineFactEnvelope | null {
+export function parseDataEngineFactEnvelope(value: unknown): DataEngineFactEnvelope | null {
   const candidate = record(value);
   if (!candidate) return null;
-  if (candidate.contract_version !== DATA_ENGINE_INTEGRATION_CONTRACT_VERSION)
-    return null;
-  if (
-    typeof candidate.engine_version !== 'string' ||
-    candidate.engine_version.length === 0
-  )
+  if (candidate.contract_version !== DATA_ENGINE_INTEGRATION_CONTRACT_VERSION) return null;
+  if (typeof candidate.engine_version !== 'string' || candidate.engine_version.length === 0)
     return null;
   if (candidate.source_owner !== DATA_ENGINE_SOURCE_OWNER) return null;
-  if (
-    !dataEngineJurisdictions.includes(
-      candidate.jurisdiction as DataEngineJurisdiction
-    )
-  )
+  if (!dataEngineJurisdictions.includes(candidate.jurisdiction as DataEngineJurisdiction))
     return null;
-  if (
-    !dataEngineResourceKinds.includes(
-      candidate.resource_kind as DataEngineResourceKind
-    )
-  )
+  if (!dataEngineResourceKinds.includes(candidate.resource_kind as DataEngineResourceKind))
     return null;
   if (candidate.authority !== DATA_ENGINE_FACT_AUTHORITY) return null;
   if (candidate.legal_conclusion !== false) return null;
@@ -119,41 +102,26 @@ export function parseDataEngineIntegrationDescriptor(
   const changeFeed = record(planes?.change_feed);
   const admin = record(planes?.admin);
 
-  if (!candidate || !policy || !planes || !query || !changeFeed || !admin)
-    return null;
-  if (candidate.contract_version !== DATA_ENGINE_INTEGRATION_CONTRACT_VERSION)
-    return null;
-  if (
-    typeof candidate.engine_version !== 'string' ||
-    candidate.engine_version.length === 0
-  )
+  if (!candidate || !policy || !planes || !query || !changeFeed || !admin) return null;
+  if (candidate.contract_version !== DATA_ENGINE_INTEGRATION_CONTRACT_VERSION) return null;
+  if (typeof candidate.engine_version !== 'string' || candidate.engine_version.length === 0)
     return null;
   if (candidate.source_owner !== DATA_ENGINE_SOURCE_OWNER) return null;
   if (candidate.service_role !== 'SOURCE_FACT_SERVICE') return null;
-  if (
-    policy.query_plane_read_only !== true ||
-    policy.change_feed_read_only !== true
-  )
-    return null;
+  if (policy.query_plane_read_only !== true || policy.change_feed_read_only !== true) return null;
   if (policy.cross_service_database_access !== false) return null;
   if (policy.consumer_writeback_to_source_facts !== false) return null;
   if (policy.business_state_owned_outside_data_engine !== true) return null;
-  if (query.prefix !== '/api/v1' || !exactStringArray(query.methods, ['GET']))
-    return null;
+  if (query.prefix !== '/api/v1' || !exactStringArray(query.methods, ['GET'])) return null;
   if (changeFeed.path !== '/api/v1/us/changes') return null;
   if (!exactStringArray(changeFeed.methods, ['GET'])) return null;
-  if (
-    changeFeed.cursor_semantics !==
-    'LOSSLESS_OBSERVATION_CURSOR_NOT_LEGAL_CONCLUSION'
-  ) {
+  if (changeFeed.cursor_semantics !== 'LOSSLESS_OBSERVATION_CURSOR_NOT_LEGAL_CONCLUSION') {
     return null;
   }
-  if (!exactStringArray(admin.prefixes, ['/api/admin', '/api/jobs']))
-    return null;
+  if (!exactStringArray(admin.prefixes, ['/api/admin', '/api/jobs'])) return null;
   if (admin.part_of_consumer_contract !== false) return null;
   if (!Array.isArray(candidate.stable_resources)) return null;
-  if (!candidate.stable_resources.every((path) => typeof path === 'string'))
-    return null;
+  if (!candidate.stable_resources.every((path) => typeof path === 'string')) return null;
 
   return candidate as unknown as DataEngineIntegrationDescriptor;
 }

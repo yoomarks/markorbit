@@ -20,9 +20,7 @@ export interface DataEngineChangeQuery {
 
 export class DataEngineClientError extends Error {
   constructor(
-    readonly code:
-      | 'DATA_ENGINE_UNAVAILABLE'
-      | 'DATA_ENGINE_CONTRACT_MISMATCH',
+    readonly code: 'DATA_ENGINE_UNAVAILABLE' | 'DATA_ENGINE_CONTRACT_MISMATCH',
     message: string,
     readonly status?: number
   ) {
@@ -37,9 +35,7 @@ function baseUrl(value: string): string {
   return normalized;
 }
 
-function queryString(
-  values: Record<string, string | number | undefined>
-): string {
+function queryString(values: Record<string, string | number | undefined>): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) {
     if (value !== undefined && value !== '') query.set(key, String(value));
@@ -86,11 +82,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
     resourceKind: DataEngineResourceKind
   ): Promise<DataEngineFactEnvelope> => {
     const parsed = parseDataEngineFactEnvelope(await getJson(path));
-    if (
-      !parsed ||
-      parsed.jurisdiction !== jurisdiction ||
-      parsed.resource_kind !== resourceKind
-    ) {
+    if (!parsed || parsed.jurisdiction !== jurisdiction || parsed.resource_kind !== resourceKind) {
       throw new DataEngineClientError(
         'DATA_ENGINE_CONTRACT_MISMATCH',
         'Data Engine response does not match the frozen V1 fact contract.'
@@ -101,9 +93,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
 
   return {
     async contract(): Promise<DataEngineIntegrationDescriptor> {
-      const parsed = parseDataEngineIntegrationDescriptor(
-        await getJson('/api/v1/contract')
-      );
+      const parsed = parseDataEngineIntegrationDescriptor(await getJson('/api/v1/contract'));
       if (!parsed) {
         throw new DataEngineClientError(
           'DATA_ENGINE_CONTRACT_MISMATCH',
@@ -122,11 +112,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
     },
 
     usCase(serialNumber: string): Promise<DataEngineFactEnvelope> {
-      return fact(
-        `/api/v1/us/cases/${encodeURIComponent(serialNumber)}`,
-        'US',
-        'TRADEMARK_CASE'
-      );
+      return fact(`/api/v1/us/cases/${encodeURIComponent(serialNumber)}`, 'US', 'TRADEMARK_CASE');
     },
 
     usCase360(serialNumber: string): Promise<DataEngineFactEnvelope> {
@@ -137,10 +123,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
       );
     },
 
-    usCaseHistory(
-      serialNumber: string,
-      limit?: number
-    ): Promise<DataEngineFactEnvelope> {
+    usCaseHistory(serialNumber: string, limit?: number): Promise<DataEngineFactEnvelope> {
       return fact(
         `/api/v1/us/cases/${encodeURIComponent(serialNumber)}/history${queryString({ limit })}`,
         'US',
@@ -148,10 +131,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
       );
     },
 
-    usAssignments(
-      serialNumber: string,
-      limit?: number
-    ): Promise<DataEngineFactEnvelope> {
+    usAssignments(serialNumber: string, limit?: number): Promise<DataEngineFactEnvelope> {
       return fact(
         `/api/v1/us/cases/${encodeURIComponent(serialNumber)}/assignments${queryString({ limit })}`,
         'US',
@@ -159,10 +139,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
       );
     },
 
-    usTtab(
-      serialNumber: string,
-      limit?: number
-    ): Promise<DataEngineFactEnvelope> {
+    usTtab(serialNumber: string, limit?: number): Promise<DataEngineFactEnvelope> {
       return fact(
         `/api/v1/us/cases/${encodeURIComponent(serialNumber)}/ttab${queryString({ limit })}`,
         'US',

@@ -46,9 +46,7 @@ describe('Data Engine Integration Contract V1', () => {
   it('accepts the frozen fact envelope fixture', async () => {
     const parsed = parseDataEngineFactEnvelope(await factFixture());
 
-    expect(parsed?.contract_version).toBe(
-      DATA_ENGINE_INTEGRATION_CONTRACT_VERSION
-    );
+    expect(parsed?.contract_version).toBe(DATA_ENGINE_INTEGRATION_CONTRACT_VERSION);
     expect(parsed?.source_owner).toBe('MARKORBIT_DATA_ENGINE');
     expect(parsed?.legal_conclusion).toBe(false);
   });
@@ -61,16 +59,11 @@ describe('Data Engine Integration Contract V1', () => {
       ...value,
       resource_kind: 'LEGAL_TITLE'
     })
-  ])(
-    'rejects source-fact envelopes outside the frozen V1 authority',
-    async (change) => {
-      expect(
-        parseDataEngineFactEnvelope(
-          change((await factFixture()) as Record<string, unknown>)
-        )
-      ).toBe(null);
-    }
-  );
+  ])('rejects source-fact envelopes outside the frozen V1 authority', async (change) => {
+    expect(
+      parseDataEngineFactEnvelope(change((await factFixture()) as Record<string, unknown>))
+    ).toBe(null);
+  });
 
   it('accepts the read-only descriptor and rejects cross-service database access', () => {
     expect(parseDataEngineIntegrationDescriptor(descriptor)).not.toBeNull();
