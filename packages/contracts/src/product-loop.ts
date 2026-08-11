@@ -134,10 +134,51 @@ export interface PreparedActionConfirmation {
   schemaVersion: 1;
   preparedAction: Readonly<ProductLoopExactReference<PreparedActionId>>;
   expectedPreparedActionFingerprintSha256: string;
-  confirmedByPrincipalId: MarkOrbitId;
+  /** Authoritative Core WorkspacePrincipal.userId; no second identity namespace is created. */
+  confirmedByPrincipalId: string;
   confirmedAt: string;
   acknowledgedEffect: string;
   protectedActionAuthorized: false;
+}
+
+export const preparedActionHandoffStates = [
+  'AWAITING_CONFIRMATION',
+  'HANDOFF_PENDING',
+  'HANDOFF_COMPLETED'
+] as const;
+export type PreparedActionHandoffState = (typeof preparedActionHandoffStates)[number];
+
+export interface PreparedActionHandoffResult {
+  schemaVersion: 1;
+  preparedAction: Readonly<ProductLoopExactReference<PreparedActionId>>;
+  target: ProductLoopHandoffTarget;
+  owner: 'LITE' | 'MARKREG';
+  ownerRecord: Readonly<ProductLoopExactReference>;
+  completedAt: string;
+  consequences: Readonly<ProductLoopAuthorityConsequences>;
+}
+
+/** Browser/API read model for the real Today -> Prepared Action journey. */
+export interface PreparedActionJourney {
+  schemaVersion: 1;
+  preparedAction: Readonly<PreparedAction>;
+  confirmation?: Readonly<PreparedActionConfirmation>;
+  handoffState: PreparedActionHandoffState;
+  handoffResult?: Readonly<PreparedActionHandoffResult>;
+}
+
+export interface LiteTodaySnapshot {
+  schemaVersion: 1;
+  workspaceId: string;
+  generatedAt: string;
+  items: ReadonlyArray<
+    Readonly<{
+      recommendation: Readonly<TodayRecommendation>;
+      preparedActions: ReadonlyArray<Readonly<PreparedActionJourney>>;
+    }>
+  >;
+  partial: boolean;
+  warnings: readonly string[];
 }
 
 export const contentOpportunityStatuses = [
@@ -210,7 +251,8 @@ export interface ContentReviewDecision {
   contentDraft: Readonly<ProductLoopExactReference<ContentDraftId>>;
   expectedContentDraftFingerprintSha256: string;
   outcome: ContentReviewOutcome;
-  reviewerPrincipalId: MarkOrbitId;
+  /** Authoritative Core WorkspacePrincipal.userId. */
+  reviewerPrincipalId: string;
   rationale: string;
   reviewedAt: string;
   publishesExternally: false;
@@ -253,7 +295,8 @@ export interface ProductLoopUseFeedback {
   publishPackage: Readonly<ProductLoopExactReference<PublishPackageId>>;
   outcome: ProductLoopFeedbackOutcome;
   externalReference?: string;
-  recordedByPrincipalId: MarkOrbitId;
+  /** Authoritative Core WorkspacePrincipal.userId. */
+  recordedByPrincipalId: string;
   recordedAt: string;
   externalActionExecutedByMarkOrbit: false;
   externalOutcomeVerifiedByMarkOrbit: false;
@@ -297,7 +340,8 @@ export interface OpportunityQualificationDecision {
   candidate: Readonly<ProductLoopExactReference<OpportunityCandidateId>>;
   expectedCandidateFingerprintSha256: string;
   outcome: OpportunityQualificationOutcome;
-  decidedByPrincipalId: MarkOrbitId;
+  /** Authoritative Core WorkspacePrincipal.userId. */
+  decidedByPrincipalId: string;
   rationale: string;
   decidedAt: string;
   formalOpportunityCreated: false;
@@ -344,7 +388,8 @@ export interface MarkRegIntakeHandoff {
   channel: 'LITE_PROFESSIONAL';
   relationshipModel: RelationshipModel;
   customerIntent: Readonly<CustomerIntent>;
-  confirmedByPrincipalId: MarkOrbitId;
+  /** Authoritative Core WorkspacePrincipal.userId. */
+  confirmedByPrincipalId: string;
   confirmedAt: string;
   intakeCreated: false;
   orderCreated: false;
