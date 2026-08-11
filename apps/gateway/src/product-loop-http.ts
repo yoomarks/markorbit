@@ -130,10 +130,7 @@ export function createGatewayProductLoopRoutes(
         idempotency(request, body!);
       }
       if (!hasPermissions(principal, permissions))
-        throw new AuthenticationError(
-          'PERMISSION_DENIED',
-          'Product-loop permission is required.'
-        );
+        throw new AuthenticationError('PERMISSION_DENIED', 'Product-loop permission is required.');
       return principal;
     } catch (error) {
       return mapAuthentication(error);

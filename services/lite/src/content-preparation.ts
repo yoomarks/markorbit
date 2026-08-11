@@ -124,7 +124,7 @@ export interface RecordContentReviewCommand {
   contentDraft: Readonly<{ id: ContentDraftId; version: number }>;
   expectedContentDraftFingerprintSha256: string;
   outcome: ContentReviewOutcome;
-  reviewerPrincipalId: MarkOrbitId;
+  reviewerPrincipalId: string;
   rationale: string;
   idempotencyKey: string;
 }
@@ -185,6 +185,10 @@ function cleanMarkOrbitId(value: MarkOrbitId, field: string): MarkOrbitId {
   if (!MARKORBIT_ID.test(cleaned))
     throw new LiteContentPreparationError('INVALID_INPUT', `${field} is invalid.`, 422);
   return cleaned;
+}
+
+function cleanPrincipalId(value: string, field: string): string {
+  return cleanText(value, field, 300);
 }
 
 function exactVersion(value: number, field: string): number {

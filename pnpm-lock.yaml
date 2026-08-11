@@ -338,6 +338,9 @@ importers:
       '@markorbit/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
+      '@markorbit/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
 
   services/markreg:
     dependencies:

@@ -88,7 +88,10 @@ async function postMarkReg<T>(
     body: JSON.stringify(body)
   });
   if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+    const payload = (await response.json().catch(() => ({}))) as {
+      code?: string;
+      message?: string;
+    };
     throw new Error(
       `${payload.code ?? 'MARKREG_HANDOFF_FAILED'}: ${payload.message ?? 'MarkReg owner handoff failed.'}`
     );
@@ -157,8 +160,7 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
       idempotencyKey,
       {
         formalOpportunityVersion: plan.formalOpportunity.version,
-        expectedFormalOpportunityFingerprintSha256:
-          plan.expectedFormalOpportunityFingerprintSha256,
+        expectedFormalOpportunityFingerprintSha256: plan.expectedFormalOpportunityFingerprintSha256,
         relationshipModel: plan.relationshipModel,
         customerIntent: plan.customerIntent,
         confirmedByPrincipalId: confirmation.confirmedByPrincipalId

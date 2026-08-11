@@ -71,9 +71,7 @@ export interface StartMarkRegIntakeActionPlan {
 }
 
 export type PreparedActionPlan =
-  | PrepareContentActionPlan
-  | CreateFormalOpportunityActionPlan
-  | StartMarkRegIntakeActionPlan;
+  PrepareContentActionPlan | CreateFormalOpportunityActionPlan | StartMarkRegIntakeActionPlan;
 
 export interface PrepareActionCommand {
   workspaceId: string;
@@ -132,8 +130,7 @@ function cleanWorkspaceId(value: string): string {
 
 function cleanText(value: string, field: string, maximum: number): string {
   const cleaned = value.trim();
-  if (!cleaned)
-    throw new PreparedActionJourneyError('INVALID_INPUT', `${field} is required.`, 422);
+  if (!cleaned) throw new PreparedActionJourneyError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
     throw new PreparedActionJourneyError(
       'INVALID_INPUT',
@@ -250,7 +247,12 @@ function normalizePlan(plan: Readonly<PreparedActionPlan>): PreparedActionPlan {
       },
       relationshipModel: cleanRelationshipModel(plan.relationshipModel),
       ...(plan.proposedCustomerIntent
-        ? { proposedCustomerIntent: cleanCustomerIntent(plan.proposedCustomerIntent, 'plan.proposedCustomerIntent') }
+        ? {
+            proposedCustomerIntent: cleanCustomerIntent(
+              plan.proposedCustomerIntent,
+              'plan.proposedCustomerIntent'
+            )
+          }
         : {})
     };
   return {
@@ -279,7 +281,9 @@ function handoffTarget(plan: Readonly<PreparedActionPlan>): ProductLoopHandoffTa
   return 'MARKREG_INTAKE';
 }
 
-function expectedRecommendationKind(plan: Readonly<PreparedActionPlan>): TodayRecommendation['kind'] {
+function expectedRecommendationKind(
+  plan: Readonly<PreparedActionPlan>
+): TodayRecommendation['kind'] {
   if (plan.kind === 'PREPARE_CONTENT') return 'CONTENT_PREPARATION';
   if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY') return 'OPPORTUNITY_REVIEW';
   return 'MARKREG_HANDOFF';
@@ -364,8 +368,7 @@ export class PostgresPreparedActionStore {
           recommendationVersion
         );
         if (
-          recommendation.recommendationFingerprintSha256 !==
-          expectedRecommendationFingerprintSha256
+          recommendation.recommendationFingerprintSha256 !== expectedRecommendationFingerprintSha256
         )
           throw new PreparedActionJourneyError(
             'SOURCE_FINGERPRINT_MISMATCH',
@@ -459,11 +462,7 @@ export class PostgresPreparedActionStore {
       'confirmedByPrincipalId',
       300
     );
-    const acknowledgedEffect = cleanText(
-      command.acknowledgedEffect,
-      'acknowledgedEffect',
-      4000
-    );
+    const acknowledgedEffect = cleanText(command.acknowledgedEffect, 'acknowledgedEffect', 4000);
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
     const requestFingerprintSha256 = fingerprint({
       workspaceId,
@@ -826,7 +825,10 @@ export class PostgresPreparedActionStore {
   ): Promise<T> {
     try {
       return await this.database.transact(async (client) => {
-        await this.resourceLock(client, `${workspaceId}:prepared-action-idempotency:${idempotencyKey}`);
+        await this.resourceLock(
+          client,
+          `${workspaceId}:prepared-action-idempotency:${idempotencyKey}`
+        );
         const replay = await client.query(
           'SELECT command_type,request_fingerprint_sha256,result_json FROM lite_prepared_action_commands WHERE workspace_id=$1 AND idempotency_key=$2',
           [workspaceId, idempotencyKey]

@@ -1,13 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
-import {
-  parseInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   OpportunityCandidateId,
   OpportunityQualificationDecisionId,
-  PreparedActionId,
-  PreparedActionPlan as _PreparedActionPlan
+  PreparedActionId
 } from '@markorbit/contracts/product-loop';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
@@ -111,7 +107,10 @@ function planOf(value: unknown): PreparedActionPlan {
 }
 
 function mapError(error: unknown): never {
-  if (error instanceof PreparedActionJourneyError || error instanceof LiteCandidateQualificationError)
+  if (
+    error instanceof PreparedActionJourneyError ||
+    error instanceof LiteCandidateQualificationError
+  )
     throw new HttpError(
       error.status,
       error.code,
@@ -228,10 +227,7 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
           decisionBody.id,
           'qualificationDecision.id'
         ) as OpportunityQualificationDecisionId;
-        const decisionVersion = positive(
-          decisionBody.version,
-          'qualificationDecision.version'
-        );
+        const decisionVersion = positive(decisionBody.version, 'qualificationDecision.version');
         try {
           const [candidate, currentCandidate, qualificationDecision] = await Promise.all([
             options.candidateStore.findCandidate(workspaceId, candidateId, candidateVersion),
