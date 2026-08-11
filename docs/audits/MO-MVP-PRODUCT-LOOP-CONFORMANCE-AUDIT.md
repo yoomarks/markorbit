@@ -190,13 +190,13 @@ However, that learning path would currently learn mainly from the already-deep a
 
 ## 5. Five-loop conformance matrix
 
-| Beta loop | Current evidence | Audit state |
-|---|---|---|
-| Content | No real Today -> Prepared Content Action -> review/publish-package -> feedback path | `NOT_CLOSED` |
-| Opportunity | Fixture-backed list/detail and candidate-safe UX exist; no proven durable candidate -> qualification -> formal Opportunity -> work handoff loop | `NOT_CLOSED` |
-| Direct-customer application | Durable intake/commercial/Matter/lifecycle path is materially implemented | `CLOSED_FOR_CURRENT_MVP_SCOPE` |
-| Professional application | Durable review/admission/execution/provider/evidence/lifecycle path is materially implemented | `CLOSED_FOR_CURRENT_MVP_SCOPE` |
-| Capability learning | TASK 031A was approved by merge of PR #71, but runtime remains fixture/in-memory and implementation has not started | `APPROVED_NOT_STARTED` |
+| Beta loop                   | Current evidence                                                                                                                                | Audit state                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Content                     | No real Today -> Prepared Content Action -> review/publish-package -> feedback path                                                             | `NOT_CLOSED`                   |
+| Opportunity                 | Fixture-backed list/detail and candidate-safe UX exist; no proven durable candidate -> qualification -> formal Opportunity -> work handoff loop | `NOT_CLOSED`                   |
+| Direct-customer application | Durable intake/commercial/Matter/lifecycle path is materially implemented                                                                       | `CLOSED_FOR_CURRENT_MVP_SCOPE` |
+| Professional application    | Durable review/admission/execution/provider/evidence/lifecycle path is materially implemented                                                   | `CLOSED_FOR_CURRENT_MVP_SCOPE` |
+| Capability learning         | TASK 031A was approved by merge of PR #71, but runtime remains fixture/in-memory and implementation has not started                             | `APPROVED_NOT_STARTED`         |
 
 ## 6. Findings
 
