@@ -5,7 +5,10 @@ import {
   DATA_ENGINE_SOURCE_OWNER,
   type DataEngineResourceKind
 } from '@markorbit/contracts/data-engine';
-import { createDataEngineClient, DataEngineClientError } from '../src/data-engine-http.js';
+import {
+  createDataEngineClient,
+  DataEngineClientError
+} from '../src/data-engine-http.js';
 
 function envelope(resourceKind: DataEngineResourceKind, payload: unknown = {}) {
   return {
@@ -62,8 +65,7 @@ describe('Gateway Data Engine V1 client', () => {
         method: 'GET'
       },
       {
-        url:
-          'http://data-engine.test/api/v1/us/changes?after_source_rank=10&after_serial=99270000&scan_limit=50',
+        url: 'http://data-engine.test/api/v1/us/changes?after_source_rank=10&after_serial=99270000&scan_limit=50',
         method: 'GET'
       }
     ]);
@@ -81,9 +83,11 @@ describe('Gateway Data Engine V1 client', () => {
       fetchImpl
     });
 
-    await expect(client.usChanges()).rejects.toMatchObject<DataEngineClientError>({
-      code: 'DATA_ENGINE_CONTRACT_MISMATCH'
-    });
+    await expect(client.usChanges()).rejects.toMatchObject<DataEngineClientError>(
+      {
+        code: 'DATA_ENGINE_CONTRACT_MISMATCH'
+      }
+    );
   });
 
   it('fails closed when the endpoint returns the wrong resource kind', async () => {
@@ -94,7 +98,9 @@ describe('Gateway Data Engine V1 client', () => {
       fetchImpl
     });
 
-    await expect(client.usAssignments('99278031')).rejects.toMatchObject<DataEngineClientError>({
+    await expect(
+      client.usAssignments('99278031')
+    ).rejects.toMatchObject<DataEngineClientError>({
       code: 'DATA_ENGINE_CONTRACT_MISMATCH'
     });
   });
@@ -108,7 +114,9 @@ describe('Gateway Data Engine V1 client', () => {
       fetchImpl
     });
 
-    await expect(client.usCase('99278031')).rejects.toMatchObject<DataEngineClientError>({
+    await expect(
+      client.usCase('99278031')
+    ).rejects.toMatchObject<DataEngineClientError>({
       code: 'DATA_ENGINE_UNAVAILABLE'
     });
   });
