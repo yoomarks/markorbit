@@ -118,10 +118,7 @@ export function createMarkRegFormalOpportunityRoutes(
             ...(body.proposedCustomerIntent
               ? { proposedCustomerIntent: body.proposedCustomerIntent as never }
               : {}),
-            promotedByPrincipalId: text(
-              body.promotedByPrincipalId,
-              'promotedByPrincipalId'
-            ) as never,
+            promotedByPrincipalId: text(body.promotedByPrincipalId, 'promotedByPrincipalId'),
             idempotencyKey: keyOf(request)
           });
           return json(201, { formalOpportunity: opportunity });
@@ -149,10 +146,7 @@ export function createMarkRegFormalOpportunityRoutes(
             ),
             relationshipModel: body.relationshipModel as never,
             customerIntent: body.customerIntent as never,
-            confirmedByPrincipalId: text(
-              body.confirmedByPrincipalId,
-              'confirmedByPrincipalId'
-            ) as never,
+            confirmedByPrincipalId: text(body.confirmedByPrincipalId, 'confirmedByPrincipalId'),
             idempotencyKey: keyOf(request)
           });
           return json(200, disposition);
