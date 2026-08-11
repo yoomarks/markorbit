@@ -2,11 +2,12 @@
 
 - **Planning task:** `MO-MVP-TASK-031B`
 - **Stage:** `MO-MVP-PRODUCT-LOOP-CLOSURE`
-- **Status:** `PROPOSED_FOR_OWNER_APPROVAL`
+- **Status:** `APPROVED_FOR_IMPLEMENTATION`
+- **Owner approval:** PR #73 merged as `f0afbcd7f37cfe4524793a30e4c4fc84dcc3fb13`
 - **Audited baseline:** `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`
 - **Direction:** `REAL_LITE_TODAY_TO_WORK_AND_FEEDBACK_LOOP`
 - **Precedence:** after completed M1–M5; before M6-WP-01
-- **Runtime implementation in this planning task:** none
+- **Runtime implementation in planning task:** none
 
 ## 1. Why this stage exists
 
@@ -168,7 +169,7 @@ No candidate may silently contact a customer, create a MarkReg Order/Matter, app
 
 Formal Opportunity is created only after explicit qualification/promotion through its owning boundary.
 
-WP-01 must determine the smallest correct Product/Owning-Service placement from current repository and Canon evidence. It must not place organization-specific commercial truth into Core merely for convenience and must not create a new shared service unless the actual Product behavior requires it.
+WP-01 must determine the smallest correct Product/Owning-Service placement from current repository and Canon evidence rather than inventing a service from logical diagrams. It must not place organization-specific commercial truth into Core merely for convenience and must not create a new shared service unless the actual Product behavior requires it.
 
 ## 6. Ownership and reuse lock
 
@@ -376,7 +377,7 @@ This stage does not implement:
 
 ## 11. M6 sequencing and approval state
 
-PR #71 merged as `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`. TASK 031A and the Milestone 6 direction are therefore **approved**, even though some proposal-status text in the planning documents was not reconciled after merge.
+PR #71 merged as `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`. TASK 031A and the Milestone 6 direction are therefore **approved**, even though some proposal-status text in the M6 planning documents was not reconciled after merge.
 
 This plan does not revoke that approval.
 
@@ -390,15 +391,15 @@ M6 runtime start
 = sequenced after Product Loop Closure GO
 ```
 
-The stale proposal-status wording should be reconciled without rewriting the approved M6 semantic scope.
+The stale M6 proposal-status wording should be reconciled without rewriting the approved M6 semantic scope.
 
-## 12. Owner approval consequence
+## 12. Accepted owner approval consequence
 
-Merge of the TASK 031B planning/audit PR means the owner accepts:
+Merge of PR #73 means the owner accepted:
 
 - `RESEQUENCE_BEFORE_M6_WP01`;
 - the Product Loop Closure stage as the immediate next implementation stage;
 - the Lite Today-driven Product mainline as the sequencing constraint;
 - `PLC-WP-01` as the next authorized implementation task.
 
-Merge does **not** itself authorize or create runtime Product state, publication, outreach, Opportunity promotion, Order/Matter creation, Payment/Invoice, provider appointment, external filing, Official Truth, Capability verification, Canon mutation, deployment, release or production GA.
+That merge did **not** itself authorize or create runtime Product state, publication, outreach, Opportunity promotion, Order/Matter creation, Payment/Invoice, provider appointment, external filing, Official Truth, Capability verification, Canon mutation, deployment, release or production GA.
