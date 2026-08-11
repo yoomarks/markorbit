@@ -1,10 +1,15 @@
 import type {
   LiteTodaySnapshot,
   PreparedActionJourney,
+  ProductLoopUseFeedback,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
+
+export type TodayProductLoopSnapshot = LiteTodaySnapshot & {
+  recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+};
 
 export class TodayHttpError extends Error {
   constructor(
@@ -19,7 +24,7 @@ export class TodayHttpError extends Error {
 }
 
 export interface TodayClient {
-  loadToday(): Promise<LiteTodaySnapshot>;
+  loadToday(): Promise<TodayProductLoopSnapshot>;
   loadPreparedAction(preparedActionId: string): Promise<PreparedActionJourney>;
   prepareContent(recommendation: Readonly<TodayRecommendation>): Promise<PreparedActionJourney>;
   confirm(journey: Readonly<PreparedActionJourney>): Promise<PreparedActionJourney>;
@@ -92,7 +97,7 @@ async function request<T>(
 
 export function createTodayClient(workspaceId: string): TodayClient {
   return {
-    loadToday: () => request<LiteTodaySnapshot>('/api/lite/today', workspaceId),
+    loadToday: () => request<TodayProductLoopSnapshot>('/api/lite/today', workspaceId),
     loadPreparedAction: (preparedActionId) =>
       request<PreparedActionJourney>(
         `/api/lite/prepared-actions/${encodeURIComponent(preparedActionId)}`,
