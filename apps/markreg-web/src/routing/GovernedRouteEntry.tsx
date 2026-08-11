@@ -1,5 +1,5 @@
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createApiClient } from '../api/client.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
@@ -146,7 +146,7 @@ function GenericGovernedRouteEntry({
         })
       );
   }, [attempt, client, parsed]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (state.kind === 'ERROR' || state.kind === 'VERSION_MISMATCH') heading.current?.focus();
   }, [state]);
   if (state.kind === 'LOADING')
