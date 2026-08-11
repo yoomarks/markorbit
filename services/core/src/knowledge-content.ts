@@ -81,7 +81,9 @@ const rfc3339 = (value: unknown): value is string =>
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u.test(value) &&
   !Number.isNaN(Date.parse(value));
 
-export function parseReadyPackageContentExportV1(value: unknown): ReadyPackageContentExportV1 | null {
+export function parseReadyPackageContentExportV1(
+  value: unknown
+): ReadyPackageContentExportV1 | null {
   if (
     !record(value) ||
     !exactKeys(value, [
