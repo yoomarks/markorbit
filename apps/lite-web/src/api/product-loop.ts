@@ -65,9 +65,14 @@ async function request<T>(
         : { body: JSON.stringify({ workspaceId, ...(body as Record<string, unknown>) }) })
     });
   } catch (cause) {
-    throw new TodayHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Lite Today is temporarily unavailable.', {
-      cause: cause instanceof Error ? cause.message : 'network failure'
-    });
+    throw new TodayHttpError(
+      503,
+      'DOWNSTREAM_UNAVAILABLE',
+      'Lite Today is temporarily unavailable.',
+      {
+        cause: cause instanceof Error ? cause.message : 'network failure'
+      }
+    );
   }
   const value = (await response.json().catch(() => ({}))) as T & {
     code?: string;
@@ -99,8 +104,7 @@ export function createTodayClient(workspaceId: string): TodayClient {
         'POST',
         {
           recommendationVersion: recommendation.version,
-          expectedRecommendationFingerprintSha256:
-            recommendation.recommendationFingerprintSha256,
+          expectedRecommendationFingerprintSha256: recommendation.recommendationFingerprintSha256,
           plan: {
             kind: 'PREPARE_CONTENT',
             title: recommendation.title,

@@ -43,7 +43,8 @@ const prepared: PreparedActionJourney = {
     recommendation: { id: recommendation.todayRecommendationId, version: 1 },
     recommendationFingerprintSha256: recommendation.recommendationFingerprintSha256,
     kind: 'PREPARE_CONTENT',
-    summary: 'Prepare a bounded Lite content-preparation line for the reviewed renewal explanation.',
+    summary:
+      'Prepare a bounded Lite content-preparation line for the reviewed renewal explanation.',
     confirmationEffect:
       'Create one Lite Content Opportunity from this exact Recommendation. No external publication, customer contact, Order, Matter or filing will occur.',
     handoffTarget: 'LITE_CONTENT_PREPARATION',
@@ -142,7 +143,11 @@ export const PermissionDenied: Story = {
     client: {
       ...clientFor(snapshot()),
       loadToday: async () => {
-        throw new TodayHttpError(403, 'PERMISSION_DENIED', 'workspace:read permission is required.');
+        throw new TodayHttpError(
+          403,
+          'PERMISSION_DENIED',
+          'workspace:read permission is required.'
+        );
       }
     }
   }
@@ -153,7 +158,11 @@ export const DependencyError: Story = {
     client: {
       ...clientFor(snapshot()),
       loadToday: async () => {
-        throw new TodayHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Lite Today is temporarily unavailable.');
+        throw new TodayHttpError(
+          503,
+          'DOWNSTREAM_UNAVAILABLE',
+          'Lite Today is temporarily unavailable.'
+        );
       }
     }
   }

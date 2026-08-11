@@ -27,6 +27,7 @@ import './lite.css';
 import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
 import { ExecutionReleaseView } from './features/execution-release/ExecutionRelease.js';
 import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
+import { TodayWorkspace } from './features/today/TodayWorkspace.js';
 
 const nav = [
   'Today',
@@ -546,16 +547,20 @@ export function LiteApp({
       topBar={
         <TopBar
           context={
-            surface === 'matters'
+            surface === 'matters' || surface === 'today'
               ? `Workspace · ${activeWorkspaceId || 'not selected'}`
               : 'Northstar IP · Fixture workspace'
           }
-          actions={<Badge>{surface === 'matters' ? 'Authenticated' : 'Not live data'}</Badge>}
+          actions={
+            <Badge>
+              {surface === 'matters' || surface === 'today' ? 'Authenticated' : 'Not live data'}
+            </Badge>
+          }
         />
       }
     >
       <div className="lite-workspace">
-        {surface !== 'matters' && <FixtureBanner />}
+        {surface !== 'matters' && surface !== 'today' && <FixtureBanner />}
         {(surface === 'customers' ||
           surface === 'professional-review' ||
           surface === 'execution-release') && (
@@ -590,31 +595,14 @@ export function LiteApp({
             />
           )
         ) : surface === 'today' ? (
-          <>
-            <PageHeader
-              title="Today"
-              description="A calm view of the work that needs professional attention."
+          activeWorkspaceId ? (
+            <TodayWorkspace workspaceId={activeWorkspaceId} />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load durable Today Recommendations."
             />
-            <div className="mo-grid">
-              <Card>
-                <h2>Pending attention</h2>
-                <DataList
-                  items={[
-                    { label: 'Client intake review', value: '4', status: 'Due today' },
-                    { label: 'Draft publish packages', value: '2', status: 'Awaiting approval' }
-                  ]}
-                />
-              </Card>
-              <Card>
-                <h2>Opportunities</h2>
-                <DataList items={[{ label: 'Evidence observations', value: '3' }]} />
-              </Card>
-              <Card>
-                <h2>Work</h2>
-                <DataList items={[{ label: 'Customers needing review', value: '1' }]} />
-              </Card>
-            </div>
-          </>
+          )
         ) : surface === 'customers' ? (
           <Customers
             key={initialCustomerId}

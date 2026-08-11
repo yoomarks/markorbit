@@ -16,6 +16,7 @@ import {
   StatusBadge
 } from '@markorbit/ui';
 import { createTodayClient, TodayHttpError, type TodayClient } from '../../api/product-loop.js';
+import './today.css';
 
 export interface TodayWorkspaceProps {
   workspaceId: string;
@@ -77,13 +78,13 @@ function RecommendationList({
             type="button"
             role="listitem"
             className={`today-recommendation ${
-              selectedId === recommendation.todayRecommendationId ? 'today-recommendation--active' : ''
+              selectedId === recommendation.todayRecommendationId
+                ? 'today-recommendation--active'
+                : ''
             }`}
             key={recommendation.todayRecommendationId}
             onClick={() => onSelect(recommendation.todayRecommendationId)}
-            aria-current={
-              selectedId === recommendation.todayRecommendationId ? 'true' : undefined
-            }
+            aria-current={selectedId === recommendation.todayRecommendationId ? 'true' : undefined}
           >
             <span className="today-recommendation__meta">
               <span>{kindLabel(recommendation.kind)}</span>
@@ -118,7 +119,8 @@ function Provenance({ recommendation }: { recommendation: TodayRecommendation })
             </strong>
             <span>{source.sourceId}</span>
             <small>
-              version {String(source.sourceVersion)} · observed {new Date(source.observedAt).toLocaleString()}
+              version {String(source.sourceVersion)} · observed{' '}
+              {new Date(source.observedAt).toLocaleString()}
             </small>
             <code title={source.sourceFingerprintSha256}>
               {source.sourceFingerprintSha256.slice(0, 16)}…
@@ -164,8 +166,8 @@ function PreparedActionPanel({
         ) : (
           <Alert tone="info" title="Exact handoff context required">
             This Recommendation needs structured owner context before a Prepared Action can be
-            created. Lite will not infer customer intent, relationship model, qualification evidence,
-            or a Formal Opportunity from display text.
+            created. Lite will not infer customer intent, relationship model, qualification
+            evidence, or a Formal Opportunity from display text.
           </Alert>
         )}
       </Card>
@@ -219,8 +221,8 @@ function PreparedActionPanel({
       ) : journey.handoffState === 'HANDOFF_PENDING' ? (
         <>
           <Alert tone="warning" title="Confirmed · owner handoff pending">
-            Your confirmation is durable. The owner handoff did not complete yet; retrying reuses the
-            same confirmation and idempotency boundary.
+            Your confirmation is durable. The owner handoff did not complete yet; retrying reuses
+            the same confirmation and idempotency boundary.
           </Alert>
           <Button onClick={onConfirm} disabled={busy !== ''}>
             {busy === 'confirm' ? 'Retrying…' : 'Retry owner handoff'}
@@ -234,8 +236,8 @@ function PreparedActionPanel({
             {String(journey.handoffResult?.ownerRecord.version)}.
           </p>
           <p>
-            No automatic publication, customer outreach, Order, Matter, payment, provider appointment,
-            filing or Official Truth was created by this handoff.
+            No automatic publication, customer outreach, Order, Matter, payment, provider
+            appointment, filing or Official Truth was created by this handoff.
           </p>
         </Alert>
       )}
@@ -280,8 +282,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
   useEffect(() => {
     if (!snapshot?.items.length) return;
     const requested = snapshot.items.find(
-      ({ recommendation }) =>
-        recommendation.todayRecommendationId === selection.recommendationId
+      ({ recommendation }) => recommendation.todayRecommendationId === selection.recommendationId
     );
     if (!requested) {
       const first = snapshot.items[0]!;
@@ -295,9 +296,10 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
   const item = snapshot?.items.find(
     ({ recommendation }) => recommendation.todayRecommendationId === selection.recommendationId
   );
-  const journey = item?.preparedActions.find(
-    ({ preparedAction }) => preparedAction.preparedActionId === selection.preparedActionId
-  ) ?? item?.preparedActions[0];
+  const journey =
+    item?.preparedActions.find(
+      ({ preparedAction }) => preparedAction.preparedActionId === selection.preparedActionId
+    ) ?? item?.preparedActions[0];
 
   const selectRecommendation = (recommendationId: string) => {
     lastSelectedButton.current = recommendationId;
@@ -342,7 +344,10 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
     try {
       const result = await client.confirm(journey);
       await reload();
-      setSelection(item!.recommendation.todayRecommendationId, result.preparedAction.preparedActionId);
+      setSelection(
+        item!.recommendation.todayRecommendationId,
+        result.preparedAction.preparedActionId
+      );
       setCurrentSelection({
         recommendationId: item!.recommendation.todayRecommendationId,
         preparedActionId: result.preparedAction.preparedActionId
@@ -393,7 +398,9 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
       {error ? (
         <Alert
           tone={error.status === 409 || error.status === 422 ? 'warning' : 'danger'}
-          title={error.code === 'DEPENDENCY_UNAVAILABLE' ? 'Confirmed · handoff pending' : error.code}
+          title={
+            error.code === 'DEPENDENCY_UNAVAILABLE' ? 'Confirmed · handoff pending' : error.code
+          }
         >
           {error.message}
         </Alert>
