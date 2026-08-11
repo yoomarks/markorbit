@@ -162,7 +162,7 @@ export function parseReadyPackageContentExportV1(
   )
     return null;
 
-  return structuredClone(value) as ReadyPackageContentExportV1;
+  return structuredClone(value) as unknown as ReadyPackageContentExportV1;
 }
 
 export const serializeReadyPackageContentExportV1 = (value: ReadyPackageContentExportV1) =>
