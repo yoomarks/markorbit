@@ -151,6 +151,8 @@ The dedicated PostgreSQL suite proves:
 - dependency failure is distinct from persistence state;
 - Formal Opportunity creation and handoff never imply Intake, Order, Matter, Payment, filing, appointment or customer outreach.
 
+Historical reliability suites that enumerate the **current** MarkReg-owned migration set are extended additively for `0041` and its three owner-local relations. Frozen milestone behavior and evidence semantics are not rewritten.
+
 ## 11. Explicit non-goals
 
 WP-04 does not add:
