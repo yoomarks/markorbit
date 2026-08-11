@@ -28,9 +28,10 @@ export const serviceManifest = Object.freeze({
 
 const databaseUrl = process.env.LITE_DATABASE_URL ?? process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('LITE_DATABASE_URL is required for the durable Lite runtime.');
-const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
-if (!internalServiceSecret)
+const configuredInternalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
+if (!configuredInternalServiceSecret)
   throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable Lite runtime.');
+const internalServiceSecret: string = configuredInternalServiceSecret;
 const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
 
 const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
@@ -160,7 +161,8 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
       idempotencyKey,
       {
         formalOpportunityVersion: plan.formalOpportunity.version,
-        expectedFormalOpportunityFingerprintSha256: plan.expectedFormalOpportunityFingerprintSha256,
+        expectedFormalOpportunityFingerprintSha256:
+          plan.expectedFormalOpportunityFingerprintSha256,
         relationshipModel: plan.relationshipModel,
         customerIntent: plan.customerIntent,
         confirmedByPrincipalId: confirmation.confirmedByPrincipalId
