@@ -1,0 +1,144 @@
+{
+  "stage": "MO-MVP-PRODUCT-LOOP-CLOSURE",
+  "planningTask": "MO-MVP-TASK-031B",
+  "status": "PROPOSED_FOR_OWNER_APPROVAL",
+  "auditedBaseline": "ce5e845ee8350341d478ad5372ac1ccbaffe4fb4",
+  "direction": "REAL_LITE_TODAY_TO_WORK_AND_FEEDBACK_LOOP",
+  "precedence": {
+    "after": "M1-M5_GOVERNED_EXECUTION_BACKBONE",
+    "before": "M6-WP-01",
+    "m6ApprovalRevoked": false,
+    "m6RuntimeStartDeferredUntilProductLoopGo": true
+  },
+  "primaryUser": [
+    "independent trademark professional",
+    "small trademark agency practitioner or team member"
+  ],
+  "jobToBeDone": "Show the practitioner what matters now, explain why it matters, prepare the useful next action, require explicit confirmation, hand it to the correct Product or governed Workflow, and return outcome feedback without requiring the user to understand platform architecture.",
+  "liteMainline": [
+    "TODAY",
+    "RECOMMENDATION",
+    "PREPARED_ACTION",
+    "USER_CONFIRMATION",
+    "PRODUCT_OR_WORKFLOW_HANDOFF",
+    "OUTCOME_OR_FEEDBACK"
+  ],
+  "requiredContentOpportunityScenario": [
+    "trusted trademark, client or work context",
+    "traceable source",
+    "Content Opportunity",
+    "Content draft or bounded Artifact preparation",
+    "Human Review",
+    "prepared PublishPackage",
+    "manual publication/use feedback or business signal",
+    "Lead or Opportunity Candidate",
+    "explicit Qualification",
+    "Formal Opportunity",
+    "MarkReg or professional-work handoff",
+    "existing Matter/Execution/outcome path"
+  ],
+  "ownershipLocks": {
+    "core": "User, Workspace, Membership, Session, Principal and permission truth",
+    "execution": "governed review, approval and protected-action coordination when required",
+    "markreg": "existing trademark application, Order, Matter and lifecycle formal state",
+    "mgsn": "provider and network execution state where applicable",
+    "gateway": "authenticated browser/API transport and composition",
+    "lite": "Product experience and Product-owned state that has not justified shared extraction",
+    "crossServiceSql": false,
+    "genericWorkplaceService": false,
+    "genericBrainValueFactoryIntelligenceService": false,
+    "universalArtifactService": false
+  },
+  "semanticLocks": [
+    "Recommendation != authorization",
+    "Prepared Action != executed action",
+    "PublishPackage != Published",
+    "Opportunity Candidate != Formal Opportunity",
+    "Confirmation != protected external action",
+    "Formal Opportunity != Order",
+    "Order != Matter != Payment != Invoice != Filing",
+    "Provider Return != Official Truth",
+    "feedback evidence != Capability verification"
+  ],
+  "workPackages": [
+    {
+      "id": "PLC-WP-01",
+      "name": "Product mainline, contracts and ownership boundary",
+      "dependencies": ["TASK 031B approved"],
+      "runtimeMutation": false
+    },
+    {
+      "id": "PLC-WP-02",
+      "name": "Durable Product-owned Content preparation state",
+      "dependencies": ["PLC-WP-01"]
+    },
+    {
+      "id": "PLC-WP-03",
+      "name": "Durable candidate and qualification path",
+      "dependencies": ["PLC-WP-01"]
+    },
+    {
+      "id": "PLC-WP-04",
+      "name": "Formal Opportunity to existing work handoff",
+      "dependencies": ["PLC-WP-03"]
+    },
+    {
+      "id": "PLC-WP-05",
+      "name": "Lite Today to Prepared Action real-runtime journey",
+      "dependencies": ["PLC-WP-02", "PLC-WP-03", "PLC-WP-04"]
+    },
+    {
+      "id": "PLC-WP-06",
+      "name": "Feedback and Product-loop observability",
+      "dependencies": ["PLC-WP-02", "PLC-WP-03", "PLC-WP-04", "PLC-WP-05"]
+    },
+    {
+      "id": "PLC-WP-07",
+      "name": "Reliability and browser matrix",
+      "dependencies": ["PLC-WP-01", "PLC-WP-02", "PLC-WP-03", "PLC-WP-04", "PLC-WP-05", "PLC-WP-06"]
+    },
+    {
+      "id": "PLC-WP-08",
+      "name": "Independent Product-loop and authority audit",
+      "dependencies": ["PLC-WP-07"]
+    }
+  ],
+  "goGate": [
+    "Today is the organizing Lite surface",
+    "real Recommendation to Prepared Action to Confirmation to Handoff path",
+    "content preparation retains exact provenance and Human Review",
+    "PublishPackage is not treated as Published",
+    "durable Lead or Opportunity Candidate exists",
+    "explicit Qualification precedes Formal Opportunity",
+    "Formal Opportunity hands into existing professional work without duplicating the backbone",
+    "outcome or feedback returns to Product context",
+    "Workspace and organization isolation holds",
+    "restart, replay, idempotency and concurrency hold",
+    "desktop and mobile real-runtime path has no fixture interception",
+    "M2-M5 regression gates pass",
+    "independent authority audit returns GO",
+    "no speculative shared extraction was introduced"
+  ],
+  "nonGoals": [
+    "automatic social or media publication",
+    "bulk outreach or autonomous customer communication",
+    "CRM replacement",
+    "generic marketing automation engine",
+    "universal Artifact platform",
+    "universal Workplace service",
+    "physical Brain, Value Factory or Intelligence subsystem created only from logical architecture names",
+    "public Opportunity ranking",
+    "automatic provider appointment",
+    "Payment, Invoice or settlement",
+    "external Filing Submission or Official Truth",
+    "M6 Capability Ledger, Reflection, Profile or Twin runtime",
+    "automatic Capability verification or Canon mutation",
+    "production GA claim"
+  ],
+  "ownerApprovalConsequence": {
+    "acceptsResequencingBeforeM6Wp01": true,
+    "authorizesNextTask": "PLC-WP-01",
+    "createsRuntimeState": false,
+    "authorizesProtectedExternalAction": false
+  }
+}
