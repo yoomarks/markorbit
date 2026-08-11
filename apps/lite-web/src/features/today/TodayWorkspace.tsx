@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   PreparedActionJourney,
+  ProductLoopFeedbackOutcome,
   ProductLoopUseFeedback,
+  PublishPackage,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 import {
@@ -138,6 +140,83 @@ function Provenance({ recommendation }: { recommendation: TodayRecommendation })
             </code>
           </li>
         ))}
+      </ul>
+    </Card>
+  );
+}
+
+function PendingFeedback({
+  packages,
+  busyPackageId,
+  onRecord
+}: {
+  packages: ReadonlyArray<Readonly<PublishPackage>>;
+  busyPackageId: string;
+  onRecord: (publishPackage: Readonly<PublishPackage>, outcome: ProductLoopFeedbackOutcome) => void;
+}) {
+  if (!packages.length) return null;
+  return (
+    <Card>
+      <div className="lite-row">
+        <div>
+          <h2>Outcome feedback needed</h2>
+          <p className="today-muted">
+            Reviewed PublishPackages waiting for your after-the-fact usage report.
+          </p>
+        </div>
+        <Badge>{packages.length}</Badge>
+      </div>
+      <Alert tone="warning" title="Reporting does not publish anything">
+        Choose only what already happened outside MarkOrbit. This records your report; it does not
+        execute an external action or independently verify the result.
+      </Alert>
+      <ul className="today-feedback-pending-list">
+        {packages.map((publishPackage) => {
+          const busy = busyPackageId === publishPackage.publishPackageId;
+          return (
+            <li key={publishPackage.publishPackageId}>
+              <div>
+                <strong>{publishPackage.title}</strong>
+                <span className="today-muted">
+                  {publishPackage.publishPackageId} · v{publishPackage.version}
+                </span>
+              </div>
+              <div
+                className="today-feedback-actions"
+                aria-label={`Report outcome for ${publishPackage.title}`}
+              >
+                <Button
+                  variant="secondary"
+                  disabled={Boolean(busyPackageId)}
+                  onClick={() => onRecord(publishPackage, 'USER_REPORTED_PUBLISHED')}
+                >
+                  {busy ? 'Saving…' : 'Published'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={Boolean(busyPackageId)}
+                  onClick={() => onRecord(publishPackage, 'USER_REPORTED_DELIVERED')}
+                >
+                  Delivered
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={Boolean(busyPackageId)}
+                  onClick={() => onRecord(publishPackage, 'USER_REPORTED_USED')}
+                >
+                  Used
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={Boolean(busyPackageId)}
+                  onClick={() => onRecord(publishPackage, 'NOT_USED')}
+                >
+                  Not used
+                </Button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );
@@ -304,6 +383,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
   const [snapshot, setSnapshot] = useState<TodayProductLoopSnapshot>();
   const [error, setError] = useState<TodayHttpError>();
   const [busy, setBusy] = useState<'prepare' | 'confirm' | ''>('');
+  const [feedbackBusyPackageId, setFeedbackBusyPackageId] = useState('');
   const [selection, setCurrentSelection] = useState(querySelection);
   const lastSelectedButton = useRef<string>();
 
@@ -415,6 +495,30 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
     }
   };
 
+  const recordFeedback = async (
+    publishPackage: Readonly<PublishPackage>,
+    outcome: ProductLoopFeedbackOutcome
+  ) => {
+    setFeedbackBusyPackageId(publishPackage.publishPackageId);
+    setError(undefined);
+    try {
+      await client.recordUseFeedback(publishPackage, outcome);
+      await reload();
+    } catch (cause) {
+      setError(
+        cause instanceof TodayHttpError
+          ? cause
+          : new TodayHttpError(
+              503,
+              'FEEDBACK_RECORD_FAILED',
+              'Outcome feedback could not be saved.'
+            )
+      );
+    } finally {
+      setFeedbackBusyPackageId('');
+    }
+  };
+
   if (!snapshot && !error) return <LoadingState label="Loading real Workspace recommendations" />;
   if (!snapshot && error) {
     const permission = error.status === 401 || error.status === 403;
@@ -500,7 +604,14 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
         </div>
       )}
 
-      <FeedbackEvidence feedback={snapshot.recentFeedback} />
+      <div className="today-feedback-stack">
+        <PendingFeedback
+          packages={snapshot.feedbackPendingPackages}
+          busyPackageId={feedbackBusyPackageId}
+          onRecord={(publishPackage, outcome) => void recordFeedback(publishPackage, outcome)}
+        />
+        <FeedbackEvidence feedback={snapshot.recentFeedback} />
+      </div>
     </section>
   );
 }

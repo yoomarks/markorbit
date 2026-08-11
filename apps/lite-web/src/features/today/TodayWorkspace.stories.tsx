@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import type {
   PreparedActionJourney,
   ProductLoopUseFeedback,
+  PublishPackage,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 import {
@@ -94,6 +95,20 @@ const completed: PreparedActionJourney = {
     }
   }
 };
+const publishPackage: PublishPackage = {
+  schemaVersion: 1,
+  publishPackageId: 'publish-package_story',
+  workspaceId,
+  version: 1,
+  contentDraft: { id: 'content-draft_story', version: 2 },
+  reviewDecision: { id: 'content-review-decision_story', version: 1 },
+  title: 'US renewal window explainer',
+  body: 'Reviewed content ready for manual external use.',
+  sourceReferences: [source],
+  publishPackageFingerprintSha256: 'd'.repeat(64),
+  publishedExternally: false,
+  createdAt: '2026-08-11T08:13:00.000Z'
+};
 const feedback: ProductLoopUseFeedback = {
   schemaVersion: 1,
   productLoopFeedbackId: 'product-loop-feedback_story',
@@ -111,7 +126,8 @@ const feedback: ProductLoopUseFeedback = {
 function snapshot(
   actions: PreparedActionJourney[] = [],
   partial = false,
-  recentFeedback: ProductLoopUseFeedback[] = []
+  recentFeedback: ProductLoopUseFeedback[] = [],
+  feedbackPendingPackages: PublishPackage[] = []
 ): TodayProductLoopSnapshot {
   return {
     schemaVersion: 1,
@@ -120,7 +136,8 @@ function snapshot(
     items: [{ recommendation, preparedActions: actions }],
     partial,
     warnings: partial ? ['Knowledge refresh is delayed; exact stored provenance is shown.'] : [],
-    recentFeedback
+    recentFeedback,
+    feedbackPendingPackages
   };
 }
 
@@ -129,7 +146,8 @@ function clientFor(value: TodayProductLoopSnapshot): TodayClient {
     loadToday: () => Promise.resolve(value),
     loadPreparedAction: () => Promise.resolve(prepared),
     prepareContent: () => Promise.resolve(prepared),
-    confirm: () => Promise.resolve(completed)
+    confirm: () => Promise.resolve(completed),
+    recordUseFeedback: (_publishPackage, outcome) => Promise.resolve({ ...feedback, outcome })
   };
 }
 
@@ -149,6 +167,9 @@ export const PreparedActionReview: Story = {
 };
 export const HandoffSuccess: Story = {
   args: { workspaceId, client: clientFor(snapshot([completed])) }
+};
+export const FeedbackNeeded: Story = {
+  args: { workspaceId, client: clientFor(snapshot([completed], false, [], [publishPackage])) }
 };
 export const FeedbackReturnedToToday: Story = {
   args: { workspaceId, client: clientFor(snapshot([completed], false, [feedback])) }
@@ -191,7 +212,10 @@ export const DependencyError: Story = {
   }
 };
 export const Mobile390: Story = {
-  args: { workspaceId, client: clientFor(snapshot([prepared], false, [feedback])) },
+  args: {
+    workspaceId,
+    client: clientFor(snapshot([prepared], false, [feedback], [publishPackage]))
+  },
   parameters: {
     viewport: {
       defaultViewport: 'mobile1',

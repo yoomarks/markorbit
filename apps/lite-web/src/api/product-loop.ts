@@ -146,8 +146,7 @@ export function createTodayClient(workspaceId: string): TodayClient {
         'POST',
         {
           publishPackageVersion: publishPackage.version,
-          expectedPublishPackageFingerprintSha256:
-            publishPackage.publishPackageFingerprintSha256,
+          expectedPublishPackageFingerprintSha256: publishPackage.publishPackageFingerprintSha256,
           outcome
         },
         `feedback:${publishPackage.publishPackageId}:${publishPackage.version}`
