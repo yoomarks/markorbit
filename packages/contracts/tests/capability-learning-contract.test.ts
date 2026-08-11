@@ -39,31 +39,34 @@ describe('M6-WP-01 capability learning contracts', () => {
     }
   });
 
-  it('keeps runtime definitions projected from accepted Canon rather than work evidence or AI', () => {
-    const definition: RuntimeCapabilityDefinition = {
-      schemaVersion: 1,
-      runtimeCapabilityDefinitionId: 'runtime-capability_tm-application',
-      version: 1,
-      capabilityId: 'trademark-application',
-      capabilityVersion: '1.0.0',
-      title: 'Trademark application',
-      description: 'Accepted Canon projection for runtime binding.',
-      lineage: { domainId: 'trademark', capabilityId: 'trademark-application' },
-      canonReference: {
-        canonId: 'capability-canon',
-        canonVersion: '2026-08-12',
-        sourceFingerprintSha256: 'a'.repeat(64)
-      },
-      acceptedCanonProjection: true,
-      createdFromWorkEvidence: false,
-      createdFromAiOutput: false,
-      createdAt: '2026-08-12T00:00:00.000Z'
-    };
+  it(
+    'keeps runtime definitions projected from accepted Canon rather than work evidence or AI',
+    () => {
+      const definition: RuntimeCapabilityDefinition = {
+        schemaVersion: 1,
+        runtimeCapabilityDefinitionId: 'runtime-capability_tm-application',
+        version: 1,
+        capabilityId: 'trademark-application',
+        capabilityVersion: '1.0.0',
+        title: 'Trademark application',
+        description: 'Accepted Canon projection for runtime binding.',
+        lineage: { domainId: 'trademark', capabilityId: 'trademark-application' },
+        canonReference: {
+          canonId: 'capability-canon',
+          canonVersion: '2026-08-12',
+          sourceFingerprintSha256: 'a'.repeat(64)
+        },
+        acceptedCanonProjection: true,
+        createdFromWorkEvidence: false,
+        createdFromAiOutput: false,
+        createdAt: '2026-08-12T00:00:00.000Z'
+      };
 
-    expect(definition.acceptedCanonProjection).toBe(true);
-    expect(definition.createdFromWorkEvidence).toBe(false);
-    expect(definition.createdFromAiOutput).toBe(false);
-  });
+      expect(definition.acceptedCanonProjection).toBe(true);
+      expect(definition.createdFromWorkEvidence).toBe(false);
+      expect(definition.createdFromAiOutput).toBe(false);
+    }
+  );
 
   it('keeps private profile and twin free of verification, scores and execution authority', () => {
     const candidate: ReflectionCandidate = {
