@@ -21,11 +21,7 @@ const integration = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 const capabilityMigrations = () =>
-  loadMigrationsForOwner(
-    migrationsDirectory,
-    migrationOwners,
-    '@markorbit/capability-engine'
-  );
+  loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/capability-engine');
 const config = () =>
   parseDatabaseConfig({
     NODE_ENV: 'test',
@@ -123,7 +119,7 @@ integration('M6-WP-02 PostgreSQL runtime Capability Registry', () => {
     expect(newKey.replayed).toBe(true);
     expect(sameKey.definition).toEqual(first.definition);
     expect(newKey.definition).toEqual(first.definition);
-    expect((await store.listVersions(first.definition.capabilityId))).toHaveLength(1);
+    expect(await store.listVersions(first.definition.capabilityId)).toHaveLength(1);
   });
 
   it('fails closed when the same Canon identity/version changes payload', async () => {
@@ -151,10 +147,9 @@ integration('M6-WP-02 PostgreSQL runtime Capability Registry', () => {
       first.definition.runtimeCapabilityDefinitionId
     );
     expect(second.definition.version).toBe(2);
-    expect((await store.listVersions(first.definition.capabilityId)).map((item) => item.version)).toEqual([
-      1,
-      2
-    ]);
+    expect(
+      (await store.listVersions(first.definition.capabilityId)).map((item) => item.version)
+    ).toEqual([1, 2]);
   });
 
   it('survives database reopen with exact version lineage intact', async () => {
@@ -166,9 +161,9 @@ integration('M6-WP-02 PostgreSQL runtime Capability Registry', () => {
     database = new ManagedDatabase(config());
     await database.start();
     const reopened = registry();
-    expect(
-      await reopened.findVersion(first.definition.runtimeCapabilityDefinitionId, 1)
-    ).toEqual(first.definition);
+    expect(await reopened.findVersion(first.definition.runtimeCapabilityDefinitionId, 1)).toEqual(
+      first.definition
+    );
     expect(
       (
         await reopened.importAccepted({
@@ -194,13 +189,15 @@ integration('M6-WP-02 PostgreSQL runtime Capability Registry', () => {
     expect(rejected?.status === 'rejected' ? rejected.reason : undefined).toMatchObject({
       code: 'CANON_VERSION_CONFLICT'
     });
-    expect((await store.listVersions('trademark-application-recommendation'))).toHaveLength(1);
+    expect(await store.listVersions('trademark-application-recommendation')).toHaveLength(1);
   });
 
   it('has no Workspace column in global accepted runtime definition truth', async () => {
-    const columns = await database.getPool().query<{ column_name: string }>(
-      "SELECT column_name FROM information_schema.columns WHERE table_name='capability_runtime_definitions'"
-    );
+    const columns = await database
+      .getPool()
+      .query<{ column_name: string }>(
+        "SELECT column_name FROM information_schema.columns WHERE table_name='capability_runtime_definitions'"
+      );
     expect(columns.rows.map((row) => row.column_name)).not.toContain('workspace_id');
   });
 

@@ -65,7 +65,11 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allowedSet = new Set(allowed);
   const unknownKeys = Object.keys(value).filter((key) => !allowedSet.has(key));
   if (unknownKeys.length)
@@ -139,11 +143,7 @@ export function normalizeAcceptedCapabilityCanonDefinition(
   value: unknown
 ): AcceptedCapabilityCanonDefinitionInput {
   if (!isRecord(value))
-    throw new RuntimeCapabilityRegistryError(
-      'INVALID_INPUT',
-      'definition must be an object.',
-      422
-    );
+    throw new RuntimeCapabilityRegistryError('INVALID_INPUT', 'definition must be an object.', 422);
   exactKeys(
     value,
     [
@@ -207,10 +207,7 @@ export function normalizeAcceptedCapabilityCanonDefinition(
   const domainId = optionalText(value.lineage.domainId, 'definition.lineage.domainId');
   const skillId = optionalText(value.lineage.skillId, 'definition.lineage.skillId');
   const actionId = optionalText(value.lineage.actionId, 'definition.lineage.actionId');
-  const invocationId = optionalText(
-    value.lineage.invocationId,
-    'definition.lineage.invocationId'
-  );
+  const invocationId = optionalText(value.lineage.invocationId, 'definition.lineage.invocationId');
   return {
     sourceAuthority: 'ACCEPTED_CAPABILITY_CANON',
     capabilityId,
@@ -287,7 +284,11 @@ export class PostgresRuntimeCapabilityRegistry {
         ]);
         const sameCanon = await client.query(
           'SELECT document_json,definition_fingerprint_sha256 FROM capability_runtime_definitions WHERE capability_id=$1 AND canon_id=$2 AND canon_version=$3',
-          [accepted.capabilityId, accepted.canonReference.canonId, accepted.canonReference.canonVersion]
+          [
+            accepted.capabilityId,
+            accepted.canonReference.canonId,
+            accepted.canonReference.canonVersion
+          ]
         );
         const sameCanonRow = sameCanon.rows[0] as Row | undefined;
         if (sameCanonRow) {
@@ -323,8 +324,7 @@ export class PostgresRuntimeCapabilityRegistry {
           [accepted.capabilityId]
         );
         let runtimeCapabilityDefinitionId = identity.rows[0]?.runtime_capability_definition_id as
-          | RuntimeCapabilityDefinitionId
-          | undefined;
+          RuntimeCapabilityDefinitionId | undefined;
         const createdAt = new Date(this.now()).toISOString();
         if (!runtimeCapabilityDefinitionId) {
           runtimeCapabilityDefinitionId = this.idFactory();

@@ -8,7 +8,9 @@ if (!databaseUrl)
   );
 const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!internalServiceSecret)
-  throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable Capability Engine runtime.');
+  throw new Error(
+    'MO_INTERNAL_SERVICE_SECRET is required for the durable Capability Engine runtime.'
+  );
 
 const database = new ManagedDatabase(
   parseDatabaseConfig({
