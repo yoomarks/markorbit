@@ -142,3 +142,7 @@ Successful hosted runs on that head:
 - Milestone 5 reliability `31511957668`.
 
 The verified head and merged main share tree `23b153a2315f90de77e139bef44ff2a43e4aeb40`, so the exact WP-07 runtime evidence is the runtime tree audited by PLC-WP-08.
+
+## WP-08 exact-head revalidation
+
+The WP-08 audit branch intentionally re-runs this permanent reliability/browser gate after the bounded audit-document formatting and status reconciliation. No runtime Product semantics are changed by that revalidation trigger.
