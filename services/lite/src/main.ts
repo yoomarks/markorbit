@@ -63,7 +63,11 @@ const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   }
 };
 
-const contentStore = new PostgresLiteContentPreparationStore(database, pool, productLoopSourceAuthority);
+const contentStore = new PostgresLiteContentPreparationStore(
+  database,
+  pool,
+  productLoopSourceAuthority
+);
 const candidateStore = new PostgresLiteCandidateQualificationStore(
   database,
   pool,

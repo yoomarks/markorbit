@@ -74,8 +74,7 @@ function cleanWorkspaceId(value: string): string {
 
 function cleanText(value: string, field: string, maximum: number): string {
   const cleaned = value.trim();
-  if (!cleaned)
-    throw new ProductLoopFeedbackError('INVALID_INPUT', `${field} is required.`, 422);
+  if (!cleaned) throw new ProductLoopFeedbackError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
     throw new ProductLoopFeedbackError(
       'INVALID_INPUT',
@@ -85,7 +84,11 @@ function cleanText(value: string, field: string, maximum: number): string {
   return cleaned;
 }
 
-function optionalText(value: string | undefined, field: string, maximum: number): string | undefined {
+function optionalText(
+  value: string | undefined,
+  field: string,
+  maximum: number
+): string | undefined {
   if (value === undefined) return undefined;
   return cleanText(value, field, maximum);
 }
@@ -135,7 +138,10 @@ export class PostgresProductLoopFeedbackStore {
       'publishPackage.id',
       300
     ) as PublishPackageId;
-    const publishPackageVersion = exactVersion(command.publishPackage.version, 'publishPackage.version');
+    const publishPackageVersion = exactVersion(
+      command.publishPackage.version,
+      'publishPackage.version'
+    );
     const expectedFingerprint = exactSha256(
       command.expectedPublishPackageFingerprintSha256,
       'expectedPublishPackageFingerprintSha256'
@@ -159,66 +165,61 @@ export class PostgresProductLoopFeedbackStore {
       recordedByPrincipalId
     });
 
-    return this.command(
-      workspaceId,
-      idempotencyKey,
-      requestFingerprintSha256,
-      async (client) => {
-        await this.resourceLock(
-          client,
-          `${workspaceId}:${publishPackageId}:${publishPackageVersion}:use-feedback`
+    return this.command(workspaceId, idempotencyKey, requestFingerprintSha256, async (client) => {
+      await this.resourceLock(
+        client,
+        `${workspaceId}:${publishPackageId}:${publishPackageVersion}:use-feedback`
+      );
+      const publishPackage = await this.publishPackage(
+        client,
+        workspaceId,
+        publishPackageId,
+        publishPackageVersion
+      );
+      if (publishPackage.publishPackageFingerprintSha256 !== expectedFingerprint)
+        throw new ProductLoopFeedbackError(
+          'SOURCE_FINGERPRINT_MISMATCH',
+          'PublishPackage fingerprint no longer matches the feedback request.'
         );
-        const publishPackage = await this.publishPackage(
-          client,
+      const existing = await client.query(
+        'SELECT document_json FROM lite_product_loop_use_feedback WHERE workspace_id=$1 AND publish_package_id=$2 AND publish_package_version=$3',
+        [workspaceId, publishPackageId, publishPackageVersion]
+      );
+      if (existing.rowCount)
+        throw new ProductLoopFeedbackError(
+          'VERSION_CONFLICT',
+          'This exact PublishPackage already has a Product-loop use feedback record.'
+        );
+      const recordedAt = exactTimestamp(this.now(), 'now');
+      const feedback: ProductLoopUseFeedback = {
+        schemaVersion: 1,
+        productLoopFeedbackId: this.feedbackId(),
+        workspaceId,
+        version: 1,
+        publishPackage: { id: publishPackageId, version: publishPackageVersion },
+        outcome: command.outcome,
+        ...(externalReference ? { externalReference } : {}),
+        recordedByPrincipalId,
+        recordedAt,
+        externalActionExecutedByMarkOrbit: false,
+        externalOutcomeVerifiedByMarkOrbit: false
+      };
+      await client.query(
+        'INSERT INTO lite_product_loop_use_feedback (workspace_id,product_loop_feedback_id,version,publish_package_id,publish_package_version,expected_publish_package_fingerprint_sha256,outcome,external_reference,recorded_by_principal_id,document_json,recorded_at) VALUES ($1,$2,1,$3,1,$4,$5,$6,$7,$8::jsonb,$9)',
+        [
           workspaceId,
+          feedback.productLoopFeedbackId,
           publishPackageId,
-          publishPackageVersion
-        );
-        if (publishPackage.publishPackageFingerprintSha256 !== expectedFingerprint)
-          throw new ProductLoopFeedbackError(
-            'SOURCE_FINGERPRINT_MISMATCH',
-            'PublishPackage fingerprint no longer matches the feedback request.'
-          );
-        const existing = await client.query(
-          'SELECT document_json FROM lite_product_loop_use_feedback WHERE workspace_id=$1 AND publish_package_id=$2 AND publish_package_version=$3',
-          [workspaceId, publishPackageId, publishPackageVersion]
-        );
-        if (existing.rowCount)
-          throw new ProductLoopFeedbackError(
-            'VERSION_CONFLICT',
-            'This exact PublishPackage already has a Product-loop use feedback record.'
-          );
-        const recordedAt = exactTimestamp(this.now(), 'now');
-        const feedback: ProductLoopUseFeedback = {
-          schemaVersion: 1,
-          productLoopFeedbackId: this.feedbackId(),
-          workspaceId,
-          version: 1,
-          publishPackage: { id: publishPackageId, version: publishPackageVersion },
-          outcome: command.outcome,
-          ...(externalReference ? { externalReference } : {}),
+          expectedFingerprint,
+          feedback.outcome,
+          feedback.externalReference ?? null,
           recordedByPrincipalId,
-          recordedAt,
-          externalActionExecutedByMarkOrbit: false,
-          externalOutcomeVerifiedByMarkOrbit: false
-        };
-        await client.query(
-          'INSERT INTO lite_product_loop_use_feedback (workspace_id,product_loop_feedback_id,version,publish_package_id,publish_package_version,expected_publish_package_fingerprint_sha256,outcome,external_reference,recorded_by_principal_id,document_json,recorded_at) VALUES ($1,$2,1,$3,1,$4,$5,$6,$7,$8::jsonb,$9)',
-          [
-            workspaceId,
-            feedback.productLoopFeedbackId,
-            publishPackageId,
-            expectedFingerprint,
-            feedback.outcome,
-            feedback.externalReference ?? null,
-            recordedByPrincipalId,
-            JSON.stringify(feedback),
-            recordedAt
-          ]
-        );
-        return feedback;
-      }
-    );
+          JSON.stringify(feedback),
+          recordedAt
+        ]
+      );
+      return feedback;
+    });
   }
 
   async findByPackage(
@@ -261,7 +262,11 @@ export class PostgresProductLoopFeedbackStore {
     feedbackIdValue: ProductLoopFeedbackId
   ): Promise<ProductLoopSourceReference | undefined> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
-    const feedbackId = cleanText(feedbackIdValue, 'productLoopFeedbackId', 300) as ProductLoopFeedbackId;
+    const feedbackId = cleanText(
+      feedbackIdValue,
+      'productLoopFeedbackId',
+      300
+    ) as ProductLoopFeedbackId;
     const result = await this.query.query(
       'SELECT document_json FROM lite_product_loop_use_feedback WHERE workspace_id=$1 AND product_loop_feedback_id=$2 AND version=1',
       [workspaceId, feedbackId]

@@ -12,10 +12,7 @@ import {
   LiteCandidateQualificationError,
   type PostgresLiteCandidateQualificationStore
 } from './candidate-qualification.js';
-import {
-  ProductLoopFeedbackError,
-  type PostgresProductLoopFeedbackStore
-} from './feedback.js';
+import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
   PreparedActionJourneyError,
   type PreparedActionJourneyService,

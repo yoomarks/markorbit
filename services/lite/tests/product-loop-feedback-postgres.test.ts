@@ -208,7 +208,9 @@ suite('PostgreSQL Lite Product-loop feedback', () => {
       feedback
     );
     expect(await afterRestart.listRecent(workspaceId)).toEqual([feedback]);
-    expect(await afterRestart.sourceReference(workspaceId, feedback.productLoopFeedbackId)).toMatchObject({
+    expect(
+      await afterRestart.sourceReference(workspaceId, feedback.productLoopFeedbackId)
+    ).toMatchObject({
       owner: 'LITE',
       kind: 'CONTENT_USE_FEEDBACK',
       sourceId: feedback.productLoopFeedbackId,
@@ -277,7 +279,9 @@ suite('PostgreSQL Lite Product-loop feedback', () => {
     });
 
     expect(await store.listRecent(otherWorkspaceId)).toEqual([]);
-    expect(await store.findByPackage(otherWorkspaceId, publishPackage.publishPackageId)).toBeUndefined();
+    expect(
+      await store.findByPackage(otherWorkspaceId, publishPackage.publishPackageId)
+    ).toBeUndefined();
     await expect(
       store.recordUseFeedback({
         workspaceId: otherWorkspaceId,

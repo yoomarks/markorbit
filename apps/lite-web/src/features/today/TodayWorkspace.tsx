@@ -143,14 +143,20 @@ function Provenance({ recommendation }: { recommendation: TodayRecommendation })
   );
 }
 
-function FeedbackEvidence({ feedback }: { feedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>> }) {
+function FeedbackEvidence({
+  feedback
+}: {
+  feedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+}) {
   if (!feedback.length) return null;
   return (
     <Card>
       <div className="lite-row">
         <div>
           <h2>Recent Product-loop evidence</h2>
-          <p className="today-muted">Returned outcomes from work already recorded in this Workspace.</p>
+          <p className="today-muted">
+            Returned outcomes from work already recorded in this Workspace.
+          </p>
         </div>
         <Badge>{feedback.length}</Badge>
       </div>

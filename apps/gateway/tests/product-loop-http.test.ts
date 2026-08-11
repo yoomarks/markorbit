@@ -48,10 +48,13 @@ describe('Gateway Lite Product-loop transport boundary', () => {
       expect(url).toBe('http://lite.test/v1/today');
       expect(init.method).toBe('GET');
       return Promise.resolve(
-        new Response(JSON.stringify({ schemaVersion: 1, workspaceId, items: [], recentFeedback: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        })
+        new Response(
+          JSON.stringify({ schemaVersion: 1, workspaceId, items: [], recentFeedback: [] }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
       );
     });
     vi.stubGlobal('fetch', downstream);

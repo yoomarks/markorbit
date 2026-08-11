@@ -192,7 +192,9 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
     const today = await fetch(`${base}/v1/today`, { headers: headers() });
     expect(today.status).toBe(200);
     const todayPayload = await today.json();
-    expect(todayPayload.items[0].recommendation.todayRecommendationId).toBe(rec.todayRecommendationId);
+    expect(todayPayload.items[0].recommendation.todayRecommendationId).toBe(
+      rec.todayRecommendationId
+    );
     expect(todayPayload.recentFeedback).toEqual([]);
 
     const prepared = await fetch(
