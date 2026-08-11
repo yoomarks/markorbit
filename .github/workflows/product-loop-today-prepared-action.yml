@@ -13,6 +13,9 @@ on:
       - 'infrastructure/persistence/migrations/**'
       - 'infrastructure/persistence/migration-owners.json'
       - 'scripts/product-loop-today-runtime.integration.test.ts'
+      - 'scripts/product-loop-today-real-runtime.ts'
+      - 'tests/e2e/product-loop-today-real-runtime.spec.ts'
+      - 'playwright.product-loop-today-real-runtime.config.ts'
       - 'pnpm-lock.yaml'
 
 permissions:
@@ -71,3 +74,39 @@ jobs:
         run: pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
       - name: Build Today Storybook
         run: pnpm --filter @markorbit/lite-web build-storybook
+
+  real-runtime-browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_lite_today_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_lite_today_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_today_browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build WP-05 browser dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Run desktop and mobile real-runtime journey
+        run: pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts
