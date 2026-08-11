@@ -1,0 +1,43 @@
+name: WP05 final CI remediation
+
+on:
+  push:
+    branches:
+      - plc-wp-05-lite-today-prepared-action
+    paths:
+      - '.github/workflows/wp05-final-ci-remediation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: plc-wp-05-lite-today-prepared-action
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Remove stale Today StatusBadge
+        run: python -c "from pathlib import Path; p=Path('apps/lite-web/src/features/today/TodayWorkspace.tsx'); s=p.read_text(); old='<StatusBadge status={item.recommendation.status} />'; assert old in s; p.write_text(s.replace(old, '<Badge>{item.recommendation.status}</Badge>', 1))"
+      - name: Format WP-05 files
+        run: pnpm exec prettier --write apps/lite-web/src/features/today/TodayWorkspace.tsx scripts/product-loop-today-real-runtime.ts scripts/product-loop-today-runtime.integration.test.ts services/lite/src/main.ts services/lite/tests/prepared-action-postgres.test.ts tests/e2e/product-loop-today-real-runtime.spec.ts
+      - name: Verify Lite Today typecheck
+        run: pnpm --filter @markorbit/lite-web typecheck
+      - name: Verify formatting
+        run: pnpm exec prettier --check apps/lite-web/src/features/today/TodayWorkspace.tsx scripts/product-loop-today-real-runtime.ts scripts/product-loop-today-runtime.integration.test.ts services/lite/src/main.ts services/lite/tests/prepared-action-postgres.test.ts tests/e2e/product-loop-today-real-runtime.spec.ts
+      - name: Commit remediation and remove one-shot workflow
+        run: |
+          rm .github/workflows/wp05-final-ci-remediation.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: close WP-05 static and formatting failures'
+          git push origin HEAD:plc-wp-05-lite-today-prepared-action
