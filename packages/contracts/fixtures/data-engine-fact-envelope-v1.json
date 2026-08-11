@@ -1,0 +1,17 @@
+{
+  "contract_version": "MARKORBIT_DATA_ENGINE_INTEGRATION_V1",
+  "engine_version": "M1.6",
+  "source_owner": "MARKORBIT_DATA_ENGINE",
+  "jurisdiction": "US",
+  "resource_kind": "TRADEMARK_CASE",
+  "authority": "DATA_ENGINE_FACT_READ_MODEL",
+  "legal_conclusion": false,
+  "payload": {
+    "model_version": "US_M1",
+    "status_semantics": "OFFICIAL_RAW_NOT_LEGAL_INTERPRETATION",
+    "case": {
+      "serial_number": "99278031",
+      "status_code": "630"
+    }
+  }
+}
