@@ -1,0 +1,47 @@
+name: WP05 fix principal cleaners
+
+on:
+  push:
+    branches:
+      - plc-wp-05-lite-today-prepared-action
+    paths:
+      - .github/workflows/wp05-fix-principal-cleaners.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: plc-wp-05-lite-today-prepared-action
+      - name: Patch exact missed call sites
+        shell: python
+        run: |
+          from pathlib import Path
+          replacements = {
+              'services/lite/src/content-preparation.ts': (
+                  "const reviewerPrincipalId = cleanMarkOrbitId(\n      command.reviewerPrincipalId,\n      'reviewerPrincipalId'\n    );",
+                  "const reviewerPrincipalId = cleanPrincipalId(\n      command.reviewerPrincipalId,\n      'reviewerPrincipalId'\n    );"
+              ),
+              'services/lite/src/candidate-qualification.ts': (
+                  "const decidedByPrincipalId = cleanMarkOrbitId(\n      command.decidedByPrincipalId,\n      'decidedByPrincipalId'\n    );",
+                  "const decidedByPrincipalId = cleanPrincipalId(\n      command.decidedByPrincipalId,\n      'decidedByPrincipalId'\n    );"
+              )
+          }
+          for name, (old, new) in replacements.items():
+              path = Path(name)
+              text = path.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing exact actor cleaner anchor in {name}')
+              path.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/wp05-fix-principal-cleaners.yml').unlink()
+      - name: Commit exact fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: use Core principal cleaners in Lite decisions'
+          git push origin HEAD:plc-wp-05-lite-today-prepared-action
