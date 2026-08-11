@@ -3,13 +3,19 @@ import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@marko
 import type {
   OpportunityCandidateId,
   OpportunityQualificationDecisionId,
-  PreparedActionId
+  PreparedActionId,
+  ProductLoopFeedbackOutcome,
+  PublishPackageId
 } from '@markorbit/contracts/product-loop';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   LiteCandidateQualificationError,
   type PostgresLiteCandidateQualificationStore
 } from './candidate-qualification.js';
+import {
+  ProductLoopFeedbackError,
+  type PostgresProductLoopFeedbackStore
+} from './feedback.js';
 import {
   PreparedActionJourneyError,
   type PreparedActionJourneyService,
@@ -22,6 +28,7 @@ export interface LiteProductLoopRouteOptions {
   internalServiceSecret: string;
   journeyService: PreparedActionJourneyService;
   candidateStore: PostgresLiteCandidateQualificationStore;
+  feedbackStore: PostgresProductLoopFeedbackStore;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -100,6 +107,11 @@ function text(value: unknown, name: string): string {
   return value.trim();
 }
 
+function optionalText(value: unknown, name: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return text(value, name);
+}
+
 function planOf(value: unknown): PreparedActionPlan {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new HttpError(400, 'INVALID_REQUEST', 'plan must be an object.');
@@ -109,7 +121,8 @@ function planOf(value: unknown): PreparedActionPlan {
 function mapError(error: unknown): never {
   if (
     error instanceof PreparedActionJourneyError ||
-    error instanceof LiteCandidateQualificationError
+    error instanceof LiteCandidateQualificationError ||
+    error instanceof ProductLoopFeedbackError
   )
     throw new HttpError(
       error.status,
@@ -129,7 +142,11 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
         try {
-          return json(200, await options.journeyService.listToday(principal.workspaceId));
+          const [snapshot, recentFeedback] = await Promise.all([
+            options.journeyService.listToday(principal.workspaceId),
+            options.feedbackStore.listRecent(principal.workspaceId)
+          ]);
+          return json(200, { ...snapshot, recentFeedback });
         } catch (error) {
           return mapError(error);
         }
@@ -202,6 +219,36 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
             idempotencyKey: keyOf(request)
           });
           return json(200, journey);
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/publish-packages/:publishPackageId/use-feedback',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        try {
+          const feedback = await options.feedbackStore.recordUseFeedback({
+            workspaceId: principal.workspaceId,
+            publishPackage: {
+              id: request.params.publishPackageId! as PublishPackageId,
+              version: positive(body.publishPackageVersion, 'publishPackageVersion')
+            },
+            expectedPublishPackageFingerprintSha256: text(
+              body.expectedPublishPackageFingerprintSha256,
+              'expectedPublishPackageFingerprintSha256'
+            ),
+            outcome: text(body.outcome, 'outcome') as ProductLoopFeedbackOutcome,
+            ...(optionalText(body.externalReference, 'externalReference')
+              ? { externalReference: optionalText(body.externalReference, 'externalReference') }
+              : {}),
+            recordedByPrincipalId: principal.userId,
+            idempotencyKey: keyOf(request)
+          });
+          return json(201, feedback);
         } catch (error) {
           return mapError(error);
         }
