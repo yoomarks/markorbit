@@ -323,7 +323,8 @@ suite('PostgreSQL MarkReg Formal Opportunity handoff', () => {
       .query(
         "SELECT idempotency_key FROM markreg_formal_opportunity_commands WHERE command_type='CREATE_FORMAL_OPPORTUNITY' LIMIT 1"
       );
-    const replayKey = String(winnerCommand.rows[0]?.idempotency_key);
+    const winnerRow = winnerCommand.rows[0] as Record<string, unknown> | undefined;
+    const replayKey = String(winnerRow?.idempotency_key);
     expect([command.idempotencyKey, 'formal-opportunity-create-002']).toContain(replayKey);
     const replay = await service.createFormalOpportunity({ ...command, idempotencyKey: replayKey });
     expect(replay).toEqual(fulfilled[0]!.value);
