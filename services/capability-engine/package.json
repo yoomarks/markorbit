@@ -8,6 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsup src/index.ts src/main.ts --format esm --dts --clean",
     "test": "vitest run",
+    "test:runtime-registry:postgres": "vitest run tests/runtime-capability-registry-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
@@ -15,6 +16,7 @@
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
     "@markorbit/events": "workspace:*",
+    "@markorbit/persistence": "workspace:*",
     "@markorbit/service-kit": "workspace:*"
   },
   "main": "./dist/index.js",
