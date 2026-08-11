@@ -14,13 +14,20 @@
     "docs/planning/FOUR-WEEK-PLAN.md"
   ],
   "principle": "PRODUCT_LOOP_FIRST_SHARED_PLATFORM_EXTRACTION_SECOND",
+  "liteMainline": [
+    "TODAY",
+    "RECOMMENDATION",
+    "PREPARED_ACTION",
+    "USER_CONFIRMATION",
+    "PRODUCT_OR_WORKFLOW_HANDOFF",
+    "OUTCOME_OR_FEEDBACK"
+  ],
   "betaLoops": [
     {
       "id": "CONTENT",
       "state": "NOT_CLOSED",
       "evidence": [
-        "Lite navigation names Content but current runtime Surface union has no content surface",
-        "No real content package to reviewed publish-preparation to feedback loop is proven"
+        "No real Today to Prepared Content Action to review/publish-package to feedback path is proven"
       ]
     },
     {
@@ -80,28 +87,45 @@
       "code": "APPROVAL_STATE_DOCUMENTATION_DRIFT",
       "severity": "MEDIUM",
       "summary": "PR 71 merged but M6 planning/index documents still describe TASK 031A as proposed/planning-only."
+    },
+    {
+      "id": "FINDING-05",
+      "code": "LITE_INFORMATION_ARCHITECTURE_DRIFT",
+      "severity": "HIGH",
+      "summary": "Current Lite primary navigation presents parallel modules, while the confirmed product mainline is Today to Recommendation to Prepared Action to User Confirmation to Product/Workflow Handoff."
     }
   ],
   "recommendedClosureLoop": [
+    "Today",
+    "traceable Recommendation",
+    "Prepared Action",
+    "explicit User Confirmation",
+    "Product or Workflow Handoff",
+    "existing MarkReg/Execution/MGSN path where applicable",
+    "Outcome or Feedback",
+    "Today reflects the result"
+  ],
+  "requiredScenario": [
     "trusted trademark/client/work context",
     "traceable information or knowledge input",
     "Content Opportunity",
     "Content draft or Artifact preparation",
     "Human Review",
     "prepared PublishPackage",
-    "audience/relationship/work signal",
-    "Opportunity Candidate",
+    "manual publication feedback or work signal",
+    "Lead or Opportunity Candidate",
     "explicit human qualification",
     "Formal Opportunity",
     "MarkReg or professional work handoff",
     "existing Matter/Execution/outcome path"
   ],
   "minimumClosureEvidence": [
-    "real Lite Content surface",
+    "Today is the organizing Lite surface",
+    "real Recommendation to Prepared Action to Confirmation to Handoff path",
     "traceable content preparation provenance",
     "Human Review before publish-ready state",
     "PublishPackage is not Published",
-    "durable Opportunity Candidate",
+    "durable Lead or Opportunity Candidate",
     "explicit qualification before Formal Opportunity",
     "Opportunity Candidate is not Formal Opportunity",
     "real Formal Opportunity to existing work handoff",
@@ -112,7 +136,7 @@
   ],
   "sequence": [
     "M1-M5_GOVERNED_EXECUTION_BACKBONE",
-    "PRODUCT_LOOP_CLOSURE_CONTENT_OPPORTUNITY_TO_WORK",
+    "PRODUCT_LOOP_CLOSURE_LITE_TODAY_TO_WORK_AND_FEEDBACK",
     "M6_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION",
     "LATER_SHARED_EXTRACTION_WHEN_PRODUCT_EVIDENCE_JUSTIFIES_IT"
   ],
