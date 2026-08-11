@@ -101,12 +101,13 @@ const publishPackage: PublishPackage = {
   workspaceId,
   version: 1,
   contentDraft: { id: 'content-draft_story', version: 2 },
+  contentDraftFingerprintSha256: 'e'.repeat(64),
   reviewDecision: { id: 'content-review-decision_story', version: 1 },
   title: 'US renewal window explainer',
   body: 'Reviewed content ready for manual external use.',
-  sourceReferences: [source],
   publishPackageFingerprintSha256: 'd'.repeat(64),
-  publishedExternally: false,
+  status: 'PREPARED',
+  externalPublishExecuted: false,
   createdAt: '2026-08-11T08:13:00.000Z'
 };
 const feedback: ProductLoopUseFeedback = {
