@@ -1,0 +1,38 @@
+name: Agent CORE-M1 Sync Main
+
+on:
+  push:
+    branches:
+      - agent/core-m1-ready-package-content-consumption
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/core-m1-ready-package-content-consumption
+          fetch-depth: 0
+      - name: Merge latest main and keep CORE-M1 on true conflicts
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          if ! git merge origin/main --no-edit -X ours; then
+            unmerged="$(git diff --name-only --diff-filter=U)"
+            if [ -z "$unmerged" ]; then
+              exit 1
+            fi
+            printf '%s\n' "$unmerged"
+            while IFS= read -r path; do
+              [ -n "$path" ] || continue
+              git checkout --ours -- "$path" || git rm -f -- "$path"
+              git add -A -- "$path"
+            done <<< "$unmerged"
+            git commit -m "chore(core-m1): sync latest main and resolve conflicts"
+          fi
+          git push origin HEAD:agent/core-m1-ready-package-content-consumption
