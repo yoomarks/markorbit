@@ -9,6 +9,7 @@
     "build": "tsup src/index.ts src/main.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:runtime-registry:postgres": "vitest run tests/runtime-capability-registry-postgres.test.ts",
+    "test:observation-ledger:postgres": "vitest run tests/capability-observation-ledger-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
