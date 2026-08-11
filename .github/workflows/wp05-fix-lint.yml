@@ -1,0 +1,65 @@
+name: WP05 fix lint findings
+
+on:
+  push:
+    branches:
+      - plc-wp-05-lite-today-prepared-action
+    paths:
+      - .github/workflows/wp05-fix-lint.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: plc-wp-05-lite-today-prepared-action
+      - name: Apply exact lint fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          main = Path('services/lite/src/main.ts')
+          text = main.read_text()
+          text = text.replace(
+              "const unavailableSourceAuthority: ProductLoopSourceAuthority = {\n  async resolve() {\n    throw new Error(\n      'Upstream Product-loop source creation is not exposed through the WP-05 browser runtime.'\n    );\n  }\n};",
+              "const unavailableSourceAuthority: ProductLoopSourceAuthority = {\n  resolve() {\n    return Promise.reject(\n      new Error(\n        'Upstream Product-loop source creation is not exposed through the WP-05 browser runtime.'\n      )\n    );\n  }\n};"
+          )
+          text = text.replace(
+              "    async isAccessible() {\n      throw new Error(\n        'Customer relationship mutation is not exposed through the WP-05 browser runtime.'\n      );\n    }",
+              "    isAccessible() {\n      return Promise.reject(\n        new Error(\n          'Customer relationship mutation is not exposed through the WP-05 browser runtime.'\n        )\n      );\n    }"
+          )
+          main.write_text(text)
+
+          test = Path('services/lite/tests/prepared-action-postgres.test.ts')
+          text = test.read_text()
+          text = text.replace(
+              "    expect(count.rows[0]?.count).toBe(1);",
+              "    expect((count.rows[0] as { count?: number } | undefined)?.count).toBe(1);",
+              1
+          )
+          text = text.replace(
+              "      async perform(action) {\n        calls += 1;\n        if (calls === 1) throw new Error('owner temporarily unavailable');\n        return handoffResult({\n          preparedAction: action,\n          owner: 'LITE',\n          ownerRecord: { id: 'content-opportunity_retry', version: 1 },\n          completedAt: '2026-08-11T10:10:00.000Z'\n        });\n      }",
+              "      perform(action) {\n        calls += 1;\n        if (calls === 1) return Promise.reject(new Error('owner temporarily unavailable'));\n        return Promise.resolve(\n          handoffResult({\n            preparedAction: action,\n            owner: 'LITE',\n            ownerRecord: { id: 'content-opportunity_retry', version: 1 },\n            completedAt: '2026-08-11T10:10:00.000Z'\n          })\n        );\n      }"
+          )
+          text = text.replace(
+              "    expect(confirmationCount.rows[0]?.count).toBe(1);",
+              "    expect(\n      (confirmationCount.rows[0] as { count?: number } | undefined)?.count\n    ).toBe(1);"
+          )
+          text = text.replace(
+              "    expect(confirmationCountAfter.rows[0]?.count).toBe(1);",
+              "    expect(\n      (confirmationCountAfter.rows[0] as { count?: number } | undefined)?.count\n    ).toBe(1);"
+          )
+          test.write_text(text)
+
+          Path('.github/workflows/wp05-fix-lint.yml').unlink()
+      - name: Commit exact lint fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: satisfy WP-05 lint without changing semantics'
+          git push origin HEAD:plc-wp-05-lite-today-prepared-action
