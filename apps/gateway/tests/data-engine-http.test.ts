@@ -5,7 +5,7 @@ import {
   DATA_ENGINE_SOURCE_OWNER,
   type DataEngineResourceKind
 } from '@markorbit/contracts/data-engine';
-import { createDataEngineClient, DataEngineClientError } from '../src/data-engine-http.js';
+import { createDataEngineClient } from '../src/data-engine-http.js';
 
 function envelope(resourceKind: DataEngineResourceKind, payload: unknown = {}) {
   return {
@@ -27,20 +27,28 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function requestUrl(input: Parameters<typeof fetch>[0]): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
 describe('Gateway Data Engine V1 client', () => {
   it('uses only versioned GET routes and preserves change-feed cursor query', async () => {
     const calls: Array<{ url: string; method: string | undefined }> = [];
-    const fetchImpl: typeof fetch = async (input, init) => {
-      const url = String(input);
+    const fetchImpl: typeof fetch = (input, init) => {
+      const url = requestUrl(input);
       calls.push({ url, method: init?.method });
       if (url.includes('/assignments')) {
-        return jsonResponse(envelope('RECORDED_ASSIGNMENT_FACTS'));
+        return Promise.resolve(jsonResponse(envelope('RECORDED_ASSIGNMENT_FACTS')));
       }
-      return jsonResponse(
-        envelope('TRADEMARK_CHANGE_FEED', {
-          changes: [],
-          next_cursor: { source_rank: 11, serial_number: '99278031' }
-        })
+      return Promise.resolve(
+        jsonResponse(
+          envelope('TRADEMARK_CHANGE_FEED', {
+            changes: [],
+            next_cursor: { source_rank: 11, serial_number: '99278031' }
+          })
+        )
       );
     };
     const client = createDataEngineClient({
@@ -70,43 +78,44 @@ describe('Gateway Data Engine V1 client', () => {
   });
 
   it('fails closed when a response tries to promote a legal conclusion', async () => {
-    const fetchImpl: typeof fetch = async () =>
-      jsonResponse({
-        ...envelope('TRADEMARK_CHANGE_FEED'),
-        legal_conclusion: true
-      });
+    const fetchImpl: typeof fetch = () =>
+      Promise.resolve(
+        jsonResponse({
+          ...envelope('TRADEMARK_CHANGE_FEED'),
+          legal_conclusion: true
+        })
+      );
     const client = createDataEngineClient({
       dataEngineUrl: 'http://data-engine.test',
       fetchImpl
     });
 
-    await expect(client.usChanges()).rejects.toMatchObject<DataEngineClientError>({
+    await expect(client.usChanges()).rejects.toMatchObject({
       code: 'DATA_ENGINE_CONTRACT_MISMATCH'
     });
   });
 
   it('fails closed when the endpoint returns the wrong resource kind', async () => {
-    const fetchImpl: typeof fetch = async () => jsonResponse(envelope('TTAB_PROCEEDING_FACTS'));
+    const fetchImpl: typeof fetch = () =>
+      Promise.resolve(jsonResponse(envelope('TTAB_PROCEEDING_FACTS')));
     const client = createDataEngineClient({
       dataEngineUrl: 'http://data-engine.test',
       fetchImpl
     });
 
-    await expect(client.usAssignments('99278031')).rejects.toMatchObject<DataEngineClientError>({
+    await expect(client.usAssignments('99278031')).rejects.toMatchObject({
       code: 'DATA_ENGINE_CONTRACT_MISMATCH'
     });
   });
 
   it('maps network failure without falling back to database access', async () => {
-    const fetchImpl: typeof fetch = async () => {
-      throw new Error('offline');
-    };
+    const fetchImpl: typeof fetch = () => Promise.reject(new Error('offline'));
     const client = createDataEngineClient({
       dataEngineUrl: 'http://data-engine.test',
       fetchImpl
     });
 
-    await expect(client.usCase('99278031')).rejects.toMatchObject<DataEngineClientError>({
+    await expect(client.usCase('99278031')).rejects.toMatchObject({
       code: 'DATA_ENGINE_UNAVAILABLE'
     });
   });
