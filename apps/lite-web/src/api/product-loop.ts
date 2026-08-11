@@ -74,7 +74,8 @@ async function request<T>(
       }
     );
   }
-  const value = (await response.json().catch(() => ({}))) as T & {
+  const parsed: unknown = await response.json().catch(() => ({}));
+  const value = parsed as T & {
     code?: string;
     message?: string;
     details?: Readonly<Record<string, unknown>>;
