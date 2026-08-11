@@ -287,3 +287,9 @@ After merge, `PLC-WP-06 — Feedback and Product-loop observability` is the next
 ## 16. Hosted CI remediation log
 
 The first Draft PR exact-head run passed workspace and persistence-boundary validation but exposed one mechanical integration omission from the Core Principal identity correction: the Content Review and Candidate Qualification command types had already been widened to the authoritative Core principal string, while two call sites still invoked the legacy `cleanMarkOrbitId` validator. Those exact call sites were changed to the existing `cleanPrincipalId` validator. No business authority, Product-loop transition or automatic consequence was broadened to make CI pass.
+
+## 17. Lint and real-runtime closure
+
+The next hosted run proved the shared dependency build after the Core Principal correction and exposed only bounded lint findings in the new Lite runtime/test code: two promise-returning fail-closed adapters were marked `async` without `await`, three PostgreSQL count rows needed explicit narrowing, and one retry mock was `async` without awaiting. These were corrected without changing runtime behavior.
+
+WP-05 now also includes a dedicated real-runtime Playwright harness with two isolated Workspaces for desktop and 390 px mobile projects. The harness runs real Core session resolution, Gateway authentication/CSRF transport, Lite HTTP, Lite PostgreSQL owner state and Vite. The browser suite observes network requests but does not intercept or fulfill them, and it executes `Today -> Prepare -> Confirm -> owner handoff -> reload/direct URL` independently in each Workspace.
