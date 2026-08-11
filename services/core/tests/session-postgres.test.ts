@@ -56,7 +56,7 @@ integration('PostgreSQL Session repository', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_auth', await coreMigrations());
   });
