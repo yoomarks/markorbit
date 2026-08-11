@@ -73,7 +73,7 @@ integration('PostgreSQL Knowledge intake repository', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_content_exports,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_knowledge_intake', await migrations());
     await new PostgresWorkspaceRepository(database.getPool()).create({
@@ -86,7 +86,7 @@ integration('PostgreSQL Knowledge intake repository', () => {
 
   it('validates migration ownership, application, checksum, and repeatability', async () => {
     const owned = await migrations();
-    expect(owned.at(-1)?.name).toBe('core_knowledge_content_exports');
+    expect(owned.at(-1)?.name).toBe('core_knowledge_intake_contents');
     await migrate(database.getPool(), 'core_knowledge_intake', owned);
     expect(
       (await migrationStatus(database.getPool(), 'core_knowledge_intake', owned)).every(
@@ -119,6 +119,20 @@ integration('PostgreSQL Knowledge intake repository', () => {
         "SELECT count(*)::int AS count FROM knowledge_intakes WHERE idempotency_key='restart-key'"
       );
     expect(count.rows[0]!.count).toBe(1);
+  });
+
+  it('persists the ACCEPTED intake transition across database restart', async () => {
+    const original = candidate('accepted-transition');
+    const repository = new PostgresKnowledgeIntakeRepository(database.getPool());
+    await repository.createOrFind(original);
+    expect((await repository.markAccepted(original.intakeId))?.status).toBe('ACCEPTED');
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+    expect(
+      (await new PostgresKnowledgeIntakeRepository(database.getPool()).findById(original.intakeId))
+        ?.status
+    ).toBe('ACCEPTED');
   });
 
   it('allows exactly one concurrent same-key/same-body creation', async () => {

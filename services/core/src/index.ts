@@ -10,11 +10,9 @@ import {
 import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
 import {
-  contentExportHasValidStagingBytes,
-  contentExportMatchesIntake,
-  fingerprintReadyPackageContentExportV1,
-  parseReadyPackageContentExportV1,
-  type KnowledgeContentExportRepository
+  fingerprintReadyPackageContentExport,
+  validateReadyPackageContentExport,
+  type KnowledgeReadyPackageContentRepository
 } from './knowledge-content.js';
 import {
   fingerprintCoreIntakeRequest,
@@ -33,7 +31,7 @@ export interface CoreRuntimeOptions {
   authentication?: AuthenticationService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
-  knowledgeContentExports?: KnowledgeContentExportRepository;
+  knowledgeContents?: KnowledgeReadyPackageContentRepository;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -207,59 +205,47 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         },
         {
           method: 'POST' as const,
-          path: '/internal/knowledge/ready-packages/intakes/:intakeId/content-exports',
+          path: '/internal/knowledge/ready-packages/intakes/:intakeId/content',
           bodyLimitBytes: 12 * 1024 * 1024,
           handle: internal(async (request) => {
-            if (!options.knowledgeIntakes || !options.knowledgeContentExports)
+            const intakeId = request.params.intakeId;
+            if (typeof intakeId !== 'string' || !canonicalUuid(intakeId))
+              throw new HttpError(400, 'INVALID_REQUEST', 'intakeId must be a UUID.');
+            const contentExport = parseReadyPackageContentExportV1(request.body);
+            if (!contentExport)
+              throw new HttpError(400, 'INVALID_REQUEST', 'Request body is invalid.');
+            if (!options.knowledgeIntakes || !options.knowledgeContents)
               throw new HttpError(
                 503,
-                'KNOWLEDGE_CONTENT_CONSUMER_UNAVAILABLE',
-                'Knowledge content consumer is unavailable.',
+                'KNOWLEDGE_CONTENT_SERVICE_UNAVAILABLE',
+                'Knowledge content service is unavailable.',
                 true
               );
-            const intake = await options.knowledgeIntakes.findById(request.params.intakeId!);
+            const intake = await options.knowledgeIntakes.findById(intakeId);
             if (!intake)
               throw new HttpError(
                 404,
                 'KNOWLEDGE_INTAKE_NOT_FOUND',
                 'Knowledge intake was not found.'
               );
-            const contentExport = parseReadyPackageContentExportV1(request.body);
-            if (!contentExport)
-              throw new HttpError(
-                400,
-                'KNOWLEDGE_CONTENT_EXPORT_INVALID',
-                'ReadyPackage Content Export V1 is invalid.'
-              );
-            if (!contentExportHasValidStagingBytes(contentExport))
-              throw new HttpError(
-                400,
-                'KNOWLEDGE_CONTENT_EXPORT_INTEGRITY_INVALID',
-                'Staging Markdown bytes do not match the exported hash and size.'
-              );
-            if (!contentExportMatchesIntake(contentExport, intake.request))
-              throw new HttpError(
-                409,
-                'KNOWLEDGE_CONTENT_EXPORT_INTAKE_MISMATCH',
-                'ReadyPackage Content Export V1 does not match the frozen intake evidence.'
-              );
-            const exportSha256 = fingerprintReadyPackageContentExportV1(contentExport);
-            const stored = await options.knowledgeContentExports.createOrFind({
-              intakeId: intake.intakeId,
+            const issue = validateReadyPackageContentExport(intake, contentExport);
+            if (issue) throw new HttpError(409, issue.code, issue.message);
+            const exportSha256 = fingerprintReadyPackageContentExport(contentExport);
+            const stored = await options.knowledgeContents.createOrFind({
+              intakeId,
               workspaceId: intake.request.workspaceId,
               readyPackageId: intake.request.readyPackageId,
-              readyPackageDigest: intake.request.digest,
-              contentExport,
+              export: contentExport,
               exportSha256,
-              receivedAt: new Date().toISOString()
+              consumedAt: new Date().toISOString()
             });
-            if (stored.contentExport.exportSha256 !== exportSha256)
+            if (stored.content.exportSha256 !== exportSha256)
               throw new HttpError(
                 409,
-                'KNOWLEDGE_CONTENT_EXPORT_IMMUTABILITY_CONFLICT',
-                'This intake already contains a different immutable content export.'
+                'KNOWLEDGE_CONTENT_IMMUTABILITY_CONFLICT',
+                'This intake already has a different immutable ReadyPackage content export.'
               );
-            const accepted = await options.knowledgeIntakes.markAccepted(intake.intakeId);
+            const accepted = await options.knowledgeIntakes.markAccepted(intakeId);
             if (!accepted || accepted.status !== 'ACCEPTED')
               throw new HttpError(
                 409,
@@ -267,9 +253,10 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
                 'Knowledge intake cannot transition to ACCEPTED.'
               );
             return json(stored.created ? 201 : 200, {
-              intakeId: accepted.intakeId,
+              intakeId,
+              readyPackageId: stored.content.readyPackageId,
               status: accepted.status,
-              readyPackageId: accepted.request.readyPackageId
+              exportSha256: stored.content.exportSha256
             });
           })
         }

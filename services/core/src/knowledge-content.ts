@@ -1,260 +1,35 @@
 import { createHash } from 'node:crypto';
-import type { CoreIntakeRequest } from '@markorbit/contracts';
+import type { ReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
+import { serializeReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import type { QueryClient } from '@markorbit/persistence';
+import type { KnowledgeIntake } from './knowledge-intake.js';
 
-export const READY_PACKAGE_CONTENT_EXPORT_VERSION = '1.0' as const;
-
-export type ReadyPackageContentExportV1 = {
-  contractVersion: typeof READY_PACKAGE_CONTENT_EXPORT_VERSION;
-  objectType: 'READY_PACKAGE_CONTENT_EXPORT';
-  readyPackageId: string;
-  knowledgeWorkspaceId: string;
-  readyPackageDigest: string;
-  provenance: {
-    sourceId: string;
-    conversionRunId: string;
-    verificationId: string;
-    verificationOutcome: 'PASS' | 'PASS_WITH_WARNINGS';
-    capturedAt: string;
-    converter: {
-      converterId: string;
-      version: string;
-    };
-    legalTruthVerified: false;
-  };
-  rawArtifact: {
-    artifactId: string;
-    sha256: string;
-    sizeBytes: number;
-    mimeType: string;
-    originalName: string;
-  };
-  stagingDocument: {
-    documentId: string;
-    sha256: string;
-    sizeBytes: number;
-    mediaType: 'text/markdown';
-    encoding: 'utf-8';
-    content: string;
-  };
-};
-
-export interface KnowledgeContentExport {
+export interface KnowledgeReadyPackageContent {
   intakeId: string;
   workspaceId: string;
   readyPackageId: string;
-  readyPackageDigest: string;
-  contentExport: ReadyPackageContentExportV1;
+  export: ReadyPackageContentExportV1;
   exportSha256: string;
-  receivedAt: string;
+  consumedAt: string;
 }
 
-export interface KnowledgeContentExportRepository {
+export interface KnowledgeReadyPackageContentRepository {
   createOrFind(
-    contentExport: KnowledgeContentExport
-  ): Promise<{ contentExport: KnowledgeContentExport; created: boolean }>;
-  findByIntakeId(intakeId: string): Promise<KnowledgeContentExport | null>;
-}
-
-const IDS = {
-  readyPackage: /^rdp_[A-Za-z0-9][A-Za-z0-9_-]*$/u,
-  workspace: /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u,
-  source: /^src_[0-9A-HJKMNP-TV-Z]{26}$/u,
-  conversionRun: /^cvr_[0-9A-HJKMNP-TV-Z]{26}$/u,
-  verification: /^svr_[0-9A-HJKMNP-TV-Z]{26}$/u,
-  artifact: /^art_[0-9A-HJKMNP-TV-Z]{26}$/u,
-  stagingDocument: /^std_[0-9A-HJKMNP-TV-Z]{26}$/u
-} as const;
-const SHA256 = /^[a-f0-9]{64}$/u;
-const MIME_TYPE = /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/iu;
-const CONVERTER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
-
-const record = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-const exactKeys = (value: Record<string, unknown>, expected: readonly string[]) => {
-  const keys = Object.keys(value);
-  return keys.length === expected.length && expected.every((key) => keys.includes(key));
-};
-const rfc3339 = (value: unknown): value is string =>
-  typeof value === 'string' &&
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u.test(value) &&
-  !Number.isNaN(Date.parse(value));
-
-export function parseReadyPackageContentExportV1(
-  value: unknown
-): ReadyPackageContentExportV1 | null {
-  if (
-    !record(value) ||
-    !exactKeys(value, [
-      'contractVersion',
-      'objectType',
-      'readyPackageId',
-      'knowledgeWorkspaceId',
-      'readyPackageDigest',
-      'provenance',
-      'rawArtifact',
-      'stagingDocument'
-    ]) ||
-    !record(value.provenance) ||
-    !record(value.rawArtifact) ||
-    !record(value.stagingDocument)
-  )
-    return null;
-
-  const provenance = value.provenance;
-  const rawArtifact = value.rawArtifact;
-  const stagingDocument = value.stagingDocument;
-  if (
-    !exactKeys(provenance, [
-      'sourceId',
-      'conversionRunId',
-      'verificationId',
-      'verificationOutcome',
-      'capturedAt',
-      'converter',
-      'legalTruthVerified'
-    ]) ||
-    !record(provenance.converter) ||
-    !exactKeys(provenance.converter, ['converterId', 'version']) ||
-    !exactKeys(rawArtifact, ['artifactId', 'sha256', 'sizeBytes', 'mimeType', 'originalName']) ||
-    !exactKeys(stagingDocument, [
-      'documentId',
-      'sha256',
-      'sizeBytes',
-      'mediaType',
-      'encoding',
-      'content'
-    ])
-  )
-    return null;
-
-  if (
-    value.contractVersion !== READY_PACKAGE_CONTENT_EXPORT_VERSION ||
-    value.objectType !== 'READY_PACKAGE_CONTENT_EXPORT' ||
-    typeof value.readyPackageId !== 'string' ||
-    !IDS.readyPackage.test(value.readyPackageId) ||
-    typeof value.knowledgeWorkspaceId !== 'string' ||
-    !IDS.workspace.test(value.knowledgeWorkspaceId) ||
-    typeof value.readyPackageDigest !== 'string' ||
-    !SHA256.test(value.readyPackageDigest) ||
-    typeof provenance.sourceId !== 'string' ||
-    !IDS.source.test(provenance.sourceId) ||
-    typeof provenance.conversionRunId !== 'string' ||
-    !IDS.conversionRun.test(provenance.conversionRunId) ||
-    typeof provenance.verificationId !== 'string' ||
-    !IDS.verification.test(provenance.verificationId) ||
-    (provenance.verificationOutcome !== 'PASS' &&
-      provenance.verificationOutcome !== 'PASS_WITH_WARNINGS') ||
-    !rfc3339(provenance.capturedAt) ||
-    typeof provenance.converter.converterId !== 'string' ||
-    !CONVERTER_ID.test(provenance.converter.converterId) ||
-    typeof provenance.converter.version !== 'string' ||
-    !SEMVER.test(provenance.converter.version) ||
-    provenance.legalTruthVerified !== false ||
-    typeof rawArtifact.artifactId !== 'string' ||
-    !IDS.artifact.test(rawArtifact.artifactId) ||
-    typeof rawArtifact.sha256 !== 'string' ||
-    !SHA256.test(rawArtifact.sha256) ||
-    typeof rawArtifact.sizeBytes !== 'number' ||
-    !Number.isSafeInteger(rawArtifact.sizeBytes) ||
-    rawArtifact.sizeBytes < 0 ||
-    typeof rawArtifact.mimeType !== 'string' ||
-    !MIME_TYPE.test(rawArtifact.mimeType) ||
-    typeof rawArtifact.originalName !== 'string' ||
-    rawArtifact.originalName.length === 0 ||
-    typeof stagingDocument.documentId !== 'string' ||
-    !IDS.stagingDocument.test(stagingDocument.documentId) ||
-    typeof stagingDocument.sha256 !== 'string' ||
-    !SHA256.test(stagingDocument.sha256) ||
-    typeof stagingDocument.sizeBytes !== 'number' ||
-    !Number.isSafeInteger(stagingDocument.sizeBytes) ||
-    stagingDocument.sizeBytes < 0 ||
-    stagingDocument.mediaType !== 'text/markdown' ||
-    stagingDocument.encoding !== 'utf-8' ||
-    typeof stagingDocument.content !== 'string'
-  )
-    return null;
-
-  return structuredClone(value) as ReadyPackageContentExportV1;
-}
-
-export function serializeReadyPackageContentExportV1(value: ReadyPackageContentExportV1): string {
-  return JSON.stringify({
-    contractVersion: value.contractVersion,
-    objectType: value.objectType,
-    readyPackageId: value.readyPackageId,
-    knowledgeWorkspaceId: value.knowledgeWorkspaceId,
-    readyPackageDigest: value.readyPackageDigest,
-    provenance: {
-      sourceId: value.provenance.sourceId,
-      conversionRunId: value.provenance.conversionRunId,
-      verificationId: value.provenance.verificationId,
-      verificationOutcome: value.provenance.verificationOutcome,
-      capturedAt: value.provenance.capturedAt,
-      converter: {
-        converterId: value.provenance.converter.converterId,
-        version: value.provenance.converter.version
-      },
-      legalTruthVerified: false
-    },
-    rawArtifact: {
-      artifactId: value.rawArtifact.artifactId,
-      sha256: value.rawArtifact.sha256,
-      sizeBytes: value.rawArtifact.sizeBytes,
-      mimeType: value.rawArtifact.mimeType,
-      originalName: value.rawArtifact.originalName
-    },
-    stagingDocument: {
-      documentId: value.stagingDocument.documentId,
-      sha256: value.stagingDocument.sha256,
-      sizeBytes: value.stagingDocument.sizeBytes,
-      mediaType: 'text/markdown',
-      encoding: 'utf-8',
-      content: value.stagingDocument.content
-    }
-  } satisfies ReadyPackageContentExportV1);
-}
-
-export const fingerprintReadyPackageContentExportV1 = (value: ReadyPackageContentExportV1) =>
-  createHash('sha256').update(serializeReadyPackageContentExportV1(value), 'utf8').digest('hex');
-
-export function contentExportHasValidStagingBytes(value: ReadyPackageContentExportV1): boolean {
-  const bytes = Buffer.from(value.stagingDocument.content, 'utf8');
-  return (
-    bytes.byteLength === value.stagingDocument.sizeBytes &&
-    createHash('sha256').update(bytes).digest('hex') === value.stagingDocument.sha256
-  );
-}
-
-export function contentExportMatchesIntake(
-  value: ReadyPackageContentExportV1,
-  intake: CoreIntakeRequest
-): boolean {
-  return (
-    value.readyPackageId === intake.readyPackageId &&
-    value.readyPackageDigest === intake.digest &&
-    value.stagingDocument.documentId === intake.evidence.stagingDocumentId &&
-    intake.evidence.artifactIds.includes(value.rawArtifact.artifactId)
-  );
+    content: KnowledgeReadyPackageContent
+  ): Promise<{ content: KnowledgeReadyPackageContent; created: boolean }>;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
-export class MemoryKnowledgeContentExportRepository implements KnowledgeContentExportRepository {
-  private readonly rows = new Map<string, KnowledgeContentExport>();
 
-  async createOrFind(candidate: KnowledgeContentExport) {
+export class MemoryKnowledgeReadyPackageContentRepository implements KnowledgeReadyPackageContentRepository {
+  private readonly rows = new Map<string, KnowledgeReadyPackageContent>();
+
+  async createOrFind(candidate: KnowledgeReadyPackageContent) {
     await Promise.resolve();
     const existing = this.rows.get(candidate.intakeId);
-    if (existing) return { contentExport: clone(existing), created: false };
+    if (existing) return { content: clone(existing), created: false };
     this.rows.set(candidate.intakeId, clone(candidate));
-    return { contentExport: clone(candidate), created: true };
-  }
-
-  async findByIntakeId(intakeId: string) {
-    await Promise.resolve();
-    const value = this.rows.get(intakeId);
-    return value ? clone(value) : null;
+    return { content: clone(candidate), created: true };
   }
 
   count() {
@@ -262,62 +37,125 @@ export class MemoryKnowledgeContentExportRepository implements KnowledgeContentE
   }
 }
 
+function stable(value: unknown): string {
+  if (value === undefined) return 'null';
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value as Record<string, unknown>)
+      .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+const sha256 = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
+
+export function fingerprintReadyPackageContentExport(value: ReadyPackageContentExportV1): string {
+  return sha256(serializeReadyPackageContentExportV1(value));
+}
+
+export type KnowledgeContentValidationIssue = {
+  code:
+    | 'KNOWLEDGE_CONTENT_INTAKE_MISMATCH'
+    | 'KNOWLEDGE_CONTENT_STAGING_INTEGRITY_MISMATCH'
+    | 'KNOWLEDGE_CONTENT_READY_PACKAGE_DIGEST_MISMATCH';
+  message: string;
+};
+
+export function validateReadyPackageContentExport(
+  intake: KnowledgeIntake,
+  value: ReadyPackageContentExportV1
+): KnowledgeContentValidationIssue | null {
+  if (
+    intake.request.readyPackageId !== value.readyPackageId ||
+    intake.request.digest !== value.readyPackageDigest ||
+    intake.request.evidence.stagingDocumentId !== value.stagingDocument.documentId ||
+    intake.request.evidence.artifactIds.length !== 1 ||
+    intake.request.evidence.artifactIds[0] !== value.rawArtifact.artifactId
+  ) {
+    return {
+      code: 'KNOWLEDGE_CONTENT_INTAKE_MISMATCH',
+      message: 'ReadyPackage content export does not match the frozen Core intake evidence.'
+    };
+  }
+
+  const stagingBytes = Buffer.from(value.stagingDocument.content, 'utf8');
+  if (
+    stagingBytes.byteLength !== value.stagingDocument.sizeBytes ||
+    sha256(stagingBytes) !== value.stagingDocument.sha256
+  ) {
+    return {
+      code: 'KNOWLEDGE_CONTENT_STAGING_INTEGRITY_MISMATCH',
+      message: 'Canonical staging content does not match its declared hash and size.'
+    };
+  }
+
+  const evidenceDigest = sha256(
+    stable({
+      artifactIds: [value.rawArtifact.artifactId],
+      stagingDocumentId: value.stagingDocument.documentId,
+      sourceId: value.provenance.sourceId,
+      conversionRunId: value.provenance.conversionRunId,
+      rawArtifactSha256: value.rawArtifact.sha256,
+      stagingSha256: value.stagingDocument.sha256,
+      verificationId: value.provenance.verificationId,
+      verificationOutcome: value.provenance.verificationOutcome,
+      converter: value.provenance.converter,
+      capturedAt: value.provenance.capturedAt,
+      legalTruthVerified: false
+    })
+  );
+  if (evidenceDigest !== value.readyPackageDigest) {
+    return {
+      code: 'KNOWLEDGE_CONTENT_READY_PACKAGE_DIGEST_MISMATCH',
+      message: 'ReadyPackage content export does not match its declared ReadyPackage digest.'
+    };
+  }
+  return null;
+}
+
 type Row = Record<string, unknown>;
-const mapRow = (row: Row): KnowledgeContentExport => ({
+const mapRow = (row: Row): KnowledgeReadyPackageContent => ({
   intakeId: row.intake_id as string,
   workspaceId: row.workspace_id as string,
   readyPackageId: row.ready_package_id as string,
-  readyPackageDigest: row.ready_package_digest as string,
-  contentExport: row.export_json as ReadyPackageContentExportV1,
+  export: row.export_json as ReadyPackageContentExportV1,
   exportSha256: row.export_sha256 as string,
-  receivedAt: (row.received_at as Date).toISOString()
+  consumedAt: (row.consumed_at as Date).toISOString()
 });
 
-export class PostgresKnowledgeContentExportRepository implements KnowledgeContentExportRepository {
+export class PostgresKnowledgeReadyPackageContentRepository implements KnowledgeReadyPackageContentRepository {
   constructor(private readonly query: QueryClient) {}
 
-  async createOrFind(candidate: KnowledgeContentExport) {
-    const value = candidate.contentExport;
+  async createOrFind(candidate: KnowledgeReadyPackageContent) {
     const result = await this.query.query(
-      `INSERT INTO knowledge_content_exports(
-        intake_id,workspace_id,ready_package_id,ready_package_digest,contract_version,
-        knowledge_workspace_id,source_id,raw_artifact_id,raw_artifact_sha256,
-        staging_document_id,staging_sha256,export_sha256,export_json,received_at
-      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14)
-      ON CONFLICT (intake_id) DO NOTHING
-      RETURNING *`,
+      `INSERT INTO knowledge_intake_contents(
+        intake_id,workspace_id,ready_package_id,knowledge_workspace_id,ready_package_digest,
+        raw_artifact_id,raw_artifact_sha256,staging_document_id,staging_sha256,
+        staging_markdown,export_sha256,export_json,consumed_at
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13)
+      ON CONFLICT (intake_id) DO UPDATE
+        SET intake_id=knowledge_intake_contents.intake_id
+      RETURNING *, (xmax = 0) AS created`,
       [
         candidate.intakeId,
         candidate.workspaceId,
         candidate.readyPackageId,
-        candidate.readyPackageDigest,
-        value.contractVersion,
-        value.knowledgeWorkspaceId,
-        value.provenance.sourceId,
-        value.rawArtifact.artifactId,
-        value.rawArtifact.sha256,
-        value.stagingDocument.documentId,
-        value.stagingDocument.sha256,
+        candidate.export.knowledgeWorkspaceId,
+        candidate.export.readyPackageDigest,
+        candidate.export.rawArtifact.artifactId,
+        candidate.export.rawArtifact.sha256,
+        candidate.export.stagingDocument.documentId,
+        candidate.export.stagingDocument.sha256,
+        candidate.export.stagingDocument.content,
         candidate.exportSha256,
-        serializeReadyPackageContentExportV1(value),
-        candidate.receivedAt
+        serializeReadyPackageContentExportV1(candidate.export),
+        candidate.consumedAt
       ]
     );
-    if (result.rows[0]) {
-      return { contentExport: mapRow(result.rows[0] as Row), created: true };
-    }
-    const existing = await this.findByIntakeId(candidate.intakeId);
-    if (!existing) {
-      throw new Error('Knowledge content export conflict row disappeared.');
-    }
-    return { contentExport: existing, created: false };
-  }
-
-  async findByIntakeId(intakeId: string) {
-    const result = await this.query.query(
-      'SELECT * FROM knowledge_content_exports WHERE intake_id=$1',
-      [intakeId]
-    );
-    return result.rows[0] ? mapRow(result.rows[0] as Row) : null;
+    const row = result.rows[0] as Row & { created: boolean };
+    return { content: mapRow(row), created: row.created };
   }
 }

@@ -1,70 +1,34 @@
-import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { CoreIntakeRequest } from '@markorbit/contracts';
+import type { ReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import type { AuthenticationService } from '../src/auth.js';
-import { createRuntime } from '../src/index.js';
 import {
-  MemoryKnowledgeContentExportRepository,
-  fingerprintReadyPackageContentExportV1,
-  type ReadyPackageContentExportV1
+  MemoryKnowledgeReadyPackageContentRepository,
+  fingerprintReadyPackageContentExport
 } from '../src/knowledge-content.js';
+import { createRuntime } from '../src/index.js';
 import { MemoryKnowledgeIntakeRepository } from '../src/knowledge-intake.js';
 
 const secret = 's'.repeat(32);
 const workspaceId = '018f0000-0000-7000-8000-000000000202';
-const suffix = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
-const markdown = '# Knowledge\n' + 'x'.repeat(70 * 1024);
-const stagingSha256 = createHash('sha256').update(markdown, 'utf8').digest('hex');
-const readyPackageDigest = 'a'.repeat(64);
-const rawArtifactSha256 = 'b'.repeat(64);
-const readyPackageId = `rdp_${suffix}`;
-const artifactId = `art_${suffix}`;
-const stagingDocumentId = `std_${suffix}`;
-
-const intakeRequest: CoreIntakeRequest = {
-  readyPackageId,
-  workspaceId,
-  digest: readyPackageDigest,
-  evidence: { artifactIds: [artifactId], stagingDocumentId },
-  submittedAt: '2026-08-11T04:00:00.000Z'
-};
-
-const contentExport: ReadyPackageContentExportV1 = {
-  contractVersion: '1.0',
-  objectType: 'READY_PACKAGE_CONTENT_EXPORT',
-  readyPackageId,
-  knowledgeWorkspaceId: `wsp_${suffix}`,
-  readyPackageDigest,
-  provenance: {
-    sourceId: `src_${suffix}`,
-    conversionRunId: `cvr_${suffix}`,
-    verificationId: `svr_${suffix}`,
-    verificationOutcome: 'PASS',
-    capturedAt: '2026-08-11T03:59:00.000Z',
-    converter: { converterId: 'canonical-markdown', version: '1.0.0' },
-    legalTruthVerified: false
-  },
-  rawArtifact: {
-    artifactId,
-    sha256: rawArtifactSha256,
-    sizeBytes: 123,
-    mimeType: 'text/html',
-    originalName: 'source.html'
-  },
-  stagingDocument: {
-    documentId: stagingDocumentId,
-    sha256: stagingSha256,
-    sizeBytes: Buffer.byteLength(markdown, 'utf8'),
-    mediaType: 'text/markdown',
-    encoding: 'utf-8',
-    content: markdown
-  }
-};
-
 const runtimes: ReturnType<typeof createRuntime>[] = [];
+
+async function fixture(): Promise<ReadyPackageContentExportV1> {
+  return JSON.parse(
+    await readFile(
+      new URL(
+        '../../../packages/contracts/fixtures/ready-package-content-export-v1.json',
+        import.meta.url
+      ),
+      'utf8'
+    )
+  ) as ReadyPackageContentExportV1;
+}
+
 async function start() {
   const knowledgeIntakes = new MemoryKnowledgeIntakeRepository();
-  const knowledgeContentExports = new MemoryKnowledgeContentExportRepository();
+  const knowledgeContents = new MemoryKnowledgeReadyPackageContentRepository();
   const runtime = createRuntime({
     port: 0,
     authentication: {} as AuthenticationService,
@@ -75,126 +39,185 @@ async function start() {
       }
     },
     knowledgeIntakes,
-    knowledgeContentExports,
+    knowledgeContents,
     internalServiceSecret: secret
   });
   await runtime.start();
   runtimes.push(runtime);
-  return { runtime, knowledgeIntakes, knowledgeContentExports };
+  return { runtime, knowledgeIntakes, knowledgeContents };
 }
 
-async function createIntake(runtime: ReturnType<typeof createRuntime>) {
+async function createIntake(
+  runtime: ReturnType<typeof createRuntime>,
+  content: ReadyPackageContentExportV1
+) {
+  const request: CoreIntakeRequest = {
+    readyPackageId: content.readyPackageId,
+    workspaceId,
+    digest: content.readyPackageDigest,
+    evidence: {
+      artifactIds: [content.rawArtifact.artifactId],
+      stagingDocumentId: content.stagingDocument.documentId
+    },
+    submittedAt: '2026-08-11T01:00:00.000Z'
+  };
   const response = await fetch(
     `http://127.0.0.1:${runtime.listeningPort}/internal/knowledge/ready-packages/intakes`,
     {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'idempotency-key': 'content-intake',
+        'idempotency-key': `intake-${content.readyPackageId}`,
         'x-markorbit-internal-authorization': secret
       },
-      body: JSON.stringify(intakeRequest)
+      body: JSON.stringify(request)
     }
   );
-  return (await response.json()) as { intakeId: string; status: string; readyPackageId: string };
+  expect(response.status).toBe(201);
+  return (await response.json()) as { intakeId: string };
 }
 
-async function postContent(
+async function putContent(
   runtime: ReturnType<typeof createRuntime>,
   intakeId: string,
-  value: unknown = contentExport,
+  content: unknown,
   authorization: string | null = secret
 ) {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (authorization !== null) headers['x-markorbit-internal-authorization'] = authorization;
   const response = await fetch(
-    `http://127.0.0.1:${runtime.listeningPort}/internal/knowledge/ready-packages/intakes/${intakeId}/content-exports`,
-    { method: 'POST', headers, body: JSON.stringify(value) }
+    `http://127.0.0.1:${runtime.listeningPort}/internal/knowledge/ready-packages/intakes/${intakeId}/content`,
+    { method: 'POST', headers, body: JSON.stringify(content) }
   );
   return { response, json: (await response.json()) as Record<string, unknown> };
 }
 
 afterEach(async () => Promise.all(runtimes.splice(0).map((runtime) => runtime.stop())));
 
-describe('ReadyPackage Content Export V1 Core consumption boundary', () => {
-  it('persists the immutable export, preserves Markdown bytes, and accepts the intake', async () => {
-    const { runtime, knowledgeIntakes, knowledgeContentExports } = await start();
-    const intake = await createIntake(runtime);
-    expect(intake.status).toBe('RECEIVED');
-    expect(Buffer.byteLength(JSON.stringify(contentExport), 'utf8')).toBeGreaterThan(64 * 1024);
-
-    const consumed = await postContent(runtime, intake.intakeId);
-    expect(consumed.response.status).toBe(201);
-    expect(Object.keys(consumed.json).sort()).toEqual(['intakeId', 'readyPackageId', 'status']);
-    expect(consumed.json).toEqual({
-      intakeId: intake.intakeId,
+describe('ReadyPackage content consumption HTTP boundary', () => {
+  it('stores verified immutable content and accepts the intake', async () => {
+    const content = await fixture();
+    const { runtime, knowledgeIntakes, knowledgeContents } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const result = await putContent(runtime, intakeId, content);
+    expect(result.response.status).toBe(201);
+    expect(result.json).toEqual({
+      intakeId,
+      readyPackageId: content.readyPackageId,
       status: 'ACCEPTED',
-      readyPackageId
+      exportSha256: fingerprintReadyPackageContentExport(content)
     });
-    expect((await knowledgeIntakes.findById(intake.intakeId))?.status).toBe('ACCEPTED');
-    const stored = await knowledgeContentExports.findByIntakeId(intake.intakeId);
-    expect(stored?.contentExport.stagingDocument.content).toBe(markdown);
-    expect(stored?.exportSha256).toBe(fingerprintReadyPackageContentExportV1(contentExport));
+    expect(knowledgeContents.count()).toBe(1);
+    expect((await knowledgeIntakes.findById(intakeId))?.status).toBe('ACCEPTED');
   });
 
-  it('replays the exact export without duplicating durable content', async () => {
-    const { runtime, knowledgeContentExports } = await start();
-    const intake = await createIntake(runtime);
-    const first = await postContent(runtime, intake.intakeId);
-    const replay = await postContent(runtime, intake.intakeId);
+  it('allows the content route to exceed the shared 64 KiB JSON limit', async () => {
+    const content = await fixture();
+    const { runtime } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const oversized = {
+      ...content,
+      stagingDocument: { ...content.stagingDocument, content: 'x'.repeat(70 * 1024) }
+    };
+    const result = await putContent(runtime, intakeId, oversized);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_STAGING_INTEGRITY_MISMATCH');
+  });
+
+  it('replays the exact immutable export without a duplicate', async () => {
+    const content = await fixture();
+    const { runtime, knowledgeContents } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const first = await putContent(runtime, intakeId, content);
+    const replay = await putContent(runtime, intakeId, content);
     expect(first.response.status).toBe(201);
     expect(replay.response.status).toBe(200);
     expect(replay.json).toEqual(first.json);
-    expect(knowledgeContentExports.count()).toBe(1);
+    expect(knowledgeContents.count()).toBe(1);
   });
+
+  it.each([null, 'wrong-secret'])(
+    'rejects missing or invalid internal auth',
+    async (authorization) => {
+      const content = await fixture();
+      const { runtime, knowledgeContents } = await start();
+      const { intakeId } = await createIntake(runtime, content);
+      expect((await putContent(runtime, intakeId, content, authorization)).response.status).toBe(
+        401
+      );
+      expect(knowledgeContents.count()).toBe(0);
+    }
+  );
 
   it('rejects content that does not match the frozen intake evidence', async () => {
-    const { runtime, knowledgeContentExports } = await start();
-    const intake = await createIntake(runtime);
-    const mismatch = await postContent(runtime, intake.intakeId, {
-      ...contentExport,
-      readyPackageDigest: 'c'.repeat(64)
-    });
-    expect(mismatch.response.status).toBe(409);
-    expect(mismatch.json.code).toBe('KNOWLEDGE_CONTENT_EXPORT_INTAKE_MISMATCH');
-    expect(knowledgeContentExports.count()).toBe(0);
-  });
-
-  it('rejects staging content whose bytes no longer match the exported hash and size', async () => {
-    const { runtime, knowledgeContentExports } = await start();
-    const intake = await createIntake(runtime);
-    const invalid = await postContent(runtime, intake.intakeId, {
-      ...contentExport,
-      stagingDocument: { ...contentExport.stagingDocument, content: '# Changed\n' }
-    });
-    expect(invalid.response.status).toBe(400);
-    expect(invalid.json.code).toBe('KNOWLEDGE_CONTENT_EXPORT_INTEGRITY_INVALID');
-    expect(knowledgeContentExports.count()).toBe(0);
-  });
-
-  it('conflicts if an intake already owns a different otherwise-valid immutable export', async () => {
-    const { runtime, knowledgeContentExports } = await start();
-    const intake = await createIntake(runtime);
-    await postContent(runtime, intake.intakeId);
+    const content = await fixture();
+    const { runtime, knowledgeContents } = await start();
+    const { intakeId } = await createIntake(runtime, content);
     const changed = {
-      ...contentExport,
-      rawArtifact: { ...contentExport.rawArtifact, originalName: 'renamed-source.html' }
+      ...content,
+      rawArtifact: { ...content.rawArtifact, artifactId: 'art_01ARZ3NDEKTSV4RRFFQ69G5FAA' }
     };
-    const conflict = await postContent(runtime, intake.intakeId, changed);
-    expect(conflict.response.status).toBe(409);
-    expect(conflict.json.code).toBe('KNOWLEDGE_CONTENT_EXPORT_IMMUTABILITY_CONFLICT');
-    expect(knowledgeContentExports.count()).toBe(1);
+    const result = await putContent(runtime, intakeId, changed);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_INTAKE_MISMATCH');
+    expect(knowledgeContents.count()).toBe(0);
   });
 
-  it('rejects unknown intakes and invalid internal authentication', async () => {
-    const { runtime } = await start();
-    const missing = await postContent(runtime, crypto.randomUUID());
-    expect(missing.response.status).toBe(404);
-    expect(missing.json.code).toBe('KNOWLEDGE_INTAKE_NOT_FOUND');
+  it('rejects canonical Markdown whose bytes do not match the frozen staging hash', async () => {
+    const content = await fixture();
+    const { runtime, knowledgeContents } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const changed = {
+      ...content,
+      stagingDocument: { ...content.stagingDocument, content: '# Tampered\n' }
+    };
+    const result = await putContent(runtime, intakeId, changed);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_STAGING_INTEGRITY_MISMATCH');
+    expect(knowledgeContents.count()).toBe(0);
+  });
 
-    const intake = await createIntake(runtime);
-    const unauthorized = await postContent(runtime, intake.intakeId, contentExport, 'wrong-secret');
-    expect(unauthorized.response.status).toBe(401);
-    expect(unauthorized.json.code).toBe('INTERNAL_SERVICE_UNAUTHORIZED');
+  it('rejects export provenance that does not reproduce the ReadyPackage digest', async () => {
+    const content = await fixture();
+    const { runtime, knowledgeContents } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const changed = {
+      ...content,
+      provenance: {
+        ...content.provenance,
+        sourceId: 'src_01ARZ3NDEKTSV4RRFFQ69G5FAA'
+      }
+    };
+    const result = await putContent(runtime, intakeId, changed);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_READY_PACKAGE_DIGEST_MISMATCH');
+    expect(knowledgeContents.count()).toBe(0);
+  });
+
+  it('rejects content for an unknown intake before persistence', async () => {
+    const content = await fixture();
+    const { runtime, knowledgeContents } = await start();
+    const result = await putContent(runtime, crypto.randomUUID(), content);
+    expect(result.response.status).toBe(404);
+    expect(result.json.code).toBe('KNOWLEDGE_INTAKE_NOT_FOUND');
+    expect(knowledgeContents.count()).toBe(0);
+  });
+
+  it('rejects a different export when immutable content already exists for the intake', async () => {
+    const content = await fixture();
+    const { runtime, knowledgeContents } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    await knowledgeContents.createOrFind({
+      intakeId,
+      workspaceId,
+      readyPackageId: content.readyPackageId,
+      export: content,
+      exportSha256: '0'.repeat(64),
+      consumedAt: '2026-08-11T01:01:00.000Z'
+    });
+    const result = await putContent(runtime, intakeId, content);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_IMMUTABILITY_CONFLICT');
+    expect(knowledgeContents.count()).toBe(1);
   });
 });
