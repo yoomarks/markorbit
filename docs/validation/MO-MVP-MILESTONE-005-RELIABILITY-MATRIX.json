@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "milestone": 5,
+  "workPackage": "M5-WP-07",
+  "direction": "DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION",
+  "aggregate": "scripts/run-milestone5-reliability.mjs",
+  "hostedWorkflow": ".github/workflows/milestone-5-reliability.yml",
+  "authority": {
+    "evidenceReviewDecisionCreatesOfficialTruth": false,
+    "reviewAdmissionEqualsFilingSubmission": false,
+    "lifecycleProjectionCreatesOfficialStatus": false,
+    "recommendedActionAuthorizesExecution": false,
+    "crossServiceSqlAllowed": false,
+    "paymentImplemented": false,
+    "invoiceImplemented": false,
+    "legalAppointmentImplemented": false,
+    "automaticFormalMatterCompletionImplemented": false,
+    "automaticCapabilityVerificationImplemented": false
+  },
+  "scenarios": [
+    {
+      "id": "M5-AUT-001",
+      "group": "contracts",
+      "testFile": "packages/contracts/tests/evidence-lifecycle-contract.test.ts",
+      "testName": "canonical evidence-review lifecycle authority consequences remain non-authoritative",
+      "ownerDatabase": "None",
+      "requiredMode": "canonical contract suite",
+      "expectedEvidence": "Review, admission, lifecycle projection and Recommended Action authority boundaries remain machine-tested",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-MIG-001",
+      "group": "evidence-review-postgres",
+      "testFile": "services/execution/tests/evidence-review-postgres.test.ts",
+      "testName": "owns and verifies Execution migration 0033",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Execution review schema is owner-scoped and migrates cleanly",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-MIG-002",
+      "group": "lifecycle-postgres",
+      "testFile": "services/markreg/tests/lifecycle-projection-postgres.test.ts",
+      "testName": "owns and verifies MarkReg migration 0034",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Lifecycle projection schema is MarkReg-owned and migrates cleanly",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-MIG-003",
+      "group": "recommended-action-postgres",
+      "testFile": "services/markreg/tests/recommended-action-postgres.test.ts",
+      "testName": "owns and verifies MarkReg migration 0035",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Recommended Action schema is MarkReg-owned and migrates cleanly",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-MIG-004",
+      "group": "reviewed-source-handoff",
+      "testFile": "scripts/milestone5-reviewed-source-handoff.integration.test.ts",
+      "testName": "owns and verifies Execution migration 0036 with separate owner databases",
+      "ownerDatabase": "Execution + MarkReg, database isolated",
+      "requiredMode": "M5_REVIEWED_SOURCE_HANDOFF_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Reviewed-source sender state migrates without cross-service SQL",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-RST-001",
+      "group": "reviewed-source-handoff",
+      "testFile": "scripts/milestone5-reviewed-source-handoff.integration.test.ts",
+      "testName": "survives receiver response loss and sender/receiver restart replay",
+      "ownerDatabase": "Execution + MarkReg",
+      "requiredMode": "two PostgreSQL owner databases",
+      "expectedEvidence": "Committed receiver truth and sender delivery converge after process reconstruction without duplicate lifecycle events",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-RPL-001",
+      "group": "lifecycle-postgres",
+      "testFile": "services/markreg/tests/lifecycle-projection-postgres.test.ts",
+      "testName": "exact replay and duplicate admission converge idempotently",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Stable idempotency keys cannot create duplicate lifecycle truth",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-CON-001",
+      "group": "evidence-review-postgres",
+      "testFile": "services/execution/tests/evidence-review-postgres.test.ts",
+      "testName": "serializes concurrent conflicting review decisions",
+      "ownerDatabase": "Execution",
+      "requiredMode": "EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED=1",
+      "expectedEvidence": "Only one concurrent exact-version review decision becomes authoritative and the loser fails closed",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-CON-002",
+      "group": "recommended-action-postgres",
+      "testFile": "services/markreg/tests/recommended-action-postgres.test.ts",
+      "testName": "serializes concurrent identical recommendation generation",
+      "ownerDatabase": "MarkReg",
+      "requiredMode": "MARKREG_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Concurrent deterministic regeneration does not create duplicate Recommended Actions",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-TEN-001",
+      "group": "reviewed-source-handoff",
+      "testFile": "scripts/milestone5-reviewed-source-handoff.integration.test.ts",
+      "testName": "cross-Workspace handoff and lookup fail closed",
+      "ownerDatabase": "Execution + MarkReg",
+      "requiredMode": "two PostgreSQL owner databases",
+      "expectedEvidence": "Workspace identity remains enforced at both sender and receiver boundaries",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-RED-001",
+      "group": "customer-ui",
+      "testFile": "apps/markreg-web/tests/LifecyclePanel.test.tsx",
+      "testName": "customer lifecycle surface is redacted and preserves authority language",
+      "ownerDatabase": "None; presentation boundary",
+      "requiredMode": "component test",
+      "expectedEvidence": "Customer UI does not expose internal provider return or fingerprint provenance and does not imply execution authority",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-PER-001",
+      "group": "authenticated-surfaces",
+      "testFile": "apps/gateway/tests/lifecycle-http.test.ts",
+      "testName": "operations provenance requires review permission while customer reads remain bounded",
+      "ownerDatabase": "Gateway + bounded owner services",
+      "requiredMode": "authenticated Workspace Principal",
+      "expectedEvidence": "Permission, expired-session and Origin/CSRF boundaries fail closed before mutation",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-SRF-001",
+      "group": "markreg-surface",
+      "testFile": "services/markreg/tests/lifecycle-surface-http.test.ts",
+      "testName": "MarkReg lifecycle surface preserves Workspace and authority boundaries",
+      "ownerDatabase": "MarkReg boundary",
+      "requiredMode": "trusted internal service boundary",
+      "expectedEvidence": "Lifecycle and recommendation HTTP transport does not create stronger authority than repositories own",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-SRF-002",
+      "group": "execution-provenance-surface",
+      "testFile": "services/execution/tests/evidence-provenance-http.test.ts",
+      "testName": "Execution provenance surface remains authenticated and review-scoped",
+      "ownerDatabase": "Execution boundary",
+      "requiredMode": "trusted internal service boundary",
+      "expectedEvidence": "Evidence provenance remains review evidence and does not become customer Official Truth",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-BRW-001",
+      "group": "browser-real-runtime",
+      "testFile": "tests/e2e/milestone-001-real-runtime.spec.ts",
+      "testName": "real HTTP/runtime browser golden path passes without route interception",
+      "ownerDatabase": "Runtime composition",
+      "requiredMode": "Playwright desktop 1440x900",
+      "expectedEvidence": "Authenticated production-built browser path remains operable on desktop without request interception",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-BRW-002",
+      "group": "browser-real-runtime",
+      "testFile": "playwright.real-runtime.config.ts",
+      "testName": "real HTTP/runtime browser golden path also runs at mobile width",
+      "ownerDatabase": "Runtime composition",
+      "requiredMode": "Playwright mobile 390x844",
+      "expectedEvidence": "The existing real-runtime browser gate exercises the same path at 390px width",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M5-REP-001",
+      "group": "repeatability",
+      "testFile": "scripts/run-milestone5-reliability.mjs",
+      "testName": "critical Execution and MarkReg durable suites run a second cycle on the same owner databases",
+      "ownerDatabase": "Execution + MarkReg",
+      "requiredMode": "all M5 required-mode flags",
+      "expectedEvidence": "Critical migrations and durable semantics are repeatable without leaked test state or one-shot assumptions",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    }
+  ]
+}

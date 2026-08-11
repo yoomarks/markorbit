@@ -196,9 +196,17 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - MarkReg-owned migration: `0035_markreg_recommended_actions`.
   - Exact Lifecycle View ID/version/fingerprint plus deterministic `recommended-action-policy-v1` govern candidate generation.
   - OPEN / ACKNOWLEDGED / DISMISSED / SUPPRESSED remain advisory state only; `executionAuthorized = false` and no filing, Payment/Invoice or Official Truth is created.
-
 - M5-WP-05 — Retry-safe Execution-to-MarkReg Reviewed Source handoff and correction/replay loop (**implemented in PR #66**)
   - Execution-owned migration: `0036_execution_reviewed_source_handoff`.
   - Durable sender state is persisted before transport; stable MarkReg idempotency survives receiver unavailability, response loss and restart replay.
   - Corrected newer evidence requires a new explicit review/admission identity; cross-Workspace handoff and changed retry payloads fail closed.
   - Execution and MarkReg remain database-isolated; no filing, Payment/Invoice, Recommended Action execution or Official Truth authority is added.
+- M5-WP-06 — Authenticated Gateway, operations review surface and markreg.com lifecycle/status journey (**implemented in PR #67**)
+  - Customer lifecycle/status/timeline and Recommended Action projection remain customer-safe and redacted.
+  - Operations evidence provenance remains permission-gated and keeps stronger internal lineage separate from customer presentation.
+  - Gateway retains Session/Workspace Principal, Origin/CSRF and exact-version mutation controls; no execution authority is added.
+- M5-WP-07 — Exact-head migration/restart/replay/isolation/redaction/concurrency/browser reliability matrix (**implementation in PR #69**)
+  - Evidence: `docs/validation/MO-MVP-MILESTONE-005-RELIABILITY-MATRIX.json`, `scripts/run-milestone5-reliability.mjs`, `scripts/validate-milestone5-reliability-matrix.mjs`, `.github/workflows/milestone-5-reliability.yml` and the WP-07 task record.
+  - Uses separate Execution and MarkReg PostgreSQL databases and the existing desktop/mobile real-runtime browser path; critical durable suites are repeated on the same owner databases.
+  - No new product state, Payment/Invoice, legal appointment, filing authority, Official Truth, automatic completion, Capability verification or cross-service SQL is introduced.
+- M5-WP-08 — Independent Milestone 5 integration and authority audit (**not started; blocked on WP-07 merge**)
