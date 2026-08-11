@@ -23,8 +23,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Synchronize lockfile
-        run: pnpm install --lockfile-only --no-frozen-lockfile
+      - name: Synchronize lockfile and install workspace
+        run: pnpm install --no-frozen-lockfile
       - name: Format WP-02 sources
         run: |
           pnpm exec prettier --write \
