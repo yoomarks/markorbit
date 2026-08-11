@@ -20,11 +20,15 @@
     "./evidence-lifecycle": {
       "types": "./dist/evidence-lifecycle.d.ts",
       "import": "./dist/evidence-lifecycle.js"
+    },
+    "./knowledge-content-export": {
+      "types": "./dist/knowledge-content-export.d.ts",
+      "import": "./dist/knowledge-content-export.js"
     }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/order.ts src/provider-execution.ts src/evidence-lifecycle.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/order.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"

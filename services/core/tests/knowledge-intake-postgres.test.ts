@@ -1,5 +1,7 @@
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { ReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import {
   loadMigrationsForOwner,
   ManagedDatabase,
@@ -9,6 +11,10 @@ import {
   verifyMigrations
 } from '@markorbit/persistence';
 import { PostgresWorkspaceRepository } from '../src/identity.js';
+import {
+  fingerprintReadyPackageContentExport,
+  PostgresKnowledgeReadyPackageContentRepository
+} from '../src/knowledge-content.js';
 import {
   fingerprintCoreIntakeRequest,
   PostgresKnowledgeIntakeRepository,
@@ -24,6 +30,9 @@ if (required && !url)
 const integration = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
+const contentFixturePath = path.resolve(
+  '../../packages/contracts/fixtures/ready-package-content-export-v1.json'
+);
 const migrations = () =>
   loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/core-service');
 const config = () =>
@@ -52,6 +61,10 @@ const candidate = (key: string, readyPackageId = 'ready-one'): KnowledgeIntake =
     receivedAt: new Date().toISOString()
   };
 };
+
+async function contentFixture(): Promise<ReadyPackageContentExportV1> {
+  return JSON.parse(await readFile(contentFixturePath, 'utf8')) as ReadyPackageContentExportV1;
+}
 
 integration('PostgreSQL Knowledge intake repository', () => {
   beforeAll(async () => {
@@ -97,6 +110,9 @@ integration('PostgreSQL Knowledge intake repository', () => {
     );
     expect(replay).toMatchObject({ created: false, intake: { intakeId: original.intakeId } });
     expect(replay.intake.receivedAt).toBe(original.receivedAt);
+    expect(
+      await new PostgresKnowledgeIntakeRepository(database.getPool()).findById(original.intakeId)
+    ).toEqual(replay.intake);
     const count = await database
       .getPool()
       .query<{ count: number }>(
@@ -124,5 +140,63 @@ integration('PostgreSQL Knowledge intake repository', () => {
     expect(results.filter((result) => result.created)).toHaveLength(1);
     expect(new Set(results.map((result) => result.intake.intakeId)).size).toBe(1);
     expect(new Set(results.map((result) => result.intake.requestSha256)).size).toBe(1);
+  });
+
+  it('persists canonical Markdown in Core and replays the immutable export after restart', async () => {
+    const content = await contentFixture();
+    const request = {
+      readyPackageId: content.readyPackageId,
+      workspaceId,
+      digest: content.readyPackageDigest,
+      evidence: {
+        artifactIds: [content.rawArtifact.artifactId],
+        stagingDocumentId: content.stagingDocument.documentId
+      },
+      submittedAt: '2026-08-11T01:00:00.000Z'
+    };
+    const intake: KnowledgeIntake = {
+      intakeId: crypto.randomUUID(),
+      idempotencyKey: 'content-restart',
+      request,
+      requestSha256: fingerprintCoreIntakeRequest(request),
+      status: 'RECEIVED',
+      receivedAt: '2026-08-11T01:00:01.000Z'
+    };
+    await new PostgresKnowledgeIntakeRepository(database.getPool()).createOrFind(intake);
+    const storedContent = {
+      intakeId: intake.intakeId,
+      workspaceId,
+      readyPackageId: content.readyPackageId,
+      export: content,
+      exportSha256: fingerprintReadyPackageContentExport(content),
+      consumedAt: '2026-08-11T01:00:02.000Z'
+    };
+    const first = await new PostgresKnowledgeReadyPackageContentRepository(
+      database.getPool()
+    ).createOrFind(storedContent);
+    expect(first.created).toBe(true);
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+    const replay = await new PostgresKnowledgeReadyPackageContentRepository(
+      database.getPool()
+    ).createOrFind({ ...storedContent, consumedAt: '2026-08-11T01:00:03.000Z' });
+    expect(replay.created).toBe(false);
+    expect(replay.content).toEqual(first.content);
+    const persisted = await database.getPool().query<{
+      count: number;
+      staging_markdown: string;
+      status: string;
+    }>(
+      `SELECT count(*) OVER()::int AS count,c.staging_markdown,i.status
+       FROM knowledge_intake_contents c JOIN knowledge_intakes i USING(intake_id)
+       WHERE c.intake_id=$1`,
+      [intake.intakeId]
+    );
+    expect(persisted.rows[0]).toMatchObject({
+      count: 1,
+      staging_markdown: content.stagingDocument.content,
+      status: 'RECEIVED'
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { AuthenticationError, type WorkspaceRepository } from '@markorbit/contracts';
+import { parseReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import {
   createServiceRuntime,
   HttpError,
@@ -54,6 +55,9 @@ function authError(error: unknown): never {
       : 401;
   throw new HttpError(status, error.code, error.message);
 }
+const canonicalUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
+
 export function createRuntime(options: CoreRuntimeOptions = {}) {
   const authentication = options.authentication;
   const secret = options.internalServiceSecret;
