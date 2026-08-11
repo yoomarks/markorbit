@@ -182,6 +182,7 @@ suite('PostgreSQL Lite Product-loop feedback', () => {
   it('persists one manual use report, replays exactly and exposes stable CONTENT_USE_FEEDBACK provenance', async () => {
     const publishPackage = await preparedPackage();
     const store = feedbackStore();
+    expect(await store.listPendingPackages(workspaceId)).toEqual([publishPackage]);
     const command = {
       workspaceId,
       publishPackage: { id: publishPackage.publishPackageId, version: publishPackage.version },
@@ -208,6 +209,7 @@ suite('PostgreSQL Lite Product-loop feedback', () => {
       feedback
     );
     expect(await afterRestart.listRecent(workspaceId)).toEqual([feedback]);
+    expect(await afterRestart.listPendingPackages(workspaceId)).toEqual([]);
     expect(
       await afterRestart.sourceReference(workspaceId, feedback.productLoopFeedbackId)
     ).toMatchObject({
@@ -279,6 +281,7 @@ suite('PostgreSQL Lite Product-loop feedback', () => {
     });
 
     expect(await store.listRecent(otherWorkspaceId)).toEqual([]);
+    expect(await store.listPendingPackages(otherWorkspaceId)).toEqual([]);
     expect(
       await store.findByPackage(otherWorkspaceId, publishPackage.publishPackageId)
     ).toBeUndefined();

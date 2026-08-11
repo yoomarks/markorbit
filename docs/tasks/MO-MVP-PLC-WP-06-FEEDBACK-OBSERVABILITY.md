@@ -107,7 +107,7 @@ Safety requirements:
 
 ## Today observability
 
-`GET /v1/today` returns recent manual-use feedback alongside the existing Today snapshot. The Lite UI may render it as supporting Product-loop evidence; it must not become a new parallel top-level module.
+`GET /v1/today` returns both recent manual-use feedback and reviewed PublishPackages that do not yet have a feedback record. Today renders the pending packages as supporting Product-loop work, where an authenticated user can report Published, Delivered, Used or Not used. Saving the report removes that exact package version from the pending queue and returns the durable evidence to Today. This remains inside the Today mainline and does not become a new parallel top-level module.
 
 ## Explicit non-goals
 

@@ -196,6 +196,7 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
       rec.todayRecommendationId
     );
     expect(todayPayload.recentFeedback).toEqual([]);
+    expect(todayPayload.feedbackPendingPackages).toEqual([]);
 
     const prepared = await fetch(
       `${base}/v1/today/${encodeURIComponent(rec.todayRecommendationId)}/prepared-actions`,
