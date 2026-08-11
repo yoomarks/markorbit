@@ -1,0 +1,59 @@
+name: WP05 static diagnostic
+
+on:
+  push:
+    branches:
+      - plc-wp-05-lite-today-prepared-action
+    paths:
+      - '.github/workflows/wp05-static-diagnostic.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: plc-wp-05-lite-today-prepared-action
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Capture concise static results
+        shell: bash
+        run: |
+          set +e
+          : > wp05-static-debug.txt
+          for cmd in \
+            "pnpm --filter @markorbit/lite-service lint" \
+            "pnpm --filter @markorbit/lite-service typecheck" \
+            "pnpm --filter @markorbit/markreg-service lint" \
+            "pnpm --filter @markorbit/markreg-service typecheck" \
+            "pnpm --filter @markorbit/gateway lint" \
+            "pnpm --filter @markorbit/gateway typecheck" \
+            "pnpm --filter @markorbit/lite-web lint" \
+            "pnpm --filter @markorbit/lite-web typecheck"
+          do
+            echo "===== $cmd =====" >> wp05-static-debug.txt
+            bash -lc "$cmd" > /tmp/wp05-one.log 2>&1
+            status=$?
+            echo "EXIT=$status" >> wp05-static-debug.txt
+            if [ "$status" -ne 0 ]; then
+              tail -n 100 /tmp/wp05-one.log >> wp05-static-debug.txt
+            fi
+          done
+          exit 0
+      - name: Commit diagnostic
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wp05-static-debug.txt
+          git commit -m 'chore: persist WP-05 static diagnostic' || exit 0
+          git push origin HEAD:plc-wp-05-lite-today-prepared-action
