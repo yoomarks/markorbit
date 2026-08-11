@@ -21,7 +21,8 @@
     "markreg_lifecycle_projection": "@markorbit/markreg-service",
     "markreg_recommended_actions": "@markorbit/markreg-service",
     "lite_content_preparation": "@markorbit/lite-service",
-    "lite_candidate_qualification": "@markorbit/lite-service"
+    "lite_candidate_qualification": "@markorbit/lite-service",
+    "markreg_formal_opportunity_handoff": "@markorbit/markreg-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -46,6 +47,7 @@
     "0037_core_knowledge_intakes": "@markorbit/core-service",
     "0038_core_knowledge_intake_contents": "@markorbit/core-service",
     "0039_lite_content_preparation": "@markorbit/lite-service",
-    "0040_lite_candidate_qualification": "@markorbit/lite-service"
+    "0040_lite_candidate_qualification": "@markorbit/lite-service",
+    "0041_markreg_formal_opportunity_handoff": "@markorbit/markreg-service"
   }
 }
