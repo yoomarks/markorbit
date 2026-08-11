@@ -1,0 +1,64 @@
+name: M6 WP-03 Capability Observation Ledger
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/m6-wp-03-capability-observation-ledger.yml'
+      - 'services/capability-engine/**'
+      - 'services/execution/src/capability-observation-source-http.ts'
+      - 'services/execution/src/main.ts'
+      - 'infrastructure/persistence/migrations/**'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'docs/tasks/MO-MVP-M6-WP-03-CAPABILITY-OBSERVATION-LEDGER.md'
+
+permissions:
+  contents: read
+
+jobs:
+  capability-observation-ledger-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_capability_observation_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_capability_observation_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CAPABILITY_ENGINE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_observation_test
+      CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate persistence and owner boundaries
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Build typed dependency closures
+        run: |
+          pnpm exec turbo run build --filter=@markorbit/capability-engine...
+          pnpm exec turbo run build --filter=@markorbit/execution-service...
+      - name: Validate Capability Engine and Execution adapters
+        run: |
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+          pnpm --filter @markorbit/execution-service lint
+          pnpm --filter @markorbit/execution-service typecheck
+      - name: Run governed source authority tests
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-observation-source.test.ts
+      - name: Run real PostgreSQL Observation Ledger tests
+        run: pnpm --filter @markorbit/capability-engine test:observation-ledger:postgres
