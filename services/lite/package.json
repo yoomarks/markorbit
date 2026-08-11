@@ -1,0 +1,29 @@
+{
+  "name": "@markorbit/lite-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lite Product-owned durable state and governed Product-loop preparation.",
+  "scripts": {
+    "build": "tsup src/index.ts src/content-preparation.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests"
+  },
+  "dependencies": {
+    "@markorbit/contracts": "workspace:*",
+    "@markorbit/persistence": "workspace:*"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./content-preparation": {
+      "types": "./dist/content-preparation.d.ts",
+      "import": "./dist/content-preparation.js"
+    }
+  }
+}
