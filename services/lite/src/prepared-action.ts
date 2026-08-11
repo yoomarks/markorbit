@@ -901,7 +901,9 @@ export class PreparedActionJourneyService {
     command: Readonly<ConfirmPreparedActionCommand>
   ): Promise<PreparedActionJourney> {
     const confirmed = await this.store.confirm(command);
-    if (confirmed.handoffState === 'HANDOFF_COMPLETED') return confirmed;
+    const current = await this.store.findJourney(command.workspaceId, command.preparedAction.id);
+    if (current?.handoffState === 'HANDOFF_COMPLETED') return current;
+    const journey = current ?? confirmed;
     const plan = await this.store.planFor(command.workspaceId, command.preparedAction.id);
     if (!plan)
       throw new PreparedActionJourneyError(
@@ -909,7 +911,7 @@ export class PreparedActionJourneyService {
         'Prepared Action handoff plan was not found.',
         404
       );
-    const confirmation = confirmed.confirmation;
+    const confirmation = journey.confirmation;
     if (!confirmation)
       throw new PreparedActionJourneyError(
         'CONFIRMATION_REQUIRED',
@@ -919,10 +921,10 @@ export class PreparedActionJourneyService {
     let result: Readonly<PreparedActionHandoffResult>;
     try {
       result = await this.handoffAuthority.perform(
-        confirmed.preparedAction,
+        journey.preparedAction,
         plan,
         confirmation,
-        `prepared-action-handoff:${confirmed.preparedAction.preparedActionId}`
+        `prepared-action-handoff:${journey.preparedAction.preparedActionId}`
       );
     } catch (error) {
       if (error instanceof PreparedActionJourneyError) throw error;
