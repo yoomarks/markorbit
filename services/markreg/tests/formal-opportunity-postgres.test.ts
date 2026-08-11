@@ -318,9 +318,13 @@ suite('PostgreSQL MarkReg Formal Opportunity handoff', () => {
     expect(rejected).toHaveLength(1);
     expect(rejected[0]!.reason).toMatchObject({ code: 'DUPLICATE_SOURCE' });
 
-    const replayKey = fulfilled[0]!.value.formalTrademarkServiceOpportunityId.endsWith('_1')
-      ? command.idempotencyKey
-      : 'formal-opportunity-create-002';
+    const winnerCommand = await database
+      .getPool()
+      .query(
+        "SELECT idempotency_key FROM markreg_formal_opportunity_commands WHERE command_type='CREATE_FORMAL_OPPORTUNITY' LIMIT 1"
+      );
+    const replayKey = String(winnerCommand.rows[0]?.idempotency_key);
+    expect([command.idempotencyKey, 'formal-opportunity-create-002']).toContain(replayKey);
     const replay = await service.createFormalOpportunity({ ...command, idempotencyKey: replayKey });
     expect(replay).toEqual(fulfilled[0]!.value);
 
