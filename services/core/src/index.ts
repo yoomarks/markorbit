@@ -1,4 +1,5 @@
 import { AuthenticationError, type WorkspaceRepository } from '@markorbit/contracts';
+import { parseReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import {
   createServiceRuntime,
   HttpError,
@@ -8,6 +9,11 @@ import {
 } from '@markorbit/service-kit';
 import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
+import {
+  fingerprintReadyPackageContentExport,
+  validateReadyPackageContentExport,
+  type KnowledgeReadyPackageContentRepository
+} from './knowledge-content.js';
 import {
   fingerprintCoreIntakeRequest,
   parseCoreIntakeRequest,
@@ -25,6 +31,7 @@ export interface CoreRuntimeOptions {
   authentication?: AuthenticationService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
+  knowledgeContents?: KnowledgeReadyPackageContentRepository;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -46,6 +53,9 @@ function authError(error: unknown): never {
       : 401;
   throw new HttpError(status, error.code, error.message);
 }
+const canonicalUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
+
 export function createRuntime(options: CoreRuntimeOptions = {}) {
   const authentication = options.authentication;
   const secret = options.internalServiceSecret;
@@ -192,6 +202,55 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               readyPackageId: stored.intake.request.readyPackageId
             });
           })
+        },
+        {
+          method: 'POST' as const,
+          path: '/internal/knowledge/ready-packages/intakes/:intakeId/content',
+          handle: internal(async (request) => {
+            const intakeId = request.params.intakeId;
+            if (typeof intakeId !== 'string' || !canonicalUuid(intakeId))
+              throw new HttpError(400, 'INVALID_REQUEST', 'intakeId must be a UUID.');
+            const contentExport = parseReadyPackageContentExportV1(request.body);
+            if (!contentExport)
+              throw new HttpError(400, 'INVALID_REQUEST', 'Request body is invalid.');
+            if (!options.knowledgeIntakes || !options.knowledgeContents)
+              throw new HttpError(
+                503,
+                'KNOWLEDGE_CONTENT_SERVICE_UNAVAILABLE',
+                'Knowledge content service is unavailable.',
+                true
+              );
+            const intake = await options.knowledgeIntakes.findById(intakeId);
+            if (!intake)
+              throw new HttpError(
+                404,
+                'KNOWLEDGE_INTAKE_NOT_FOUND',
+                'Knowledge intake was not found.'
+              );
+            const issue = validateReadyPackageContentExport(intake, contentExport);
+            if (issue) throw new HttpError(409, issue.code, issue.message);
+            const exportSha256 = fingerprintReadyPackageContentExport(contentExport);
+            const stored = await options.knowledgeContents.createOrFind({
+              intakeId,
+              workspaceId: intake.request.workspaceId,
+              readyPackageId: intake.request.readyPackageId,
+              export: contentExport,
+              exportSha256,
+              consumedAt: new Date().toISOString()
+            });
+            if (stored.content.exportSha256 !== exportSha256)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_CONTENT_IMMUTABILITY_CONFLICT',
+                'This intake already has a different immutable ReadyPackage content export.'
+              );
+            return json(stored.created ? 201 : 200, {
+              intakeId,
+              readyPackageId: stored.content.readyPackageId,
+              status: 'STORED',
+              exportSha256: stored.content.exportSha256
+            });
+          })
         }
       ]
     : [];
@@ -203,3 +262,4 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
 export * from './identity.js';
 export * from './auth.js';
 export * from './knowledge-intake.js';
+export * from './knowledge-content.js';
