@@ -1,0 +1,151 @@
+from pathlib import Path
+import shutil
+import subprocess
+
+BRANCH = "agent/core-m1-ready-package-content-consumption"
+
+
+def run(*args: str) -> None:
+    subprocess.run(args, check=True)
+
+
+run("git", "config", "user.name", "github-actions[bot]")
+run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
+run("git", "fetch", "origin", "main")
+
+saved = {
+    "packages/service-kit/src/index.ts": "/tmp/service-kit-index.ts",
+    "services/core/src/knowledge-intake.ts": "/tmp/knowledge-intake.ts",
+    "services/core/package.json": "/tmp/core-package.json",
+}
+for source, target in saved.items():
+    shutil.copyfile(source, target)
+
+reset_paths = [
+    "infrastructure/persistence/migration-owners.json",
+    "packages/service-kit/src/index.ts",
+    "scripts/milestone2-core-restart.integration.test.ts",
+    "scripts/milestone2-migrations.integration.test.ts",
+    "scripts/milestone2-tenant-isolation.integration.test.ts",
+    "services/core/package.json",
+    "services/core/src/index.ts",
+    "services/core/src/knowledge-content.ts",
+    "services/core/src/knowledge-intake.ts",
+    "services/core/src/main.ts",
+    "services/core/tests/identity-postgres.test.ts",
+    "services/core/tests/knowledge-content-http.test.ts",
+    "services/core/tests/knowledge-content-postgres.test.ts",
+    "services/core/tests/knowledge-intake-postgres.test.ts",
+    "services/core/tests/session-postgres.test.ts",
+]
+run("git", "checkout", "origin/main", "--", *reset_paths)
+run("git", "rm", "-f", "infrastructure/persistence/migrations/0038_core_knowledge_content_exports.sql")
+for target, source in saved.items():
+    shutil.copyfile(source, target)
+
+path = Path("services/core/src/index.ts")
+text = path.read_text()
+old = "          path: '/internal/knowledge/ready-packages/intakes/:intakeId/content',\n          handle: internal(async (request) => {"
+new = "          path: '/internal/knowledge/ready-packages/intakes/:intakeId/content',\n          bodyLimitBytes: 12 * 1024 * 1024,\n          handle: internal(async (request) => {"
+if old not in text:
+    raise SystemExit("content route marker not found")
+text = text.replace(old, new, 1)
+old = """            if (stored.content.exportSha256 !== exportSha256)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_CONTENT_IMMUTABILITY_CONFLICT',
+                'This intake already has a different immutable ReadyPackage content export.'
+              );
+            return json(stored.created ? 201 : 200, {
+              intakeId,
+              readyPackageId: stored.content.readyPackageId,
+              status: 'STORED',
+              exportSha256: stored.content.exportSha256
+            });
+"""
+new = """            if (stored.content.exportSha256 !== exportSha256)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_CONTENT_IMMUTABILITY_CONFLICT',
+                'This intake already has a different immutable ReadyPackage content export.'
+              );
+            const accepted = await options.knowledgeIntakes.markAccepted(intakeId);
+            if (!accepted || accepted.status !== 'ACCEPTED')
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_INTAKE_NOT_ACCEPTABLE',
+                'Knowledge intake cannot transition to ACCEPTED.'
+              );
+            return json(stored.created ? 201 : 200, {
+              intakeId,
+              readyPackageId: stored.content.readyPackageId,
+              status: accepted.status,
+              exportSha256: stored.content.exportSha256
+            });
+"""
+if old not in text:
+    raise SystemExit("content response marker not found")
+path.write_text(text.replace(old, new, 1))
+
+path = Path("services/core/tests/knowledge-content-http.test.ts")
+text = path.read_text()
+text = text.replace(
+    "it('stores verified immutable content without changing the intake acceptance status'",
+    "it('stores verified immutable content and accepts the intake'",
+    1,
+)
+text = text.replace("status: 'STORED'", "status: 'ACCEPTED'", 1)
+text = text.replace("?.status).toBe('RECEIVED');", "?.status).toBe('ACCEPTED');", 1)
+marker = "  it('replays the exact immutable export without a duplicate', async () => {\n"
+oversized = """  it('allows the content route to exceed the shared 64 KiB JSON limit', async () => {
+    const content = await fixture();
+    const { runtime } = await start();
+    const { intakeId } = await createIntake(runtime, content);
+    const oversized = {
+      ...content,
+      stagingDocument: { ...content.stagingDocument, content: 'x'.repeat(70 * 1024) }
+    };
+    const result = await putContent(runtime, intakeId, oversized);
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_CONTENT_STAGING_INTEGRITY_MISMATCH');
+  });
+
+"""
+if marker not in text:
+    raise SystemExit("HTTP replay marker not found")
+path.write_text(text.replace(marker, oversized + marker, 1))
+
+path = Path("services/core/tests/knowledge-intake-postgres.test.ts")
+text = path.read_text()
+marker = "  it('allows exactly one concurrent same-key/same-body creation', async () => {\n"
+accepted_test = """  it('persists the ACCEPTED intake transition across database restart', async () => {
+    const original = candidate('accepted-transition');
+    const repository = new PostgresKnowledgeIntakeRepository(database.getPool());
+    await repository.createOrFind(original);
+    expect((await repository.markAccepted(original.intakeId))?.status).toBe('ACCEPTED');
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+    expect(
+      (await new PostgresKnowledgeIntakeRepository(database.getPool()).findById(original.intakeId))
+        ?.status
+    ).toBe('ACCEPTED');
+  });
+
+"""
+if marker not in text:
+    raise SystemExit("PostgreSQL concurrency marker not found")
+path.write_text(text.replace(marker, accepted_test + marker, 1))
+
+run(
+    "npx",
+    "prettier",
+    "--write",
+    "packages/service-kit/src/index.ts",
+    "services/core/src",
+    "services/core/tests",
+    "services/core/package.json",
+)
+run("git", "add", "-A")
+run("git", "commit", "-m", "fix(core-m1): rebase content acceptance on merged PR 72")
+run("git", "push", "origin", f"HEAD:{BRANCH}")
