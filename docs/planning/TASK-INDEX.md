@@ -205,8 +205,13 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Customer lifecycle/status/timeline and Recommended Action projection remain customer-safe and redacted.
   - Operations evidence provenance remains permission-gated and keeps stronger internal lineage separate from customer presentation.
   - Gateway retains Session/Workspace Principal, Origin/CSRF and exact-version mutation controls; no execution authority is added.
-- M5-WP-07 — Exact-head migration/restart/replay/isolation/redaction/concurrency/browser reliability matrix (**implementation in PR #69**)
+- M5-WP-07 — Exact-head migration/restart/replay/isolation/redaction/concurrency/browser reliability matrix (**merged in PR #69**)
   - Evidence: `docs/validation/MO-MVP-MILESTONE-005-RELIABILITY-MATRIX.json`, `scripts/run-milestone5-reliability.mjs`, `scripts/validate-milestone5-reliability-matrix.mjs`, `.github/workflows/milestone-5-reliability.yml` and the WP-07 task record.
   - Uses separate Execution and MarkReg PostgreSQL databases and the existing desktop/mobile real-runtime browser path; critical durable suites are repeated on the same owner databases.
   - No new product state, Payment/Invoice, legal appointment, filing authority, Official Truth, automatic completion, Capability verification or cross-service SQL is introduced.
-- M5-WP-08 — Independent Milestone 5 integration and authority audit (**not started; blocked on WP-07 merge**)
+- M5-WP-08 — Independent Milestone 5 integration and authority audit (**GO in PR #70; pending final documentation-head validation**)
+  - Initial audit recommendation: **FIX** for two bounded integration gaps in the Operations review journey and real lifecycle-to-Recommended-Action composition.
+  - PR #70 closes the gaps with an authenticated explicit review/admission/handoff path, real Recommended Action regeneration and a permanent zero-interception M5 integration gate.
+  - Audited code head `f79002d81329de2ae80c777e391f1b025f014e79` passed all eight hosted gates.
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}`.
+  - No Payment/Invoice, legal appointment, Filing Submission, external filing, Official Truth, automatic Matter completion, Capability verification or cross-service SQL is created. Merge remains an explicit owner action.

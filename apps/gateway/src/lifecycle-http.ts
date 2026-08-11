@@ -22,11 +22,36 @@ export interface GatewayLifecycleHttpOptions {
 }
 
 type JsonObject = Record<string, unknown>;
+const actorSpoofFields = new Set([
+  'actorId',
+  'userId',
+  'reviewerId',
+  'reviewerPrincipalId',
+  'requestedBy',
+  'membershipId'
+]);
 
 function bodyRecord(request: JsonRequest): JsonObject {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
   return request.body as JsonObject;
+}
+
+function rejectActorSpoof(value: unknown): void {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    for (const item of value) rejectActorSpoof(item);
+    return;
+  }
+  for (const [key, item] of Object.entries(value as JsonObject)) {
+    if (actorSpoofFields.has(key))
+      throw new HttpError(
+        400,
+        'ACTOR_SPOOF_REJECTED',
+        'Reviewer identity is derived from the authenticated Workspace Principal.'
+      );
+    rejectActorSpoof(item);
+  }
 }
 
 function sessionToken(request: JsonRequest): string {
@@ -70,6 +95,12 @@ function hasPermissions(principal: WorkspacePrincipal, required: readonly Permis
 
 async function payload(response: Response): Promise<JsonObject> {
   return (await response.json().catch(() => ({}))) as JsonObject;
+}
+
+function idempotency(request: JsonRequest): string {
+  const key = request.headers['idempotency-key'];
+  if (!key) throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+  return key;
 }
 
 export function createGatewayLifecycleRoutes(
@@ -152,6 +183,31 @@ export function createGatewayLifecycleRoutes(
     }
   };
 
+  const forwardExecution = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    path: string,
+    body?: unknown
+  ) => {
+    try {
+      const search = new URLSearchParams(request.query).toString();
+      const response = await fetch(`${options.executionUrl}${path}${search ? `?${search}` : ''}`, {
+        method: request.method,
+        headers: serviceHeaders(request, principal),
+        ...(request.method === 'GET' ? {} : { body: JSON.stringify(body ?? request.body ?? {}) })
+      });
+      return { response, body: await payload(response) };
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'Execution review service is unavailable.',
+        true
+      );
+    }
+  };
+
   const operationsProvenance = async (request: JsonRequest, principal: WorkspacePrincipal) => {
     const formalMatterId = request.params.formalMatterId!;
     const markReg = await forwardMarkReg(
@@ -176,31 +232,21 @@ export function createGatewayLifecycleRoutes(
     ];
     const reviewSources = await Promise.all(
       admissionIds.map(async (admissionId) => {
-        let response: Response;
-        try {
-          response = await fetch(
-            `${options.executionUrl}/internal/reviewed-source-admissions/${encodeURIComponent(admissionId)}/provenance`,
-            { headers: serviceHeaders(request, principal) }
-          );
-        } catch {
+        const result = await forwardExecution(
+          request,
+          principal,
+          `/internal/reviewed-source-admissions/${encodeURIComponent(admissionId)}/provenance`
+        );
+        if (!result.response.ok)
           throw new HttpError(
-            503,
-            'DOWNSTREAM_UNAVAILABLE',
-            'Execution review provenance service is unavailable.',
-            true
-          );
-        }
-        const body = await payload(response);
-        if (!response.ok)
-          throw new HttpError(
-            response.status,
-            typeof body.code === 'string' ? body.code : 'PROVENANCE_UNAVAILABLE',
-            typeof body.message === 'string'
-              ? body.message
+            result.response.status,
+            typeof result.body.code === 'string' ? result.body.code : 'PROVENANCE_UNAVAILABLE',
+            typeof result.body.message === 'string'
+              ? result.body.message
               : 'Execution review provenance is unavailable.',
-            response.status >= 500
+            result.response.status >= 500
           );
-        return body;
+        return result.body;
       })
     );
     return json(200, { ...markReg.body, reviewSources });
@@ -212,9 +258,7 @@ export function createGatewayLifecycleRoutes(
     const expectedVersion = body.expectedVersion;
     if (!Number.isInteger(expectedVersion) || Number(expectedVersion) < 1)
       throw new HttpError(400, 'INVALID_REQUEST', 'expectedVersion must be a positive integer.');
-    const idempotencyKey = request.headers['idempotency-key'];
-    if (!idempotencyKey)
-      throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+    const idempotencyKey = idempotency(request);
     if (body.idempotencyKey !== undefined && body.idempotencyKey !== idempotencyKey)
       throw new HttpError(
         400,
@@ -237,6 +281,14 @@ export function createGatewayLifecycleRoutes(
     return json(result.response.status, result.body);
   };
 
+  const reviewCommandContext = (request: JsonRequest) => {
+    const key = idempotency(request);
+    return {
+      key,
+      correlationId: request.headers['x-correlation-id'] ?? `evidence-review:${key}`
+    };
+  };
+
   return [
     {
       method: 'GET',
@@ -257,6 +309,124 @@ export function createGatewayLifecycleRoutes(
       handle: async (request) => {
         const principal = await authenticate(request, ['review:perform']);
         return operationsProvenance(request, principal);
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/operations/evidence-review/queue',
+      handle: async (request) => {
+        const principal = await authenticate(request, ['review:read']);
+        const result = await forwardExecution(
+          request,
+          principal,
+          '/internal/evidence-review/queue'
+        );
+        return json(result.response.status, result.body);
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/operations/evidence-review/sources/capture',
+      handle: async (request) => {
+        const principal = await authenticate(request, ['review:perform'], true);
+        const body = bodyRecord(request);
+        rejectActorSpoof(body);
+        const result = await forwardExecution(
+          request,
+          principal,
+          '/internal/evidence-review/sources/capture',
+          { evidenceHandoffId: body.evidenceHandoffId }
+        );
+        return json(result.response.status, result.body);
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/operations/evidence-review/decisions',
+      handle: async (request) => {
+        const principal = await authenticate(request, ['review:perform'], true);
+        const body = bodyRecord(request);
+        rejectActorSpoof(body);
+        const { key, correlationId } = reviewCommandContext(request);
+        const command = {
+          workspaceId: principal.workspaceId,
+          evidenceReceiptId: body.evidenceReceiptId,
+          expectedEvidenceReceiptVersion: body.expectedEvidenceReceiptVersion,
+          expectedEvidenceReceiptFingerprintSha256: body.expectedEvidenceReceiptFingerprintSha256,
+          outcome: body.outcome,
+          rationale: body.rationale,
+          correctionReasons: body.correctionReasons ?? [],
+          idempotencyKey: key,
+          correlationId
+        };
+        const result = await forwardExecution(
+          request,
+          principal,
+          '/internal/evidence-review/decisions',
+          { command }
+        );
+        return json(result.response.status, result.body);
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/operations/reviewed-source-admissions',
+      handle: async (request) => {
+        const principal = await authenticate(request, ['review:perform'], true);
+        const body = bodyRecord(request);
+        rejectActorSpoof(body);
+        const { key, correlationId } = reviewCommandContext(request);
+        const command = {
+          workspaceId: principal.workspaceId,
+          evidenceReviewDecisionId: body.evidenceReviewDecisionId,
+          expectedEvidenceReviewDecisionVersion: body.expectedEvidenceReviewDecisionVersion,
+          expectedEvidenceReviewDecisionFingerprintSha256:
+            body.expectedEvidenceReviewDecisionFingerprintSha256,
+          formalMatterId: body.formalMatterId,
+          expectedFormalMatterVersion: body.expectedFormalMatterVersion,
+          admittedEvidenceReferences: body.admittedEvidenceReferences ?? [],
+          idempotencyKey: key,
+          correlationId
+        };
+        const result = await forwardExecution(
+          request,
+          principal,
+          '/internal/reviewed-source-admissions',
+          { command }
+        );
+        return json(result.response.status, result.body);
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/operations/reviewed-source-handoffs/deliver',
+      handle: async (request) => {
+        const principal = await authenticate(request, ['review:perform'], true);
+        const body = bodyRecord(request);
+        rejectActorSpoof(body);
+        const { key, correlationId } = reviewCommandContext(request);
+        const command = {
+          workspaceId: principal.workspaceId,
+          reviewedSourceAdmissionId: body.reviewedSourceAdmissionId,
+          expectedReviewedSourceAdmissionVersion: body.expectedReviewedSourceAdmissionVersion,
+          expectedAdmissionFingerprintSha256: body.expectedAdmissionFingerprintSha256,
+          formalMatterId: body.formalMatterId,
+          expectedFormalMatterVersion: body.expectedFormalMatterVersion,
+          state: body.state,
+          eventCode: body.eventCode,
+          customerSafeLabel: body.customerSafeLabel,
+          customerSafeSummary: body.customerSafeSummary,
+          occurredAt: body.occurredAt,
+          idempotencyKey: key,
+          correlationId
+        };
+        const result = await forwardExecution(
+          request,
+          principal,
+          '/internal/reviewed-source-handoffs/deliver',
+          { command }
+        );
+        return json(result.response.status, result.body);
       }
     },
     {

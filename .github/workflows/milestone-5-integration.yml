@@ -1,0 +1,72 @@
+name: Milestone 5 integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-lifecycle-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      M5_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M5_RUNTIME_INTEGRATION_REQUIRED: '1'
+      M5_RUNTIME_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_core_m5_runtime
+      M5_RUNTIME_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_m5_runtime
+      M5_RUNTIME_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_m5_runtime
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Verify exact checkout
+        run: test "$(git rev-parse HEAD)" = "$M5_EXPECTED_HEAD_SHA"
+      - name: Create isolated M5 runtime databases
+        env: { PGPASSWORD: markorbit-test-only }
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE markorbit_core_m5_runtime;
+          CREATE DATABASE markorbit_execution_m5_runtime;
+          CREATE DATABASE markorbit_markreg_m5_runtime;
+          SQL
+      - name: Build runtime dependencies
+        run: pnpm build
+      - name: Link root integration workspace packages
+        run: |
+          mkdir -p node_modules/@markorbit
+          ln -sfn ../../packages/contracts node_modules/@markorbit/contracts
+          ln -sfn ../../packages/persistence node_modules/@markorbit/persistence
+      - name: Run zero-interception M5 evidence lifecycle path
+        run: |
+          mkdir -p .artifacts
+          set -o pipefail
+          pnpm exec vitest run --no-file-parallelism scripts/m5-evidence-lifecycle-runtime.integration.test.ts 2>&1 | tee .artifacts/milestone-5-integration.log
+      - name: Upload integration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-5-integration-${{ github.run_id }}
+          path: .artifacts/milestone-5-integration.log
+          if-no-files-found: ignore
+          retention-days: 14

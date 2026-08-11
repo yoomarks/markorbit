@@ -816,6 +816,39 @@
       "httpIntegrationTestFile": "apps/gateway/tests/lifecycle-http.test.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/operations/evidence-review/decisions",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/m5-evidence-lifecycle-runtime.integration.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/operations/evidence-review/queue",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/m5-evidence-lifecycle-runtime.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/evidence-review/sources/capture",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_EXACT_SOURCE_CAPTURE",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/m5-evidence-lifecycle-runtime.integration.test.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/operations/formal-matters/:formalMatterId/lifecycle-provenance",
       "owner": "markreg",
@@ -825,6 +858,28 @@
       "idempotencyRequirement": "NOT_APPLICABLE_READ",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
       "httpIntegrationTestFile": "apps/gateway/tests/lifecycle-http.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/reviewed-source-admissions",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/m5-evidence-lifecycle-runtime.integration.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/reviewed-source-handoffs/deliver",
+      "owner": "markreg",
+      "namespaceClass": "AUTHENTICATED_RUNTIME",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/m5-evidence-lifecycle-runtime.integration.test.ts"
     },
     {
       "method": "GET",

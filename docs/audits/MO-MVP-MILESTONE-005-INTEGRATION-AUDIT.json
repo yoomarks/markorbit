@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "milestone": "MO-MVP-MILESTONE-005",
+  "workPackage": "M5-WP-08",
+  "approvedDirection": "DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION",
+  "auditPullRequest": 70,
+  "initialRecommendation": "FIX",
+  "finalRecommendation": "GO",
+  "auditedCodeHeadSha": "f79002d81329de2ae80c777e391f1b025f014e79",
+  "findings": [
+    {
+      "id": "M5-AUD-FIX-01",
+      "status": "CLOSED_BY_BOUNDED_REMEDIATION",
+      "summary": "Approved Operations review workflow was durable in Execution but not operable through the governed browser/API boundary.",
+      "remediation": [
+        "Workspace-scoped PENDING_REVIEW queue",
+        "explicit exact source capture",
+        "authenticated explicit review decision and durable correction request",
+        "explicit Reviewed Source Admission and retry-safe handoff",
+        "Operations Console human review workflow"
+      ]
+    },
+    {
+      "id": "M5-AUD-FIX-02",
+      "status": "CLOSED_BY_BOUNDED_REMEDIATION",
+      "summary": "Real MarkReg lifecycle handoff did not compose the existing deterministic Recommended Action regeneration.",
+      "remediation": [
+        "regenerate only when the newly projected event is the current Lifecycle View",
+        "exact Lifecycle View ID/version/fingerprint",
+        "stable idempotency and original correlation lineage",
+        "executionAuthorized remains false"
+      ]
+    }
+  ],
+  "nonFindings": [
+    {
+      "summary": "Production Gateway lifecycle routes were already indirectly mounted through createGatewayOrderRoutes().",
+      "retainedAsFinding": false
+    }
+  ],
+  "hostedEvidence": {
+    "milestone5Integration": { "runId": 31447652716, "conclusion": "success" },
+    "milestone5Reliability": { "runId": 31447652734, "conclusion": "success" },
+    "validation": { "runId": 31447652680, "conclusion": "success" },
+    "browserVisual": { "runId": 31447652689, "conclusion": "success" },
+    "milestone4Integration": { "runId": 31447652685, "conclusion": "success" },
+    "milestone4Reliability": { "runId": 31447652678, "conclusion": "success" },
+    "milestone3Reliability": { "runId": 31447652687, "conclusion": "success" },
+    "milestone2Reliability": { "runId": 31447652705, "conclusion": "success" }
+  },
+  "permanentIntegrationGate": {
+    "workflow": ".github/workflows/milestone-5-integration.yml",
+    "test": "scripts/m5-evidence-lifecycle-runtime.integration.test.ts",
+    "databaseIsolation": ["Core", "Execution", "MarkReg"],
+    "realCoreSession": true,
+    "realServiceHttp": true,
+    "crossServiceSql": false
+  },
+  "authorityLocks": {
+    "evidenceReviewDecisionIsOfficialTruth": false,
+    "reviewAdmissionIsFilingSubmission": false,
+    "lifecycleProjectionIsOfficialStatus": false,
+    "recommendedActionAuthorizesExecution": false,
+    "paymentOrInvoiceImplied": false,
+    "legalAppointmentImplied": false,
+    "formalMatterCompletedAutomatically": false,
+    "userCapabilityVerifiedAutomatically": false,
+    "externalFilingImplemented": false,
+    "officialTruthPromotionImplemented": false,
+    "crossServiceSqlAllowed": false,
+    "aiMayRecordAuthoritativeReviewDecision": false,
+    "aiMayExecuteRecommendedAction": false,
+    "aiMayCreateOfficialTruth": false
+  },
+  "ownership": {
+    "Core": "identity, Workspace, Membership, Session, Principal and permission truth",
+    "Execution": "evidence receipts, review decisions, correction requests, Reviewed Source Admissions and sender handoff state",
+    "MGSN": "Provider Return",
+    "MarkReg": "Formal Matter, lifecycle projection and Recommended Action",
+    "GatewayAndUi": "transport and presentation only"
+  },
+  "releaseConsequences": {
+    "tagCreated": false,
+    "releaseCreated": false,
+    "deploymentFreezeCreated": false,
+    "paymentCreated": false,
+    "invoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmissionCreated": false,
+    "officialTruthCreated": false
+  },
+  "mergeRequiresExplicitOwnerAction": true,
+  "documentationHeadMustRevalidate": true
+}

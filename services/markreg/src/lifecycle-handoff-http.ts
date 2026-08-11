@@ -10,6 +10,11 @@ import {
   type LifecycleProjectionService,
   type ReviewedSourceAdmissionReader
 } from './lifecycle-projection.js';
+import {
+  RECOMMENDED_ACTION_POLICY_VERSION,
+  RecommendedActionError,
+  type RecommendedActionService
+} from './recommended-action.js';
 
 type Body = Record<string, unknown>;
 
@@ -54,10 +59,11 @@ function ensureWorkspace(workspaceId: string, actual: unknown) {
 export interface MarkRegLifecycleHandoffRouteOptions {
   internalServiceSecret: string;
   lifecycleServiceFor(workspaceId: string): LifecycleProjectionService;
+  recommendedActionServiceFor?(workspaceId: string): RecommendedActionService;
 }
 
 function lifecycleError(error: unknown): never {
-  if (error instanceof LifecycleProjectionError)
+  if (error instanceof LifecycleProjectionError || error instanceof RecommendedActionError)
     throw new HttpError(
       error.status,
       error.code,
@@ -83,8 +89,27 @@ export function createMarkRegLifecycleHandoffRoutes(
         const workspaceId = workspaceOf(request, body);
         ensureWorkspace(workspaceId, command.workspaceId);
         try {
+          const result = await options.lifecycleServiceFor(workspaceId).project(command);
+          let recommendedAction;
+          if (
+            options.recommendedActionServiceFor &&
+            result.currentView.currentEvent.id === result.event.lifecycleEventId
+          ) {
+            recommendedAction = await options.recommendedActionServiceFor(workspaceId).regenerate({
+              workspaceId,
+              formalMatterId: result.currentView.formalMatter.id,
+              expectedLifecycleViewId: result.currentView.lifecycleViewId,
+              expectedLifecycleViewVersion: result.currentView.version,
+              expectedLifecycleViewFingerprintSha256:
+                result.currentView.lifecycleViewFingerprintSha256,
+              policyVersion: RECOMMENDED_ACTION_POLICY_VERSION,
+              idempotencyKey: `lifecycle-recommendation:${result.currentView.lifecycleViewId}:v${result.currentView.version}`,
+              correlationId: command.correlationId
+            });
+          }
           return json(200, {
-            result: await options.lifecycleServiceFor(workspaceId).project(command)
+            result,
+            ...(recommendedAction ? { recommendedAction } : {})
           });
         } catch (error) {
           return lifecycleError(error);

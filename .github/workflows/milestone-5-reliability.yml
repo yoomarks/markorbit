@@ -2,6 +2,8 @@ name: Milestone 5 reliability
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -28,8 +30,8 @@ jobs:
       MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_m5_test
       M5_REVIEWED_SOURCE_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_m5_handoff_test
       M5_REVIEWED_SOURCE_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_m5_handoff_test
-      MO_INTERNAL_SERVICE_SECRET: m5-wp07-ci-internal-key-32-bytes
-      MO_CSRF_SECRET: m5-wp07-ci-csrf-key-32-bytes-minimum
+      MO_INTERNAL_SERVICE_SECRET: ${{ github.sha }}
+      MO_CSRF_SECRET: ${{ github.sha }}
       WEB_ORIGINS: http://127.0.0.1:4371,http://127.0.0.1:4372
     steps:
       - uses: actions/checkout@v4
