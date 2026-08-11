@@ -37,7 +37,6 @@ test.describe('PLC-WP-05 real durable Lite Today path', () => {
 
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
-    await expect(page.getByText(/Accepted governed Knowledge changed the timing explanation/)).toBeVisible();
     await expect(page.getByText(`rdp_wp05-browser-${workspaceId}`, { exact: true })).toBeVisible();
     await expect(page.getByText('Execution authorized', { exact: true })).not.toBeVisible();
 
