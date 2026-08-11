@@ -134,7 +134,7 @@ describe('M6-WP-01 capability learning contracts', () => {
           runtimeCapabilityVersion: profile.runtimeCapability.version,
           evidenceCount: profile.evidenceCount,
           latestEvidenceAt: profile.latestEvidenceAt,
-          acceptedPrivateReflection: profile.acceptedReflections[0]?.text
+          acceptedPrivateReflection: profile.acceptedReflections[0]!.text
         }
       ],
       visibility: 'PRIVATE',
