@@ -499,7 +499,7 @@ suite.sequential('M5 zero-interception evidence review and lifecycle runtime', (
       source.correlationId
     );
     expect(delivery.response.status).toBe(200);
-    expect(delivery.body.result.result.currentView).toMatchObject({
+    expect(delivery.body.result.currentView).toMatchObject({
       state: 'CUSTOMER_ACTION_NEEDED',
       officialStatusVerified: false
     });
