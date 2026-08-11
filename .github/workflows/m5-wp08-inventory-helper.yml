@@ -85,15 +85,13 @@ jobs:
             }
           ];
           const keys = new Set(doc.routes.map((r) => `${r.method} ${r.path}`));
-          const missing = additions.filter((r) => !keys.has(`${r.method} ${r.path}`));
-          if (missing.length) {
-            const anchor = doc.routes.findIndex(
-              (r) => r.method === 'GET' && r.path === '/api/operations/formal-matters/:formalMatterId/lifecycle-provenance'
-            );
-            if (anchor < 0) throw new Error('Lifecycle provenance inventory anchor is missing.');
-            doc.routes.splice(anchor + 1, 0, ...missing);
-            fs.writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
+          for (const route of additions) {
+            if (!keys.has(`${route.method} ${route.path}`)) doc.routes.push(route);
           }
+          doc.routes.sort((a, b) =>
+            `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`)
+          );
+          fs.writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
 
           const validatorFile = 'scripts/validate-gateway-inventory.mjs';
           let validator = fs.readFileSync(validatorFile, 'utf8');
