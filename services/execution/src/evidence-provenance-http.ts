@@ -5,7 +5,6 @@ import {
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import type {
-  EvidenceReviewDecisionId,
   RecordEvidenceReviewDecisionCommand,
   ReviewedSourceAdmissionId
 } from '@markorbit/contracts/evidence-lifecycle';
@@ -211,7 +210,7 @@ export function createExecutionEvidenceProvenanceRoutes(
           const correctionRequest =
             decision.outcome === 'CORRECTION_REQUIRED'
               ? await service.getCorrectionRequest(
-                  decision.evidenceReviewDecisionId as EvidenceReviewDecisionId,
+                  decision.evidenceReviewDecisionId,
                   reviewerPrincipal(principal)
                 )
               : undefined;
