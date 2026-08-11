@@ -2,10 +2,10 @@
 
 **Approved direction:** `DURABLE_EVIDENCE_REVIEW_AND_LIFECYCLE_PROJECTION`  
 **Scope approval:** PR #60, merge `0de33333246b66d825b56137f87c32266fb5583c`  
-**Current work package:** `M5-WP-07` — migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix  
-**Milestone status:** `IMPLEMENTATION_ACTIVE`
+**Current work package:** `M5-WP-08` — independent integration and authority audit  
+**Milestone status:** `AUDIT_GO_PENDING_PR_70_MERGE`
 
-The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01. This traceability record is now current through the active WP-07 reliability package.
+The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01. This traceability record is current through the WP-08 independent audit and bounded remediation in PR #70.
 
 ## Work package status
 
@@ -15,8 +15,8 @@ The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, T
 - **M5-WP-04 — Explainable Recommended Action candidates and acknowledgement/suppression semantics:** `IMPLEMENTED_IN_PR_65`. Evidence: migration `0035_markreg_recommended_actions`, deterministic policy/repository/service, PostgreSQL acceptance tests and WP-04 task record.
 - **M5-WP-05 — Retry-safe Execution-to-MarkReg reviewed-evidence handoff and correction/replay loop:** `IMPLEMENTED_IN_PR_66`. Evidence: migration `0036_execution_reviewed_source_handoff`, trusted Execution/MarkReg HTTP bridge, dual-database real-runtime acceptance suite and WP-05 task record.
 - **M5-WP-06 — Authenticated Gateway, operations review surface and markreg.com lifecycle/status journey:** `IMPLEMENTED_IN_PR_67`. Evidence: MarkReg lifecycle surface, Execution provenance surface, Gateway lifecycle HTTP boundary, markreg.com `LifecyclePanel`, operations console integration and focused HTTP/UI tests.
-- **M5-WP-07 — Migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix:** `IMPLEMENTATION_IN_PR_69`. Evidence: machine-readable reliability matrix, exact-head runner, inventory validator, dedicated hosted workflow and WP-07 task record.
-- **M5-WP-08 — Independent Milestone 5 integration and authority audit:** `NOT_STARTED`.
+- **M5-WP-07 — Migration, restart, replay, isolation, redaction, concurrency and browser reliability matrix:** `MERGED_IN_PR_69`. Merge: `48a3c223a51b381da83d181f9d0cb70bb812a82c`. Evidence: machine-readable reliability matrix, exact-head runner, inventory validator, dedicated hosted workflow and WP-07 task record.
+- **M5-WP-08 — Independent Milestone 5 integration and authority audit:** `AUDIT_GO_IN_PR_70_PENDING_FINAL_HEAD_VALIDATION`. Initial audit returned `FIX` for two bounded integration findings; PR #70 closes them and the audited code head `f79002d81329de2ae80c777e391f1b025f014e79` passed all eight hosted gates. Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}` and the permanent Milestone 5 integration gate.
 
 ## WP-01 canonical contract lock
 
@@ -150,6 +150,16 @@ The machine-readable inventory is `docs/validation/MO-MVP-MILESTONE-005-RELIABIL
 
 The gate explicitly preserves the permanent M5 authority consequences: review is not Official Truth, admission is not Filing Submission, lifecycle projection is not Official Status, Recommended Action is not execution authority, and no Payment/Invoice/legal appointment/automatic completion/Capability verification/cross-service SQL is introduced.
 
+## WP-08 independent integration and authority audit
+
+The independent audit initially returned `FIX` for two bounded integration gaps: the approved Operations review workflow was not operable through the governed browser/API boundary, and the real MarkReg lifecycle handoff did not compose the already-implemented deterministic Recommended Action regeneration.
+
+PR #70 remediates only those approved-scope gaps. Operations now runs an explicit human-governed sequence over real Core identity and Execution persistence: `PENDING_REVIEW queue -> exact source capture -> explicit review/correction -> explicit Reviewed Source Admission -> explicit lifecycle handoff`. The MarkReg handoff regenerates a Recommended Action only when the newly projected event is the current Lifecycle View. Reviewer identity is derived from the authenticated Workspace Principal, actor spoofing is rejected, correlation lineage is preserved, and no cross-service SQL is introduced.
+
+A permanent zero-interception gate, `.github/workflows/milestone-5-integration.yml`, starts Core, Execution, MarkReg and Gateway with separate Core/Execution/MarkReg PostgreSQL databases and proves the complete M5 path plus the correction-not-admissible branch. The audited code head `f79002d81329de2ae80c777e391f1b025f014e79` passed Milestone 5 integration `31447652716`, Milestone 5 reliability `31447652734`, validation `31447652680`, Browser and Visual Validation `31447652689`, Milestone 4 integration `31447652685`, Milestone 4 reliability `31447652678`, Milestone 3 reliability `31447652687` and Milestone 2 reliability `31447652705`.
+
+The re-audit recommendation is **GO**. Evidence Review remains internal governed truth, admission remains non-filing, Lifecycle Projection remains non-official, Recommended Action remains non-executing, and no Payment/Invoice/legal appointment/automatic completion/Capability verification/external filing/Official Truth is introduced.
+
 ## Ownership boundary
 
 - Core owns identity, Workspace, Session, Principal and permission truth.
@@ -163,6 +173,6 @@ The gate explicitly preserves the permanent M5 authority consequences: review is
 
 AI may summarize evidence, highlight inconsistencies, draft review notes, explain lifecycle state and suggest Recommended Action candidates. AI may not record authoritative review decisions, admit reviewed sources, execute Recommended Actions, submit filings or create Official Truth.
 
-## Next implementation step
+## Audit outcome and owner action
 
-M5-WP-08 remains `NOT_STARTED`. It may begin only after M5-WP-07 passes the exact-head Milestone 5 reliability workflow and the repository's existing hosted gates on the same final PR head, then merges with explicit owner authorization. WP-08 is the independent integration and authority audit; it must not be folded into this reliability implementation PR.
+M5-WP-08 has a **GO** recommendation for the audited code head. The documentation head must pass the same hosted gates before PR #70 is marked ready for review. No additional implementation work package exists inside the currently approved Milestone 5 scope. Merge, tagging, release or any next milestone remains an explicit owner decision.
