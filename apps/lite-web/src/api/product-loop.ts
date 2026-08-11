@@ -1,7 +1,9 @@
 import type {
   LiteTodaySnapshot,
   PreparedActionJourney,
+  ProductLoopFeedbackOutcome,
   ProductLoopUseFeedback,
+  PublishPackage,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 
@@ -9,6 +11,7 @@ const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:40
 
 export type TodayProductLoopSnapshot = LiteTodaySnapshot & {
   recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+  feedbackPendingPackages: ReadonlyArray<Readonly<PublishPackage>>;
 };
 
 export class TodayHttpError extends Error {
@@ -28,6 +31,10 @@ export interface TodayClient {
   loadPreparedAction(preparedActionId: string): Promise<PreparedActionJourney>;
   prepareContent(recommendation: Readonly<TodayRecommendation>): Promise<PreparedActionJourney>;
   confirm(journey: Readonly<PreparedActionJourney>): Promise<PreparedActionJourney>;
+  recordUseFeedback(
+    publishPackage: Readonly<PublishPackage>,
+    outcome: ProductLoopFeedbackOutcome
+  ): Promise<ProductLoopUseFeedback>;
 }
 
 async function csrfToken(): Promise<string> {
@@ -131,6 +138,19 @@ export function createTodayClient(workspaceId: string): TodayClient {
           acknowledgedEffect: journey.preparedAction.confirmationEffect
         },
         `confirm:${journey.preparedAction.preparedActionId}:${journey.preparedAction.version}`
+      ),
+    recordUseFeedback: (publishPackage, outcome) =>
+      request<ProductLoopUseFeedback>(
+        `/api/lite/publish-packages/${encodeURIComponent(publishPackage.publishPackageId)}/use-feedback`,
+        workspaceId,
+        'POST',
+        {
+          publishPackageVersion: publishPackage.version,
+          expectedPublishPackageFingerprintSha256:
+            publishPackage.publishPackageFingerprintSha256,
+          outcome
+        },
+        `feedback:${publishPackage.publishPackageId}:${publishPackage.version}`
       )
   };
 }
