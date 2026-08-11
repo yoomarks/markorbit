@@ -36,7 +36,6 @@ jobs:
                   raise SystemExit(f"missing patch anchor in {path}: {old[:80]!r}")
               p.write_text(text.replace(old, new, 1))
 
-          # Gateway stays transport/composition only.
           replace(
               'apps/gateway/src/index.ts',
               "export * from './mgsn-http.js';\n",
@@ -63,7 +62,6 @@ jobs:
               "      routes: [\n        ...createGatewayProductLoopRoutes({\n          liteUrl,\n          ...(authenticationClient ? { authenticationClient } : {}),\n          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)\n            ? {\n                internalServiceSecret: (options.internalServiceSecret ??\n                  process.env.MO_INTERNAL_SERVICE_SECRET)!\n              }\n            : {}),\n          csrfSecret,\n          allowedOrigins\n        }),\n        ...createGatewayMgsnRoutes({\n"
           )
 
-          # Remove an accidental unused contracts import in the new Lite HTTP adapter.
           p = Path('services/lite/src/http.ts')
           text = p.read_text().replace(
               "  PreparedActionId,\n  PreparedActionPlan as _PreparedActionPlan\n",
@@ -71,7 +69,6 @@ jobs:
           )
           p.write_text(text)
 
-          # Existing Product-loop human actor fields now accept authoritative Core UUID/string IDs.
           p = Path('services/lite/src/content-preparation.ts')
           text = p.read_text()
           text = text.replace('  reviewerPrincipalId: MarkOrbitId;','  reviewerPrincipalId: string;')
@@ -119,7 +116,6 @@ jobs:
           text = text.replace('    principalId: MarkOrbitId\n','    principalId: string\n')
           p.write_text(text)
 
-          # Remove this workflow from the final diff.
           Path('.github/workflows/wp05-one-shot.yml').unlink()
       - name: Install and refresh lockfile
         run: pnpm install --no-frozen-lockfile
@@ -141,7 +137,6 @@ jobs:
           apps/gateway/src/index.ts
           apps/gateway/src/product-loop-http.ts
           infrastructure/persistence/migration-owners.json
-          infrastructure/persistence/migrations/0042_lite_prepared_action_journey.sql
           docs/tasks/MO-MVP-PLC-WP-05-LITE-TODAY-PREPARED-ACTION.md
           pnpm-lock.yaml
       - name: Commit bounded patch
