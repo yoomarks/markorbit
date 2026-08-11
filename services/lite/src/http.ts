@@ -139,11 +139,12 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
         try {
-          const [snapshot, recentFeedback] = await Promise.all([
+          const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
             options.journeyService.listToday(principal.workspaceId),
-            options.feedbackStore.listRecent(principal.workspaceId)
+            options.feedbackStore.listRecent(principal.workspaceId),
+            options.feedbackStore.listPendingPackages(principal.workspaceId)
           ]);
-          return json(200, { ...snapshot, recentFeedback });
+          return json(200, { ...snapshot, recentFeedback, feedbackPendingPackages });
         } catch (error) {
           return mapError(error);
         }
@@ -227,6 +228,7 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
         const body = bodyOf(request);
+        const externalReference = optionalText(body.externalReference, 'externalReference');
         try {
           const feedback = await options.feedbackStore.recordUseFeedback({
             workspaceId: principal.workspaceId,
@@ -239,9 +241,7 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
               'expectedPublishPackageFingerprintSha256'
             ),
             outcome: text(body.outcome, 'outcome') as ProductLoopFeedbackOutcome,
-            ...(optionalText(body.externalReference, 'externalReference')
-              ? { externalReference: optionalText(body.externalReference, 'externalReference') }
-              : {}),
+            ...(externalReference ? { externalReference } : {}),
             recordedByPrincipalId: principal.userId,
             idempotencyKey: keyOf(request)
           });
