@@ -204,6 +204,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         {
           method: 'POST' as const,
           path: '/internal/knowledge/ready-packages/intakes/:intakeId/content-exports',
+          bodyLimitBytes: 12 * 1024 * 1024,
           handle: internal(async (request) => {
             if (!options.knowledgeIntakes || !options.knowledgeContentExports)
               throw new HttpError(
