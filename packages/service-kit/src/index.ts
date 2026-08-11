@@ -27,6 +27,7 @@ export interface JsonResult {
 export interface JsonRoute {
   method: 'GET' | 'POST' | 'PATCH';
   path: string;
+  bodyLimitBytes?: number;
   handle(request: JsonRequest): Promise<JsonResult> | JsonResult;
 }
 export interface ServiceRuntime {
@@ -176,7 +177,10 @@ export function createServiceRuntime(
               contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
           )
             throw new HttpError(400, 'INVALID_REQUEST', 'Content-Type must be application/json.');
-          const body = request.method === 'GET' ? undefined : await readBody(request, limit);
+          const body =
+            request.method === 'GET'
+              ? undefined
+              : await readBody(request, matched.route.bodyLimitBytes ?? limit);
           const headers: Record<string, string | undefined> = {};
           for (const [key, value] of Object.entries(request.headers))
             headers[key] = Array.isArray(value) ? value[0] : value;
