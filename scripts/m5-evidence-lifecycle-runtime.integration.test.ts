@@ -426,7 +426,7 @@ suite.sequential('M5 zero-interception evidence review and lifecycle runtime', (
     const capturedAudit = await executionDatabase
       .getPool()
       .query(
-        "SELECT actor_id FROM execution_evidence_review_audit WHERE workspace_id=$1 AND event_type='SOURCE_CAPTURED' ORDER BY audit_id DESC LIMIT 1",
+        "SELECT actor_id FROM execution_evidence_review_audit WHERE workspace_id=$1 AND action='EVIDENCE_RECEIPT_SOURCE_CAPTURED' ORDER BY audit_id DESC LIMIT 1",
         [workspaceId]
       );
     expect(capturedAudit.rows[0]?.actor_id).toBe(operatorUserId);
