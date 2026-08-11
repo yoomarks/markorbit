@@ -1,0 +1,68 @@
+name: Product Loop Today Prepared Action
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/product-loop-today-prepared-action.yml'
+      - 'apps/gateway/**'
+      - 'apps/lite-web/**'
+      - 'services/lite/**'
+      - 'services/markreg/**'
+      - 'packages/contracts/src/product-loop.ts'
+      - 'infrastructure/persistence/migrations/**'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepared-action-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_lite_today_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_lite_today_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_today_test
+      LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate ownership boundaries
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Build WP-05 dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Lint and typecheck WP-05 packages
+        run: |
+          pnpm --filter @markorbit/lite-service lint
+          pnpm --filter @markorbit/lite-service typecheck
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/lite-web lint
+          pnpm --filter @markorbit/lite-web typecheck
+      - name: Run real PostgreSQL Prepared Action tests
+        run: pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+      - name: Build Today Storybook
+        run: pnpm --filter @markorbit/lite-web build-storybook
