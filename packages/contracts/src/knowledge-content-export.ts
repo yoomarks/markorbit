@@ -164,4 +164,37 @@ export function parseReadyPackageContentExportV1(value: unknown): ReadyPackageCo
 }
 
 export const serializeReadyPackageContentExportV1 = (value: ReadyPackageContentExportV1) =>
-  JSON.stringify(value);
+  JSON.stringify({
+    contractVersion: value.contractVersion,
+    objectType: value.objectType,
+    readyPackageId: value.readyPackageId,
+    knowledgeWorkspaceId: value.knowledgeWorkspaceId,
+    readyPackageDigest: value.readyPackageDigest,
+    provenance: {
+      sourceId: value.provenance.sourceId,
+      conversionRunId: value.provenance.conversionRunId,
+      verificationId: value.provenance.verificationId,
+      verificationOutcome: value.provenance.verificationOutcome,
+      capturedAt: value.provenance.capturedAt,
+      converter: {
+        converterId: value.provenance.converter.converterId,
+        version: value.provenance.converter.version
+      },
+      legalTruthVerified: false
+    },
+    rawArtifact: {
+      artifactId: value.rawArtifact.artifactId,
+      sha256: value.rawArtifact.sha256,
+      sizeBytes: value.rawArtifact.sizeBytes,
+      mimeType: value.rawArtifact.mimeType,
+      originalName: value.rawArtifact.originalName
+    },
+    stagingDocument: {
+      documentId: value.stagingDocument.documentId,
+      sha256: value.stagingDocument.sha256,
+      sizeBytes: value.stagingDocument.sizeBytes,
+      mediaType: 'text/markdown',
+      encoding: 'utf-8',
+      content: value.stagingDocument.content
+    }
+  } satisfies ReadyPackageContentExportV1);
