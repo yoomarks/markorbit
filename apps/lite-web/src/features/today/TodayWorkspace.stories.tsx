@@ -1,10 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
-  LiteTodaySnapshot,
   PreparedActionJourney,
+  ProductLoopUseFeedback,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
-import { TodayHttpError, type TodayClient } from '../../api/product-loop.js';
+import {
+  TodayHttpError,
+  type TodayClient,
+  type TodayProductLoopSnapshot
+} from '../../api/product-loop.js';
 import { TodayWorkspace } from './TodayWorkspace.js';
 
 const workspaceId = '25252525-2525-4252-8252-252525252525';
@@ -90,19 +94,37 @@ const completed: PreparedActionJourney = {
     }
   }
 };
+const feedback: ProductLoopUseFeedback = {
+  schemaVersion: 1,
+  productLoopFeedbackId: 'product-loop-feedback_story',
+  workspaceId,
+  version: 1,
+  publishPackage: { id: 'publish-package_story', version: 1 },
+  outcome: 'USER_REPORTED_PUBLISHED',
+  externalReference: 'https://example.test/manual-publication/renewal-window',
+  recordedByPrincipalId: '11111111-1111-4111-8111-111111111111',
+  recordedAt: '2026-08-11T08:14:00.000Z',
+  externalActionExecutedByMarkOrbit: false,
+  externalOutcomeVerifiedByMarkOrbit: false
+};
 
-function snapshot(actions: PreparedActionJourney[] = [], partial = false): LiteTodaySnapshot {
+function snapshot(
+  actions: PreparedActionJourney[] = [],
+  partial = false,
+  recentFeedback: ProductLoopUseFeedback[] = []
+): TodayProductLoopSnapshot {
   return {
     schemaVersion: 1,
     workspaceId,
     generatedAt: '2026-08-11T08:15:00.000Z',
     items: [{ recommendation, preparedActions: actions }],
     partial,
-    warnings: partial ? ['Knowledge refresh is delayed; exact stored provenance is shown.'] : []
+    warnings: partial ? ['Knowledge refresh is delayed; exact stored provenance is shown.'] : [],
+    recentFeedback
   };
 }
 
-function clientFor(value: LiteTodaySnapshot): TodayClient {
+function clientFor(value: TodayProductLoopSnapshot): TodayClient {
   return {
     loadToday: () => Promise.resolve(value),
     loadPreparedAction: () => Promise.resolve(prepared),
@@ -127,6 +149,9 @@ export const PreparedActionReview: Story = {
 };
 export const HandoffSuccess: Story = {
   args: { workspaceId, client: clientFor(snapshot([completed])) }
+};
+export const FeedbackReturnedToToday: Story = {
+  args: { workspaceId, client: clientFor(snapshot([completed], false, [feedback])) }
 };
 export const PartialContext: Story = {
   args: { workspaceId, client: clientFor(snapshot([], true)) }
@@ -166,7 +191,7 @@ export const DependencyError: Story = {
   }
 };
 export const Mobile390: Story = {
-  args: { workspaceId, client: clientFor(snapshot([prepared])) },
+  args: { workspaceId, client: clientFor(snapshot([prepared], false, [feedback])) },
   parameters: {
     viewport: {
       defaultViewport: 'mobile1',
