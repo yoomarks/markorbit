@@ -1,0 +1,24 @@
+name: Agent CORE-M1 Format Preview
+
+on:
+  push:
+    branches:
+      - core-m1-ready-package-content-consumption
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm prettier --write packages/contracts/src/knowledge-content-export.ts packages/contracts/tests/knowledge-content-export-contract.test.ts services/core/src/index.ts services/core/src/knowledge-content.ts services/core/tests/knowledge-content-http.test.ts services/core/tests/knowledge-intake-postgres.test.ts
+          git diff --no-ext-diff --unified=0 -- packages/contracts/src/knowledge-content-export.ts packages/contracts/tests/knowledge-content-export-contract.test.ts services/core/src/index.ts services/core/src/knowledge-content.ts services/core/tests/knowledge-content-http.test.ts services/core/tests/knowledge-intake-postgres.test.ts
