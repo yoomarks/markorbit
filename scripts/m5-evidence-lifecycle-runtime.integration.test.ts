@@ -101,7 +101,8 @@ suite.sequential('M5 zero-interception evidence review and lifecycle runtime', (
 
   async function resetOwner(
     value: ManagedDatabase,
-    owner: '@markorbit/core-service' | '@markorbit/execution-service' | '@markorbit/markreg-service',
+    owner:
+      '@markorbit/core-service' | '@markorbit/execution-service' | '@markorbit/markreg-service',
     namespace: string
   ) {
     await value.start();
@@ -301,7 +302,10 @@ suite.sequential('M5 zero-interception evidence review and lifecycle runtime', (
       executionDatabase,
       executionDatabase.getPool()
     );
-    const admissionService = new ReviewedSourceAdmissionService(admissionRepository, reviewRepository);
+    const admissionService = new ReviewedSourceAdmissionService(
+      admissionRepository,
+      reviewRepository
+    );
     class DynamicMarkRegClient implements MarkRegLifecycleProjectionClient {
       async project(command: Parameters<MarkRegLifecycleProjectionClient['project']>[0]) {
         if (!markRegBaseUrl) throw new Error('MarkReg runtime is not ready.');
