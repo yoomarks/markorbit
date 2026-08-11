@@ -49,21 +49,21 @@ The Product loop does not invent a second trademark intake model. A qualified fo
 
 The bounded MVP ownership decision is:
 
-| State / responsibility | Owner | Reason |
-| --- | --- | --- |
-| Today Recommendation | Lite Product | Product-specific prioritization/explanation before shared extraction is justified |
-| Prepared Action | Lite Product | Product intent/preparation before confirmation or owner mutation |
-| Content Opportunity | Lite Product | Candidate reason to prepare content; not canonical or formal commercial truth |
-| bounded Content Draft/version | Lite Product | Concrete Product artifact preparation; no universal Artifact platform |
-| Content Human Review record | Lite Product in this bounded loop | Review of a Product draft before package preparation; does not itself execute external communication |
-| PublishPackage | Lite Product | Prepared package only; no external publication authority |
-| manual use/publication feedback | Lite Product | User-reported Product evidence; not independently verified external truth |
-| Opportunity Candidate | Lite Product | Pre-qualification candidate state |
-| Qualification Decision | Lite Product, explicit human Principal | Explicit decision over candidate; still not formal Opportunity mutation |
-| Formal Trademark Service Opportunity | **MarkReg** | In this bounded trademark-service loop it is formal service-domain business state and the Canon example routes confirmed trademark opportunities into MarkReg |
-| MarkReg Intake | MarkReg | Existing owner and existing intake semantics |
-| Order / Matter / lifecycle | MarkReg | Existing proven owner boundaries |
-| protected work/review where required | Execution | Existing governed execution boundary |
+| State / responsibility               | Owner                                  | Reason                                                                                                                                                        |
+| ------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Today Recommendation                 | Lite Product                           | Product-specific prioritization/explanation before shared extraction is justified                                                                             |
+| Prepared Action                      | Lite Product                           | Product intent/preparation before confirmation or owner mutation                                                                                              |
+| Content Opportunity                  | Lite Product                           | Candidate reason to prepare content; not canonical or formal commercial truth                                                                                 |
+| bounded Content Draft/version        | Lite Product                           | Concrete Product artifact preparation; no universal Artifact platform                                                                                         |
+| Content Human Review record          | Lite Product in this bounded loop      | Review of a Product draft before package preparation; does not itself execute external communication                                                          |
+| PublishPackage                       | Lite Product                           | Prepared package only; no external publication authority                                                                                                      |
+| manual use/publication feedback      | Lite Product                           | User-reported Product evidence; not independently verified external truth                                                                                     |
+| Opportunity Candidate                | Lite Product                           | Pre-qualification candidate state                                                                                                                             |
+| Qualification Decision               | Lite Product, explicit human Principal | Explicit decision over candidate; still not formal Opportunity mutation                                                                                       |
+| Formal Trademark Service Opportunity | **MarkReg**                            | In this bounded trademark-service loop it is formal service-domain business state and the Canon example routes confirmed trademark opportunities into MarkReg |
+| MarkReg Intake                       | MarkReg                                | Existing owner and existing intake semantics                                                                                                                  |
+| Order / Matter / lifecycle           | MarkReg                                | Existing proven owner boundaries                                                                                                                              |
+| protected work/review where required | Execution                              | Existing governed execution boundary                                                                                                                          |
 
 ### Why Formal Opportunity is not added to Core
 

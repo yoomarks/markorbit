@@ -259,11 +259,7 @@ export interface ProductLoopUseFeedback {
   externalOutcomeVerifiedByMarkOrbit: false;
 }
 
-export const opportunityCandidateStatuses = [
-  'OPEN',
-  'UNDER_REVIEW',
-  'DISPOSITIONED'
-] as const;
+export const opportunityCandidateStatuses = ['OPEN', 'UNDER_REVIEW', 'DISPOSITIONED'] as const;
 export type OpportunityCandidateStatus = (typeof opportunityCandidateStatuses)[number];
 
 /** Lite-owned pre-qualification state; never a formal business Opportunity. */
@@ -342,9 +338,7 @@ export interface FormalTrademarkServiceOpportunity {
 export interface MarkRegIntakeHandoff {
   schemaVersion: 1;
   workspaceId: string;
-  formalOpportunity: Readonly<
-    ProductLoopExactReference<FormalTrademarkServiceOpportunityId>
-  >;
+  formalOpportunity: Readonly<ProductLoopExactReference<FormalTrademarkServiceOpportunityId>>;
   expectedFormalOpportunityFingerprintSha256: string;
   target: 'MARKREG_INTAKE';
   channel: 'LITE_PROFESSIONAL';

@@ -214,7 +214,12 @@ describe('PLC-WP-01 Product loop contract', () => {
       'MARKREG_HANDOFF',
       'WORK_FOLLOW_UP'
     ]);
-    expect(todayRecommendationStatuses).toEqual(['OPEN', 'ACKNOWLEDGED', 'DISMISSED', 'SUPERSEDED']);
+    expect(todayRecommendationStatuses).toEqual([
+      'OPEN',
+      'ACKNOWLEDGED',
+      'DISMISSED',
+      'SUPERSEDED'
+    ]);
     expect(preparedActionKinds).toContain('START_MARKREG_INTAKE');
     expect(productLoopHandoffTargets).toEqual([
       'LITE_CONTENT_PREPARATION',
@@ -331,9 +336,9 @@ describe('PLC-WP-01 Product loop contract', () => {
   });
 
   it('keeps automatic authority consequences false and AI assistive only', () => {
-    expect(Object.values(noAutomaticProductLoopConsequences).every((value) => value === false)).toBe(
-      true
-    );
+    expect(
+      Object.values(noAutomaticProductLoopConsequences).every((value) => value === false)
+    ).toBe(true);
     expect(productLoopAiAuthority.mayExplain).toBe(true);
     expect(productLoopAiAuthority.mayDraftContent).toBe(true);
     expect(productLoopAiAuthority.mayConfirmForUser).toBe(false);
