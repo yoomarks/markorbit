@@ -104,10 +104,10 @@ function snapshot(actions: PreparedActionJourney[] = [], partial = false): LiteT
 
 function clientFor(value: LiteTodaySnapshot): TodayClient {
   return {
-    loadToday: async () => value,
-    loadPreparedAction: async () => prepared,
-    prepareContent: async () => prepared,
-    confirm: async () => completed
+    loadToday: () => Promise.resolve(value),
+    loadPreparedAction: () => Promise.resolve(prepared),
+    prepareContent: () => Promise.resolve(prepared),
+    confirm: () => Promise.resolve(completed)
   };
 }
 
@@ -142,13 +142,10 @@ export const PermissionDenied: Story = {
     workspaceId,
     client: {
       ...clientFor(snapshot()),
-      loadToday: async () => {
-        throw new TodayHttpError(
-          403,
-          'PERMISSION_DENIED',
-          'workspace:read permission is required.'
-        );
-      }
+      loadToday: () =>
+        Promise.reject(
+          new TodayHttpError(403, 'PERMISSION_DENIED', 'workspace:read permission is required.')
+        )
     }
   }
 };
@@ -157,13 +154,14 @@ export const DependencyError: Story = {
     workspaceId,
     client: {
       ...clientFor(snapshot()),
-      loadToday: async () => {
-        throw new TodayHttpError(
-          503,
-          'DOWNSTREAM_UNAVAILABLE',
-          'Lite Today is temporarily unavailable.'
-        );
-      }
+      loadToday: () =>
+        Promise.reject(
+          new TodayHttpError(
+            503,
+            'DOWNSTREAM_UNAVAILABLE',
+            'Lite Today is temporarily unavailable.'
+          )
+        )
     }
   }
 };

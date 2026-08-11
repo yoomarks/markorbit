@@ -5,7 +5,6 @@ import {
   Badge,
   Button,
   Card,
-  DataList,
   EmptyState,
   ErrorState,
   FixtureBanner,
