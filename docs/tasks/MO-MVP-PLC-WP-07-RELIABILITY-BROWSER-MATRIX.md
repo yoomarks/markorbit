@@ -2,8 +2,11 @@
 
 - **Stage:** `MO-MVP-PRODUCT-LOOP-CLOSURE`
 - **Work package:** `PLC-WP-07`
-- **Status:** `IMPLEMENTING`
+- **Status:** `COMPLETE / merged PR #82`
 - **Base:** `8c155abda9d0d0cf5763ed316341e1c9d23001b6` (merged PLC-WP-06)
+- **Exact verified head:** `26dcd84dc4e27e9c66536ced168b1efb0c55e036`
+- **Verified runtime tree:** `23b153a2315f90de77e139bef44ff2a43e4aeb40`
+- **Merge:** `eb029a104a19b05c2f577956bbd2a4a35f635878`
 - **Scope:** verification and reliability closure only; no new Product semantics
 
 ## Objective
@@ -114,10 +117,32 @@ WP-07 does **not** implement:
 
 ## Completion gate
 
-WP-07 is ready for owner review only when one exact PR head has:
+WP-07 is complete only when one exact PR head has:
 
 - a dedicated two-owner PostgreSQL Product-loop closure integration gate;
 - a dedicated desktop/mobile real-runtime browser feedback gate with no interception;
 - all reliability matrix assertions green;
 - all pre-existing Product-loop and M2–M5 gates green;
 - no temporary remediation scripts/workflows left in the final diff.
+
+## Completed exact-head evidence
+
+PR #82 satisfied the gate at exact head `26dcd84dc4e27e9c66536ced168b1efb0c55e036`.
+
+Successful hosted runs on that head:
+
+- Product Loop Closure Reliability `31511957597`;
+- validation `31511957587`;
+- Browser and Visual Validation `31511957667`;
+- Milestone 2 reliability `31511957572`;
+- Milestone 3 reliability `31511957565`;
+- Milestone 4 integration `31511957570`;
+- Milestone 4 reliability `31511957635`;
+- Milestone 5 integration `31511957655`;
+- Milestone 5 reliability `31511957668`.
+
+The verified head and merged main share tree `23b153a2315f90de77e139bef44ff2a43e4aeb40`, so the exact WP-07 runtime evidence is the runtime tree audited by PLC-WP-08.
+
+## WP-08 exact-head revalidation
+
+The WP-08 audit branch intentionally re-runs this permanent reliability/browser gate after the bounded audit-document formatting and status reconciliation. No runtime Product semantics are changed by that revalidation trigger.

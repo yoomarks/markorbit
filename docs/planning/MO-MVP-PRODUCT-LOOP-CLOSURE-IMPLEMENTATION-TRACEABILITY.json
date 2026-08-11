@@ -1,0 +1,36 @@
+{
+  "stage": "MO-MVP-PRODUCT-LOOP-CLOSURE",
+  "audited_main": "eb029a104a19b05c2f577956bbd2a4a35f635878",
+  "runtime_tree": "23b153a2315f90de77e139bef44ff2a43e4aeb40",
+  "stage_recommendation": "GO",
+  "work_packages": [
+    { "id": "PLC-WP-01", "status": "DONE", "pr": 75 },
+    { "id": "PLC-WP-02", "status": "DONE", "pr": 76 },
+    { "id": "PLC-WP-03", "status": "DONE", "pr": 77 },
+    { "id": "PLC-WP-04", "status": "DONE", "pr": 78 },
+    { "id": "PLC-WP-05", "status": "DONE", "pr": 79 },
+    { "id": "PLC-WP-06", "status": "DONE", "pr": 81 },
+    { "id": "PLC-WP-07", "status": "DONE", "pr": 82 },
+    { "id": "PLC-WP-08", "status": "COMPLETE_FOR_OWNER_REVIEW", "verdict": "GO" }
+  ],
+  "exact_runtime_evidence": {
+    "head": "26dcd84dc4e27e9c66536ced168b1efb0c55e036",
+    "tree": "23b153a2315f90de77e139bef44ff2a43e4aeb40",
+    "runs": {
+      "product_loop_closure_reliability": 31511957597,
+      "validation": 31511957587,
+      "browser_and_visual": 31511957667,
+      "milestone_2_reliability": 31511957572,
+      "milestone_3_reliability": 31511957565,
+      "milestone_4_integration": 31511957570,
+      "milestone_4_reliability": 31511957635,
+      "milestone_5_integration": 31511957655,
+      "milestone_5_reliability": 31511957668
+    }
+  },
+  "next_stage": {
+    "task": "M6-WP-01",
+    "authorized_only_after_owner_merge": true,
+    "started": false
+  }
+}
