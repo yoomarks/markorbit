@@ -28,7 +28,7 @@ jobs:
         run: pnpm install --lockfile-only
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
-      - name: Keep Lite test bootstrap inside its persistence boundary
+      - name: Normalize WP02 test-only fixtures
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -38,12 +38,17 @@ jobs:
           new = """    await database.getPool().query(\n      'CREATE TABLE IF NOT EXISTS workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)'\n    );\n    const liteMigrations = await loadMigrationsForOwner(\n      migrationsDirectory,\n      migrationOwners,\n      '@markorbit/lite-service'\n    );\n    await migrate(database.getPool(), 'lite_content_test', liteMigrations);\n"""
           if old not in text:
               raise SystemExit('Lite test bootstrap target not found')
-          path.write_text(text.replace(old, new, 1))
+          text = text.replace(old, new, 1)
+          text = text.replace('    async resolve(requestWorkspaceId, locator) {', '    resolve(requestWorkspaceId, locator) {', 1)
+          text = text.replace('      return structuredClone(source);', '      return Promise.resolve(structuredClone(source));', 1)
+          path.write_text(text)
           PY
       - name: Format WP02 files
         run: pnpm exec prettier --write services/lite infrastructure/persistence/migration-owners.json scripts/validate-workspace.mjs docs/tasks/MO-MVP-PLC-WP-02-DURABLE-CONTENT-PREPARATION.md
       - name: Validate boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Build Lite dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service...
       - name: Validate Lite service
         run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck && pnpm --filter @markorbit/lite-service test && pnpm --filter @markorbit/lite-service build
       - name: Commit generated lockfile and formatting
