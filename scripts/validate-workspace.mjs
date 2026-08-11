@@ -5,7 +5,7 @@ import process from 'node:process';
 const root = process.cwd();
 const required = {
   apps: ['gateway', 'lite-web', 'markreg-web', 'operations-console'],
-  services: ['core', 'knowledge', 'capability-engine', 'execution', 'markreg', 'mgsn'],
+  services: ['core', 'knowledge', 'capability-engine', 'execution', 'lite', 'markreg', 'mgsn'],
   packages: ['contracts', 'service-kit', 'events', 'ai', 'ui', 'config', 'test-kit', 'persistence']
 };
 const failures = [];
@@ -27,6 +27,7 @@ const runtimes = [
   ['services/knowledge', '@markorbit/knowledge-service'],
   ['services/capability-engine', '@markorbit/capability-engine'],
   ['services/execution', '@markorbit/execution-service'],
+  ['services/lite', '@markorbit/lite-service'],
   ['services/markreg', '@markorbit/markreg-service'],
   ['services/mgsn', '@markorbit/mgsn-service']
 ];
