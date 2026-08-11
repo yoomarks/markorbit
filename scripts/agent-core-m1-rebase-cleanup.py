@@ -16,7 +16,6 @@ run("git", "fetch", "origin", "main")
 saved = {
     "packages/service-kit/src/index.ts": "/tmp/service-kit-index.ts",
     "services/core/src/knowledge-intake.ts": "/tmp/knowledge-intake.ts",
-    "services/core/package.json": "/tmp/core-package.json",
 }
 for source, target in saved.items():
     shutil.copyfile(source, target)
@@ -34,12 +33,12 @@ reset_paths = [
     "services/core/src/main.ts",
     "services/core/tests/identity-postgres.test.ts",
     "services/core/tests/knowledge-content-http.test.ts",
-    "services/core/tests/knowledge-content-postgres.test.ts",
     "services/core/tests/knowledge-intake-postgres.test.ts",
     "services/core/tests/session-postgres.test.ts",
 ]
 run("git", "checkout", "origin/main", "--", *reset_paths)
 run("git", "rm", "-f", "infrastructure/persistence/migrations/0038_core_knowledge_content_exports.sql")
+run("git", "rm", "-f", "services/core/tests/knowledge-content-postgres.test.ts")
 for target, source in saved.items():
     shutil.copyfile(source, target)
 
