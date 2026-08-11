@@ -42,10 +42,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Reuse the Lite owner migration namespace across sequential suites
+      - name: Align sequential database and encoded Principal assertions
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p = Path('scripts/product-loop-today-runtime.integration.test.ts')
           s = p.read_text()
           a = "migrationNamespace: 'wp05_http'"
@@ -59,8 +60,25 @@ jobs:
               raise SystemExit('migrate namespace anchor missing')
           s = s.replace(a, b, 1)
           p.write_text(s)
+
+          p = Path('apps/gateway/tests/product-loop-http.test.ts')
+          s = p.read_text()
+          old = "    expect(headers['x-markorbit-principal']).toContain(principal.userId);"
+          new = """    const encodedPrincipal = headers['x-markorbit-principal'];
+    expect(encodedPrincipal).toBeTruthy();
+    const envelope = JSON.parse(Buffer.from(encodedPrincipal!, 'base64url').toString('utf8')) as {
+      schemaVersion: 1;
+      principal: WorkspacePrincipal;
+    };
+    expect(envelope).toMatchObject({
+      schemaVersion: 1,
+      principal: { userId: principal.userId, workspaceId: principal.workspaceId }
+    });"""
+          if old not in s:
+              raise SystemExit('Gateway encoded Principal assertion anchor missing')
+          p.write_text(s.replace(old, new, 1))
           PY
-      - run: pnpm exec prettier --write scripts/product-loop-today-runtime.integration.test.ts
+      - run: pnpm exec prettier --write scripts/product-loop-today-runtime.integration.test.ts apps/gateway/tests/product-loop-http.test.ts
       - name: Build dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
       - name: Reproduce formal sequential database order
@@ -77,5 +95,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'test: reuse Lite migration namespace across WP-05 suites'
+          git commit -m 'test: close WP-05 sequential database and Gateway assertions'
           git push origin HEAD:plc-wp-05-lite-today-prepared-action
