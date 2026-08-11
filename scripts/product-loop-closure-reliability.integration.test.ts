@@ -6,9 +6,9 @@ import type {
   ProductLoopFeedbackId,
   ProductLoopSourceReference,
   ProductLoopUseFeedback
-} from '@markorbit/contracts/product-loop';
-import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
-import { createServiceRuntime } from '@markorbit/service-kit';
+} from '../packages/contracts/src/product-loop.js';
+import { ManagedDatabase, loadMigrationsForOwner, migrate } from '../packages/persistence/src/index.js';
+import { createServiceRuntime } from '../packages/service-kit/src/index.js';
 import {
   PostgresLiteCandidateQualificationStore,
   type ProductLoopCustomerRelationshipAuthority
