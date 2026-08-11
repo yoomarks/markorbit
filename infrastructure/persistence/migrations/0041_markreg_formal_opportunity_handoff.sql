@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS markreg_formal_trademark_service_opportunities (
-  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
+  workspace_id uuid NOT NULL,
   formal_trademark_service_opportunity_id text NOT NULL,
   version integer NOT NULL CHECK (version > 0),
   status text NOT NULL CHECK (status IN ('QUALIFIED','HANDED_OFF_TO_INTAKE','CLOSED')),
@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS markreg_formal_opportunity_latest_idx
   );
 
 CREATE TABLE IF NOT EXISTS markreg_intake_handoffs (
-  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
+  workspace_id uuid NOT NULL,
   formal_trademark_service_opportunity_id text NOT NULL,
   formal_opportunity_version integer NOT NULL CHECK (formal_opportunity_version > 0),
   expected_formal_opportunity_fingerprint_sha256 char(64) NOT NULL CHECK (expected_formal_opportunity_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS markreg_intake_handoffs (
 );
 
 CREATE TABLE IF NOT EXISTS markreg_formal_opportunity_commands (
-  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
+  workspace_id uuid NOT NULL,
   idempotency_key text NOT NULL,
   command_type text NOT NULL CHECK (command_type IN ('CREATE_FORMAL_OPPORTUNITY','PREPARE_INTAKE_HANDOFF')),
   request_fingerprint_sha256 char(64) NOT NULL CHECK (request_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
