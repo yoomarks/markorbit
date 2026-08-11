@@ -54,7 +54,9 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await expect(primaryRecommendation).toBeVisible();
     await primaryRecommendation.click();
     await expect(page.getByRole('heading', { name: primaryTitle, exact: true })).toBeVisible();
-    await expect(page.getByText(`rdp_wp07-browser-primary-${workspaceId}`, { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(`rdp_wp07-browser-primary-${workspaceId}`, { exact: true })
+    ).toBeVisible();
     await expect(page.getByText('Execution authorized', { exact: true })).toBeVisible();
     await expect(page.getByText('No', { exact: true })).toBeVisible();
 

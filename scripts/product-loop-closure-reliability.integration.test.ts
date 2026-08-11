@@ -128,11 +128,7 @@ suite('PLC-WP-07 Product-loop closure reliability', () => {
       sourceAuthority,
       now
     );
-    feedbackStore = new PostgresProductLoopFeedbackStore(
-      liteDatabase,
-      liteDatabase.getPool(),
-      now
-    );
+    feedbackStore = new PostgresProductLoopFeedbackStore(liteDatabase, liteDatabase.getPool(), now);
     const candidateStore = new PostgresLiteCandidateQualificationStore(
       liteDatabase,
       liteDatabase.getPool(),
@@ -232,11 +228,7 @@ suite('PLC-WP-07 Product-loop closure reliability', () => {
     await migrate(
       liteDatabase.getPool(),
       'plc_wp07_lite',
-      await loadMigrationsForOwner(
-        migrationsDirectory,
-        migrationOwners,
-        '@markorbit/lite-service'
-      )
+      await loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/lite-service')
     );
     await liteDatabase.getPool().query(
       `INSERT INTO workspaces(workspace_id,name,slug) VALUES
@@ -495,9 +487,9 @@ suite('PLC-WP-07 Product-loop closure reliability', () => {
       'wp07-formal-opportunity'
     );
     expect(replayFormal.status).toBe(201);
-    expect((await replayFormal.json()) as { formalOpportunity: FormalTrademarkServiceOpportunity }).toEqual(
-      { formalOpportunity }
-    );
+    expect(
+      (await replayFormal.json()) as { formalOpportunity: FormalTrademarkServiceOpportunity }
+    ).toEqual({ formalOpportunity });
 
     const replayHandoff = await internalPost(
       `${markregRuntimeUrl}/internal/v1/formal-opportunities/${formalOpportunity.formalTrademarkServiceOpportunityId}/intake-handoff`,
@@ -505,10 +497,12 @@ suite('PLC-WP-07 Product-loop closure reliability', () => {
       'wp07-intake-handoff'
     );
     expect(replayHandoff.status).toBe(200);
-    expect((await replayHandoff.json()) as {
-      handoff: MarkRegIntakeHandoff;
-      currentFormalOpportunity: FormalTrademarkServiceOpportunity;
-    }).toEqual(intakePayload);
+    expect(
+      (await replayHandoff.json()) as {
+        handoff: MarkRegIntakeHandoff;
+        currentFormalOpportunity: FormalTrademarkServiceOpportunity;
+      }
+    ).toEqual(intakePayload);
 
     expect(
       await restartedLite.feedbackStore.findByPackage(
