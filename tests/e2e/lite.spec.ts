@@ -8,12 +8,12 @@ import {
   watchPage
 } from './helpers/page.js';
 
-test('Lite Today provides its fixed semantic navigation and responsive workspace @visual', async ({
+test('Lite shell provides its fixed semantic navigation and responsive fixture workspace @visual', async ({
   page
 }, testInfo) => {
   const assertHealthy = watchPage(page);
-  await page.goto(urls.lite);
-  await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
+  await page.goto(urls.lite + '#work-customers');
+  await expect(page.getByRole('heading', { level: 1, name: 'Customers' })).toBeVisible();
   const navigation = page.getByRole('navigation', { name: 'Primary' });
   await expect(navigation).toBeVisible();
   await expect(navigation.getByRole('link')).toHaveText([

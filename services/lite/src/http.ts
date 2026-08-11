@@ -1,0 +1,257 @@
+import { timingSafeEqual } from 'node:crypto';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import type {
+  OpportunityCandidateId,
+  OpportunityQualificationDecisionId,
+  PreparedActionId
+} from '@markorbit/contracts/product-loop';
+import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  LiteCandidateQualificationError,
+  type PostgresLiteCandidateQualificationStore
+} from './candidate-qualification.js';
+import {
+  PreparedActionJourneyError,
+  type PreparedActionJourneyService,
+  type PreparedActionPlan
+} from './prepared-action.js';
+
+type Body = Record<string, unknown>;
+
+export interface LiteProductLoopRouteOptions {
+  internalServiceSecret: string;
+  journeyService: PreparedActionJourneyService;
+  candidateStore: PostgresLiteCandidateQualificationStore;
+}
+
+function trusted(configured: string, supplied: string | undefined): boolean {
+  if (Buffer.byteLength(configured) < 32)
+    throw new Error('MO_INTERNAL_SERVICE_SECRET must contain at least 32 bytes.');
+  if (!supplied) return false;
+  const left = Buffer.from(configured);
+  const right = Buffer.from(supplied);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function principalOf(
+  request: JsonRequest,
+  secret: string,
+  permission: 'workspace:read' | 'matter:manage'
+): WorkspacePrincipal {
+  if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
+  let principal: WorkspacePrincipal;
+  try {
+    principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
+  } catch {
+    throw new HttpError(
+      401,
+      'INVALID_INTERNAL_PRINCIPAL',
+      'A trusted Workspace Principal is required.'
+    );
+  }
+  const workspaceId = request.headers['x-markorbit-workspace-id'];
+  if (!workspaceId || workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase())
+    throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped record was not found.');
+  if (!principal.permissions.includes(permission))
+    throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
+  return principal;
+}
+
+function internalWorkspace(request: JsonRequest, secret: string): string {
+  if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
+  const workspaceId = request.headers['x-markorbit-workspace-id'];
+  if (!workspaceId)
+    throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
+  return workspaceId;
+}
+
+function bodyOf(request: JsonRequest): Body {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  return request.body as Body;
+}
+
+function keyOf(request: JsonRequest): string {
+  const key = request.headers['idempotency-key'];
+  if (!key || !key.trim())
+    throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+  return key.trim();
+}
+
+function positive(value: unknown, name: string): number {
+  if (!Number.isInteger(value) || Number(value) < 1)
+    throw new HttpError(400, 'INVALID_REQUEST', `${name} must be a positive integer.`);
+  return Number(value);
+}
+
+function text(value: unknown, name: string): string {
+  if (typeof value !== 'string' || !value.trim())
+    throw new HttpError(400, 'INVALID_REQUEST', `${name} is required.`);
+  return value.trim();
+}
+
+function planOf(value: unknown): PreparedActionPlan {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new HttpError(400, 'INVALID_REQUEST', 'plan must be an object.');
+  return value as PreparedActionPlan;
+}
+
+function mapError(error: unknown): never {
+  if (
+    error instanceof PreparedActionJourneyError ||
+    error instanceof LiteCandidateQualificationError
+  )
+    throw new HttpError(
+      error.status,
+      error.code,
+      error.message,
+      error.status >= 500,
+      error.details
+    );
+  throw error;
+}
+
+export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions): JsonRoute[] {
+  return [
+    {
+      method: 'GET',
+      path: '/v1/today',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        try {
+          return json(200, await options.journeyService.listToday(principal.workspaceId));
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/prepared-actions/:preparedActionId',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        try {
+          const journey = await options.journeyService.findJourney(
+            principal.workspaceId,
+            request.params.preparedActionId! as PreparedActionId
+          );
+          if (!journey)
+            throw new HttpError(404, 'PREPARED_ACTION_NOT_FOUND', 'Prepared Action was not found.');
+          return json(200, journey);
+        } catch (error) {
+          if (error instanceof HttpError) throw error;
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/today/:todayRecommendationId/prepared-actions',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        try {
+          const journey = await options.journeyService.prepare({
+            workspaceId: principal.workspaceId,
+            recommendation: {
+              id: request.params.todayRecommendationId! as `today-recommendation_${string}`,
+              version: positive(body.recommendationVersion, 'recommendationVersion')
+            },
+            expectedRecommendationFingerprintSha256: text(
+              body.expectedRecommendationFingerprintSha256,
+              'expectedRecommendationFingerprintSha256'
+            ),
+            plan: planOf(body.plan),
+            idempotencyKey: keyOf(request)
+          });
+          return json(201, journey);
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/prepared-actions/:preparedActionId/confirm',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        try {
+          const journey = await options.journeyService.confirmAndHandoff({
+            workspaceId: principal.workspaceId,
+            preparedAction: {
+              id: request.params.preparedActionId! as PreparedActionId,
+              version: positive(body.preparedActionVersion, 'preparedActionVersion')
+            },
+            expectedPreparedActionFingerprintSha256: text(
+              body.expectedPreparedActionFingerprintSha256,
+              'expectedPreparedActionFingerprintSha256'
+            ),
+            confirmedByPrincipalId: principal.userId,
+            acknowledgedEffect: text(body.acknowledgedEffect, 'acknowledgedEffect'),
+            idempotencyKey: keyOf(request)
+          });
+          return json(200, journey);
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/v1/qualified-opportunities/resolve',
+      handle: async (request) => {
+        const workspaceId = internalWorkspace(request, options.internalServiceSecret);
+        const body = bodyOf(request);
+        const candidateBody = body.candidate as Record<string, unknown> | undefined;
+        const decisionBody = body.qualificationDecision as Record<string, unknown> | undefined;
+        if (!candidateBody || !decisionBody)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'candidate and qualificationDecision are required.'
+          );
+        const candidateId = text(candidateBody.id, 'candidate.id') as OpportunityCandidateId;
+        const candidateVersion = positive(candidateBody.version, 'candidate.version');
+        const decisionId = text(
+          decisionBody.id,
+          'qualificationDecision.id'
+        ) as OpportunityQualificationDecisionId;
+        const decisionVersion = positive(decisionBody.version, 'qualificationDecision.version');
+        try {
+          const [candidate, currentCandidate, qualificationDecision] = await Promise.all([
+            options.candidateStore.findCandidate(workspaceId, candidateId, candidateVersion),
+            options.candidateStore.findLatestCandidate(workspaceId, candidateId),
+            options.candidateStore.findQualificationDecision(workspaceId, candidateId)
+          ]);
+          if (
+            !candidate ||
+            !currentCandidate ||
+            !qualificationDecision ||
+            qualificationDecision.opportunityQualificationDecisionId !== decisionId ||
+            qualificationDecision.version !== decisionVersion
+          )
+            throw new HttpError(
+              404,
+              'QUALIFIED_OPPORTUNITY_EVIDENCE_NOT_FOUND',
+              'Exact qualified Candidate evidence was not found.'
+            );
+          return json(200, { candidate, currentCandidate, qualificationDecision });
+        } catch (error) {
+          if (error instanceof HttpError) throw error;
+          return mapError(error);
+        }
+      }
+    }
+  ];
+}

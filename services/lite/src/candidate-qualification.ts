@@ -69,7 +69,7 @@ export interface RecordOpportunityQualificationCommand {
   candidate: Readonly<{ id: OpportunityCandidateId; version: number }>;
   expectedCandidateFingerprintSha256: string;
   outcome: OpportunityQualificationOutcome;
-  decidedByPrincipalId: MarkOrbitId;
+  decidedByPrincipalId: string;
   rationale: string;
   idempotencyKey: string;
 }
@@ -119,6 +119,10 @@ function cleanMarkOrbitId(value: MarkOrbitId, field: string): MarkOrbitId {
   if (!MARKORBIT_ID.test(cleaned))
     throw new LiteCandidateQualificationError('INVALID_INPUT', `${field} is invalid.`, 422);
   return cleaned;
+}
+
+function cleanPrincipalId(value: string, field: string): string {
+  return cleanText(value, field, 300);
 }
 
 function exactVersion(value: number, field: string): number {
@@ -350,7 +354,7 @@ export class PostgresLiteCandidateQualificationStore {
         'Qualification outcome is invalid.',
         422
       );
-    const decidedByPrincipalId = cleanMarkOrbitId(
+    const decidedByPrincipalId = cleanPrincipalId(
       command.decidedByPrincipalId,
       'decidedByPrincipalId'
     );

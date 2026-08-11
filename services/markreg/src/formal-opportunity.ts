@@ -2,7 +2,6 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   relationshipModels,
   type CustomerIntent,
-  type MarkOrbitId,
   type RelationshipModel
 } from '@markorbit/contracts';
 import {
@@ -18,7 +17,6 @@ import type { QueryClient } from '@markorbit/persistence';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
-const MARKORBIT_ID = /^[^_\s]+_.+$/;
 
 export type FormalOpportunityErrorCode =
   | 'INVALID_INPUT'
@@ -74,7 +72,7 @@ export interface CreateFormalTrademarkServiceOpportunityCommand {
   qualificationDecision: Readonly<{ id: OpportunityQualificationDecisionId; version: number }>;
   relationshipModel: RelationshipModel;
   proposedCustomerIntent?: Readonly<CustomerIntent>;
-  promotedByPrincipalId: MarkOrbitId;
+  promotedByPrincipalId: string;
   idempotencyKey: string;
 }
 
@@ -84,7 +82,7 @@ export interface PrepareMarkRegIntakeHandoffCommand {
   expectedFormalOpportunityFingerprintSha256: string;
   relationshipModel: RelationshipModel;
   customerIntent: Readonly<CustomerIntent>;
-  confirmedByPrincipalId: MarkOrbitId;
+  confirmedByPrincipalId: string;
   idempotencyKey: string;
 }
 
@@ -127,11 +125,8 @@ function cleanText(value: string, field: string, maximum: number): string {
   return cleaned;
 }
 
-function cleanMarkOrbitId(value: MarkOrbitId, field: string): MarkOrbitId {
-  const cleaned = value.trim() as MarkOrbitId;
-  if (!MARKORBIT_ID.test(cleaned))
-    throw new FormalOpportunityError('INVALID_INPUT', `${field} is invalid.`, 422);
-  return cleaned;
+function cleanPrincipalId(value: string, field: string): string {
+  return cleanText(value, field, 300);
 }
 
 function exactVersion(value: number, field: string): number {
@@ -245,7 +240,7 @@ export class PostgresFormalOpportunityStore {
     const proposedCustomerIntent = command.proposedCustomerIntent
       ? cleanCustomerIntent(command.proposedCustomerIntent, 'proposedCustomerIntent')
       : undefined;
-    const promotedByPrincipalId = cleanMarkOrbitId(
+    const promotedByPrincipalId = cleanPrincipalId(
       command.promotedByPrincipalId,
       'promotedByPrincipalId'
     );
@@ -337,7 +332,7 @@ export class PostgresFormalOpportunityStore {
     );
     const relationshipModel = cleanRelationshipModel(command.relationshipModel);
     const customerIntent = cleanCustomerIntent(command.customerIntent, 'customerIntent');
-    const confirmedByPrincipalId = cleanMarkOrbitId(
+    const confirmedByPrincipalId = cleanPrincipalId(
       command.confirmedByPrincipalId,
       'confirmedByPrincipalId'
     );
@@ -701,7 +696,7 @@ export class PostgresFormalOpportunityStore {
     client: QueryClient,
     opportunity: FormalTrademarkServiceOpportunity,
     sourceCandidateFingerprintSha256: string,
-    principalId: MarkOrbitId
+    principalId: string
   ): Promise<void> {
     await client.query(
       'INSERT INTO markreg_formal_trademark_service_opportunities (workspace_id,formal_trademark_service_opportunity_id,version,status,source_candidate_id,source_candidate_version,source_candidate_fingerprint_sha256,source_qualification_decision_id,source_qualification_decision_version,customer_id,relationship_model,formal_opportunity_fingerprint_sha256,document_json,created_by_principal_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16)',

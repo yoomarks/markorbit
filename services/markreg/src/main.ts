@@ -25,6 +25,11 @@ import {
   RecommendedActionService
 } from './recommended-action.js';
 import { createMarkRegLifecycleSurfaceRoutes } from './lifecycle-surface-http.js';
+import { PostgresFormalOpportunityStore } from './formal-opportunity.js';
+import {
+  createMarkRegFormalOpportunityRoutes,
+  HttpQualifiedOpportunityAuthority
+} from './formal-opportunity-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -51,6 +56,7 @@ if (fixtureRuntime) {
   closeDatabase = () => database.close();
   const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
   const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  const liteUrl = process.env.LITE_URL ?? 'http://127.0.0.1:4107';
   if (!internalServiceSecret)
     throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
   const formalMatterRepository = new PostgresFormalMatterRepository(database, pool);
@@ -115,6 +121,15 @@ if (fixtureRuntime) {
     lifecycleServiceFor,
     recommendedActionServiceFor
   });
+  const formalOpportunityStore = new PostgresFormalOpportunityStore(
+    database,
+    pool,
+    new HttpQualifiedOpportunityAuthority(liteUrl, internalServiceSecret)
+  );
+  const formalOpportunityRoutes = createMarkRegFormalOpportunityRoutes({
+    internalServiceSecret,
+    store: formalOpportunityStore
+  });
   runtime = createRuntime({
     customerConfirmationRepository: new PostgresCustomerConfirmationRepository(pool),
     matterDraftRepository: new PostgresMatterDraftRepository(pool),
@@ -123,7 +138,7 @@ if (fixtureRuntime) {
     auditRepository: new PostgresMarkRegAuditRepository(pool),
     internalServiceSecret,
     executionUrl,
-    extraRoutes: [...lifecycleRoutes, ...lifecycleSurfaceRoutes]
+    extraRoutes: [...lifecycleRoutes, ...lifecycleSurfaceRoutes, ...formalOpportunityRoutes]
   });
 }
 

@@ -27,6 +27,7 @@ import {
 export * from './auth.js';
 export * from './order-http.js';
 export * from './mgsn-http.js';
+export * from './product-loop-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -39,6 +40,7 @@ import {
 } from './auth.js';
 import { createGatewayOrderRoutes } from './order-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
+import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -49,6 +51,7 @@ export interface GatewayOptions {
   markRegUrl?: string;
   executionUrl?: string;
   mgsnUrl?: string;
+  liteUrl?: string;
   milestoneTestRuntime?: boolean;
   authenticationClient?: CoreAuthenticationClient;
   internalServiceSecret?: string;
@@ -67,6 +70,7 @@ export function createRuntime(options: GatewayOptions = {}) {
   const markRegUrl = options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const mgsnUrl = options.mgsnUrl ?? process.env.MGSN_URL ?? 'http://127.0.0.1:4106';
+  const liteUrl = options.liteUrl ?? process.env.LITE_URL ?? 'http://127.0.0.1:4107';
   const milestoneTestRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
   const allowedOrigins =
@@ -355,6 +359,18 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...createGatewayProductLoopRoutes({
+          liteUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
+        }),
         ...createGatewayMgsnRoutes({
           mgsnUrl,
           ...(authenticationClient ? { authenticationClient } : {}),
