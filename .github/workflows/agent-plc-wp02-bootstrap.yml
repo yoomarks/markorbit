@@ -26,10 +26,10 @@ jobs:
           cache: pnpm
       - name: Refresh workspace lockfile
         run: pnpm install --lockfile-only
-      - name: Format WP02 files
-        run: pnpm exec prettier --write services/lite infrastructure/persistence/migration-owners.json scripts/validate-workspace.mjs docs/tasks/MO-MVP-PLC-WP-02-DURABLE-CONTENT-PREPARATION.md
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
+      - name: Format WP02 files
+        run: pnpm exec prettier --write services/lite infrastructure/persistence/migration-owners.json scripts/validate-workspace.mjs docs/tasks/MO-MVP-PLC-WP-02-DURABLE-CONTENT-PREPARATION.md
       - name: Validate boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Validate Lite service
