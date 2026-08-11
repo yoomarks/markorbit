@@ -1,0 +1,53 @@
+name: M5 WP08 format helper
+
+on:
+  push:
+    branches: [m5-wp-08-integration-authority-audit]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5-wp-08-integration-authority-audit
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP-08 remediation files
+        run: >-
+          pnpm exec prettier --write
+          services/execution/src/evidence-review-queue-postgres.ts
+          services/execution/src/evidence-provenance-http.ts
+          services/execution/src/main.ts
+          apps/gateway/src/lifecycle-http.ts
+          services/markreg/src/lifecycle-handoff-http.ts
+          services/markreg/src/main.ts
+          apps/operations-console/src/lifecycle.ts
+          apps/operations-console/src/App.tsx
+      - name: Commit formatting if needed
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            services/execution/src/evidence-review-queue-postgres.ts \
+            services/execution/src/evidence-provenance-http.ts \
+            services/execution/src/main.ts \
+            apps/gateway/src/lifecycle-http.ts \
+            services/markreg/src/lifecycle-handoff-http.ts \
+            services/markreg/src/main.ts \
+            apps/operations-console/src/lifecycle.ts \
+            apps/operations-console/src/App.tsx
+          git commit -m "style(m5): format WP-08 remediation"
+          git push origin HEAD:m5-wp-08-integration-authority-audit
