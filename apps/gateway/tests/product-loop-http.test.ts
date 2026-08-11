@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
-import type { CoreAuthenticationClient } from '../src/auth.js';
+import { csrfToken, type CoreAuthenticationClient } from '../src/auth.js';
 import { createGatewayProductLoopRoutes } from '../src/product-loop-http.js';
 
 const workspaceId = '27272727-2727-4272-8272-272727272727';
@@ -48,7 +48,7 @@ describe('Gateway Lite Product-loop transport boundary', () => {
       expect(url).toBe('http://lite.test/v1/today');
       expect(init.method).toBe('GET');
       return Promise.resolve(
-        new Response(JSON.stringify({ schemaVersion: 1, workspaceId, items: [] }), {
+        new Response(JSON.stringify({ schemaVersion: 1, workspaceId, items: [], recentFeedback: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         })
@@ -83,6 +83,64 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     });
   });
 
+  it('forwards feedback mutation with trusted principal and never accepts client actor identity', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/publish-packages/publish-package_1/use-feedback');
+      expect(init.method).toBe('POST');
+      const headers = init.headers as Record<string, string>;
+      const envelope = JSON.parse(
+        Buffer.from(headers['x-markorbit-principal']!, 'base64url').toString('utf8')
+      ) as { principal: WorkspacePrincipal };
+      expect(envelope.principal.userId).toBe(principal.userId);
+      expect(headers['idempotency-key']).toBe('feedback-1');
+      expect(JSON.parse(String(init.body))).not.toHaveProperty('recordedByPrincipalId');
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            schemaVersion: 1,
+            productLoopFeedbackId: 'product-loop-feedback_1',
+            workspaceId,
+            version: 1,
+            publishPackage: { id: 'publish-package_1', version: 1 },
+            outcome: 'USER_REPORTED_PUBLISHED',
+            recordedByPrincipalId: principal.userId,
+            recordedAt: '2026-08-11T14:30:00.000Z',
+            externalActionExecutedByMarkOrbit: false,
+            externalOutcomeVerifiedByMarkOrbit: false
+          }),
+          { status: 201, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route(
+      'POST',
+      '/api/lite/publish-packages/:publishPackageId/use-feedback'
+    ).handle({
+      method: 'POST',
+      path: '/api/lite/publish-packages/publish-package_1/use-feedback',
+      params: { publishPackageId: 'publish-package_1' },
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'feedback-1'
+      },
+      body: {
+        workspaceId,
+        publishPackageVersion: 1,
+        expectedPublishPackageFingerprintSha256: 'a'.repeat(64),
+        outcome: 'USER_REPORTED_PUBLISHED'
+      }
+    });
+
+    expect(result.status).toBe(201);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects client actor spoof fields before any Lite mutation', async () => {
     vi.stubGlobal('fetch', vi.fn());
     await expect(
@@ -102,6 +160,29 @@ describe('Gateway Lite Product-loop transport boundary', () => {
           workspaceId,
           preparedActionVersion: 1,
           confirmedByPrincipalId: 'attacker'
+        }
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+
+    await expect(
+      route('POST', '/api/lite/publish-packages/:publishPackageId/use-feedback').handle({
+        method: 'POST',
+        path: '/api/lite/publish-packages/publish-package_1/use-feedback',
+        params: { publishPackageId: 'publish-package_1' },
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': 'unused-for-spoof-rejection',
+          'idempotency-key': 'feedback-spoof'
+        },
+        body: {
+          workspaceId,
+          publishPackageVersion: 1,
+          expectedPublishPackageFingerprintSha256: 'a'.repeat(64),
+          outcome: 'USER_REPORTED_USED',
+          recordedByPrincipalId: 'attacker'
         }
       })
     ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
