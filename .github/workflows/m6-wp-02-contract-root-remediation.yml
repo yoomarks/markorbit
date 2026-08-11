@@ -1,0 +1,66 @@
+name: M6 WP-02 contract root remediation
+
+on:
+  push:
+    branches:
+      - m6-wp-02-durable-capability-registry
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m6-wp-02-durable-capability-registry
+      - name: Expose capability learning through source root
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          index = Path('packages/contracts/src/index.ts')
+          text = index.read_text()
+          export = "export * from './capability-learning.js';"
+          if export not in text:
+              if not text.endswith('\n'):
+                  text += '\n'
+              text += export + '\n'
+              index.write_text(text)
+
+          for name in [
+              'services/capability-engine/src/runtime-capability-registry.ts',
+              'services/capability-engine/src/runtime-capability-http.ts',
+          ]:
+              path = Path(name)
+              value = path.read_text()
+              value = value.replace(
+                  "@markorbit/contracts/capability-learning",
+                  "@markorbit/contracts",
+              )
+              path.write_text(value)
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write packages/contracts/src/index.ts services/capability-engine/src/runtime-capability-registry.ts services/capability-engine/src/runtime-capability-http.ts
+      - name: Prove global lint without prebuilding contracts
+        run: pnpm lint
+      - name: Commit source-root resolution fix when needed
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/index.ts \
+            services/capability-engine/src/runtime-capability-registry.ts \
+            services/capability-engine/src/runtime-capability-http.ts
+          git commit -m "fix(m6): resolve capability learning types from root contracts"
+          git push origin HEAD:m6-wp-02-durable-capability-registry
