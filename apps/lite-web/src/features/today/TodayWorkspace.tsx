@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  LiteTodaySnapshot,
   PreparedActionJourney,
+  ProductLoopUseFeedback,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 import {
@@ -14,7 +14,12 @@ import {
   LoadingState,
   PageHeader
 } from '@markorbit/ui';
-import { createTodayClient, TodayHttpError, type TodayClient } from '../../api/product-loop.js';
+import {
+  createTodayClient,
+  TodayHttpError,
+  type TodayClient,
+  type TodayProductLoopSnapshot
+} from '../../api/product-loop.js';
 import './today.css';
 
 export interface TodayWorkspaceProps {
@@ -47,6 +52,13 @@ function kindLabel(kind: TodayRecommendation['kind']) {
   return 'Work follow-up';
 }
 
+function feedbackLabel(outcome: ProductLoopUseFeedback['outcome']) {
+  if (outcome === 'USER_REPORTED_PUBLISHED') return 'Reported published';
+  if (outcome === 'USER_REPORTED_DELIVERED') return 'Reported delivered';
+  if (outcome === 'USER_REPORTED_USED') return 'Reported used';
+  return 'Reported not used';
+}
+
 function actionStatus(journey: PreparedActionJourney) {
   if (journey.handoffState === 'HANDOFF_COMPLETED') return 'Completed';
   if (journey.handoffState === 'HANDOFF_PENDING') return 'Confirmed · handoff pending';
@@ -58,7 +70,7 @@ function RecommendationList({
   selectedId,
   onSelect
 }: {
-  snapshot: LiteTodaySnapshot;
+  snapshot: TodayProductLoopSnapshot;
   selectedId: string;
   onSelect: (recommendationId: string) => void;
 }) {
@@ -124,6 +136,40 @@ function Provenance({ recommendation }: { recommendation: TodayRecommendation })
             <code title={source.sourceFingerprintSha256}>
               {source.sourceFingerprintSha256.slice(0, 16)}…
             </code>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function FeedbackEvidence({ feedback }: { feedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>> }) {
+  if (!feedback.length) return null;
+  return (
+    <Card>
+      <div className="lite-row">
+        <div>
+          <h2>Recent Product-loop evidence</h2>
+          <p className="today-muted">Returned outcomes from work already recorded in this Workspace.</p>
+        </div>
+        <Badge>{feedback.length}</Badge>
+      </div>
+      <Alert tone="info" title="User-reported evidence">
+        These records describe what an authenticated user reported after the fact. MarkOrbit did not
+        execute or independently verify the external action, and this evidence is not Capability
+        verification.
+      </Alert>
+      <ul className="today-feedback-list">
+        {feedback.map((item) => (
+          <li key={item.productLoopFeedbackId}>
+            <div>
+              <strong>{feedbackLabel(item.outcome)}</strong>
+              <span>
+                {item.publishPackage.id} · v{String(item.publishPackage.version)}
+              </span>
+            </div>
+            <small>{new Date(item.recordedAt).toLocaleString()}</small>
+            {item.externalReference ? <code>{item.externalReference}</code> : null}
           </li>
         ))}
       </ul>
@@ -249,7 +295,7 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
     () => suppliedClient ?? createTodayClient(workspaceId),
     [suppliedClient, workspaceId]
   );
-  const [snapshot, setSnapshot] = useState<LiteTodaySnapshot>();
+  const [snapshot, setSnapshot] = useState<TodayProductLoopSnapshot>();
   const [error, setError] = useState<TodayHttpError>();
   const [busy, setBusy] = useState<'prepare' | 'confirm' | ''>('');
   const [selection, setCurrentSelection] = useState(querySelection);
@@ -447,6 +493,8 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
           </div>
         </div>
       )}
+
+      <FeedbackEvidence feedback={snapshot.recentFeedback} />
     </section>
   );
 }
