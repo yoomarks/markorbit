@@ -87,7 +87,7 @@ async function putContent(
   if (authorization !== null) headers['x-markorbit-internal-authorization'] = authorization;
   const response = await fetch(
     `http://127.0.0.1:${runtime.listeningPort}/internal/knowledge/ready-packages/intakes/${intakeId}/content`,
-    { method: 'PUT', headers, body: JSON.stringify(content) }
+    { method: 'POST', headers, body: JSON.stringify(content) }
   );
   return { response, json: (await response.json()) as Record<string, unknown> };
 }
