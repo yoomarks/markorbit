@@ -59,25 +59,39 @@
 .today-confirmation-effect p {
   margin-bottom: 0;
 }
-.today-source-list {
+.today-source-list,
+.today-feedback-list {
   display: grid;
   gap: var(--mo-space-md);
   padding: 0;
   list-style: none;
 }
-.today-source-list li {
+.today-source-list li,
+.today-feedback-list li {
   display: grid;
   gap: var(--mo-space-xs);
   padding-block: var(--mo-space-md);
   border-bottom: 1px solid var(--mo-border);
 }
+.today-feedback-list {
+  margin-top: var(--mo-space-lg);
+}
+.today-feedback-list li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mo-space-sm);
+  justify-content: space-between;
+}
+.today-feedback-list span,
+.today-feedback-list small,
 .today-source-list span,
 .today-source-list small,
 .today-muted,
 .today-eyebrow {
   color: var(--mo-secondary);
 }
-.today-source-list code {
+.today-source-list code,
+.today-feedback-list code {
   overflow-wrap: anywhere;
   font-size: 0.78rem;
 }
@@ -113,5 +127,8 @@
   }
   .today-recommendation {
     min-height: 44px;
+  }
+  .today-feedback-list li > div {
+    display: grid;
   }
 }
