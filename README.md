@@ -62,9 +62,9 @@ pnpm infra:down
 
 ## Current milestone
 
-**MO MVP Milestone 5 — implementation active: Durable Evidence Review and Lifecycle Projection**
+**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 scope planning is proposed.**
 
-Milestone 4 completed its approved engineering scope with an independent **GO** recommendation after the PR #58 integration remediation and M4-WP-09 rerun. The durable provider path ends at an Execution-owned `PENDING_REVIEW` evidence receipt:
+M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
 ```text
 current governed Execution source
@@ -75,40 +75,52 @@ current governed Execution source
 -> durable Provider Return
 -> exact Execution evidence handoff
 -> durable PENDING_REVIEW evidence receipt
-```
-
-TASK 030A was approved by merge of PR #60. The approved Milestone 5 loop is:
-
-```text
-PENDING_REVIEW evidence
 -> explicit authorized Evidence Review Decision
--> correction OR admitted reviewed source
+-> correction OR exact Reviewed Source Admission
 -> retry-safe Execution-to-MarkReg handoff
 -> durable MarkReg Lifecycle Projection
--> customer-safe status / timeline / evidence view
--> explainable Recommended Action
+-> explainable non-executing Recommended Action
+-> authenticated customer / operations projection
 ```
 
-M5-WP-01 is implemented in PR #61 and freezes the shared evidence-review, lifecycle-projection and Recommended Action contracts plus canonical authority and AI boundaries. After WP-01 merges with clean hosted gates, the next approved implementation step is M5-WP-02: durable authenticated Execution Evidence Review Decision and correction-request state.
+The M5 authority locks remain permanent: Evidence Review Decision is not Official Truth; reviewed-source admission is not Filing Submission; Lifecycle Projection is not Official Status; Recommended Action does not authorize execution; no Payment/Invoice, legal appointment, automatic Matter completion, automatic Capability verification or cross-service SQL follows from the lifecycle path.
 
-The Milestone 5 authority locks are:
+### Proposed Milestone 6 — Durable Capability Learning and Private Reflection
 
-- Evidence Review Decision is internal review truth, not trademark-office acceptance or Official Truth;
-- Provider Return remains evidence, not Official Truth;
-- customer lifecycle status is a projection of governed internal truth, not a hidden official-status source;
-- Recommended Action is advice, not authorization or execution;
-- no Payment/Invoice truth follows from review or lifecycle state;
-- no automatic legal/professional appointment, provider allocation, external Filing Submission, Formal Matter completion or user Capability verification is introduced;
-- no cross-service SQL is permitted.
+TASK 031A proposes `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION` as the next MVP direction. M5 explicitly deferred Capability learning until reviewed governed outcomes existed; that prerequisite is now complete.
+
+The proposed M6 loop is:
+
+```text
+accepted Capability Canon version
+-> durable runtime Capability definition/version
+-> exact governed work observation
+-> private append-oriented Capability Ledger
+-> explainable private Reflection Candidate
+-> explicit subject-user ACCEPTED | REJECTED | DEFERRED disposition
+-> deterministic private Capability Profile / Twin projection
+-> authenticated Lite Capability Center
+```
+
+The proposal preserves the repository's Capability authority locks:
+
+- Reflection Candidate is not canonical truth;
+- accepted private reflection is not verified professional Capability;
+- Provider Supply Capability is not user Capability evidence;
+- raw Provider Return is not direct user Capability evidence;
+- task completion does not automatically verify Capability;
+- AI may draft reflection but may not accept it, verify Capability, mutate Canon or change permissions;
+- Capability Twin is a private read model, not an autonomous identity or protected-action authority;
+- no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
+
+TASK 031A is planning-only. No M6 runtime implementation, migration, Gateway route or Lite Capability UI change is authorized until the planning PR is merged. After approval, the next implementation step is `M6-WP-01` — Capability learning contracts and canonical authority boundary.
 
 See:
 
+- `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`;
+- `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`;
+- `docs/tasks/MO-MVP-TASK-031A-MILESTONE-006-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md`;
-- `docs/tasks/MO-MVP-M5-WP-01-EVIDENCE-LIFECYCLE-CONTRACTS.md`;
-- `docs/architecture/EVIDENCE-REVIEW-LIFECYCLE-AUTHORITY-BOUNDARY.md`;
-- `docs/planning/MO-MVP-MILESTONE-005-SCOPE-LOCK.md`;
-- `docs/planning/MO-MVP-MILESTONE-005-DELIVERY-PLAN.md`;
-- `docs/planning/MO-MVP-MILESTONE-005-PLAN.json`;
-- `docs/audits/MO-MVP-MILESTONE-004-INTEGRATION-AUDIT.md`.
-
-M5-WP-01 does not create a database migration, durable review decision, lifecycle state, Recommended Action runtime, Git tag, GitHub release, deployment freeze, Payment/Invoice authority, legal appointment, external Filing or Official Truth.
+- `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.md`;
+- `AGENTS.md`.
