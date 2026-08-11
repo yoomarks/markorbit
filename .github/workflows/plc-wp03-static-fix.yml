@@ -42,7 +42,6 @@ jobs:
             services/lite/tests/candidate-qualification-postgres.test.ts \
             .github/workflows/product-loop-candidate-qualification.yml \
             docs/tasks/MO-MVP-PLC-WP-03-DURABLE-CANDIDATE-QUALIFICATION.md \
-            infrastructure/persistence/migrations/0040_lite_candidate_qualification.sql \
             infrastructure/persistence/migration-owners.json \
             services/lite/README.md \
             services/lite/package.json \
@@ -63,7 +62,6 @@ jobs:
             services/lite/tests/candidate-qualification-postgres.test.ts \
             .github/workflows/product-loop-candidate-qualification.yml \
             docs/tasks/MO-MVP-PLC-WP-03-DURABLE-CANDIDATE-QUALIFICATION.md \
-            infrastructure/persistence/migrations/0040_lite_candidate_qualification.sql \
             infrastructure/persistence/migration-owners.json \
             services/lite/README.md \
             services/lite/package.json \
