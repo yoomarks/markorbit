@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   evidence-lifecycle-runtime:
@@ -70,3 +70,103 @@ jobs:
           path: .artifacts/milestone-5-integration.log
           if-no-files-found: ignore
           retention-days: 14
+
+  reconcile-m6-planning:
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Reconcile M5 completion and M6 planning navigation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          trace = Path('docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md')
+          text = trace.read_text()
+          text = text.replace('**Milestone status:** `AUDIT_GO_PENDING_PR_70_MERGE`', '**Milestone status:** `ENGINEERING_SCOPE_COMPLETE_GO`')
+          text = text.replace(
+              'The Milestone 5 scope, delivery plan, machine-readable plan, TASK 030A record, Task Index and README were reconciled to the approved PR #60 state in WP-01. This traceability record is current through the WP-08 independent audit and bounded remediation in PR #70.',
+              'The Milestone 5 engineering scope is complete with a final independent **GO** recommendation. PR #70 merged the WP-08 bounded remediation and audit evidence as `242b34f806711df608a7178b238104289e65bb00`; the final documentation head passed all required hosted gates before merge.'
+          )
+          text = text.replace(
+              '- **M5-WP-08 — Independent Milestone 5 integration and authority audit:** `AUDIT_GO_IN_PR_70_PENDING_FINAL_HEAD_VALIDATION`. Initial audit returned `FIX` for two bounded integration findings; PR #70 closes them and the audited code head `f79002d81329de2ae80c777e391f1b025f014e79` passed all eight hosted gates. Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}` and the permanent Milestone 5 integration gate.',
+              '- **M5-WP-08 — Independent Milestone 5 integration and authority audit:** `MERGED_IN_PR_70_AUDIT_GO`. Merge: `242b34f806711df608a7178b238104289e65bb00`. Initial audit returned `FIX` for two bounded integration findings; PR #70 closed them. Final documentation head `4807c4d13759e11b954b896daf4b10aa841700e0` passed all eight hosted gates. Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}` and the permanent Milestone 5 integration gate.'
+          )
+          old_tail = '''## Audit outcome and owner action
+
+M5-WP-08 has a **GO** recommendation for the audited code head. The documentation head must pass the same hosted gates before PR #70 is marked ready for review. No additional implementation work package exists inside the currently approved Milestone 5 scope. Merge, tagging, release or any next milestone remains an explicit owner decision.'''
+          new_tail = '''## Audit outcome and next milestone
+
+M5-WP-08 is merged with a final **GO** recommendation. Final PR head `4807c4d13759e11b954b896daf4b10aa841700e0` passed Milestone 5 integration `31448370214`, Milestone 5 reliability `31448370139`, validation `31448370194`, Browser and Visual Validation `31448370136`, Milestone 4 integration `31448370159`, Milestone 4 reliability `31448370144`, Milestone 3 reliability `31448370168` and Milestone 2 reliability `31448370132` before merge.
+
+There is no additional implementation work package inside Milestone 5. The next proposed owner decision is TASK 031A / Milestone 6 scope approval for `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`. No M6 runtime work starts before that planning proposal is approved by merge.'''
+          if old_tail not in text:
+              raise SystemExit('M5 traceability tail no longer matches expected baseline')
+          trace.write_text(text.replace(old_tail, new_tail))
+
+          index = Path('docs/planning/TASK-INDEX.md')
+          text = index.read_text()
+          old_wp08 = '''- M5-WP-08 — Independent Milestone 5 integration and authority audit (**GO in PR #70; pending final documentation-head validation**)
+  - Initial audit recommendation: **FIX** for two bounded integration gaps in the Operations review journey and real lifecycle-to-Recommended-Action composition.
+  - PR #70 closes the gaps with an authenticated explicit review/admission/handoff path, real Recommended Action regeneration and a permanent zero-interception M5 integration gate.
+  - Audited code head `f79002d81329de2ae80c777e391f1b025f014e79` passed all eight hosted gates.
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}`.
+  - No Payment/Invoice, legal appointment, Filing Submission, external filing, Official Truth, automatic Matter completion, Capability verification or cross-service SQL is created. Merge remains an explicit owner action.'''
+          new_wp08 = '''- M5-WP-08 — Independent Milestone 5 integration and authority audit (**merged in PR #70; final recommendation GO**)
+  - Merge: `242b34f806711df608a7178b238104289e65bb00`.
+  - Initial audit recommendation: **FIX** for two bounded integration gaps in the Operations review journey and real lifecycle-to-Recommended-Action composition.
+  - PR #70 closed the gaps with an authenticated explicit review/admission/handoff path, real Recommended Action regeneration and a permanent zero-interception M5 integration gate.
+  - Final documentation head `4807c4d13759e11b954b896daf4b10aa841700e0` passed M5 integration `31448370214`, M5 reliability `31448370139`, validation `31448370194`, Browser/Visual `31448370136`, M4 integration `31448370159`, M4 reliability `31448370144`, M3 reliability `31448370168` and M2 reliability `31448370132`.
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}`.
+  - No Payment/Invoice, legal appointment, Filing Submission, external filing, Official Truth, automatic Matter completion, Capability verification or cross-service SQL is created.'''
+          if old_wp08 not in text:
+              raise SystemExit('Task Index M5 WP08 block no longer matches expected baseline')
+          text = text.replace(old_wp08, new_wp08)
+          if '## Milestone 6 planning' not in text:
+              text += '''
+
+## Milestone 6 planning
+
+- TASK 031A — Milestone 6 scope and architecture lock (**proposed for approval**)
+  - Numbering note: historical `MO-MVP-TASK-031` remains reserved for Jurisdiction Recommendation; this planning task does not rewrite it.
+  - Proposed direction: `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`.
+  - Delivery graph: milestone-local work packages `M6-WP-01` through `M6-WP-08` in `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`.
+  - Proposed loop: `accepted Capability Canon version -> governed work observation -> private Capability Ledger -> private Reflection Candidate -> explicit subject-user disposition -> private Capability Profile/Twin -> Lite Capability Center`.
+  - Governing locks: Reflection Candidate is not canonical truth; accepted private reflection is not verified Capability; Provider Supply Capability and raw Provider Return are not direct user Capability evidence; no automatic Canon mutation, public ranking, permission escalation, Payment/Invoice, legal appointment, Filing Submission or Official Truth.
+  - Planning only: no M6 runtime implementation starts until the TASK 031A planning PR is approved by merge.
+'''
+          index.write_text(text)
+          PY
+      - name: Format planning documents
+        run: >-
+          pnpm exec prettier --write
+          README.md
+          docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md
+          docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.json
+          docs/planning/TASK-INDEX.md
+          docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md
+          docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md
+          docs/planning/MO-MVP-MILESTONE-006-PLAN.json
+          docs/tasks/MO-MVP-TASK-031A-MILESTONE-006-SCOPE-LOCK.md
+      - name: Commit reconciliation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md docs/planning docs/tasks/MO-MVP-TASK-031A-MILESTONE-006-SCOPE-LOCK.md
+          if git diff --cached --quiet; then
+            echo 'No reconciliation changes required.'
+            exit 0
+          fi
+          git commit -m 'docs(m6): reconcile M5 closure and M6 planning'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
