@@ -4,7 +4,7 @@ import type {
   RuntimeCapabilityDefinition,
   RuntimeCapabilityDefinitionId,
   RuntimeCapabilityLineage
-} from '@markorbit/contracts/capability-learning';
+} from '@markorbit/contracts';
 import type { QueryClient } from '@markorbit/persistence';
 
 const SHA256 = /^[0-9a-f]{64}$/;

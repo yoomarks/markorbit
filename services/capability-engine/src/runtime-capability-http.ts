@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { RuntimeCapabilityDefinitionId } from '@markorbit/contracts/capability-learning';
+import type { RuntimeCapabilityDefinitionId } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   RuntimeCapabilityRegistryError,
