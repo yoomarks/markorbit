@@ -17,7 +17,10 @@ const runtimes: ReturnType<typeof createRuntime>[] = [];
 async function fixture(): Promise<ReadyPackageContentExportV1> {
   return JSON.parse(
     await readFile(
-      new URL('../../../packages/contracts/fixtures/ready-package-content-export-v1.json', import.meta.url),
+      new URL(
+        '../../../packages/contracts/fixtures/ready-package-content-export-v1.json',
+        import.meta.url
+      ),
       'utf8'
     )
   ) as ReadyPackageContentExportV1;
@@ -44,7 +47,10 @@ async function start() {
   return { runtime, knowledgeIntakes, knowledgeContents };
 }
 
-async function createIntake(runtime: ReturnType<typeof createRuntime>, content: ReadyPackageContentExportV1) {
+async function createIntake(
+  runtime: ReturnType<typeof createRuntime>,
+  content: ReadyPackageContentExportV1
+) {
   const request: CoreIntakeRequest = {
     readyPackageId: content.readyPackageId,
     workspaceId,
@@ -117,13 +123,18 @@ describe('ReadyPackage content consumption HTTP boundary', () => {
     expect(knowledgeContents.count()).toBe(1);
   });
 
-  it.each([null, 'wrong-secret'])('rejects missing or invalid internal auth', async (authorization) => {
-    const content = await fixture();
-    const { runtime, knowledgeContents } = await start();
-    const { intakeId } = await createIntake(runtime, content);
-    expect((await putContent(runtime, intakeId, content, authorization)).response.status).toBe(401);
-    expect(knowledgeContents.count()).toBe(0);
-  });
+  it.each([null, 'wrong-secret'])(
+    'rejects missing or invalid internal auth',
+    async (authorization) => {
+      const content = await fixture();
+      const { runtime, knowledgeContents } = await start();
+      const { intakeId } = await createIntake(runtime, content);
+      expect((await putContent(runtime, intakeId, content, authorization)).response.status).toBe(
+        401
+      );
+      expect(knowledgeContents.count()).toBe(0);
+    }
+  );
 
   it('rejects content that does not match the frozen intake evidence', async () => {
     const content = await fixture();
