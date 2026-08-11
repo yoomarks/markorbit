@@ -294,7 +294,7 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
   });
 
   it('records rejected and deferred outcomes as bounded dispositions with no outreach or owner mutation', async () => {
-    for (const [index, outcome] of ['REJECTED', 'DEFERRED'] as const) {
+    for (const [index, outcome] of (['REJECTED', 'DEFERRED'] as const).entries()) {
       const service = store();
       const created = await candidate(service, `candidate-disposition-${index}`);
       const result = await service.recordQualification({
