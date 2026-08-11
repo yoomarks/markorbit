@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Wire Today surface and styles
+      - name: Wire Today surface
         shell: python
         run: |
           from pathlib import Path
@@ -52,143 +52,63 @@ jobs:
               "        {surface !== 'matters' && surface !== 'today' && <FixtureBanner />}\n",
               1
           )
-          old = """        ) : surface === 'today' ? (\n          <>\n            <PageHeader\n              title=\"Today\"\n              description=\"A calm view of the work that needs professional attention.\"\n            />\n            <div className=\"mo-grid\">\n              <Card>\n                <h2>Pending attention</h2>\n                <DataList\n                  items={[\n                    { label: 'Client intake review', value: '4', status: 'Due today' },\n                    { label: 'Draft publish packages', value: '2', status: 'Awaiting approval' }\n                  ]}\n                />\n              </Card>\n              <Card>\n                <h2>Opportunities</h2>\n                <DataList items={[{ label: 'Evidence observations', value: '3' }]} />\n              </Card>\n              <Card>\n                <h2>Work</h2>\n                <DataList items={[{ label: 'Customers needing review', value: '1' }]} />\n              </Card>\n            </div>\n          </>\n"""
-          new = """        ) : surface === 'today' ? (\n          activeWorkspaceId ? (\n            <TodayWorkspace workspaceId={activeWorkspaceId} />\n          ) : (\n            <ErrorState\n              title=\"Select a Workspace\"\n              description=\"A valid Workspace context is required to load durable Today Recommendations.\"\n            />\n          )\n"""
+          old = '''        ) : surface === 'today' ? (
+          <>
+            <PageHeader
+              title="Today"
+              description="A calm view of the work that needs professional attention."
+            />
+            <div className="mo-grid">
+              <Card>
+                <h2>Pending attention</h2>
+                <DataList
+                  items={[
+                    { label: 'Client intake review', value: '4', status: 'Due today' },
+                    { label: 'Draft publish packages', value: '2', status: 'Awaiting approval' }
+                  ]}
+                />
+              </Card>
+              <Card>
+                <h2>Opportunities</h2>
+                <DataList items={[{ label: 'Evidence observations', value: '3' }]} />
+              </Card>
+              <Card>
+                <h2>Work</h2>
+                <DataList items={[{ label: 'Customers needing review', value: '1' }]} />
+              </Card>
+            </div>
+          </>
+'''
+          new = '''        ) : surface === 'today' ? (
+          activeWorkspaceId ? (
+            <TodayWorkspace workspaceId={activeWorkspaceId} />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load durable Today Recommendations."
+            />
+          )
+'''
           if old not in text:
               raise SystemExit('Today fixture block anchor not found')
-          text = text.replace(old, new, 1)
-          p.write_text(text)
+          p.write_text(text.replace(old, new, 1))
 
-          css = Path('apps/lite-web/src/lite.css')
-          css.write_text(css.read_text() + r'''
-
-.today-layout {
-  display: grid;
-  grid-template-columns: minmax(18rem, 0.82fr) minmax(0, 1.7fr);
-  gap: var(--mo-space-xl);
-  align-items: start;
-}
-.today-detail {
-  display: grid;
-  gap: var(--mo-space-lg);
-  min-width: 0;
-}
-.today-recommendation-list {
-  display: grid;
-  gap: var(--mo-space-sm);
-  margin-top: var(--mo-space-lg);
-}
-.today-recommendation {
-  display: grid;
-  gap: var(--mo-space-sm);
-  width: 100%;
-  padding: var(--mo-space-md);
-  border: 1px solid var(--mo-border);
-  border-radius: var(--mo-radius-md);
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.today-recommendation:hover,
-.today-recommendation:focus-visible {
-  border-color: currentColor;
-}
-.today-recommendation--active {
-  box-shadow: inset 3px 0 0 currentColor;
-}
-.today-recommendation__meta,
-.today-recommendation__footer {
-  display: flex;
-  gap: var(--mo-space-sm);
-  justify-content: space-between;
-  align-items: center;
-  color: var(--mo-secondary);
-  font-size: 0.82rem;
-}
-.today-recommendation > span:not(.today-recommendation__meta):not(.today-recommendation__footer) {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  color: var(--mo-secondary);
-}
-.today-confirmation-effect {
-  margin-block: var(--mo-space-lg);
-  padding: var(--mo-space-lg);
-  border: 1px solid var(--mo-border);
-  border-radius: var(--mo-radius-md);
-}
-.today-confirmation-effect p {
-  margin-bottom: 0;
-}
-.today-source-list {
-  display: grid;
-  gap: var(--mo-space-md);
-  padding: 0;
-  list-style: none;
-}
-.today-source-list li {
-  display: grid;
-  gap: var(--mo-space-xs);
-  padding-block: var(--mo-space-md);
-  border-bottom: 1px solid var(--mo-border);
-}
-.today-source-list span,
-.today-source-list small,
-.today-muted,
-.today-eyebrow {
-  color: var(--mo-secondary);
-}
-.today-source-list code {
-  overflow-wrap: anywhere;
-  font-size: 0.78rem;
-}
-.today-definition-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--mo-space-md);
-  margin-block: var(--mo-space-lg);
-}
-.today-definition-list div {
-  min-width: 0;
-  padding: var(--mo-space-md);
-  border: 1px solid var(--mo-border);
-  border-radius: var(--mo-radius-md);
-}
-.today-definition-list dt {
-  margin-bottom: var(--mo-space-xs);
-  color: var(--mo-secondary);
-  font-size: 0.8rem;
-}
-.today-definition-list dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-@media (max-width: 900px) {
-  .today-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 640px) {
-  .today-definition-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .today-recommendation {
-    min-height: 44px;
-  }
-}
-''')
+          p = Path('apps/lite-web/src/features/today/TodayWorkspace.tsx')
+          text = p.read_text()
+          anchor = "import { createTodayClient, TodayHttpError, type TodayClient } from '../../api/product-loop.js';\n"
+          if anchor not in text:
+              raise SystemExit('TodayWorkspace import anchor not found')
+          p.write_text(text.replace(anchor, anchor + "import './today.css';\n", 1))
 
           Path('.github/workflows/wp05-ui-one-shot.yml').unlink()
       - name: Format UI files
         run: >-
           pnpm exec prettier --write
           apps/lite-web/src/App.tsx
-          apps/lite-web/src/lite.css
           apps/lite-web/src/api/product-loop.ts
           apps/lite-web/src/features/today/TodayWorkspace.tsx
           apps/lite-web/src/features/today/TodayWorkspace.stories.tsx
+          apps/lite-web/src/features/today/today.css
       - name: Commit UI wiring
         run: |
           git config user.name 'github-actions[bot]'
