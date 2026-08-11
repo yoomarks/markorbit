@@ -13,7 +13,7 @@ import { MemoryKnowledgeIntakeRepository } from '../src/knowledge-intake.js';
 const secret = 's'.repeat(32);
 const workspaceId = '018f0000-0000-7000-8000-000000000202';
 const suffix = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
-const markdown = '# Knowledge\n';
+const markdown = '# Knowledge\n' + 'x'.repeat(70 * 1024);
 const stagingSha256 = createHash('sha256').update(markdown, 'utf8').digest('hex');
 const readyPackageDigest = 'a'.repeat(64);
 const rawArtifactSha256 = 'b'.repeat(64);
@@ -121,6 +121,7 @@ describe('ReadyPackage Content Export V1 Core consumption boundary', () => {
     const { runtime, knowledgeIntakes, knowledgeContentExports } = await start();
     const intake = await createIntake(runtime);
     expect(intake.status).toBe('RECEIVED');
+    expect(Buffer.byteLength(JSON.stringify(contentExport), 'utf8')).toBeGreaterThan(64 * 1024);
 
     const consumed = await postContent(runtime, intake.intakeId);
     expect(consumed.response.status).toBe(201);
