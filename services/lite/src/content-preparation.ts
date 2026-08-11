@@ -632,7 +632,7 @@ export class PostgresLiteContentPreparationStore {
     );
     if (!contentReviewOutcomes.includes(command.outcome))
       throw new LiteContentPreparationError('INVALID_INPUT', 'Review outcome is invalid.', 422);
-    const reviewerPrincipalId = cleanMarkOrbitId(
+    const reviewerPrincipalId = cleanPrincipalId(
       command.reviewerPrincipalId,
       'reviewerPrincipalId'
     );

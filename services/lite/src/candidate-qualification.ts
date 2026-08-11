@@ -354,7 +354,7 @@ export class PostgresLiteCandidateQualificationStore {
         'Qualification outcome is invalid.',
         422
       );
-    const decidedByPrincipalId = cleanMarkOrbitId(
+    const decidedByPrincipalId = cleanPrincipalId(
       command.decidedByPrincipalId,
       'decidedByPrincipalId'
     );
