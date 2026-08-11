@@ -26,6 +26,7 @@ const actorSpoofFields = [
   'confirmedByPrincipalId',
   'decidedByPrincipalId',
   'reviewerPrincipalId',
+  'recordedByPrincipalId',
   'membershipId'
 ] as const;
 
@@ -189,6 +190,7 @@ export function createGatewayProductLoopRoutes(
     route('GET', '/api/lite/today', ['workspace:read'], false),
     route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], false),
     route('POST', '/api/lite/today/:todayRecommendationId/prepared-actions', ['matter:manage']),
-    route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage'])
+    route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage']),
+    route('POST', '/api/lite/publish-packages/:publishPackageId/use-feedback', ['matter:manage'])
   ];
 }

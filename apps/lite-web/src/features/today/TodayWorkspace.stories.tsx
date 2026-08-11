@@ -1,10 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
-  LiteTodaySnapshot,
   PreparedActionJourney,
+  ProductLoopUseFeedback,
+  PublishPackage,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
-import { TodayHttpError, type TodayClient } from '../../api/product-loop.js';
+import {
+  TodayHttpError,
+  type TodayClient,
+  type TodayProductLoopSnapshot
+} from '../../api/product-loop.js';
 import { TodayWorkspace } from './TodayWorkspace.js';
 
 const workspaceId = '25252525-2525-4252-8252-252525252525';
@@ -90,24 +95,60 @@ const completed: PreparedActionJourney = {
     }
   }
 };
+const publishPackage: PublishPackage = {
+  schemaVersion: 1,
+  publishPackageId: 'publish-package_story',
+  workspaceId,
+  version: 1,
+  contentDraft: { id: 'content-draft_story', version: 2 },
+  contentDraftFingerprintSha256: 'e'.repeat(64),
+  reviewDecision: { id: 'content-review-decision_story', version: 1 },
+  title: 'US renewal window explainer',
+  body: 'Reviewed content ready for manual external use.',
+  publishPackageFingerprintSha256: 'd'.repeat(64),
+  status: 'PREPARED',
+  externalPublishExecuted: false,
+  createdAt: '2026-08-11T08:13:00.000Z'
+};
+const feedback: ProductLoopUseFeedback = {
+  schemaVersion: 1,
+  productLoopFeedbackId: 'product-loop-feedback_story',
+  workspaceId,
+  version: 1,
+  publishPackage: { id: 'publish-package_story', version: 1 },
+  outcome: 'USER_REPORTED_PUBLISHED',
+  externalReference: 'https://example.test/manual-publication/renewal-window',
+  recordedByPrincipalId: '11111111-1111-4111-8111-111111111111',
+  recordedAt: '2026-08-11T08:14:00.000Z',
+  externalActionExecutedByMarkOrbit: false,
+  externalOutcomeVerifiedByMarkOrbit: false
+};
 
-function snapshot(actions: PreparedActionJourney[] = [], partial = false): LiteTodaySnapshot {
+function snapshot(
+  actions: PreparedActionJourney[] = [],
+  partial = false,
+  recentFeedback: ProductLoopUseFeedback[] = [],
+  feedbackPendingPackages: PublishPackage[] = []
+): TodayProductLoopSnapshot {
   return {
     schemaVersion: 1,
     workspaceId,
     generatedAt: '2026-08-11T08:15:00.000Z',
     items: [{ recommendation, preparedActions: actions }],
     partial,
-    warnings: partial ? ['Knowledge refresh is delayed; exact stored provenance is shown.'] : []
+    warnings: partial ? ['Knowledge refresh is delayed; exact stored provenance is shown.'] : [],
+    recentFeedback,
+    feedbackPendingPackages
   };
 }
 
-function clientFor(value: LiteTodaySnapshot): TodayClient {
+function clientFor(value: TodayProductLoopSnapshot): TodayClient {
   return {
     loadToday: () => Promise.resolve(value),
     loadPreparedAction: () => Promise.resolve(prepared),
     prepareContent: () => Promise.resolve(prepared),
-    confirm: () => Promise.resolve(completed)
+    confirm: () => Promise.resolve(completed),
+    recordUseFeedback: (_publishPackage, outcome) => Promise.resolve({ ...feedback, outcome })
   };
 }
 
@@ -127,6 +168,12 @@ export const PreparedActionReview: Story = {
 };
 export const HandoffSuccess: Story = {
   args: { workspaceId, client: clientFor(snapshot([completed])) }
+};
+export const FeedbackNeeded: Story = {
+  args: { workspaceId, client: clientFor(snapshot([completed], false, [], [publishPackage])) }
+};
+export const FeedbackReturnedToToday: Story = {
+  args: { workspaceId, client: clientFor(snapshot([completed], false, [feedback])) }
 };
 export const PartialContext: Story = {
   args: { workspaceId, client: clientFor(snapshot([], true)) }
@@ -166,7 +213,10 @@ export const DependencyError: Story = {
   }
 };
 export const Mobile390: Story = {
-  args: { workspaceId, client: clientFor(snapshot([prepared])) },
+  args: {
+    workspaceId,
+    client: clientFor(snapshot([prepared], false, [feedback], [publishPackage]))
+  },
   parameters: {
     viewport: {
       defaultViewport: 'mobile1',

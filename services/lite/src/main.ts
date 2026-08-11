@@ -11,6 +11,7 @@ import {
   PostgresLiteContentPreparationStore,
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
+import { PostgresProductLoopFeedbackStore } from './feedback.js';
 import { createLiteProductLoopRoutes } from './http.js';
 import {
   handoffResult,
@@ -44,13 +45,20 @@ const database = new ManagedDatabase(
 );
 await database.start();
 const pool = database.getPool();
+const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool);
 
-const unavailableSourceAuthority: ProductLoopSourceAuthority = {
-  resolve() {
-    return Promise.reject(
-      new Error(
-        'Upstream Product-loop source creation is not exposed through the WP-05 browser runtime.'
-      )
+const productLoopSourceAuthority: ProductLoopSourceAuthority = {
+  async resolve(workspaceId, locator) {
+    if (locator.owner === 'LITE' && locator.kind === 'CONTENT_USE_FEEDBACK') {
+      const source = await feedbackStore.sourceReference(
+        workspaceId,
+        locator.sourceId as `product-loop-feedback_${string}`
+      );
+      if (source) return source;
+      throw new Error('Requested Product-loop use feedback was not found in this Workspace.');
+    }
+    throw new Error(
+      'This Lite runtime exposes only durable CONTENT_USE_FEEDBACK as a Product-loop source.'
     );
   }
 };
@@ -58,17 +66,17 @@ const unavailableSourceAuthority: ProductLoopSourceAuthority = {
 const contentStore = new PostgresLiteContentPreparationStore(
   database,
   pool,
-  unavailableSourceAuthority
+  productLoopSourceAuthority
 );
 const candidateStore = new PostgresLiteCandidateQualificationStore(
   database,
   pool,
-  unavailableSourceAuthority,
+  productLoopSourceAuthority,
   {
     isAccessible() {
       return Promise.reject(
         new Error(
-          'Customer relationship mutation is not exposed through the WP-05 browser runtime.'
+          'Customer relationship mutation is not exposed through the WP-06 feedback runtime.'
         )
       );
     }
@@ -188,7 +196,8 @@ const runtime = createServiceRuntime(serviceManifest, {
   routes: createLiteProductLoopRoutes({
     internalServiceSecret,
     journeyService,
-    candidateStore
+    candidateStore,
+    feedbackStore
   })
 });
 

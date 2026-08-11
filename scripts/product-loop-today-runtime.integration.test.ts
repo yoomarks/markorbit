@@ -14,6 +14,7 @@ import {
   PostgresLiteContentPreparationStore,
   type ProductLoopSourceAuthority
 } from '../services/lite/src/content-preparation.js';
+import { PostgresProductLoopFeedbackStore } from '../services/lite/src/feedback.js';
 import {
   PostgresPreparedActionStore,
   PreparedActionJourneyService,
@@ -103,6 +104,7 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
       { isAccessible: async () => true }
     );
     const prepared = new PostgresPreparedActionStore(database, database.getPool());
+    const feedback = new PostgresProductLoopFeedbackStore(database, database.getPool());
     const authority: PreparedActionHandoffAuthority = {
       async perform(action, plan, _confirmation, key) {
         if (plan.kind !== 'PREPARE_CONTENT') throw new Error('unexpected handoff plan');
@@ -131,7 +133,8 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
         routes: createLiteProductLoopRoutes({
           internalServiceSecret: secret,
           journeyService: new PreparedActionJourneyService(prepared, authority),
-          candidateStore: candidate
+          candidateStore: candidate,
+          feedbackStore: feedback
         })
       }
     );
@@ -141,7 +144,8 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
 
   beforeEach(async () => {
     await database.getPool().query(
-      `TRUNCATE lite_prepared_action_commands,lite_prepared_action_handoff_results,
+      `TRUNCATE lite_product_loop_feedback_commands,lite_product_loop_use_feedback,
+       lite_prepared_action_commands,lite_prepared_action_handoff_results,
        lite_prepared_action_confirmations,lite_prepared_actions,
        lite_candidate_qualification_commands,lite_opportunity_qualification_decisions,
        lite_opportunity_candidates,lite_content_preparation_commands,lite_publish_packages,
@@ -187,9 +191,12 @@ suite('WP-05 authenticated Lite HTTP integration', () => {
     const rec = await seedRecommendation();
     const today = await fetch(`${base}/v1/today`, { headers: headers() });
     expect(today.status).toBe(200);
-    expect((await today.json()).items[0].recommendation.todayRecommendationId).toBe(
+    const todayPayload = await today.json();
+    expect(todayPayload.items[0].recommendation.todayRecommendationId).toBe(
       rec.todayRecommendationId
     );
+    expect(todayPayload.recentFeedback).toEqual([]);
+    expect(todayPayload.feedbackPendingPackages).toEqual([]);
 
     const prepared = await fetch(
       `${base}/v1/today/${encodeURIComponent(rec.todayRecommendationId)}/prepared-actions`,

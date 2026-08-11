@@ -1,10 +1,18 @@
 import type {
   LiteTodaySnapshot,
   PreparedActionJourney,
+  ProductLoopFeedbackOutcome,
+  ProductLoopUseFeedback,
+  PublishPackage,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
+
+export type TodayProductLoopSnapshot = LiteTodaySnapshot & {
+  recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+  feedbackPendingPackages: ReadonlyArray<Readonly<PublishPackage>>;
+};
 
 export class TodayHttpError extends Error {
   constructor(
@@ -19,10 +27,14 @@ export class TodayHttpError extends Error {
 }
 
 export interface TodayClient {
-  loadToday(): Promise<LiteTodaySnapshot>;
+  loadToday(): Promise<TodayProductLoopSnapshot>;
   loadPreparedAction(preparedActionId: string): Promise<PreparedActionJourney>;
   prepareContent(recommendation: Readonly<TodayRecommendation>): Promise<PreparedActionJourney>;
   confirm(journey: Readonly<PreparedActionJourney>): Promise<PreparedActionJourney>;
+  recordUseFeedback(
+    publishPackage: Readonly<PublishPackage>,
+    outcome: ProductLoopFeedbackOutcome
+  ): Promise<ProductLoopUseFeedback>;
 }
 
 async function csrfToken(): Promise<string> {
@@ -92,7 +104,7 @@ async function request<T>(
 
 export function createTodayClient(workspaceId: string): TodayClient {
   return {
-    loadToday: () => request<LiteTodaySnapshot>('/api/lite/today', workspaceId),
+    loadToday: () => request<TodayProductLoopSnapshot>('/api/lite/today', workspaceId),
     loadPreparedAction: (preparedActionId) =>
       request<PreparedActionJourney>(
         `/api/lite/prepared-actions/${encodeURIComponent(preparedActionId)}`,
@@ -126,6 +138,18 @@ export function createTodayClient(workspaceId: string): TodayClient {
           acknowledgedEffect: journey.preparedAction.confirmationEffect
         },
         `confirm:${journey.preparedAction.preparedActionId}:${journey.preparedAction.version}`
+      ),
+    recordUseFeedback: (publishPackage, outcome) =>
+      request<ProductLoopUseFeedback>(
+        `/api/lite/publish-packages/${encodeURIComponent(publishPackage.publishPackageId)}/use-feedback`,
+        workspaceId,
+        'POST',
+        {
+          publishPackageVersion: publishPackage.version,
+          expectedPublishPackageFingerprintSha256: publishPackage.publishPackageFingerprintSha256,
+          outcome
+        },
+        `feedback:${publishPackage.publishPackageId}:${publishPackage.version}`
       )
   };
 }

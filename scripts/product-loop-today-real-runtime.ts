@@ -23,6 +23,7 @@ import {
   type ProductLoopSourceAuthority
 } from '../services/lite/src/content-preparation.js';
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
+import { PostgresProductLoopFeedbackStore } from '../services/lite/src/feedback.js';
 import {
   handoffResult,
   PostgresPreparedActionStore,
@@ -162,6 +163,7 @@ async function main() {
     { isAccessible: async () => true },
     () => at
   );
+  const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool, () => at);
   const preparedStore = new PostgresPreparedActionStore(database, pool, () => at);
   const handoffAuthority: PreparedActionHandoffAuthority = {
     async perform(action, plan, _confirmation, idempotencyKey) {
@@ -205,7 +207,8 @@ async function main() {
       routes: createLiteProductLoopRoutes({
         internalServiceSecret: secret,
         journeyService: new PreparedActionJourneyService(preparedStore, handoffAuthority),
-        candidateStore
+        candidateStore,
+        feedbackStore
       })
     }
   );
