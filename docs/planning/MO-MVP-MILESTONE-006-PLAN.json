@@ -239,14 +239,7 @@
     {
       "id": "M6-WP-07",
       "name": "Reliability, privacy, replay, isolation, concurrency and browser matrix",
-      "dependencies": [
-        "M6-WP-01",
-        "M6-WP-02",
-        "M6-WP-03",
-        "M6-WP-04",
-        "M6-WP-05",
-        "M6-WP-06"
-      ]
+      "dependencies": ["M6-WP-01", "M6-WP-02", "M6-WP-03", "M6-WP-04", "M6-WP-05", "M6-WP-06"]
     },
     {
       "id": "M6-WP-08",
