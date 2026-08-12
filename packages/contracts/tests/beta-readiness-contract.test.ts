@@ -33,30 +33,18 @@ describe('M7-WP-01 beta readiness contracts', () => {
       m7BetaReadinessGapInventoryV1.map((entry) => [entry.key, entry.status])
     );
 
-    expect(statusByKey.get('CAPABILITY_PRIVATE_LEARNING')).toBe(
-      'SATISFIED_BY_EXISTING_EVIDENCE'
-    );
+    expect(statusByKey.get('CAPABILITY_PRIVATE_LEARNING')).toBe('SATISFIED_BY_EXISTING_EVIDENCE');
     expect(statusByKey.get('LIFECYCLE_RECOMMENDED_ACTION_PATH')).toBe(
       'SATISFIED_BY_EXISTING_EVIDENCE'
     );
-    expect(statusByKey.get('RELIABILITY_RECOVERY_BASELINE')).toBe(
-      'SATISFIED_BY_EXISTING_EVIDENCE'
-    );
+    expect(statusByKey.get('RELIABILITY_RECOVERY_BASELINE')).toBe('SATISFIED_BY_EXISTING_EVIDENCE');
     expect(statusByKey.get('CONTENT_OPPORTUNITY_CONVERSION_ANALYTICS')).toBe(
       'REMAINS_M7_IMPLEMENTATION'
     );
-    expect(statusByKey.get('DETERMINISTIC_SEEDED_BETA_SCENARIO')).toBe(
-      'REMAINS_M7_IMPLEMENTATION'
-    );
-    expect(statusByKey.get('THREE_LOOP_BETA_ACCEPTANCE_GRAPH')).toBe(
-      'REMAINS_M7_IMPLEMENTATION'
-    );
-    expect(statusByKey.get('DEPLOYMENT_REHEARSAL_RECOVERY')).toBe(
-      'REMAINS_M7_IMPLEMENTATION'
-    );
-    expect(statusByKey.get('EXACT_HEAD_BETA_RC_QUALIFICATION')).toBe(
-      'REMAINS_M7_IMPLEMENTATION'
-    );
+    expect(statusByKey.get('DETERMINISTIC_SEEDED_BETA_SCENARIO')).toBe('REMAINS_M7_IMPLEMENTATION');
+    expect(statusByKey.get('THREE_LOOP_BETA_ACCEPTANCE_GRAPH')).toBe('REMAINS_M7_IMPLEMENTATION');
+    expect(statusByKey.get('DEPLOYMENT_REHEARSAL_RECOVERY')).toBe('REMAINS_M7_IMPLEMENTATION');
+    expect(statusByKey.get('EXACT_HEAD_BETA_RC_QUALIFICATION')).toBe('REMAINS_M7_IMPLEMENTATION');
   });
 
   it('keeps every readiness artifact non-authoritative', () => {

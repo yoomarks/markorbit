@@ -24,16 +24,16 @@ These distinctions are represented by `@markorbit/contracts/beta-readiness` and 
 
 ## Week 4 gap inventory
 
-| Week 4 objective | M7-WP-01 classification | Evidence / next owner |
-| --- | --- | --- |
-| Capability Profile, Twin projection, Ledger and private Reflection Candidate | `SATISFIED_BY_EXISTING_EVIDENCE` | M6-WP-01..08 and PR #93 GO; reuse only |
-| Content and Opportunity conversion analytics | `REMAINS_M7_IMPLEMENTATION` | M7-WP-02 |
-| Lifecycle reminders / recommended actions | `SATISFIED_BY_EXISTING_EVIDENCE` | M5 lifecycle projection + non-executing Recommended Action; reuse only |
-| Permission, isolation, idempotency, retry and recovery tests | `SATISFIED_BY_EXISTING_EVIDENCE` | existing M2-M6/PLC reliability gates; exact-head revalidation in M7-WP-06 |
-| Seeded demo | `REMAINS_M7_IMPLEMENTATION` | M7-WP-03 |
-| E2E suites proving all three declared MVP loops as one Beta graph | `REMAINS_M7_IMPLEMENTATION` | M7-WP-04; compose existing real runtimes |
-| Deployment rehearsal / migration / rollback recovery | `REMAINS_M7_IMPLEMENTATION` | M7-WP-05 |
-| Exact-head Beta release candidate with explicit known limits | `REMAINS_M7_IMPLEMENTATION` | M7-WP-06, then independent M7-WP-07 audit |
+| Week 4 objective                                                             | M7-WP-01 classification          | Evidence / next owner                                                     |
+| ---------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------- |
+| Capability Profile, Twin projection, Ledger and private Reflection Candidate | `SATISFIED_BY_EXISTING_EVIDENCE` | M6-WP-01..08 and PR #93 GO; reuse only                                    |
+| Content and Opportunity conversion analytics                                 | `REMAINS_M7_IMPLEMENTATION`      | M7-WP-02                                                                  |
+| Lifecycle reminders / recommended actions                                    | `SATISFIED_BY_EXISTING_EVIDENCE` | M5 lifecycle projection + non-executing Recommended Action; reuse only    |
+| Permission, isolation, idempotency, retry and recovery tests                 | `SATISFIED_BY_EXISTING_EVIDENCE` | existing M2-M6/PLC reliability gates; exact-head revalidation in M7-WP-06 |
+| Seeded demo                                                                  | `REMAINS_M7_IMPLEMENTATION`      | M7-WP-03                                                                  |
+| E2E suites proving all three declared MVP loops as one Beta graph            | `REMAINS_M7_IMPLEMENTATION`      | M7-WP-04; compose existing real runtimes                                  |
+| Deployment rehearsal / migration / rollback recovery                         | `REMAINS_M7_IMPLEMENTATION`      | M7-WP-05                                                                  |
+| Exact-head Beta release candidate with explicit known limits                 | `REMAINS_M7_IMPLEMENTATION`      | M7-WP-06, then independent M7-WP-07 audit                                 |
 
 The gap inventory deliberately distinguishes reuse from new implementation. Existing milestone-local runtimes and reliability gates must not be rebuilt merely to make M7 look self-contained.
 
