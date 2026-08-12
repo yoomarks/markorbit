@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  readM7Wp03BetaSeedConfig,
-  resetAndSeedM7Wp03BetaScenario
-} from './m7-wp-03-beta-seed.js';
+import { readM7Wp03BetaSeedConfig, resetAndSeedM7Wp03BetaScenario } from './m7-wp-03-beta-seed.js';
 
 const visibleSeedUrls = {
   MARKORBIT_BETA_SEED_CORE_DATABASE_URL:
@@ -42,9 +39,7 @@ describe('M7-WP-03 deterministic Beta seed guards', () => {
 
   it('accepts only TEST or REHEARSAL', () => {
     expect(() =>
-      readM7Wp03BetaSeedConfig(
-        syntheticEnv({ MARKORBIT_BETA_SEED_ENVIRONMENT: 'development' })
-      )
+      readM7Wp03BetaSeedConfig(syntheticEnv({ MARKORBIT_BETA_SEED_ENVIRONMENT: 'development' }))
     ).toThrow(/TEST or REHEARSAL/iu);
   });
 
@@ -52,8 +47,7 @@ describe('M7-WP-03 deterministic Beta seed guards', () => {
     expect(() =>
       readM7Wp03BetaSeedConfig(
         syntheticEnv({
-          MARKORBIT_BETA_SEED_CORE_DATABASE_URL:
-            'postgresql://seed:seed@127.0.0.1:5432/markorbit'
+          MARKORBIT_BETA_SEED_CORE_DATABASE_URL: 'postgresql://seed:seed@127.0.0.1:5432/markorbit'
         })
       )
     ).toThrow(/visibly non-production/iu);
