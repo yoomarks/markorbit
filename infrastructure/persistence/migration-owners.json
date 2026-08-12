@@ -26,7 +26,8 @@
     "lite_prepared_action_journey": "@markorbit/lite-service",
     "lite_product_loop_feedback": "@markorbit/lite-service",
     "capability_engine_runtime_registry": "@markorbit/capability-engine",
-    "capability_engine_observation_ledger": "@markorbit/capability-engine"
+    "capability_engine_observation_ledger": "@markorbit/capability-engine",
+    "capability_engine_reflection_candidates": "@markorbit/capability-engine"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -56,6 +57,7 @@
     "0042_lite_prepared_action_journey": "@markorbit/lite-service",
     "0043_lite_product_loop_feedback": "@markorbit/lite-service",
     "0044_capability_engine_runtime_registry": "@markorbit/capability-engine",
-    "0045_capability_engine_observation_ledger": "@markorbit/capability-engine"
+    "0045_capability_engine_observation_ledger": "@markorbit/capability-engine",
+    "0046_capability_engine_reflection_candidates": "@markorbit/capability-engine"
   }
 }
