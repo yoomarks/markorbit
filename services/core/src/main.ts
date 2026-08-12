@@ -12,6 +12,7 @@ import {
 import { createRuntime } from './index.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
+import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -31,6 +32,7 @@ const runtime = createRuntime({
   workspaces,
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
+  knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
   internalServiceSecret: secret
 });
 
