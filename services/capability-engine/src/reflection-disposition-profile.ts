@@ -98,7 +98,10 @@ function fingerprint(value: unknown): string {
 }
 
 function stableHexId(namespace: string, ...parts: string[]): string {
-  return createHash('sha256').update([namespace, ...parts].join(':')).digest('hex').slice(0, 32);
+  return createHash('sha256')
+    .update([namespace, ...parts].join(':'))
+    .digest('hex')
+    .slice(0, 32);
 }
 
 function reflectionDispositionId(): ReflectionDispositionId {
@@ -165,7 +168,9 @@ function exactKeys(value: Record<string, unknown>, allowed: readonly string[]): 
     );
 }
 
-export function normalizeReflectionDispositionCommand(value: unknown): ReflectionDispositionCommand {
+export function normalizeReflectionDispositionCommand(
+  value: unknown
+): ReflectionDispositionCommand {
   if (!record(value))
     throw new ReflectionDispositionProfileError(
       'INVALID_INPUT',
@@ -664,19 +669,21 @@ export class PostgresReflectionDispositionProfileService {
         );
       return candidate;
     });
-    const dispositions: DispositionWithCandidate[] = (dispositionResult.rows as Row[]).map((row) => {
-      if (!record(row.disposition_json) || !record(row.candidate_json))
-        throw new ReflectionDispositionProfileError(
-          'PERSISTENCE_UNAVAILABLE',
-          'Persisted Reflection Disposition projection source is invalid.',
-          503,
-          true
-        );
-      return {
-        disposition: clone(row.disposition_json as unknown as ReflectionDisposition),
-        candidate: clone(row.candidate_json as unknown as ReflectionCandidate)
-      };
-    });
+    const dispositions: DispositionWithCandidate[] = (dispositionResult.rows as Row[]).map(
+      (row) => {
+        if (!record(row.disposition_json) || !record(row.candidate_json))
+          throw new ReflectionDispositionProfileError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Persisted Reflection Disposition projection source is invalid.',
+            503,
+            true
+          );
+        return {
+          disposition: clone(row.disposition_json as unknown as ReflectionDisposition),
+          candidate: clone(row.candidate_json as unknown as ReflectionCandidate)
+        };
+      }
+    );
 
     const acceptedReflections = dispositions
       .filter(({ disposition }) => disposition.outcome === 'ACCEPTED')
