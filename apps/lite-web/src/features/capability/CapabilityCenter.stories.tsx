@@ -108,7 +108,7 @@ const ready: CapabilityCenterView = {
 
 const client = (
   load: CapabilityCenterClient['load'],
-  disposition: CapabilityCenterClient['disposition'] = async () => ({})
+  disposition: CapabilityCenterClient['disposition'] = () => Promise.resolve({})
 ): CapabilityCenterClient => ({ load, disposition });
 
 const meta = {
@@ -119,21 +119,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Ready: Story = { args: { client: client(async () => ready) } };
+export const Ready: Story = { args: { client: client(() => Promise.resolve(ready)) } };
 export const Empty: Story = {
   args: {
-    client: client(async () => ({
-      ...ready,
-      ledgerEntries: [],
-      profiles: [],
-      twin: null,
-      pendingCandidates: []
-    }))
+    client: client(() =>
+      Promise.resolve({
+        ...ready,
+        ledgerEntries: [],
+        profiles: [],
+        twin: null,
+        pendingCandidates: []
+      })
+    )
   }
 };
 export const Partial: Story = {
   args: {
-    client: client(async () => ({ ...ready, profiles: [], twin: null, pendingCandidates: [] }))
+    client: client(() =>
+      Promise.resolve({ ...ready, profiles: [], twin: null, pendingCandidates: [] })
+    )
   }
 };
 export const Loading: Story = {
@@ -141,7 +145,7 @@ export const Loading: Story = {
 };
 export const PermissionDenied: Story = {
   args: {
-    client: client(async () =>
+    client: client(() =>
       Promise.reject(
         new CapabilityCenterHttpError(
           403,
@@ -154,7 +158,7 @@ export const PermissionDenied: Story = {
 };
 export const RecoverableError: Story = {
   args: {
-    client: client(async () =>
+    client: client(() =>
       Promise.reject(
         new CapabilityCenterHttpError(
           503,
@@ -168,8 +172,8 @@ export const RecoverableError: Story = {
 export const StaleDisposition: Story = {
   args: {
     client: client(
-      async () => ready,
-      async () =>
+      () => Promise.resolve(ready),
+      () =>
         Promise.reject(
           new CapabilityCenterHttpError(
             409,
