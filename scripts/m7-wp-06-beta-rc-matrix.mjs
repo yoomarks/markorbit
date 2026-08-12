@@ -109,7 +109,10 @@ invariant(
 );
 
 const knownLimits = await readJson(candidate.knownLimitsFile);
-invariant(knownLimits.releaseAuthorized === false, 'known-limits document may not authorize release');
+invariant(
+  knownLimits.releaseAuthorized === false,
+  'known-limits document may not authorize release'
+);
 const knownLimitIds = new Set(knownLimits.limits.map((limit) => limit.id));
 for (const limitId of requiredKnownLimitIds) {
   invariant(knownLimitIds.has(limitId), `missing required known limit: ${limitId}`);
