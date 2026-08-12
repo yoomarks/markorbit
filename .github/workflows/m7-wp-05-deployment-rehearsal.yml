@@ -1,0 +1,93 @@
+name: M7 WP-05 Deployment Rehearsal
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/m7-wp-05-deployment-rehearsal.yml'
+      - 'infrastructure/rehearsal/m7-wp-05-beta-candidate.json'
+      - 'infrastructure/persistence/**'
+      - 'packages/persistence/**'
+      - 'packages/service-kit/**'
+      - 'services/core/**'
+      - 'services/lite/**'
+      - 'services/markreg/**'
+      - 'services/execution/**'
+      - 'services/mgsn/**'
+      - 'services/capability-engine/**'
+      - 'scripts/m7-wp-05-deployment-rehearsal.integration.test.ts'
+      - 'docs/tasks/MO-MVP-M7-WP-05-DEPLOYMENT-REHEARSAL-RECOVERY.md'
+      - 'README.md'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      PGPASSWORD: markorbit-test-only
+      M7_WP05_REHEARSAL_REQUIRED: '1'
+      M7_WP05_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M7_WP05_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_core
+      M7_WP05_LITE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_lite
+      M7_WP05_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_markreg
+      M7_WP05_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_execution
+      M7_WP05_MGSN_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_mgsn
+      M7_WP05_CAPABILITY_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_capability
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create rehearsal owner databases
+        env: { PGPASSWORD: markorbit-test-only }
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE markorbit_wp05_core;
+          CREATE DATABASE markorbit_wp05_lite;
+          CREATE DATABASE markorbit_wp05_markreg;
+          CREATE DATABASE markorbit_wp05_execution;
+          CREATE DATABASE markorbit_wp05_mgsn;
+          CREATE DATABASE markorbit_wp05_capability;
+          SQL
+      - name: Verify logical recovery tooling
+        run: |
+          command -v pg_dump
+          command -v pg_restore
+          pg_dump --version
+          pg_restore --version
+      - name: Build candidate services
+        run: pnpm build
+      - name: Run exact-head deployment rehearsal
+        run: pnpm exec vitest run --no-file-parallelism scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
+      - name: Final workspace check
+        run: pnpm check
+      - name: Upload deployment rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-wp-05-deployment-rehearsal-${{ github.run_id }}
+          path: .artifacts/m7-wp-05-deployment-rehearsal-evidence.json
+          if-no-files-found: warn
+          retention-days: 14
