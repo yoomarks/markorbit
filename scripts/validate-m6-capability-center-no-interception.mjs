@@ -16,17 +16,9 @@ const forbidden = [
   /\broute\.fallback\s*\(/u
 ];
 for (const pattern of forbidden)
-  assert.equal(
-    pattern.test(spec),
-    false,
-    `${specPath} contains request interception: ${pattern}`
-  );
+  assert.equal(pattern.test(spec), false, `${specPath} contains request interception: ${pattern}`);
 
-assert.match(
-  spec,
-  /#capability/u,
-  'Capability Center must be reached by its direct URL/hash.'
-);
+assert.match(spec, /#capability/u, 'Capability Center must be reached by its direct URL/hash.');
 assert.match(spec, /page\.reload\(\)/u, 'Capability Center must prove reload recovery.');
 assert.match(
   spec,
