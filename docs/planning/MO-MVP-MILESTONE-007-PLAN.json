@@ -1,0 +1,155 @@
+{
+  "milestone": "MO-MVP-MILESTONE-007",
+  "planningTask": "TASK 032A",
+  "status": "PROPOSED_FOR_APPROVAL",
+  "baseline": {
+    "source": "M6-WP-08 final GO merge",
+    "commit": "f63fb857663fc05879c26716169cb3186613f32b",
+    "predecessorAudit": "GO",
+    "predecessorPr": 93,
+    "betaReleased": false
+  },
+  "numbering": {
+    "reasonFor032A": "MO-MVP-TASK-032 is already reserved in the historical Task Index for Class and Goods Recommendation",
+    "historicalTask032Rewritten": false
+  },
+  "direction": {
+    "id": "BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING",
+    "selected": true,
+    "summary": "Close the remaining four-week Beta obligations through bounded Product conversion analytics, deterministic non-production seed data, one three-loop real-runtime acceptance graph, deployment/rollback rehearsal and exact-head release-candidate evidence without creating release or business authority."
+  },
+  "currentState": {
+    "capabilityLearningLoop": "COMPLETE_WITH_M6_GO",
+    "productLoopClosure": "COMPLETE_WITH_PLC_GO",
+    "lifecycleRecommendedActions": "COMPLETE_WITH_M5_GO",
+    "ownerIsolationReplayIdempotency": "SUBSTANTIALLY_COVERED_BY_M2_M6_AND_PLC",
+    "desktopMobileRealRuntime": "SUBSTANTIALLY_COVERED_BY_EXISTING_MILESTONE_GATES",
+    "contentOpportunityConversionAnalytics": "NOT_FORMALLY_CLOSED",
+    "deterministicSeededBetaScenario": "NOT_FORMALLY_CLOSED",
+    "threeLoopBetaAcceptanceGraph": "NOT_FORMALLY_CLOSED_AS_SINGLE_BETA_GATE",
+    "deploymentRollbackRehearsal": "NOT_FORMALLY_CLOSED",
+    "betaReleaseCandidateQualification": "NOT_FORMALLY_CLOSED"
+  },
+  "analyticsRules": {
+    "boundedToContentAndOpportunityProductLoop": true,
+    "observationalOnly": true,
+    "existingOwnerFactsOrBoundedOwnerApisOnly": true,
+    "genericAnalyticsPlatform": false,
+    "secondGenericEventStoreRequired": false,
+    "crossServiceSql": false,
+    "metricsAuthorizeBusinessMutation": false,
+    "userReportedUseBecomesVerifiedExternalTruth": false
+  },
+  "seedRules": {
+    "nonProductionOnly": true,
+    "explicitEnablementRequired": true,
+    "failClosedInNormalProductionConfiguration": true,
+    "databasePerOwner": true,
+    "crossServiceSql": false,
+    "realCustomerOrProviderCredentials": false,
+    "externalActions": false,
+    "resetAndReseedRequired": true,
+    "stableReplayEvidenceRequired": true
+  },
+  "deploymentRules": {
+    "rehearsalOnly": true,
+    "productionTrafficCutover": false,
+    "releaseAuthorizationCreated": false,
+    "configurationBypassesBusinessAuthority": false,
+    "migrationStartupRestartEvidenceRequired": true,
+    "rollbackOrRecoveryEvidenceRequired": true,
+    "secretsCommitted": false
+  },
+  "betaAcceptanceLoops": [
+    "trademark or knowledge -> content -> reviewed PublishPackage",
+    "Product/trademark signal -> Opportunity Candidate -> Qualification -> Formal Opportunity -> Intake/Matter path",
+    "direct or professional Intake -> recommendation -> Order/Matter -> Provider Return -> evidence/lifecycle -> outcome/reflection"
+  ],
+  "workPackages": [
+    {
+      "id": "M7-WP-01",
+      "name": "Beta readiness contracts, gap inventory and authority boundary",
+      "dependencies": ["TASK 032A approved"]
+    },
+    {
+      "id": "M7-WP-02",
+      "name": "Bounded Content/Opportunity conversion analytics",
+      "dependencies": ["M7-WP-01"]
+    },
+    {
+      "id": "M7-WP-03",
+      "name": "Deterministic non-production seeded Beta scenario",
+      "dependencies": ["M7-WP-01"]
+    },
+    {
+      "id": "M7-WP-04",
+      "name": "Three-loop full-journey Beta real-runtime acceptance",
+      "dependencies": ["M7-WP-02", "M7-WP-03", "M2-M6 and PLC real runtimes"]
+    },
+    {
+      "id": "M7-WP-05",
+      "name": "Deployment rehearsal, migration and rollback/recovery evidence",
+      "dependencies": ["M7-WP-03", "M7-WP-04"]
+    },
+    {
+      "id": "M7-WP-06",
+      "name": "Exact-head Beta RC reliability, responsive and known-limits matrix",
+      "dependencies": ["M7-WP-02", "M7-WP-03", "M7-WP-04", "M7-WP-05"]
+    },
+    {
+      "id": "M7-WP-07",
+      "name": "Independent Beta readiness and authority audit",
+      "dependencies": ["M7-WP-06"]
+    }
+  ],
+  "authorityConsequences": {
+    "conversionSnapshotMayExist": true,
+    "seededRehearsalRecordsMayExist": true,
+    "betaCandidateEvidenceMayExist": true,
+    "mustRemainFalse": [
+      "productionDeploymentPerformedByPlanningApproval",
+      "betaReleasedAutomatically",
+      "releaseTagPublishedAutomatically",
+      "analyticsAuthorizesPublicationOrQualification",
+      "seededRecordBecomesCustomerProviderOfficialTruth",
+      "capabilityVerifiedAutomatically",
+      "capabilityCanonMutatedAutomatically",
+      "publicCapabilityScoreOrCertificationCreated",
+      "coreRoleOrPermissionEscalatedAutomatically",
+      "paymentCreated",
+      "invoiceCreated",
+      "professionalLegallyAppointedAutomatically",
+      "filingSubmitted",
+      "officialTruthCreated",
+      "externalActionExecuted",
+      "crossServiceSqlAllowed"
+    ]
+  },
+  "goGate": {
+    "boundedConversionAnalytics": true,
+    "deterministicNonProductionSeed": true,
+    "threeLoopRealRuntimeAcceptance": true,
+    "desktopAndMobileCriticalJourneyEvidence": true,
+    "restartReplayRecovery": true,
+    "deploymentMigrationRollbackRehearsal": true,
+    "m2ThroughM6AndPlcRegressions": true,
+    "machineReadableKnownLimits": true,
+    "independentAuditRequired": true,
+    "releaseRequiresExplicitOwnerAction": true
+  },
+  "nonGoals": [
+    "production deployment or traffic cutover",
+    "automatic Beta release or tag publication",
+    "generic analytics/event/data warehouse platform",
+    "generic demo-data platform",
+    "new universal workflow or artifact platform",
+    "Payment/Invoice or settlement",
+    "legal appointment",
+    "external Filing Submission or Official Truth ingestion",
+    "public Capability rating/ranking/certification",
+    "automatic Capability verification or Canon mutation",
+    "autonomous Capability Twin protected-action authority"
+  ],
+  "planningOnly": true,
+  "implementationStarted": false
+}
