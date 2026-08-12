@@ -8,6 +8,13 @@
   "databaseEngine": "postgresql-16",
   "migrationModel": "FORWARD_ONLY_IMMUTABLE_CHECKSUMS",
   "rollbackStrategy": "OWNER_DATABASE_LOGICAL_SNAPSHOT_RESTORE_THEN_FORWARD_REAPPLY",
+  "migrationPrerequisiteDefinitions": {
+    "LOCAL_WORKSPACE_SCOPE_ANCHOR": {
+      "kind": "STRUCTURAL_ONLY",
+      "businessRowsSeeded": false,
+      "description": "Empty owner-local workspace scope structure required by an existing immutable migration; it does not copy Core identity rows or create business truth."
+    }
+  },
   "owners": [
     {
       "name": "core",
@@ -16,7 +23,8 @@
       "migrationNamespace": "m7_wp05_core",
       "serviceEntry": "services/core/dist/main.js",
       "port": 4511,
-      "runtimeDependencies": []
+      "runtimeDependencies": [],
+      "migrationPrerequisites": []
     },
     {
       "name": "lite",
@@ -25,7 +33,8 @@
       "migrationNamespace": "m7_wp05_lite",
       "serviceEntry": "services/lite/dist/main.js",
       "port": 4512,
-      "runtimeDependencies": ["markreg"]
+      "runtimeDependencies": ["markreg"],
+      "migrationPrerequisites": ["LOCAL_WORKSPACE_SCOPE_ANCHOR"]
     },
     {
       "name": "markreg",
@@ -34,7 +43,8 @@
       "migrationNamespace": "m7_wp05_markreg",
       "serviceEntry": "services/markreg/dist/main.js",
       "port": 4513,
-      "runtimeDependencies": ["execution", "lite"]
+      "runtimeDependencies": ["execution", "lite"],
+      "migrationPrerequisites": []
     },
     {
       "name": "execution",
@@ -43,7 +53,8 @@
       "migrationNamespace": "m7_wp05_execution",
       "serviceEntry": "services/execution/dist/main.js",
       "port": 4514,
-      "runtimeDependencies": ["markreg"]
+      "runtimeDependencies": ["markreg"],
+      "migrationPrerequisites": []
     },
     {
       "name": "mgsn",
@@ -52,7 +63,8 @@
       "migrationNamespace": "m7_wp05_mgsn",
       "serviceEntry": "services/mgsn/dist/main.js",
       "port": 4515,
-      "runtimeDependencies": ["core", "execution"]
+      "runtimeDependencies": ["core", "execution"],
+      "migrationPrerequisites": []
     },
     {
       "name": "capability-engine",
@@ -61,7 +73,8 @@
       "migrationNamespace": "m7_wp05_capability",
       "serviceEntry": "services/capability-engine/dist/main.js",
       "port": 4516,
-      "runtimeDependencies": ["execution"]
+      "runtimeDependencies": ["execution"],
+      "migrationPrerequisites": []
     }
   ],
   "startupPolicy": {
