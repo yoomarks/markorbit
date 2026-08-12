@@ -59,6 +59,10 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Format seed scripts for diagnostics
+        run: |
+          pnpm exec prettier --write scripts/m7-wp-03-beta-seed.ts scripts/m7-wp-03-beta-seed.test.ts
+          git diff -- scripts/m7-wp-03-beta-seed.ts scripts/m7-wp-03-beta-seed.test.ts
       - name: Create database-per-owner topology
         run: |
           psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_lite'
