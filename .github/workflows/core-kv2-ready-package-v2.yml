@@ -11,6 +11,7 @@ on:
       - 'packages/service-kit/src/index.ts'
       - 'services/core/src/**'
       - 'services/core/tests/knowledge-v2-**'
+      - 'services/core/tests/knowledge-content-http.test.ts'
       - 'services/core/package.json'
       - 'infrastructure/persistence/migrations/0048_core_knowledge_v2_deliveries.sql'
       - 'infrastructure/persistence/migration-owners.json'
@@ -61,5 +62,7 @@ jobs:
           pnpm --filter @markorbit/core-service typecheck
           pnpm build:identity-postgres-deps
           pnpm --filter @markorbit/core-service exec vitest run tests/knowledge-v2-delivery-http.test.ts
+      - name: Preserve frozen V1 content HTTP behavior
+        run: pnpm --filter @markorbit/core-service exec vitest run tests/knowledge-content-http.test.ts
       - name: Run durable V2 delivery PostgreSQL suite
         run: pnpm --filter @markorbit/core-service test:knowledge-v2-delivery:postgres
