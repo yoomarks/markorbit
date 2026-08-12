@@ -217,14 +217,29 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Evidence: `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.{md,json}`.
   - No Payment/Invoice, legal appointment, Filing Submission, external filing, Official Truth, automatic Matter completion, Capability verification or cross-service SQL is created.
 
-## Milestone 6 planning
+## Milestone 6
 
-- TASK 031A — Milestone 6 scope and architecture lock (**proposed for approval**)
+- TASK 031A — Milestone 6 scope and architecture lock (**approved by merge of PR #71**)
   - Numbering note: historical `MO-MVP-TASK-031` remains reserved for Jurisdiction Recommendation; this planning task does not rewrite it.
-  - Proposed direction: `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
+  - Approved direction: `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
+  - Product Loop sequencing gate was completed with PLC-WP-08 GO in PR #83 before M6 runtime resumed.
   - Scope: `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`.
-  - Delivery graph: milestone-local work packages `M6-WP-01` through `M6-WP-08` in `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`.
-  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`.
-  - Proposed loop: `accepted Capability Canon version -> governed work observation -> private Capability Ledger -> private Reflection Candidate -> explicit subject-user disposition -> private Capability Profile/Twin -> Lite Capability Center`.
-  - Governing locks: Reflection Candidate is not canonical truth; accepted private reflection is not verified Capability; Provider Supply Capability and raw Provider Return are not direct user Capability evidence; no automatic Canon mutation, public ranking, permission escalation, Payment/Invoice, legal appointment, Filing Submission or Official Truth.
-  - Planning only: no M6 runtime implementation starts until the TASK 031A planning PR is approved by merge.
+  - Delivery graph: `M6-WP-01` through `M6-WP-08` in `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`.
+  - Current implementation status: `docs/planning/MO-MVP-MILESTONE-006-IMPLEMENTATION-TRACEABILITY.{md,json}`.
+  - Governing lock: `ACCEPTED private reflection != verified Capability != Capability Canon truth`; no raw Provider Return/Provider Supply Capability conversion, public ranking/certification, permission escalation, Payment/Invoice, legal appointment, Filing Submission, Official Truth, cross-service SQL or autonomous Twin authority.
+- M6-WP-01 — Capability learning contracts and authority boundary (**merged in PR #84**)
+  - Canon/runtime/Observation/Ledger/Candidate/Disposition/Profile/Twin vocabulary and no-authority consequences are frozen in `@markorbit/contracts/capability-learning`.
+- M6-WP-02 — Durable runtime Capability Registry and version lineage (**merged in PR #86**)
+  - Capability Engine-owned migration `0044_capability_engine_runtime_registry` and exact accepted-Canon version lineage.
+- M6-WP-03 — Durable Capability Observation Ledger and governed source admission (**merged in PR #87**)
+  - Capability Engine-owned migration `0045_capability_engine_observation_ledger`; exact Execution review source provenance, trusted subject attribution and fail-closed source authority.
+- M6-WP-04 — Private Reflection Candidate generation (**merged in PR #88**)
+  - Capability Engine-owned migration `0046_capability_engine_reflection_candidates`; deterministic private versioned candidate lineage.
+- M6-WP-05 — Explicit Reflection Disposition and private Profile/Twin projection (**merged in PR #89**)
+  - Capability Engine-owned migration `0047_capability_engine_reflection_disposition_profile_twin`; exact subject disposition, concurrency/idempotency and deterministic private rebuild.
+- M6-WP-06 — Authenticated Gateway and Lite Capability Center (**merged in PR #90**)
+  - Core Principal -> Gateway policy -> Capability Engine private state -> Lite `#capability`; desktop/390 real-runtime direct URL/reload acceptance without interception.
+- M6-WP-07 — Reliability, privacy and replay matrix (**implementation in PR #92**)
+  - Evidence: `docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json`, `scripts/run-milestone6-reliability.mjs`, `scripts/validate-milestone6-reliability-matrix.mjs`, `scripts/validate-m6-capability-center-no-interception.mjs` and `.github/workflows/milestone-6-reliability.yml`.
+  - Requires exact-head M6 plus M2-M5 reliability, validation and Browser/Visual gates; adds no new Capability business authority.
+- M6-WP-08 — Independent Milestone 6 integration and authority audit (**not started; next only after explicit WP-07 merge**).
