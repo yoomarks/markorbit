@@ -1,0 +1,68 @@
+name: Core ReadyPackage V2 Delivery
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/core-kv2-ready-package-v2.yml'
+      - 'packages/contracts/src/knowledge-ready-package-v2.ts'
+      - 'packages/contracts/src/index.ts'
+      - 'packages/contracts/package.json'
+      - 'packages/service-kit/src/index.ts'
+      - 'services/core/src/**'
+      - 'services/core/tests/knowledge-v2-**'
+      - 'services/core/tests/knowledge-content-http.test.ts'
+      - 'services/core/package.json'
+      - 'infrastructure/persistence/migrations/0048_core_knowledge_v2_deliveries.sql'
+      - 'infrastructure/persistence/migration-owners.json'
+
+permissions:
+  contents: read
+
+jobs:
+  ready-package-v2-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      KNOWLEDGE_V2_DELIVERY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_knowledge_v2_delivery_test
+      KNOWLEDGE_V2_DELIVERY_POSTGRES_TEST_REQUIRED: '1'
+      PGPASSWORD: markorbit-test-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create isolated V2 delivery database
+        run: >-
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1
+          -c 'CREATE DATABASE markorbit_knowledge_v2_delivery_test;'
+      - name: Validate V2 contract and Core boundary
+        run: |
+          pnpm --filter @markorbit/contracts typecheck
+          pnpm --filter @markorbit/core-service lint
+          pnpm --filter @markorbit/core-service typecheck
+          pnpm build:identity-postgres-deps
+          pnpm --filter @markorbit/core-service exec vitest run tests/knowledge-v2-delivery-http.test.ts
+      - name: Preserve frozen V1 content HTTP behavior
+        run: pnpm --filter @markorbit/core-service exec vitest run tests/knowledge-content-http.test.ts
+      - name: Run durable V2 delivery PostgreSQL suite
+        run: pnpm --filter @markorbit/core-service test:knowledge-v2-delivery:postgres

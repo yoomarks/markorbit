@@ -73,7 +73,7 @@ integration('PostgreSQL Knowledge intake repository', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_knowledge_intake', await migrations());
     await new PostgresWorkspaceRepository(database.getPool()).create({
@@ -86,7 +86,7 @@ integration('PostgreSQL Knowledge intake repository', () => {
 
   it('validates migration ownership, application, checksum, and repeatability', async () => {
     const owned = await migrations();
-    expect(owned.at(-1)?.name).toBe('core_knowledge_intake_contents');
+    expect(owned.map((migration) => migration.name)).toContain('core_knowledge_intake_contents');
     await migrate(database.getPool(), 'core_knowledge_intake', owned);
     expect(
       (await migrationStatus(database.getPool(), 'core_knowledge_intake', owned)).every(

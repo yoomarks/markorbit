@@ -1,5 +1,6 @@
 import { AuthenticationError, type WorkspaceRepository } from '@markorbit/contracts';
 import { parseReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
+import { READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION } from '@markorbit/contracts';
 import {
   createServiceRuntime,
   HttpError,
@@ -19,6 +20,15 @@ import {
   parseCoreIntakeRequest,
   type KnowledgeIntakeRepository
 } from './knowledge-intake.js';
+import {
+  READY_PACKAGE_V2_PROTOCOL_HEADER,
+  expectedReadyPackageV2IdempotencyKey,
+  fingerprintExactReadyPackageV2Request,
+  parseReadyPackageV2DeliveryRequest,
+  readyPackageV2DeliveryResult,
+  validateReadyPackageV2DeliveryIntegrity
+} from './knowledge-v2-ingress.js';
+import type { KnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 
 export const serviceManifest = Object.freeze({
   name: 'core',
@@ -32,6 +42,7 @@ export interface CoreRuntimeOptions {
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
+  knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -160,6 +171,94 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
           : []),
         {
           method: 'POST' as const,
+          path: '/internal/knowledge/ready-packages/v2/deliveries',
+          bodyLimitBytes: 12 * 1024 * 1024,
+          handle: internal(async (request) => {
+            const protocol = request.headers[READY_PACKAGE_V2_PROTOCOL_HEADER];
+            if (protocol !== READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_V2_PROTOCOL_MISMATCH',
+                'ReadyPackage V2 delivery protocol header must be 1.0.'
+              );
+            const idempotencyKey = request.headers['idempotency-key'];
+            if (typeof idempotencyKey !== 'string' || !idempotencyKey.trim())
+              throw new HttpError(
+                400,
+                'IDEMPOTENCY_KEY_REQUIRED',
+                'Idempotency-Key header is required.'
+              );
+            const deliveryRequest = parseReadyPackageV2DeliveryRequest(request.body);
+            if (!deliveryRequest)
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'ReadyPackage V2 request body is invalid.'
+              );
+            const expectedIdempotencyKey = expectedReadyPackageV2IdempotencyKey(
+              deliveryRequest.deliveryId
+            );
+            if (idempotencyKey !== expectedIdempotencyKey)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_V2_IDEMPOTENCY_KEY_MISMATCH',
+                'Idempotency-Key does not match the frozen ReadyPackage V2 delivery identity.'
+              );
+            if (!request.rawBody)
+              throw new HttpError(
+                500,
+                'KNOWLEDGE_V2_RAW_BODY_UNAVAILABLE',
+                'Exact request bytes are unavailable for ReadyPackage V2 delivery.'
+              );
+            if (!options.workspaces || !options.knowledgeV2Deliveries)
+              throw new HttpError(
+                503,
+                'KNOWLEDGE_V2_DELIVERY_SERVICE_UNAVAILABLE',
+                'ReadyPackage V2 delivery service is unavailable.',
+                true
+              );
+            if (!(await options.workspaces.findById(deliveryRequest.target.workspaceId)))
+              throw new HttpError(
+                404,
+                'WORKSPACE_NOT_FOUND',
+                'Target Core Workspace was not found.'
+              );
+            const integrityIssue = validateReadyPackageV2DeliveryIntegrity(deliveryRequest);
+            if (integrityIssue)
+              throw new HttpError(409, integrityIssue.code, integrityIssue.message);
+            const requestSha256 = fingerprintExactReadyPackageV2Request(request.rawBody);
+            const stored = await options.knowledgeV2Deliveries.createOrFind({
+              deliveryId: deliveryRequest.deliveryId,
+              idempotencyKey,
+              targetWorkspaceId: deliveryRequest.target.workspaceId.toLowerCase(),
+              knowledgeWorkspaceId: deliveryRequest.knowledgeWorkspaceId,
+              readyPackageId: deliveryRequest.readyPackageId,
+              readyPackageDigest: deliveryRequest.readyPackageDigest,
+              contentExportSha256: deliveryRequest.contentExportSha256,
+              requestSha256,
+              request: deliveryRequest,
+              submittedAt: deliveryRequest.submittedAt,
+              receivedAt: new Date().toISOString(),
+              status: 'RECEIVED'
+            });
+            if (stored.delivery.requestSha256 !== requestSha256)
+              throw new HttpError(
+                409,
+                'KNOWLEDGE_V2_IDEMPOTENCY_CONFLICT',
+                'Idempotency-Key was already used for different exact request bytes.'
+              );
+            return json(
+              stored.created ? 201 : 200,
+              readyPackageV2DeliveryResult(
+                stored.delivery.request,
+                stored.delivery.requestSha256,
+                stored.delivery.status
+              )
+            );
+          })
+        },
+        {
+          method: 'POST' as const,
           path: '/internal/knowledge/ready-packages/intakes',
           handle: internal(async (request) => {
             const idempotencyKey = request.headers['idempotency-key'];
@@ -271,3 +370,5 @@ export * from './identity.js';
 export * from './auth.js';
 export * from './knowledge-intake.js';
 export * from './knowledge-content.js';
+export * from './knowledge-v2-delivery.js';
+export * from './knowledge-v2-ingress.js';

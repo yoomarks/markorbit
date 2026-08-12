@@ -60,6 +60,7 @@
     "0044_capability_engine_runtime_registry": "@markorbit/capability-engine",
     "0045_capability_engine_observation_ledger": "@markorbit/capability-engine",
     "0046_capability_engine_reflection_candidates": "@markorbit/capability-engine",
-    "0047_capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine"
+    "0047_capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine",
+    "0048_core_knowledge_v2_deliveries": "@markorbit/core-service"
   }
 }

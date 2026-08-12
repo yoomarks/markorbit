@@ -11,6 +11,7 @@
     "test:postgres": "vitest run tests/identity-postgres.test.ts",
     "test:auth:postgres": "vitest run tests/session-postgres.test.ts",
     "test:knowledge-intake:postgres": "vitest run tests/knowledge-intake-postgres.test.ts",
+    "test:knowledge-v2-delivery:postgres": "vitest run tests/knowledge-v2-delivery-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
