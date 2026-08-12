@@ -1,0 +1,170 @@
+name: M6 WP-06 bootstrap patch
+
+on:
+  push:
+    branches:
+      - agent/m6-wp-06-authenticated-capability-center
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m6-wp-06-authenticated-capability-center
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch WP-06 integration points
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'expected snippet not found in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Contracts export.
+          replace(
+              'packages/contracts/src/index.ts',
+              "export * from './capability-learning.js';",
+              "export * from './capability-learning.js';\nexport * from './capability-center.js';"
+          )
+
+          # Capability Engine private Profile list read model.
+          profile_path = 'services/capability-engine/src/reflection-disposition-profile.ts'
+          marker = "  async getTwin(\n    principal: WorkspacePrincipal\n  ): Promise<Readonly<CapabilityTwinProjection> | undefined> {"
+          method = """  async listProfiles(\n    principal: WorkspacePrincipal\n  ): Promise<ReadonlyArray<Readonly<CapabilityProfileProjection>>> {\n    return this.database.transact(async (client) => {\n      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [\n        `capability-profiles:${principal.workspaceId}:${principal.userId}`\n      ]);\n      await this.rebuildAllProfiles(client, principal.workspaceId, principal.userId);\n      const result = await client.query(\n        `SELECT DISTINCT ON (runtime_capability_definition_id,runtime_capability_version) document_json\n         FROM capability_profile_projections\n         WHERE workspace_id=$1 AND subject_user_id=$2\n         ORDER BY runtime_capability_definition_id,runtime_capability_version,version DESC`,\n        [principal.workspaceId, principal.userId]\n      );\n      return (result.rows as Row[])\n        .map((row) => profileFromRow(row))\n        .filter((profile): profile is CapabilityProfileProjection => Boolean(profile))\n        .sort((left, right) =>\n          `${left.runtimeCapability.id}:${left.runtimeCapability.version}`.localeCompare(\n            `${right.runtimeCapability.id}:${right.runtimeCapability.version}`\n          )\n        );\n    });\n  }\n\n"""
+          replace(profile_path, marker, method + marker)
+
+          # Capability Engine route wiring.
+          replace(
+              'services/capability-engine/src/index.ts',
+              "import { createCapabilityObservationRoutes } from './capability-observation-http.js';",
+              "import { createCapabilityCenterRoutes } from './capability-center-http.js';\nimport { createCapabilityObservationRoutes } from './capability-observation-http.js';"
+          )
+          replace(
+              'services/capability-engine/src/index.ts',
+              "export * from './capability-observation-http.js';",
+              "export * from './capability-center-http.js';\nexport * from './capability-observation-http.js';"
+          )
+          replace(
+              'services/capability-engine/src/index.ts',
+              "  const reflectionDispositionProfileRoutes =\n    options.reflectionDispositionProfiles && options.internalServiceSecret\n      ? createReflectionDispositionProfileRoutes({\n          reflections: options.reflectionDispositionProfiles,\n          internalServiceSecret: options.internalServiceSecret\n        })\n      : [];",
+              "  const reflectionDispositionProfileRoutes =\n    options.reflectionDispositionProfiles && options.internalServiceSecret\n      ? createReflectionDispositionProfileRoutes({\n          reflections: options.reflectionDispositionProfiles,\n          internalServiceSecret: options.internalServiceSecret\n        })\n      : [];\n  const capabilityCenterRoutes =\n    options.capabilityObservationLedger &&\n    options.privateReflectionCandidates &&\n    options.reflectionDispositionProfiles &&\n    options.internalServiceSecret\n      ? createCapabilityCenterRoutes({\n          ledger: options.capabilityObservationLedger,\n          candidates: options.privateReflectionCandidates,\n          reflections: options.reflectionDispositionProfiles,\n          internalServiceSecret: options.internalServiceSecret\n        })\n      : [];"
+          )
+          replace(
+              'services/capability-engine/src/index.ts',
+              "        ...reflectionDispositionProfileRoutes\n      ]",
+              "        ...reflectionDispositionProfileRoutes,\n        ...capabilityCenterRoutes\n      ]"
+          )
+
+          # Gateway transport wiring.
+          replace(
+              'apps/gateway/src/index.ts',
+              "export * from './auth.js';",
+              "export * from './auth.js';\nexport * from './capability-http.js';"
+          )
+          replace(
+              'apps/gateway/src/index.ts',
+              "import { createGatewayOrderRoutes } from './order-http.js';",
+              "import { createGatewayCapabilityRoutes } from './capability-http.js';\nimport { createGatewayOrderRoutes } from './order-http.js';"
+          )
+          replace(
+              'apps/gateway/src/index.ts',
+              "  liteUrl?: string;\n  milestoneTestRuntime?: boolean;",
+              "  liteUrl?: string;\n  capabilityEngineUrl?: string;\n  milestoneTestRuntime?: boolean;"
+          )
+          replace(
+              'apps/gateway/src/index.ts',
+              "  const liteUrl = options.liteUrl ?? process.env.LITE_URL ?? 'http://127.0.0.1:4107';",
+              "  const liteUrl = options.liteUrl ?? process.env.LITE_URL ?? 'http://127.0.0.1:4107';\n  const capabilityEngineUrl =\n    options.capabilityEngineUrl ?? process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';"
+          )
+          gateway_routes = """        ...createGatewayCapabilityRoutes({\n          capabilityEngineUrl,\n          ...(authenticationClient ? { authenticationClient } : {}),\n          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)\n            ? {\n                internalServiceSecret: (options.internalServiceSecret ??\n                  process.env.MO_INTERNAL_SERVICE_SECRET)!\n              }\n            : {}),\n          csrfSecret,\n          allowedOrigins\n        }),\n"""
+          replace(
+              'apps/gateway/src/index.ts',
+              "      routes: [\n        ...createGatewayProductLoopRoutes({",
+              "      routes: [\n" + gateway_routes + "        ...createGatewayProductLoopRoutes({"
+          )
+
+          # Lite direct Capability surface wiring.
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "import { TodayWorkspace } from './features/today/TodayWorkspace.js';",
+              "import { TodayWorkspace } from './features/today/TodayWorkspace.js';\nimport { CapabilityCenter } from './features/capability/CapabilityCenter.js';"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "type Surface =\n  'today' | 'matters' | 'customers' | 'opportunities' | 'professional-review' | 'execution-release';",
+              "type Surface =\n  | 'today'\n  | 'matters'\n  | 'capability'\n  | 'customers'\n  | 'opportunities'\n  | 'professional-review'\n  | 'execution-release';"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "      else if (window.location.hash === '#matters') setSurface('matters');",
+              "      else if (window.location.hash === '#matters') setSurface('matters');\n      else if (window.location.hash === '#capability') setSurface('capability');"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "                  : surface === 'matters'\n                    ? label === 'Matters'\n                    : label === 'Today'",
+              "                  : surface === 'matters'\n                    ? label === 'Matters'\n                    : surface === 'capability'\n                      ? label === 'Capability'\n                      : label === 'Today'"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "            surface === 'matters' || surface === 'today'\n              ? `Workspace · ${activeWorkspaceId || 'not selected'}`",
+              "            surface === 'matters' || surface === 'today' || surface === 'capability'\n              ? `Workspace · ${activeWorkspaceId || 'not selected'}`"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "              {surface === 'matters' || surface === 'today' ? 'Authenticated' : 'Not live data'}",
+              "              {surface === 'matters' || surface === 'today' || surface === 'capability'\n                ? 'Authenticated'\n                : 'Not live data'}"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "        {surface !== 'matters' && surface !== 'today' && <FixtureBanner />}",
+              "        {surface !== 'matters' && surface !== 'today' && surface !== 'capability' && (\n          <FixtureBanner />\n        )}"
+          )
+          replace(
+              'apps/lite-web/src/App.tsx',
+              "        ) : surface === 'today' ? (\n          activeWorkspaceId ? (\n            <TodayWorkspace workspaceId={activeWorkspaceId} />\n          ) : (\n            <ErrorState\n              title=\"Select a Workspace\"\n              description=\"A valid Workspace context is required to load durable Today Recommendations.\"\n            />\n          )\n        ) : surface === 'customers' ? (",
+              "        ) : surface === 'today' ? (\n          activeWorkspaceId ? (\n            <TodayWorkspace workspaceId={activeWorkspaceId} />\n          ) : (\n            <ErrorState\n              title=\"Select a Workspace\"\n              description=\"A valid Workspace context is required to load durable Today Recommendations.\"\n            />\n          )\n        ) : surface === 'capability' ? (\n          activeWorkspaceId ? (\n            <CapabilityCenter workspaceId={activeWorkspaceId} />\n          ) : (\n            <ErrorState\n              title=\"Select a Workspace\"\n              description=\"A valid Workspace context is required to load your private Capability Center.\"\n            />\n          )\n        ) : surface === 'customers' ? ("
+          )
+
+          Path('.github/workflows/m6-wp-06-bootstrap.yml').unlink()
+          PY
+          pnpm exec prettier --write \
+            packages/contracts/src/index.ts \
+            packages/contracts/src/capability-center.ts \
+            services/capability-engine/src/index.ts \
+            services/capability-engine/src/reflection-disposition-profile.ts \
+            services/capability-engine/src/capability-center-http.ts \
+            apps/gateway/src/index.ts \
+            apps/gateway/src/capability-http.ts \
+            apps/gateway/tests/capability-http.test.ts \
+            apps/lite-web/src/App.tsx \
+            apps/lite-web/src/api/capability.ts \
+            apps/lite-web/src/features/capability/CapabilityCenter.tsx \
+            apps/lite-web/src/features/capability/CapabilityCenter.stories.tsx \
+            apps/lite-web/src/features/capability/CapabilityCenter.test.tsx \
+            scripts/m6-wp-06-capability-center-real-runtime.ts \
+            tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts \
+            playwright.m6-wp-06-capability-center-real-runtime.config.ts \
+            docs/tasks/MO-MVP-M6-WP-06-AUTHENTICATED-CAPABILITY-CENTER.md
+      - name: Commit integration patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(m6): wire authenticated private Capability Center"
+          git push origin HEAD:agent/m6-wp-06-authenticated-capability-center
