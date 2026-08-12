@@ -246,7 +246,7 @@ export const betaReadinessAuthorityFixture = Object.freeze({
       ownerAuthorizationRequired: true,
       authority: betaReadinessNoAuthorityConsequences
     }
-  ]
+  ] as const
 }) satisfies Readonly<{
   name: string;
   boundaries: ReadonlyArray<Readonly<BetaReadinessBoundary>>;
