@@ -32,6 +32,8 @@ WP-07 does not qualify the audit branch as a new release candidate. The audited 
 
 The audit first proves that PR #100 merged the same Git tree as the candidate, then independently verifies the original candidate evidence and run inventory.
 
+During the first WP-07 PR run, the broad WP-06 pull-request path filter treated the new audit-only workflow/verifier as candidate inputs and re-triggered RC qualification. PR #101 repairs that audit boundary by excluding only the WP-07 audit workflow and verifier from WP-06 automatic PR qualification. Explicit WP-06 dispatch and all real candidate-defining paths remain unchanged.
+
 ## Acceptance
 
 The dedicated audit gate must prove:
@@ -43,7 +45,7 @@ The dedicated audit gate must prove:
 5. owner/persistence-boundary validators independently pass;
 6. all six known limits remain explicit and contain impact plus mitigation;
 7. all permanent authority distinctions remain intact;
-8. WP-07 changes are restricted to audit/workflow/documentation scope;
+8. WP-07 changes are restricted to audit/workflow/documentation scope plus the bounded WP-06 path-filter remediation;
 9. repository-wide `pnpm check` passes;
 10. the generated independent audit artifact returns `GO` while release/deployment authority remains false.
 
