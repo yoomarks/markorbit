@@ -5,6 +5,13 @@ const lite = 'http://127.0.0.1:4485';
 const desktopWorkspaceId = '41414141-4141-4414-8414-414141414141';
 const mobileWorkspaceId = '42424242-4242-4424-8424-424242424242';
 
+function acceptedPrivateReflection(page: import('@playwright/test').Page) {
+  return page
+    .getByRole('heading', { name: 'Current private Profiles' })
+    .locator('..')
+    .getByText(/My private Capability Ledger contains 1 governed work outcome/);
+}
+
 test.describe('M6-WP-06 private Capability Center real runtime', () => {
   test('loads, accepts exact candidate and reloads durable private projection without interception', async ({
     page
@@ -55,9 +62,7 @@ test.describe('M6-WP-06 private Capability Center real runtime', () => {
     expect([200, 201]).toContain((await decision).status());
 
     await expect(page.getByText('No pending private Reflection Candidate.')).toBeVisible();
-    await expect(
-      page.getByText(/My private Capability Ledger contains 1 governed work outcome/)
-    ).toBeVisible();
+    await expect(acceptedPrivateReflection(page)).toBeVisible();
     await expect(page.getByText('Autonomous execution authority')).toBeVisible();
 
     const durableUrl = page.url();
@@ -66,18 +71,14 @@ test.describe('M6-WP-06 private Capability Center real runtime', () => {
       page.getByRole('heading', { name: 'Capability Center', exact: true })
     ).toBeVisible();
     await expect(page.getByText('No pending private Reflection Candidate.')).toBeVisible();
-    await expect(
-      page.getByText(/My private Capability Ledger contains 1 governed work outcome/)
-    ).toBeVisible();
+    await expect(acceptedPrivateReflection(page)).toBeVisible();
 
     const direct = await page.context().newPage();
     await direct.goto(durableUrl);
     await expect(
       direct.getByRole('heading', { name: 'Capability Center', exact: true })
     ).toBeVisible();
-    await expect(
-      direct.getByText(/My private Capability Ledger contains 1 governed work outcome/)
-    ).toBeVisible();
+    await expect(acceptedPrivateReflection(direct)).toBeVisible();
     await direct.close();
 
     expect(requests.some((url) => url.endsWith('/api/lite/capability-center'))).toBe(true);
