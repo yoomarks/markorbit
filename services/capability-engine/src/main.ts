@@ -4,6 +4,7 @@ import {
   HttpExecutionCapabilityObservationSourceAuthority,
   PostgresCapabilityObservationLedger,
   PostgresPrivateReflectionCandidateService,
+  PostgresReflectionDispositionProfileService,
   PostgresRuntimeCapabilityRegistry
 } from './index.js';
 
@@ -52,10 +53,15 @@ if (milestoneFixtureMode) {
     pool,
     registry
   );
+  const reflectionDispositionProfiles = new PostgresReflectionDispositionProfileService(
+    database,
+    pool
+  );
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
     privateReflectionCandidates,
+    reflectionDispositionProfiles,
     internalServiceSecret
   });
 }

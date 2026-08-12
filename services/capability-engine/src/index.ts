@@ -11,6 +11,8 @@ import { createCapabilityObservationRoutes } from './capability-observation-http
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
 import { createPrivateReflectionCandidateRoutes } from './private-reflection-candidate-http.js';
 import type { PostgresPrivateReflectionCandidateService } from './private-reflection-candidate.js';
+import { createReflectionDispositionProfileRoutes } from './reflection-disposition-profile-http.js';
+import type { PostgresReflectionDispositionProfileService } from './reflection-disposition-profile.js';
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 
@@ -19,6 +21,8 @@ export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
+export * from './reflection-disposition-profile-http.js';
+export * from './reflection-disposition-profile.js';
 export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
 
@@ -51,6 +55,7 @@ export interface CapabilityEngineOptions {
   runtimeCapabilityRegistry?: PostgresRuntimeCapabilityRegistry;
   capabilityObservationLedger?: PostgresCapabilityObservationLedger;
   privateReflectionCandidates?: PostgresPrivateReflectionCandidateService;
+  reflectionDispositionProfiles?: PostgresReflectionDispositionProfileService;
   internalServiceSecret?: string;
 }
 export function createRuntime(options: CapabilityEngineOptions = {}) {
@@ -66,6 +71,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('capabilityObservationLedger requires internalServiceSecret.');
   if (options.privateReflectionCandidates && !options.internalServiceSecret)
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
+  if (options.reflectionDispositionProfiles && !options.internalServiceSecret)
+    throw new Error('reflectionDispositionProfiles requires internalServiceSecret.');
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
@@ -84,6 +91,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     options.privateReflectionCandidates && options.internalServiceSecret
       ? createPrivateReflectionCandidateRoutes({
           reflections: options.privateReflectionCandidates,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
+  const reflectionDispositionProfileRoutes =
+    options.reflectionDispositionProfiles && options.internalServiceSecret
+      ? createReflectionDispositionProfileRoutes({
+          reflections: options.reflectionDispositionProfiles,
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
@@ -167,7 +181,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         },
         ...runtimeCapabilityRoutes,
         ...capabilityObservationRoutes,
-        ...privateReflectionCandidateRoutes
+        ...privateReflectionCandidateRoutes,
+        ...reflectionDispositionProfileRoutes
       ]
     }
   );
