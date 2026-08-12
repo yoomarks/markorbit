@@ -43,7 +43,8 @@
     },
     "./beta-readiness": {
       "types": "./dist/beta-readiness.d.ts",
-      "import": "./dist/beta-readiness.js"
+      "import": "./dist/beta-readiness.js",
+      "default": "./dist/beta-readiness.js"
     }
   },
   "scripts": {
