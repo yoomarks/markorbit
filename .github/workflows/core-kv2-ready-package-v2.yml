@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/core-kv2-ready-package-v2.yml'
       - 'packages/contracts/src/knowledge-ready-package-v2.ts'
+      - 'packages/contracts/src/index.ts'
       - 'packages/contracts/package.json'
       - 'packages/service-kit/src/index.ts'
       - 'services/core/src/**'
@@ -58,6 +59,7 @@ jobs:
           pnpm --filter @markorbit/contracts typecheck
           pnpm --filter @markorbit/core-service lint
           pnpm --filter @markorbit/core-service typecheck
+          pnpm build:identity-postgres-deps
           pnpm --filter @markorbit/core-service exec vitest run tests/knowledge-v2-delivery-http.test.ts
       - name: Run durable V2 delivery PostgreSQL suite
         run: pnpm --filter @markorbit/core-service test:knowledge-v2-delivery:postgres
