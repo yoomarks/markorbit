@@ -11,6 +11,7 @@ import {
   PostgresLiteContentPreparationStore,
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
+import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
 import { PostgresProductLoopFeedbackStore } from './feedback.js';
 import { createLiteProductLoopRoutes } from './http.js';
 import {
@@ -46,6 +47,7 @@ const database = new ManagedDatabase(
 await database.start();
 const pool = database.getPool();
 const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool);
+const analyticsStore = new PostgresProductConversionAnalyticsStore(pool);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   async resolve(workspaceId, locator) {
@@ -197,7 +199,8 @@ const runtime = createServiceRuntime(serviceManifest, {
     internalServiceSecret,
     journeyService,
     candidateStore,
-    feedbackStore
+    feedbackStore,
+    analyticsStore
   })
 });
 

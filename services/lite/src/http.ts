@@ -12,6 +12,10 @@ import {
   LiteCandidateQualificationError,
   type PostgresLiteCandidateQualificationStore
 } from './candidate-qualification.js';
+import {
+  ProductConversionAnalyticsError,
+  type PostgresProductConversionAnalyticsStore
+} from './conversion-analytics.js';
 import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
   PreparedActionJourneyError,
@@ -26,6 +30,7 @@ export interface LiteProductLoopRouteOptions {
   journeyService: PreparedActionJourneyService;
   candidateStore: PostgresLiteCandidateQualificationStore;
   feedbackStore: PostgresProductLoopFeedbackStore;
+  analyticsStore: PostgresProductConversionAnalyticsStore;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -119,14 +124,15 @@ function mapError(error: unknown): never {
   if (
     error instanceof PreparedActionJourneyError ||
     error instanceof LiteCandidateQualificationError ||
-    error instanceof ProductLoopFeedbackError
+    error instanceof ProductLoopFeedbackError ||
+    error instanceof ProductConversionAnalyticsError
   )
     throw new HttpError(
       error.status,
       error.code,
       error.message,
       error.status >= 500,
-      error.details
+      'details' in error ? error.details : undefined
     );
   throw error;
 }
@@ -145,6 +151,18 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
             options.feedbackStore.listPendingPackages(principal.workspaceId)
           ]);
           return json(200, { ...snapshot, recentFeedback, feedbackPendingPackages });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/analytics/product-loop-conversions',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        try {
+          return json(200, await options.analyticsStore.snapshot(principal.workspaceId));
         } catch (error) {
           return mapError(error);
         }
