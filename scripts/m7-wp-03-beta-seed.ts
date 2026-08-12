@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   betaReadinessNoAuthorityConsequences,
   type SeededDemoRecordBoundary
-} from '@markorbit/contracts/beta-readiness';
+} from '../packages/contracts/src/beta-readiness.js';
 import type {
   ContentDraftId,
   ContentOpportunityId,
@@ -15,7 +15,7 @@ import type {
   ProductLoopSourceReference,
   PublishPackageId,
   TodayRecommendationId
-} from '@markorbit/contracts/product-loop';
+} from '../packages/contracts/src/product-loop.js';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
@@ -39,7 +39,7 @@ import {
   PostgresFormalOpportunityStore,
   type QualifiedOpportunityAuthority
 } from '../services/markreg/src/formal-opportunity.js';
-import { evidenceHandoffAuthorityConsequences } from '@markorbit/contracts/provider-execution';
+import { evidenceHandoffAuthorityConsequences } from '../packages/contracts/src/provider-execution.js';
 import {
   createRuntime as createExecution,
   EvidenceReviewService,
