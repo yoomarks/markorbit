@@ -93,7 +93,11 @@ function requiredText(value: unknown, field: string, maximum = 500): string {
   return cleaned;
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allowedSet = new Set(allowed);
   const extras = Object.keys(value).filter((key) => !allowedSet.has(key));
   if (extras.length)
@@ -111,7 +115,11 @@ export function normalizePrivateReflectionGenerationCommand(
   idempotencyKeyValue: unknown
 ): NormalizedCommand {
   if (!record(value))
-    throw new PrivateReflectionCandidateError('INVALID_INPUT', 'Request body must be an object.', 422);
+    throw new PrivateReflectionCandidateError(
+      'INVALID_INPUT',
+      'Request body must be an object.',
+      422
+    );
   exactKeys(value, ['ledgerEntryId'], 'request');
   const ledgerEntryId = requiredText(value.ledgerEntryId, 'ledgerEntryId', 100);
   if (!LEDGER_ID.test(ledgerEntryId))
@@ -154,7 +162,11 @@ function candidateFromRow(row: Row | undefined): ReflectionCandidate | undefined
 
 function replayFromRow(row: Row): PrivateReflectionCandidateGenerationResult {
   const value = row.result_json;
-  if (!record(value) || !record(value.candidate) || typeof value.candidateFingerprintSha256 !== 'string')
+  if (
+    !record(value) ||
+    !record(value.candidate) ||
+    typeof value.candidateFingerprintSha256 !== 'string'
+  )
     throw new PrivateReflectionCandidateError(
       'PERSISTENCE_UNAVAILABLE',
       'Persisted Reflection Candidate generation replay is invalid.',
@@ -405,12 +417,7 @@ export class PostgresPrivateReflectionCandidateService {
             `INSERT INTO capability_reflection_candidate_ledger_entries (
                reflection_candidate_id,ledger_entry_id,position,source_fingerprint_sha256
              ) VALUES ($1,$2,$3,$4)`,
-            [
-              candidate.reflectionCandidateId,
-              entry.id,
-              position,
-              entry.sourceFingerprintSha256
-            ]
+            [candidate.reflectionCandidateId, entry.id, position, entry.sourceFingerprintSha256]
           );
         const result = {
           candidate,

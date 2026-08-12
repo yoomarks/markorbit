@@ -350,8 +350,11 @@ integration('M6-WP-04 PostgreSQL private Reflection Candidates', () => {
       )
     ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
     expect(
-      (await database.getPool().query('SELECT count(*)::int count FROM capability_reflection_candidates'))
-        .rows[0]
+      (
+        await database
+          .getPool()
+          .query('SELECT count(*)::int count FROM capability_reflection_candidates')
+      ).rows[0]
     ).toMatchObject({ count: 0 });
   });
 
@@ -382,8 +385,11 @@ integration('M6-WP-04 PostgreSQL private Reflection Candidates', () => {
     ]);
     expect(new Set(results.map((result) => result.candidate.reflectionCandidateId)).size).toBe(1);
     expect(
-      (await database.getPool().query('SELECT count(*)::int count FROM capability_reflection_candidates'))
-        .rows[0]
+      (
+        await database
+          .getPool()
+          .query('SELECT count(*)::int count FROM capability_reflection_candidates')
+      ).rows[0]
     ).toMatchObject({ count: 1 });
   });
 
