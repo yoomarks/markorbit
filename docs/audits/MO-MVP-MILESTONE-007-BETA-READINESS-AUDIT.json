@@ -48,21 +48,29 @@
     "OWNER_RELEASE_ACTION_REQUIRED"
   ],
   "requiredWorkflowEvidence": [
-    {"name": "validation", "event": "pull_request", "runId": 31612894610},
-    {"name": "Milestone 2 reliability", "event": "pull_request", "runId": 31612894673},
-    {"name": "Milestone 3 reliability", "event": "pull_request", "runId": 31612894565},
-    {"name": "Milestone 4 reliability", "event": "pull_request", "runId": 31612894712},
-    {"name": "Milestone 4 integration", "event": "pull_request", "runId": 31612894726},
-    {"name": "Milestone 5 reliability", "event": "pull_request", "runId": 31612894528},
-    {"name": "Milestone 5 integration", "event": "pull_request", "runId": 31612894680},
-    {"name": "Milestone 6 reliability", "event": "pull_request", "runId": 31612894683},
-    {"name": "Browser and Visual Validation", "event": "pull_request", "runId": 31612894594},
-    {"name": "M7 WP-06 Beta RC Matrix", "event": "pull_request", "runId": 31612894763},
-    {"name": "Product Loop Closure Reliability", "event": "workflow_dispatch", "runId": 31613171581},
-    {"name": "M7 WP-02 Conversion Analytics", "event": "workflow_dispatch", "runId": 31613173462},
-    {"name": "M7 WP-03 Seeded Beta Scenario", "event": "workflow_dispatch", "runId": 31613175627},
-    {"name": "M7 WP-04 Three-loop Full-journey Acceptance", "event": "workflow_dispatch", "runId": 31613177844},
-    {"name": "M7 WP-05 Deployment Rehearsal", "event": "workflow_dispatch", "runId": 31613179898}
+    { "name": "validation", "event": "pull_request", "runId": 31612894610 },
+    { "name": "Milestone 2 reliability", "event": "pull_request", "runId": 31612894673 },
+    { "name": "Milestone 3 reliability", "event": "pull_request", "runId": 31612894565 },
+    { "name": "Milestone 4 reliability", "event": "pull_request", "runId": 31612894712 },
+    { "name": "Milestone 4 integration", "event": "pull_request", "runId": 31612894726 },
+    { "name": "Milestone 5 reliability", "event": "pull_request", "runId": 31612894528 },
+    { "name": "Milestone 5 integration", "event": "pull_request", "runId": 31612894680 },
+    { "name": "Milestone 6 reliability", "event": "pull_request", "runId": 31612894683 },
+    { "name": "Browser and Visual Validation", "event": "pull_request", "runId": 31612894594 },
+    { "name": "M7 WP-06 Beta RC Matrix", "event": "pull_request", "runId": 31612894763 },
+    {
+      "name": "Product Loop Closure Reliability",
+      "event": "workflow_dispatch",
+      "runId": 31613171581
+    },
+    { "name": "M7 WP-02 Conversion Analytics", "event": "workflow_dispatch", "runId": 31613173462 },
+    { "name": "M7 WP-03 Seeded Beta Scenario", "event": "workflow_dispatch", "runId": 31613175627 },
+    {
+      "name": "M7 WP-04 Three-loop Full-journey Acceptance",
+      "event": "workflow_dispatch",
+      "runId": 31613177844
+    },
+    { "name": "M7 WP-05 Deployment Rehearsal", "event": "workflow_dispatch", "runId": 31613179898 }
   ],
   "authorityLocks": {
     "recommendationAuthorizesAction": false,
