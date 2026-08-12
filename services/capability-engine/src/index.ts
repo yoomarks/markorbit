@@ -7,6 +7,7 @@ import {
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import { createCapabilityCenterRoutes } from './capability-center-http.js';
 import { createCapabilityObservationRoutes } from './capability-observation-http.js';
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
 import { createPrivateReflectionCandidateRoutes } from './private-reflection-candidate-http.js';
@@ -16,6 +17,7 @@ import type { PostgresReflectionDispositionProfileService } from './reflection-d
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 
+export * from './capability-center-http.js';
 export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
@@ -101,6 +103,18 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const capabilityCenterRoutes =
+    options.capabilityObservationLedger &&
+    options.privateReflectionCandidates &&
+    options.reflectionDispositionProfiles &&
+    options.internalServiceSecret
+      ? createCapabilityCenterRoutes({
+          ledger: options.capabilityObservationLedger,
+          candidates: options.privateReflectionCandidates,
+          reflections: options.reflectionDispositionProfiles,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -182,7 +196,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...runtimeCapabilityRoutes,
         ...capabilityObservationRoutes,
         ...privateReflectionCandidateRoutes,
-        ...reflectionDispositionProfileRoutes
+        ...reflectionDispositionProfileRoutes,
+        ...capabilityCenterRoutes
       ]
     }
   );
