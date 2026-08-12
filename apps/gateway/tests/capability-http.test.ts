@@ -14,12 +14,12 @@ const principal: WorkspacePrincipal = {
   role: 'REVIEWER',
   permissions: ['workspace:read', 'review:perform']
 };
-const resolveWorkspace = vi.fn(async () => principal);
+const resolveWorkspace = vi.fn(() => Promise.resolve(principal));
 const auth: CoreAuthenticationClient = {
-  issue: async () => Promise.reject(new Error('not used')),
-  resolve: async () => Promise.reject(new Error('not used')),
+  issue: () => Promise.reject(new Error('not used')),
+  resolve: () => Promise.reject(new Error('not used')),
   resolveWorkspace,
-  revoke: async () => undefined
+  revoke: () => Promise.resolve()
 };
 const options = {
   capabilityEngineUrl: 'http://capability.test',
@@ -44,7 +44,7 @@ afterEach(() => {
 
 describe('Gateway private Capability Center boundary', () => {
   it('forwards only the authenticated Core subject on reads', async () => {
-    const downstream = vi.fn(async (url: string, init: RequestInit) => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
       expect(url).toBe('http://capability.test/internal/v1/capability-center');
       const headers = init.headers as Record<string, string>;
       expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
@@ -54,12 +54,14 @@ describe('Gateway private Capability Center boundary', () => {
         principal: WorkspacePrincipal;
       };
       expect(envelope.principal.userId).toBe(principal.userId);
-      return new Response(
-        JSON.stringify({ schemaVersion: 1, workspaceId, subjectUserId: principal.userId }),
-        {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ schemaVersion: 1, workspaceId, subjectUserId: principal.userId }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
       );
     });
     vi.stubGlobal('fetch', downstream);
@@ -76,17 +78,21 @@ describe('Gateway private Capability Center boundary', () => {
   });
 
   it('enforces trusted Origin/CSRF and forwards only exact disposition fields', async () => {
-    const downstream = vi.fn(async (_url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    const downstream = vi.fn((_url: string, init: RequestInit) => {
+      expect(typeof init.body).toBe('string');
+      if (typeof init.body !== 'string') throw new Error('Expected JSON request body.');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
       expect(body).toEqual({
         candidateVersion: 2,
         expectedCandidateFingerprintSha256: 'a'.repeat(64),
         outcome: 'ACCEPTED'
       });
-      return new Response(JSON.stringify({ replayed: false }), {
-        status: 201,
-        headers: { 'content-type': 'application/json' }
-      });
+      return Promise.resolve(
+        new Response(JSON.stringify({ replayed: false }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
     });
     vi.stubGlobal('fetch', downstream);
     const result = await route(
