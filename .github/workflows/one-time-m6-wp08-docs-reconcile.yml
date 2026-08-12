@@ -1,0 +1,87 @@
+name: one-time M6 WP-08 docs reconciliation
+
+on:
+  push:
+    branches:
+      - agent/m6-wp-08-independent-integration-authority-audit
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m6-wp-08-independent-integration-authority-audit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Reconcile Task Index and README
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          task = Path('docs/planning/TASK-INDEX.md')
+          text = task.read_text()
+          old = '''- M6-WP-07 — Reliability, privacy and replay matrix (**implementation in PR #92**)
+            - Evidence: `docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json`, `scripts/run-milestone6-reliability.mjs`, `scripts/validate-milestone6-reliability-matrix.mjs`, `scripts/validate-m6-capability-center-no-interception.mjs` and `.github/workflows/milestone-6-reliability.yml`.
+            - Requires exact-head M6 plus M2-M5 reliability, validation and Browser/Visual gates; adds no new Capability business authority.
+          - M6-WP-08 — Independent Milestone 6 integration and authority audit (**not started; next only after explicit WP-07 merge**).'''
+          new = '''- M6-WP-07 — Reliability, privacy and replay matrix (**merged in PR #92**)
+            - Merge: `b903409f9202b7dab043b00b9f97c719d4e6b412`; exact PR head `d7fe1a02a7a84f9c876054b51376acd7a202350f` and merged baseline share tree `029e2b73fc3057f3c8b38d839b00dc2a56531d68`.
+            - Evidence: `docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json`, `scripts/run-milestone6-reliability.mjs`, `scripts/validate-milestone6-reliability-matrix.mjs`, `scripts/validate-m6-capability-center-no-interception.mjs` and `.github/workflows/milestone-6-reliability.yml`.
+          - M6-WP-08 — Independent Milestone 6 integration and authority audit (**implementation in PR #93; final recommendation GO pending explicit Owner merge**)
+            - Initial audit result: **FIX** because the single WP-06/WP-07 browser acceptance path used an in-process Capability Observation source-authority fixture instead of the real Execution-owned reviewed-source HTTP boundary.
+            - PR #93 closes the bounded gap with a separate Execution owner database, durable Evidence Review Decision, real Execution HTTP source verification and a permanent regression guard; documentation drift is also reconciled.
+            - Evidence: `docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.{md,json}` and `docs/tasks/MO-MVP-M6-WP-08-INDEPENDENT-INTEGRATION-AUTHORITY-AUDIT.md`.
+            - The audit creates no release/deployment, Capability verification, Canon mutation, public ranking/certification, Payment/Invoice, legal appointment, Filing Submission, Official Truth or protected external action.'''
+          if old not in text:
+              raise SystemExit('M6 Task Index block not found')
+          task.write_text(text.replace(old, new))
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          old = '**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 is owner-approved but deliberately sequenced after the owner-approved Product Loop Closure stage. PLC-WP-01 is the current authorized implementation task.**'
+          new = '**Product Loop Closure is complete with GO in PR #83. Milestone 6 WP-01 through WP-07 are merged; M6-WP-08 independent integration and authority audit is the current engineering task in PR #93, with final GO pending explicit Owner merge.**'
+          if old not in text:
+              raise SystemExit('README current-status line not found')
+          text = text.replace(old, new)
+          text = text.replace('### Approved Product Loop Closure — current stage', '### Product Loop Closure — completed sequencing gate')
+          old = 'PR #73 merged as `f0afbcd7f37cfe4524793a30e4c4fc84dcc3fb13`, accepting `RESEQUENCE_BEFORE_M6_WP01` and authorizing `PLC-WP-01` as the next implementation task.'
+          new = 'PR #73 established the Product Loop Closure stage, and PLC-WP-08 completed it with a GO recommendation in PR #83. The sequencing gate is closed; M6 runtime implementation subsequently resumed.'
+          if old not in text:
+              raise SystemExit('README PLC status paragraph not found')
+          text = text.replace(old, new)
+          anchor = 'PR #71 merged as `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`, approving TASK 031A and the direction `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.'
+          addition = anchor + '\n\nM6-WP-01 through M6-WP-07 are merged. M6-WP-08 in PR #93 independently audited the integrated runtime, found and repaired one bounded real-Execution-source acceptance gap, and records a final **GO** recommendation pending exact-head validation and explicit Owner merge.'
+          if anchor not in text:
+              raise SystemExit('README M6 approval anchor not found')
+          text = text.replace(anchor, addition)
+          readme.write_text(text)
+          PY
+      - name: Format WP-08 docs
+        run: |
+          pnpm exec prettier --write \
+            README.md \
+            docs/planning/TASK-INDEX.md \
+            docs/planning/MO-MVP-MILESTONE-006-IMPLEMENTATION-TRACEABILITY.md \
+            docs/planning/MO-MVP-MILESTONE-006-IMPLEMENTATION-TRACEABILITY.json \
+            docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json \
+            docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.md \
+            docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.json \
+            docs/tasks/MO-MVP-M6-WP-08-INDEPENDENT-INTEGRATION-AUTHORITY-AUDIT.md
+          rm .github/workflows/one-time-m6-wp08-docs-reconcile.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'docs(m6): reconcile and format WP-08 audit state'
+          git push origin HEAD:agent/m6-wp-08-independent-integration-authority-audit
