@@ -251,3 +251,104 @@ export const betaReadinessAuthorityFixture = Object.freeze({
   name: string;
   boundaries: ReadonlyArray<Readonly<BetaReadinessBoundary>>;
 }>;
+
+export const productConversionAnalyticsSourceKinds = [
+  'CONTENT_OPPORTUNITY',
+  'CONTENT_DRAFT',
+  'CONTENT_REVIEW_DECISION',
+  'PUBLISH_PACKAGE',
+  'CONTENT_USE_FEEDBACK',
+  'OPPORTUNITY_CANDIDATE',
+  'OPPORTUNITY_QUALIFICATION_DECISION',
+  'PREPARED_ACTION_HANDOFF_RESULT'
+] as const;
+export type ProductConversionAnalyticsSourceKind =
+  (typeof productConversionAnalyticsSourceKinds)[number];
+
+export interface ProductConversionAnalyticsSourceFamily {
+  schemaVersion: 1;
+  owner: 'LITE';
+  kind: ProductConversionAnalyticsSourceKind;
+  provenance: 'DURABLE_OWNER_STATE';
+  downstreamOwner?: 'MARKREG';
+}
+
+export const productConversionAnalyticsSourceFamilies = Object.freeze([
+  { schemaVersion: 1, owner: 'LITE', kind: 'CONTENT_OPPORTUNITY', provenance: 'DURABLE_OWNER_STATE' },
+  { schemaVersion: 1, owner: 'LITE', kind: 'CONTENT_DRAFT', provenance: 'DURABLE_OWNER_STATE' },
+  {
+    schemaVersion: 1,
+    owner: 'LITE',
+    kind: 'CONTENT_REVIEW_DECISION',
+    provenance: 'DURABLE_OWNER_STATE'
+  },
+  { schemaVersion: 1, owner: 'LITE', kind: 'PUBLISH_PACKAGE', provenance: 'DURABLE_OWNER_STATE' },
+  { schemaVersion: 1, owner: 'LITE', kind: 'CONTENT_USE_FEEDBACK', provenance: 'DURABLE_OWNER_STATE' },
+  { schemaVersion: 1, owner: 'LITE', kind: 'OPPORTUNITY_CANDIDATE', provenance: 'DURABLE_OWNER_STATE' },
+  {
+    schemaVersion: 1,
+    owner: 'LITE',
+    kind: 'OPPORTUNITY_QUALIFICATION_DECISION',
+    provenance: 'DURABLE_OWNER_STATE'
+  },
+  {
+    schemaVersion: 1,
+    owner: 'LITE',
+    kind: 'PREPARED_ACTION_HANDOFF_RESULT',
+    provenance: 'DURABLE_OWNER_STATE',
+    downstreamOwner: 'MARKREG'
+  }
+] as const satisfies ReadonlyArray<Readonly<ProductConversionAnalyticsSourceFamily>>);
+
+export interface ProductConversionRate {
+  numerator: number;
+  denominator: number;
+  rate: number | null;
+}
+
+export interface ContentConversionFunnel {
+  contentOpportunities: number;
+  draftPrepared: number;
+  humanReviewRecorded: number;
+  publishPackagesPrepared: number;
+  userReportedUseFeedback: number;
+  rates: Readonly<{
+    opportunityToDraft: Readonly<ProductConversionRate>;
+    draftToHumanReview: Readonly<ProductConversionRate>;
+    humanReviewToPublishPackage: Readonly<ProductConversionRate>;
+    publishPackageToUseFeedback: Readonly<ProductConversionRate>;
+  }>;
+}
+
+export interface OpportunityConversionFunnel {
+  opportunityCandidates: number;
+  qualificationDecisions: number;
+  qualifiedForMarkReg: number;
+  formalOpportunityHandoffResults: number;
+  rates: Readonly<{
+    candidateToQualification: Readonly<ProductConversionRate>;
+    qualificationToQualified: Readonly<ProductConversionRate>;
+    qualifiedToFormalOpportunityHandoff: Readonly<ProductConversionRate>;
+  }>;
+}
+
+export interface ProductLoopConversionAnalyticsSnapshot {
+  schemaVersion: 1;
+  workspaceId: string;
+  owner: 'LITE';
+  scope: 'WORKSPACE_ALL_TIME';
+  generatedAt: string;
+  sourceFamilies: ReadonlyArray<Readonly<ProductConversionAnalyticsSourceFamily>>;
+  content: Readonly<ContentConversionFunnel>;
+  opportunity: Readonly<OpportunityConversionFunnel>;
+  crossOwnerEvidence: Readonly<{
+    evidenceOwner: 'LITE';
+    downstreamOwner: 'MARKREG';
+    sourceKind: 'PREPARED_ACTION_HANDOFF_RESULT';
+    directMarkRegQueryPerformed: false;
+  }>;
+  observationalOnly: true;
+  mutatesBusinessState: false;
+  userReportedExternalUseVerified: false;
+  authority: Readonly<BetaReadinessAuthorityConsequences>;
+}
