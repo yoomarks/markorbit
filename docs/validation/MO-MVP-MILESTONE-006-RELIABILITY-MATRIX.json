@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "milestone": 6,
+  "workPackage": "M6-WP-07",
+  "direction": "DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION",
+  "aggregate": "scripts/run-milestone6-reliability.mjs",
+  "inventoryValidator": "scripts/validate-milestone6-reliability-matrix.mjs",
+  "hostedWorkflow": ".github/workflows/milestone-6-reliability.yml",
+  "authority": {
+    "runtimeWorkEvidenceCreatesCanonVersion": false,
+    "observationCreatesVerifiedCapability": false,
+    "rawProviderReturnAdmitted": false,
+    "providerSupplyCapabilityAdmitted": false,
+    "reflectionCandidateCreatesCanonicalTruth": false,
+    "acceptedReflectionCreatesVerifiedCapability": false,
+    "profilePublishesPublicScore": false,
+    "profilePublishesVerifiedBadge": false,
+    "twinHasAutonomousIdentity": false,
+    "twinHasAutonomousExecutionAuthority": false,
+    "permissionOrRoleChanged": false,
+    "crossServiceSqlAllowed": false,
+    "paymentOrInvoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "externalActionExecuted": false
+  },
+  "hostedRegressionGates": [
+    {
+      "id": "M2",
+      "workflow": ".github/workflows/milestone-2-reliability.yml",
+      "requiredOnExactHead": true
+    },
+    {
+      "id": "M3",
+      "workflow": ".github/workflows/milestone-3-reliability.yml",
+      "requiredOnExactHead": true
+    },
+    {
+      "id": "M4",
+      "workflow": ".github/workflows/milestone-4-reliability.yml",
+      "requiredOnExactHead": true
+    },
+    {
+      "id": "M5",
+      "workflow": ".github/workflows/milestone-5-reliability.yml",
+      "requiredOnExactHead": true
+    },
+    {
+      "id": "VALIDATION",
+      "workflow": ".github/workflows/ci.yml",
+      "requiredOnExactHead": true
+    },
+    {
+      "id": "BROWSER_VISUAL",
+      "workflow": ".github/workflows/browser-visual-validation.yml",
+      "requiredOnExactHead": true
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "M6-AUT-001",
+      "group": "contracts-authority",
+      "testFile": "packages/contracts/tests/capability-learning-contract.test.ts",
+      "testName": "Capability learning authority consequences and source-family exclusions remain frozen",
+      "ownerDatabase": "None",
+      "requiredMode": "canonical contract suite",
+      "expectedEvidence": "Raw Provider Return and Provider Supply Capability remain excluded and private learning state cannot become verified/canonical/public/executing authority",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-MIG-001",
+      "group": "topology",
+      "testFile": "infrastructure/persistence/migration-owners.json",
+      "testName": "Capability Engine owns migrations 0044 through 0047 and persistence boundaries remain database-per-owner",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "validate:persistence-boundaries plus owner PostgreSQL suites",
+      "expectedEvidence": "Runtime Registry, Observation Ledger, Reflection Candidate and Disposition/Profile/Twin persistence remain Capability Engine-owned without cross-service SQL",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-REG-001",
+      "group": "runtime-registry-postgres",
+      "testFile": "services/capability-engine/tests/runtime-capability-registry-postgres.test.ts",
+      "testName": "accepted Canon version import is durable, idempotent, conflict-safe and restart-safe",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Exact accepted Canon identity/version lineage replays safely while conflicting payloads and work/AI authority claims fail closed",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-SRC-001",
+      "group": "governed-source-authority",
+      "testFile": "services/capability-engine/tests/capability-observation-source.test.ts",
+      "testName": "governed source verification preserves exact owner ID/version/fingerprint and fails closed on outage or drift",
+      "ownerDatabase": "None; bounded Execution HTTP authority",
+      "requiredMode": "focused source-authority suite",
+      "expectedEvidence": "Only allowed reviewed source families are contacted and stale/mismatched/down source authority cannot be admitted",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-LED-001",
+      "group": "observation-ledger-postgres",
+      "testFile": "services/capability-engine/tests/capability-observation-ledger-postgres.test.ts",
+      "testName": "Observation admission and private Ledger preserve exact provenance, trusted subject attribution and durable replay",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Duplicate/replayed governed sources converge without duplicate Ledger business state and identity/provenance drift fails closed",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-CAN-001",
+      "group": "reflection-candidate-postgres",
+      "testFile": "services/capability-engine/tests/private-reflection-candidate-postgres.test.ts",
+      "testName": "Reflection Candidate generation is versioned, immutable, replay-safe and current-Ledger deterministic",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Same snapshot reuses business state, changed Ledger appends a new candidate version, stale anchors cannot overwrite current evidence",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-DSP-001",
+      "group": "reflection-disposition-postgres",
+      "testFile": "services/capability-engine/tests/reflection-disposition-profile-postgres.test.ts",
+      "testName": "exact candidate disposition is idempotent, stale-safe and serializes concurrent conflicts",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED=1",
+      "expectedEvidence": "Only one exact current candidate disposition becomes authoritative and replay does not duplicate business state",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-RST-001",
+      "group": "reflection-disposition-postgres",
+      "testFile": "services/capability-engine/tests/reflection-disposition-profile-postgres.test.ts",
+      "testName": "private Profile/Twin rebuild deterministically after service/database recreation",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "same durable PostgreSQL database",
+      "expectedEvidence": "Restart/rebuild preserves exact private Profile/Twin meaning without verified, public or autonomous authority",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-PRV-001",
+      "group": "capability-center-owner-http",
+      "testFile": "services/capability-engine/tests/capability-center-http.test.ts",
+      "testName": "Capability Center derives subject from trusted Principal and redacts cross-Workspace state as private not-found",
+      "ownerDatabase": "Capability Engine boundary",
+      "requiredMode": "trusted internal Principal suite",
+      "expectedEvidence": "Private state cannot be enumerated across Workspace/subject boundaries",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-GAT-001",
+      "group": "gateway-privacy-authority",
+      "testFile": "apps/gateway/tests/capability-http.test.ts",
+      "testName": "Gateway derives subject from Core Principal and enforces read/mutation permissions, Origin/CSRF, idempotency and anti-spoofing",
+      "ownerDatabase": "None; Gateway transport boundary",
+      "requiredMode": "authenticated Workspace Principal suite",
+      "expectedEvidence": "Browser callers cannot supply Workspace/subject/role/permission authority or bypass protected mutation controls",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-RED-001",
+      "group": "lite-private-projection",
+      "testFile": "apps/lite-web/src/features/capability/CapabilityCenter.test.tsx",
+      "testName": "Lite Capability Center preserves private non-verified projection and bounded action states",
+      "ownerDatabase": "None; presentation boundary",
+      "requiredMode": "component test",
+      "expectedEvidence": "Private Profile/Twin and candidate UI do not present certification, ranking, verified badge or autonomous authority",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-ZIT-001",
+      "group": "zero-interception",
+      "testFile": "scripts/validate-m6-capability-center-no-interception.mjs",
+      "testName": "permanent static gate rejects Playwright request interception/fulfillment in the M6 acceptance journey",
+      "ownerDatabase": "None",
+      "requiredMode": "source validator",
+      "expectedEvidence": "M6 browser acceptance cannot be made green through page/context routing or route fulfillment fixtures",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-BRW-001",
+      "group": "browser-real-runtime",
+      "testFile": "tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts",
+      "testName": "desktop direct-URL/reload exact-candidate journey uses real Core/Gateway/Capability Engine/Lite/PostgreSQL",
+      "ownerDatabase": "Capability Engine plus runtime composition",
+      "requiredMode": "Playwright Chromium 1440x900",
+      "expectedEvidence": "Desktop private Capability Center loads durable state, dispositions an exact candidate and recovers by reload/direct URL",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-BRW-002",
+      "group": "browser-real-runtime",
+      "testFile": "playwright.m6-wp-06-capability-center-real-runtime.config.ts",
+      "testName": "the same zero-interception real-runtime journey runs at mobile 390x844",
+      "ownerDatabase": "Capability Engine plus runtime composition",
+      "requiredMode": "Playwright Chromium mobile 390x844",
+      "expectedEvidence": "390px actionable Capability Center remains usable without horizontal overflow or fixture interception",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    },
+    {
+      "id": "M6-REP-001",
+      "group": "repeatability",
+      "testFile": "scripts/run-milestone6-reliability.mjs",
+      "testName": "critical disposition/Profile/Twin durable suite runs a second cycle against the same owner database",
+      "ownerDatabase": "Capability Engine",
+      "requiredMode": "same PostgreSQL owner database after first successful cycle",
+      "expectedEvidence": "M6 durable semantics are repeatable without one-shot migration or leaked-state assumptions",
+      "coverageStatus": "EXECUTABLE_COVERED"
+    }
+  ]
+}
