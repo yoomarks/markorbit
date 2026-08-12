@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M7-WP-01 merged in PR #95 as `88032709d1252392ce57dfe1823eaf238810011f`; M7-WP-02 merged in PR #96 as `a199da11a725a08072c32a18c8304997f4f0ea2e`; M7-WP-03 merged in PR #97 as `2fd372c3fc96f89a391833819e51d15a9a34d228`; M7-WP-04 merged in PR #98 as `347495d8028ef7c25a06ea16240c77120c2c9847`; `M7-WP-05 — Deployment rehearsal, migration and rollback/recovery evidence` is the current bounded implementation step in PR #99.**
+**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M7-WP-01 merged in PR #95 as `88032709d1252392ce57dfe1823eaf238810011f`; M7-WP-02 merged in PR #96 as `a199da11a725a08072c32a18c8304997f4f0ea2e`; M7-WP-03 merged in PR #97 as `2fd372c3fc96f89a391833819e51d15a9a34d228`; M7-WP-04 merged in PR #98 as `347495d8028ef7c25a06ea16240c77120c2c9847`; M7-WP-05 merged in PR #99 as `7b5fe161237eca65c7bd657dbf070825a726db2e`; `M7-WP-06 — Exact-head Beta RC reliability, responsive and known-limits matrix` is the current bounded implementation step in PR #100.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -173,7 +173,7 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 ```
 
-M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 added the Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection. M7-WP-03 added the explicitly enabled TEST/REHEARSAL deterministic owner-separated seed harness. M7-WP-04 merged in PR #98 and composes the three MVP loops through real owner PostgreSQL and real HTTP authority boundaries, including desktop and 390px mobile critical paths without business-route interception. M7-WP-05 is now implementing an exact-head non-production candidate rehearsal across the six durable owner databases, using the repository's forward-only immutable-checksum migration model and owner-local logical snapshot restore/reapply recovery procedure. It does not deploy production traffic or create release authority.
+M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 added the Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection. M7-WP-03 added the explicitly enabled TEST/REHEARSAL deterministic owner-separated seed harness. M7-WP-04 merged in PR #98 and composes the three MVP loops through real owner PostgreSQL and real HTTP authority boundaries, including desktop and 390px mobile critical paths without business-route interception. M7-WP-05 merged in PR #99 and established an exact-head non-production candidate rehearsal across the six durable owner databases, using the repository's forward-only immutable-checksum migration model and owner-local logical snapshot restore/reapply recovery procedure; it also made the existing Lite owner-local structural workspace prerequisite explicit. M7-WP-06 now composes the established M2–M6, Product Loop and M7 predecessor gates on one exact candidate head, records a deterministic candidate/config fingerprint, carries machine-readable known limits and keeps `releaseAuthorized: false`. A passing WP-06 matrix means engineering readiness for the independent M7-WP-07 audit only; it does not release Beta or deploy production traffic.
 
 See:
 
@@ -191,5 +191,6 @@ See:
 - `docs/tasks/MO-MVP-M7-WP-03-DETERMINISTIC-SEEDED-BETA-SCENARIO.md`;
 - `docs/tasks/MO-MVP-M7-WP-04-THREE-LOOP-FULL-JOURNEY-REAL-RUNTIME.md`;
 - `docs/tasks/MO-MVP-M7-WP-05-DEPLOYMENT-REHEARSAL-RECOVERY.md`;
+- `docs/tasks/MO-MVP-M7-WP-06-BETA-RC-RELIABILITY-MATRIX.md`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.
