@@ -4,7 +4,7 @@ import {
   serializeReadyPackageContentExportV2,
   type ReadyPackageContentExportV2,
   type ReadyPackageV2DeliveryRequestV1
-} from '@markorbit/contracts/knowledge-ready-package-v2';
+} from '@markorbit/contracts';
 import type { AuthenticationService } from '../src/auth.js';
 import { createRuntime } from '../src/index.js';
 import { MemoryKnowledgeV2DeliveryRepository } from '../src/knowledge-v2-delivery.js';

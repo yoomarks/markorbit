@@ -5,7 +5,7 @@ import {
   serializeReadyPackageContentExportV2,
   type ReadyPackageContentExportV2,
   type ReadyPackageV2DeliveryRequestV1
-} from '@markorbit/contracts/knowledge-ready-package-v2';
+} from '@markorbit/contracts';
 import {
   loadMigrationsForOwner,
   ManagedDatabase,

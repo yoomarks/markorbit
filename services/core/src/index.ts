@@ -1,6 +1,6 @@
 import { AuthenticationError, type WorkspaceRepository } from '@markorbit/contracts';
 import { parseReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
-import { READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION } from '@markorbit/contracts/knowledge-ready-package-v2';
+import { READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION } from '@markorbit/contracts';
 import {
   createServiceRuntime,
   HttpError,

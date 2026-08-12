@@ -1203,3 +1203,4 @@ export * from './identity.js';
 export * from './auth.js';
 export * from './knowledge-intake.js';
 export * from './capability-learning.js';
+export * from './knowledge-ready-package-v2.js';

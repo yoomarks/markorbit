@@ -7,7 +7,7 @@ import {
   type ReadyPackageV2DeliveryRequestV1,
   type ReadyPackageV2DeliveryResultV1,
   type ReadyPackageV2DeliveryStatus
-} from '@markorbit/contracts/knowledge-ready-package-v2';
+} from '@markorbit/contracts';
 
 const sha256 = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 

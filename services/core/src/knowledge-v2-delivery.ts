@@ -1,8 +1,8 @@
 import type {
   ReadyPackageV2DeliveryRequestV1,
   ReadyPackageV2DeliveryStatus
-} from '@markorbit/contracts/knowledge-ready-package-v2';
-import { serializeReadyPackageV2DeliveryRequestV1 } from '@markorbit/contracts/knowledge-ready-package-v2';
+} from '@markorbit/contracts';
+import { serializeReadyPackageV2DeliveryRequestV1 } from '@markorbit/contracts';
 import type { QueryClient } from '@markorbit/persistence';
 
 export interface KnowledgeV2Delivery {
