@@ -13,10 +13,14 @@ const databaseUrls = {
   ledger: process.env.M6_LEDGER_DATABASE_URL,
   candidate: process.env.M6_CANDIDATE_DATABASE_URL,
   disposition: process.env.M6_DISPOSITION_DATABASE_URL,
-  browser: process.env.M6_BROWSER_DATABASE_URL
+  browser: process.env.M6_BROWSER_DATABASE_URL,
+  browserExecution: process.env.M6_BROWSER_EXECUTION_DATABASE_URL
 };
 for (const [name, value] of Object.entries(databaseUrls))
-  if (!value) throw new Error(`M6_${name.toUpperCase()}_DATABASE_URL is required.`);
+  if (!value)
+    throw new Error(
+      `M6_${name.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}_DATABASE_URL is required.`
+    );
 
 const groups = [
   {
@@ -167,7 +171,10 @@ const groups = [
       '--config',
       'playwright.m6-wp-06-capability-center-real-runtime.config.ts'
     ],
-    env: { CAPABILITY_CENTER_TEST_DATABASE_URL: databaseUrls.browser }
+    env: {
+      CAPABILITY_CENTER_TEST_DATABASE_URL: databaseUrls.browser,
+      CAPABILITY_CENTER_EXECUTION_TEST_DATABASE_URL: databaseUrls.browserExecution
+    }
   },
   {
     id: 'repeatability-disposition-profile-twin',

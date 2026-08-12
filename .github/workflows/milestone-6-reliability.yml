@@ -32,6 +32,7 @@ jobs:
       M6_CANDIDATE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_candidate
       M6_DISPOSITION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_disposition
       M6_BROWSER_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_browser
+      M6_BROWSER_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_browser_execution
       PGPASSWORD: markorbit-test-only
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +50,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
-      - name: Create isolated Capability Engine reliability databases
+      - name: Create isolated M6 reliability databases
         run: |
           psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           CREATE DATABASE markorbit_m6_registry;
@@ -57,6 +58,7 @@ jobs:
           CREATE DATABASE markorbit_m6_candidate;
           CREATE DATABASE markorbit_m6_disposition;
           CREATE DATABASE markorbit_m6_browser;
+          CREATE DATABASE markorbit_m6_browser_execution;
           SQL
       - name: Run exact-head M6 reliability privacy replay matrix
         run: |

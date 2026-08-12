@@ -3,10 +3,10 @@
 **Approved direction:** `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`  
 **Planning approval:** PR #71  
 **Product Loop sequencing gate:** PLC-WP-08 GO, PR #83  
-**Current work package:** `M6-WP-07` — reliability, privacy and replay matrix  
-**Milestone status:** `IMPLEMENTATION_ACTIVE`
+**Current work package:** `M6-WP-08` — independent integration and authority audit  
+**Milestone status:** `AUDIT_GO_PENDING_OWNER_MERGE`
 
-This record reconciles the implemented Milestone 6 tree after the Product Loop Closure sequencing gate. The original scope/delivery proposal remains the architectural source; this traceability file records the actual approved and merged implementation state.
+This record reconciles the implemented Milestone 6 tree after Product Loop Closure and the independent WP-08 audit. The original scope/delivery proposal remains the architectural source; this traceability file records the actual approved, merged and audited implementation state.
 
 ## Work package status
 
@@ -16,17 +16,19 @@ This record reconciles the implemented Milestone 6 tree after the Product Loop C
 - **M6-WP-04 — Private Reflection Candidate generation:** `MERGED_IN_PR_88`, merge `16b9e368ac5026b1dbd4560ecd7d2459c370e240`.
 - **M6-WP-05 — Explicit Reflection Disposition and private Profile/Twin projection:** `MERGED_IN_PR_89`, merge `facdb82ad63e7f51df19cd373bead7efdd44adab`.
 - **M6-WP-06 — Authenticated Gateway and Lite Capability Center:** `MERGED_IN_PR_90`, merge `ddbcc980acb693a90078d1d9ef7ac680089f7265`.
-- **M6-WP-07 — Reliability, privacy and replay matrix:** `IMPLEMENTING` on `agent/m6-wp-07-reliability-privacy-replay`, based on latest main `0551fc49a9adb683463162237f71de8970807020` after unrelated Core KV2 PR #91.
-- **M6-WP-08 — Independent integration and authority audit:** `NOT_STARTED`.
+- **M6-WP-07 — Reliability, privacy and replay matrix:** `MERGED_IN_PR_92`, merge `b903409f9202b7dab043b00b9f97c719d4e6b412`; exact PR head `d7fe1a02a7a84f9c876054b51376acd7a202350f` and merged baseline share tree `029e2b73fc3057f3c8b38d839b00dc2a56531d68`.
+- **M6-WP-08 — Independent integration and authority audit:** `GO_PENDING_OWNER_MERGE_IN_PR_93`; initial audit result `FIX`, bounded real-Execution-source remediation applied in PR #93, final recommendation `GO` subject to final PR-head hosted gates.
 
-## Implemented learning loop
+## Audited learning loop
 
-The merged WP-01 through WP-06 tree now contains the bounded M6 path:
+After the WP-08 bounded integration repair, the permanent M6 path is:
 
 ```text
 accepted Capability Canon projection
 -> durable Runtime Capability Definition/version
--> exact governed Execution Evidence Review Decision source
+-> durable Execution Evidence Review Decision
+-> real Execution internal HTTP owner-source boundary
+-> exact Capability Observation admission
 -> Capability Engine-owned private Observation + Ledger
 -> deterministic private Reflection Candidate
 -> explicit authenticated subject-user ACCEPTED | REJECTED | DEFERRED disposition
@@ -35,22 +37,40 @@ accepted Capability Canon projection
 -> Lite Capability Center
 ```
 
-The implementation uses Capability Engine-owned PostgreSQL migrations `0044` through `0047`. Core remains the owner of Session, Workspace Principal and permissions. Execution remains the owner of governed professional/review source truth. Gateway remains a transport/authentication policy boundary and Lite remains a private projection/action surface.
+Capability Engine owns PostgreSQL migrations `0044` through `0047`. Core remains the owner of Session, Workspace Principal and permissions. Execution remains the owner of governed Evidence Review Decision source truth. Gateway remains a transport/authentication policy boundary and Lite remains a private projection/action surface.
 
-## WP-07 exact-head reliability evidence
+The WP-08 browser acceptance uses a separate Execution-owned PostgreSQL database and a separate Capability Engine-owned PostgreSQL database. Capability Engine reaches Execution through the internal HTTP source-authority contract; no cross-service SQL is introduced.
 
-WP-07 adds no new Capability business state. It turns the existing guarantees into one exact-head executable evidence chain:
+## WP-08 audit findings and remediation
+
+### M6-AUD-001 — real source owner missing from the single browser journey
+
+The merged WP-06/WP-07 browser harness originally substituted an in-process Capability Observation source authority. Although the Execution owner route and Capability Engine source client were separately tested, the required single real-runtime path did not traverse the real Execution owner.
+
+PR #93 repairs that gap by creating a durable Execution Evidence Review Decision, starting the real Execution service and making Capability Engine verify the exact decision through `HttpExecutionCapabilityObservationSourceAuthority`. The zero-interception validator now permanently rejects regression to the prior in-process fixture.
+
+### M6-AUD-002 — status documentation drift
+
+The traceability record, Task Index and README lagged PR #92 and still described older sequencing states. PR #93 reconciles them to the actual Milestone 6 audit stage.
+
+Full audit evidence:
+
+- `docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.md`;
+- `docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.json`;
+- `docs/tasks/MO-MVP-M6-WP-08-INDEPENDENT-INTEGRATION-AUTHORITY-AUDIT.md`.
+
+## Reliability, privacy and replay evidence
+
+The permanent executable base remains:
 
 - machine-readable inventory: `docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json`;
 - inventory validator: `scripts/validate-milestone6-reliability-matrix.mjs`;
-- permanent no-interception validator: `scripts/validate-m6-capability-center-no-interception.mjs`;
+- permanent zero-interception and real-source validator: `scripts/validate-m6-capability-center-no-interception.mjs`;
 - aggregate runner: `scripts/run-milestone6-reliability.mjs`;
 - hosted gate: `.github/workflows/milestone-6-reliability.yml`;
-- work-package record: `docs/tasks/MO-MVP-M6-WP-07-RELIABILITY-PRIVACY-REPLAY-MATRIX.md`.
+- dedicated browser gate: `.github/workflows/m6-wp-06-authenticated-capability-center.yml`.
 
-The gate uses isolated Capability Engine PostgreSQL databases to exercise Registry, Observation/Ledger, Candidate, Disposition/Profile/Twin and the full browser runtime independently. It repeats the critical Disposition/Profile/Twin suite against the same owner database and records exact-head machine evidence under `.artifacts/`.
-
-The permanent browser path is the existing zero-interception WP-06 acceptance journey at desktop `1440x900` and mobile `390x844`. It authenticates through Core, reaches Gateway and Capability Engine over real HTTP, persists Capability Engine state in PostgreSQL, dispositions an exact candidate, reloads the durable projection and reopens the same direct URL.
+The browser path proves desktop `1440x900` and mobile `390x844`, authenticated Core Principal, real Gateway/Execution/Capability Engine HTTP boundaries, separate owner databases, explicit subject disposition, durable projection reload and direct `#capability` URL recovery without Playwright route fulfillment/interception.
 
 ## Privacy and authority lock
 
@@ -70,20 +90,8 @@ The governing shorthand is:
 
 `ACCEPTED private reflection != verified Capability != Capability Canon truth`.
 
-## Exact-head regression requirement
+## Audit recommendation
 
-Before WP-07 can be merged, its final PR head must pass:
+M6-WP-08 final recommendation is **GO** after the bounded real-source repair. This is an engineering-scope audit recommendation only. It does not create a release, deployment, tag, freeze, Capability verification/certification or external authority.
 
-- Milestone 6 reliability;
-- Milestone 5 reliability;
-- Milestone 4 reliability;
-- Milestone 3 reliability;
-- Milestone 2 reliability;
-- repository validation;
-- Browser and Visual Validation.
-
-Any exact-head failure is a WP-07 blocker until repaired or shown to be an unrelated external infrastructure failure with no repository bypass introduced.
-
-## Next implementation step
-
-`M6-WP-08` remains `NOT_STARTED`. It may begin only after M6-WP-07 passes its exact-head hosted evidence and is explicitly merged by the Owner. WP-08 is an independent integration and authority audit and must not be folded into this reliability package.
+PR #93 must still pass its final exact-head hosted gates and be explicitly merged by the Owner. No later milestone or new product scope is authorized by this traceability record.

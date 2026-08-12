@@ -172,30 +172,30 @@
       "id": "M6-ZIT-001",
       "group": "zero-interception",
       "testFile": "scripts/validate-m6-capability-center-no-interception.mjs",
-      "testName": "permanent static gate rejects Playwright request interception/fulfillment in the M6 acceptance journey",
+      "testName": "permanent static gate rejects Playwright interception and in-process Execution source-authority substitution in the M6 acceptance journey",
       "ownerDatabase": "None",
       "requiredMode": "source validator",
-      "expectedEvidence": "M6 browser acceptance cannot be made green through page/context routing or route fulfillment fixtures",
+      "expectedEvidence": "M6 browser acceptance cannot be made green through page/context routing, route fulfillment or a fabricated in-process Capability Observation source authority; the real Execution runtime and owner route are required",
       "coverageStatus": "EXECUTABLE_COVERED"
     },
     {
       "id": "M6-BRW-001",
       "group": "browser-real-runtime",
       "testFile": "tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts",
-      "testName": "desktop direct-URL/reload exact-candidate journey uses real Core/Gateway/Capability Engine/Lite/PostgreSQL",
-      "ownerDatabase": "Capability Engine plus runtime composition",
+      "testName": "desktop direct-URL/reload exact-candidate journey uses real Core/Gateway/Execution/Capability Engine/Lite and separate owner PostgreSQL databases",
+      "ownerDatabase": "Capability Engine plus separate Execution owner PostgreSQL",
       "requiredMode": "Playwright Chromium 1440x900",
-      "expectedEvidence": "Desktop private Capability Center loads durable state, dispositions an exact candidate and recovers by reload/direct URL",
+      "expectedEvidence": "Desktop path begins from a durable Execution Evidence Review Decision exposed through the real Execution HTTP owner boundary, then loads private Capability state, dispositions an exact candidate and recovers by reload/direct URL",
       "coverageStatus": "EXECUTABLE_COVERED"
     },
     {
       "id": "M6-BRW-002",
       "group": "browser-real-runtime",
       "testFile": "playwright.m6-wp-06-capability-center-real-runtime.config.ts",
-      "testName": "the same zero-interception real-runtime journey runs at mobile 390x844",
-      "ownerDatabase": "Capability Engine plus runtime composition",
+      "testName": "the same zero-interception real-Execution-source journey runs at mobile 390x844",
+      "ownerDatabase": "Capability Engine plus separate Execution owner PostgreSQL",
       "requiredMode": "Playwright Chromium mobile 390x844",
-      "expectedEvidence": "390px actionable Capability Center remains usable without horizontal overflow or fixture interception",
+      "expectedEvidence": "390px actionable Capability Center remains usable while traversing the real Execution source boundary, without horizontal overflow or fixture interception",
       "coverageStatus": "EXECUTABLE_COVERED"
     },
     {

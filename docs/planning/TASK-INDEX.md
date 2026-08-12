@@ -239,7 +239,11 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
   - Capability Engine-owned migration `0047_capability_engine_reflection_disposition_profile_twin`; exact subject disposition, concurrency/idempotency and deterministic private rebuild.
 - M6-WP-06 — Authenticated Gateway and Lite Capability Center (**merged in PR #90**)
   - Core Principal -> Gateway policy -> Capability Engine private state -> Lite `#capability`; desktop/390 real-runtime direct URL/reload acceptance without interception.
-- M6-WP-07 — Reliability, privacy and replay matrix (**implementation in PR #92**)
+- M6-WP-07 — Reliability, privacy and replay matrix (**merged in PR #92**)
+  - Merge: `b903409f9202b7dab043b00b9f97c719d4e6b412`; exact PR head `d7fe1a02a7a84f9c876054b51376acd7a202350f` and merged baseline share tree `029e2b73fc3057f3c8b38d839b00dc2a56531d68`.
   - Evidence: `docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json`, `scripts/run-milestone6-reliability.mjs`, `scripts/validate-milestone6-reliability-matrix.mjs`, `scripts/validate-m6-capability-center-no-interception.mjs` and `.github/workflows/milestone-6-reliability.yml`.
-  - Requires exact-head M6 plus M2-M5 reliability, validation and Browser/Visual gates; adds no new Capability business authority.
-- M6-WP-08 — Independent Milestone 6 integration and authority audit (**not started; next only after explicit WP-07 merge**).
+- M6-WP-08 — Independent Milestone 6 integration and authority audit (**implementation in PR #93; final recommendation GO pending explicit Owner merge**)
+  - Initial audit result: **FIX** because the single WP-06/WP-07 browser acceptance path used an in-process Capability Observation source-authority fixture instead of the real Execution-owned reviewed-source HTTP boundary.
+  - PR #93 closes the bounded gap with a separate Execution owner database, durable Evidence Review Decision, real Execution HTTP source verification and a permanent regression guard; documentation drift is also reconciled.
+  - Evidence: `docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.{md,json}` and `docs/tasks/MO-MVP-M6-WP-08-INDEPENDENT-INTEGRATION-AUTHORITY-AUDIT.md`.
+  - The audit creates no release/deployment, Capability verification, Canon mutation, public ranking/certification, Payment/Invoice, legal appointment, Filing Submission, Official Truth or protected external action.

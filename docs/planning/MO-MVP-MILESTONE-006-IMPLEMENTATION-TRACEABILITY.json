@@ -12,8 +12,8 @@
     "productLoopClosureAuditPullRequest": 83,
     "result": "GO"
   },
-  "milestoneStatus": "IMPLEMENTATION_ACTIVE",
-  "currentWorkPackage": "M6-WP-07",
+  "milestoneStatus": "AUDIT_GO_PENDING_OWNER_MERGE",
+  "currentWorkPackage": "M6-WP-08",
   "authorityLocks": {
     "reflectionCandidateIsCanonicalTruth": false,
     "acceptedPrivateReflectionIsVerifiedCapability": false,
@@ -104,10 +104,11 @@
     },
     {
       "id": "M6-WP-07",
-      "status": "IMPLEMENTATION_IN_PR_92",
+      "status": "MERGED",
       "pullRequest": 92,
-      "branch": "agent/m6-wp-07-reliability-privacy-replay",
-      "baseCommit": "0551fc49a9adb683463162237f71de8970807020",
+      "mergeCommit": "b903409f9202b7dab043b00b9f97c719d4e6b412",
+      "exactHead": "d7fe1a02a7a84f9c876054b51376acd7a202350f",
+      "implementationTree": "029e2b73fc3057f3c8b38d839b00dc2a56531d68",
       "evidence": [
         "docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json",
         "scripts/validate-milestone6-reliability-matrix.mjs",
@@ -119,8 +120,24 @@
     },
     {
       "id": "M6-WP-08",
-      "status": "NOT_STARTED"
+      "status": "GO_PENDING_OWNER_MERGE",
+      "pullRequest": 93,
+      "auditedMergedBaseline": "b903409f9202b7dab043b00b9f97c719d4e6b412",
+      "initialRecommendation": "FIX",
+      "finalRecommendation": "GO",
+      "findings": ["M6-AUD-001", "M6-AUD-002"],
+      "evidence": [
+        "docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.md",
+        "docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.json",
+        "docs/tasks/MO-MVP-M6-WP-08-INDEPENDENT-INTEGRATION-AUTHORITY-AUDIT.md",
+        "scripts/m6-wp-06-capability-center-real-runtime.ts",
+        "scripts/validate-m6-capability-center-no-interception.mjs",
+        ".github/workflows/m6-wp-06-authenticated-capability-center.yml",
+        ".github/workflows/milestone-6-reliability.yml"
+      ]
     }
   ],
-  "nextApprovedStepAfterMerge": "M6-WP-08"
+  "auditRecommendation": "GO",
+  "auditMergeRequiresExplicitOwnerAction": true,
+  "nextApprovedStepAfterMerge": "CLOSE_M6_ENGINEERING_SCOPE_NO_LATER_MILESTONE_AUTHORIZED"
 }

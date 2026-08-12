@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Milestone 5 engineering scope is complete with an independent GO recommendation. Milestone 6 is owner-approved but deliberately sequenced after the owner-approved Product Loop Closure stage. PLC-WP-01 is the current authorized implementation task.**
+**Product Loop Closure is complete with GO in PR #83. Milestone 6 WP-01 through WP-07 are merged; M6-WP-08 independent integration and authority audit is the current engineering task in PR #93, with final GO pending explicit Owner merge.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -85,9 +85,9 @@ current governed Execution source
 
 The M5 authority locks remain permanent: Evidence Review Decision is not Official Truth; reviewed-source admission is not Filing Submission; Lifecycle Projection is not Official Status; Recommended Action does not authorize execution; no Payment/Invoice, legal appointment, automatic Matter completion, automatic Capability verification or cross-service SQL follows from the lifecycle path.
 
-### Approved Product Loop Closure — current stage
+### Product Loop Closure — completed sequencing gate
 
-PR #73 merged as `f0afbcd7f37cfe4524793a30e4c4fc84dcc3fb13`, accepting `RESEQUENCE_BEFORE_M6_WP01` and authorizing `PLC-WP-01` as the next implementation task.
+PR #73 established the Product Loop Closure stage, and PLC-WP-08 completed it with a GO recommendation in PR #83. The sequencing gate is closed; M6 runtime implementation subsequently resumed.
 
 The Product Loop Closure stage exists to prove the canonical Lite mainline as a real Product loop:
 
@@ -122,6 +122,8 @@ The stage does not authorize automatic publication, customer outreach, generic C
 ### Approved Milestone 6 — Durable Capability Learning and Private Reflection
 
 PR #71 merged as `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`, approving TASK 031A and the direction `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
+
+M6-WP-01 through M6-WP-07 are merged. M6-WP-08 in PR #93 independently audited the integrated runtime, found and repaired one bounded real-Execution-source acceptance gap, and records a final **GO** recommendation pending exact-head validation and explicit Owner merge.
 
 The approved M6 loop is:
 
