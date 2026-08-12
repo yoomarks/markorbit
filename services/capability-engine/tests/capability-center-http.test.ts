@@ -40,21 +40,21 @@ const profile: CapabilityProfileProjection = {
 
 function route() {
   const ledger = {
-    listLedgerForSubject: async (workspace: string, subject: string) => {
+    listLedgerForSubject: (workspace: string, subject: string) => {
       expect(workspace).toBe(workspaceId);
       expect(subject).toBe(principal.userId);
-      return [];
+      return Promise.resolve([]);
     }
   } as unknown as PostgresCapabilityObservationLedger;
   const candidates = {
-    findVersion: async () => undefined
+    findVersion: () => Promise.resolve(undefined)
   } as unknown as PostgresPrivateReflectionCandidateService;
   const reflections = {
-    listProfiles: async (value: WorkspacePrincipal) => {
+    listProfiles: (value: WorkspacePrincipal) => {
       expect(value.userId).toBe(principal.userId);
-      return [profile];
+      return Promise.resolve([profile]);
     },
-    getTwin: async () => undefined
+    getTwin: () => Promise.resolve(undefined)
   } as unknown as PostgresReflectionDispositionProfileService;
   return createCapabilityCenterRoutes({
     internalServiceSecret: secret,
