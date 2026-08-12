@@ -5,11 +5,13 @@ on:
   pull_request:
     paths:
       - '.github/workflows/**'
+      - '!.github/workflows/m7-wp-07-independent-beta-audit.yml'
       - 'apps/**'
       - 'services/**'
       - 'packages/**'
       - 'infrastructure/**'
       - 'scripts/**'
+      - '!scripts/m7-wp-07-independent-beta-audit.mjs'
       - 'tests/**'
       - 'playwright*.ts'
       - 'pnpm-lock.yaml'
