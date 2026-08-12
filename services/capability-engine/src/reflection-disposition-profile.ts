@@ -526,6 +526,32 @@ export class PostgresReflectionDispositionProfileService {
     });
   }
 
+  async listProfiles(
+    principal: WorkspacePrincipal
+  ): Promise<ReadonlyArray<Readonly<CapabilityProfileProjection>>> {
+    return this.database.transact(async (client) => {
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `capability-profiles:${principal.workspaceId}:${principal.userId}`
+      ]);
+      await this.rebuildAllProfiles(client, principal.workspaceId, principal.userId);
+      const result = await client.query(
+        `SELECT DISTINCT ON (runtime_capability_definition_id,runtime_capability_version) document_json
+         FROM capability_profile_projections
+         WHERE workspace_id=$1 AND subject_user_id=$2
+         ORDER BY runtime_capability_definition_id,runtime_capability_version,version DESC`,
+        [principal.workspaceId, principal.userId]
+      );
+      return (result.rows as Row[])
+        .map((row) => profileFromRow(row))
+        .filter((profile): profile is CapabilityProfileProjection => Boolean(profile))
+        .sort((left, right) =>
+          `${left.runtimeCapability.id}:${left.runtimeCapability.version}`.localeCompare(
+            `${right.runtimeCapability.id}:${right.runtimeCapability.version}`
+          )
+        );
+    });
+  }
+
   async getTwin(
     principal: WorkspacePrincipal
   ): Promise<Readonly<CapabilityTwinProjection> | undefined> {

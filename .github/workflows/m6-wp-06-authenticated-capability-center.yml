@@ -1,0 +1,114 @@
+name: M6 WP-06 Authenticated Capability Center
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/m6-wp-06-authenticated-capability-center.yml'
+      - 'packages/contracts/src/capability-center.ts'
+      - 'packages/contracts/src/index.ts'
+      - 'services/capability-engine/**'
+      - 'apps/gateway/**'
+      - 'apps/lite-web/**'
+      - 'scripts/m6-wp-06-capability-center-real-runtime.ts'
+      - 'tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts'
+      - 'playwright.m6-wp-06-capability-center-real-runtime.config.ts'
+      - 'docs/tasks/MO-MVP-M6-WP-06-AUTHENTICATED-CAPABILITY-CENTER.md'
+      - 'infrastructure/persistence/migrations/**'
+      - 'infrastructure/persistence/migration-owners.json'
+
+permissions:
+  contents: read
+
+jobs:
+  capability-center-boundary:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_wp06_control
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_wp06_control"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGPASSWORD: markorbit-test-only
+      CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate boundaries and formatting
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm format:check
+      - name: Build typed WP-06 dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Lint and typecheck WP-06 packages
+        run: |
+          pnpm --filter @markorbit/contracts typecheck
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/lite-web lint
+          pnpm --filter @markorbit/lite-web typecheck
+      - name: Create durable regression database
+        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp06_regression'
+      - name: Run WP-05 durable regression
+        env:
+          CAPABILITY_ENGINE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp06_regression
+        run: pnpm --filter @markorbit/capability-engine test:reflection-disposition-profile:postgres
+      - name: Run Gateway Capability authority tests
+        run: pnpm --filter @markorbit/gateway exec vitest run tests/capability-http.test.ts
+      - name: Run Lite Capability Center component tests
+        run: pnpm --filter @markorbit/lite-web exec vitest run src/features/capability/CapabilityCenter.test.tsx
+      - name: Build Capability Center Storybook states
+        run: pnpm --filter @markorbit/lite-web build-storybook
+
+  capability-center-real-runtime-browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_wp06_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_wp06_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CAPABILITY_CENTER_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp06_browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build real-runtime dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/capability-engine... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Run desktop and mobile private Capability Center
+        run: pnpm exec playwright test -c playwright.m6-wp-06-capability-center-real-runtime.config.ts

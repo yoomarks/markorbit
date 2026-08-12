@@ -25,6 +25,7 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 export * from './auth.js';
+export * from './capability-http.js';
 export * from './order-http.js';
 export * from './mgsn-http.js';
 export * from './product-loop-http.js';
@@ -38,6 +39,7 @@ import {
   sessionCookie,
   validateCsrf
 } from './auth.js';
+import { createGatewayCapabilityRoutes } from './capability-http.js';
 import { createGatewayOrderRoutes } from './order-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
@@ -52,6 +54,7 @@ export interface GatewayOptions {
   executionUrl?: string;
   mgsnUrl?: string;
   liteUrl?: string;
+  capabilityEngineUrl?: string;
   milestoneTestRuntime?: boolean;
   authenticationClient?: CoreAuthenticationClient;
   internalServiceSecret?: string;
@@ -71,6 +74,8 @@ export function createRuntime(options: GatewayOptions = {}) {
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const mgsnUrl = options.mgsnUrl ?? process.env.MGSN_URL ?? 'http://127.0.0.1:4106';
   const liteUrl = options.liteUrl ?? process.env.LITE_URL ?? 'http://127.0.0.1:4107';
+  const capabilityEngineUrl =
+    options.capabilityEngineUrl ?? process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
   const milestoneTestRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
   const allowedOrigins =
@@ -359,6 +364,18 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...createGatewayCapabilityRoutes({
+          capabilityEngineUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
+        }),
         ...createGatewayProductLoopRoutes({
           liteUrl,
           ...(authenticationClient ? { authenticationClient } : {}),
