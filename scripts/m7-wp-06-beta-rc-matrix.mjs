@@ -56,7 +56,10 @@ async function readJson(relativePath) {
 async function requireText(relativePath, requiredFragments) {
   const source = await readFile(path.join(root, relativePath), 'utf8');
   for (const fragment of requiredFragments) {
-    invariant(source.includes(fragment), `${relativePath} is missing required RC evidence fragment: ${fragment}`);
+    invariant(
+      source.includes(fragment),
+      `${relativePath} is missing required RC evidence fragment: ${fragment}`
+    );
   }
 }
 
@@ -64,25 +67,46 @@ const expectedHeadSha = process.env.M7_WP06_EXPECTED_HEAD_SHA;
 invariant(expectedHeadSha, 'M7_WP06_EXPECTED_HEAD_SHA is required');
 
 const exactHeadSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-invariant(exactHeadSha === expectedHeadSha, `exact head mismatch: expected ${expectedHeadSha}, got ${exactHeadSha}`);
+invariant(
+  exactHeadSha === expectedHeadSha,
+  `exact head mismatch: expected ${expectedHeadSha}, got ${exactHeadSha}`
+);
 
 const candidate = await readJson(candidatePath);
 invariant(candidate.schemaVersion === 1, 'unsupported Beta RC candidate schema version');
 invariant(candidate.workPackage === 'M7-WP-06', 'candidate work package must be M7-WP-06');
-invariant(candidate.candidateClass === 'BETA_RELEASE_CANDIDATE', 'candidate class must remain BETA_RELEASE_CANDIDATE');
-invariant(candidate.environmentClass === 'NON_PRODUCTION_REHEARSAL', 'Beta RC evidence must remain non-production');
+invariant(
+  candidate.candidateClass === 'BETA_RELEASE_CANDIDATE',
+  'candidate class must remain BETA_RELEASE_CANDIDATE'
+);
+invariant(
+  candidate.environmentClass === 'NON_PRODUCTION_REHEARSAL',
+  'Beta RC evidence must remain non-production'
+);
 invariant(candidate.exactHeadRequired === true, 'exact-head qualification must remain required');
 invariant(candidate.productionTrafficAllowed === false, 'production traffic must remain disabled');
 invariant(candidate.releaseAuthorized === false, 'releaseAuthorized must remain false');
 invariant(candidate.betaReleased === false, 'Beta must remain unreleased');
 invariant(candidate.auditRequired === true, 'independent audit must remain required');
-invariant(candidate.independentAuditComplete === false, 'WP-06 may not claim the independent audit is complete');
+invariant(
+  candidate.independentAuditComplete === false,
+  'WP-06 may not claim the independent audit is complete'
+);
 invariant(candidate.secretsExcluded === true, 'candidate manifest must exclude secrets');
 
 const predecessorCandidate = await readJson(candidate.predecessorCandidate);
-invariant(predecessorCandidate.releaseAuthorized === false, 'WP-05 predecessor may not authorize release');
-invariant(predecessorCandidate.productionTrafficAllowed === false, 'WP-05 predecessor may not authorize production traffic');
-invariant(predecessorCandidate.exactHeadRequired === true, 'WP-05 predecessor must remain exact-head');
+invariant(
+  predecessorCandidate.releaseAuthorized === false,
+  'WP-05 predecessor may not authorize release'
+);
+invariant(
+  predecessorCandidate.productionTrafficAllowed === false,
+  'WP-05 predecessor may not authorize production traffic'
+);
+invariant(
+  predecessorCandidate.exactHeadRequired === true,
+  'WP-05 predecessor must remain exact-head'
+);
 
 const knownLimits = await readJson(candidate.knownLimitsFile);
 invariant(knownLimits.releaseAuthorized === false, 'known-limits document may not authorize release');
@@ -96,7 +120,10 @@ for (const gateId of requiredGateIds) {
   invariant(gates.has(gateId), `missing required release-candidate gate: ${gateId}`);
 }
 for (const gate of candidate.requiredGates) {
-  invariant(Array.isArray(gate.coverage) && gate.coverage.length > 0, `gate ${gate.id} must declare coverage`);
+  invariant(
+    Array.isArray(gate.coverage) && gate.coverage.length > 0,
+    `gate ${gate.id} must declare coverage`
+  );
   await readFile(path.join(root, gate.workflow));
 }
 
@@ -127,13 +154,21 @@ await requireText('.github/workflows/m7-wp-05-deployment-rehearsal.yml', [
 ]);
 
 const predecessorGateEvidence = await readJson(predecessorGateEvidencePath);
-invariant(predecessorGateEvidence.exactHeadSha === exactHeadSha, 'predecessor gate evidence must match the exact candidate head');
-const dispatchedByWorkflow = new Map(predecessorGateEvidence.gates.map((gate) => [gate.workflow, gate]));
+invariant(
+  predecessorGateEvidence.exactHeadSha === exactHeadSha,
+  'predecessor gate evidence must match the exact candidate head'
+);
+const dispatchedByWorkflow = new Map(
+  predecessorGateEvidence.gates.map((gate) => [gate.workflow, gate])
+);
 for (const workflow of requiredDispatchedWorkflows) {
   const gate = dispatchedByWorkflow.get(workflow);
   invariant(gate, `missing dispatched predecessor result: ${workflow}`);
   invariant(gate.conclusion === 'success', `dispatched predecessor gate must pass: ${workflow}`);
-  invariant(Number.isInteger(gate.runId) && gate.runId > 0, `dispatched predecessor gate must record a run id: ${workflow}`);
+  invariant(
+    Number.isInteger(gate.runId) && gate.runId > 0,
+    `dispatched predecessor gate must record a run id: ${workflow}`
+  );
 }
 
 const fingerprintInputs = [];
@@ -145,7 +180,9 @@ for (const relativePath of [...candidate.fingerprintInputs].sort()) {
   });
 }
 
-const fingerprintMaterial = fingerprintInputs.map((input) => `${input.path}:${input.sha256}`).join('\n');
+const fingerprintMaterial = fingerprintInputs
+  .map((input) => `${input.path}:${input.sha256}`)
+  .join('\n');
 const candidateConfigFingerprint = `sha256:${sha256(fingerprintMaterial)}`;
 
 const evidence = {
@@ -183,4 +220,11 @@ await writeFile(
   'utf8'
 );
 
-console.log(JSON.stringify({ result: evidence.result, exactHeadSha, candidateConfigFingerprint, knownLimits: evidence.knownLimits.count }));
+console.log(
+  JSON.stringify({
+    result: evidence.result,
+    exactHeadSha,
+    candidateConfigFingerprint,
+    knownLimits: evidence.knownLimits.count
+  })
+);
