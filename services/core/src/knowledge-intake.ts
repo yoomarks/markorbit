@@ -14,7 +14,7 @@ export interface KnowledgeIntake {
 export interface KnowledgeIntakeRepository {
   createOrFind(intake: KnowledgeIntake): Promise<{ intake: KnowledgeIntake; created: boolean }>;
   findById(intakeId: string): Promise<KnowledgeIntake | null>;
-  findAcceptedByReadyPackage?(
+  findAcceptedByReadyPackage(
     workspaceId: string,
     readyPackageId: string
   ): Promise<KnowledgeIntake | null>;
