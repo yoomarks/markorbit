@@ -34,15 +34,15 @@ export class MemoryKnowledgeV2DeliveryRepository implements KnowledgeV2DeliveryR
 
   async createOrFind(candidate: KnowledgeV2Delivery) {
     await Promise.resolve();
-    const existing = this.rows.get(candidate.idempotencyKey);
+    const existing = this.rows.get(candidate.deliveryId);
     if (existing) return { delivery: clone(existing), created: false };
-    this.rows.set(candidate.idempotencyKey, clone(candidate));
+    this.rows.set(candidate.deliveryId, clone(candidate));
     return { delivery: clone(candidate), created: true };
   }
 
   async findByDeliveryId(deliveryId: string) {
     await Promise.resolve();
-    const value = [...this.rows.values()].find((row) => row.deliveryId === deliveryId);
+    const value = this.rows.get(deliveryId);
     return value ? clone(value) : null;
   }
 
@@ -77,8 +77,8 @@ export class PostgresKnowledgeV2DeliveryRepository implements KnowledgeV2Deliver
         ready_package_digest,content_export_sha256,request_sha256,request_json,submitted_at,
         received_at,status
       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12)
-      ON CONFLICT (idempotency_key) DO UPDATE
-        SET idempotency_key=knowledge_v2_deliveries.idempotency_key
+      ON CONFLICT (delivery_id) DO UPDATE
+        SET delivery_id=knowledge_v2_deliveries.delivery_id
       RETURNING *, (xmax = 0) AS created`,
       [
         candidate.deliveryId,
