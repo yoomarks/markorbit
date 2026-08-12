@@ -104,7 +104,8 @@
     },
     {
       "id": "M6-WP-07",
-      "status": "IMPLEMENTING",
+      "status": "IMPLEMENTATION_IN_PR_92",
+      "pullRequest": 92,
       "branch": "agent/m6-wp-07-reliability-privacy-replay",
       "baseCommit": "0551fc49a9adb683463162237f71de8970807020",
       "evidence": [
