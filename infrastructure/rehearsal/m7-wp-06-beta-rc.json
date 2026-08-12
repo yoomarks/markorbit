@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "M7-WP-06",
+  "candidateClass": "BETA_RELEASE_CANDIDATE",
+  "environmentClass": "NON_PRODUCTION_REHEARSAL",
+  "exactHeadRequired": true,
+  "productionTrafficAllowed": false,
+  "releaseAuthorized": false,
+  "betaReleased": false,
+  "auditRequired": true,
+  "independentAuditComplete": false,
+  "secretsExcluded": true,
+  "predecessorCandidate": "infrastructure/rehearsal/m7-wp-05-beta-candidate.json",
+  "knownLimitsFile": "infrastructure/rehearsal/m7-wp-06-known-limits.json",
+  "requiredGates": [
+    {
+      "id": "validation",
+      "workflow": ".github/workflows/ci.yml",
+      "coverage": ["workspace", "ownership", "format", "lint", "typecheck", "tests", "build"]
+    },
+    {
+      "id": "m2-reliability",
+      "workflow": ".github/workflows/milestone-2-reliability.yml",
+      "coverage": ["migration", "restart", "outage", "isolation", "idempotency", "responsive"]
+    },
+    {
+      "id": "m3-reliability",
+      "workflow": ".github/workflows/milestone-3-reliability.yml",
+      "coverage": ["order", "matter", "restart", "isolation", "idempotency"]
+    },
+    {
+      "id": "m4-reliability",
+      "workflow": ".github/workflows/milestone-4-reliability.yml",
+      "coverage": ["provider", "execution", "replay", "isolation"]
+    },
+    {
+      "id": "m4-integration",
+      "workflow": ".github/workflows/milestone-4-integration.yml",
+      "coverage": ["provider-return", "execution-handoff"]
+    },
+    {
+      "id": "m5-reliability",
+      "workflow": ".github/workflows/milestone-5-reliability.yml",
+      "coverage": ["evidence", "lifecycle", "replay", "isolation", "idempotency"]
+    },
+    {
+      "id": "m5-integration",
+      "workflow": ".github/workflows/milestone-5-integration.yml",
+      "coverage": ["evidence-review", "lifecycle-handoff"]
+    },
+    {
+      "id": "m6-reliability",
+      "workflow": ".github/workflows/milestone-6-reliability.yml",
+      "coverage": ["capability-learning", "privacy", "replay", "isolation"]
+    },
+    {
+      "id": "product-loop-reliability",
+      "workflow": ".github/workflows/product-loop-closure-reliability.yml",
+      "coverage": ["content", "opportunity", "prepared-action", "feedback", "responsive"]
+    },
+    {
+      "id": "browser-responsive",
+      "workflow": ".github/workflows/browser-visual-validation.yml",
+      "coverage": ["desktop", "mobile-390", "direct-url", "reload"]
+    },
+    {
+      "id": "m7-wp-02-conversion-analytics",
+      "workflow": ".github/workflows/m7-wp-02-conversion-analytics.yml",
+      "coverage": ["bounded-analytics", "workspace-isolation", "observational-only"]
+    },
+    {
+      "id": "m7-wp-03-seeded-beta-scenario",
+      "workflow": ".github/workflows/m7-wp-03-seeded-beta-scenario.yml",
+      "coverage": ["deterministic-seed", "reset", "replay", "owner-separation"]
+    },
+    {
+      "id": "m7-wp-04-three-loop-full-journey",
+      "workflow": ".github/workflows/m7-wp-04-three-loop-full-journey.yml",
+      "coverage": ["three-loops", "real-runtime", "desktop", "mobile-390", "workspace-isolation"]
+    },
+    {
+      "id": "m7-wp-05-deployment-rehearsal",
+      "workflow": ".github/workflows/m7-wp-05-deployment-rehearsal.yml",
+      "coverage": ["migration", "startup", "restart", "snapshot-recovery", "forward-reapply"]
+    },
+    {
+      "id": "m7-wp-06-beta-rc-matrix",
+      "workflow": ".github/workflows/m7-wp-06-beta-rc.yml",
+      "coverage": ["exact-head", "config-fingerprint", "known-limits", "authority-locks"]
+    }
+  ],
+  "requiredCoverage": {
+    "m2ThroughM6Regressions": true,
+    "productLoopRegression": true,
+    "m7PredecessorGates": true,
+    "desktopCriticalPath": true,
+    "mobile390CriticalPath": true,
+    "restart": true,
+    "replay": true,
+    "workspaceIsolation": true,
+    "idempotency": true,
+    "candidateConfigFingerprint": true,
+    "machineReadableKnownLimits": true
+  },
+  "fingerprintInputs": [
+    "pnpm-lock.yaml",
+    "infrastructure/persistence/migration-owners.json",
+    "infrastructure/rehearsal/m7-wp-05-beta-candidate.json",
+    "infrastructure/rehearsal/m7-wp-06-beta-rc.json",
+    "infrastructure/rehearsal/m7-wp-06-known-limits.json",
+    ".github/workflows/ci.yml",
+    ".github/workflows/browser-visual-validation.yml",
+    ".github/workflows/milestone-2-reliability.yml",
+    ".github/workflows/milestone-3-reliability.yml",
+    ".github/workflows/milestone-4-reliability.yml",
+    ".github/workflows/milestone-4-integration.yml",
+    ".github/workflows/milestone-5-reliability.yml",
+    ".github/workflows/milestone-5-integration.yml",
+    ".github/workflows/milestone-6-reliability.yml",
+    ".github/workflows/product-loop-closure-reliability.yml",
+    ".github/workflows/m7-wp-02-conversion-analytics.yml",
+    ".github/workflows/m7-wp-03-seeded-beta-scenario.yml",
+    ".github/workflows/m7-wp-04-three-loop-full-journey.yml",
+    ".github/workflows/m7-wp-05-deployment-rehearsal.yml",
+    ".github/workflows/m7-wp-06-beta-rc.yml",
+    "playwright.product-loop-closure-real-runtime.config.ts",
+    "playwright.order-journey-real-runtime.config.ts",
+    "playwright.m6-wp-06-capability-center-real-runtime.config.ts"
+  ],
+  "authority": {
+    "engineeringReadyForIndependentAuditMayBeTrue": true,
+    "releaseAuthorized": false,
+    "betaReleased": false,
+    "productionDeploymentPerformed": false,
+    "productionTrafficCutover": false,
+    "releaseTagPublished": false,
+    "businessAuthorityCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "capabilityVerifiedAutomatically": false,
+    "capabilityCanonMutatedAutomatically": false
+  }
+}

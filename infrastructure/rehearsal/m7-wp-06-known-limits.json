@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "M7-WP-06",
+  "candidateClass": "BETA_RELEASE_CANDIDATE",
+  "releaseAuthorized": false,
+  "limits": [
+    {
+      "id": "LITE_LOCAL_WORKSPACE_SCOPE_ANCHOR",
+      "status": "KNOWN_OPERATIONAL_PREREQUISITE",
+      "scope": "Lite clean-database migration bootstrap",
+      "sourceWorkPackage": "M7-WP-05",
+      "sourceEvidence": "infrastructure/rehearsal/m7-wp-05-beta-candidate.json",
+      "impact": "Existing immutable Lite migration 0039 requires an owner-local workspaces structure before the Lite owner migration set can run on a clean database.",
+      "mitigation": "Create only the compatible empty structural anchor before owner migrations, assert zero business rows, copy no Core identity rows and preserve owner-local SQL only."
+    },
+    {
+      "id": "FORWARD_ONLY_MIGRATIONS_NO_DOWN",
+      "status": "KNOWN_RECOVERY_MODEL",
+      "scope": "Database migration recovery",
+      "sourceWorkPackage": "M7-WP-05",
+      "sourceEvidence": "infrastructure/rehearsal/m7-wp-05-beta-candidate.json",
+      "impact": "The repository does not provide reverse or down migrations.",
+      "mitigation": "Stop candidate services, restore each owner database from its own logical pre-forward snapshot, verify prior state, then reapply the exact candidate forward migrations."
+    },
+    {
+      "id": "NON_PRODUCTION_REHEARSAL_ONLY",
+      "status": "INTENTIONAL_SCOPE_LIMIT",
+      "scope": "Deployment evidence",
+      "sourceWorkPackage": "M7-WP-05",
+      "sourceEvidence": "infrastructure/rehearsal/m7-wp-05-beta-candidate.json",
+      "impact": "Candidate evidence proves isolated rehearsal behavior and does not prove or perform production traffic cutover.",
+      "mitigation": "Require separate explicit Owner release action and a later production deployment procedure outside M7-WP-06."
+    },
+    {
+      "id": "EXTERNAL_ACTIONS_NOT_EXECUTED",
+      "status": "INTENTIONAL_AUTHORITY_LIMIT",
+      "scope": "Governed business actions",
+      "sourceWorkPackage": "M7-WP-04",
+      "sourceEvidence": ".github/workflows/m7-wp-04-three-loop-full-journey.yml",
+      "impact": "Three-loop acceptance proves internal governed handoffs and evidence paths, not publication, provider legal appointment, external filing submission or Official Truth.",
+      "mitigation": "Keep protected actions behind their existing explicit authority boundaries and do not infer external success from internal health or acceptance evidence."
+    },
+    {
+      "id": "USER_REPORTED_EXTERNAL_USE_UNVERIFIED",
+      "status": "INTENTIONAL_SEMANTIC_LIMIT",
+      "scope": "Product conversion analytics",
+      "sourceWorkPackage": "M7-WP-02",
+      "sourceEvidence": ".github/workflows/m7-wp-02-conversion-analytics.yml",
+      "impact": "User-reported publication or external use remains observational Product evidence and is not verified external truth.",
+      "mitigation": "Keep conversion metrics read-only and non-authoritative; require owner-domain evidence for any protected business consequence."
+    },
+    {
+      "id": "OWNER_RELEASE_ACTION_REQUIRED",
+      "status": "PERMANENT_RELEASE_LOCK",
+      "scope": "Beta release authority",
+      "sourceWorkPackage": "M7-WP-06",
+      "sourceEvidence": "infrastructure/rehearsal/m7-wp-06-beta-rc.json",
+      "impact": "A fully passing release-candidate matrix means engineering readiness for independent audit only.",
+      "mitigation": "Keep releaseAuthorized false until explicit Owner action after M7-WP-07 independent audit; do not publish a tag, release or production deployment automatically."
+    }
+  ]
+}
