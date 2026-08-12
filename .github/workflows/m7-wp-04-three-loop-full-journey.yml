@@ -128,6 +128,11 @@ jobs:
         run: node scripts/validate-order-journey-no-interception.mjs
       - name: Loop 3B — provider return into Execution evidence receipt
         run: pnpm exec vitest run --no-file-parallelism scripts/m4-provider-runtime.integration.test.ts
+      - name: Link root M5 integration workspace packages
+        run: |
+          mkdir -p node_modules/@markorbit
+          ln -sfn ../../packages/contracts node_modules/@markorbit/contracts
+          ln -sfn ../../packages/persistence node_modules/@markorbit/persistence
       - name: Loop 3C — explicit evidence review through MarkReg lifecycle and outcome
         run: pnpm exec vitest run --no-file-parallelism scripts/m5-evidence-lifecycle-runtime.integration.test.ts
       - name: Validate Product-loop browser source has no interception
