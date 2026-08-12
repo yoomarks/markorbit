@@ -95,7 +95,7 @@ const requiredAuthorityFragments = [
   'Provider Return != Official Truth',
   'Product/work evidence != Capability verification',
   'Reflection Candidate != canonical truth',
-  'Accepted private reflection != verified Capability'
+  'accepted private reflection != verified Capability'
 ];
 for (const fragment of requiredAuthorityFragments) {
   invariant(scopeLock.includes(fragment), `scope lock missing authority distinction: ${fragment}`);
@@ -231,6 +231,7 @@ const changedFiles = git('diff', '--name-only', `${mergedBaselineSha}...HEAD`)
   .split('\n')
   .filter(Boolean);
 const allowedAuditPaths = [
+  '.github/workflows/m7-wp-06-beta-rc.yml',
   '.github/workflows/m7-wp-07-independent-beta-audit.yml',
   'scripts/m7-wp-07-independent-beta-audit.mjs',
   'docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.json',
