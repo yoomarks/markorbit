@@ -1,0 +1,62 @@
+name: M7 WP-02 Conversion Analytics
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/m7-wp-02-conversion-analytics.yml'
+      - 'packages/contracts/src/beta-readiness.ts'
+      - 'packages/contracts/tests/beta-readiness-conversion-analytics.test.ts'
+      - 'services/lite/**'
+      - 'apps/gateway/src/product-loop-http.ts'
+      - 'apps/gateway/tests/product-loop-conversion-analytics-http.test.ts'
+      - 'infrastructure/persistence/migrations/**'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-conversion-analytics:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_lite_conversion_analytics_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_lite_conversion_analytics_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      LITE_CONVERSION_ANALYTICS_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_conversion_analytics_test
+      LITE_CONVERSION_ANALYTICS_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate ownership boundaries
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Build Product conversion dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway...
+      - name: Validate bounded conversion contracts and transport
+        run: |
+          pnpm --filter @markorbit/contracts exec vitest run tests/beta-readiness-conversion-analytics.test.ts
+          pnpm --filter @markorbit/lite-service lint
+          pnpm --filter @markorbit/lite-service typecheck
+          pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-conversion-analytics-http.test.ts
+      - name: Run real PostgreSQL bounded conversion analytics suite
+        run: pnpm --filter @markorbit/lite-service test:conversion-analytics:postgres
