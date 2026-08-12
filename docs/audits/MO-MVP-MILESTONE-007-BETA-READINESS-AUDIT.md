@@ -61,6 +61,7 @@ The dedicated `M7 WP-07 Independent Beta Audit` workflow does not reclassify the
 | Migration / startup / restart / recovery rehearsal | PASS |
 | Machine-readable known limits | PASS |
 | Permanent authority locks | PASS |
+| Independent audit does not create a new candidate | PASS AFTER REMEDIATION |
 
 ## Exact workflow evidence
 
@@ -125,13 +126,21 @@ The following remain false after the audit:
 - Capability Twin gains autonomous protected-action authority;
 - production deployment, traffic cutover, Beta release or release-tag publication occurs.
 
-## Finding
+## Findings
 
 ### M7-AUD-001 — documentation drift
 
 Repository progress prose still described WP-06 as current after PR #100 merged, while the original M7 planning snapshot retained pre-approval status wording. This is non-blocking historical/progress documentation drift: it does not change the audited Git tree, runtime evidence, known limits or authority semantics.
 
 WP-07 records the drift explicitly so it cannot be mistaken for candidate state or release authority.
+
+### M7-AUD-002 — audit branch incorrectly entered RC qualification
+
+The WP-06 pull-request path filter included all `.github/workflows/**` and `scripts/**`. Adding the WP-07 audit-only workflow and verifier therefore triggered WP-06 and attempted to qualify the audit branch as a new release candidate.
+
+PR #101 repairs the boundary with the minimum change: WP-06 automatic pull-request qualification excludes only `.github/workflows/m7-wp-07-independent-beta-audit.yml` and `scripts/m7-wp-07-independent-beta-audit.mjs`. Explicit `workflow_dispatch` remains available, and all real candidate-defining workflow, application, service, package, infrastructure, script, test, Playwright, lockfile and package changes remain covered.
+
+The audited candidate remains `392996fe3a021e5151eca971d4fc655d2b68f25c`; the audit branch is not promoted into a replacement candidate.
 
 ## Final recommendation
 
