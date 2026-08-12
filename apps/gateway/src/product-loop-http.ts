@@ -188,6 +188,7 @@ export function createGatewayProductLoopRoutes(
 
   return [
     route('GET', '/api/lite/today', ['workspace:read'], false),
+    route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read'], false),
     route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], false),
     route('POST', '/api/lite/today/:todayRecommendationId/prepared-actions', ['matter:manage']),
     route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage']),
