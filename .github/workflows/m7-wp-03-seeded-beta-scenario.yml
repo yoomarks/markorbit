@@ -93,4 +93,4 @@ jobs:
       - name: Prove fail-closed guards and exact reset/reseed replay
         run: pnpm exec vitest run scripts/m7-wp-03-beta-seed.test.ts
       - name: Emit machine-readable seeded scenario evidence
-        run: pnpm exec tsx scripts/m7-wp-03-beta-seed.ts
+        run: node --experimental-default-type=module --import tsx scripts/m7-wp-03-beta-seed.ts
