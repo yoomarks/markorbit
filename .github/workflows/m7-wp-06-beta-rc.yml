@@ -28,10 +28,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Emit canonical Prettier source
-        run: |
-          pnpm exec prettier --write scripts/m7-wp-06-beta-rc-matrix.mjs
-          printf 'CANONICAL_BASE64='
-          base64 -w0 scripts/m7-wp-06-beta-rc-matrix.mjs
-          printf '\n'
-          exit 1
+      - name: Format canonical source
+        run: pnpm exec prettier --write scripts/m7-wp-06-beta-rc-matrix.mjs
+      - name: Upload canonical source
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-wp-06-canonical-source-${{ github.run_id }}
+          path: scripts/m7-wp-06-beta-rc-matrix.mjs
+          retention-days: 1
+      - name: Keep formatter extraction non-qualifying
+        run: exit 1
