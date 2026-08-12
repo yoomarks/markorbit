@@ -190,7 +190,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               );
             const deliveryRequest = parseReadyPackageV2DeliveryRequest(request.body);
             if (!deliveryRequest)
-              throw new HttpError(400, 'INVALID_REQUEST', 'ReadyPackage V2 request body is invalid.');
+              throw new HttpError(
+                400,
+                'INVALID_REQUEST',
+                'ReadyPackage V2 request body is invalid.'
+              );
             const expectedIdempotencyKey = expectedReadyPackageV2IdempotencyKey(
               deliveryRequest.deliveryId
             );
@@ -214,7 +218,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
                 true
               );
             if (!(await options.workspaces.findById(deliveryRequest.target.workspaceId)))
-              throw new HttpError(404, 'WORKSPACE_NOT_FOUND', 'Target Core Workspace was not found.');
+              throw new HttpError(
+                404,
+                'WORKSPACE_NOT_FOUND',
+                'Target Core Workspace was not found.'
+              );
             const integrityIssue = validateReadyPackageV2DeliveryIntegrity(deliveryRequest);
             if (integrityIssue)
               throw new HttpError(409, integrityIssue.code, integrityIssue.message);

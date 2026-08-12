@@ -5,15 +5,42 @@
   "type": "module",
   "description": "Cross-service transport contracts and governed references.",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./order": { "types": "./dist/order.d.ts", "import": "./dist/order.js" },
-    "./provider-execution": { "types": "./dist/provider-execution.d.ts", "import": "./dist/provider-execution.js" },
-    "./evidence-lifecycle": { "types": "./dist/evidence-lifecycle.d.ts", "import": "./dist/evidence-lifecycle.js" },
-    "./knowledge-content-export": { "types": "./dist/knowledge-content-export.d.ts", "import": "./dist/knowledge-content-export.js" },
-    "./knowledge-ready-package-v2": { "types": "./dist/knowledge-ready-package-v2.d.ts", "import": "./dist/knowledge-ready-package-v2.js" },
-    "./product-loop": { "types": "./dist/product-loop.d.ts", "import": "./dist/product-loop.js" },
-    "./data-engine": { "types": "./dist/data-engine.d.ts", "import": "./dist/data-engine.js" },
-    "./capability-learning": { "types": "./dist/capability-learning.d.ts", "import": "./dist/capability-learning.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./order": {
+      "types": "./dist/order.d.ts",
+      "import": "./dist/order.js"
+    },
+    "./provider-execution": {
+      "types": "./dist/provider-execution.d.ts",
+      "import": "./dist/provider-execution.js"
+    },
+    "./evidence-lifecycle": {
+      "types": "./dist/evidence-lifecycle.d.ts",
+      "import": "./dist/evidence-lifecycle.js"
+    },
+    "./knowledge-content-export": {
+      "types": "./dist/knowledge-content-export.d.ts",
+      "import": "./dist/knowledge-content-export.js"
+    },
+    "./knowledge-ready-package-v2": {
+      "types": "./dist/knowledge-ready-package-v2.d.ts",
+      "import": "./dist/knowledge-ready-package-v2.js"
+    },
+    "./product-loop": {
+      "types": "./dist/product-loop.d.ts",
+      "import": "./dist/product-loop.js"
+    },
+    "./data-engine": {
+      "types": "./dist/data-engine.d.ts",
+      "import": "./dist/data-engine.js"
+    },
+    "./capability-learning": {
+      "types": "./dist/capability-learning.d.ts",
+      "import": "./dist/capability-learning.js"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -24,5 +51,7 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

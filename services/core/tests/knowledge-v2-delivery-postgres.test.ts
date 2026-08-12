@@ -164,10 +164,12 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     await database.close();
     database = new ManagedDatabase(config());
     await database.start();
-    const replay = await new PostgresKnowledgeV2DeliveryRepository(database.getPool()).createOrFind({
-      ...candidate(),
-      receivedAt: '2026-08-12T02:11:00.000Z'
-    });
+    const replay = await new PostgresKnowledgeV2DeliveryRepository(database.getPool()).createOrFind(
+      {
+        ...candidate(),
+        receivedAt: '2026-08-12T02:11:00.000Z'
+      }
+    );
     expect(replay.created).toBe(false);
     expect(replay.delivery).toEqual(first.delivery);
     const count = await database

@@ -14,7 +14,9 @@ const workspaceId = '018f0000-0000-7000-8000-000000000222';
 const sha256 = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 const runtimes: ReturnType<typeof createRuntime>[] = [];
 
-function contentExport(content = '# Frozen V2\n\nVault-origin content.\n'): ReadyPackageContentExportV2 {
+function contentExport(
+  content = '# Frozen V2\n\nVault-origin content.\n'
+): ReadyPackageContentExportV2 {
   const contentSha256 = sha256(Buffer.from(content, 'utf8'));
   return {
     contractVersion: '2.0',

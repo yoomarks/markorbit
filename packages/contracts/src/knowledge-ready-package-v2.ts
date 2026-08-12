@@ -93,10 +93,11 @@ const timestamp = (value: unknown): value is string =>
   typeof value === 'string' && !Number.isNaN(Date.parse(value));
 const prefixed = (value: unknown, prefix: string): value is string =>
   typeof value === 'string' && value.startsWith(prefix);
-const nonEmpty = (value: unknown): value is string =>
-  typeof value === 'string' && value.length > 0;
+const nonEmpty = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
 
-function isVaultImportOrigin(value: unknown): value is ReadyPackageContentExportV2['provenance']['origin'] {
+function isVaultImportOrigin(
+  value: unknown
+): value is ReadyPackageContentExportV2['provenance']['origin'] {
   if (!record(value) || !record(value.binding)) return false;
   if (
     !exactKeys(value, [
@@ -145,7 +146,9 @@ function isVaultImportOrigin(value: unknown): value is ReadyPackageContentExport
   );
 }
 
-export function isReadyPackageContentExportV2(value: unknown): value is ReadyPackageContentExportV2 {
+export function isReadyPackageContentExportV2(
+  value: unknown
+): value is ReadyPackageContentExportV2 {
   if (
     !record(value) ||
     !exactKeys(value, [
@@ -199,7 +202,8 @@ export function isReadyPackageContentExportV2(value: unknown): value is ReadyPac
 export function assertReadyPackageContentExportV2(
   value: unknown
 ): asserts value is ReadyPackageContentExportV2 {
-  if (!isReadyPackageContentExportV2(value)) throw new TypeError('Invalid ReadyPackageContentExportV2');
+  if (!isReadyPackageContentExportV2(value))
+    throw new TypeError('Invalid ReadyPackageContentExportV2');
 }
 
 export function serializeReadyPackageContentExportV2(value: ReadyPackageContentExportV2): string {

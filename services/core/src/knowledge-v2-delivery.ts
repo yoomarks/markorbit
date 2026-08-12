@@ -100,9 +100,10 @@ export class PostgresKnowledgeV2DeliveryRepository implements KnowledgeV2Deliver
   }
 
   async findByDeliveryId(deliveryId: string) {
-    const result = await this.query.query('SELECT * FROM knowledge_v2_deliveries WHERE delivery_id=$1', [
-      deliveryId
-    ]);
+    const result = await this.query.query(
+      'SELECT * FROM knowledge_v2_deliveries WHERE delivery_id=$1',
+      [deliveryId]
+    );
     return result.rows[0] ? mapRow(result.rows[0] as Row) : null;
   }
 }
