@@ -15,6 +15,12 @@
       "severity": "DOCUMENTATION_DRIFT",
       "status": "NON_BLOCKING_RECORDED_IN_WP07",
       "summary": "Repository progress prose still described WP-06 as current after PR #100 merged, while the approved M7 planning snapshot retained its pre-approval status wording. The drift does not change the audited candidate tree, authority semantics, runtime evidence or known limits."
+    },
+    {
+      "id": "M7-AUD-002",
+      "severity": "AUDIT_BOUNDARY",
+      "status": "REMEDIATED_IN_PR_101",
+      "summary": "The WP-06 pull-request path filter treated the new WP-07 audit-only workflow and verifier script as release-candidate inputs, causing an audit branch to be re-qualified as a new RC. PR #101 excludes only the WP-07 audit workflow and verifier from WP-06 automatic PR qualification while preserving explicit workflow_dispatch and all real candidate-defining paths."
     }
   ],
   "readinessAudit": {
@@ -30,7 +36,8 @@
     "restartReplayIsolationIdempotency": "PASS",
     "migrationStartupRestartRecovery": "PASS",
     "knownLimitsCompleteness": "PASS",
-    "permanentAuthorityLocks": "PASS"
+    "permanentAuthorityLocks": "PASS",
+    "independentAuditDoesNotCreateNewCandidate": "PASS_AFTER_REMEDIATION"
   },
   "knownLimitIds": [
     "LITE_LOCAL_WORKSPACE_SCOPE_ANCHOR",
