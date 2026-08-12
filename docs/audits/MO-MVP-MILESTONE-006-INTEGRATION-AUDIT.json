@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "milestone": "MO-MVP-MILESTONE-006",
+  "workPackage": "M6-WP-08",
+  "approvedDirection": "DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION",
+  "auditPullRequest": 93,
+  "auditedMergedBaselineSha": "b903409f9202b7dab043b00b9f97c719d4e6b412",
+  "auditedImplementationTreeSha": "029e2b73fc3057f3c8b38d839b00dc2a56531d68",
+  "initialRecommendation": "FIX",
+  "finalRecommendation": "GO",
+  "findings": [
+    {
+      "id": "M6-AUD-001",
+      "severity": "BLOCKING",
+      "status": "REMEDIATED_IN_PR_93",
+      "summary": "The merged WP-06/WP-07 browser acceptance path used an in-process Capability Observation source-authority fixture instead of traversing the real Execution-owned reviewed-source HTTP boundary.",
+      "remediation": [
+        "separate Execution-owned PostgreSQL browser database",
+        "durable Execution Evidence Review Decision",
+        "real Execution runtime and governed internal source route",
+        "HttpExecutionCapabilityObservationSourceAuthority from Capability Engine",
+        "permanent static regression guard against the prior in-process fixture"
+      ]
+    },
+    {
+      "id": "M6-AUD-002",
+      "severity": "DOCUMENTATION_DRIFT",
+      "status": "REMEDIATED_IN_PR_93",
+      "summary": "Traceability, task index and README lagged the merged WP-07 and completed Product Loop sequencing state."
+    }
+  ],
+  "semanticAudit": {
+    "canonRuntimeLineage": "PASS",
+    "observationLedgerProvenance": "PASS_AFTER_REMEDIATION",
+    "subjectAttributionPrivacy": "PASS",
+    "candidateNonCanonicalNonVerified": "PASS",
+    "explicitSubjectDisposition": "PASS",
+    "privateProfileTwinDeterminism": "PASS",
+    "ownerBoundaries": "PASS",
+    "crossServiceSql": "PASS",
+    "idempotencyReplayConcurrencyIsolation": "PASS",
+    "realRuntimePath": "PASS_AFTER_REMEDIATION"
+  },
+  "permanentIntegrationGate": {
+    "spec": "tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts",
+    "harness": "scripts/m6-wp-06-capability-center-real-runtime.ts",
+    "validator": "scripts/validate-m6-capability-center-no-interception.mjs",
+    "executionOwnerDatabaseRequired": true,
+    "capabilityEngineOwnerDatabaseRequired": true,
+    "realExecutionHttpSourceAuthority": true,
+    "zeroInterception": true,
+    "desktop1440": true,
+    "mobile390": true,
+    "reload": true,
+    "directUrl": true
+  },
+  "authorityLocks": {
+    "reflectionCandidateIsCanonicalTruth": false,
+    "acceptedPrivateReflectionIsVerifiedCapability": false,
+    "rawProviderReturnIsUserCapabilityEvidence": false,
+    "providerSupplyCapabilityIsUserCapabilityEvidence": false,
+    "runtimeWorkEvidenceMutatesCanon": false,
+    "aiOutputMutatesCanon": false,
+    "profilePublishesPublicScore": false,
+    "profilePublishesPublicRank": false,
+    "profilePublishesCertification": false,
+    "profilePublishesVerifiedBadge": false,
+    "twinHasAutonomousIdentity": false,
+    "twinHasAutonomousExecutionAuthority": false,
+    "corePermissionOrRoleEscalation": false,
+    "crossServiceSqlAllowed": false,
+    "paymentOrInvoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "externalActionExecuted": false
+  },
+  "ownership": {
+    "core": ["identity", "session", "workspace principal", "roles", "permissions"],
+    "execution": ["governed Evidence Review Decision source truth"],
+    "capabilityEngine": [
+      "runtime Capability Registry",
+      "Observation Ledger",
+      "Reflection Candidate",
+      "Disposition",
+      "private Capability Profile",
+      "private Capability Twin"
+    ],
+    "gateway": ["authenticated transport and policy boundary"],
+    "lite": ["private product projection and subject action surface"]
+  },
+  "evidence": {
+    "wp07ExactHeadSha": "d7fe1a02a7a84f9c876054b51376acd7a202350f",
+    "wp07MergedBaselineSha": "b903409f9202b7dab043b00b9f97c719d4e6b412",
+    "sameGitTree": true,
+    "implementationTreeSha": "029e2b73fc3057f3c8b38d839b00dc2a56531d68",
+    "remediationBrowserRun": 31564944607,
+    "remediationBrowserJob": 94014747284,
+    "remediationBrowserJobPassed": true,
+    "remediationM6ReliabilityRun": 31564944544,
+    "remediationM6MatrixStepPassed": true,
+    "remediationM6RunFinalConclusionWasFormattingOnly": true,
+    "finalDocumentationHeadMustRevalidate": true
+  },
+  "mergeRequiresExplicitOwnerAction": true,
+  "auditCreatesReleaseOrDeployment": false
+}
