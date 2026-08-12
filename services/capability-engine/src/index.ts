@@ -9,12 +9,16 @@ import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
 import { createCapabilityObservationRoutes } from './capability-observation-http.js';
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
+import { createPrivateReflectionCandidateRoutes } from './private-reflection-candidate-http.js';
+import type { PostgresPrivateReflectionCandidateService } from './private-reflection-candidate.js';
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 
 export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
+export * from './private-reflection-candidate-http.js';
+export * from './private-reflection-candidate.js';
 export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
 
@@ -46,6 +50,7 @@ export interface CapabilityEngineOptions {
   now?: () => string;
   runtimeCapabilityRegistry?: PostgresRuntimeCapabilityRegistry;
   capabilityObservationLedger?: PostgresCapabilityObservationLedger;
+  privateReflectionCandidates?: PostgresPrivateReflectionCandidateService;
   internalServiceSecret?: string;
 }
 export function createRuntime(options: CapabilityEngineOptions = {}) {
@@ -59,6 +64,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     );
   if (options.capabilityObservationLedger && !options.internalServiceSecret)
     throw new Error('capabilityObservationLedger requires internalServiceSecret.');
+  if (options.privateReflectionCandidates && !options.internalServiceSecret)
+    throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
@@ -70,6 +77,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     options.capabilityObservationLedger && options.internalServiceSecret
       ? createCapabilityObservationRoutes({
           ledger: options.capabilityObservationLedger,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
+  const privateReflectionCandidateRoutes =
+    options.privateReflectionCandidates && options.internalServiceSecret
+      ? createPrivateReflectionCandidateRoutes({
+          reflections: options.privateReflectionCandidates,
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
@@ -152,7 +166,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           }
         },
         ...runtimeCapabilityRoutes,
-        ...capabilityObservationRoutes
+        ...capabilityObservationRoutes,
+        ...privateReflectionCandidateRoutes
       ]
     }
   );

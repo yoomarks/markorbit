@@ -139,6 +139,10 @@ function command(runtime: { runtimeCapabilityDefinitionId: string; version: numb
 async function reset() {
   await database.getPool().query(
     `TRUNCATE
+       capability_reflection_generation_audit,
+       capability_reflection_generation_commands,
+       capability_reflection_candidate_ledger_entries,
+       capability_reflection_candidates,
        capability_observation_admission_audit,
        capability_observation_admission_commands,
        capability_ledger_entries,
@@ -156,6 +160,10 @@ integration('M6-WP-03 PostgreSQL Capability Observation Ledger', () => {
     await database.start();
     await database.getPool().query(
       `DROP TABLE IF EXISTS
+         capability_reflection_generation_audit,
+         capability_reflection_generation_commands,
+         capability_reflection_candidate_ledger_entries,
+         capability_reflection_candidates,
          capability_observation_admission_audit,
          capability_observation_admission_commands,
          capability_ledger_entries,
