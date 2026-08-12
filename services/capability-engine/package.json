@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:runtime-registry:postgres": "vitest run tests/runtime-capability-registry-postgres.test.ts",
     "test:observation-ledger:postgres": "vitest run tests/capability-observation-ledger-postgres.test.ts",
+    "test:reflection-candidates:postgres": "vitest run tests/private-reflection-candidate-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
