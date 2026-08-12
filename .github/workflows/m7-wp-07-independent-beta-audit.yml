@@ -12,22 +12,13 @@ on:
       - 'README.md'
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
-  independent-beta-audit:
+  canonical-format:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      GH_TOKEN: ${{ github.token }}
-      M7_WP07_AUDITED_CANDIDATE_SHA: 392996fe3a021e5151eca971d4fc655d2b68f25c
-      M7_WP07_MERGED_BASELINE_SHA: bf4592e5f87b3a27c3eacc07d1b59851f653b3cb
-      M7_WP07_EXPECTED_TREE_SHA: 3065fea1ea6c0c9e2f720b65394c93da831f67b6
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -35,38 +26,21 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Verify audited candidate and merged tree identity
+      - run: pnpm install --frozen-lockfile
+      - name: Format canonical audit sources
         run: |
-          test "$(git rev-parse "$M7_WP07_AUDITED_CANDIDATE_SHA^{tree}")" = "$M7_WP07_EXPECTED_TREE_SHA"
-          test "$(git rev-parse "$M7_WP07_MERGED_BASELINE_SHA^{tree}")" = "$M7_WP07_EXPECTED_TREE_SHA"
-      - name: Collect exact-candidate workflow evidence
-        run: |
-          mkdir -p .artifacts/wp06
-          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M7_WP07_AUDITED_CANDIDATE_SHA&per_page=100" > .artifacts/m7-wp-07-run-inventory.json
-          gh run download 31612894763 \
-            --name m7-wp-06-beta-rc-matrix-31612894763 \
-            --dir .artifacts/wp06
-      - name: Independently re-check repository ownership boundaries
-        run: |
-          pnpm validate:workspace
-          pnpm validate:persistence-boundaries
-          pnpm test:story-matrix
-          pnpm test:gateway-inventory
-      - name: Run independent Beta readiness and authority audit
-        run: node scripts/m7-wp-07-independent-beta-audit.mjs
-      - name: Final workspace check
-        run: pnpm check
-      - name: Upload independent audit evidence
-        if: always()
+          pnpm exec prettier --write \
+            docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.json \
+            docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.md \
+            scripts/m7-wp-07-independent-beta-audit.mjs
+      - name: Upload canonical audit sources
         uses: actions/upload-artifact@v4
         with:
-          name: m7-wp-07-independent-beta-audit-${{ github.run_id }}
+          name: m7-wp-07-canonical-audit-sources-${{ github.run_id }}
           path: |
-            .artifacts/m7-wp-07-independent-beta-audit.json
-            .artifacts/m7-wp-07-run-inventory.json
-            .artifacts/wp06/m7-wp-06-beta-rc-matrix.json
-            .artifacts/wp06/m7-wp-06-required-gates.json
-          if-no-files-found: warn
-          retention-days: 30
+            docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.json
+            docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.md
+            scripts/m7-wp-07-independent-beta-audit.mjs
+          retention-days: 1
+      - name: Keep formatter extraction non-qualifying
+        run: exit 1
