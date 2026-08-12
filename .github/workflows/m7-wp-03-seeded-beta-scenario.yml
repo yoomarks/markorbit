@@ -1,0 +1,96 @@
+name: M7 WP-03 Seeded Beta Scenario
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/m7-wp-03-seeded-beta-scenario.yml'
+      - 'scripts/m7-wp-03-beta-seed.ts'
+      - 'scripts/m7-wp-03-beta-seed.test.ts'
+      - 'packages/contracts/src/beta-readiness.ts'
+      - 'packages/contracts/tests/beta-readiness.test.ts'
+      - 'services/core/**'
+      - 'services/lite/**'
+      - 'services/markreg/**'
+      - 'services/execution/**'
+      - 'services/capability-engine/**'
+      - 'infrastructure/persistence/migrations/**'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'docs/tasks/MO-MVP-M7-WP-03-DETERMINISTIC-SEEDED-BETA-SCENARIO.md'
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-seed-replay:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_wp03_core
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_wp03_core"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGPASSWORD: markorbit-test-only
+      NODE_ENV: test
+      MARKORBIT_BETA_SEED_ENABLED: '1'
+      MARKORBIT_BETA_SEED_ENVIRONMENT: TEST
+      MARKORBIT_BETA_SEED_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp03_core
+      MARKORBIT_BETA_SEED_LITE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp03_lite
+      MARKORBIT_BETA_SEED_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp03_markreg
+      MARKORBIT_BETA_SEED_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp03_execution
+      MARKORBIT_BETA_SEED_CAPABILITY_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp03_capability
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create database-per-owner topology
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_lite'
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_markreg'
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_execution'
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_capability'
+      - name: Validate ownership boundaries and formatting
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm format:check
+      - name: Build seeded Beta dependency closure
+        run: >-
+          pnpm exec turbo run build
+          --filter=@markorbit/core-service...
+          --filter=@markorbit/lite-service...
+          --filter=@markorbit/markreg-service...
+          --filter=@markorbit/execution-service...
+          --filter=@markorbit/capability-engine...
+      - name: Lint and typecheck seeded owners
+        run: |
+          pnpm --filter @markorbit/contracts typecheck
+          pnpm --filter @markorbit/core-service lint
+          pnpm --filter @markorbit/core-service typecheck
+          pnpm --filter @markorbit/lite-service lint
+          pnpm --filter @markorbit/lite-service typecheck
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
+          pnpm --filter @markorbit/execution-service lint
+          pnpm --filter @markorbit/execution-service typecheck
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+      - name: Regress Beta readiness authority contract
+        run: pnpm --filter @markorbit/contracts test
+      - name: Prove fail-closed guards and exact reset/reseed replay
+        run: pnpm exec vitest run scripts/m7-wp-03-beta-seed.test.ts
+      - name: Emit machine-readable seeded scenario evidence
+        run: node --experimental-default-type=module --import tsx scripts/m7-wp-03-beta-seed.ts
