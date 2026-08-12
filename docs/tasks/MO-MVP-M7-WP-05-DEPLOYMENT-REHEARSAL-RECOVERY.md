@@ -2,7 +2,8 @@
 
 - **Work package:** M7-WP-05
 - **Baseline:** M7-WP-04 merge `347495d8028ef7c25a06ea16240c77120c2c9847` / PR #98.
-- **Status:** `IMPLEMENTING`.
+- **Implementation PR:** #99.
+- **Status:** `IMPLEMENTING_IN_PR_#99`.
 - **Milestone direction:** `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING`.
 - **Objective:** prove that one exact repository head can be rehearsed reproducibly in a bounded non-production candidate topology through owner migrations, service startup, restart and recovery without creating production deployment or release authority.
 
@@ -72,7 +73,7 @@ The exact-head hosted gate must prove:
 
 The gate emits:
 
-` .artifacts/m7-wp-05-deployment-rehearsal-evidence.json `
+`.artifacts/m7-wp-05-deployment-rehearsal-evidence.json`
 
 The artifact records the exact head SHA, candidate-manifest fingerprint, owner migration order, migration counts/latest migration identifiers, startup/restart/recovery outcomes and the permanent authority locks. Database snapshot files are temporary rehearsal mechanics and are not retained as release artifacts.
 
@@ -94,4 +95,4 @@ M7-WP-05 introduces no Payment/Invoice, legal appointment, Filing Submission, Of
 
 ## Exit gate
 
-M7-WP-05 is complete only when the exact PR head passes the dedicated deployment-rehearsal workflow and the normal workspace validation gates. A green result advances the repository to M7-WP-06 engineering work only; it does not authorize a Beta release.
+M7-WP-05 is complete only when the exact PR #99 head passes the dedicated deployment-rehearsal workflow and the normal workspace validation gates. A green result advances the repository to M7-WP-06 engineering work only; it does not authorize a Beta release.
