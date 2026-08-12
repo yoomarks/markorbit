@@ -13,6 +13,14 @@ export interface HealthResponse {
 }
 export interface JsonRequest {
   body: unknown;
+  /**
+   * Exact bytes received on the wire for non-GET JSON requests.
+   *
+   * This is additive so existing route handlers remain source-compatible. Consumers that
+   * authenticate or fingerprint an exact wire representation must use these bytes rather than
+   * re-serializing `body`.
+   */
+  rawBody?: Uint8Array;
   headers: Readonly<Record<string, string | undefined>>;
   method: string;
   path: string;
@@ -91,7 +99,11 @@ function send(request: IncomingMessage, response: ServerResponse, result: JsonRe
   });
   response.end(JSON.stringify(result.body));
 }
-async function readBody(request: IncomingMessage, limit: number): Promise<unknown> {
+type ReadJsonBody = {
+  body: unknown;
+  rawBody: Buffer;
+};
+async function readBody(request: IncomingMessage, limit: number): Promise<ReadJsonBody> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
@@ -102,8 +114,9 @@ async function readBody(request: IncomingMessage, limit: number): Promise<unknow
     chunks.push(buffer);
   }
   if (size === 0) throw new HttpError(400, 'INVALID_REQUEST', 'A JSON request body is required.');
+  const rawBody = Buffer.concat(chunks);
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+    return { body: JSON.parse(rawBody.toString('utf8')) as unknown, rawBody };
   } catch {
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be valid JSON.');
   }
@@ -177,9 +190,9 @@ export function createServiceRuntime(
               contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
           )
             throw new HttpError(400, 'INVALID_REQUEST', 'Content-Type must be application/json.');
-          const body =
+          const read =
             request.method === 'GET'
-              ? undefined
+              ? { body: undefined, rawBody: undefined }
               : await readBody(request, matched.route.bodyLimitBytes ?? limit);
           const headers: Record<string, string | undefined> = {};
           for (const [key, value] of Object.entries(request.headers))
@@ -188,7 +201,8 @@ export function createServiceRuntime(
             request,
             response,
             await matched.route.handle({
-              body,
+              body: read.body,
+              ...(read.rawBody ? { rawBody: read.rawBody } : {}),
               headers,
               method: request.method ?? '',
               path,
