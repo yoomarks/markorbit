@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Lite Product-owned durable state and governed Product-loop preparation.",
   "scripts": {
-    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/http.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/http.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
@@ -37,6 +37,10 @@
     "./feedback": {
       "types": "./dist/feedback.d.ts",
       "import": "./dist/feedback.js"
+    },
+    "./conversion-analytics": {
+      "types": "./dist/conversion-analytics.d.ts",
+      "import": "./dist/conversion-analytics.js"
     },
     "./http": {
       "types": "./dist/http.d.ts",
