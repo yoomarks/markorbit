@@ -34,11 +34,9 @@ import { PostgresProviderReturnEvidenceRepository } from '../services/execution/
 import type { ExecutionProviderReturnEvidenceReceipt } from '../services/execution/src/provider-return-evidence.js';
 
 const capabilityUrl = Reflect.get(process.env, 'CAPABILITY_CENTER_TEST_DATABASE_URL') as
-  | string
-  | undefined;
+  string | undefined;
 const executionUrl = Reflect.get(process.env, 'CAPABILITY_CENTER_EXECUTION_TEST_DATABASE_URL') as
-  | string
-  | undefined;
+  string | undefined;
 if (!capabilityUrl || !executionUrl)
   throw new Error(
     'CAPABILITY_CENTER_TEST_DATABASE_URL and CAPABILITY_CENTER_EXECUTION_TEST_DATABASE_URL are required.'
@@ -133,13 +131,7 @@ async function seedExecutionReviewedDecision(
        filing_authorization_id,workspace_id,preparation_lock_id,preparation_lock_version,status,version,
        authorization_record,created_by,updated_by,created_at,updated_at
      ) VALUES($1,$2,$3,'1','AUTHORIZED',2,'{}'::jsonb,$4,$4,$5,$5)`,
-    [
-      filingAuthorizationId,
-      workspaceId,
-      `preparation-lock_wp06-${slug}`,
-      subjectUserId,
-      at
-    ]
+    [filingAuthorizationId, workspaceId, `preparation-lock_wp06-${slug}`, subjectUserId, at]
   );
   await pool.query(
     `INSERT INTO execution_releases(
@@ -192,7 +184,11 @@ async function seedExecutionReviewedDecision(
     authorityConsequences: evidenceHandoffAuthorityConsequences,
     receivedAt: at
   };
-  await evidenceReceipts.saveReceipt(receipt, `wp06-evidence-${slug}`, sha(slug === 'desktop' ? 'e' : 'f'));
+  await evidenceReceipts.saveReceipt(
+    receipt,
+    `wp06-evidence-${slug}`,
+    sha(slug === 'desktop' ? 'e' : 'f')
+  );
 
   const reviewService = new EvidenceReviewService(
     reviews,
@@ -207,7 +203,10 @@ async function seedExecutionReviewedDecision(
     userId: subjectUserId as `user_${string}`,
     permissions: ['review:read', 'review:perform']
   };
-  const source = await reviewService.captureReviewSource(receipt.evidenceHandoff.evidenceHandoffId, principal);
+  const source = await reviewService.captureReviewSource(
+    receipt.evidenceHandoff.evidenceHandoffId,
+    principal
+  );
   return reviewService.recordDecision(
     {
       workspaceId,
@@ -215,7 +214,8 @@ async function seedExecutionReviewedDecision(
       expectedEvidenceReceiptVersion: source.evidenceReceipt.version,
       expectedEvidenceReceiptFingerprintSha256: source.evidenceReceiptFingerprintSha256,
       outcome: 'ADMITTED_FOR_INTERNAL_USE',
-      rationale: 'Authenticated subject reviewer admits exact governed work evidence for bounded internal use.',
+      rationale:
+        'Authenticated subject reviewer admits exact governed work evidence for bounded internal use.',
       correctionReasons: [],
       idempotencyKey: `wp06-review-${slug}`,
       correlationId: source.correlationId

@@ -17,7 +17,10 @@ const databaseUrls = {
   browserExecution: process.env.M6_BROWSER_EXECUTION_DATABASE_URL
 };
 for (const [name, value] of Object.entries(databaseUrls))
-  if (!value) throw new Error(`M6_${name.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}_DATABASE_URL is required.`);
+  if (!value)
+    throw new Error(
+      `M6_${name.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}_DATABASE_URL is required.`
+    );
 
 const groups = [
   {
