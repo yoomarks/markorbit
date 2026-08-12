@@ -281,6 +281,16 @@ async function resetOwnerDatabase(database: ManagedDatabase, owner: SeedOwner): 
   await pool.query('DROP SCHEMA IF EXISTS public CASCADE');
   await pool.query('CREATE SCHEMA public');
   await pool.query('DROP SCHEMA IF EXISTS markorbit_persistence CASCADE');
+  if (owner !== 'CORE') {
+    await pool.query(
+      'CREATE TABLE workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)'
+    );
+    await pool.query(
+      `INSERT INTO workspaces(workspace_id,name,slug)
+       VALUES($1,'M7 WP03 Beta Seed Workspace','m7-wp03-beta-seed')`,
+      [IDS.workspaceId]
+    );
+  }
   await migrate(
     pool,
     `m7_wp03_beta_seed_${owner.toLowerCase()}`,
