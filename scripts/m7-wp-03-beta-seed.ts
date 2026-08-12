@@ -146,9 +146,9 @@ export interface M7Wp03BetaSeedManifest {
 }
 
 const IDS = Object.freeze({
-  userId: 'user_m7_wp03_beta_seed',
+  userId: '75757575-7575-4757-8757-757575757575',
   workspaceId: '73737373-7373-4737-8737-737373737373',
-  membershipId: 'membership_m7_wp03_beta_seed',
+  membershipId: '76767676-7676-4767-8767-767676767676',
   knowledgeIntakeId: '73737373-7373-4737-8737-737373737374',
   readyPackageId: 'rdp_m7-wp03-beta-seed',
   recommendationId: 'today-recommendation_m7-wp03-beta-seed' as TodayRecommendationId,
