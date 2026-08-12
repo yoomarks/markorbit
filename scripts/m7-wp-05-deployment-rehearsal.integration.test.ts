@@ -12,13 +12,7 @@ import {
   verifyMigrations
 } from '../packages/persistence/dist/index.js';
 
-type OwnerName =
-  | 'core'
-  | 'lite'
-  | 'markreg'
-  | 'execution'
-  | 'mgsn'
-  | 'capability-engine';
+type OwnerName = 'core' | 'lite' | 'markreg' | 'execution' | 'mgsn' | 'capability-engine';
 
 type MigrationPrerequisiteName = 'LOCAL_WORKSPACE_SCOPE_ANCHOR';
 
@@ -145,9 +139,9 @@ async function verifyMigrationPrerequisites(url: string, owner: CandidateOwner):
   const value = database(url, owner);
   await value.start();
   try {
-    const definition = await value.getPool().query<{ exists: boolean }>(
-      `SELECT to_regclass('public.workspaces') IS NOT NULL AS exists`
-    );
+    const definition = await value
+      .getPool()
+      .query<{ exists: boolean }>(`SELECT to_regclass('public.workspaces') IS NOT NULL AS exists`);
     expect(definition.rows[0]?.exists).toBe(true);
     const result = await value
       .getPool()
@@ -430,9 +424,9 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       await preForward.start();
       try {
         await migrate(preForward.getPool(), owner.migrationNamespace, prior);
-        await preForward.getPool().query(
-          'CREATE TABLE m7_wp05_recovery_probe(id text PRIMARY KEY, marker text NOT NULL)'
-        );
+        await preForward
+          .getPool()
+          .query('CREATE TABLE m7_wp05_recovery_probe(id text PRIMARY KEY, marker text NOT NULL)');
         await preForward
           .getPool()
           .query('INSERT INTO m7_wp05_recovery_probe(id,marker) VALUES($1,$2)', [
