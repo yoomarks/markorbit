@@ -21,7 +21,7 @@ on:
       - 'pnpm-lock.yaml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deployment-rehearsal:
@@ -81,17 +81,6 @@ jobs:
         run: pnpm build
       - name: Run exact-head deployment rehearsal
         run: pnpm exec vitest run --no-file-parallelism scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
-      - name: Persist canonical rehearsal source formatting
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          pnpm exec prettier --write scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
-          if ! git diff --cached --quiet; then
-            git commit -m 'M7-WP-05 canonicalize rehearsal source'
-            git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          fi
       - name: Final workspace check
         run: pnpm check
       - name: Upload deployment rehearsal evidence
