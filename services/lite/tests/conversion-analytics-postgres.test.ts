@@ -82,7 +82,13 @@ suite('PostgreSQL bounded Product conversion analytics', () => {
     for (let index = 1; index <= 3; index += 1) {
       await pool.query(
         'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5)',
-        [targetWorkspaceId, `today-recommendation_${prefix}-content-${index}`, fingerprint, '{}', timestamp]
+        [
+          targetWorkspaceId,
+          `today-recommendation_${prefix}-content-${index}`,
+          fingerprint,
+          '{}',
+          timestamp
+        ]
       );
       await pool.query(
         'INSERT INTO lite_content_opportunities (workspace_id,content_opportunity_id,version,source_recommendation_id,source_recommendation_version,content_opportunity_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,1,$4,$5::jsonb,$6,$6)',

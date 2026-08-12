@@ -9,9 +9,9 @@ const workspaceId = '27272727-2727-4272-8272-272727272727';
 
 describe('M7-WP-02 bounded Product conversion analytics contract', () => {
   it('uses only Lite-owned durable source families and local handoff evidence for MarkReg conversion', () => {
-    expect(productConversionAnalyticsSourceFamilies.every((source) => source.owner === 'LITE')).toBe(
-      true
-    );
+    expect(
+      productConversionAnalyticsSourceFamilies.every((source) => source.owner === 'LITE')
+    ).toBe(true);
     expect(
       productConversionAnalyticsSourceFamilies.find(
         (source) => source.kind === 'PREPARED_ACTION_HANDOFF_RESULT'

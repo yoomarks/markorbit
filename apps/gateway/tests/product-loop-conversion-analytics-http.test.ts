@@ -32,7 +32,8 @@ const options = {
 function analyticsRoute() {
   const value = createGatewayProductLoopRoutes(options).find(
     (candidate) =>
-      candidate.method === 'GET' && candidate.path === '/api/lite/analytics/product-loop-conversions'
+      candidate.method === 'GET' &&
+      candidate.path === '/api/lite/analytics/product-loop-conversions'
   );
   if (!value) throw new Error('conversion analytics route missing');
   return value;

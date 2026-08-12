@@ -57,7 +57,10 @@ function count(row: Row, field: string): number {
   return value;
 }
 
-export function productConversionRate(numerator: number, denominator: number): ProductConversionRate {
+export function productConversionRate(
+  numerator: number,
+  denominator: number
+): ProductConversionRate {
   return {
     numerator,
     denominator,

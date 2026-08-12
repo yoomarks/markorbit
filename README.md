@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Product Loop Closure and Milestone 6 are complete with final GO recommendations. TASK 032A / PR #94 is merged as `ca74da13b294d91b5a8bae5ee0fad3d6fbd2000f`, approving Milestone 7 — Beta Release Readiness and Operational Hardening. `M7-WP-01` is the current bounded implementation step.**
+**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M7-WP-01 merged in PR #95 as `88032709d1252392ce57dfe1823eaf238810011f`; `M7-WP-02 — Bounded Content/Opportunity conversion analytics` is the current bounded implementation step.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -173,7 +173,7 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 ```
 
-M7-WP-01 freezes those semantics plus the Week 4 gap inventory before runtime work. It does not add analytics runtime, seed data, deployment mutation, release/tag publication or protected business authority. After explicit Owner merge of M7-WP-01, the next authorized step is `M7-WP-02`.
+M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 now adds only a Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection over existing durable Product-loop facts. Metrics remain observational, user-reported external use remains unverified, and the Formal Opportunity conversion uses Lite-owned durable handoff evidence rather than MarkReg SQL. After explicit Owner merge of M7-WP-02, the next authorized step is `M7-WP-03`.
 
 See:
 
@@ -187,5 +187,6 @@ See:
 - `docs/planning/MO-MVP-MILESTONE-007-PLAN.json`;
 - `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`;
 - `docs/tasks/MO-MVP-M7-WP-01-BETA-READINESS-CONTRACTS-AUTHORITY.md`;
+- `docs/tasks/MO-MVP-M7-WP-02-BOUNDED-CONVERSION-ANALYTICS.md`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.

@@ -274,7 +274,12 @@ export interface ProductConversionAnalyticsSourceFamily {
 }
 
 export const productConversionAnalyticsSourceFamilies = Object.freeze([
-  { schemaVersion: 1, owner: 'LITE', kind: 'CONTENT_OPPORTUNITY', provenance: 'DURABLE_OWNER_STATE' },
+  {
+    schemaVersion: 1,
+    owner: 'LITE',
+    kind: 'CONTENT_OPPORTUNITY',
+    provenance: 'DURABLE_OWNER_STATE'
+  },
   { schemaVersion: 1, owner: 'LITE', kind: 'CONTENT_DRAFT', provenance: 'DURABLE_OWNER_STATE' },
   {
     schemaVersion: 1,
@@ -283,8 +288,18 @@ export const productConversionAnalyticsSourceFamilies = Object.freeze([
     provenance: 'DURABLE_OWNER_STATE'
   },
   { schemaVersion: 1, owner: 'LITE', kind: 'PUBLISH_PACKAGE', provenance: 'DURABLE_OWNER_STATE' },
-  { schemaVersion: 1, owner: 'LITE', kind: 'CONTENT_USE_FEEDBACK', provenance: 'DURABLE_OWNER_STATE' },
-  { schemaVersion: 1, owner: 'LITE', kind: 'OPPORTUNITY_CANDIDATE', provenance: 'DURABLE_OWNER_STATE' },
+  {
+    schemaVersion: 1,
+    owner: 'LITE',
+    kind: 'CONTENT_USE_FEEDBACK',
+    provenance: 'DURABLE_OWNER_STATE'
+  },
+  {
+    schemaVersion: 1,
+    owner: 'LITE',
+    kind: 'OPPORTUNITY_CANDIDATE',
+    provenance: 'DURABLE_OWNER_STATE'
+  },
   {
     schemaVersion: 1,
     owner: 'LITE',
