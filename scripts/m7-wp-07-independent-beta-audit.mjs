@@ -32,8 +32,7 @@ function readCandidateJson(candidateSha, relativePath) {
 
 const audit = await readJson(auditPath);
 const candidateSha = process.env.M7_WP07_AUDITED_CANDIDATE_SHA ?? audit.auditedCandidateSha;
-const mergedBaselineSha =
-  process.env.M7_WP07_MERGED_BASELINE_SHA ?? audit.auditedMergedBaselineSha;
+const mergedBaselineSha = process.env.M7_WP07_MERGED_BASELINE_SHA ?? audit.auditedMergedBaselineSha;
 const expectedTreeSha = process.env.M7_WP07_EXPECTED_TREE_SHA ?? audit.auditedTreeSha;
 
 invariant(audit.schemaVersion === 1, 'unsupported M7-WP-07 audit schema');
@@ -46,12 +45,12 @@ invariant(expectedTreeSha === audit.auditedTreeSha, 'audited tree SHA drifted');
 const candidateTreeSha = git('rev-parse', `${candidateSha}^{tree}`);
 const mergedTreeSha = git('rev-parse', `${mergedBaselineSha}^{tree}`);
 invariant(candidateTreeSha === expectedTreeSha, 'candidate tree does not match audited tree');
-invariant(mergedTreeSha === expectedTreeSha, 'merged WP-06 tree does not match audited candidate tree');
-
-const candidate = readCandidateJson(
-  candidateSha,
-  'infrastructure/rehearsal/m7-wp-06-beta-rc.json'
+invariant(
+  mergedTreeSha === expectedTreeSha,
+  'merged WP-06 tree does not match audited candidate tree'
 );
+
+const candidate = readCandidateJson(candidateSha, 'infrastructure/rehearsal/m7-wp-06-beta-rc.json');
 const knownLimits = readCandidateJson(
   candidateSha,
   'infrastructure/rehearsal/m7-wp-06-known-limits.json'
@@ -71,7 +70,10 @@ const authorityBoundary = readCandidateText(
 );
 
 invariant(candidate.candidateClass === 'BETA_RELEASE_CANDIDATE', 'candidate class drifted');
-invariant(candidate.environmentClass === 'NON_PRODUCTION_REHEARSAL', 'candidate environment drifted');
+invariant(
+  candidate.environmentClass === 'NON_PRODUCTION_REHEARSAL',
+  'candidate environment drifted'
+);
 invariant(candidate.exactHeadRequired === true, 'candidate must remain exact-head qualified');
 invariant(candidate.productionTrafficAllowed === false, 'production traffic must remain disabled');
 invariant(candidate.releaseAuthorized === false, 'WP-06 candidate may not authorize release');
@@ -100,8 +102,14 @@ const requiredAuthorityFragments = [
 for (const fragment of requiredAuthorityFragments) {
   invariant(scopeLock.includes(fragment), `scope lock missing authority distinction: ${fragment}`);
 }
-invariant(agents.includes('No direct cross-service database reads.'), 'AGENTS owner-SQL lock missing');
-invariant(scopeLock.includes('no cross-service SQL'), 'M7 scope lock cross-service SQL lock missing');
+invariant(
+  agents.includes('No direct cross-service database reads.'),
+  'AGENTS owner-SQL lock missing'
+);
+invariant(
+  scopeLock.includes('no cross-service SQL'),
+  'M7 scope lock cross-service SQL lock missing'
+);
 invariant(
   authorityBoundary.includes('Product metric != business authority'),
   'analytics non-authority distinction missing'
@@ -139,14 +147,26 @@ for (const limit of knownLimits.limits) {
 const wp06Matrix = await readJson(wp06MatrixPath);
 const wp06Gates = await readJson(wp06GatePath);
 invariant(wp06Matrix.result === 'PASS', 'WP-06 matrix must be PASS');
-invariant(wp06Matrix.exactHeadSha === candidateSha, 'WP-06 matrix head does not match audited candidate');
+invariant(
+  wp06Matrix.exactHeadSha === candidateSha,
+  'WP-06 matrix head does not match audited candidate'
+);
 invariant(
   wp06Matrix.candidateConfigFingerprint === audit.candidateConfigFingerprint,
   'candidate/config fingerprint does not match the independent audit record'
 );
-invariant(wp06Matrix.authority.independentAuditComplete === false, 'WP-06 artifact may not self-audit');
-invariant(wp06Matrix.authority.releaseAuthorized === false, 'WP-06 artifact may not authorize release');
-invariant(wp06Matrix.authority.betaReleased === false, 'WP-06 artifact may not claim released Beta');
+invariant(
+  wp06Matrix.authority.independentAuditComplete === false,
+  'WP-06 artifact may not self-audit'
+);
+invariant(
+  wp06Matrix.authority.releaseAuthorized === false,
+  'WP-06 artifact may not authorize release'
+);
+invariant(
+  wp06Matrix.authority.betaReleased === false,
+  'WP-06 artifact may not claim released Beta'
+);
 invariant(
   wp06Matrix.authority.productionDeploymentPerformed === false,
   'WP-06 artifact may not claim production deployment'
@@ -203,14 +223,20 @@ const falseAuthorityFields = [
   'autonomousTwinProtectedActionAuthorityCreated'
 ];
 for (const field of falseAuthorityFields) {
-  invariant(audit.authorityLocks[field] === false, `audit authority lock must remain false: ${field}`);
+  invariant(
+    audit.authorityLocks[field] === false,
+    `audit authority lock must remain false: ${field}`
+  );
 }
 
 invariant(
   audit.releaseEligibility.eligibleForExplicitOwnerReleaseConsideration === true,
   'GO audit must make the candidate eligible for Owner consideration'
 );
-invariant(audit.releaseEligibility.independentAuditComplete === true, 'independent audit must be complete');
+invariant(
+  audit.releaseEligibility.independentAuditComplete === true,
+  'independent audit must be complete'
+);
 for (const field of [
   'releaseAuthorized',
   'betaReleased',
@@ -224,8 +250,14 @@ for (const field of [
     `independent audit may not create release/deployment authority: ${field}`
   );
 }
-invariant(audit.mergeRequiresExplicitOwnerAction === true, 'audit merge must require explicit Owner action');
-invariant(audit.auditCreatesReleaseOrDeployment === false, 'audit may not create release/deployment');
+invariant(
+  audit.mergeRequiresExplicitOwnerAction === true,
+  'audit merge must require explicit Owner action'
+);
+invariant(
+  audit.auditCreatesReleaseOrDeployment === false,
+  'audit may not create release/deployment'
+);
 
 const changedFiles = git('diff', '--name-only', `${mergedBaselineSha}...HEAD`)
   .split('\n')
@@ -240,7 +272,10 @@ const allowedAuditPaths = [
   'README.md'
 ];
 for (const changedFile of changedFiles) {
-  invariant(allowedAuditPaths.includes(changedFile), `WP-07 changed out-of-scope file: ${changedFile}`);
+  invariant(
+    allowedAuditPaths.includes(changedFile),
+    `WP-07 changed out-of-scope file: ${changedFile}`
+  );
 }
 
 const evidence = {
