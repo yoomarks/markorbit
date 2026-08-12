@@ -358,6 +358,46 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               exportSha256: stored.content.exportSha256
             });
           })
+        },
+        {
+          method: 'GET' as const,
+          path: '/internal/knowledge/ready-packages/:readyPackageId/product-loop-source',
+          handle: internal(async (request) => {
+            const workspaceId = request.headers['x-markorbit-workspace-id'];
+            const readyPackageId = request.params.readyPackageId;
+            if (!workspaceId || !canonicalUuid(workspaceId))
+              throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
+            if (!readyPackageId?.trim())
+              throw new HttpError(400, 'INVALID_REQUEST', 'readyPackageId is required.');
+            if (!options.knowledgeIntakes)
+              throw new HttpError(
+                503,
+                'KNOWLEDGE_INTAKE_SERVICE_UNAVAILABLE',
+                'Knowledge intake service is unavailable.',
+                true
+              );
+            const intake = await options.knowledgeIntakes.findAcceptedByReadyPackage(
+              workspaceId,
+              readyPackageId
+            );
+            if (!intake)
+              throw new HttpError(
+                404,
+                'ACCEPTED_KNOWLEDGE_SOURCE_NOT_FOUND',
+                'Accepted Knowledge ReadyPackage source was not found for this Workspace.'
+              );
+            return json(200, {
+              source: {
+                schemaVersion: 1,
+                owner: 'CORE',
+                kind: 'KNOWLEDGE_READY_PACKAGE',
+                sourceId: intake.request.readyPackageId,
+                sourceVersion: 'CORE_ACCEPTED_V1',
+                sourceFingerprintSha256: intake.requestSha256,
+                observedAt: intake.receivedAt
+              }
+            });
+          })
         }
       ]
     : [];
