@@ -12,8 +12,7 @@ CREATE TABLE knowledge_v2_deliveries (
   received_at timestamptz NOT NULL,
   status text NOT NULL CHECK (status IN ('RECEIVED','ACCEPTED','REJECTED')),
   CONSTRAINT knowledge_v2_deliveries_idempotency_identity_check
-    CHECK (idempotency_key = 'ready-package-v2-delivery:' || delivery_id),
-  CONSTRAINT knowledge_v2_deliveries_idempotency_key_key UNIQUE(idempotency_key)
+    CHECK (idempotency_key = 'ready-package-v2-delivery:' || delivery_id)
 );
 
 CREATE INDEX knowledge_v2_deliveries_target_received_idx
