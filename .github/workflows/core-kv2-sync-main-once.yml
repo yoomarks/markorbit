@@ -1,0 +1,53 @@
+name: Core KV2 Sync Main Once
+
+on:
+  push:
+    branches:
+      - core-kv2-wp01-02
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: core-kv2-wp01-02
+          fetch-depth: 0
+      - name: Merge latest main without dropping parallel contract exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          set +e
+          git merge --no-edit origin/main
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            if [ "$conflicts" != "packages/contracts/src/index.ts" ]; then
+              echo "Unexpected merge conflicts:"
+              echo "$conflicts"
+              exit 1
+            fi
+            git checkout --theirs packages/contracts/src/index.ts
+            python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/contracts/src/index.ts')
+          text = path.read_text()
+          line = "export * from './knowledge-ready-package-v2.js';\n"
+          if line not in text:
+              if not text.endswith('\n'):
+                  text += '\n'
+              text += line
+          path.write_text(text)
+          PY
+            git add packages/contracts/src/index.ts
+            git commit --no-edit
+          fi
+          git push origin HEAD:core-kv2-wp01-02
