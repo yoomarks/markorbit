@@ -34,6 +34,24 @@ The rehearsal uses one PostgreSQL 16 database per durable owner:
 
 Migration selection remains owner-scoped through `infrastructure/persistence/migration-owners.json` and `loadMigrationsForOwner`. The rehearsal does not issue cross-service SQL.
 
+## Existing migration prerequisite surfaced by the rehearsal
+
+The first hosted rehearsal exposed a real pre-existing deployment constraint: immutable Lite migration `0039_lite_content_preparation.sql` has a local foreign key to `workspaces`. A clean Lite owner database therefore cannot run its owner migration set unless that owner-local structural scope table already exists.
+
+This is not new business-domain coupling introduced by WP-05. Existing M7-WP-03 and M7-WP-04 rehearsal/acceptance bootstraps already create the same structural workspace anchor before owner migrations. WP-05 makes that formerly implicit assumption explicit in the candidate manifest as `LOCAL_WORKSPACE_SCOPE_ANCHOR`.
+
+The prerequisite is deliberately constrained:
+
+```text
+kind = STRUCTURAL_ONLY
+owner = Lite
+businessRowsSeeded = false
+Core identity rows copied = false
+cross-service SQL = false
+```
+
+The rehearsal creates only an empty compatible `workspaces` table in the Lite database, asserts that it contains zero rows before and after migration/recovery, and captures the prerequisite in machine-readable evidence. The immutable historical migration is not edited. This operational topology prerequisite must remain visible in the M7-WP-06 known-limits / RC matrix rather than being hidden inside test setup.
+
 ## Migration and recovery model
 
 The repository migration model is forward-only with immutable migration-file checksums and recorded migration history. It does not provide reverse/down migrations.
@@ -59,6 +77,7 @@ The exact-head hosted gate must prove:
 - the checked-out SHA equals the declared rehearsal candidate SHA;
 - the candidate manifest is non-production, secret-free and non-authorizing;
 - every declared migration has exactly one recognized durable owner;
+- declared structural migration prerequisites are explicit and seed zero business rows;
 - each owner can reach its pre-forward state and then migrate forward to the exact candidate state;
 - immutable migration verification succeeds before and after recovery;
 - a durable owner-local probe survives forward migration, restart and logical snapshot restore;
@@ -67,7 +86,7 @@ The exact-head hosted gate must prove:
 - services survive a full stop/restart cycle with durable database state preserved;
 - owner-local logical snapshots restore the pre-forward state and forward migration can be replayed cleanly;
 - the recovered candidate starts healthy again;
-- machine-readable evidence keeps `releaseAuthorized: false` and records no production traffic, Filing Submission or Official Truth mutation.
+- machine-readable evidence keeps `releaseAuthorized: false` and records no production traffic, seeded business rows, Filing Submission or Official Truth mutation.
 
 ## Evidence artifact
 
@@ -75,7 +94,7 @@ The gate emits:
 
 `.artifacts/m7-wp-05-deployment-rehearsal-evidence.json`
 
-The artifact records the exact head SHA, candidate-manifest fingerprint, owner migration order, migration counts/latest migration identifiers, startup/restart/recovery outcomes and the permanent authority locks. Database snapshot files are temporary rehearsal mechanics and are not retained as release artifacts.
+The artifact records the exact head SHA, candidate-manifest fingerprint, owner migration order, explicit structural prerequisites, migration counts/latest migration identifiers, startup/restart/recovery outcomes and the permanent authority locks. Database snapshot files are temporary rehearsal mechanics and are not retained as release artifacts.
 
 ## Permanent authority locks
 
@@ -85,6 +104,7 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 Migration recovery evidence != production traffic cutover authority
 Service health != business success
+Structural migration prerequisite != business identity truth
 ```
 
 All prior locks remain permanent, including:
