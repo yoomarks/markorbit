@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "environmentClass": "NON_PRODUCTION_REHEARSAL",
+  "exactHeadRequired": true,
+  "productionTrafficAllowed": false,
+  "releaseAuthorized": false,
+  "secretsExcluded": true,
+  "databaseEngine": "postgresql-16",
+  "migrationModel": "FORWARD_ONLY_IMMUTABLE_CHECKSUMS",
+  "rollbackStrategy": "OWNER_DATABASE_LOGICAL_SNAPSHOT_RESTORE_THEN_FORWARD_REAPPLY",
+  "owners": [
+    {
+      "name": "core",
+      "package": "@markorbit/core-service",
+      "databaseEnv": "M7_WP05_CORE_DATABASE_URL",
+      "migrationNamespace": "m7_wp05_core",
+      "serviceEntry": "services/core/dist/main.js",
+      "port": 4511,
+      "runtimeDependencies": []
+    },
+    {
+      "name": "lite",
+      "package": "@markorbit/lite-service",
+      "databaseEnv": "M7_WP05_LITE_DATABASE_URL",
+      "migrationNamespace": "m7_wp05_lite",
+      "serviceEntry": "services/lite/dist/main.js",
+      "port": 4512,
+      "runtimeDependencies": ["markreg"]
+    },
+    {
+      "name": "markreg",
+      "package": "@markorbit/markreg-service",
+      "databaseEnv": "M7_WP05_MARKREG_DATABASE_URL",
+      "migrationNamespace": "m7_wp05_markreg",
+      "serviceEntry": "services/markreg/dist/main.js",
+      "port": 4513,
+      "runtimeDependencies": ["execution", "lite"]
+    },
+    {
+      "name": "execution",
+      "package": "@markorbit/execution-service",
+      "databaseEnv": "M7_WP05_EXECUTION_DATABASE_URL",
+      "migrationNamespace": "m7_wp05_execution",
+      "serviceEntry": "services/execution/dist/main.js",
+      "port": 4514,
+      "runtimeDependencies": ["markreg"]
+    },
+    {
+      "name": "mgsn",
+      "package": "@markorbit/mgsn-service",
+      "databaseEnv": "M7_WP05_MGSN_DATABASE_URL",
+      "migrationNamespace": "m7_wp05_mgsn",
+      "serviceEntry": "services/mgsn/dist/main.js",
+      "port": 4515,
+      "runtimeDependencies": ["core", "execution"]
+    },
+    {
+      "name": "capability-engine",
+      "package": "@markorbit/capability-engine",
+      "databaseEnv": "M7_WP05_CAPABILITY_DATABASE_URL",
+      "migrationNamespace": "m7_wp05_capability",
+      "serviceEntry": "services/capability-engine/dist/main.js",
+      "port": 4516,
+      "runtimeDependencies": ["execution"]
+    }
+  ],
+  "startupPolicy": {
+    "databaseBeforeService": true,
+    "peerServicesRequiredForHealth": false,
+    "healthPath": "/health",
+    "failureMustNotReportListening": true
+  },
+  "recoveryPolicy": {
+    "reverseMigrationsProvided": false,
+    "stopServicesBeforeRestore": true,
+    "restorePerOwnerOnly": true,
+    "verifyPreForwardState": true,
+    "reapplyForwardMigrationsAfterRestore": true
+  }
+}
