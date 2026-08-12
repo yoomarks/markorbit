@@ -7,9 +7,14 @@ import {
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
 import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import { createCapabilityObservationRoutes } from './capability-observation-http.js';
+import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 
+export * from './capability-observation-http.js';
+export * from './capability-observation-ledger.js';
+export * from './capability-observation-source.js';
 export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
 
@@ -40,6 +45,7 @@ export interface CapabilityEngineOptions {
   publisher?: EventPublisher;
   now?: () => string;
   runtimeCapabilityRegistry?: PostgresRuntimeCapabilityRegistry;
+  capabilityObservationLedger?: PostgresCapabilityObservationLedger;
   internalServiceSecret?: string;
 }
 export function createRuntime(options: CapabilityEngineOptions = {}) {
@@ -51,10 +57,19 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error(
       'runtimeCapabilityRegistry and internalServiceSecret must be configured together.'
     );
+  if (options.capabilityObservationLedger && !options.internalServiceSecret)
+    throw new Error('capabilityObservationLedger requires internalServiceSecret.');
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
           registry: options.runtimeCapabilityRegistry,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
+  const capabilityObservationRoutes =
+    options.capabilityObservationLedger && options.internalServiceSecret
+      ? createCapabilityObservationRoutes({
+          ledger: options.capabilityObservationLedger,
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
@@ -136,7 +151,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
             }
           }
         },
-        ...runtimeCapabilityRoutes
+        ...runtimeCapabilityRoutes,
+        ...capabilityObservationRoutes
       ]
     }
   );

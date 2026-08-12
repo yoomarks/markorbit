@@ -1,5 +1,10 @@
 import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
-import { createRuntime, PostgresRuntimeCapabilityRegistry } from './index.js';
+import {
+  createRuntime,
+  HttpExecutionCapabilityObservationSourceAuthority,
+  PostgresCapabilityObservationLedger,
+  PostgresRuntimeCapabilityRegistry
+} from './index.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -18,6 +23,7 @@ if (milestoneFixtureMode) {
     throw new Error(
       'MO_INTERNAL_SERVICE_SECRET is required for the durable Capability Engine runtime.'
     );
+  const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
 
   database = new ManagedDatabase(
     parseDatabaseConfig({
@@ -28,8 +34,23 @@ if (milestoneFixtureMode) {
     })
   );
   await database.start();
-  const registry = new PostgresRuntimeCapabilityRegistry(database, database.getPool());
-  runtime = createRuntime({ runtimeCapabilityRegistry: registry, internalServiceSecret });
+  const pool = database.getPool();
+  const registry = new PostgresRuntimeCapabilityRegistry(database, pool);
+  const sourceAuthority = new HttpExecutionCapabilityObservationSourceAuthority(
+    executionUrl,
+    internalServiceSecret
+  );
+  const observationLedger = new PostgresCapabilityObservationLedger(
+    database,
+    pool,
+    registry,
+    sourceAuthority
+  );
+  runtime = createRuntime({
+    runtimeCapabilityRegistry: registry,
+    capabilityObservationLedger: observationLedger,
+    internalServiceSecret
+  });
 }
 
 async function shutdown(signal: string) {
