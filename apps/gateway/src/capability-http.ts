@@ -178,7 +178,7 @@ export function createGatewayCapabilityRoutes(
         },
         ...(request.method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
       });
-      const value = await response.json().catch(() => ({}));
+      const value: unknown = await response.json().catch(() => ({}));
       return json(response.status, value);
     } catch (error) {
       if (error instanceof HttpError) throw error;
