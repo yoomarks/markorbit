@@ -154,12 +154,10 @@ const IDS = Object.freeze({
   recommendationId: 'today-recommendation_m7-wp03-beta-seed' as TodayRecommendationId,
   contentOpportunityId: 'content-opportunity_m7-wp03-beta-seed' as ContentOpportunityId,
   contentDraftId: 'content-draft_m7-wp03-beta-seed' as ContentDraftId,
-  contentReviewDecisionId:
-    'content-review-decision_m7-wp03-beta-seed' as ContentReviewDecisionId,
+  contentReviewDecisionId: 'content-review-decision_m7-wp03-beta-seed' as ContentReviewDecisionId,
   publishPackageId: 'publish-package_m7-wp03-beta-seed' as PublishPackageId,
   feedbackId: 'product-loop-feedback_m7-wp03-beta-seed' as ProductLoopFeedbackId,
-  opportunityCandidateId:
-    'opportunity-candidate_m7-wp03-beta-seed' as OpportunityCandidateId,
+  opportunityCandidateId: 'opportunity-candidate_m7-wp03-beta-seed' as OpportunityCandidateId,
   qualificationDecisionId:
     'opportunity-qualification_m7-wp03-beta-seed' as OpportunityQualificationDecisionId,
   formalOpportunityId: 'trademark-service-opportunity_m7-wp03-beta-seed' as const,
@@ -223,7 +221,9 @@ export function readM7Wp03BetaSeedConfig(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): M7Wp03BetaSeedConfig {
   if (env.MARKORBIT_BETA_SEED_ENABLED !== '1')
-    throw new Error('M7-WP-03 Beta seed is disabled. Set MARKORBIT_BETA_SEED_ENABLED=1 explicitly.');
+    throw new Error(
+      'M7-WP-03 Beta seed is disabled. Set MARKORBIT_BETA_SEED_ENABLED=1 explicitly.'
+    );
   if (env.NODE_ENV?.trim().toLowerCase() === 'production')
     throw new Error('M7-WP-03 Beta seed refuses to run with NODE_ENV=production.');
   const environment = env.MARKORBIT_BETA_SEED_ENVIRONMENT;
@@ -231,8 +231,14 @@ export function readM7Wp03BetaSeedConfig(
     throw new Error('MARKORBIT_BETA_SEED_ENVIRONMENT must be TEST or REHEARSAL.');
 
   const databaseUrls = {
-    CORE: required(env.MARKORBIT_BETA_SEED_CORE_DATABASE_URL, 'MARKORBIT_BETA_SEED_CORE_DATABASE_URL'),
-    LITE: required(env.MARKORBIT_BETA_SEED_LITE_DATABASE_URL, 'MARKORBIT_BETA_SEED_LITE_DATABASE_URL'),
+    CORE: required(
+      env.MARKORBIT_BETA_SEED_CORE_DATABASE_URL,
+      'MARKORBIT_BETA_SEED_CORE_DATABASE_URL'
+    ),
+    LITE: required(
+      env.MARKORBIT_BETA_SEED_LITE_DATABASE_URL,
+      'MARKORBIT_BETA_SEED_LITE_DATABASE_URL'
+    ),
     MARKREG: required(
       env.MARKORBIT_BETA_SEED_MARKREG_DATABASE_URL,
       'MARKORBIT_BETA_SEED_MARKREG_DATABASE_URL'
@@ -247,10 +253,9 @@ export function readM7Wp03BetaSeedConfig(
     )
   } as const;
 
-  const identities = Object.entries(databaseUrls).map(([owner, url]) => [
-    owner,
-    databaseIdentity(url, `${owner} database URL`)
-  ] as const);
+  const identities = Object.entries(databaseUrls).map(
+    ([owner, url]) => [owner, databaseIdentity(url, `${owner} database URL`)] as const
+  );
   if (new Set(identities.map(([, identity]) => identity)).size !== identities.length)
     throw new Error('M7-WP-03 requires a distinct PostgreSQL database for every owning service.');
 
@@ -335,10 +340,7 @@ async function seedCore(database: ManagedDatabase) {
   return { knowledgeIntakes, accepted };
 }
 
-async function seedLite(
-  database: ManagedDatabase,
-  core: Awaited<ReturnType<typeof seedCore>>
-) {
+async function seedLite(database: ManagedDatabase, core: Awaited<ReturnType<typeof seedCore>>) {
   const pool = database.getPool();
   const feedbackStore = new PostgresProductLoopFeedbackStore(
     database,
@@ -375,11 +377,9 @@ async function seedLite(
         locator.kind === 'CONTENT_USE_FEEDBACK' &&
         locator.sourceId === IDS.feedbackId
       ) {
-        const source = await feedbackStore.sourceReference(
-          IDS.workspaceId,
-          IDS.feedbackId
-        );
-        if (!source) throw new Error('Lite deterministic Product-loop feedback source is unavailable.');
+        const source = await feedbackStore.sourceReference(IDS.workspaceId, IDS.feedbackId);
+        if (!source)
+          throw new Error('Lite deterministic Product-loop feedback source is unavailable.');
         return source;
       }
       throw new Error('M7-WP-03 seed source locator is outside the deterministic scenario.');
@@ -464,7 +464,10 @@ async function seedLite(
     recordedByPrincipalId: IDS.userId,
     idempotencyKey: 'm7-wp03-content-feedback'
   });
-  const feedbackSource = await feedbackStore.sourceReference(IDS.workspaceId, feedback.productLoopFeedbackId);
+  const feedbackSource = await feedbackStore.sourceReference(
+    IDS.workspaceId,
+    feedback.productLoopFeedbackId
+  );
   if (!feedbackSource) throw new Error('Lite feedback source was not materialized.');
 
   const candidateStore = new PostgresLiteCandidateQualificationStore(
@@ -490,7 +493,10 @@ async function seedLite(
   });
   const qualification = await candidateStore.recordQualification({
     workspaceId: IDS.workspaceId,
-    candidate: { id: opportunityCandidate.opportunityCandidateId, version: opportunityCandidate.version },
+    candidate: {
+      id: opportunityCandidate.opportunityCandidateId,
+      version: opportunityCandidate.version
+    },
     expectedCandidateFingerprintSha256: opportunityCandidate.opportunityCandidateFingerprintSha256,
     outcome: 'QUALIFIED_FOR_MARKREG',
     decidedByPrincipalId: IDS.userId,
@@ -513,10 +519,7 @@ async function seedLite(
   };
 }
 
-async function seedMarkReg(
-  database: ManagedDatabase,
-  lite: Awaited<ReturnType<typeof seedLite>>
-) {
+async function seedMarkReg(database: ManagedDatabase, lite: Awaited<ReturnType<typeof seedLite>>) {
   const pool = database.getPool();
   const authority: QualifiedOpportunityAuthority = {
     async resolve(workspaceId, candidate, qualificationDecision) {
@@ -532,7 +535,9 @@ async function seedMarkReg(
         decision.opportunityQualificationDecisionId !== qualificationDecision.id ||
         decision.version !== qualificationDecision.version
       )
-        throw new Error('Lite qualified Opportunity seed authority could not resolve exact lineage.');
+        throw new Error(
+          'Lite qualified Opportunity seed authority could not resolve exact lineage.'
+        );
       return { candidate: exactCandidate, currentCandidate, qualificationDecision: decision };
     }
   };
@@ -608,7 +613,13 @@ async function seedExecution(database: ManagedDatabase) {
        execution_release_id,workspace_id,filing_authorization_id,filing_authorization_version,status,version,
        release_record,created_by,updated_by,created_at,updated_at
      ) VALUES($1,$2,$3,2,'RELEASED_FOR_EXECUTION',3,'{}'::jsonb,$4,$4,$5,$5)`,
-    [IDS.executionReleaseId, IDS.workspaceId, IDS.filingAuthorizationId, IDS.userId, M7_WP03_SEED_AT]
+    [
+      IDS.executionReleaseId,
+      IDS.workspaceId,
+      IDS.filingAuthorizationId,
+      IDS.userId,
+      M7_WP03_SEED_AT
+    ]
   );
   await pool.query(
     `INSERT INTO filing_execution_task_drafts(
@@ -783,7 +794,9 @@ async function seedCapability(
       'm7-wp03-reflection-candidate'
     );
     if (reflection.candidate.status !== 'PENDING')
-      throw new Error('M7-WP-03 Capability seed must stop at a pending private Reflection Candidate.');
+      throw new Error(
+        'M7-WP-03 Capability seed must stop at a pending private Reflection Candidate.'
+      );
     return { imported, admitted, reflection };
   } finally {
     await executionRuntime.stop();
@@ -873,8 +886,7 @@ export async function resetAndSeedM7Wp03BetaScenario(
           observationId: capability.admitted.observation.capabilityObservationId,
           ledgerEntryId: capability.admitted.ledgerEntry.capabilityLedgerEntryId,
           reflectionCandidateId: capability.reflection.candidate.reflectionCandidateId,
-          reflectionCandidateFingerprintSha256:
-            capability.reflection.candidateFingerprintSha256,
+          reflectionCandidateFingerprintSha256: capability.reflection.candidateFingerprintSha256,
           reflectionStatus: 'PENDING' as const,
           capabilityVerified: false as const,
           canonicalTruthCreated: false as const
