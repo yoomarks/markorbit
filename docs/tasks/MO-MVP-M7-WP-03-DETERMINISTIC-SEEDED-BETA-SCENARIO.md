@@ -3,7 +3,7 @@
 - **Milestone:** `MO-MVP-MILESTONE-007`
 - **Direction:** `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING`
 - **Base:** `a199da11a725a08072c32a18c8304997f4f0ea2e` (M7-WP-02 / PR #96 merged)
-- **Status:** `IMPLEMENTING`
+- **Status:** `IMPLEMENTED_IN_PR_97`
 - **Scope:** one deterministic owner-separated TEST/REHEARSAL reset-and-reseed dataset for later Beta acceptance and deployment rehearsal
 
 ## Objective
@@ -60,7 +60,7 @@ Capability Engine database
   -> stops before subject-user disposition or Capability verification
 ```
 
-The harness orchestrates these owner APIs but does not run SQL from one service against another service's database. The only direct setup SQL is confined to the Execution owner's own isolated database and mirrors the existing M6 real-runtime seed pattern for the prerequisites needed to create a governed Evidence Review Decision.
+The harness orchestrates these owner APIs but does not run SQL from one service against another service's database. Owner-local `workspaces` test projections are created only inside the corresponding isolated non-Core databases before owner migrations so existing foreign-key topology can be reproduced without cross-service reads. The only other direct setup SQL is confined to the Execution owner's own isolated database and mirrors the existing M6 real-runtime seed pattern for the prerequisites needed to create a governed Evidence Review Decision.
 
 ## Determinism
 
@@ -108,9 +108,9 @@ The permanent `M7 WP-03 Seeded Beta Scenario` workflow provisions PostgreSQL 16 
 - fail-closed behavior when enablement/environment/database safeguards are absent;
 - database-per-owner isolation;
 - two complete real PostgreSQL reset/reseed runs with exact manifest equality;
-- a machine-readable seeded manifest after the replay test.
+- a machine-readable seeded manifest after the replay test using an explicit ESM entrypoint.
 
-Full repository regressions remain required on the final exact PR head before merge readiness.
+The dedicated gate has passed on the implementation branch. Full repository regressions remain required on the final exact PR head before merge readiness.
 
 ## Non-goals
 
