@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "milestone": "MO-MVP-MILESTONE-006",
+  "planningTask": "MO-MVP-TASK-031A",
+  "direction": "DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION",
+  "planningApproval": {
+    "pullRequest": 71,
+    "approved": true
+  },
+  "sequencingGate": {
+    "productLoopClosureRequiredBeforeM6": true,
+    "productLoopClosureAuditPullRequest": 83,
+    "result": "GO"
+  },
+  "milestoneStatus": "IMPLEMENTATION_ACTIVE",
+  "currentWorkPackage": "M6-WP-07",
+  "authorityLocks": {
+    "reflectionCandidateIsCanonicalTruth": false,
+    "acceptedPrivateReflectionIsVerifiedCapability": false,
+    "rawProviderReturnIsUserCapabilityEvidence": false,
+    "providerSupplyCapabilityIsUserCapabilityEvidence": false,
+    "runtimeWorkEvidenceMutatesCanon": false,
+    "profilePublishesPublicScore": false,
+    "profilePublishesVerifiedBadge": false,
+    "twinHasAutonomousExecutionAuthority": false,
+    "corePermissionOrRoleEscalation": false,
+    "crossServiceSqlAllowed": false,
+    "paymentOrInvoiceCreated": false,
+    "legalAppointmentCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false,
+    "externalActionExecuted": false
+  },
+  "workPackages": [
+    {
+      "id": "M6-WP-01",
+      "status": "MERGED",
+      "pullRequest": 84,
+      "mergeCommit": "75c42d1ada4d44f40becf8be3c404877549ed371",
+      "evidence": [
+        "packages/contracts/src/capability-learning.ts",
+        "packages/contracts/tests/capability-learning-contract.test.ts",
+        "docs/architecture/CAPABILITY-LEARNING-AUTHORITY-BOUNDARY.md",
+        "docs/tasks/MO-MVP-M6-WP-01-CAPABILITY-LEARNING-CONTRACTS-AUTHORITY.md"
+      ]
+    },
+    {
+      "id": "M6-WP-02",
+      "status": "MERGED",
+      "pullRequest": 86,
+      "mergeCommit": "8111e44e99c4800f999a25af0b75b0fd4f78d91c",
+      "evidence": [
+        "infrastructure/persistence/migrations/0044_capability_engine_runtime_registry.sql",
+        "services/capability-engine/tests/runtime-capability-registry-postgres.test.ts",
+        ".github/workflows/m6-wp-02-capability-registry.yml"
+      ]
+    },
+    {
+      "id": "M6-WP-03",
+      "status": "MERGED",
+      "pullRequest": 87,
+      "mergeCommit": "368241f5d366ac7dfd9b038e7fb3bc7be3f5d1c6",
+      "evidence": [
+        "infrastructure/persistence/migrations/0045_capability_engine_observation_ledger.sql",
+        "services/capability-engine/tests/capability-observation-ledger-postgres.test.ts",
+        "services/capability-engine/tests/capability-observation-source.test.ts",
+        ".github/workflows/m6-wp-03-capability-observation-ledger.yml"
+      ]
+    },
+    {
+      "id": "M6-WP-04",
+      "status": "MERGED",
+      "pullRequest": 88,
+      "mergeCommit": "16b9e368ac5026b1dbd4560ecd7d2459c370e240",
+      "evidence": [
+        "infrastructure/persistence/migrations/0046_capability_engine_reflection_candidates.sql",
+        "services/capability-engine/tests/private-reflection-candidate-postgres.test.ts",
+        ".github/workflows/m6-wp-04-private-reflection-candidate.yml"
+      ]
+    },
+    {
+      "id": "M6-WP-05",
+      "status": "MERGED",
+      "pullRequest": 89,
+      "mergeCommit": "facdb82ad63e7f51df19cd373bead7efdd44adab",
+      "evidence": [
+        "infrastructure/persistence/migrations/0047_capability_engine_reflection_disposition_profile_twin.sql",
+        "services/capability-engine/tests/reflection-disposition-profile-postgres.test.ts",
+        ".github/workflows/m6-wp-05-reflection-disposition-profile-twin.yml"
+      ]
+    },
+    {
+      "id": "M6-WP-06",
+      "status": "MERGED",
+      "pullRequest": 90,
+      "mergeCommit": "ddbcc980acb693a90078d1d9ef7ac680089f7265",
+      "evidence": [
+        "apps/gateway/tests/capability-http.test.ts",
+        "services/capability-engine/tests/capability-center-http.test.ts",
+        "apps/lite-web/src/features/capability/CapabilityCenter.test.tsx",
+        "tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts",
+        ".github/workflows/m6-wp-06-authenticated-capability-center.yml"
+      ]
+    },
+    {
+      "id": "M6-WP-07",
+      "status": "IMPLEMENTING",
+      "branch": "agent/m6-wp-07-reliability-privacy-replay",
+      "baseCommit": "0551fc49a9adb683463162237f71de8970807020",
+      "evidence": [
+        "docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json",
+        "scripts/validate-milestone6-reliability-matrix.mjs",
+        "scripts/validate-m6-capability-center-no-interception.mjs",
+        "scripts/run-milestone6-reliability.mjs",
+        ".github/workflows/milestone-6-reliability.yml",
+        "docs/tasks/MO-MVP-M6-WP-07-RELIABILITY-PRIVACY-REPLAY-MATRIX.md"
+      ]
+    },
+    {
+      "id": "M6-WP-08",
+      "status": "NOT_STARTED"
+    }
+  ],
+  "nextApprovedStepAfterMerge": "M6-WP-08"
+}
