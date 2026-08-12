@@ -81,6 +81,8 @@ jobs:
         run: pnpm build
       - name: Run exact-head deployment rehearsal
         run: pnpm exec vitest run --no-file-parallelism scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
+      - name: Produce canonical rehearsal source formatting
+        run: pnpm exec prettier --write scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
       - name: Final workspace check
         run: pnpm check
       - name: Upload deployment rehearsal evidence
@@ -88,6 +90,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: m7-wp-05-deployment-rehearsal-${{ github.run_id }}
-          path: .artifacts/m7-wp-05-deployment-rehearsal-evidence.json
+          path: |
+            .artifacts/m7-wp-05-deployment-rehearsal-evidence.json
+            scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
           if-no-files-found: warn
           retention-days: 14
