@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M6-WP-08 merged in PR #93 as `f63fb857663fc05879c26716169cb3186613f32b`. TASK 032A now proposes Milestone 7 — Beta Release Readiness and Operational Hardening — as the next bounded planning gate.**
+**Product Loop Closure and Milestone 6 are complete with final GO recommendations. TASK 032A / PR #94 is merged as `ca74da13b294d91b5a8bae5ee0fad3d6fbd2000f`, approving Milestone 7 — Beta Release Readiness and Operational Hardening. `M7-WP-01` is the current bounded implementation step.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -147,9 +147,9 @@ The M6 authority locks remain:
 - Capability Twin is a private read model, not an autonomous identity or protected-action authority;
 - no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
 
-### Proposed Milestone 7 — Beta Release Readiness and Operational Hardening
+### Milestone 7 — Beta Release Readiness and Operational Hardening — approved
 
-TASK 032A proposes the direction `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING` to close the remaining four-week Beta obligations without creating a new business domain.
+TASK 032A / PR #94 approved the direction `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING` to close the remaining four-week Beta obligations without creating a new business domain.
 
 The bounded delivery graph is:
 
@@ -173,7 +173,7 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 ```
 
-TASK 032A is planning-only. Its merge would approve the bounded M7 direction and work-package graph; it would not deploy production, publish a Beta release/tag or authorize a protected business action. Runtime implementation begins only after explicit Owner approval, starting with `M7-WP-01`.
+M7-WP-01 freezes those semantics plus the Week 4 gap inventory before runtime work. It does not add analytics runtime, seed data, deployment mutation, release/tag publication or protected business authority. After explicit Owner merge of M7-WP-01, the next authorized step is `M7-WP-02`.
 
 See:
 
@@ -186,4 +186,6 @@ See:
 - `docs/planning/MO-MVP-MILESTONE-007-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-007-PLAN.json`;
 - `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`;
+- `docs/tasks/MO-MVP-M7-WP-01-BETA-READINESS-CONTRACTS-AUTHORITY.md`;
+- `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.
