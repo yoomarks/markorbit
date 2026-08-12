@@ -3,10 +3,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import type { ProductLoopSourceReference } from '@markorbit/contracts/product-loop';
-import {
-  createServiceRuntime,
-  type ServiceRuntime
-} from '@markorbit/service-kit';
+import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
@@ -228,11 +225,7 @@ suite('M7-WP-04 Product and Opportunity cross-owner real-runtime acceptance', ()
     await markregRuntime?.stop();
     await liteRuntime?.stop();
     await coreRuntime?.stop();
-    await Promise.all([
-      coreDatabase?.close(),
-      liteDatabase?.close(),
-      markregDatabase?.close()
-    ]);
+    await Promise.all([coreDatabase?.close(), liteDatabase?.close(), markregDatabase?.close()]);
   });
 
   it('proves accepted Knowledge -> reviewed PublishPackage -> feedback -> qualified Formal Opportunity -> bounded Intake handoff', async () => {
@@ -418,7 +411,8 @@ suite('M7-WP-04 Product and Opportunity cross-owner real-runtime acceptance', ()
     const candidate = await candidateStore.createCandidate({
       workspaceId,
       title: 'Review a trademark service opportunity',
-      serviceNeedSummary: 'User-reported product feedback supports explicit trademark-service review.',
+      serviceNeedSummary:
+        'User-reported product feedback supports explicit trademark-service review.',
       sources: [
         { owner: 'LITE', kind: 'CONTENT_USE_FEEDBACK', sourceId: feedback.productLoopFeedbackId }
       ],
@@ -430,7 +424,8 @@ suite('M7-WP-04 Product and Opportunity cross-owner real-runtime acceptance', ()
       expectedCandidateFingerprintSha256: candidate.opportunityCandidateFingerprintSha256,
       outcome: 'QUALIFIED_FOR_MARKREG',
       decidedByPrincipalId: 'user_m7-wp04-qualifier',
-      rationale: 'Explicit human-style qualification; no customer contact or downstream work is automatic.',
+      rationale:
+        'Explicit human-style qualification; no customer contact or downstream work is automatic.',
       idempotencyKey: 'm7-wp04-opportunity-qualification'
     });
     expect(qualification.decision.formalOpportunityCreated).toBe(false);

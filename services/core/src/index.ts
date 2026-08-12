@@ -366,7 +366,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
             const workspaceId = request.headers['x-markorbit-workspace-id'];
             const readyPackageId = request.params.readyPackageId;
             if (!workspaceId || !canonicalUuid(workspaceId))
-              throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
+              throw new HttpError(
+                400,
+                'INVALID_WORKSPACE_CONTEXT',
+                'Workspace context is required.'
+              );
             if (!readyPackageId?.trim())
               throw new HttpError(400, 'INVALID_REQUEST', 'readyPackageId is required.');
             if (!options.knowledgeIntakes)
