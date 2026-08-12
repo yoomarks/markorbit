@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Product Loop Closure is complete with GO in PR #83. Milestone 6 WP-01 through WP-07 are merged; M6-WP-08 independent integration and authority audit is the current engineering task in PR #93, with final GO pending explicit Owner merge.**
+**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M6-WP-08 merged in PR #93 as `f63fb857663fc05879c26716169cb3186613f32b`. TASK 032A now proposes Milestone 7 — Beta Release Readiness and Operational Hardening — as the next bounded planning gate.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -87,9 +87,9 @@ The M5 authority locks remain permanent: Evidence Review Decision is not Officia
 
 ### Product Loop Closure — completed sequencing gate
 
-PR #73 established the Product Loop Closure stage, and PLC-WP-08 completed it with a GO recommendation in PR #83. The sequencing gate is closed; M6 runtime implementation subsequently resumed.
+PR #73 established the Product Loop Closure stage, and PLC-WP-08 completed it with a GO recommendation in PR #83. The sequencing gate is closed.
 
-The Product Loop Closure stage exists to prove the canonical Lite mainline as a real Product loop:
+The Product Loop Closure stage proves the canonical Lite mainline as a real Product loop:
 
 ```text
 Today
@@ -100,7 +100,7 @@ Today
 -> Outcome / Feedback
 ```
 
-At least one acceptance journey must close Content and Opportunity into existing work:
+At least one accepted journey closes Content and Opportunity into existing work:
 
 ```text
 trusted trademark / client / work context
@@ -119,13 +119,11 @@ trusted trademark / client / work context
 
 The stage does not authorize automatic publication, customer outreach, generic CRM/platform extraction, universal Artifact/Opportunity/Workplace services, Payment/Invoice, provider appointment, external Filing Submission or Official Truth.
 
-### Approved Milestone 6 — Durable Capability Learning and Private Reflection
+### Milestone 6 — Durable Capability Learning and Private Reflection — complete
 
-PR #71 merged as `ce5e845ee8350341d478ad5372ac1ccbaffe4fb4`, approving TASK 031A and the direction `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`.
+PR #71 approved TASK 031A and the direction `DURABLE_CAPABILITY_LEARNING_AND_PRIVATE_REFLECTION`. M6-WP-01 through M6-WP-08 are now merged. PR #93 independently audited the integrated runtime, repaired the bounded real-Execution-source acceptance gap, and completed Milestone 6 with a final **GO** recommendation.
 
-M6-WP-01 through M6-WP-07 are merged. M6-WP-08 in PR #93 independently audited the integrated runtime, found and repaired one bounded real-Execution-source acceptance gap, and records a final **GO** recommendation pending exact-head validation and explicit Owner merge.
-
-The approved M6 loop is:
+The completed M6 loop is:
 
 ```text
 accepted Capability Canon version
@@ -149,23 +147,43 @@ The M6 authority locks remain:
 - Capability Twin is a private read model, not an autonomous identity or protected-action authority;
 - no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
 
-M6 approval is preserved. Only its execution precedence changed:
+### Proposed Milestone 7 — Beta Release Readiness and Operational Hardening
+
+TASK 032A proposes the direction `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING` to close the remaining four-week Beta obligations without creating a new business domain.
+
+The bounded delivery graph is:
 
 ```text
-M1-M5 governed execution backbone
--> Product Loop Closure
--> resume approved M6-WP-01 after Product Loop Closure GO
+M7-WP-01 Beta readiness contracts / gap inventory / authority boundary
+-> M7-WP-02 bounded Content + Opportunity conversion analytics
+-> M7-WP-03 deterministic non-production seeded Beta scenario
+-> M7-WP-04 three-loop full-journey real-runtime acceptance
+-> M7-WP-05 deployment rehearsal + migration + rollback/recovery evidence
+-> M7-WP-06 exact-head Beta RC reliability / responsive / known-limits matrix
+-> M7-WP-07 independent Beta readiness and authority audit
 ```
+
+Milestone 7 preserves the permanent distinctions:
+
+```text
+Product metric != business authority
+Seeded demo record != customer/provider/official truth
+Deployment Rehearsal != Production Deployment
+Beta Release Candidate != Released Beta
+Green CI != Owner Release Authorization
+```
+
+TASK 032A is planning-only. Its merge would approve the bounded M7 direction and work-package graph; it would not deploy production, publish a Beta release/tag or authorize a protected business action. Runtime implementation begins only after explicit Owner approval, starting with `M7-WP-01`.
 
 See:
 
 - `docs/audits/MO-MVP-PRODUCT-LOOP-CONFORMANCE-AUDIT.md`;
 - `docs/planning/MO-MVP-PRODUCT-LOOP-CLOSURE-PLAN.md`;
 - `docs/architecture/PRODUCT-LOOP-AUTHORITY-BOUNDARY.md`;
-- `docs/tasks/MO-MVP-PLC-WP-01-PRODUCT-MAINLINE-CONTRACTS-OWNERSHIP.md`;
-- `docs/planning/MO-MVP-MILESTONE-006-SCOPE-LOCK.md`;
-- `docs/planning/MO-MVP-MILESTONE-006-DELIVERY-PLAN.md`;
-- `docs/planning/MO-MVP-MILESTONE-006-PLAN.json`;
-- `docs/planning/MO-MVP-MILESTONE-005-IMPLEMENTATION-TRACEABILITY.md`;
-- `docs/audits/MO-MVP-MILESTONE-005-INTEGRATION-AUDIT.md`;
+- `docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.{md,json}`;
+- `docs/planning/MO-MVP-MILESTONE-006-IMPLEMENTATION-TRACEABILITY.{md,json}`;
+- `docs/planning/MO-MVP-MILESTONE-007-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-007-DELIVERY-PLAN.md`;
+- `docs/planning/MO-MVP-MILESTONE-007-PLAN.json`;
+- `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`;
 - `AGENTS.md`.
