@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { ReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
-import type { ProductLoopSourceReference } from '@markorbit/contracts/product-loop';
-import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
+import type { ReadyPackageContentExportV1 } from '../packages/contracts/src/knowledge-content-export.js';
+import type { ProductLoopSourceReference } from '../packages/contracts/src/product-loop.js';
+import { createServiceRuntime, type ServiceRuntime } from '../packages/service-kit/src/index.js';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
@@ -387,7 +387,7 @@ suite('M7-WP-04 Product and Opportunity cross-owner real-runtime acceptance', ()
       reviewDecision: { id: review.contentReviewDecisionId, version: review.version },
       idempotencyKey: 'm7-wp04-publish-package'
     });
-    expect(publishPackage.externalActionExecutedByMarkOrbit).toBe(false);
+    expect(publishPackage.externalPublishExecuted).toBe(false);
 
     const feedback = await feedbackStore.recordUseFeedback({
       workspaceId,
