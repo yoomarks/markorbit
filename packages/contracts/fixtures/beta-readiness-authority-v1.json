@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "fixture": "M7-WP-01-BETA-READINESS-AUTHORITY",
+  "productConversionMetric": {
+    "businessAuthorityGranted": false,
+    "protectedActionAuthorized": false,
+    "productionDeploymentAuthorized": false,
+    "betaReleased": false,
+    "ownerReleaseAuthorized": false,
+    "customerTruthCreated": false,
+    "providerTruthCreated": false,
+    "officialTruthCreated": false,
+    "capabilityVerified": false,
+    "capabilityCanonMutated": false
+  },
+  "seededDemoRecord": {
+    "businessAuthorityGranted": false,
+    "protectedActionAuthorized": false,
+    "productionDeploymentAuthorized": false,
+    "betaReleased": false,
+    "ownerReleaseAuthorized": false,
+    "customerTruthCreated": false,
+    "providerTruthCreated": false,
+    "officialTruthCreated": false,
+    "capabilityVerified": false,
+    "capabilityCanonMutated": false
+  },
+  "deploymentRehearsal": {
+    "businessAuthorityGranted": false,
+    "protectedActionAuthorized": false,
+    "productionDeploymentAuthorized": false,
+    "betaReleased": false,
+    "ownerReleaseAuthorized": false,
+    "customerTruthCreated": false,
+    "providerTruthCreated": false,
+    "officialTruthCreated": false,
+    "capabilityVerified": false,
+    "capabilityCanonMutated": false
+  },
+  "betaReleaseCandidate": {
+    "businessAuthorityGranted": false,
+    "protectedActionAuthorized": false,
+    "productionDeploymentAuthorized": false,
+    "betaReleased": false,
+    "ownerReleaseAuthorized": false,
+    "customerTruthCreated": false,
+    "providerTruthCreated": false,
+    "officialTruthCreated": false,
+    "capabilityVerified": false,
+    "capabilityCanonMutated": false
+  },
+  "automatedGate": {
+    "businessAuthorityGranted": false,
+    "protectedActionAuthorized": false,
+    "productionDeploymentAuthorized": false,
+    "betaReleased": false,
+    "ownerReleaseAuthorized": false,
+    "customerTruthCreated": false,
+    "providerTruthCreated": false,
+    "officialTruthCreated": false,
+    "capabilityVerified": false,
+    "capabilityCanonMutated": false
+  }
+}
