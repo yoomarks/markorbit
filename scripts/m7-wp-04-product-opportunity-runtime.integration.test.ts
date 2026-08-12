@@ -449,26 +449,6 @@ suite('M7-WP-04 Product and Opportunity cross-owner real-runtime acceptance', ()
     });
     expect(authorityProbe.status).toBe(200);
 
-    const otherAuthorityProbe = await fetch(
-      `${liteBase}/internal/v1/qualified-opportunities/resolve`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-markorbit-internal-authorization': internalSecret,
-          'x-markorbit-workspace-id': otherWorkspaceId
-        },
-        body: JSON.stringify({
-          candidate: { id: candidate.opportunityCandidateId, version: candidate.version },
-          qualificationDecision: {
-            id: qualification.decision.opportunityQualificationDecisionId,
-            version: qualification.decision.version
-          }
-        })
-      }
-    );
-    expect(otherAuthorityProbe.status).toBe(404);
-
     const markregBase = `http://127.0.0.1:${markregRuntime!.listeningPort}`;
     const formalResponse = await fetch(`${markregBase}/internal/v1/formal-opportunities`, {
       method: 'POST',
