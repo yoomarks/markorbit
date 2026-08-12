@@ -109,6 +109,6 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Build real-runtime dependency closure
-        run: pnpm exec turbo run build --filter=@markorbit/core... --filter=@markorbit/capability-engine... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+        run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/capability-engine... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
       - name: Run desktop and mobile private Capability Center
         run: pnpm exec playwright test -c playwright.m6-wp-06-capability-center-real-runtime.config.ts
