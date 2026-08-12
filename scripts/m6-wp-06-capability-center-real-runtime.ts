@@ -32,6 +32,7 @@ if (!url) throw new Error('CAPABILITY_CENTER_TEST_DATABASE_URL is required.');
 const secret = 'wp06-capability-center-internal-secret-32-bytes';
 const csrfSecret = 'wp06-capability-center-csrf-secret-32-bytes';
 const origin = 'http://127.0.0.1:4485';
+process.env.WEB_ORIGINS = origin;
 const desktopWorkspaceId = '41414141-4141-4414-8414-414141414141';
 const mobileWorkspaceId = '42424242-4242-4424-8424-424242424242';
 const subjectUserId = 'user_wp06_capability_browser';
