@@ -2,6 +2,7 @@
 
 - **Task ID:** MO-MVP-TASK-032A
 - **Baseline:** M6-WP-08 final GO merge `f63fb857663fc05879c26716169cb3186613f32b` / PR #93.
+- **Planning PR:** #94.
 - **Task type:** planning / architecture decision only.
 - **Status:** `PROPOSED_FOR_APPROVAL`.
 - **Objective:** bound the final four-week Beta release-readiness milestone without starting runtime implementation or authorizing a release.
