@@ -64,9 +64,11 @@ Known limits are not suppressed by a PASS result. They travel with the exact can
 
 ## Gate composition
 
-WP-06 reuses established owner gates. It does not copy their business test logic into a new universal runner. The RC manifest points to the canonical workflow definition for each required gate, and the WP-06 change surface is added to M7-WP-02 through M7-WP-05 path filters so those predecessor gates rerun on the exact candidate head.
+WP-06 reuses established owner gates. It does not copy their business test logic into a new universal runner. The RC manifest points to the canonical workflow definition for each required gate.
 
-The existing repository reliability and browser workflows remain authoritative for their own domains. The dedicated WP-06 job adds the cross-cutting exact-head/fingerprint/known-limits assertion and full workspace `pnpm check`.
+The repository-level validation, Browser/Visual and M2–M6 reliability/integration workflows already run on every pull request and remain authoritative for their own domains. Product Loop Closure Reliability and M7-WP-02 through M7-WP-05 are path-filtered but expose `workflow_dispatch`; the WP-06 gate dispatches those canonical workflows on the exact candidate branch, waits for the exact head SHA and records each run ID and conclusion in `.artifacts/m7-wp-06-required-gates.json`.
+
+The dedicated WP-06 job therefore adds only the cross-cutting exact-head/fingerprint/known-limits assertion and full workspace `pnpm check`, while the predecessor workflows continue to own their existing databases, browser paths and business assertions.
 
 ## Authority locks
 
