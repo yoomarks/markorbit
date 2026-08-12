@@ -8,6 +8,7 @@ on:
       - 'packages/contracts/src/capability-center.ts'
       - 'packages/contracts/src/index.ts'
       - 'services/capability-engine/**'
+      - 'services/execution/**'
       - 'apps/gateway/**'
       - 'apps/lite-web/**'
       - 'scripts/m6-wp-06-capability-center-real-runtime.ts'
@@ -94,7 +95,9 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
+      PGPASSWORD: markorbit-test-only
       CAPABILITY_CENTER_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp06_browser
+      CAPABILITY_CENTER_EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp06_browser_execution
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -108,7 +111,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
+      - name: Create Execution owner browser database
+        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp06_browser_execution'
       - name: Build real-runtime dependency closure
-        run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/capability-engine... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+        run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/execution-service... --filter=@markorbit/capability-engine... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
       - name: Run desktop and mobile private Capability Center
         run: pnpm exec playwright test -c playwright.m6-wp-06-capability-center-real-runtime.config.ts
