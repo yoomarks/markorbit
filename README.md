@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M7-WP-01 merged in PR #95 as `88032709d1252392ce57dfe1823eaf238810011f`; `M7-WP-02 — Bounded Content/Opportunity conversion analytics` is the current bounded implementation step.**
+**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M7-WP-01 merged in PR #95 as `88032709d1252392ce57dfe1823eaf238810011f`; M7-WP-02 merged in PR #96 as `a199da11a725a08072c32a18c8304997f4f0ea2e`; `M7-WP-03 — Deterministic non-production seeded Beta scenario` is the current bounded implementation step in PR #97.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -173,7 +173,7 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 ```
 
-M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 now adds only a Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection over existing durable Product-loop facts. Metrics remain observational, user-reported external use remains unverified, and the Formal Opportunity conversion uses Lite-owned durable handoff evidence rather than MarkReg SQL. After explicit Owner merge of M7-WP-02, the next authorized step is `M7-WP-03`.
+M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 added the Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection over existing durable Product-loop facts without analytics persistence or cross-service SQL. M7-WP-03 now adds only an explicitly enabled TEST/REHEARSAL reset-and-reseed harness over five owner-separated databases, with deterministic replay evidence and no production mutation or release authority. M7-WP-04 remains gated on explicit Owner merge of M7-WP-03.
 
 See:
 
@@ -188,5 +188,6 @@ See:
 - `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`;
 - `docs/tasks/MO-MVP-M7-WP-01-BETA-READINESS-CONTRACTS-AUTHORITY.md`;
 - `docs/tasks/MO-MVP-M7-WP-02-BOUNDED-CONVERSION-ANALYTICS.md`;
+- `docs/tasks/MO-MVP-M7-WP-03-DETERMINISTIC-SEEDED-BETA-SCENARIO.md`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.
