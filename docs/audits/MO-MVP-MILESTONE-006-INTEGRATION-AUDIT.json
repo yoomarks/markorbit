@@ -100,7 +100,8 @@
     "remediationM6ReliabilityRun": 31564944544,
     "remediationM6MatrixStepPassed": true,
     "remediationM6RunFinalConclusionWasFormattingOnly": true,
-    "finalDocumentationHeadMustRevalidate": true
+    "documentationReconciliationHeadSha": "12b883613b4182225210e635541773b910f6bde6",
+    "finalExactHeadValidationRequiredForMerge": true
   },
   "mergeRequiresExplicitOwnerAction": true,
   "auditCreatesReleaseOrDeployment": false
