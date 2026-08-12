@@ -1,0 +1,187 @@
+name: M7 WP-04 Three-loop Full-journey Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/m7-wp-04-three-loop-full-journey.yml'
+      - 'services/core/**'
+      - 'services/lite/**'
+      - 'services/markreg/**'
+      - 'services/execution/**'
+      - 'services/mgsn/**'
+      - 'services/capability-engine/**'
+      - 'apps/gateway/**'
+      - 'apps/lite-web/**'
+      - 'apps/markreg-web/**'
+      - 'packages/contracts/**'
+      - 'infrastructure/persistence/**'
+      - 'scripts/m7-wp-04-product-opportunity-runtime.integration.test.ts'
+      - 'scripts/m4-provider-runtime.integration.test.ts'
+      - 'scripts/m5-evidence-lifecycle-runtime.integration.test.ts'
+      - 'scripts/product-loop-closure-real-runtime.ts'
+      - 'scripts/order-journey-real-runtime.ts'
+      - 'scripts/m6-wp-06-capability-center-real-runtime.ts'
+      - 'scripts/validate-product-loop-closure-no-interception.mjs'
+      - 'scripts/validate-order-journey-no-interception.mjs'
+      - 'tests/e2e/product-loop-closure-real-runtime.spec.ts'
+      - 'tests/e2e/order-journey-real-runtime.spec.ts'
+      - 'tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts'
+      - 'playwright.product-loop-closure-real-runtime.config.ts'
+      - 'playwright.order-journey-real-runtime.config.ts'
+      - 'playwright.m6-wp-06-capability-center-real-runtime.config.ts'
+      - 'docs/tasks/MO-MVP-M7-WP-04-THREE-LOOP-FULL-JOURNEY-REAL-RUNTIME.md'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  three-loop-real-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      PGPASSWORD: markorbit-test-only
+      M7_WP04_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M7_WP04_PRODUCT_OPPORTUNITY_REQUIRED: '1'
+      M7_WP04_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_core
+      M7_WP04_LITE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_lite
+      M7_WP04_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_markreg
+      LITE_PRODUCT_LOOP_CLOSURE_BROWSER_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_product_browser
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_order_browser
+      M4_RUNTIME_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_m4_core
+      M4_RUNTIME_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_m4_execution
+      M4_RUNTIME_MGSN_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_m4_mgsn
+      M4_RUNTIME_INTEGRATION_REQUIRED: '1'
+      M5_RUNTIME_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_m5_core
+      M5_RUNTIME_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_m5_execution
+      M5_RUNTIME_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_m5_markreg
+      M5_RUNTIME_INTEGRATION_REQUIRED: '1'
+      CAPABILITY_CENTER_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_capability_browser
+      CAPABILITY_CENTER_EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_capability_execution
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify exact checkout
+        run: test "$(git rev-parse HEAD)" = "$M7_WP04_EXPECTED_HEAD_SHA"
+      - name: Create owner-separated acceptance databases
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE markorbit_wp04_core;
+          CREATE DATABASE markorbit_wp04_lite;
+          CREATE DATABASE markorbit_wp04_markreg;
+          CREATE DATABASE markorbit_wp04_product_browser;
+          CREATE DATABASE markorbit_wp04_order_browser;
+          CREATE DATABASE markorbit_wp04_m4_core;
+          CREATE DATABASE markorbit_wp04_m4_execution;
+          CREATE DATABASE markorbit_wp04_m4_mgsn;
+          CREATE DATABASE markorbit_wp04_m5_core;
+          CREATE DATABASE markorbit_wp04_m5_execution;
+          CREATE DATABASE markorbit_wp04_m5_markreg;
+          CREATE DATABASE markorbit_wp04_capability_browser;
+          CREATE DATABASE markorbit_wp04_capability_execution;
+          SQL
+      - name: Validate repository and ownership boundaries
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm format:check
+      - name: Build full Beta runtime dependency graph
+        run: pnpm build
+      - name: Typecheck affected owner graph
+        run: |
+          pnpm --filter @markorbit/core-service typecheck
+          pnpm --filter @markorbit/lite-service typecheck
+          pnpm --filter @markorbit/markreg-service typecheck
+          pnpm --filter @markorbit/execution-service typecheck
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/capability-engine typecheck
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/lite-web typecheck
+          pnpm --filter @markorbit/markreg-web typecheck
+      - name: Prove Core accepted Knowledge provenance boundary
+        run: pnpm --filter @markorbit/core-service exec vitest run tests/knowledge-product-loop-source-http.test.ts
+      - name: Loop 1 and 2 — accepted Knowledge through reviewed package and qualified MarkReg handoff
+        run: pnpm exec vitest run --no-file-parallelism scripts/m7-wp-04-product-opportunity-runtime.integration.test.ts
+      - name: Loop 3A — governed Order to Matter browser API path
+        run: node scripts/validate-order-journey-no-interception.mjs
+      - name: Loop 3B — provider return into Execution evidence receipt
+        run: pnpm exec vitest run --no-file-parallelism scripts/m4-provider-runtime.integration.test.ts
+      - name: Link root M5 integration workspace packages
+        run: |
+          mkdir -p node_modules/@markorbit
+          ln -sfn ../../packages/contracts node_modules/@markorbit/contracts
+          ln -sfn ../../packages/persistence node_modules/@markorbit/persistence
+      - name: Loop 3C — explicit evidence review through MarkReg lifecycle and outcome
+        run: pnpm exec vitest run --no-file-parallelism scripts/m5-evidence-lifecycle-runtime.integration.test.ts
+      - name: Validate Product-loop browser source has no interception
+        run: node scripts/validate-product-loop-closure-no-interception.mjs
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Critical web — Product loop desktop and 390px mobile
+        run: pnpm exec playwright test -c playwright.product-loop-closure-real-runtime.config.ts
+      - name: Critical web — Order and Matter desktop and 390px mobile
+        run: pnpm exec playwright test -c playwright.order-journey-real-runtime.config.ts
+      - name: Critical web — Capability reflection desktop and 390px mobile
+        run: pnpm exec playwright test -c playwright.m6-wp-06-capability-center-real-runtime.config.ts
+      - name: Verify generic Playwright suites do not replace real-runtime acceptance
+        run: node --test scripts/playwright-suite-boundary.test.mjs
+      - name: Emit exact-head acceptance evidence
+        run: |
+          mkdir -p .artifacts
+          cat > .artifacts/m7-wp-04-three-loop-acceptance.json <<JSON
+          {
+            "schemaVersion": 1,
+            "workPackage": "M7-WP-04",
+            "exactHeadSha": "$M7_WP04_EXPECTED_HEAD_SHA",
+            "result": "PASS",
+            "realServiceEndpointsRequired": true,
+            "ownerPostgresRequired": true,
+            "browserRouteInterceptionUsedForBusinessApis": false,
+            "desktopCriticalPathCovered": true,
+            "mobile390CriticalPathCovered": true,
+            "workspaceIsolationCovered": true,
+            "loops": {
+              "content": "PASS",
+              "opportunity": "PASS",
+              "governedWorkOutcomeReflection": "PASS"
+            },
+            "authority": {
+              "publishPackageIsPublished": false,
+              "formalOpportunityIsIntake": false,
+              "intakeIsOrderMatterOrFiling": false,
+              "evidenceReviewIsOfficialTruth": false,
+              "reflectionIsVerifiedCapability": false,
+              "releaseAuthorized": false
+            }
+          }
+          JSON
+      - name: Upload exact-head WP-04 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-wp-04-three-loop-acceptance-${{ github.run_id }}
+          path: .artifacts/m7-wp-04-three-loop-acceptance.json
+          if-no-files-found: ignore
+          retention-days: 14

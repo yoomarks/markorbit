@@ -14,6 +14,10 @@ export interface KnowledgeIntake {
 export interface KnowledgeIntakeRepository {
   createOrFind(intake: KnowledgeIntake): Promise<{ intake: KnowledgeIntake; created: boolean }>;
   findById(intakeId: string): Promise<KnowledgeIntake | null>;
+  findAcceptedByReadyPackage(
+    workspaceId: string,
+    readyPackageId: string
+  ): Promise<KnowledgeIntake | null>;
   markAccepted(intakeId: string): Promise<KnowledgeIntake | null>;
 }
 
@@ -83,6 +87,17 @@ export class MemoryKnowledgeIntakeRepository implements KnowledgeIntakeRepositor
     return value ? clone(value) : null;
   }
 
+  async findAcceptedByReadyPackage(workspaceId: string, readyPackageId: string) {
+    await Promise.resolve();
+    const value = [...this.rows.values()].find(
+      (row) =>
+        row.status === 'ACCEPTED' &&
+        row.request.workspaceId.toLowerCase() === workspaceId.toLowerCase() &&
+        row.request.readyPackageId === readyPackageId
+    );
+    return value ? clone(value) : null;
+  }
+
   async markAccepted(intakeId: string) {
     await Promise.resolve();
     const entry = [...this.rows.entries()].find(([, row]) => row.intakeId === intakeId);
@@ -145,6 +160,17 @@ export class PostgresKnowledgeIntakeRepository implements KnowledgeIntakeReposit
     const result = await this.query.query('SELECT * FROM knowledge_intakes WHERE intake_id=$1', [
       intakeId
     ]);
+    return result.rows[0] ? mapRow(result.rows[0] as Row) : null;
+  }
+
+  async findAcceptedByReadyPackage(workspaceId: string, readyPackageId: string) {
+    const result = await this.query.query(
+      `SELECT * FROM knowledge_intakes
+       WHERE workspace_id=$1 AND ready_package_id=$2 AND status='ACCEPTED'
+       ORDER BY received_at DESC, intake_id DESC
+       LIMIT 1`,
+      [workspaceId, readyPackageId]
+    );
     return result.rows[0] ? mapRow(result.rows[0] as Row) : null;
   }
 
