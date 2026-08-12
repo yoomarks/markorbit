@@ -242,8 +242,29 @@ Milestone 4 now has a **GO** recommendation for its approved engineering scope. 
 - M6-WP-07 — Reliability, privacy and replay matrix (**merged in PR #92**)
   - Merge: `b903409f9202b7dab043b00b9f97c719d4e6b412`; exact PR head `d7fe1a02a7a84f9c876054b51376acd7a202350f` and merged baseline share tree `029e2b73fc3057f3c8b38d839b00dc2a56531d68`.
   - Evidence: `docs/validation/MO-MVP-MILESTONE-006-RELIABILITY-MATRIX.json`, `scripts/run-milestone6-reliability.mjs`, `scripts/validate-milestone6-reliability-matrix.mjs`, `scripts/validate-m6-capability-center-no-interception.mjs` and `.github/workflows/milestone-6-reliability.yml`.
-- M6-WP-08 — Independent Milestone 6 integration and authority audit (**implementation in PR #93; final recommendation GO pending explicit Owner merge**)
+- M6-WP-08 — Independent Milestone 6 integration and authority audit (**merged in PR #93; final recommendation GO**)
+  - Merge: `f63fb857663fc05879c26716169cb3186613f32b`.
   - Initial audit result: **FIX** because the single WP-06/WP-07 browser acceptance path used an in-process Capability Observation source-authority fixture instead of the real Execution-owned reviewed-source HTTP boundary.
-  - PR #93 closes the bounded gap with a separate Execution owner database, durable Evidence Review Decision, real Execution HTTP source verification and a permanent regression guard; documentation drift is also reconciled.
+  - PR #93 closed the bounded gap with a separate Execution owner database, durable Evidence Review Decision, real Execution HTTP source verification and a permanent regression guard; documentation drift was also reconciled.
   - Evidence: `docs/audits/MO-MVP-MILESTONE-006-INTEGRATION-AUDIT.{md,json}` and `docs/tasks/MO-MVP-M6-WP-08-INDEPENDENT-INTEGRATION-AUTHORITY-AUDIT.md`.
-  - The audit creates no release/deployment, Capability verification, Canon mutation, public ranking/certification, Payment/Invoice, legal appointment, Filing Submission, Official Truth or protected external action.
+  - No release/deployment, Capability verification, Canon mutation, public ranking/certification, Payment/Invoice, legal appointment, Filing Submission, Official Truth or protected external action was created.
+
+## Milestone 7
+
+- TASK 032A — Milestone 7 scope and architecture lock (**proposed; awaiting explicit Owner approval**)
+  - Numbering note: historical `MO-MVP-TASK-032` remains reserved for Class and Goods Recommendation; this planning task does not rewrite it.
+  - Baseline: M6-WP-08 final GO merge `f63fb857663fc05879c26716169cb3186613f32b` / PR #93.
+  - Proposed direction: `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING`.
+  - Scope: `docs/planning/MO-MVP-MILESTONE-007-SCOPE-LOCK.md`.
+  - Delivery graph: `M7-WP-01` through `M7-WP-07` in `docs/planning/MO-MVP-MILESTONE-007-DELIVERY-PLAN.md`.
+  - Machine-readable plan: `docs/planning/MO-MVP-MILESTONE-007-PLAN.json`.
+  - Planning task: `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`.
+  - Planning-only lock: `Product metric != business authority`; `Seeded demo record != customer/provider/official truth`; `Deployment Rehearsal != Production Deployment`; `Beta Release Candidate != Released Beta`; `Green CI != Owner Release Authorization`.
+  - Merge of TASK 032A would approve only the bounded M7 direction and work-package graph; it would not deploy production, publish a Beta/tag or authorize a protected business action.
+- M7-WP-01 — Beta readiness contracts, gap inventory and authority boundary (**not started; only after TASK 032A approval**)
+- M7-WP-02 — Bounded Content/Opportunity conversion analytics (**not started**)
+- M7-WP-03 — Deterministic non-production seeded Beta scenario (**not started**)
+- M7-WP-04 — Three-loop full-journey Beta real-runtime acceptance (**not started**)
+- M7-WP-05 — Deployment rehearsal, migration and rollback/recovery evidence (**not started**)
+- M7-WP-06 — Exact-head Beta RC reliability, responsive and known-limits matrix (**not started**)
+- M7-WP-07 — Independent Beta readiness and authority audit (**not started**)
