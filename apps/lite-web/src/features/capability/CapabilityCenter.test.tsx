@@ -66,8 +66,8 @@ const ready: CapabilityCenterView = {
 
 describe('Lite Capability Center', () => {
   it('renders private authority semantics and dispositions the exact candidate', async () => {
-    const load = vi.fn(async () => ready);
-    const disposition = vi.fn(async () => ({}));
+    const load = vi.fn(() => Promise.resolve(ready));
+    const disposition = vi.fn(() => Promise.resolve({}));
     const client: CapabilityCenterClient = { load, disposition };
     render(<CapabilityCenter workspaceId={workspaceId} client={client} />);
 
@@ -90,9 +90,9 @@ describe('Lite Capability Center', () => {
 
   it('renders permission failure without pretending private state is empty', async () => {
     const client: CapabilityCenterClient = {
-      load: async () =>
+      load: () =>
         Promise.reject(new CapabilityCenterHttpError(403, 'PERMISSION_DENIED', 'Denied.')),
-      disposition: async () => ({})
+      disposition: () => Promise.resolve({})
     };
     render(<CapabilityCenter workspaceId={workspaceId} client={client} />);
     expect(await screen.findByText('Capability Center permission required')).toBeTruthy();
