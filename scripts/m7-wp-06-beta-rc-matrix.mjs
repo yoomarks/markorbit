@@ -5,6 +5,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const candidatePath = 'infrastructure/rehearsal/m7-wp-06-beta-rc.json';
+const predecessorGateEvidencePath = '.artifacts/m7-wp-06-required-gates.json';
 const requiredKnownLimitIds = [
   'LITE_LOCAL_WORKSPACE_SCOPE_ANCHOR',
   'FORWARD_ONLY_MIGRATIONS_NO_DOWN',
@@ -29,6 +30,13 @@ const requiredGateIds = [
   'm7-wp-04-three-loop-full-journey',
   'm7-wp-05-deployment-rehearsal',
   'm7-wp-06-beta-rc-matrix'
+];
+const requiredDispatchedWorkflows = [
+  'product-loop-closure-reliability.yml',
+  'm7-wp-02-conversion-analytics.yml',
+  'm7-wp-03-seeded-beta-scenario.yml',
+  'm7-wp-04-three-loop-full-journey.yml',
+  'm7-wp-05-deployment-rehearsal.yml'
 ];
 
 function invariant(condition, message) {
@@ -118,6 +126,16 @@ await requireText('.github/workflows/m7-wp-05-deployment-rehearsal.yml', [
   'contents: read'
 ]);
 
+const predecessorGateEvidence = await readJson(predecessorGateEvidencePath);
+invariant(predecessorGateEvidence.exactHeadSha === exactHeadSha, 'predecessor gate evidence must match the exact candidate head');
+const dispatchedByWorkflow = new Map(predecessorGateEvidence.gates.map((gate) => [gate.workflow, gate]));
+for (const workflow of requiredDispatchedWorkflows) {
+  const gate = dispatchedByWorkflow.get(workflow);
+  invariant(gate, `missing dispatched predecessor result: ${workflow}`);
+  invariant(gate.conclusion === 'success', `dispatched predecessor gate must pass: ${workflow}`);
+  invariant(Number.isInteger(gate.runId) && gate.runId > 0, `dispatched predecessor gate must record a run id: ${workflow}`);
+}
+
 const fingerprintInputs = [];
 for (const relativePath of [...candidate.fingerprintInputs].sort()) {
   const content = await readFile(path.join(root, relativePath));
@@ -140,6 +158,7 @@ const evidence = {
   fingerprintInputs,
   requiredGates: candidate.requiredGates,
   requiredCoverage: candidate.requiredCoverage,
+  pathFilteredPredecessorGates: predecessorGateEvidence.gates,
   knownLimits: {
     source: candidate.knownLimitsFile,
     ids: knownLimits.limits.map((limit) => limit.id),
