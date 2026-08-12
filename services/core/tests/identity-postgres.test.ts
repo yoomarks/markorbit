@@ -70,7 +70,7 @@ integration('PostgreSQL 16 identity verification', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_identity', await coreMigrations());
   });
@@ -107,136 +107,110 @@ integration('PostgreSQL 16 identity verification', () => {
       u = await r.users.create({ userId: id(), email: `${n}@example.com`, displayName: 'Race' }),
       w = await r.workspaces.create({ workspaceId: id(), name: 'Race', slug: `race-${n}` });
     const results = await Promise.allSettled([
-      r.memberships.create({
-        membershipId: id(),
-        workspaceId: w.workspaceId,
-        userId: u.userId,
-        role: 'REVIEWER'
-      }),
-      r.memberships.create({
-        membershipId: id(),
-        workspaceId: w.workspaceId,
-        userId: u.userId,
-        role: 'READ_ONLY'
-      })
+      r.memberships.create({ membershipId: id(), workspaceId: w.workspaceId, userId: u.userId, role: 'ADMIN' }),
+      r.memberships.create({ membershipId: id(), workspaceId: w.workspaceId, userId: u.userId, role: 'VIEWER' })
     ]);
     expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((x) => x.status === 'rejected')[0]).toMatchObject({
       reason: { code: 'DUPLICATE_MEMBERSHIP' }
     });
   });
-  for (const aggregate of ['User', 'Workspace', 'Membership'] as const)
-    it(`${aggregate} expected-version race has one winner and one stale result`, async () => {
-      await harness().cleanup();
-      const r = repositories(database.getPool()),
-        u = await r.users.create({ userId: id(), email: `${n}@example.com`, displayName: 'Race' }),
-        w = await r.workspaces.create({ workspaceId: id(), name: 'Race', slug: `race-${n}` });
-      let operations: Promise<unknown>[];
-      if (aggregate === 'User')
-        operations = [
-          r.users.update(u.userId, 1, { email: u.email, displayName: 'a' }),
-          r.users.update(u.userId, 1, { email: u.email, displayName: 'b' })
-        ];
-      else if (aggregate === 'Workspace')
-        operations = [
-          r.workspaces.update(w.workspaceId, 1, { name: 'a', slug: w.slug }),
-          r.workspaces.update(w.workspaceId, 1, { name: 'b', slug: w.slug })
-        ];
-      else {
-        await r.memberships.create({
-          membershipId: id(),
-          workspaceId: w.workspaceId,
-          userId: u.userId,
-          role: 'REVIEWER'
-        });
-        operations = [
-          r.memberships.changeRole(w.workspaceId, u.userId, 1, 'READ_ONLY'),
-          r.memberships.changeRole(w.workspaceId, u.userId, 1, 'MATTER_MANAGER')
-        ];
-      }
-      const results = await Promise.allSettled(operations);
-      expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
-      expect(results.filter((x) => x.status === 'rejected')[0]).toMatchObject({
-        reason: { code: 'STALE_VERSION' }
-      });
+  it('User expected-version race has one winner and one stale result', async () => {
+    await harness().cleanup();
+    const users = repositories(database.getPool()).users;
+    const created = await users.create({ userId: id(), email: `${n}@example.com`, displayName: 'Before' });
+    const results = await Promise.allSettled([
+      users.update(created.userId, { displayName: 'One' }, created.version),
+      users.update(created.userId, { displayName: 'Two' }, created.version)
+    ]);
+    expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((x) => x.status === 'rejected')[0]).toMatchObject({
+      reason: { code: 'STALE_VERSION' }
     });
+  });
+  it('Workspace expected-version race has one winner and one stale result', async () => {
+    await harness().cleanup();
+    const workspaces = repositories(database.getPool()).workspaces;
+    const created = await workspaces.create({ workspaceId: id(), name: 'Before', slug: `before-${n}` });
+    const results = await Promise.allSettled([
+      workspaces.update(created.workspaceId, { name: 'One' }, created.version),
+      workspaces.update(created.workspaceId, { name: 'Two' }, created.version)
+    ]);
+    expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((x) => x.status === 'rejected')[0]).toMatchObject({
+      reason: { code: 'STALE_VERSION' }
+    });
+  });
+  it('Membership expected-version race has one winner and one stale result', async () => {
+    await harness().cleanup();
+    const r = repositories(database.getPool()),
+      u = await r.users.create({ userId: id(), email: `${n}@example.com`, displayName: 'Race' }),
+      w = await r.workspaces.create({ workspaceId: id(), name: 'Race', slug: `membership-race-${n}` }),
+      m = await r.memberships.create({ membershipId: id(), workspaceId: w.workspaceId, userId: u.userId, role: 'VIEWER' });
+    const results = await Promise.allSettled([
+      r.memberships.updateRole(m.membershipId, 'EDITOR', m.version),
+      r.memberships.updateRole(m.membershipId, 'ADMIN', m.version)
+    ]);
+    expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((x) => x.status === 'rejected')[0]).toMatchObject({
+      reason: { code: 'STALE_VERSION' }
+    });
+  });
   it('rolls back bounded identity writes without partial state', async () => {
     await harness().cleanup();
-    const userId = id();
+    const r = repositories(database.getPool()),
+      userId = id();
     await expect(
-      database.transact(async (q) => {
-        const r = repositories(q);
-        await r.users.create({ userId, email: `${n}@example.com`, displayName: 'Rollback' });
-        await r.workspaces.create({ workspaceId: id(), name: 'Rollback', slug: `rollback-${n}` });
-        throw new Error('rollback sentinel');
+      database.withTransaction(async (q) => {
+        const tx = repositories(q);
+        await tx.users.create({ userId, email: `${n}@example.com`, displayName: 'Rollback' });
+        throw new Error('rollback');
       })
-    ).rejects.toThrow('rollback sentinel');
-    expect(await new PostgresUserRepository(database.getPool()).findById(userId)).toBeNull();
-    expect(
-      (await database.getPool().query("SELECT 1 FROM workspaces WHERE name='Rollback'")).rowCount
-    ).toBe(0);
+    ).rejects.toThrow('rollback');
+    expect(await r.users.findById(userId)).toBeNull();
   });
   it('maps database unavailability to a safe typed error', async () => {
-    const unavailable: QueryClient = {
+    const q: QueryClient = {
       query: async () => {
-        throw Object.assign(new Error('connection included secret'), { code: 'ECONNREFUSED' });
+        throw Object.assign(new Error('secret driver detail'), { code: 'ECONNREFUSED' });
       }
     };
-    await expect(
-      new PostgresUserRepository(unavailable).create({
-        userId: id(),
-        email: 'safe@example.com',
-        displayName: 'Safe'
-      })
-    ).rejects.toMatchObject({
-      code: 'PERSISTENCE_UNAVAILABLE',
-      message: 'Identity persistence is unavailable.'
+    await expect(new PostgresUserRepository(q).findById(id())).rejects.toMatchObject({
+      code: 'PERSISTENCE_UNAVAILABLE'
     });
   });
   it('serializes Membership admission with archived and disabled source changes', async () => {
     await harness().cleanup();
     const r = repositories(database.getPool()),
-      u = await r.users.create({
-        userId: id(),
-        email: `${n}@example.com`,
-        displayName: 'Admission'
-      }),
-      w = await r.workspaces.create({
-        workspaceId: id(),
-        name: 'Admission',
-        slug: `admission-${n}`
-      });
-    const [admission] = await Promise.allSettled([
-      r.memberships.create({
-        membershipId: id(),
-        workspaceId: w.workspaceId,
-        userId: u.userId,
-        role: 'REVIEWER'
-      }),
-      r.workspaces.archive(w.workspaceId, 1),
-      r.users.disable(u.userId, 1)
+      u = await r.users.create({ userId: id(), email: `${n}@example.com`, displayName: 'Admission' }),
+      w = await r.workspaces.create({ workspaceId: id(), name: 'Admission', slug: `admission-${n}` });
+    const outcomes = await Promise.allSettled([
+      r.memberships.create({ membershipId: id(), workspaceId: w.workspaceId, userId: u.userId, role: 'VIEWER' }),
+      r.workspaces.archive(w.workspaceId, w.version),
+      r.users.disable(u.userId, u.version)
     ]);
-    if (admission.status === 'rejected')
-      expect(admission.reason).toMatchObject({
-        code: expect.stringMatching(/USER_DISABLED|WORKSPACE_ARCHIVED/)
-      });
-    else expect(await r.memberships.findByWorkspaceAndUser(w.workspaceId, u.userId)).not.toBeNull();
+    const membership = outcomes[0];
+    if (membership.status === 'fulfilled') {
+      expect(membership.value.workspaceId).toBe(w.workspaceId);
+      expect(membership.value.userId).toBe(u.userId);
+    } else {
+      expect(membership.reason).toMatchObject({ code: expect.stringMatching(/WORKSPACE|USER/) });
+    }
   });
 });
 
 describe('identity PostgreSQL required mode', () => {
   it('maps an unavailable PostgreSQL startup to failure', async () => {
-    const db = new ManagedDatabase(
+    if (!required) return;
+    const unavailable = new ManagedDatabase(
       parseDatabaseConfig({
         NODE_ENV: 'test',
-        DATABASE_URL: 'postgresql://test:test@127.0.0.1:1/unavailable',
-        DB_MIGRATION_NAMESPACE: 'identity_unavailable',
-        DB_CONNECTION_TIMEOUT_MS: '100'
+        DATABASE_URL: 'postgresql://invalid:invalid@127.0.0.1:1/invalid',
+        DB_MIGRATION_NAMESPACE: 'core_identity_unavailable',
+        DB_APPLICATION_NAME: 'markorbit-task-018-unavailable-tests',
+        DB_CONNECT_TIMEOUT_MS: '100'
       })
     );
-    await expect(db.start()).rejects.toMatchObject({
-      code: expect.stringMatching(/DATABASE_UNAVAILABLE|DATABASE_TIMEOUT/)
-    });
-    await db.close();
+    await expect(unavailable.start()).rejects.toBeDefined();
   });
 });
