@@ -4,10 +4,7 @@ import {
   type CapabilityCenterView,
   type ReflectionCandidate
 } from '@markorbit/contracts';
-import {
-  CapabilityCenterHttpError,
-  type CapabilityCenterClient
-} from '../../api/capability.js';
+import { CapabilityCenterHttpError, type CapabilityCenterClient } from '../../api/capability.js';
 import { CapabilityCenter } from './CapabilityCenter.js';
 
 const workspaceId = '36363636-3636-4363-8363-363636363636';
@@ -19,9 +16,15 @@ const candidate: ReflectionCandidate = {
   subjectUserId,
   version: 2,
   runtimeCapability: { id: 'runtime-capability_story', version: 1 },
-  ledgerEntries: [{ id: 'capability-ledger_11111111111111111111111111111111', sourceFingerprintSha256: 'a'.repeat(64) }],
+  ledgerEntries: [
+    {
+      id: 'capability-ledger_11111111111111111111111111111111',
+      sourceFingerprintSha256: 'a'.repeat(64)
+    }
+  ],
   explanation: 'Generated from one governed evidence entry for private reflection only.',
-  proposedPrivateReflection: 'I reviewed governed trademark evidence in this private Capability line.',
+  proposedPrivateReflection:
+    'I reviewed governed trademark evidence in this private Capability line.',
   generation: { policyVersion: 'story-policy-v1' },
   status: 'PENDING',
   private: true,
@@ -65,7 +68,10 @@ const ready: CapabilityCenterView = {
       evidenceCount: 1,
       latestEvidenceAt: '2026-08-12T01:50:00.000Z',
       acceptedReflections: [],
-      outstandingReflectionCandidate: { id: candidate.reflectionCandidateId, version: candidate.version },
+      outstandingReflectionCandidate: {
+        id: candidate.reflectionCandidateId,
+        version: candidate.version
+      },
       visibility: 'PRIVATE',
       numericProfessionalScore: null,
       verifiedBadge: false,
@@ -100,7 +106,10 @@ const ready: CapabilityCenterView = {
   authority: capabilityLearningNoAuthorityConsequences
 };
 
-const client = (load: CapabilityCenterClient['load'], disposition: CapabilityCenterClient['disposition'] = async () => ({})): CapabilityCenterClient => ({ load, disposition });
+const client = (
+  load: CapabilityCenterClient['load'],
+  disposition: CapabilityCenterClient['disposition'] = async () => ({})
+): CapabilityCenterClient => ({ load, disposition });
 
 const meta = {
   title: 'Lite/Capability Center',
@@ -113,26 +122,61 @@ type Story = StoryObj<typeof meta>;
 export const Ready: Story = { args: { client: client(async () => ready) } };
 export const Empty: Story = {
   args: {
-    client: client(async () => ({ ...ready, ledgerEntries: [], profiles: [], twin: null, pendingCandidates: [] }))
+    client: client(async () => ({
+      ...ready,
+      ledgerEntries: [],
+      profiles: [],
+      twin: null,
+      pendingCandidates: []
+    }))
   }
 };
 export const Partial: Story = {
-  args: { client: client(async () => ({ ...ready, profiles: [], twin: null, pendingCandidates: [] })) }
+  args: {
+    client: client(async () => ({ ...ready, profiles: [], twin: null, pendingCandidates: [] }))
+  }
 };
 export const Loading: Story = {
   args: { client: client(() => new Promise<CapabilityCenterView>(() => undefined)) }
 };
 export const PermissionDenied: Story = {
-  args: { client: client(async () => Promise.reject(new CapabilityCenterHttpError(403, 'PERMISSION_DENIED', 'Private Capability access is not permitted.'))) }
+  args: {
+    client: client(async () =>
+      Promise.reject(
+        new CapabilityCenterHttpError(
+          403,
+          'PERMISSION_DENIED',
+          'Private Capability access is not permitted.'
+        )
+      )
+    )
+  }
 };
 export const RecoverableError: Story = {
-  args: { client: client(async () => Promise.reject(new CapabilityCenterHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Capability Engine is temporarily unavailable.'))) }
+  args: {
+    client: client(async () =>
+      Promise.reject(
+        new CapabilityCenterHttpError(
+          503,
+          'DOWNSTREAM_UNAVAILABLE',
+          'Capability Engine is temporarily unavailable.'
+        )
+      )
+    )
+  }
 };
 export const StaleDisposition: Story = {
   args: {
     client: client(
       async () => ready,
-      async () => Promise.reject(new CapabilityCenterHttpError(409, 'STALE_CANDIDATE', 'Reflection Candidate is no longer current.'))
+      async () =>
+        Promise.reject(
+          new CapabilityCenterHttpError(
+            409,
+            'STALE_CANDIDATE',
+            'Reflection Candidate is no longer current.'
+          )
+        )
     )
   }
 };

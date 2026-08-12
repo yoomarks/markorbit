@@ -93,7 +93,11 @@ async function seedWorkspace(
   workspaceId: string,
   slug: 'desktop' | 'mobile'
 ) {
-  await workspaces.create({ workspaceId, name: `WP06 Capability ${slug}`, slug: `wp06-capability-${slug}` });
+  await workspaces.create({
+    workspaceId,
+    name: `WP06 Capability ${slug}`,
+    slug: `wp06-capability-${slug}`
+  });
   await memberships.create({
     membershipId: `membership_wp06_${slug}`,
     workspaceId,
@@ -163,8 +167,19 @@ async function main() {
 
   const pool = database.getPool();
   const registry = new PostgresRuntimeCapabilityRegistry(database, pool, () => at);
-  const ledger = new PostgresCapabilityObservationLedger(database, pool, registry, sourceAuthority, () => at);
-  const candidates = new PostgresPrivateReflectionCandidateService(database, pool, registry, () => at);
+  const ledger = new PostgresCapabilityObservationLedger(
+    database,
+    pool,
+    registry,
+    sourceAuthority,
+    () => at
+  );
+  const candidates = new PostgresPrivateReflectionCandidateService(
+    database,
+    pool,
+    registry,
+    () => at
+  );
   const reflections = new PostgresReflectionDispositionProfileService(database, pool, () => at);
   const [desktopCandidate, mobileCandidate] = await Promise.all([
     seedWorkspace(registry, ledger, candidates, desktopWorkspaceId, 'desktop'),
@@ -195,7 +210,16 @@ async function main() {
 
   vite = spawn(
     'pnpm',
-    ['--filter', '@markorbit/lite-web', 'dev', '--host', '127.0.0.1', '--port', '4485', '--strictPort'],
+    [
+      '--filter',
+      '@markorbit/lite-web',
+      'dev',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      '4485',
+      '--strictPort'
+    ],
     {
       env: { ...process.env, VITE_LITE_GATEWAY_URL: 'http://127.0.0.1:4420' },
       stdio: 'inherit'

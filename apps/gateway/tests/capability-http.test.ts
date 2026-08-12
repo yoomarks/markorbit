@@ -48,14 +48,19 @@ describe('Gateway private Capability Center boundary', () => {
       expect(url).toBe('http://capability.test/internal/v1/capability-center');
       const headers = init.headers as Record<string, string>;
       expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
-      const envelope = JSON.parse(Buffer.from(headers['x-markorbit-principal']!, 'base64url').toString('utf8')) as {
+      const envelope = JSON.parse(
+        Buffer.from(headers['x-markorbit-principal']!, 'base64url').toString('utf8')
+      ) as {
         principal: WorkspacePrincipal;
       };
       expect(envelope.principal.userId).toBe(principal.userId);
-      return new Response(JSON.stringify({ schemaVersion: 1, workspaceId, subjectUserId: principal.userId }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      });
+      return new Response(
+        JSON.stringify({ schemaVersion: 1, workspaceId, subjectUserId: principal.userId }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
     });
     vi.stubGlobal('fetch', downstream);
     const result = await route('GET', '/api/lite/capability-center').handle({

@@ -44,7 +44,10 @@ function sourceLabel(candidate: Readonly<CapabilityCenterPendingCandidate>): str
 }
 
 export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps) {
-  const activeClient = useMemo(() => client ?? createCapabilityCenterClient(workspaceId), [client, workspaceId]);
+  const activeClient = useMemo(
+    () => client ?? createCapabilityCenterClient(workspaceId),
+    [client, workspaceId]
+  );
   const [state, setState] = useState<ViewState>({ kind: 'LOADING' });
   const [savingId, setSavingId] = useState<string>();
   const [mutationError, setMutationError] = useState<CapabilityCenterHttpError>();
@@ -61,7 +64,11 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
         error:
           error instanceof CapabilityCenterHttpError
             ? error
-            : new CapabilityCenterHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Capability Center is unavailable.')
+            : new CapabilityCenterHttpError(
+                503,
+                'DOWNSTREAM_UNAVAILABLE',
+                'Capability Center is unavailable.'
+              )
       });
     }
   }, [activeClient]);
@@ -82,13 +89,19 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
         expectedCandidateFingerprintSha256: pending.candidateFingerprintSha256,
         outcome
       });
-      setStatus(`Private reflection ${outcome.toLowerCase()} and durable profile projection rebuilt.`);
+      setStatus(
+        `Private reflection ${outcome.toLowerCase()} and durable profile projection rebuilt.`
+      );
       await load();
     } catch (error) {
       setMutationError(
         error instanceof CapabilityCenterHttpError
           ? error
-          : new CapabilityCenterHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Capability reflection could not be saved.')
+          : new CapabilityCenterHttpError(
+              503,
+              'DOWNSTREAM_UNAVAILABLE',
+              'Capability reflection could not be saved.'
+            )
       );
     } finally {
       setSavingId(undefined);
@@ -100,7 +113,9 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
     const permission = [401, 403].includes(state.error.status);
     return (
       <ErrorState
-        title={permission ? 'Capability Center permission required' : 'Capability Center unavailable'}
+        title={
+          permission ? 'Capability Center permission required' : 'Capability Center unavailable'
+        }
         description={state.error.message}
         {...(state.error.status >= 500 ? { onRetry: () => void load() } : {})}
       />
@@ -109,9 +124,17 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
 
   const { view } = state;
   const empty =
-    !view.ledgerEntries.length && !view.profiles.length && !view.pendingCandidates.length && !view.twin;
+    !view.ledgerEntries.length &&
+    !view.profiles.length &&
+    !view.pendingCandidates.length &&
+    !view.twin;
   const partial =
-    !empty && (!view.twin || !view.profiles.length || (view.ledgerEntries.length > 0 && !view.pendingCandidates.length && !view.profiles.some((profile) => profile.acceptedReflections.length)));
+    !empty &&
+    (!view.twin ||
+      !view.profiles.length ||
+      (view.ledgerEntries.length > 0 &&
+        !view.pendingCandidates.length &&
+        !view.profiles.some((profile) => profile.acceptedReflections.length)));
 
   return (
     <>
@@ -121,19 +144,25 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
         actions={<Badge>Private</Badge>}
       />
       <Alert title="Private reflection boundary">
-        Observed evidence is not verified Capability. Accepting a reflection updates only your private projection; it does not create certification, ranking, canonical truth, permission, appointment, filing, or external action.
+        Observed evidence is not verified Capability. Accepting a reflection updates only your
+        private projection; it does not create certification, ranking, canonical truth, permission,
+        appointment, filing, or external action.
       </Alert>
 
       {mutationError && staleCodes.has(mutationError.code) && (
         <Alert tone="warning" title="Reflection changed">
-          This candidate is stale or already decided. Reload the current private state before taking another action.{' '}
+          This candidate is stale or already decided. Reload the current private state before taking
+          another action.{' '}
           <Button variant="secondary" onClick={() => void load()}>
             Reload current state
           </Button>
         </Alert>
       )}
       {mutationError && !staleCodes.has(mutationError.code) && (
-        <Alert tone={mutationError.status >= 500 ? 'warning' : 'danger'} title="Reflection was not saved">
+        <Alert
+          tone={mutationError.status >= 500 ? 'warning' : 'danger'}
+          title="Reflection was not saved"
+        >
           {mutationError.message}
         </Alert>
       )}
@@ -148,7 +177,8 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
         <>
           {partial && (
             <Alert tone="warning" title="Partial private Capability state">
-              Some governed evidence is available, but a complete current Profile/Twin or reflection decision is not yet available. No missing state is inferred.
+              Some governed evidence is available, but a complete current Profile/Twin or reflection
+              decision is not yet available. No missing state is inferred.
             </Alert>
           )}
 
@@ -167,12 +197,17 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
                   />
                   <ul className="lite-related">
                     {view.twin.capabilitySummaries.map((summary) => (
-                      <li key={`${summary.runtimeCapabilityDefinitionId}:${summary.runtimeCapabilityVersion}`}>
+                      <li
+                        key={`${summary.runtimeCapabilityDefinitionId}:${summary.runtimeCapabilityVersion}`}
+                      >
                         <strong>{summary.runtimeCapabilityDefinitionId}</strong>
                         <span>
-                          v{summary.runtimeCapabilityVersion} · {summary.evidenceCount} governed evidence entries
+                          v{summary.runtimeCapabilityVersion} · {summary.evidenceCount} governed
+                          evidence entries
                         </span>
-                        {summary.acceptedPrivateReflection && <p>{summary.acceptedPrivateReflection}</p>}
+                        {summary.acceptedPrivateReflection && (
+                          <p>{summary.acceptedPrivateReflection}</p>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -187,13 +222,17 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
               {view.profiles.length ? (
                 <ul className="lite-related">
                   {view.profiles.map((profile) => (
-                    <li key={`${profile.runtimeCapability.id}:${profile.runtimeCapability.version}`}>
+                    <li
+                      key={`${profile.runtimeCapability.id}:${profile.runtimeCapability.version}`}
+                    >
                       <strong>{profile.runtimeCapability.id}</strong>
                       <span>
-                        Runtime v{profile.runtimeCapability.version} · {profile.evidenceCount} evidence entries
+                        Runtime v{profile.runtimeCapability.version} · {profile.evidenceCount}{' '}
+                        evidence entries
                       </span>
                       <p>
-                        {profile.acceptedReflections.at(-1)?.text ?? 'No accepted private reflection yet.'}
+                        {profile.acceptedReflections.at(-1)?.text ??
+                          'No accepted private reflection yet.'}
                       </p>
                       <small>Verified badge: No · Numeric professional score: None</small>
                     </li>
@@ -217,13 +256,18 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
                       <div className="lite-row">
                         <div>
                           <h3>Reflection Candidate</h3>
-                          <p>{candidate.runtimeCapability.id} · runtime v{candidate.runtimeCapability.version}</p>
+                          <p>
+                            {candidate.runtimeCapability.id} · runtime v
+                            {candidate.runtimeCapability.version}
+                          </p>
                         </div>
                         <Badge>Candidate v{candidate.version}</Badge>
                       </div>
                       <p>{candidate.explanation}</p>
                       <blockquote>{candidate.proposedPrivateReflection}</blockquote>
-                      <p>{sourceLabel(pending)} · policy {candidate.generation.policyVersion}</p>
+                      <p>
+                        {sourceLabel(pending)} · policy {candidate.generation.policyVersion}
+                      </p>
                       <p style={{ overflowWrap: 'anywhere' }}>
                         <small>Candidate fingerprint: {pending.candidateFingerprintSha256}</small>
                       </p>
@@ -231,10 +275,18 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
                         <Button disabled={saving} onClick={() => void decide(pending, 'ACCEPTED')}>
                           Accept private reflection
                         </Button>
-                        <Button variant="secondary" disabled={saving} onClick={() => void decide(pending, 'DEFERRED')}>
+                        <Button
+                          variant="secondary"
+                          disabled={saving}
+                          onClick={() => void decide(pending, 'DEFERRED')}
+                        >
                           Defer reflection
                         </Button>
-                        <Button variant="secondary" disabled={saving} onClick={() => void decide(pending, 'REJECTED')}>
+                        <Button
+                          variant="secondary"
+                          disabled={saving}
+                          onClick={() => void decide(pending, 'REJECTED')}
+                        >
                           Reject reflection
                         </Button>
                       </div>
@@ -256,7 +308,8 @@ export function CapabilityCenter({ workspaceId, client }: CapabilityCenterProps)
                     <strong>{entry.observation.sourceKind}</strong>
                     <time>{entry.recordedAt}</time>
                     <p>
-                      {entry.observation.sourceOwner} · {entry.observation.sourceId} · version {String(entry.observation.sourceVersion)}
+                      {entry.observation.sourceOwner} · {entry.observation.sourceId} · version{' '}
+                      {String(entry.observation.sourceVersion)}
                     </p>
                     <small style={{ overflowWrap: 'anywhere' }}>
                       Source fingerprint: {entry.observation.sourceFingerprintSha256}

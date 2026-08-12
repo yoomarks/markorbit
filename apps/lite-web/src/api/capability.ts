@@ -1,7 +1,4 @@
-import type {
-  CapabilityCenterView,
-  ReflectionDispositionOutcome
-} from '@markorbit/contracts';
+import type { CapabilityCenterView, ReflectionDispositionOutcome } from '@markorbit/contracts';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
 

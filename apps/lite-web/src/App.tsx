@@ -27,6 +27,7 @@ import { ProfessionalReview } from './features/professional-review/ProfessionalR
 import { ExecutionReleaseView } from './features/execution-release/ExecutionRelease.js';
 import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 import { TodayWorkspace } from './features/today/TodayWorkspace.js';
+import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
 
 const nav = [
   'Today',
@@ -39,7 +40,13 @@ const nav = [
   'Guide'
 ] as const;
 type Surface =
-  'today' | 'matters' | 'customers' | 'opportunities' | 'professional-review' | 'execution-release';
+  | 'today'
+  | 'matters'
+  | 'capability'
+  | 'customers'
+  | 'opportunities'
+  | 'professional-review'
+  | 'execution-release';
 export interface LiteAppProps {
   initialSurface?: Surface;
   initialState?: FixtureState;
@@ -513,6 +520,7 @@ export function LiteApp({
       else if (window.location.hash === '#opportunities') setSurface('opportunities');
       else if (window.location.hash === '#today') setSurface('today');
       else if (window.location.hash === '#matters') setSurface('matters');
+      else if (window.location.hash === '#capability') setSurface('capability');
     };
     followHash();
     window.addEventListener('hashchange', followHash);
@@ -539,27 +547,33 @@ export function LiteApp({
                   ? label === 'Opportunities'
                   : surface === 'matters'
                     ? label === 'Matters'
-                    : label === 'Today'
+                    : surface === 'capability'
+                      ? label === 'Capability'
+                      : label === 'Today'
           }))}
         />
       }
       topBar={
         <TopBar
           context={
-            surface === 'matters' || surface === 'today'
+            surface === 'matters' || surface === 'today' || surface === 'capability'
               ? `Workspace · ${activeWorkspaceId || 'not selected'}`
               : 'Northstar IP · Fixture workspace'
           }
           actions={
             <Badge>
-              {surface === 'matters' || surface === 'today' ? 'Authenticated' : 'Not live data'}
+              {surface === 'matters' || surface === 'today' || surface === 'capability'
+                ? 'Authenticated'
+                : 'Not live data'}
             </Badge>
           }
         />
       }
     >
       <div className="lite-workspace">
-        {surface !== 'matters' && surface !== 'today' && <FixtureBanner />}
+        {surface !== 'matters' && surface !== 'today' && surface !== 'capability' && (
+          <FixtureBanner />
+        )}
         {(surface === 'customers' ||
           surface === 'professional-review' ||
           surface === 'execution-release') && (
@@ -600,6 +614,15 @@ export function LiteApp({
             <ErrorState
               title="Select a Workspace"
               description="A valid Workspace context is required to load durable Today Recommendations."
+            />
+          )
+        ) : surface === 'capability' ? (
+          activeWorkspaceId ? (
+            <CapabilityCenter workspaceId={activeWorkspaceId} />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load your private Capability Center."
             />
           )
         ) : surface === 'customers' ? (

@@ -6,10 +6,7 @@ import {
   type CapabilityCenterView,
   type ReflectionCandidate
 } from '@markorbit/contracts';
-import {
-  CapabilityCenterHttpError,
-  type CapabilityCenterClient
-} from '../../api/capability.js';
+import { CapabilityCenterHttpError, type CapabilityCenterClient } from '../../api/capability.js';
 import { CapabilityCenter } from './CapabilityCenter.js';
 
 const workspaceId = '37373737-3737-4373-8373-373737373737';
@@ -20,7 +17,12 @@ const candidate: ReflectionCandidate = {
   subjectUserId: 'user_capability_test',
   version: 3,
   runtimeCapability: { id: 'runtime-capability_test', version: 1 },
-  ledgerEntries: [{ id: 'capability-ledger_22222222222222222222222222222222', sourceFingerprintSha256: 'a'.repeat(64) }],
+  ledgerEntries: [
+    {
+      id: 'capability-ledger_22222222222222222222222222222222',
+      sourceFingerprintSha256: 'a'.repeat(64)
+    }
+  ],
   explanation: 'Private evidence-backed reflection candidate.',
   proposedPrivateReflection: 'I reviewed governed evidence for this private Capability line.',
   generation: { policyVersion: 'test-policy-v1' },
@@ -44,7 +46,10 @@ const ready: CapabilityCenterView = {
       runtimeCapability: candidate.runtimeCapability,
       evidenceCount: 1,
       acceptedReflections: [],
-      outstandingReflectionCandidate: { id: candidate.reflectionCandidateId, version: candidate.version },
+      outstandingReflectionCandidate: {
+        id: candidate.reflectionCandidateId,
+        version: candidate.version
+      },
       visibility: 'PRIVATE',
       numericProfessionalScore: null,
       verifiedBadge: false,
@@ -67,7 +72,9 @@ describe('Lite Capability Center', () => {
     render(<CapabilityCenter workspaceId={workspaceId} client={client} />);
 
     expect(await screen.findByRole('heading', { name: 'Capability Center' })).toBeTruthy();
-    expect(screen.getByText(/does not create certification, ranking, canonical truth/)).toBeTruthy();
+    expect(
+      screen.getByText(/does not create certification, ranking, canonical truth/)
+    ).toBeTruthy();
     expect(screen.getByText(candidate.proposedPrivateReflection)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept private reflection' }));
@@ -83,7 +90,8 @@ describe('Lite Capability Center', () => {
 
   it('renders permission failure without pretending private state is empty', async () => {
     const client: CapabilityCenterClient = {
-      load: async () => Promise.reject(new CapabilityCenterHttpError(403, 'PERMISSION_DENIED', 'Denied.')),
+      load: async () =>
+        Promise.reject(new CapabilityCenterHttpError(403, 'PERMISSION_DENIED', 'Denied.')),
       disposition: async () => ({})
     };
     render(<CapabilityCenter workspaceId={workspaceId} client={client} />);

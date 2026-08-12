@@ -75,7 +75,11 @@ export function createCapabilityCenterRoutes(options: CapabilityCenterRouteOptio
             current.candidate.workspaceId !== principal.workspaceId ||
             current.candidate.subjectUserId !== principal.userId
           )
-            throw new HttpError(404, 'PRIVATE_STATE_NOT_FOUND', 'Private Capability state was not found.');
+            throw new HttpError(
+              404,
+              'PRIVATE_STATE_NOT_FOUND',
+              'Private Capability state was not found.'
+            );
           pendingCandidates.push({
             candidate: current.candidate,
             candidateFingerprintSha256: current.candidateFingerprintSha256

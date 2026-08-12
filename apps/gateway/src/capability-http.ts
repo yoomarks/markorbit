@@ -85,7 +85,11 @@ function rejectSpoofOrUnsupported(body: Readonly<Record<string, unknown>>): void
     );
   const unsupported = Object.keys(body).filter((key) => !dispositionFields.has(key));
   if (unsupported.length)
-    throw new HttpError(400, 'INVALID_REQUEST', 'Reflection disposition contains unsupported fields.');
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Reflection disposition contains unsupported fields.'
+    );
 }
 
 function mutationAllowed(principal: WorkspacePrincipal): boolean {
@@ -178,12 +182,7 @@ export function createGatewayCapabilityRoutes(
       return json(response.status, value);
     } catch (error) {
       if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        503,
-        'DOWNSTREAM_UNAVAILABLE',
-        'Capability Engine is unavailable.',
-        true
-      );
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Capability Engine is unavailable.', true);
     }
   };
 
