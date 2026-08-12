@@ -1,0 +1,77 @@
+name: Core KV2 Test Isolation Format Once
+
+on:
+  push:
+    branches:
+      - core-kv2-wp01-02
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: core-kv2-wp01-02
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore full identity suite and extend Core migration cleanup boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout origin/main -- services/core/tests/identity-postgres.test.ts
+          python - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('services/core/tests/identity-postgres.test.ts'),
+              Path('services/core/tests/session-postgres.test.ts'),
+              Path('services/core/tests/knowledge-intake-postgres.test.ts'),
+          ]
+          old = 'DROP TABLE IF EXISTS knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+          new = 'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+          for path in files:
+              text = path.read_text()
+              if old not in text and new not in text:
+                  raise SystemExit(f'expected Core cleanup boundary not found in {path}')
+              path.write_text(text.replace(old, new))
+
+          path = Path('services/core/tests/knowledge-intake-postgres.test.ts')
+          text = path.read_text()
+          old_expectation = "expect(owned.at(-1)?.name).toBe('core_knowledge_intake_contents');"
+          new_expectation = "expect(owned.map((migration) => migration.name)).toContain('core_knowledge_intake_contents');"
+          if old_expectation not in text and new_expectation not in text:
+              raise SystemExit('expected V1 migration ownership assertion not found')
+          path.write_text(text.replace(old_expectation, new_expectation))
+          PY
+      - name: Format only touched V2 and Core migration-test files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/package.json
+          packages/contracts/src/knowledge-ready-package-v2.ts
+          services/core/src/index.ts
+          services/core/src/knowledge-v2-delivery.ts
+          services/core/tests/knowledge-v2-delivery-http.test.ts
+          services/core/tests/knowledge-v2-delivery-postgres.test.ts
+          services/core/tests/identity-postgres.test.ts
+          services/core/tests/session-postgres.test.ts
+          services/core/tests/knowledge-intake-postgres.test.ts
+      - name: Commit repair
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/package.json packages/contracts/src/knowledge-ready-package-v2.ts services/core/src/index.ts services/core/src/knowledge-v2-delivery.ts services/core/tests/knowledge-v2-delivery-http.test.ts services/core/tests/knowledge-v2-delivery-postgres.test.ts services/core/tests/identity-postgres.test.ts services/core/tests/session-postgres.test.ts services/core/tests/knowledge-intake-postgres.test.ts
+          git commit -m "fix(core-kv2): isolate Core migration tests and format V2 changes"
+          git push origin HEAD:core-kv2-wp01-02
