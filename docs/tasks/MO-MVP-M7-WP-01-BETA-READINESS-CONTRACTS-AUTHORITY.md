@@ -109,6 +109,10 @@ A candidate remains `released: false`; automated gates remain non-authorizing. E
 - Payment/Invoice, legal appointment, external Filing Submission or Official Truth;
 - public Capability ranking/certification or automatic Capability verification/Canon mutation.
 
+## Verification gate
+
+The final exact PR head must pass the hosted repository regression gates before M7-WP-01 is ready for Owner review. Green automation remains engineering evidence only and does not create release or business authority.
+
 ## Next
 
 After explicit Owner merge only:
