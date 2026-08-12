@@ -20,6 +20,8 @@ type OwnerName =
   | 'mgsn'
   | 'capability-engine';
 
+type MigrationPrerequisiteName = 'LOCAL_WORKSPACE_SCOPE_ANCHOR';
+
 interface CandidateOwner {
   name: OwnerName;
   package: string;
@@ -28,6 +30,7 @@ interface CandidateOwner {
   serviceEntry: string;
   port: number;
   runtimeDependencies: readonly OwnerName[];
+  migrationPrerequisites: readonly MigrationPrerequisiteName[];
 }
 
 interface CandidateManifest {
@@ -40,6 +43,14 @@ interface CandidateManifest {
   databaseEngine: string;
   migrationModel: string;
   rollbackStrategy: string;
+  migrationPrerequisiteDefinitions: Record<
+    MigrationPrerequisiteName,
+    {
+      kind: 'STRUCTURAL_ONLY';
+      businessRowsSeeded: boolean;
+      description: string;
+    }
+  >;
   owners: readonly CandidateOwner[];
   startupPolicy: {
     databaseBeforeService: boolean;
@@ -107,6 +118,46 @@ async function resetSchemas(url: string, owner: CandidateOwner): Promise<void> {
   }
 }
 
+async function prepareMigrationPrerequisites(url: string, owner: CandidateOwner): Promise<void> {
+  if (!owner.migrationPrerequisites.includes('LOCAL_WORKSPACE_SCOPE_ANCHOR')) return;
+  const value = database(url, owner);
+  await value.start();
+  try {
+    await value.getPool().query(`
+      CREATE TABLE IF NOT EXISTS workspaces (
+        workspace_id uuid PRIMARY KEY,
+        name text NOT NULL DEFAULT 'Rehearsal workspace scope',
+        email text,
+        created_at timestamptz NOT NULL DEFAULT NOW()
+      )
+    `);
+    const result = await value
+      .getPool()
+      .query<{ count: string }>('SELECT count(*)::text AS count FROM workspaces');
+    expect(result.rows[0]?.count).toBe('0');
+  } finally {
+    await value.close();
+  }
+}
+
+async function verifyMigrationPrerequisites(url: string, owner: CandidateOwner): Promise<void> {
+  if (!owner.migrationPrerequisites.includes('LOCAL_WORKSPACE_SCOPE_ANCHOR')) return;
+  const value = database(url, owner);
+  await value.start();
+  try {
+    const definition = await value.getPool().query<{ exists: boolean }>(
+      `SELECT to_regclass('public.workspaces') IS NOT NULL AS exists`
+    );
+    expect(definition.rows[0]?.exists).toBe(true);
+    const result = await value
+      .getPool()
+      .query<{ count: string }>('SELECT count(*)::text AS count FROM workspaces');
+    expect(result.rows[0]?.count).toBe('0');
+  } finally {
+    await value.close();
+  }
+}
+
 function runPostgresTool(command: 'pg_dump' | 'pg_restore', args: readonly string[]): void {
   const result = spawnSync(command, [...args], {
     encoding: 'utf8',
@@ -131,6 +182,8 @@ function dumpDatabase(url: string, output: string): void {
 function restoreDatabase(url: string, input: string): void {
   runPostgresTool('pg_restore', [
     '--exit-on-error',
+    '--clean',
+    '--if-exists',
     '--no-owner',
     '--no-privileges',
     '--dbname',
@@ -156,7 +209,7 @@ function serviceEnvironment(
   owner: CandidateOwner,
   databaseUrl = ownerUrl(owner)
 ): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {
+  return {
     ...process.env,
     NODE_ENV: 'test',
     PORT: String(owner.port),
@@ -182,7 +235,6 @@ function serviceEnvironment(
     MGSN_MIGRATION_NAMESPACE: owner.migrationNamespace,
     CAPABILITY_ENGINE_MIGRATION_NAMESPACE: owner.migrationNamespace
   };
-  return env;
 }
 
 function spawnService(
@@ -317,6 +369,18 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       'capability-engine'
     ]);
     expect(new Set(manifest.owners.map((owner) => owner.port)).size).toBe(manifest.owners.length);
+    expect(manifest.migrationPrerequisiteDefinitions.LOCAL_WORKSPACE_SCOPE_ANCHOR).toMatchObject({
+      kind: 'STRUCTURAL_ONLY',
+      businessRowsSeeded: false
+    });
+    expect(manifest.owners.find((owner) => owner.name === 'lite')?.migrationPrerequisites).toEqual([
+      'LOCAL_WORKSPACE_SCOPE_ANCHOR'
+    ]);
+    expect(
+      manifest.owners
+        .filter((owner) => owner.name !== 'lite')
+        .every((owner) => owner.migrationPrerequisites.length === 0)
+    ).toBe(true);
     const serialized = JSON.stringify(manifest);
     expect(serialized).not.toMatch(/postgres(?:ql)?:\/\//i);
     expect(serialized).not.toMatch(/-----BEGIN [A-Z ]*PRIVATE KEY-----/u);
@@ -342,6 +406,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       owner: OwnerName;
       migrationCount: number;
       latestMigration: string;
+      migrationPrerequisites: readonly MigrationPrerequisiteName[];
       snapshotFile: string;
       preForwardLatestState: string;
       forwardLatestState: string;
@@ -352,6 +417,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
     for (const owner of manifest.owners) {
       const url = ownerUrl(owner);
       await resetSchemas(url, owner);
+      await prepareMigrationPrerequisites(url, owner);
       const migrations = await loadMigrationsForOwner(
         migrationDirectory,
         ownershipFile,
@@ -383,6 +449,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       } finally {
         await preForward.close();
       }
+      await verifyMigrationPrerequisites(url, owner);
 
       const snapshotFile = path.join(snapshotDirectory, `${owner.name}.dump`);
       dumpDatabase(url, snapshotFile);
@@ -396,12 +463,14 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       } finally {
         await forward.close();
       }
+      await verifyMigrationPrerequisites(url, owner);
       await expectProbe(url, owner);
 
       ownerEvidence.push({
         owner: owner.name,
         migrationCount: migrations.length,
         latestMigration: `${latest.version}_${latest.name}`,
+        migrationPrerequisites: owner.migrationPrerequisites,
         snapshotFile: path.relative(process.cwd(), snapshotFile),
         preForwardLatestState: 'pending',
         forwardLatestState: 'applied',
@@ -451,6 +520,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       } finally {
         await restored.close();
       }
+      await verifyMigrationPrerequisites(url, owner);
       await expectProbe(url, owner);
 
       const recovered = database(url, owner);
@@ -462,6 +532,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       } finally {
         await recovered.close();
       }
+      await verifyMigrationPrerequisites(url, owner);
       await expectProbe(url, owner);
     }
 
@@ -477,6 +548,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       migrationModel: manifest.migrationModel,
       rollbackStrategy: manifest.rollbackStrategy,
       ownerMigrationOrder: manifest.owners.map((owner) => owner.name),
+      migrationPrerequisites: manifest.migrationPrerequisiteDefinitions,
       owners: ownerEvidence,
       startup: {
         unavailableOwnerDatabaseFailsClosed: true,
@@ -493,6 +565,7 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
         reverseMigrationsUsed: false
       },
       authority: {
+        businessRowsSeeded: false,
         productionTrafficTouched: false,
         businessSuccessFabricated: false,
         filingSubmitted: false,
@@ -503,5 +576,6 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
     };
     await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     expect(evidence.authority.releaseAuthorized).toBe(false);
+    expect(evidence.authority.businessRowsSeeded).toBe(false);
   }, 120_000);
 });
