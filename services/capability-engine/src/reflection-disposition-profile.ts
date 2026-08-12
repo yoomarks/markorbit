@@ -201,13 +201,12 @@ export function normalizeReflectionDispositionCommand(
       'outcome must be ACCEPTED, REJECTED or DEFERRED.',
       422
     );
+  const rationale = optionalText(value.rationale, 'rationale');
   return {
     candidateVersion: positive(value.candidateVersion, 'candidateVersion'),
     expectedCandidateFingerprintSha256,
     outcome,
-    ...(optionalText(value.rationale, 'rationale')
-      ? { rationale: optionalText(value.rationale, 'rationale') }
-      : {})
+    ...(rationale ? { rationale } : {})
   };
 }
 
