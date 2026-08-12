@@ -1,0 +1,58 @@
+name: M7 WP-04 Temporary Task Index Helper
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m7-wp-04-task-index-helper.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile-task-index:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Reconcile M7 task status
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/planning/TASK-INDEX.md')
+          s = p.read_text()
+          old = """- M7-WP-02 — Bounded Content/Opportunity conversion analytics (**implementing in PR #96**)
+  - Lite-owned, Workspace-scoped read-only projection over existing Product-loop facts; no analytics migration or cross-service SQL.
+  - Authenticated Gateway surface: `GET /api/lite/analytics/product-loop-conversions`.
+  - Dedicated PostgreSQL gate: `.github/workflows/m7-wp-02-conversion-analytics.yml`.
+- M7-WP-03 — Deterministic non-production seeded Beta scenario (**not started; only after M7-WP-02 Owner merge**)
+- M7-WP-04 — Three-loop full-journey Beta real-runtime acceptance (**not started**)
+- M7-WP-05 — Deployment rehearsal, migration and rollback/recovery evidence (**not started**)
+"""
+          new = """- M7-WP-02 — Bounded Content/Opportunity conversion analytics (**merged in PR #96**)
+  - Merge: `a199da11a725a08072c32a18c8304997f4f0ea2e`.
+  - Lite-owned, Workspace-scoped read-only projection over existing Product-loop facts; no analytics migration or cross-service SQL.
+  - Authenticated Gateway surface: `GET /api/lite/analytics/product-loop-conversions`.
+  - Dedicated PostgreSQL gate: `.github/workflows/m7-wp-02-conversion-analytics.yml`.
+- M7-WP-03 — Deterministic non-production seeded Beta scenario (**merged in PR #97**)
+  - Merge: `2fd372c3fc96f89a391833819e51d15a9a34d228`.
+  - Explicit TEST/REHEARSAL five-owner reset/reseed harness with exact replay equality and no production mutation or release authority.
+- M7-WP-04 — Three-loop full-journey Beta real-runtime acceptance (**implemented in PR #98; ready for Owner review**)
+  - Real Core/Lite/MarkReg authority boundaries plus composed M4/M5/M6 real-runtime paths; desktop and 390px mobile critical browser acceptance without business-route interception.
+  - Functional acceptance head `6f71c0da0caa2754068b72cd2adf61ebecde1ede`; dedicated hosted run `31592835063` passed.
+  - Evidence: `docs/tasks/MO-MVP-M7-WP-04-THREE-LOOP-FULL-JOURNEY-REAL-RUNTIME.md`.
+- M7-WP-05 — Deployment rehearsal, migration and rollback/recovery evidence (**not started; only after M7-WP-04 Owner merge**)
+"""
+          if old not in s:
+              raise SystemExit('Expected M7 task block not found')
+          p.write_text(s.replace(old, new))
+          PY
+      - name: Commit task index reconciliation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/planning/TASK-INDEX.md
+          git commit -m 'M7-WP-04 reconcile task index status'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
