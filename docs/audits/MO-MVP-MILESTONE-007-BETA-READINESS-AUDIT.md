@@ -46,22 +46,22 @@ The dedicated `M7 WP-07 Independent Beta Audit` workflow does not reclassify the
 
 ## Readiness results
 
-| Audit dimension | Result |
-| --- | --- |
-| `AGENTS.md` and scope discipline | PASS |
-| Four-week Beta objective / Week 4 exit | PASS |
-| Exact-head Beta candidate | PASS |
-| Owner boundaries | PASS |
-| No cross-service SQL | PASS |
-| Content/Opportunity analytics remain observational | PASS |
-| Seeded Beta data remain non-production | PASS |
-| Three declared MVP loops use real runtimes | PASS |
-| Desktop and 390px critical paths | PASS |
-| Restart / replay / isolation / idempotency | PASS |
-| Migration / startup / restart / recovery rehearsal | PASS |
-| Machine-readable known limits | PASS |
-| Permanent authority locks | PASS |
-| Independent audit does not create a new candidate | PASS AFTER REMEDIATION |
+| Audit dimension                                    | Result                 |
+| -------------------------------------------------- | ---------------------- |
+| `AGENTS.md` and scope discipline                   | PASS                   |
+| Four-week Beta objective / Week 4 exit             | PASS                   |
+| Exact-head Beta candidate                          | PASS                   |
+| Owner boundaries                                   | PASS                   |
+| No cross-service SQL                               | PASS                   |
+| Content/Opportunity analytics remain observational | PASS                   |
+| Seeded Beta data remain non-production             | PASS                   |
+| Three declared MVP loops use real runtimes         | PASS                   |
+| Desktop and 390px critical paths                   | PASS                   |
+| Restart / replay / isolation / idempotency         | PASS                   |
+| Migration / startup / restart / recovery rehearsal | PASS                   |
+| Machine-readable known limits                      | PASS                   |
+| Permanent authority locks                          | PASS                   |
+| Independent audit does not create a new candidate  | PASS AFTER REMEDIATION |
 
 ## Exact workflow evidence
 
