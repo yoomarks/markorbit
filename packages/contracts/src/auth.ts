@@ -1,5 +1,45 @@
 import { PERMISSIONS, type Permission, type Role } from './identity.js';
 
+export const ACCOUNT_TYPES = ['CUSTOMER', 'PROFESSIONAL', 'PROVIDER', 'INTERNAL'] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+export const SELF_SERVICE_ACCOUNT_TYPES = ['CUSTOMER', 'PROFESSIONAL'] as const;
+export type SelfServiceAccountType = (typeof SELF_SERVICE_ACCOUNT_TYPES)[number];
+export interface AccountProfile {
+  userId: string;
+  accountType: AccountType;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AccountSummary {
+  userId: string;
+  email: string;
+  displayName: string;
+  accountType: AccountType;
+}
+export interface RegisterAccountCommand {
+  email: string;
+  displayName: string;
+  password: string;
+  accountType: SelfServiceAccountType;
+}
+export interface LoginAccountCommand {
+  email: string;
+  password: string;
+}
+export interface AccountAccessResult {
+  account: AccountSummary;
+  rawToken: string;
+  session: {
+    sessionId: string;
+    userId: string;
+    status: 'ACTIVE';
+    createdAt: string;
+    expiresAt: string;
+    revokedAt: null;
+    version: number;
+  };
+}
+
 export const SESSION_STATUSES = ['ACTIVE', 'REVOKED'] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 export interface Session {
@@ -67,6 +107,10 @@ export function parseInternalWorkspacePrincipal(value: string | undefined): Work
 }
 export type AuthenticationErrorCode =
   | 'AUTHENTICATION_REQUIRED'
+  | 'INVALID_CREDENTIALS'
+  | 'EMAIL_ALREADY_REGISTERED'
+  | 'INVALID_ACCOUNT_TYPE'
+  | 'WEAK_PASSWORD'
   | 'INVALID_SESSION'
   | 'SESSION_EXPIRED'
   | 'SESSION_REVOKED'

@@ -25,6 +25,7 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 export * from './auth.js';
+export * from './account-access-http.js';
 export * from './capability-http.js';
 export * from './order-http.js';
 export * from './mgsn-http.js';
@@ -39,6 +40,7 @@ import {
   sessionCookie,
   validateCsrf
 } from './auth.js';
+import { createGatewayAccountAccessRoutes } from './account-access-http.js';
 import { createGatewayCapabilityRoutes } from './capability-http.js';
 import { createGatewayOrderRoutes } from './order-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
@@ -364,6 +366,12 @@ export function createRuntime(options: GatewayOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
+        ...createGatewayAccountAccessRoutes({
+          ...(authenticationClient ? { authenticationClient } : {}),
+          csrfSecret,
+          allowedOrigins,
+          secureCookies: options.secureCookies ?? process.env.NODE_ENV === 'production'
+        }),
         ...createGatewayCapabilityRoutes({
           capabilityEngineUrl,
           ...(authenticationClient ? { authenticationClient } : {}),

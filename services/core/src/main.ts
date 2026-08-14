@@ -4,6 +4,7 @@ import {
   PostgresSessionRepository,
   validateInternalServiceSecret
 } from './auth.js';
+import { AccountAccessService, PostgresAccountAccessStore } from './account-access.js';
 import {
   PostgresMembershipRepository,
   PostgresUserRepository,
@@ -20,15 +21,21 @@ validateInternalServiceSecret(secret, secret);
 const database = new ManagedDatabase(parseDatabaseConfig(process.env));
 await database.start();
 const query = database.getPool();
+const users = new PostgresUserRepository(query);
 const workspaces = new PostgresWorkspaceRepository(query);
 const authentication = new AuthenticationService({
   sessions: new PostgresSessionRepository(query),
-  users: new PostgresUserRepository(query),
+  users,
   workspaces,
   memberships: new PostgresMembershipRepository(query)
 });
+const accountAccess = new AccountAccessService(
+  new PostgresAccountAccessStore(database),
+  authentication
+);
 const runtime = createRuntime({
   authentication,
+  accountAccess,
   workspaces,
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),

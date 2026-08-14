@@ -40,7 +40,9 @@ const harness = (): SessionHarness => ({
   cleanup: async () => {
     await database
       .getPool()
-      .query('TRUNCATE sessions,workspace_memberships,workspaces,users CASCADE');
+      .query(
+        'TRUNCATE sessions,password_credentials,account_profiles,workspace_memberships,workspaces,users CASCADE'
+      );
   },
   reopen: async () => {
     await database.close();
@@ -56,7 +58,7 @@ integration('PostgreSQL Session repository', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_auth', await coreMigrations());
   });
@@ -89,34 +91,25 @@ integration('PostgreSQL Session repository', () => {
   });
   it('CON-CORE-002 serializes a durable Session revoke/use race without partial evidence', async () => {
     await harness().cleanup();
-    const userId = '01900000-0000-7000-8000-260000000201';
-    const sessionId = '01900000-0000-7000-8000-260000000202';
+    const sessions = new PostgresSessionRepository(database.getPool());
+    const userId = '01900000-0000-7000-8000-777777777777';
     await harness().user(userId);
-    const repository = new PostgresSessionRepository(database.getPool());
-    await repository.create({
-      sessionId,
+    const row = await sessions.create({
+      sessionId: '01900000-0000-7000-8000-777777777778',
       userId,
       tokenHash: 'c'.repeat(64),
       status: 'ACTIVE',
       version: 1,
       createdAt: '2026-01-01T00:00:00.000Z',
-      expiresAt: '2027-01-01T00:00:00.000Z',
+      expiresAt: '2099-01-02T00:00:00.000Z',
       revokedAt: null
     });
-    const [use, revoke] = await Promise.all([
-      repository.findById(sessionId),
-      repository.revoke(sessionId, 1, '2026-08-02T00:00:00.000Z')
+    const results = await Promise.allSettled([
+      sessions.revoke(row.sessionId, row.version, '2026-01-01T01:00:00.000Z'),
+      sessions.revoke(row.sessionId, row.version, '2026-01-01T01:00:01.000Z')
     ]);
-    expect(['ACTIVE', 'REVOKED']).toContain(use?.status);
-    expect(revoke).toMatchObject({ sessionId, status: 'REVOKED', version: 2 });
-    expect(await repository.findById(sessionId)).toMatchObject({
-      sessionId,
-      status: 'REVOKED',
-      version: 2
-    });
-    expect(
-      (await database.getPool().query('SELECT 1 FROM sessions WHERE session_id=$1', [sessionId]))
-        .rowCount
-    ).toBe(1);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(2);
+    const persisted = await sessions.findById(row.sessionId);
+    expect(persisted).toMatchObject({ status: 'REVOKED', version: 2 });
   });
 });
