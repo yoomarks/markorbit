@@ -55,7 +55,9 @@ async function cleanup() {
   await database.getPool().query(sql);
 }
 
-async function rowCount(table: 'users' | 'account_profiles' | 'password_credentials') {
+async function rowCount(
+  table: 'users' | 'account_profiles' | 'password_credentials'
+) {
   const result = await database
     .getPool()
     .query<{ count: number }>(`SELECT count(*)::int AS count FROM ${table}`);
@@ -119,11 +121,10 @@ integration('PostgreSQL real account access', () => {
     });
     expect(loggedIn.account).toEqual(registered.account);
     expect(loggedIn.rawToken).not.toBe(registered.rawToken);
-    const sessions = await database
-      .getPool()
-      .query<{ count: number }>('SELECT count(*)::int AS count FROM sessions WHERE user_id=$1', [
-        registered.account.userId
-      ]);
+    const sessions = await database.getPool().query<{ count: number }>(
+      'SELECT count(*)::int AS count FROM sessions WHERE user_id=$1',
+      [registered.account.userId]
+    );
     expect(sessions.rows[0]!.count).toBe(2);
   });
 
