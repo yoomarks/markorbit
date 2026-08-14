@@ -51,6 +51,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Print Prettier normalization for M8 diagnosis
+        run: pnpm exec prettier services/core/tests/account-access-postgres.test.ts
       - name: Check repository formatting
         run: pnpm format:check
       - name: Build WP-06 dependency closure
