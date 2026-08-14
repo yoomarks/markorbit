@@ -1,0 +1,42 @@
+name: M8 WP02 format diagnostic
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m8-wp02-format-diagnostic.yml'
+      - 'apps/markreg-web/src/AccountEntry*'
+      - 'apps/lite-web/src/AccountEntry*'
+      - 'apps/lite-web/src/account-entry.css'
+      - 'services/core/tests/account-onboarding-postgres.test.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  print-prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier output
+        shell: bash
+        run: |
+          for file in \
+            apps/markreg-web/src/AccountEntry.stories.tsx \
+            apps/markreg-web/src/AccountEntry.tsx \
+            apps/lite-web/src/AccountEntry.stories.tsx \
+            apps/lite-web/src/AccountEntry.test.tsx \
+            apps/lite-web/src/AccountEntry.tsx \
+            apps/lite-web/src/account-entry.css \
+            services/core/tests/account-onboarding-postgres.test.ts
+          do
+            echo "===== ${file} ====="
+            pnpm exec prettier "${file}"
+          done
