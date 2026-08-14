@@ -65,7 +65,11 @@ describe('MarkReg account entry', () => {
     await user.type(screen.getByLabelText('Your name'), 'Customer One');
     await user.type(screen.getByLabelText('Email'), 'customer@example.com');
     await user.type(screen.getByLabelText('Password'), 'secure customer password');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    const submit = screen
+      .getAllByRole('button', { name: 'Create account' })
+      .find((button) => button.getAttribute('type') === 'submit');
+    expect(submit).toBeDefined();
+    await user.click(submit!);
 
     expect(
       await screen.findByRole('heading', { name: 'Set up your trademark workspace' })
