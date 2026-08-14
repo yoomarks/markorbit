@@ -25,24 +25,25 @@ function record(value: unknown): Record<string, unknown> {
 function mapAuthentication(error: unknown): never {
   if (!(error instanceof AuthenticationError)) throw error;
   const code = String(error.code);
-  const status =
-    code === 'AUTHENTICATION_SERVICE_UNAVAILABLE' || code === 'PERSISTENCE_UNAVAILABLE'
-      ? 503
-      : code === 'EMAIL_ALREADY_REGISTERED' || code === 'DUPLICATE_WORKSPACE_SLUG'
-        ? 409
-        : ['INVALID_ACCOUNT_TYPE', 'WEAK_PASSWORD', 'INVALID_WORKSPACE'].includes(code)
-          ? 400
-          : code === 'USER_NOT_FOUND'
-            ? 404
-            : [
-                  'UNTRUSTED_ORIGIN',
-                  'INVALID_CSRF_TOKEN',
-                  'USER_DISABLED',
-                  'WORKSPACE_ARCHIVED',
-                  'MEMBERSHIP_SUSPENDED'
-                ].includes(code)
-              ? 403
-              : 401;
+  let status: number;
+  if (code === 'AUTHENTICATION_SERVICE_UNAVAILABLE' || code === 'PERSISTENCE_UNAVAILABLE')
+    status = 503;
+  else if (code === 'EMAIL_ALREADY_REGISTERED' || code === 'DUPLICATE_WORKSPACE_SLUG')
+    status = 409;
+  else if (['INVALID_ACCOUNT_TYPE', 'WEAK_PASSWORD', 'INVALID_WORKSPACE'].includes(code))
+    status = 400;
+  else if (code === 'USER_NOT_FOUND') status = 404;
+  else if (
+    [
+      'UNTRUSTED_ORIGIN',
+      'INVALID_CSRF_TOKEN',
+      'USER_DISABLED',
+      'WORKSPACE_ARCHIVED',
+      'MEMBERSHIP_SUSPENDED'
+    ].includes(code)
+  )
+    status = 403;
+  else status = 401;
   throw new HttpError(status, code, error.message, status === 503);
 }
 
