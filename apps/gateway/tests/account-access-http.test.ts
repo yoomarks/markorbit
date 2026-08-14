@@ -25,19 +25,18 @@ const result: AccountAccessResult = {
 
 function client(overrides: Partial<CoreAuthenticationClient> = {}): CoreAuthenticationClient {
   return {
-    register: async () => result,
-    login: async () => result,
-    issue: async () => ({ rawToken: result.rawToken, session: result.session }),
-    resolve: async () => ({
-      kind: 'AUTHENTICATED_USER',
-      sessionId: result.session.sessionId,
-      userId: result.account.userId,
-      sessionExpiresAt: result.session.expiresAt
-    }),
-    resolveWorkspace: async () => {
-      throw new Error('not used');
-    },
-    revoke: async () => undefined,
+    register: () => Promise.resolve(result),
+    login: () => Promise.resolve(result),
+    issue: () => Promise.resolve({ rawToken: result.rawToken, session: result.session }),
+    resolve: () =>
+      Promise.resolve({
+        kind: 'AUTHENTICATED_USER',
+        sessionId: result.session.sessionId,
+        userId: result.account.userId,
+        sessionExpiresAt: result.session.expiresAt
+      }),
+    resolveWorkspace: () => Promise.reject(new Error('not used')),
+    revoke: () => Promise.resolve(),
     ...overrides
   };
 }
@@ -112,12 +111,13 @@ describe('Gateway real account access', () => {
 
   it('maps duplicate registration and bad login without exposing Core details', async () => {
     const duplicateClient = client({
-      register: async () => {
-        throw new AuthenticationError(
-          'EMAIL_ALREADY_REGISTERED',
-          'An account with that email already exists.'
-        );
-      }
+      register: () =>
+        Promise.reject(
+          new AuthenticationError(
+            'EMAIL_ALREADY_REGISTERED',
+            'An account with that email already exists.'
+          )
+        )
     });
     const register = routes(duplicateClient).find((value) => value.path === '/api/auth/register')!;
     await expect(
@@ -132,9 +132,10 @@ describe('Gateway real account access', () => {
     ).rejects.toMatchObject({ status: 409, code: 'EMAIL_ALREADY_REGISTERED' });
 
     const invalidClient = client({
-      login: async () => {
-        throw new AuthenticationError('INVALID_CREDENTIALS', 'Email or password is incorrect.');
-      }
+      login: () =>
+        Promise.reject(
+          new AuthenticationError('INVALID_CREDENTIALS', 'Email or password is incorrect.')
+        )
     });
     const login = routes(invalidClient).find((value) => value.path === '/api/auth/login')!;
     await expect(
