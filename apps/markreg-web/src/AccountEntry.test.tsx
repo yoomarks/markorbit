@@ -55,7 +55,12 @@ describe('MarkReg account entry', () => {
       createWorkspace
     };
     const user = userEvent.setup();
-    render(<MarkregAccountEntry api={api} renderProduct={() => <div>Customer product ready</div>} />);
+    render(
+      <MarkregAccountEntry
+        api={api}
+        renderProduct={() => <div>Customer product ready</div>}
+      />
+    );
 
     await user.click(await screen.findByRole('button', { name: 'Create account' }));
     await user.type(screen.getByLabelText('Your name'), 'Customer One');
@@ -63,7 +68,9 @@ describe('MarkReg account entry', () => {
     await user.type(screen.getByLabelText('Password'), 'secure customer password');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
-    expect(await screen.findByRole('heading', { name: 'Set up your trademark workspace' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Set up your trademark workspace' })
+    ).toBeTruthy();
     await user.type(screen.getByLabelText('Workspace name'), 'Customer Team');
     await user.click(screen.getByRole('button', { name: 'Create workspace' }));
 
