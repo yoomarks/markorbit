@@ -2,11 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { WorkspaceEntry } from '@markorbit/contracts';
 import { Alert, Button, Card, PageHeader, TextInput } from '@markorbit/ui';
 import { MarkregApp } from './App.js';
-import {
-  AccountApiError,
-  markregAccountApi,
-  type MarkregAccountApi
-} from './account-api.js';
+import { AccountApiError, markregAccountApi, type MarkregAccountApi } from './account-api.js';
 import './account-entry.css';
 
 type View = 'checking' | 'anonymous' | 'workspace-setup' | 'workspace-select' | 'ready' | 'error';
@@ -126,7 +122,10 @@ export function MarkregAccountEntry({
       <Card className="markreg-account-entry__card">
         {view === 'checking' && (
           <div aria-live="polite">
-            <PageHeader title="Opening your workspace" description="Checking your secure session…" />
+            <PageHeader
+              title="Opening your workspace"
+              description="Checking your secure session…"
+            />
           </div>
         )}
         {view === 'error' && (

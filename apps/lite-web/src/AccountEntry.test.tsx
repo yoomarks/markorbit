@@ -48,7 +48,9 @@ describe('Lite account entry', () => {
     const createWorkspace = vi.fn(() => Promise.resolve(workspace));
     const api: LiteAccountApi = {
       session: () =>
-        Promise.reject(new LiteAccountApiError(401, 'AUTHENTICATION_REQUIRED', 'Authentication required')),
+        Promise.reject(
+          new LiteAccountApiError(401, 'AUTHENTICATION_REQUIRED', 'Authentication required')
+        ),
       register,
       login: () => Promise.resolve(access),
       workspaces: () => Promise.resolve([]),
@@ -63,7 +65,9 @@ describe('Lite account entry', () => {
     await user.type(screen.getByLabelText('Password'), 'secure professional password');
     await user.click(screen.getByRole('button', { name: 'Create professional account' }));
 
-    expect(await screen.findByRole('heading', { name: 'Create your professional workspace' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Create your professional workspace' })
+    ).toBeTruthy();
     await user.type(screen.getByLabelText('Workspace name'), 'Professional Practice');
     await user.click(screen.getByRole('button', { name: 'Create professional workspace' }));
 
@@ -73,10 +77,7 @@ describe('Lite account entry', () => {
       email: 'professional@example.com',
       password: 'secure professional password'
     });
-    expect(createWorkspace).toHaveBeenCalledWith(
-      { name: 'Professional Practice' },
-      'lite-ui-csrf'
-    );
+    expect(createWorkspace).toHaveBeenCalledWith({ name: 'Professional Practice' }, 'lite-ui-csrf');
     await waitFor(() =>
       expect(sessionStorage.getItem('markorbit-workspace-id')).toBe(workspace.workspace.workspaceId)
     );

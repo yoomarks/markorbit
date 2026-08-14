@@ -1,11 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { WorkspaceEntry } from '@markorbit/contracts';
 import { Alert, Button, Card, PageHeader, TextInput } from '@markorbit/ui';
-import {
-  LiteAccountApiError,
-  liteAccountApi,
-  type LiteAccountApi
-} from './account-api.js';
+import { LiteAccountApiError, liteAccountApi, type LiteAccountApi } from './account-api.js';
 import './account-entry.css';
 
 type View = 'checking' | 'anonymous' | 'workspace-setup' | 'workspace-select' | 'ready' | 'error';
@@ -122,7 +118,10 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
       <Card className="lite-account-entry__card">
         {view === 'checking' && (
           <div aria-live="polite">
-            <PageHeader title="Opening Lite" description="Checking your secure professional session…" />
+            <PageHeader
+              title="Opening Lite"
+              description="Checking your secure professional session…"
+            />
           </div>
         )}
         {view === 'error' && (
@@ -143,7 +142,11 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
                   : 'For trademark agents, attorneys and IP professionals managing ongoing work.'
               }
             />
-            <div className="lite-account-entry__switch" role="group" aria-label="Professional account access">
+            <div
+              className="lite-account-entry__switch"
+              role="group"
+              aria-label="Professional account access"
+            >
               <Button
                 type="button"
                 variant={mode === 'login' ? 'primary' : 'secondary'}
@@ -193,7 +196,11 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
                 </Alert>
               )}
               <Button type="submit" disabled={busy}>
-                {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create professional account'}
+                {busy
+                  ? 'Please wait…'
+                  : mode === 'login'
+                    ? 'Sign in'
+                    : 'Create professional account'}
               </Button>
             </form>
           </>
