@@ -1,6 +1,6 @@
 import type { WorkspaceEntry } from '@markorbit/contracts';
 
-const gatewayUrl = () => import.meta.env.VITE_GATEWAY_URL ?? '';
+const gatewayUrl = () => (import.meta.env.VITE_GATEWAY_URL as string | undefined) ?? '';
 
 type SessionResponse = {
   authenticated: true;
