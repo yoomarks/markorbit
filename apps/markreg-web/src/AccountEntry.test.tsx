@@ -48,7 +48,9 @@ describe('MarkReg account entry', () => {
     const createWorkspace = vi.fn(() => Promise.resolve(workspace));
     const api: MarkregAccountApi = {
       session: () =>
-        Promise.reject(new AccountApiError(401, 'AUTHENTICATION_REQUIRED', 'Authentication required')),
+        Promise.reject(
+          new AccountApiError(401, 'AUTHENTICATION_REQUIRED', 'Authentication required')
+        ),
       register,
       login: () => Promise.resolve(access),
       workspaces: () => Promise.resolve([]),
@@ -56,10 +58,7 @@ describe('MarkReg account entry', () => {
     };
     const user = userEvent.setup();
     render(
-      <MarkregAccountEntry
-        api={api}
-        renderProduct={() => <div>Customer product ready</div>}
-      />
+      <MarkregAccountEntry api={api} renderProduct={() => <div>Customer product ready</div>} />
     );
 
     await user.click(await screen.findByRole('button', { name: 'Create account' }));
@@ -80,10 +79,7 @@ describe('MarkReg account entry', () => {
       email: 'customer@example.com',
       password: 'secure customer password'
     });
-    expect(createWorkspace).toHaveBeenCalledWith(
-      { name: 'Customer Team' },
-      'markreg-ui-csrf'
-    );
+    expect(createWorkspace).toHaveBeenCalledWith({ name: 'Customer Team' }, 'markreg-ui-csrf');
     await waitFor(() =>
       expect(sessionStorage.getItem('markorbit-workspace-id')).toBe(workspace.workspace.workspaceId)
     );
