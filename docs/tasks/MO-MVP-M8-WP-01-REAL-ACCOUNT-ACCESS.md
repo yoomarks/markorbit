@@ -9,6 +9,7 @@
 Repository: `yoomarks/markorbit`
 
 Allowed scope:
+
 - `packages/contracts`
 - `services/core`
 - `apps/gateway`
@@ -29,12 +30,14 @@ Replace milestone-only fixture login as the only practical browser entry with re
 ## 5. Contracts consumed or changed
 
 Changed:
+
 - account type vocabulary and self-service subset;
 - register/login transport commands;
 - browser-safe account/session response contract;
 - authentication error vocabulary.
 
 Consumed:
+
 - User identity;
 - existing Session contract;
 - existing Gateway cookie/CSRF/origin boundary.
@@ -56,9 +59,11 @@ Consumed:
 ## 7. State transitions
 
 Registration:
+
 `No account -> ACTIVE User + AccountProfile + PasswordCredential -> ACTIVE Session`
 
 Login:
+
 `Existing ACTIVE account + valid credential -> new ACTIVE Session`
 
 No Workspace membership or Order is automatically created by WP01.
