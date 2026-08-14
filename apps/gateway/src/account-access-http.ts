@@ -28,8 +28,7 @@ function mapAuthentication(error: unknown): never {
   let status: number;
   if (code === 'AUTHENTICATION_SERVICE_UNAVAILABLE' || code === 'PERSISTENCE_UNAVAILABLE')
     status = 503;
-  else if (code === 'EMAIL_ALREADY_REGISTERED' || code === 'DUPLICATE_WORKSPACE_SLUG')
-    status = 409;
+  else if (code === 'EMAIL_ALREADY_REGISTERED' || code === 'DUPLICATE_WORKSPACE_SLUG') status = 409;
   else if (['INVALID_ACCOUNT_TYPE', 'WEAK_PASSWORD', 'INVALID_WORKSPACE'].includes(code))
     status = 400;
   else if (code === 'USER_NOT_FOUND') status = 404;
@@ -169,10 +168,7 @@ export function createGatewayAccountAccessRoutes(
             );
           const principal = await authentication.resolve(token(request), correlation(request));
           return json(200, {
-            workspaces: await authentication.listWorkspaces(
-              principal.userId,
-              correlation(request)
-            )
+            workspaces: await authentication.listWorkspaces(principal.userId, correlation(request))
           });
         } catch (error) {
           return mapAuthentication(error);
