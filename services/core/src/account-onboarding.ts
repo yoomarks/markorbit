@@ -1,11 +1,11 @@
 import {
   IdentityError,
   type CreateWorkspaceCommand,
+  type MembershipRepository,
+  type UserRepository,
   type WorkspaceEntry,
   type WorkspaceMembership,
-  type UserRepository,
-  type WorkspaceRepository,
-  type MembershipRepository
+  type WorkspaceRepository
 } from '@markorbit/contracts';
 import type { ManagedDatabase } from '@markorbit/persistence';
 import { uuidV7 } from './auth.js';
@@ -19,6 +19,16 @@ import {
 export interface AccountOnboardingRepository {
   createWorkspaceForUser(userId: string, command: CreateWorkspaceCommand): Promise<WorkspaceEntry>;
   listWorkspacesForUser(userId: string): Promise<readonly WorkspaceEntry[]>;
+}
+
+function workspaceIdentity(command: CreateWorkspaceCommand) {
+  const workspaceId = uuidV7();
+  const baseSlug = normalizeSlug(command.slug ?? command.name);
+  if (!baseSlug) throw new IdentityError('INVALID_WORKSPACE', 'Workspace data is invalid.');
+  return {
+    workspaceId,
+    slug: command.slug ? baseSlug : `${baseSlug}-${workspaceId.slice(-6)}`
+  };
 }
 
 export class InMemoryAccountOnboardingRepository implements AccountOnboardingRepository {
@@ -35,12 +45,10 @@ export class InMemoryAccountOnboardingRepository implements AccountOnboardingRep
     const user = await this.users.findById(userId);
     if (!user) throw new IdentityError('USER_NOT_FOUND', 'User was not found.');
     if (user.status !== 'ACTIVE') throw new IdentityError('USER_DISABLED', 'User is disabled.');
-    const baseSlug = normalizeSlug(command.slug ?? command.name);
-    if (!baseSlug) throw new IdentityError('INVALID_WORKSPACE', 'Workspace data is invalid.');
+    const identity = workspaceIdentity(command);
     const workspace = await this.workspaces.create({
-      workspaceId: uuidV7(),
-      name: command.name,
-      slug: baseSlug
+      ...identity,
+      name: command.name
     });
     const membership = await this.memberships.create({
       membershipId: uuidV7(),
@@ -79,12 +87,10 @@ export class PostgresAccountOnboardingRepository implements AccountOnboardingRep
       const user = await users.findById(userId);
       if (!user) throw new IdentityError('USER_NOT_FOUND', 'User was not found.');
       if (user.status !== 'ACTIVE') throw new IdentityError('USER_DISABLED', 'User is disabled.');
-      const baseSlug = normalizeSlug(command.slug ?? command.name);
-      if (!baseSlug) throw new IdentityError('INVALID_WORKSPACE', 'Workspace data is invalid.');
+      const identity = workspaceIdentity(command);
       const workspace = await workspaces.create({
-        workspaceId: uuidV7(),
-        name: command.name,
-        slug: baseSlug
+        ...identity,
+        name: command.name
       });
       const membership = await memberships.create({
         membershipId: uuidV7(),
