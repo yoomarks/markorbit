@@ -1,4 +1,9 @@
-import { AuthenticationError, type WorkspaceRepository } from '@markorbit/contracts';
+import {
+  AuthenticationError,
+  SELF_SERVICE_ACCOUNT_TYPES,
+  type SelfServiceAccountType,
+  type WorkspaceRepository
+} from '@markorbit/contracts';
 import { parseReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import { READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION } from '@markorbit/contracts';
 import {
@@ -8,6 +13,7 @@ import {
   type JsonRequest,
   type JsonRoute
 } from '@markorbit/service-kit';
+import type { AccountAccessService } from './account-access.js';
 import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
 import {
@@ -39,6 +45,7 @@ export const serviceManifest = Object.freeze({
 export interface CoreRuntimeOptions {
   port?: number;
   authentication?: AuthenticationService;
+  accountAccess?: AccountAccessService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
@@ -52,17 +59,22 @@ function body(request: JsonRequest): Record<string, unknown> {
 }
 function authError(error: unknown): never {
   if (!(error instanceof AuthenticationError)) throw error;
-  const status = [
-    'MEMBERSHIP_REQUIRED',
-    'MEMBERSHIP_SUSPENDED',
-    'WORKSPACE_ARCHIVED',
-    'PERMISSION_DENIED'
-  ].includes(error.code)
-    ? 403
-    : error.code === 'INVALID_WORKSPACE_CONTEXT'
-      ? 400
-      : 401;
-  throw new HttpError(status, error.code, error.message);
+  const status =
+    error.code === 'EMAIL_ALREADY_REGISTERED'
+      ? 409
+      : ['INVALID_ACCOUNT_TYPE', 'WEAK_PASSWORD', 'INVALID_WORKSPACE_CONTEXT'].includes(error.code)
+        ? 400
+        : [
+              'MEMBERSHIP_REQUIRED',
+              'MEMBERSHIP_SUSPENDED',
+              'WORKSPACE_ARCHIVED',
+              'PERMISSION_DENIED'
+            ].includes(error.code)
+          ? 403
+          : error.code === 'AUTHENTICATION_SERVICE_UNAVAILABLE'
+            ? 503
+            : 401;
+  throw new HttpError(status, error.code, error.message, status === 503);
 }
 const canonicalUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
@@ -96,6 +108,58 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     };
   const routes: JsonRoute[] = authentication
     ? [
+        ...(options.accountAccess
+          ? [
+              {
+                method: 'POST' as const,
+                path: '/internal/auth/register',
+                handle: internal(async (request) => {
+                  const value = body(request);
+                  if (
+                    typeof value.email !== 'string' ||
+                    !value.email.includes('@') ||
+                    typeof value.displayName !== 'string' ||
+                    !value.displayName.trim() ||
+                    typeof value.password !== 'string' ||
+                    typeof value.accountType !== 'string'
+                  )
+                    throw new HttpError(400, 'INVALID_REQUEST', 'Registration data is invalid.');
+                  if (
+                    !(SELF_SERVICE_ACCOUNT_TYPES as readonly string[]).includes(value.accountType)
+                  )
+                    throw new AuthenticationError(
+                      'INVALID_ACCOUNT_TYPE',
+                      'This account type cannot be created through self-service registration.'
+                    );
+                  return json(
+                    201,
+                    await options.accountAccess!.register({
+                      email: value.email,
+                      displayName: value.displayName,
+                      password: value.password,
+                      accountType: value.accountType as SelfServiceAccountType
+                    })
+                  );
+                })
+              },
+              {
+                method: 'POST' as const,
+                path: '/internal/auth/login',
+                handle: internal(async (request) => {
+                  const value = body(request);
+                  if (typeof value.email !== 'string' || typeof value.password !== 'string')
+                    throw new HttpError(400, 'INVALID_REQUEST', 'Email and password are required.');
+                  return json(
+                    200,
+                    await options.accountAccess!.login({
+                      email: value.email,
+                      password: value.password
+                    })
+                  );
+                })
+              }
+            ]
+          : []),
         {
           method: 'POST',
           path: '/internal/auth/sessions',
@@ -412,6 +476,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
 }
 export * from './identity.js';
 export * from './auth.js';
+export * from './account-access.js';
 export * from './knowledge-intake.js';
 export * from './knowledge-content.js';
 export * from './knowledge-v2-delivery.js';
