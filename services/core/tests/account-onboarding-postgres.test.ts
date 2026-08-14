@@ -75,15 +75,21 @@ integration('PostgreSQL account workspace onboarding', () => {
     await expect(service().listWorkspaces(user.userId)).resolves.toEqual([created]);
   });
 
-  it('rolls back Workspace creation when the owner membership cannot be inserted', async () => {
+  it('leaves no partial Workspace or membership after a duplicate explicit slug', async () => {
     await cleanup();
     const user = await createUser(
       '018f0000-0000-7000-8000-000000000202',
       'rollback-workspace@example.com'
     );
-    const first = await service().createWorkspace(user.userId, { name: 'Existing Team' });
+    const first = await service().createWorkspace(user.userId, {
+      name: 'Existing Team',
+      slug: 'existing-team'
+    });
     await expect(
-      service().createWorkspace(user.userId, { name: 'Existing-Team' })
+      service().createWorkspace(user.userId, {
+        name: 'Another Team',
+        slug: 'existing team'
+      })
     ).rejects.toMatchObject({ code: 'DUPLICATE_WORKSPACE_SLUG' });
     const counts = await database.getPool().query<{ workspaces: number; memberships: number }>(
       `SELECT
