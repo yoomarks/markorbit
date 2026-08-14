@@ -3,6 +3,7 @@
     "persistence_foundation": "@markorbit/persistence",
     "core": "@markorbit/core-service",
     "core_sessions": "@markorbit/core-service",
+    "core_account_access": "@markorbit/core-service",
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
     "markreg_formal_matters": "@markorbit/markreg-service",
@@ -61,6 +62,7 @@
     "0045_capability_engine_observation_ledger": "@markorbit/capability-engine",
     "0046_capability_engine_reflection_candidates": "@markorbit/capability-engine",
     "0047_capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine",
-    "0048_core_knowledge_v2_deliveries": "@markorbit/core-service"
+    "0048_core_knowledge_v2_deliveries": "@markorbit/core-service",
+    "0049_core_account_access": "@markorbit/core-service"
   }
 }
