@@ -1,6 +1,6 @@
 import type { WorkspaceEntry } from '@markorbit/contracts';
 
-const gatewayUrl = () => import.meta.env.VITE_GATEWAY_URL ?? 'http://127.0.0.1:4000';
+const gatewayUrl = () => import.meta.env.VITE_GATEWAY_URL ?? '';
 
 type SessionResponse = {
   authenticated: true;
