@@ -132,7 +132,7 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_knowledge_v2_delivery', await migrations());
     await new PostgresWorkspaceRepository(database.getPool()).create({
@@ -145,7 +145,7 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
 
   it('owns and reapplies migration 0048 deterministically', async () => {
     const owned = await migrations();
-    expect(owned.at(-1)?.name).toBe('core_knowledge_v2_deliveries');
+    expect(owned.some((migration) => migration.name === 'core_knowledge_v2_deliveries')).toBe(true);
     await migrate(database.getPool(), 'core_knowledge_v2_delivery', owned);
     expect(
       (await migrationStatus(database.getPool(), 'core_knowledge_v2_delivery', owned)).every(
