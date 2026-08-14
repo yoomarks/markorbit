@@ -131,7 +131,10 @@ export class InMemoryAccountAccessStore implements AccountAccessStore {
     }
     const at = this.clock().toISOString();
     const accountProfile = profile(input.userId, input.accountType, at);
-    this.records.set(input.userId, { profile: accountProfile, passwordHash: input.passwordHash });
+    this.records.set(input.userId, {
+      profile: accountProfile,
+      passwordHash: input.passwordHash
+    });
     return { user, profile: accountProfile, passwordHash: input.passwordHash };
   }
 
@@ -139,7 +142,13 @@ export class InMemoryAccountAccessStore implements AccountAccessStore {
     const user = await this.users.findByNormalizedEmail(normalizeEmail(email));
     if (!user) return null;
     const record = this.records.get(user.userId);
-    return record ? { user, profile: structuredClone(record.profile), passwordHash: record.passwordHash } : null;
+    return record
+      ? {
+          user,
+          profile: structuredClone(record.profile),
+          passwordHash: record.passwordHash
+        }
+      : null;
   }
 }
 
