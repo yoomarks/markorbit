@@ -101,7 +101,7 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
       await db[owner].start();
     }
     await db.Core.getPool().query(
-      'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+      'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
     );
     await db.MarkReg.getPool().query(
       'DROP TABLE IF EXISTS markreg_recommended_action_commands,markreg_recommended_action_audit,markreg_recommended_actions,markreg_lifecycle_commands,markreg_lifecycle_views,markreg_lifecycle_events,order_audit,order_commands,orders,markreg_denial_audit,document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE; DROP FUNCTION IF EXISTS reject_markreg_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
