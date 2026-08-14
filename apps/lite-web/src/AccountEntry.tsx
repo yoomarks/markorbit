@@ -46,7 +46,12 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
     setCsrf(csrfToken);
     const entries = await api.workspaces();
     setWorkspaces(entries);
-    if (entries.length === 0) setView('workspace-setup');
+    const requestedWorkspaceId = new URLSearchParams(window.location.search).get('workspaceId');
+    const requestedWorkspace = requestedWorkspaceId
+      ? entries.find((entry) => entry.workspace.workspaceId === requestedWorkspaceId)
+      : undefined;
+    if (requestedWorkspace) selectWorkspace(requestedWorkspace);
+    else if (entries.length === 0) setView('workspace-setup');
     else if (entries.length === 1) selectWorkspace(entries[0]!);
     else setView('workspace-select');
   };
