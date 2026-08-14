@@ -9,7 +9,7 @@
     "build": "tsup src/index.ts src/main.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:postgres": "vitest run tests/identity-postgres.test.ts",
-    "test:auth:postgres": "vitest run tests/session-postgres.test.ts",
+    "test:auth:postgres": "vitest run tests/session-postgres.test.ts && vitest run tests/account-access-postgres.test.ts",
     "test:knowledge-intake:postgres": "vitest run tests/knowledge-intake-postgres.test.ts",
     "test:knowledge-v2-delivery:postgres": "vitest run tests/knowledge-v2-delivery-postgres.test.ts",
     "typecheck": "tsc --noEmit",
