@@ -10,13 +10,15 @@ on:
       - 'services/core/tests/account-onboarding-postgres.test.ts'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  print-prettier:
+  apply-prettier:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -25,10 +27,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier output
+      - name: Apply exact repository formatting
+        run: >-
+          pnpm exec prettier --write
+          apps/markreg-web/src/AccountEntry.stories.tsx
+          apps/markreg-web/src/AccountEntry.tsx
+          apps/lite-web/src/AccountEntry.stories.tsx
+          apps/lite-web/src/AccountEntry.test.tsx
+          apps/lite-web/src/AccountEntry.tsx
+          apps/lite-web/src/account-entry.css
+          services/core/tests/account-onboarding-postgres.test.ts
+      - name: Commit formatting only when needed
         shell: bash
         run: |
-          for file in \
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
             apps/markreg-web/src/AccountEntry.stories.tsx \
             apps/markreg-web/src/AccountEntry.tsx \
             apps/lite-web/src/AccountEntry.stories.tsx \
@@ -36,7 +54,5 @@ jobs:
             apps/lite-web/src/AccountEntry.tsx \
             apps/lite-web/src/account-entry.css \
             services/core/tests/account-onboarding-postgres.test.ts
-          do
-            echo "===== ${file} ====="
-            pnpm exec prettier "${file}"
-          done
+          git commit -m "format m8 wp02 account onboarding"
+          git push origin HEAD:${{ github.head_ref }}
