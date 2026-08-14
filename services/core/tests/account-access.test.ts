@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { AuthenticationError } from '@markorbit/contracts';
 import {
   AccountAccessService,
   InMemoryAccountAccessStore,
@@ -138,9 +137,9 @@ describe('real account access', () => {
       { email: 'missing@example.com', password: 'known secure password' },
       { email: 'known@example.com', password: 'wrong secure password' }
     ]) {
-      await expect(f.access.login(command)).rejects.toEqual(
-        expect.objectContaining<Partial<AuthenticationError>>({ code: 'INVALID_CREDENTIALS' })
-      );
+      await expect(f.access.login(command)).rejects.toMatchObject({
+        code: 'INVALID_CREDENTIALS'
+      });
     }
   });
 });
