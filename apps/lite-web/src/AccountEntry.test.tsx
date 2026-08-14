@@ -63,7 +63,11 @@ describe('Lite account entry', () => {
     await user.type(screen.getByLabelText('Your name'), 'Professional One');
     await user.type(screen.getByLabelText('Work email'), 'professional@example.com');
     await user.type(screen.getByLabelText('Password'), 'secure professional password');
-    await user.click(screen.getByRole('button', { name: 'Create professional account' }));
+    const submit = screen
+      .getAllByRole('button', { name: 'Create professional account' })
+      .find((button) => button.getAttribute('type') === 'submit');
+    expect(submit).toBeDefined();
+    await user.click(submit!);
 
     expect(
       await screen.findByRole('heading', { name: 'Create your professional workspace' })
