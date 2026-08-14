@@ -2,8 +2,10 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type {
   AccountAccessResult,
   AuthenticatedUserPrincipal,
+  CreateWorkspaceCommand,
   LoginAccountCommand,
   RegisterAccountCommand,
+  WorkspaceEntry,
   WorkspacePrincipal
 } from '@markorbit/contracts';
 import { AuthenticationError } from '@markorbit/contracts';
@@ -44,6 +46,12 @@ export function requireTrustedOrigin(origin: string | undefined, allowed: readon
 export interface CoreAuthenticationClient {
   register?(command: RegisterAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
   login?(command: LoginAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
+  createWorkspace?(
+    userId: string,
+    command: CreateWorkspaceCommand,
+    correlationId?: string
+  ): Promise<WorkspaceEntry>;
+  listWorkspaces?(userId: string, correlationId?: string): Promise<readonly WorkspaceEntry[]>;
   issue(
     userId: string,
     correlationId?: string
@@ -65,17 +73,22 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     private readonly serviceSecret: string,
     private readonly timeoutMs = 3_000
   ) {}
-  private async call<T>(path: string, body: unknown, correlationId?: string): Promise<T> {
+  private async request<T>(
+    method: 'GET' | 'POST',
+    path: string,
+    body: unknown,
+    correlationId?: string
+  ): Promise<T> {
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
-        method: 'POST',
+        method,
         headers: {
           'content-type': 'application/json',
           'x-markorbit-internal-authorization': this.serviceSecret,
           ...(correlationId ? { 'x-correlation-id': correlationId } : {})
         },
-        body: JSON.stringify(body),
+        ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
         signal: AbortSignal.timeout(this.timeoutMs)
       });
     } catch {
@@ -98,11 +111,31 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     }
     return response.json() as Promise<T>;
   }
+  private call<T>(path: string, body: unknown, correlationId?: string) {
+    return this.request<T>('POST', path, body, correlationId);
+  }
+  private read<T>(path: string, correlationId?: string) {
+    return this.request<T>('GET', path, undefined, correlationId);
+  }
   register(command: RegisterAccountCommand, correlationId?: string) {
     return this.call<AccountAccessResult>('/internal/auth/register', command, correlationId);
   }
   login(command: LoginAccountCommand, correlationId?: string) {
     return this.call<AccountAccessResult>('/internal/auth/login', command, correlationId);
+  }
+  createWorkspace(userId: string, command: CreateWorkspaceCommand, correlationId?: string) {
+    return this.call<WorkspaceEntry>(
+      '/internal/onboarding/workspaces',
+      { userId, ...command },
+      correlationId
+    );
+  }
+  async listWorkspaces(userId: string, correlationId?: string) {
+    const result = await this.read<{ workspaces: WorkspaceEntry[] }>(
+      `/internal/onboarding/users/${encodeURIComponent(userId)}/workspaces`,
+      correlationId
+    );
+    return result.workspaces;
   }
   issue(userId: string, correlationId?: string) {
     return this.call<{
