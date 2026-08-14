@@ -42,10 +42,7 @@ function service() {
     workspaces,
     memberships: new PostgresMembershipRepository(query)
   });
-  return new AccountAccessService(
-    new PostgresAccountAccessStore(database),
-    authentication
-  );
+  return new AccountAccessService(new PostgresAccountAccessStore(database), authentication);
 }
 
 async function cleanup() {
@@ -99,63 +96,67 @@ integration('PostgreSQL real account access', () => {
     expect(row.password_hash).not.toContain(password);
   });
 
-  it('logs in after a database connection restart and creates a fresh durable Session', async () => {
-    await cleanup();
-    const registered = await service().register({
-      email: 'restart@example.com',
-      displayName: 'Restart User',
-      password: 'restart durable password',
-      accountType: 'CUSTOMER'
-    });
-    await database.close();
-    database = new ManagedDatabase(config());
-    await database.start();
-    const loggedIn = await service().login({
-      email: 'RESTART@example.com',
-      password: 'restart durable password'
-    });
-    expect(loggedIn.account).toEqual(registered.account);
-    expect(loggedIn.rawToken).not.toBe(registered.rawToken);
-    expect(
-      (
-        await database
-          .getPool()
-          .query('SELECT count(*)::int AS count FROM sessions WHERE user_id=$1', [
-            registered.account.userId
-          ])
-      ).rows[0]
-    ).toMatchObject({ count: 2 });
-  });
+  it(
+    'logs in after a database connection restart and creates a fresh durable Session',
+    async () => {
+      await cleanup();
+      const registered = await service().register({
+        email: 'restart@example.com',
+        displayName: 'Restart User',
+        password: 'restart durable password',
+        accountType: 'CUSTOMER'
+      });
+      await database.close();
+      database = new ManagedDatabase(config());
+      await database.start();
+      const loggedIn = await service().login({
+        email: 'RESTART@example.com',
+        password: 'restart durable password'
+      });
+      expect(loggedIn.account).toEqual(registered.account);
+      expect(loggedIn.rawToken).not.toBe(registered.rawToken);
+      expect(
+        (
+          await database
+            .getPool()
+            .query('SELECT count(*)::int AS count FROM sessions WHERE user_id=$1', [
+              registered.account.userId
+            ])
+        ).rows[0]
+      ).toMatchObject({ count: 2 });
+    }
+  );
 
-  it('rolls back duplicate normalized-email registration without a partial profile or credential', async () => {
-    await cleanup();
-    const access = service();
-    await access.register({
-      email: 'duplicate@example.com',
-      displayName: 'First',
-      password: 'first duplicate password',
-      accountType: 'CUSTOMER'
-    });
-    await expect(
-      access.register({
-        email: 'DUPLICATE@example.com',
-        displayName: 'Second',
-        password: 'second duplicate password',
-        accountType: 'PROFESSIONAL'
-      })
-    ).rejects.toMatchObject({ code: 'EMAIL_ALREADY_REGISTERED' });
-    expect(
-      (await database.getPool().query('SELECT count(*)::int AS count FROM users')).rows[0]
-    ).toMatchObject({
-      count: 1
-    });
-    expect(
-      (await database.getPool().query('SELECT count(*)::int AS count FROM account_profiles'))
-        .rows[0]
-    ).toMatchObject({ count: 1 });
-    expect(
-      (await database.getPool().query('SELECT count(*)::int AS count FROM password_credentials'))
-        .rows[0]
-    ).toMatchObject({ count: 1 });
-  });
+  it(
+    'rolls back duplicate normalized-email registration without a partial profile or credential',
+    async () => {
+      await cleanup();
+      const access = service();
+      await access.register({
+        email: 'duplicate@example.com',
+        displayName: 'First',
+        password: 'first duplicate password',
+        accountType: 'CUSTOMER'
+      });
+      await expect(
+        access.register({
+          email: 'DUPLICATE@example.com',
+          displayName: 'Second',
+          password: 'second duplicate password',
+          accountType: 'PROFESSIONAL'
+        })
+      ).rejects.toMatchObject({ code: 'EMAIL_ALREADY_REGISTERED' });
+      expect(
+        (await database.getPool().query('SELECT count(*)::int AS count FROM users')).rows[0]
+      ).toMatchObject({ count: 1 });
+      expect(
+        (await database.getPool().query('SELECT count(*)::int AS count FROM account_profiles'))
+          .rows[0]
+      ).toMatchObject({ count: 1 });
+      expect(
+        (await database.getPool().query('SELECT count(*)::int AS count FROM password_credentials'))
+          .rows[0]
+      ).toMatchObject({ count: 1 });
+    }
+  );
 });
