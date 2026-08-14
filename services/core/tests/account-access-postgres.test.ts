@@ -42,7 +42,10 @@ function service() {
     workspaces,
     memberships: new PostgresMembershipRepository(query)
   });
-  return new AccountAccessService(new PostgresAccountAccessStore(database), authentication);
+  return new AccountAccessService(
+    new PostgresAccountAccessStore(database),
+    authentication
+  );
 }
 
 async function cleanup() {
@@ -85,7 +88,11 @@ integration('PostgreSQL real account access', () => {
          WHERE u.user_id=$1`,
         [registered.account.userId]
       )
-    ).rows[0] as { normalized_email: string; account_type: string; password_hash: string };
+    ).rows[0] as {
+      normalized_email: string;
+      account_type: string;
+      password_hash: string;
+    };
     expect(row.normalized_email).toBe('durable@example.com');
     expect(row.account_type).toBe('PROFESSIONAL');
     expect(row.password_hash).toMatch(/^scrypt\$/);
@@ -137,14 +144,18 @@ integration('PostgreSQL real account access', () => {
         accountType: 'PROFESSIONAL'
       })
     ).rejects.toMatchObject({ code: 'EMAIL_ALREADY_REGISTERED' });
-    expect((await database.getPool().query('SELECT count(*)::int AS count FROM users')).rows[0]).toMatchObject({
+    expect(
+      (await database.getPool().query('SELECT count(*)::int AS count FROM users')).rows[0]
+    ).toMatchObject({
       count: 1
     });
     expect(
-      (await database.getPool().query('SELECT count(*)::int AS count FROM account_profiles')).rows[0]
+      (await database.getPool().query('SELECT count(*)::int AS count FROM account_profiles'))
+        .rows[0]
     ).toMatchObject({ count: 1 });
     expect(
-      (await database.getPool().query('SELECT count(*)::int AS count FROM password_credentials')).rows[0]
+      (await database.getPool().query('SELECT count(*)::int AS count FROM password_credentials'))
+        .rows[0]
     ).toMatchObject({ count: 1 });
   });
 });
