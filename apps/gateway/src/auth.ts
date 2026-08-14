@@ -1,5 +1,11 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { AuthenticatedUserPrincipal, WorkspacePrincipal } from '@markorbit/contracts';
+import type {
+  AccountAccessResult,
+  AuthenticatedUserPrincipal,
+  LoginAccountCommand,
+  RegisterAccountCommand,
+  WorkspacePrincipal
+} from '@markorbit/contracts';
 import { AuthenticationError } from '@markorbit/contracts';
 
 export const SESSION_COOKIE_NAME = 'mo_session';
@@ -36,6 +42,8 @@ export function requireTrustedOrigin(origin: string | undefined, allowed: readon
     throw new AuthenticationError('UNTRUSTED_ORIGIN', 'Request origin is not trusted.');
 }
 export interface CoreAuthenticationClient {
+  register?(command: RegisterAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
+  login?(command: LoginAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
   issue(
     userId: string,
     correlationId?: string
@@ -89,6 +97,12 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
       );
     }
     return response.json() as Promise<T>;
+  }
+  register(command: RegisterAccountCommand, correlationId?: string) {
+    return this.call<AccountAccessResult>('/internal/auth/register', command, correlationId);
+  }
+  login(command: LoginAccountCommand, correlationId?: string) {
+    return this.call<AccountAccessResult>('/internal/auth/login', command, correlationId);
   }
   issue(userId: string, correlationId?: string) {
     return this.call<{
