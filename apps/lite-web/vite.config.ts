@@ -10,5 +10,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL('../../packages/ui/src/index.ts', import.meta.url))
       }
     ]
+  },
+  server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:4000'
+    }
   }
 });
