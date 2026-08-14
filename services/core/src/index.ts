@@ -14,6 +14,8 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 import type { AccountAccessService } from './account-access.js';
+import { createCoreAccountOnboardingRoutes } from './account-onboarding-http.js';
+import type { AccountOnboardingService } from './account-onboarding.js';
 import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
 import {
@@ -46,6 +48,7 @@ export interface CoreRuntimeOptions {
   port?: number;
   authentication?: AuthenticationService;
   accountAccess?: AccountAccessService;
+  accountOnboarding?: AccountOnboardingService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
@@ -82,6 +85,15 @@ const canonicalUuid = (value: string) =>
 export function createRuntime(options: CoreRuntimeOptions = {}) {
   const authentication = options.authentication;
   const secret = options.internalServiceSecret;
+  if (options.accountOnboarding && !secret)
+    throw new Error('internalServiceSecret is required for account onboarding routes.');
+  const onboardingRoutes =
+    options.accountOnboarding && secret
+      ? createCoreAccountOnboardingRoutes({
+          onboarding: options.accountOnboarding,
+          internalServiceSecret: secret
+        })
+      : [];
   const internal =
     (handle: (request: JsonRequest) => Promise<ReturnType<typeof json>>): JsonRoute['handle'] =>
     async (request) => {
@@ -108,6 +120,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     };
   const routes: JsonRoute[] = authentication
     ? [
+        ...onboardingRoutes,
         ...(options.accountAccess
           ? [
               {
@@ -477,6 +490,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
 export * from './identity.js';
 export * from './auth.js';
 export * from './account-access.js';
+export * from './account-onboarding.js';
 export * from './knowledge-intake.js';
 export * from './knowledge-content.js';
 export * from './knowledge-v2-delivery.js';
