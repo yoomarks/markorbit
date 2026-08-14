@@ -13,7 +13,8 @@ import {
 } from '@markorbit/contracts';
 import type { ManagedDatabase } from '@markorbit/persistence';
 import { IdentityError } from '@markorbit/contracts';
-import { AuthenticationService, uuidV7 } from './auth.js';
+import type { AuthenticationService } from './auth.js';
+import { uuidV7 } from './auth.js';
 import { normalizeEmail, PostgresUserRepository } from './identity.js';
 
 const SCRYPT_N = 16_384;
@@ -31,7 +32,7 @@ const derive = (password: string, salt: Buffer, keyLength = SCRYPT_KEY_LENGTH) =
       salt,
       keyLength,
       { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: SCRYPT_MAXMEM },
-      (error, key) => (error ? reject(error) : resolve(key as Buffer))
+      (error, key) => (error ? reject(error) : resolve(key))
     );
   });
 
