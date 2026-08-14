@@ -32,9 +32,9 @@ describe('account workspace onboarding', () => {
     });
     expect(entry.workspace).toMatchObject({
       name: 'Acme IP Team',
-      slug: 'acme-ip-team',
       status: 'ACTIVE'
     });
+    expect(entry.workspace.slug).toMatch(/^acme-ip-team-[0-9a-f]{6}$/);
     expect(entry.membership).toMatchObject({
       userId: user.userId,
       workspaceId: entry.workspace.workspaceId,
@@ -67,19 +67,27 @@ describe('account workspace onboarding', () => {
     await expect(
       f.onboarding.createWorkspace(user.userId, { name: 'Should Not Exist' })
     ).rejects.toMatchObject({ code: 'USER_DISABLED' });
-    await expect(f.workspaces.findBySlug('should-not-exist')).resolves.toBeNull();
   });
 
-  it('rejects duplicate normalized Workspace slugs', async () => {
+  it('rejects duplicate explicit Workspace slugs while default slugs stay collision-safe', async () => {
     const f = fixture();
     const user = await f.users.create({
       userId: '018f0000-0000-7000-8000-000000000104',
       email: 'duplicate@example.com',
       displayName: 'Duplicate User'
     });
-    await f.onboarding.createWorkspace(user.userId, { name: 'North America' });
+    const first = await f.onboarding.createWorkspace(user.userId, { name: 'North America' });
+    const second = await f.onboarding.createWorkspace(user.userId, { name: 'North America' });
+    expect(second.workspace.slug).not.toBe(first.workspace.slug);
+    await f.onboarding.createWorkspace(user.userId, {
+      name: 'Explicit One',
+      slug: 'fixed-team'
+    });
     await expect(
-      f.onboarding.createWorkspace(user.userId, { name: 'North-America' })
+      f.onboarding.createWorkspace(user.userId, {
+        name: 'Explicit Two',
+        slug: 'fixed team'
+      })
     ).rejects.toMatchObject({ code: 'DUPLICATE_WORKSPACE_SLUG' });
   });
 });
