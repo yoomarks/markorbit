@@ -101,7 +101,7 @@ type MarkregTarget = (typeof markregTargets)[number]['targets'][number];
 
 async function runMarkregRecoveryGroup(page: Page, targets: readonly MarkregTarget[]) {
   const methods: string[] = [];
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${applicationUrl('markreg')}/api/**`, async (route) => {
     methods.push(route.request().method());
     const target = targets.find((x) => route.request().url().includes(x[5]));
     if (!target) return route.fulfill({ status: 404, json: { error: { message: 'not found' } } });
@@ -181,7 +181,7 @@ test('Lite Work targets load exact detail without opening first/latest queue rec
     ]
   ] as const;
   const methods: string[] = [];
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${applicationUrl('lite')}/api/**`, async (route) => {
     methods.push(route.request().method());
     const target = targets.find((x) => route.request().url().includes(x[5]));
     if (!target) return route.fulfill({ status: 404, json: { error: { message: 'not found' } } });
