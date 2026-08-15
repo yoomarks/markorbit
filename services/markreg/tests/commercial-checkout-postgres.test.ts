@@ -1,11 +1,7 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
-import {
-  ManagedDatabase,
-  loadMigrationsForOwner,
-  migrationStatus
-} from '@markorbit/persistence';
+import { ManagedDatabase, loadMigrationsForOwner, migrationStatus } from '@markorbit/persistence';
 import { CommercialCheckoutService } from '../src/commercial-checkout.js';
 import { PostgresCommercialCatalogRepository } from '../src/commercial-checkout-postgres.js';
 import { PostgresOrderRepository } from '../src/order-persistence.js';
