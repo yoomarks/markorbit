@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkspaceEntry } from '@markorbit/contracts';
@@ -60,9 +60,15 @@ describe('Lite account entry', () => {
     render(<LiteAccountEntry api={api} renderProduct={() => <div>Professional Lite ready</div>} />);
 
     await user.click(await screen.findByRole('button', { name: 'Create professional account' }));
-    await user.type(screen.getByLabelText('Your name'), 'Professional One');
-    await user.type(screen.getByLabelText('Work email'), 'professional@example.com');
-    await user.type(screen.getByLabelText('Password'), 'secure professional password');
+    fireEvent.change(screen.getByLabelText('Your name'), {
+      target: { value: 'Professional One' }
+    });
+    fireEvent.change(screen.getByLabelText('Work email'), {
+      target: { value: 'professional@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'secure professional password' }
+    });
     const submit = screen
       .getAllByRole('button', { name: 'Create professional account' })
       .find((button) => button.getAttribute('type') === 'submit');
@@ -72,7 +78,9 @@ describe('Lite account entry', () => {
     expect(
       await screen.findByRole('heading', { name: 'Create your professional workspace' })
     ).toBeTruthy();
-    await user.type(screen.getByLabelText('Workspace name'), 'Professional Practice');
+    fireEvent.change(screen.getByLabelText('Workspace name'), {
+      target: { value: 'Professional Practice' }
+    });
     await user.click(screen.getByRole('button', { name: 'Create professional workspace' }));
 
     expect(await screen.findByText('Professional Lite ready')).toBeTruthy();

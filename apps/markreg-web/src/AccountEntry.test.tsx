@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkspaceEntry } from '@markorbit/contracts';
@@ -62,9 +62,15 @@ describe('MarkReg account entry', () => {
     );
 
     await user.click(await screen.findByRole('button', { name: 'Create account' }));
-    await user.type(screen.getByLabelText('Your name'), 'Customer One');
-    await user.type(screen.getByLabelText('Email'), 'customer@example.com');
-    await user.type(screen.getByLabelText('Password'), 'secure customer password');
+    fireEvent.change(screen.getByLabelText('Your name'), {
+      target: { value: 'Customer One' }
+    });
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'customer@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'secure customer password' }
+    });
     const submit = screen
       .getAllByRole('button', { name: 'Create account' })
       .find((button) => button.getAttribute('type') === 'submit');
@@ -74,7 +80,9 @@ describe('MarkReg account entry', () => {
     expect(
       await screen.findByRole('heading', { name: 'Set up your trademark workspace' })
     ).toBeTruthy();
-    await user.type(screen.getByLabelText('Workspace name'), 'Customer Team');
+    fireEvent.change(screen.getByLabelText('Workspace name'), {
+      target: { value: 'Customer Team' }
+    });
     await user.click(screen.getByRole('button', { name: 'Create workspace' }));
 
     expect(await screen.findByText('Customer product ready')).toBeTruthy();
