@@ -119,7 +119,8 @@ function translate(error: unknown): never {
         ? 403
         : error.code === 'PRODUCT_NOT_FOUND' ||
             error.code === 'PRICE_NOT_FOUND' ||
-            error.code === 'ORDER_NOT_FOUND'
+            error.code === 'ORDER_NOT_FOUND' ||
+            error.code === 'CHECKOUT_NOT_FOUND'
           ? 404
           : error.code === 'PERSISTENCE_UNAVAILABLE'
             ? 503
