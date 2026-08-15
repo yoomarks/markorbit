@@ -34,12 +34,14 @@ export default defineConfig({
     {
       command: `pnpm --filter ${applications.lite.package} dev --host 127.0.0.1 --port ${applications.lite.port}`,
       url: applicationUrl('lite'),
-      reuseExistingServer: !inCI
+      reuseExistingServer: !inCI,
+      env: { VITE_MARKORBIT_FIXTURE_ENTRY: '1' }
     },
     {
       command: `pnpm --filter ${applications.markreg.package} dev --host 127.0.0.1 --port ${applications.markreg.port}`,
       url: applicationUrl('markreg'),
-      reuseExistingServer: !inCI
+      reuseExistingServer: !inCI,
+      env: { VITE_MARKORBIT_FIXTURE_ENTRY: '1' }
     },
     {
       command: `pnpm --filter ${applications.operations.package} dev --host 127.0.0.1 --port ${applications.operations.port}`,
