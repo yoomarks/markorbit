@@ -1,0 +1,44 @@
+name: M8 WP03 Format Artifact
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    if: github.head_ref == 'agent/m8-wp03-product-pricing-checkout'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP03 files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/src/commercial.ts
+          packages/contracts/tests/commercial.test.ts
+          services/markreg/src/commercial-checkout-http.ts
+          services/markreg/src/commercial-checkout-postgres.ts
+          services/markreg/src/commercial-checkout.ts
+          services/markreg/tests/commercial-checkout-postgres.test.ts
+          services/markreg/tests/commercial-checkout.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m8-wp03-prettier-output
+          path: |
+            packages/contracts/src/commercial.ts
+            packages/contracts/tests/commercial.test.ts
+            services/markreg/src/commercial-checkout-http.ts
+            services/markreg/src/commercial-checkout-postgres.ts
+            services/markreg/src/commercial-checkout.ts
+            services/markreg/tests/commercial-checkout-postgres.test.ts
+            services/markreg/tests/commercial-checkout.test.ts
