@@ -28,7 +28,9 @@ export class CommercialContractError extends Error {
 
 export function assertCommercialMoney(value: Readonly<Money>): void {
   if (!Number.isSafeInteger(value.amountMinor) || value.amountMinor < 0)
-    throw new CommercialContractError('Commercial money must use non-negative safe integer minor units.');
+    throw new CommercialContractError(
+      'Commercial money must use non-negative safe integer minor units.'
+    );
   if (!/^[A-Z]{3}$/u.test(value.currency))
     throw new CommercialContractError('Commercial money currency must be an ISO 4217-style code.');
 }
@@ -156,7 +158,10 @@ export function assertCommercialProduct(value: Readonly<CommercialProduct>): voi
     throw new CommercialContractError('Commercial Product version must be a positive integer.');
   if (value.code.trim().length === 0 || value.name.trim().length === 0)
     throw new CommercialContractError('Commercial Product code and name are required.');
-  if (!Number.isFinite(Date.parse(value.createdAt)) || !Number.isFinite(Date.parse(value.updatedAt)))
+  if (
+    !Number.isFinite(Date.parse(value.createdAt)) ||
+    !Number.isFinite(Date.parse(value.updatedAt))
+  )
     throw new CommercialContractError('Commercial Product timestamps are invalid.');
 }
 
