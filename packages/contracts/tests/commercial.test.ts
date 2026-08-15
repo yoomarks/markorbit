@@ -38,9 +38,9 @@ describe('commercial contracts', () => {
     expect(() => assertCommercialPrice(price({ priceVersion: 0 }))).toThrow(
       CommercialContractError
     );
-    expect(() =>
-      assertCommercialPrice(price({ validUntil: '2026-07-31T23:59:59.000Z' }))
-    ).toThrow(CommercialContractError);
+    expect(() => assertCommercialPrice(price({ validUntil: '2026-07-31T23:59:59.000Z' }))).toThrow(
+      CommercialContractError
+    );
   });
 
   it('selects a price only while its governed version is active', () => {
