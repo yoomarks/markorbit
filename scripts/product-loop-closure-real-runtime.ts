@@ -177,8 +177,7 @@ async function seedWorkspace(
       id: feedbackRecommendation.todayRecommendationId,
       version: feedbackRecommendation.version
     },
-    expectedRecommendationFingerprintSha256:
-      feedbackRecommendation.recommendationFingerprintSha256,
+    expectedRecommendationFingerprintSha256: feedbackRecommendation.recommendationFingerprintSha256,
     title: 'Prepare reviewed manual-use package',
     rationale: 'Seed the real pending-feedback path from exact accepted Knowledge.',
     idempotencyKey: `wp07-browser-feedback-opportunity-${workspaceId}`
