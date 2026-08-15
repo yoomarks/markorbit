@@ -11,10 +11,7 @@ import {
   type CommercialProduct,
   type CommercialProductId
 } from '@markorbit/contracts/commercial';
-import type {
-  CheckoutReplay,
-  CommercialCatalogRepository
-} from './commercial-checkout.js';
+import type { CheckoutReplay, CommercialCatalogRepository } from './commercial-checkout.js';
 import { CommercialCheckoutError } from './commercial-checkout.js';
 
 export interface CommercialCheckoutTransactionHost {
@@ -147,12 +144,7 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
     try {
       return await this.database.transact(
         async (client) => {
-          const replay = await this.findReplay(
-            client,
-            checkout.workspaceId,
-            idempotencyKey,
-            true
-          );
+          const replay = await this.findReplay(client, checkout.workspaceId, idempotencyKey, true);
           if (replay) return this.resolveReplay(replay, fingerprint);
           const active = await client.query(
             "SELECT * FROM checkout_sessions WHERE workspace_id=$1 AND order_id=$2 AND status='INITIATED' FOR UPDATE",
@@ -206,7 +198,10 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
     } catch (cause) {
       if (cause instanceof CommercialCheckoutError) throw cause;
       if (postgresCode(cause) === '23505') {
-        const replay = await this.findCheckoutByIdempotencyKey(checkout.workspaceId, idempotencyKey);
+        const replay = await this.findCheckoutByIdempotencyKey(
+          checkout.workspaceId,
+          idempotencyKey
+        );
         if (replay) return this.resolveReplay(replay, fingerprint);
         const active = await this.findActiveCheckoutByOrder(checkout.workspaceId, checkout.orderId);
         if (active)
@@ -267,7 +262,9 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
       productId: String(row[`${prefix}product_id`] ?? row.product_id) as CommercialProductId,
       code: String(row[`${prefix}code`] ?? row.code),
       name: String(row[`${prefix}name`] ?? row.name),
-      serviceType: String(row[`${prefix}service_type`] ?? row.service_type) as CommercialProduct['serviceType'],
+      serviceType: String(
+        row[`${prefix}service_type`] ?? row.service_type
+      ) as CommercialProduct['serviceType'],
       status: String(row[`${prefix}status`] ?? row.status) as CommercialProduct['status'],
       version: Number(row[`${prefix}version`] ?? row.version),
       createdAt: new Date((row[`${prefix}created_at`] ?? row.created_at) as string).toISOString(),
@@ -321,9 +318,7 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString(),
       expiresAt: new Date(row.expires_at as string).toISOString(),
-      ...(typeof row.cancelled_reason === 'string'
-        ? { cancelledReason: row.cancelled_reason }
-        : {})
+      ...(typeof row.cancelled_reason === 'string' ? { cancelledReason: row.cancelled_reason } : {})
     };
   }
 }
