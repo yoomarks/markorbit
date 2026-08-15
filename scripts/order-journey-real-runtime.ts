@@ -284,10 +284,7 @@ async function main() {
   gateway = createGateway({
     port: 4400,
     markRegUrl: 'http://127.0.0.1:4405',
-    authenticationClient: new HttpCoreAuthenticationClient(
-      'http://127.0.0.1:4401',
-      internalSecret
-    ),
+    authenticationClient: new HttpCoreAuthenticationClient('http://127.0.0.1:4401', internalSecret),
     internalServiceSecret: internalSecret,
     csrfSecret,
     allowedOrigins: [origin],
