@@ -95,24 +95,22 @@ const order = (overrides: Partial<Order> = {}): Order =>
     ...overrides
   }) as Order;
 
-function harness(value: Order = order()) {
+function harness(
+  value: Order = order(),
+  clock: () => string = () => now,
+  checkoutId: () => `checkout_${string}` = () => 'checkout_direct-1'
+) {
   const repository = new InMemoryCommercialCatalogRepository();
   repository.putProduct(product);
   repository.putPrice(price);
-  const service = new CommercialCheckoutService(
-    repository,
-    {
-      findById: (workspaceId, orderId) =>
-        Promise.resolve(
-          workspaceId === value.workspaceId && orderId === value.orderId
-            ? structuredClone(value)
-            : null
-        )
-    },
-    () => now,
-    () => 'checkout_direct-1'
-  );
-  return { repository, service };
+  const orderSource = {
+    findById: (workspaceId: string, orderId: string) =>
+      Promise.resolve(
+        workspaceId === value.workspaceId && orderId === value.orderId ? structuredClone(value) : null
+      )
+  };
+  const service = new CommercialCheckoutService(repository, orderSource, clock, checkoutId);
+  return { repository, service, orderSource };
 }
 
 const command = {
@@ -171,6 +169,33 @@ describe('CommercialCheckoutService', () => {
     await expect(
       service.createCheckout(principal, { ...command, expectedPriceVersion: 2 })
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
+
+  it('expires a stale checkout and allows the same Order to initiate a new session', async () => {
+    const { repository, service, orderSource } = harness();
+    const first = await service.createCheckout(principal, command);
+    const later = '2026-08-15T12:31:00.000Z';
+    const retry = new CommercialCheckoutService(
+      repository,
+      orderSource,
+      () => later,
+      () => 'checkout_direct-2'
+    );
+
+    const second = await retry.createCheckout(principal, {
+      ...command,
+      idempotencyKey: 'checkout-key-2'
+    });
+
+    expect(second.checkoutSessionId).toBe('checkout_direct-2');
+    expect(second.status).toBe('INITIATED');
+    expect(await retry.getCheckout(principal, principal.workspaceId, first.checkoutSessionId)).toMatchObject(
+      {
+        status: 'EXPIRED',
+        version: 2,
+        updatedAt: later
+      }
+    );
   });
 
   it('rejects inactive, mismatched or non-confirmed commercial state', async () => {
