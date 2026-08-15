@@ -185,9 +185,9 @@ describe('CommercialCheckoutService', () => {
         }
       })
     );
-    await expect(
-      mismatchHarness.service.createCheckout(principal, command)
-    ).rejects.toMatchObject({ code: 'PRICE_ORDER_MISMATCH' });
+    await expect(mismatchHarness.service.createCheckout(principal, command)).rejects.toMatchObject({
+      code: 'PRICE_ORDER_MISMATCH'
+    });
 
     const draftHarness = harness(order({ status: 'Draft' }));
     await expect(draftHarness.service.createCheckout(principal, command)).rejects.toMatchObject({
@@ -213,10 +213,7 @@ describe('CommercialCheckoutService', () => {
   it('enforces workspace scope before reading commercial state', async () => {
     const { service } = harness();
     await expect(
-      service.createCheckout(
-        { ...principal, workspaceId: 'workspace_other' },
-        command
-      )
+      service.createCheckout({ ...principal, workspaceId: 'workspace_other' }, command)
     ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
   });
 });
