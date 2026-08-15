@@ -36,7 +36,9 @@ const ownedTables = {
     'sessions',
     'knowledge_intakes',
     'knowledge_intake_contents',
-    'knowledge_v2_deliveries'
+    'knowledge_v2_deliveries',
+    'account_profiles',
+    'password_credentials'
   ],
   MarkReg: [
     'customer_confirmations',
@@ -367,10 +369,11 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(19);
+    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(20);
     expect(sets[0]).toContain('0037_core_knowledge_intakes');
     expect(sets[0]).toContain('0038_core_knowledge_intake_contents');
     expect(sets[0]).toContain('0048_core_knowledge_v2_deliveries');
+    expect(sets[0]).toContain('0049_core_account_access');
     expect(sets[1]).toContain('0034_markreg_lifecycle_projection');
     expect(sets[1]).toContain('0035_markreg_recommended_actions');
     expect(sets[1]).toContain('0041_markreg_formal_opportunity_handoff');

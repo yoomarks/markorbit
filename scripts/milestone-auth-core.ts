@@ -7,6 +7,10 @@ import {
   createRuntime,
   hashSessionToken
 } from '../services/core/src/index.js';
+import {
+  AccountOnboardingService,
+  InMemoryAccountOnboardingRepository
+} from '../services/core/src/account-onboarding.js';
 
 const port = Number(process.env.PORT ?? '4301');
 const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
@@ -26,7 +30,15 @@ const workspaces = new InMemoryWorkspaceRepository();
 const memberships = new InMemoryMembershipRepository(users, workspaces);
 const sessions = new InMemorySessionRepository();
 const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
-const runtime = createRuntime({ port, authentication, internalServiceSecret });
+const accountOnboarding = new AccountOnboardingService(
+  new InMemoryAccountOnboardingRepository(users, workspaces, memberships)
+);
+const runtime = createRuntime({
+  port,
+  authentication,
+  accountOnboarding,
+  internalServiceSecret
+});
 
 async function shutdown(signal: string) {
   process.stdout.write(`milestone-auth-core: received ${signal}, stopping.\n`);

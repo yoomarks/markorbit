@@ -1,8 +1,9 @@
 import { createRoot } from 'react-dom/client';
 import '@markorbit/ui/styles.css';
 import { LiteApp } from './App.js';
-import { GovernedWorkRouteEntry } from './routing/GovernedWorkRouteEntry.js';
+import { LiteAccountEntry } from './AccountEntry.js';
 import { DocumentPackageWorkspace } from './features/document-package/DocumentPackageWorkspace.js';
+import { GovernedWorkRouteEntry } from './routing/GovernedWorkRouteEntry.js';
 const root = document.querySelector('#root');
 if (!root) throw new Error('Root element missing');
 const parameters = new URLSearchParams(window.location.search);
@@ -12,6 +13,20 @@ const filingAuthorizationVersion = Number(parameters.get('filingAuthorizationVer
 const documentPackageId = parameters.get('documentPackageId') ?? undefined;
 const documentPackageReviewCaseId = parameters.get('documentPackageReviewCaseId') ?? undefined;
 const workspaceId = parameters.get('workspaceId') ?? '';
+const fixtureEntry = import.meta.env.VITE_MARKORBIT_FIXTURE_ENTRY === '1';
+const product = () => (
+  <LiteApp
+    {...(professionalReviewCaseId ? { initialReviewCaseId: professionalReviewCaseId } : {})}
+    {...(filingAuthorizationId && filingAuthorizationVersion
+      ? {
+          initialFilingAuthorization: {
+            id: filingAuthorizationId,
+            version: filingAuthorizationVersion
+          }
+        }
+      : {})}
+  />
+);
 createRoot(root).render(
   documentPackageId || documentPackageReviewCaseId ? (
     <DocumentPackageWorkspace
@@ -21,17 +36,9 @@ createRoot(root).render(
     />
   ) : parameters.has('view') ? (
     <GovernedWorkRouteEntry />
+  ) : fixtureEntry ? (
+    product()
   ) : (
-    <LiteApp
-      {...(professionalReviewCaseId ? { initialReviewCaseId: professionalReviewCaseId } : {})}
-      {...(filingAuthorizationId && filingAuthorizationVersion
-        ? {
-            initialFilingAuthorization: {
-              id: filingAuthorizationId,
-              version: filingAuthorizationVersion
-            }
-          }
-        : {})}
-    />
+    <LiteAccountEntry renderProduct={product} />
   )
 );

@@ -1,10 +1,14 @@
 import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
+import { AccountAccessService, PostgresAccountAccessStore } from './account-access.js';
+import {
+  AccountOnboardingService,
+  PostgresAccountOnboardingRepository
+} from './account-onboarding.js';
 import {
   AuthenticationService,
   PostgresSessionRepository,
   validateInternalServiceSecret
 } from './auth.js';
-import { AccountAccessService, PostgresAccountAccessStore } from './account-access.js';
 import {
   PostgresMembershipRepository,
   PostgresUserRepository,
@@ -33,9 +37,13 @@ const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),
   authentication
 );
+const accountOnboarding = new AccountOnboardingService(
+  new PostgresAccountOnboardingRepository(database)
+);
 const runtime = createRuntime({
   authentication,
   accountAccess,
+  accountOnboarding,
   workspaces,
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),

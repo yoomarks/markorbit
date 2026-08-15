@@ -114,6 +114,10 @@ test('custom port map derives independent six-runtime URLs', async () => {
   const configuration = milestoneConfiguration(ports);
   assert.equal(configuration.definitions.length, 6);
   assert.match(configuration.urls.liteWeb, new RegExp(String(ports.liteWeb)));
+  const markregWeb = configuration.definitions.find(({ name }) => name === 'markreg-web');
+  const liteWeb = configuration.definitions.find(({ name }) => name === 'lite-web');
+  assert.equal(markregWeb?.env?.VITE_MARKORBIT_FIXTURE_ENTRY, '1');
+  assert.equal(liteWeb?.env?.VITE_MARKORBIT_FIXTURE_ENTRY, '1');
   await allAvailable(configuration.definitions);
 });
 test('starts six real runtimes and releases every default port', { timeout: 60000 }, async () => {

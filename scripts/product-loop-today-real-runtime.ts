@@ -14,6 +14,10 @@ import {
   createRuntime as createCore
 } from '../services/core/src/index.js';
 import {
+  AccountOnboardingService,
+  InMemoryAccountOnboardingRepository
+} from '../services/core/src/account-onboarding.js';
+import {
   createRuntime as createGateway,
   HttpCoreAuthenticationClient
 } from '../apps/gateway/src/index.js';
@@ -65,7 +69,15 @@ const auth = new AuthenticationService({
   sessions,
   clock: () => new Date(at)
 });
-const core = createCore({ port: 4411, authentication: auth, internalServiceSecret: secret });
+const onboarding = new AccountOnboardingService(
+  new InMemoryAccountOnboardingRepository(users, workspaces, memberships)
+);
+const core = createCore({
+  port: 4411,
+  authentication: auth,
+  accountOnboarding: onboarding,
+  internalServiceSecret: secret
+});
 let liteRuntime: ReturnType<typeof createServiceRuntime>;
 let gateway: ReturnType<typeof createGateway>;
 let vite: ChildProcess;

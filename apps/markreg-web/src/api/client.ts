@@ -9,8 +9,7 @@ export interface ApiClient {
 }
 
 export function createApiClient(
-  baseUrl: string = (import.meta.env['VITE_MARKREG_GATEWAY_URL'] as string | undefined) ??
-    'http://127.0.0.1:4000',
+  baseUrl: string = (import.meta.env['VITE_MARKREG_GATEWAY_URL'] as string | undefined) ?? '',
   timeoutMs = 10_000,
   fetcher: typeof fetch = fetch
 ): ApiClient {

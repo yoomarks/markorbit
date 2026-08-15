@@ -1,0 +1,65 @@
+.lite-account-entry {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(23rem, 0.8fr);
+  gap: 4rem;
+  align-items: center;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+
+.lite-account-entry__intro {
+  max-width: 40rem;
+}
+
+.lite-account-entry__intro h1 {
+  margin: 0.75rem 0 1rem;
+  font-size: clamp(2.35rem, 5vw, 4.4rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.lite-account-entry__intro p {
+  max-width: 37rem;
+  font-size: 1.08rem;
+  line-height: 1.7;
+  color: var(--mo-color-text-muted, #5d6470);
+}
+
+.lite-account-entry__eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lite-account-entry__card form,
+.lite-account-entry__workspaces {
+  display: grid;
+  gap: 1rem;
+}
+
+.lite-account-entry__switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.lite-account-entry__workspaces .mo-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .lite-account-entry {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 2rem 1rem;
+  }
+
+  .lite-account-entry__intro h1 {
+    font-size: clamp(2.2rem, 11vw, 3.3rem);
+  }
+}

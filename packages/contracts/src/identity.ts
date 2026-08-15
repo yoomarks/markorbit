@@ -112,6 +112,14 @@ export interface WorkspaceMembership {
   createdAt: string;
   updatedAt: string;
 }
+export interface CreateWorkspaceCommand {
+  name: string;
+  slug?: string;
+}
+export interface WorkspaceEntry {
+  workspace: Workspace;
+  membership: WorkspaceMembership;
+}
 export type UserIdentity = Pick<User, 'userId'>;
 export type WorkspaceIdentity = Pick<Workspace, 'workspaceId'>;
 export type MembershipIdentity = Pick<
