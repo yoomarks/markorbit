@@ -123,12 +123,13 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
 
   async findActiveCheckoutByOrder(
     workspaceId: string,
-    orderId: string
+    orderId: string,
+    at: string
   ): Promise<CheckoutSession | null> {
     try {
       const result = await this.query.query(
-        "SELECT * FROM checkout_sessions WHERE workspace_id=$1 AND order_id=$2 AND status='INITIATED' ORDER BY created_at DESC LIMIT 1",
-        [workspaceId, orderId]
+        "SELECT * FROM checkout_sessions WHERE workspace_id=$1 AND order_id=$2 AND status='INITIATED' AND expires_at > $3 ORDER BY created_at DESC LIMIT 1",
+        [workspaceId, orderId, at]
       );
       return result.rowCount ? this.mapCheckout(result.rows[0] as Row) : null;
     } catch (cause) {
@@ -146,6 +147,12 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
         async (client) => {
           const replay = await this.findReplay(client, checkout.workspaceId, idempotencyKey, true);
           if (replay) return this.resolveReplay(replay, fingerprint);
+          await client.query(
+            `UPDATE checkout_sessions
+             SET status='EXPIRED',version=version+1,updated_at=$3
+             WHERE workspace_id=$1 AND order_id=$2 AND status='INITIATED' AND expires_at <= $3`,
+            [checkout.workspaceId, checkout.orderId, checkout.createdAt]
+          );
           const active = await client.query(
             "SELECT * FROM checkout_sessions WHERE workspace_id=$1 AND order_id=$2 AND status='INITIATED' FOR UPDATE",
             [checkout.workspaceId, checkout.orderId]
@@ -203,7 +210,11 @@ export class PostgresCommercialCatalogRepository implements CommercialCatalogRep
           idempotencyKey
         );
         if (replay) return this.resolveReplay(replay, fingerprint);
-        const active = await this.findActiveCheckoutByOrder(checkout.workspaceId, checkout.orderId);
+        const active = await this.findActiveCheckoutByOrder(
+          checkout.workspaceId,
+          checkout.orderId,
+          checkout.createdAt
+        );
         if (active)
           throw new CommercialCheckoutError(
             'ACTIVE_CHECKOUT_EXISTS',
