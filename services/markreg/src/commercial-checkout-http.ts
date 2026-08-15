@@ -11,10 +11,7 @@ import type {
   CreateCheckoutSessionCommand
 } from '@markorbit/contracts/commercial';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
-import {
-  CommercialCheckoutError,
-  type CommercialCheckoutService
-} from './commercial-checkout.js';
+import { CommercialCheckoutError, type CommercialCheckoutService } from './commercial-checkout.js';
 
 export interface CommercialCheckoutHttpOptions {
   service?: Pick<CommercialCheckoutService, 'listCatalog' | 'createCheckout' | 'getCheckout'>;
