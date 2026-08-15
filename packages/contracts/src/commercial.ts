@@ -140,11 +140,12 @@ export function isCommercialPriceActive(price: Readonly<CommercialPrice>, at: st
   const timestamp = Date.parse(at);
   if (!Number.isFinite(timestamp)) return false;
   const from = Date.parse(price.validFrom);
-  const until = price.validUntil ? Date.parse(price.validUntil) : Number.POSITIVE_INFINITY;
+  const hasUntil = price.validUntil !== undefined;
+  const until = hasUntil ? Date.parse(price.validUntil!) : Number.POSITIVE_INFINITY;
   return (
     price.status === 'ACTIVE' &&
     Number.isFinite(from) &&
-    Number.isFinite(until) &&
+    (!hasUntil || Number.isFinite(until)) &&
     timestamp >= from &&
     timestamp < until
   );
