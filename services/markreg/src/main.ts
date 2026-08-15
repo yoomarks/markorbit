@@ -6,6 +6,7 @@ import {
   PostgresFormalMatterRepository,
   PostgresDocumentPackageService,
   PostgresMarkRegAuditRepository,
+  PostgresOrderRepository,
   DocumentPackageError
 } from './index.js';
 import {
@@ -30,6 +31,9 @@ import {
   createMarkRegFormalOpportunityRoutes,
   HttpQualifiedOpportunityAuthority
 } from './formal-opportunity-http.js';
+import { CommercialCheckoutService } from './commercial-checkout.js';
+import { PostgresCommercialCatalogRepository } from './commercial-checkout-postgres.js';
+import { createCommercialCheckoutHttpRoutes } from './commercial-checkout-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -60,6 +64,16 @@ if (fixtureRuntime) {
   if (!internalServiceSecret)
     throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
   const formalMatterRepository = new PostgresFormalMatterRepository(database, pool);
+  const orderRepository = new PostgresOrderRepository(database, pool);
+  const commercialRepository = new PostgresCommercialCatalogRepository(database, pool);
+  const commercialCheckoutService = new CommercialCheckoutService(
+    commercialRepository,
+    orderRepository
+  );
+  const commercialCheckoutRoutes = createCommercialCheckoutHttpRoutes({
+    internalServiceSecret,
+    service: commercialCheckoutService
+  });
   const documentPackageService = new PostgresDocumentPackageService(database, pool, {
     async get(principal, reviewCaseId, correlationId) {
       let response: Response;
@@ -138,7 +152,12 @@ if (fixtureRuntime) {
     auditRepository: new PostgresMarkRegAuditRepository(pool),
     internalServiceSecret,
     executionUrl,
-    extraRoutes: [...lifecycleRoutes, ...lifecycleSurfaceRoutes, ...formalOpportunityRoutes]
+    extraRoutes: [
+      ...commercialCheckoutRoutes,
+      ...lifecycleRoutes,
+      ...lifecycleSurfaceRoutes,
+      ...formalOpportunityRoutes
+    ]
   });
 }
 
