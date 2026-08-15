@@ -15,6 +15,10 @@ import {
   createRuntime as createCore
 } from '../services/core/src/index.js';
 import {
+  AccountOnboardingService,
+  InMemoryAccountOnboardingRepository
+} from '../services/core/src/account-onboarding.js';
+import {
   createRuntime as createGateway,
   HttpCoreAuthenticationClient
 } from '../apps/gateway/src/index.js';
@@ -88,7 +92,15 @@ const auth = new AuthenticationService({
   sessions,
   clock: () => new Date(at)
 });
-const core = createCore({ port: 4421, authentication: auth, internalServiceSecret: secret });
+const accountOnboarding = new AccountOnboardingService(
+  new InMemoryAccountOnboardingRepository(users, workspaces, memberships)
+);
+const core = createCore({
+  port: 4421,
+  authentication: auth,
+  accountOnboarding,
+  internalServiceSecret: secret
+});
 let execution: ReturnType<typeof createExecution>;
 let capabilityEngine: ReturnType<typeof createCapabilityEngine>;
 let gateway: ReturnType<typeof createGateway>;
