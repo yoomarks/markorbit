@@ -28,7 +28,11 @@ const actorSpoofFields = [
   'createdByUserId',
   'updatedByUserId',
   'linkedByUserId',
-  'membershipId'
+  'initiatedByUserId',
+  'membershipId',
+  'amount',
+  'amountMinor',
+  'currency'
 ] as const;
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -68,7 +72,7 @@ function rejectActorSpoof(body: Readonly<Record<string, unknown>>): void {
     throw new HttpError(
       400,
       'ACTOR_SPOOF_REJECTED',
-      'Actor identity is derived from the authenticated Principal.'
+      'Actor identity and monetary truth are derived from governed server state.'
     );
 }
 
@@ -136,7 +140,12 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
     }
   };
 
-  const forward = async (request: JsonRequest, principal: WorkspacePrincipal, path: string) => {
+  const forward = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    path: string,
+    queryOverride?: Readonly<Record<string, string>>
+  ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
         503,
@@ -145,7 +154,7 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
         true
       );
     try {
-      const search = new URLSearchParams(request.query).toString();
+      const search = new URLSearchParams(queryOverride ?? request.query).toString();
       const response = await fetch(`${options.markRegUrl}${path}${search ? `?${search}` : ''}`, {
         method: request.method,
         headers: {
@@ -183,7 +192,22 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
     }
   });
 
+  const directCustomerCatalogRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/commercial/catalog',
+    handle: async (request) => {
+      const principal = await authenticate(request, false, ['order:read']);
+      return forward(request, principal, '/v1/commercial/catalog', {
+        channel: 'MARKREG_DIRECT',
+        relationshipModel: 'DIRECT'
+      });
+    }
+  };
+
   return [
+    directCustomerCatalogRoute,
+    route('POST', '/api/markreg/checkouts', ['order:update']),
+    route('GET', '/api/markreg/checkouts/:checkoutSessionId', ['order:read'], false),
     route('POST', '/api/markreg/orders', ['order:create']),
     route('GET', '/api/markreg/orders', ['order:read'], false),
     route('GET', '/api/markreg/orders/:orderId', ['order:read'], false),
