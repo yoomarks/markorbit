@@ -100,7 +100,10 @@ export function milestoneConfiguration(ports = milestonePorts) {
         String(ports.markregWeb),
         '--strictPort'
       ],
-      env: { VITE_MARKREG_GATEWAY_URL: urls.gateway }
+      env: {
+        VITE_MARKREG_GATEWAY_URL: urls.gateway,
+        VITE_MARKORBIT_FIXTURE_ENTRY: '1'
+      }
     },
     {
       name: 'lite-web',
@@ -116,7 +119,10 @@ export function milestoneConfiguration(ports = milestonePorts) {
         String(ports.liteWeb),
         '--strictPort'
       ],
-      env: { VITE_LITE_GATEWAY_URL: urls.gateway }
+      env: {
+        VITE_LITE_GATEWAY_URL: urls.gateway,
+        VITE_MARKORBIT_FIXTURE_ENTRY: '1'
+      }
     }
   ];
   return { ports, urls, definitions };
