@@ -240,7 +240,10 @@ export class CommercialCheckoutService {
     authorize(principal, workspaceId, 'order:read');
     const at = query.at ?? this.now();
     if (!Number.isFinite(Date.parse(at)))
-      throw new CommercialCheckoutError('PRICE_NOT_APPLICABLE', 'Catalog effective time is invalid.');
+      throw new CommercialCheckoutError(
+        'PRICE_NOT_APPLICABLE',
+        'Catalog effective time is invalid.'
+      );
     const values = await this.repository.listCatalog(query, at);
     for (const item of values) {
       translateContract(() => assertCommercialProduct(item.product));
