@@ -11,6 +11,10 @@ import {
   createRuntime as createCore
 } from '../services/core/src/index.js';
 import {
+  AccountOnboardingService,
+  InMemoryAccountOnboardingRepository
+} from '../services/core/src/account-onboarding.js';
+import {
   InMemoryOrderCommercialSourceProvider,
   OrderService,
   PostgresCustomerConfirmationRepository,
@@ -75,7 +79,15 @@ const workspaces = new InMemoryWorkspaceRepository();
 const memberships = new InMemoryMembershipRepository(users, workspaces);
 const sessions = new InMemorySessionRepository();
 const authentication = new AuthenticationService({ users, workspaces, memberships, sessions });
-const core = createCore({ port: 4401, authentication, internalServiceSecret: internalSecret });
+const accountOnboarding = new AccountOnboardingService(
+  new InMemoryAccountOnboardingRepository(users, workspaces, memberships)
+);
+const core = createCore({
+  port: 4401,
+  authentication,
+  accountOnboarding,
+  internalServiceSecret: internalSecret
+});
 const sources = new InMemoryOrderCommercialSourceProvider();
 let markreg: ReturnType<typeof createMarkReg>;
 let gateway: ReturnType<typeof createGateway>;
@@ -272,7 +284,10 @@ async function main() {
   gateway = createGateway({
     port: 4400,
     markRegUrl: 'http://127.0.0.1:4405',
-    authenticationClient: new HttpCoreAuthenticationClient('http://127.0.0.1:4401', internalSecret),
+    authenticationClient: new HttpCoreAuthenticationClient(
+      'http://127.0.0.1:4401',
+      internalSecret
+    ),
     internalServiceSecret: internalSecret,
     csrfSecret,
     allowedOrigins: [origin],
