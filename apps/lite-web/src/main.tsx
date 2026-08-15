@@ -13,6 +13,7 @@ const filingAuthorizationVersion = Number(parameters.get('filingAuthorizationVer
 const documentPackageId = parameters.get('documentPackageId') ?? undefined;
 const documentPackageReviewCaseId = parameters.get('documentPackageReviewCaseId') ?? undefined;
 const workspaceId = parameters.get('workspaceId') ?? '';
+const fixtureEntry = import.meta.env.VITE_MARKORBIT_FIXTURE_ENTRY === '1';
 const product = () => (
   <LiteApp
     {...(professionalReviewCaseId ? { initialReviewCaseId: professionalReviewCaseId } : {})}
@@ -35,6 +36,8 @@ createRoot(root).render(
     />
   ) : parameters.has('view') ? (
     <GovernedWorkRouteEntry />
+  ) : fixtureEntry ? (
+    product()
   ) : (
     <LiteAccountEntry renderProduct={product} />
   )
