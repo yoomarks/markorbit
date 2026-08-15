@@ -21,6 +21,7 @@ export type CommercialCheckoutErrorCode =
   | 'PRODUCT_NOT_FOUND'
   | 'PRICE_NOT_FOUND'
   | 'ORDER_NOT_FOUND'
+  | 'CHECKOUT_NOT_FOUND'
   | 'PRODUCT_INACTIVE'
   | 'PRICE_INACTIVE'
   | 'PRICE_NOT_APPLICABLE'
@@ -52,7 +53,11 @@ export interface CommercialCatalogRepository {
   findProduct(productId: string): Promise<CommercialProduct | null>;
   findPrice(priceId: string): Promise<CommercialPrice | null>;
   findCheckoutByIdempotencyKey(workspaceId: string, key: string): Promise<CheckoutReplay | null>;
-  findActiveCheckoutByOrder(workspaceId: string, orderId: string): Promise<CheckoutSession | null>;
+  findActiveCheckoutByOrder(
+    workspaceId: string,
+    orderId: string,
+    at: string
+  ): Promise<CheckoutSession | null>;
   createCheckoutAtomically(
     checkout: CheckoutSession,
     idempotencyKey: string,
@@ -163,12 +168,18 @@ export class InMemoryCommercialCatalogRepository implements CommercialCatalogRep
     return Promise.resolve(value ? clone(value) : null);
   }
 
-  findActiveCheckoutByOrder(workspaceId: string, orderId: string): Promise<CheckoutSession | null> {
+  findActiveCheckoutByOrder(
+    workspaceId: string,
+    orderId: string,
+    at: string
+  ): Promise<CheckoutSession | null> {
+    const timestamp = Date.parse(at);
     const value = [...this.checkouts.values()].find(
       (checkout) =>
         checkout.workspaceId === workspaceId &&
         checkout.orderId === orderId &&
-        checkout.status === 'INITIATED'
+        checkout.status === 'INITIATED' &&
+        Date.parse(checkout.expiresAt) > timestamp
     );
     return Promise.resolve(value ? clone(value) : null);
   }
@@ -190,6 +201,18 @@ export class InMemoryCommercialCatalogRepository implements CommercialCatalogRep
           );
         result = clone(replay.checkout);
         return;
+      }
+      for (const value of this.checkouts.values()) {
+        if (
+          value.workspaceId === checkout.workspaceId &&
+          value.orderId === checkout.orderId &&
+          value.status === 'INITIATED' &&
+          Date.parse(value.expiresAt) <= Date.parse(checkout.createdAt)
+        ) {
+          value.status = 'EXPIRED';
+          value.version += 1;
+          value.updatedAt = checkout.createdAt;
+        }
       }
       const active = [...this.checkouts.values()].find(
         (value) =>
@@ -329,7 +352,8 @@ export class CommercialCheckoutService {
 
     const existing = await this.repository.findActiveCheckoutByOrder(
       command.workspaceId,
-      command.orderId
+      command.orderId,
+      at
     );
     if (existing)
       throw new CommercialCheckoutError(
@@ -371,7 +395,7 @@ export class CommercialCheckoutService {
     authorize(principal, workspaceId, 'order:read');
     const value = await this.repository.findCheckout(workspaceId, checkoutSessionId);
     if (!value)
-      throw new CommercialCheckoutError('ORDER_NOT_FOUND', 'Checkout session was not found.');
+      throw new CommercialCheckoutError('CHECKOUT_NOT_FOUND', 'Checkout session was not found.');
     return Object.freeze(clone(value));
   }
 }
