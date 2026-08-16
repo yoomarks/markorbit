@@ -104,12 +104,10 @@ function harness(
   repository.putProduct(product);
   repository.putPrice(price);
   const orderSource = {
-    findById: (workspaceId: string, orderId: string) =>
-      Promise.resolve(
-        workspaceId === value.workspaceId && orderId === value.orderId
-          ? structuredClone(value)
-          : null
-      )
+    findById: (workspaceId: string, orderId: string) => {
+      const matches = workspaceId === value.workspaceId && orderId === value.orderId;
+      return Promise.resolve(matches ? structuredClone(value) : null);
+    }
   };
   const service = new CommercialCheckoutService(repository, orderSource, clock, checkoutId);
   return { repository, service, orderSource };
@@ -126,47 +124,41 @@ const command = {
 };
 
 describe('CommercialCheckoutService', () => {
-  it(
-    'returns only active prices applicable to the requested channel and relationship',
-    async () => {
-      const { repository, service } = harness();
-      repository.putPrice({
-        ...price,
-        priceId: 'price_partner-filing-v1',
-        channel: 'MARKREG_PARTNER_REFERRAL',
-        relationshipModel: 'REFERRAL'
-      });
+  it('returns active prices for the requested channel and relationship', async () => {
+    const { repository, service } = harness();
+    repository.putPrice({
+      ...price,
+      priceId: 'price_partner-filing-v1',
+      channel: 'MARKREG_PARTNER_REFERRAL',
+      relationshipModel: 'REFERRAL'
+    });
 
-      const catalog = await service.listCatalog(principal, principal.workspaceId, {
-        channel: 'MARKREG_DIRECT',
-        relationshipModel: 'DIRECT'
-      });
+    const catalog = await service.listCatalog(principal, principal.workspaceId, {
+      channel: 'MARKREG_DIRECT',
+      relationshipModel: 'DIRECT'
+    });
 
-      expect(catalog).toHaveLength(1);
-      expect(catalog[0]?.product.productId).toBe(product.productId);
-      expect(catalog[0]?.prices.map((item) => item.priceId)).toEqual([price.priceId]);
-    }
-  );
+    expect(catalog).toHaveLength(1);
+    expect(catalog[0]?.product.productId).toBe(product.productId);
+    expect(catalog[0]?.prices.map((item) => item.priceId)).toEqual([price.priceId]);
+  });
 
-  it(
-    'initiates checkout from persisted price truth without accepting a client amount',
-    async () => {
-      const { service } = harness();
-      const checkout = await service.createCheckout(principal, command);
+  it('initiates checkout from persisted price truth, never client amount', async () => {
+    const { service } = harness();
+    const checkout = await service.createCheckout(principal, command);
 
-      expect(checkout).toMatchObject({
-        checkoutSessionId: 'checkout_direct-1',
-        orderId: command.orderId,
-        productId: product.productId,
-        productVersion: product.version,
-        priceId: price.priceId,
-        priceVersion: price.priceVersion,
-        amount: price.amount,
-        status: 'INITIATED',
-        version: 1
-      });
-    }
-  );
+    expect(checkout).toMatchObject({
+      checkoutSessionId: 'checkout_direct-1',
+      orderId: command.orderId,
+      productId: product.productId,
+      productVersion: product.version,
+      priceId: price.priceId,
+      priceVersion: price.priceVersion,
+      amount: price.amount,
+      status: 'INITIATED',
+      version: 1
+    });
+  });
 
   it('replays the same idempotent checkout and rejects changed semantic input', async () => {
     const { service } = harness();
@@ -197,9 +189,8 @@ describe('CommercialCheckoutService', () => {
 
     expect(second.checkoutSessionId).toBe('checkout_direct-2');
     expect(second.status).toBe('INITIATED');
-    expect(
-      await retry.getCheckout(principal, principal.workspaceId, first.checkoutSessionId)
-    ).toMatchObject({
+    const expired = await retry.getCheckout(principal, principal.workspaceId, first.checkoutSessionId);
+    expect(expired).toMatchObject({
       status: 'EXPIRED',
       version: 2,
       updatedAt: later
