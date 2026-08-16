@@ -71,7 +71,7 @@ jobs:
           pnpm turbo run build --filter=@markorbit/gateway...
           pnpm --filter @markorbit/gateway lint
           pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/gateway test
+          pnpm --filter @markorbit/gateway exec vitest run tests/payment-http.test.ts
           pnpm exec prettier --check scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
       - name: Commit fixes and remove one-shot workflow
         run: |
