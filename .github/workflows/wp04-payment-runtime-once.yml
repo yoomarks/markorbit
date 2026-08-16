@@ -1,4 +1,4 @@
-name: WP04 Payment runtime once v3
+name: WP04 Payment runtime once v4
 
 on:
   push:
@@ -26,6 +26,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node scripts/wp04-payment-runtime-temp.mjs
+      - run: node scripts/wp04-payment-runtime-fixup-temp.mjs
       - run: pnpm exec prettier --write services/payment
       - run: pnpm turbo run build --filter=@markorbit/payment-service...
       - run: pnpm --filter @markorbit/payment-service lint
@@ -36,7 +37,7 @@ jobs:
         run: |
           git config user.name "markorbit-ci-bot"
           git config user.email "actions@users.noreply.github.com"
-          git rm .github/workflows/wp04-payment-runtime-once.yml scripts/wp04-payment-runtime-temp.mjs
+          git rm .github/workflows/wp04-payment-runtime-once.yml scripts/wp04-payment-runtime-temp.mjs scripts/wp04-payment-runtime-fixup-temp.mjs
           git add services/payment .env.example
           git commit -m "fix(payment): add durable fail-closed service runtime"
           git push origin HEAD:agent/tmp-wp04-final-gates
