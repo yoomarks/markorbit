@@ -14,7 +14,8 @@ const write = (path, value) => fs.writeFileSync(path, value);
     `    const checkout = await this.checkouts.findCheckout(\n      command.workspaceId,\n      command.checkoutSessionId\n    );`,
     `    const checkout = await this.checkouts.findCheckout(\n      principal,\n      command.workspaceId,\n      command.checkoutSessionId\n    );`
   );
-  if (!source.includes('principal: WorkspacePrincipal,\n    workspaceId: string')) throw new Error('PaymentCheckoutSource principal patch failed.');
+  if (!source.includes('principal: WorkspacePrincipal,\n    workspaceId: string'))
+    throw new Error('PaymentCheckoutSource principal patch failed.');
   write(path, source);
 }
 
@@ -37,19 +38,20 @@ write(
   `import type { WorkspacePrincipal } from '@markorbit/contracts';
 import { encodeInternalWorkspacePrincipal } from '@markorbit/contracts';
 import type { CheckoutSession, CheckoutSessionId } from '@markorbit/contracts/commercial';
-import type { PaymentProviderAction, PaymentProviderCode, VerifiedProviderPaymentEvent } from '@markorbit/contracts/payment';
+import type {
+  PaymentProviderAction,
+  PaymentProviderCode,
+  VerifiedProviderPaymentEvent
+} from '@markorbit/contracts/payment';
 import type {
   PaymentLifecycleProviderAdapter,
-  PaymentProviderRefundCommand,
   PaymentProviderRefundResult,
-  PaymentProviderSnapshot,
-  PaymentWebhookInput
+  PaymentProviderSnapshot
 } from './payment-lifecycle.js';
 import { PaymentLifecycleError } from './payment-lifecycle.js';
 import type {
   PaymentCheckoutSource,
   PaymentProviderAdapter,
-  PaymentProviderCreateCommand,
   PaymentProviderCreateResult
 } from './payment-service.js';
 import { PaymentServiceError } from './payment-service.js';
@@ -105,31 +107,31 @@ export class UnconfiguredPaymentProviderAdapter
     this.code = code;
   }
 
-  createPayment(_command: Readonly<PaymentProviderCreateCommand>): Promise<PaymentProviderCreateResult> {
+  createPayment(): Promise<PaymentProviderCreateResult> {
     return Promise.reject(
       new PaymentServiceError('PROVIDER_UNAVAILABLE', 'Payment provider is not configured.')
     );
   }
 
-  resumePayment(_providerPaymentReference: string): Promise<PaymentProviderAction> {
+  resumePayment(): Promise<PaymentProviderAction> {
     return Promise.reject(
       new PaymentServiceError('PROVIDER_UNAVAILABLE', 'Payment provider is not configured.')
     );
   }
 
-  verifyWebhook(_input: Readonly<PaymentWebhookInput>): Promise<VerifiedProviderPaymentEvent> {
+  verifyWebhook(): Promise<VerifiedProviderPaymentEvent> {
     return Promise.reject(
       new PaymentLifecycleError('PROVIDER_UNAVAILABLE', 'Payment provider is not configured.')
     );
   }
 
-  createRefund(_command: Readonly<PaymentProviderRefundCommand>): Promise<PaymentProviderRefundResult> {
+  createRefund(): Promise<PaymentProviderRefundResult> {
     return Promise.reject(
       new PaymentLifecycleError('PROVIDER_UNAVAILABLE', 'Payment provider is not configured.')
     );
   }
 
-  retrievePayment(_providerPaymentReference: string): Promise<PaymentProviderSnapshot> {
+  retrievePayment(): Promise<PaymentProviderSnapshot> {
     return Promise.reject(
       new PaymentLifecycleError('PROVIDER_UNAVAILABLE', 'Payment provider is not configured.')
     );
@@ -162,9 +164,11 @@ export class UnconfiguredPaymentProviderAdapter
   const path = 'services/payment/src/index.ts';
   let source = read(path);
   if (!source.includes("import { createServiceRuntime } from '@markorbit/service-kit';")) {
-    source = `import { createServiceRuntime } from '@markorbit/service-kit';\nimport { createPaymentHttpRoutes, type PaymentHttpOptions } from './payment-http.js';\nimport {\n  createPaymentLifecycleHttpRoutes,\n  type PaymentLifecycleHttpOptions\n} from './payment-lifecycle-http.js';\n\n` + source;
+    source =
+      `import { createServiceRuntime } from '@markorbit/service-kit';\nimport { createPaymentHttpRoutes, type PaymentHttpOptions } from './payment-http.js';\nimport {\n  createPaymentLifecycleHttpRoutes,\n  type PaymentLifecycleHttpOptions\n} from './payment-lifecycle-http.js';\n\n` + source;
   }
-  if (!source.includes("export * from './payment-runtime.js';")) source += "export * from './payment-runtime.js';\n";
+  if (!source.includes("export * from './payment-runtime.js';"))
+    source += "export * from './payment-runtime.js';\n";
   source += `
 export const serviceManifest = Object.freeze({
   name: 'payment',
@@ -206,11 +210,15 @@ write(
 import { createRuntime } from './index.js';
 import { PaymentLifecycleService } from './payment-lifecycle.js';
 import { PostgresPaymentRepository } from './payment-postgres.js';
-import { HttpPaymentCheckoutSource, UnconfiguredPaymentProviderAdapter } from './payment-runtime.js';
+import {
+  HttpPaymentCheckoutSource,
+  UnconfiguredPaymentProviderAdapter
+} from './payment-runtime.js';
 import { PaymentService } from './payment-service.js';
 
 const databaseUrl = process.env.PAYMENT_DATABASE_URL ?? process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('PAYMENT_DATABASE_URL is required for the durable Payment runtime.');
+if (!databaseUrl)
+  throw new Error('PAYMENT_DATABASE_URL is required for the durable Payment runtime.');
 const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!internalServiceSecret)
   throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable Payment runtime.');
@@ -284,7 +292,10 @@ write(
   `import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
 import { createRuntime } from '../src/index.js';
-import { HttpPaymentCheckoutSource, UnconfiguredPaymentProviderAdapter } from '../src/payment-runtime.js';
+import {
+  HttpPaymentCheckoutSource,
+  UnconfiguredPaymentProviderAdapter
+} from '../src/payment-runtime.js';
 
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',
@@ -315,22 +326,23 @@ describe('Payment runtime', () => {
 
   it('fetches Checkout truth from MarkReg using the real internal Principal', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ checkoutSessionId: 'checkout_runtime', workspaceId: principal.workspaceId }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
+      new Response(
+        JSON.stringify({
+          checkoutSessionId: 'checkout_runtime',
+          workspaceId: principal.workspaceId
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
     );
     const source = new HttpPaymentCheckoutSource('http://markreg.test', 'internal-secret');
     await source.findCheckout(principal, principal.workspaceId, 'checkout_runtime');
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://markreg.test/v1/checkouts/checkout_runtime',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'x-markorbit-internal-authorization': 'internal-secret',
-          'x-markorbit-workspace-id': principal.workspaceId
-        })
-      })
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('http://markreg.test/v1/checkouts/checkout_runtime');
+    const headers = init?.headers as Record<string, string>;
+    expect(headers['x-markorbit-internal-authorization']).toBe('internal-secret');
+    expect(headers['x-markorbit-workspace-id']).toBe(principal.workspaceId);
+    expect(headers['x-markorbit-principal']).toBeTruthy();
   });
 
   it('fails closed when no real provider adapter is configured', async () => {
