@@ -9,16 +9,10 @@ import type {
   PaymentProviderCode
 } from '@markorbit/contracts/payment';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
-import {
-  PaymentLifecycleError,
-  type PaymentLifecycleService
-} from './payment-lifecycle.js';
+import { PaymentLifecycleError, type PaymentLifecycleService } from './payment-lifecycle.js';
 
 export interface PaymentLifecycleHttpOptions {
-  service?: Pick<
-    PaymentLifecycleService,
-    'handleWebhook' | 'requestRefund' | 'reconcile'
-  >;
+  service?: Pick<PaymentLifecycleService, 'handleWebhook' | 'requestRefund' | 'reconcile'>;
   providerCode: PaymentProviderCode;
   internalServiceSecret?: string;
 }
@@ -91,13 +85,7 @@ function idempotencyKey(request: JsonRequest, body: Readonly<Record<string, unkn
 }
 
 function rejectIdentitySpoof(body: Readonly<Record<string, unknown>>): void {
-  for (const field of [
-    'workspaceId',
-    'actorId',
-    'userId',
-    'requestedByUserId',
-    'membershipId'
-  ])
+  for (const field of ['workspaceId', 'actorId', 'userId', 'requestedByUserId', 'membershipId'])
     if (Object.prototype.hasOwnProperty.call(body, field))
       throw new HttpError(
         400,
