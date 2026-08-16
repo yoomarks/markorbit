@@ -139,12 +139,14 @@ describe('Payment lifecycle internal HTTP boundary', () => {
     });
     const webhook = routes.find((route) => route.path.includes('provider-webhooks'))!;
     await expect(
-      webhook.handle(
-        request(
-          '/internal/payment/provider-webhooks/OTHER_PROVIDER',
-          {},
-          { provider: 'OTHER_PROVIDER' },
-          new Uint8Array([123, 125])
+      Promise.resolve().then(() =>
+        webhook.handle(
+          request(
+            '/internal/payment/provider-webhooks/OTHER_PROVIDER',
+            {},
+            { provider: 'OTHER_PROVIDER' },
+            new Uint8Array([123, 125])
+          )
         )
       )
     ).rejects.toMatchObject({
@@ -196,16 +198,18 @@ describe('Payment lifecycle internal HTTP boundary', () => {
     });
     const route = routes.find((candidate) => candidate.path.endsWith('/refunds'))!;
     await expect(
-      route.handle(
-        request(
-          '/internal/payment/refunds',
-          {
-            paymentId: refund.paymentId,
-            amountMinor: 500,
-            reason: 'duplicate order',
-            workspaceId: 'workspace_spoof'
-          },
-          {}
+      Promise.resolve().then(() =>
+        route.handle(
+          request(
+            '/internal/payment/refunds',
+            {
+              paymentId: refund.paymentId,
+              amountMinor: 500,
+              reason: 'duplicate order',
+              workspaceId: 'workspace_spoof'
+            },
+            {}
+          )
         )
       )
     ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
@@ -241,7 +245,7 @@ describe('Payment lifecycle internal HTTP boundary', () => {
       ...req.headers,
       'x-markorbit-internal-authorization': 'wrong-secret'
     };
-    await expect(route.handle(req)).rejects.toMatchObject({
+    await expect(Promise.resolve().then(() => route.handle(req))).rejects.toMatchObject({
       status: 401,
       code: 'INTERNAL_SERVICE_UNAUTHORIZED'
     });
