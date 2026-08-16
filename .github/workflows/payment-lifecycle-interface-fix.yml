@@ -110,6 +110,7 @@ jobs:
           pnpm --filter @markorbit/payment-service exec eslint src tests --fix
       - name: Validate focused Payment domain
         run: |
+          pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/payment-service lint
           pnpm --filter @markorbit/payment-service typecheck
           pnpm --filter @markorbit/payment-service test
