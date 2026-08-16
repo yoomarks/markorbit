@@ -189,7 +189,11 @@ describe('CommercialCheckoutService', () => {
 
     expect(second.checkoutSessionId).toBe('checkout_direct-2');
     expect(second.status).toBe('INITIATED');
-    const expired = await retry.getCheckout(principal, principal.workspaceId, first.checkoutSessionId);
+    const expired = await retry.getCheckout(
+      principal,
+      principal.workspaceId,
+      first.checkoutSessionId
+    );
     expect(expired).toMatchObject({
       status: 'EXPIRED',
       version: 2,
