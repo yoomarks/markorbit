@@ -1,0 +1,95 @@
+name: Payment lifecycle final commit
+
+on:
+  push:
+    branches:
+      - agent/m8-wp04-payment-foundation-v2
+    paths:
+      - .github/workflows/payment-lifecycle-commit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  commit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp04-payment-foundation-v2
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Apply strict Payment lifecycle cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('services/payment/src/payment-lifecycle.ts')
+          s = p.read_text()
+          s = s.replace(
+          """  findByProviderPaymentReference(\n    provider: PaymentProviderCode,\n    providerPaymentReference: string\n  ): Promise<PaymentLifecycleAggregate | null>;\n""",
+          """  findByPaymentId(\n    workspaceId: string,\n    paymentId: PaymentId\n  ): Promise<PaymentLifecycleAggregate | null>;\n  findByProviderPaymentReference(\n    provider: PaymentProviderCode,\n    providerPaymentReference: string\n  ): Promise<PaymentLifecycleAggregate | null>;\n""", 1)
+          s = s.replace(
+          """  findByProviderPaymentReference(provider: string, reference: string) {\n    const attempt = [...this.attempts.values()].find(\n""",
+          """  findByPaymentId(workspaceId: string, paymentId: PaymentId) {\n    const payment = this.payments.get(paymentId);\n    if (!payment || payment.workspaceId !== workspaceId) return Promise.resolve(null);\n    const attempt = [...this.attempts.values()]\n      .filter((candidate) => candidate.paymentId === paymentId)\n      .sort((a, b) => b.attemptNumber - a.attemptNumber)[0];\n    return Promise.resolve(attempt ? { payment: clone(payment), attempt: clone(attempt) } : null);\n  }\n\n  findByProviderPaymentReference(provider: string, reference: string) {\n    const attempt = [...this.attempts.values()].find(\n""", 1)
+          old_lookup = """  private async findAggregateByPayment(\n    workspaceId: string,\n    paymentId: PaymentId\n  ): Promise<PaymentLifecycleAggregate> {\n    // Provider references are the durable join point; repositories may optimize this lookup.\n    const candidates = await Promise.all([] as Promise<PaymentLifecycleAggregate | null>[]);\n    void candidates;\n    if ('findByPaymentId' in this.repository) {\n      const lookup = this.repository as PaymentLifecycleRepository & {\n        findByPaymentId(\n          workspaceId: string,\n          paymentId: PaymentId\n        ): Promise<PaymentLifecycleAggregate | null>;\n      };\n      const aggregate = await lookup.findByPaymentId(workspaceId, paymentId);\n      if (aggregate) return aggregate;\n    }\n    throw new PaymentLifecycleError('PAYMENT_NOT_FOUND', 'Payment was not found.');\n  }\n"""
+          new_lookup = """  private async findAggregateByPayment(\n    workspaceId: string,\n    paymentId: PaymentId\n  ): Promise<PaymentLifecycleAggregate> {\n    const aggregate = await this.repository.findByPaymentId(workspaceId, paymentId);\n    if (aggregate) return aggregate;\n    throw new PaymentLifecycleError('PAYMENT_NOT_FOUND', 'Payment was not found.');\n  }\n"""
+          assert old_lookup in s
+          s = s.replace(old_lookup, new_lookup, 1)
+          old_tail = """\nexport interface PaymentLifecycleLookupRepository extends PaymentLifecycleRepository {\n  findByPaymentId(\n    workspaceId: string,\n    paymentId: PaymentId\n  ): Promise<PaymentLifecycleAggregate | null>;\n}\n"""
+          assert old_tail in s
+          s = s.replace(old_tail, '\n', 1)
+          old_throw = """    if (thrown) throw thrown;\n    return result;\n"""
+          new_throw = """    if (thrown !== undefined) {\n      if (thrown instanceof Error) throw thrown;\n      throw new PaymentLifecycleError(\n        'PERSISTENCE_UNAVAILABLE',\n        'Payment lifecycle operation failed.'\n      );\n    }\n    return result;\n"""
+          assert old_throw in s
+          s = s.replace(old_throw, new_throw, 1)
+          p.write_text(s)
+
+          p = Path('services/payment/src/payment-postgres.ts')
+          s = p.read_text()
+          s = s.replace('type PaymentLifecycleLookupRepository,', 'type PaymentLifecycleRepository,', 1)
+          s = s.replace('implements PaymentRepository, PaymentLifecycleLookupRepository', 'implements PaymentRepository, PaymentLifecycleRepository', 1)
+          s = s.replace("...(row.payment_id ? { paymentId: String(row.payment_id) as PaymentId } : {}),", "...(typeof row.payment_id === 'string' ? { paymentId: row.payment_id as PaymentId } : {}),", 1)
+          s = s.replace("...(row.refund_id ? { refundId: String(row.refund_id) as PaymentRefundId } : {}),", "...(typeof row.refund_id === 'string' ? { refundId: row.refund_id as PaymentRefundId } : {}),", 1)
+          s = s.replace("...(row.ignored_reason ? { ignoredReason: String(row.ignored_reason) } : {})", "...(typeof row.ignored_reason === 'string' ? { ignoredReason: row.ignored_reason } : {})", 1)
+          s = s.replace("...(row.provider_refund_reference\n      ? { providerRefundReference: String(row.provider_refund_reference) }\n      : {}),", "...(typeof row.provider_refund_reference === 'string'\n      ? { providerRefundReference: row.provider_refund_reference }\n      : {}),", 1)
+          s = s.replace("const reservedRows = await client.query(\n            `SELECT amount_minor", "const reservedRows = await client.query<Row>(\n            `SELECT amount_minor", 1)
+          s = s.replace("(sum, row) => sum + Number((row as Row).amount_minor),", "(sum, row) => sum + Number(row.amount_minor),", 1)
+          p.write_text(s)
+
+          p = Path('services/payment/tests/payment-lifecycle.test.ts')
+          s = p.read_text()
+          s = s.replace('  type PaymentLifecycleLookupRepository,\n', '', 1)
+          s = s.replace("  initiatedByUserId: 'user_lifecycle-test' as Payment['initiatedByUserId'],", "  initiatedByUserId: 'user_lifecycle-test',", 1)
+          old_harness = """  const repository = new InMemoryPaymentLifecycleRepository() as PaymentLifecycleLookupRepository &\n    InMemoryPaymentLifecycleRepository;\n  repository.putPayment(initial, attempt);\n  repository.findByPaymentId = async (workspaceId, paymentId) => {\n    const aggregate = await repository.findByProviderPaymentReference(\n      attempt.provider,\n      attempt.providerPaymentReference\n    );\n    return aggregate?.payment.workspaceId === workspaceId &&\n      aggregate.payment.paymentId === paymentId\n      ? aggregate\n      : null;\n  };\n"""
+          assert old_harness in s
+          s = s.replace(old_harness, """  const repository = new InMemoryPaymentLifecycleRepository();\n  repository.putPayment(initial, attempt);\n""", 1)
+          p.write_text(s)
+
+          p = Path('services/payment/tests/payment-lifecycle-http.test.ts')
+          s = p.read_text().replace("const handleWebhook = vi.fn((_input: PaymentWebhookInput) => Promise.resolve(receipt));", "const handleWebhook = vi.fn(() => Promise.resolve(receipt));", 1)
+          marker = """    providerEventId: 'evt_http-test',\n    rawSha256: 'a'.repeat(64),\n"""
+          assert marker in s
+          s = s.replace(marker, """    providerEventId: 'evt_http-test',\n    providerPaymentReference: 'provider_payment_http-test',\n    rawSha256: 'a'.repeat(64),\n""", 1)
+          p.write_text(s)
+          PY
+          pnpm exec prettier --write services/payment/src/payment-lifecycle.ts services/payment/src/payment-postgres.ts services/payment/tests/payment-lifecycle.test.ts services/payment/tests/payment-http.test.ts services/payment/tests/payment-lifecycle-http.test.ts
+          pnpm --filter @markorbit/payment-service exec eslint src tests --fix
+      - name: Validate with repository dependency graph
+        run: |
+          pnpm --filter @markorbit/payment-service lint
+          pnpm --filter @markorbit/payment-service typecheck
+          pnpm turbo run test --filter=@markorbit/payment-service
+          pnpm turbo run build --filter=@markorbit/payment-service
+      - name: Commit cleanup and remove temporary workflows
+        shell: bash
+        run: |
+          git config user.name "markorbit-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/payment-lifecycle-commit.yml .github/workflows/payment-lifecycle-interface-fix.yml
+          git add services/payment
+          git commit -m "refactor(payment): harden lifecycle repository contract"
+          git push origin HEAD:agent/m8-wp04-payment-foundation-v2
