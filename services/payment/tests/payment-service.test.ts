@@ -65,7 +65,7 @@ function harness(
   const service = new PaymentService(
     repository,
     {
-      findCheckout: (workspaceId, checkoutSessionId) =>
+      findCheckout: (_principal, workspaceId, checkoutSessionId) =>
         Promise.resolve(
           workspaceId === source.workspaceId && checkoutSessionId === source.checkoutSessionId
             ? structuredClone(source)
@@ -133,7 +133,11 @@ describe('PaymentService', () => {
       resumePayment: () => Promise.resolve({ kind: 'NONE' })
     };
     const source = {
-      findCheckout: (_workspaceId: string, checkoutSessionId: string) =>
+      findCheckout: (
+        _principal: WorkspacePrincipal,
+        _workspaceId: string,
+        checkoutSessionId: string
+      ) =>
         Promise.resolve(
           checkoutSessionId === command.checkoutSessionId
             ? checkout()

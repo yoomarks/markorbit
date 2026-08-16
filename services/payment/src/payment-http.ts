@@ -103,7 +103,9 @@ function translate(error: unknown): never {
         ? 403
         : error.code === 'CHECKOUT_NOT_FOUND' || error.code === 'PAYMENT_NOT_FOUND'
           ? 404
-          : error.code === 'PERSISTENCE_UNAVAILABLE' || error.code === 'PROVIDER_UNAVAILABLE'
+          : error.code === 'PERSISTENCE_UNAVAILABLE' ||
+              error.code === 'CHECKOUT_SOURCE_UNAVAILABLE' ||
+              error.code === 'PROVIDER_UNAVAILABLE'
             ? 503
             : error.code === 'CHECKOUT_NOT_PAYABLE' || error.code === 'CHECKOUT_EXPIRED'
               ? 422

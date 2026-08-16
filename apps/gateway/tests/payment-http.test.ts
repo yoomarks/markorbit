@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
-import { HttpError, type JsonRequest } from '@markorbit/service-kit';
+import { type HttpError, type JsonRequest } from '@markorbit/service-kit';
 import { csrfToken, type CoreAuthenticationClient } from '../src/auth.js';
 import { createGatewayPaymentRoutes } from '../src/payment-http.js';
 
@@ -17,8 +17,9 @@ const principal: WorkspacePrincipal = {
   sessionExpiresAt: '2026-08-17T08:00:00.000Z'
 };
 
+const resolveWorkspace = vi.fn(() => Promise.resolve(principal));
 const authenticationClient = {
-  resolveWorkspace: vi.fn(() => Promise.resolve(principal))
+  resolveWorkspace
 } as unknown as CoreAuthenticationClient;
 
 function request(method: string, path: string, body: unknown = undefined): JsonRequest {
@@ -64,7 +65,7 @@ describe('Gateway Payment routes', () => {
       request('POST', '/api/payments', { checkoutSessionId: 'checkout_gateway-test' })
     );
     expect(response.status).toBe(201);
-    expect(authenticationClient.resolveWorkspace).toHaveBeenCalledWith(
+    expect(resolveWorkspace).toHaveBeenCalledWith(
       'session-token',
       principal.workspaceId,
       'correlation_gateway-payment-test'
@@ -102,7 +103,7 @@ describe('Gateway Payment routes', () => {
       status: 400,
       code: 'MONETARY_OR_ACTOR_SPOOF_REJECTED'
     } satisfies Partial<HttpError>);
-    expect(authenticationClient.resolveWorkspace).not.toHaveBeenCalled();
+    expect(resolveWorkspace).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -127,7 +128,8 @@ describe('Gateway Payment routes', () => {
     const noIdempotency = request('POST', '/api/payments', {
       checkoutSessionId: 'checkout_gateway-test'
     });
-    const { ['idempotency-key']: _removed, ...headers } = noIdempotency.headers;
+    const headers = { ...noIdempotency.headers };
+    delete headers['idempotency-key'];
     noIdempotency.headers = headers;
     await expect(create.handle(noIdempotency)).rejects.toMatchObject({
       status: 400,

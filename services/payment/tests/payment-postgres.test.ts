@@ -110,7 +110,7 @@ suite.sequential('PostgreSQL Payment initiation persistence', () => {
       service: new PaymentService(
         repository,
         {
-          findCheckout: (workspaceId, checkoutSessionId) =>
+          findCheckout: (_principal, workspaceId, checkoutSessionId) =>
             Promise.resolve(
               workspaceId === checkout.workspaceId &&
                 checkoutSessionId === checkout.checkoutSessionId
