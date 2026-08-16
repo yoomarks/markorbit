@@ -2,6 +2,7 @@ import fs from 'node:fs';
 const source = [
   '../apps/gateway/src/index.ts',
   '../apps/gateway/src/order-http.ts',
+  '../apps/gateway/src/payment-http.ts',
   '../apps/gateway/src/lifecycle-http.ts'
 ]
   .map((file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8'))

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "extends": "GATEWAY_ROUTE_INVENTORY_M8_WP03.json",
+  "workPackage": "MO-MVP-M8-WP-04",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/payments",
+      "owner": "payment",
+      "namespaceClass": "CANONICAL_PAYMENT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "PAYMENT_INTENT_ONLY_NO_MATTER_PROVIDER_ALLOCATION_FILING_OR_OFFICIAL_TRUTH",
+      "httpIntegrationTestFile": "apps/gateway/tests/payment-http.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/payments/:paymentId",
+      "owner": "payment",
+      "namespaceClass": "CANONICAL_PAYMENT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/payment-http.test.ts"
+    }
+  ]
+}
