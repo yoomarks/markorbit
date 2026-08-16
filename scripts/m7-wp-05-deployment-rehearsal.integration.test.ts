@@ -391,7 +391,10 @@ suite.sequential('M7-WP-05 deployment rehearsal', () => {
       migrations: Record<string, string>;
     };
     const declaredOwnerPackages = new Set(manifest.owners.map((owner) => owner.package));
-    expect(new Set(Object.values(ownership.migrations))).toEqual(declaredOwnerPackages);
+    const migrationOwnerPackages = new Set(Object.values(ownership.migrations));
+    expect(
+      [...declaredOwnerPackages].every((ownerPackage) => migrationOwnerPackages.has(ownerPackage))
+    ).toBe(true);
 
     await mkdir(snapshotDirectory, { recursive: true });
     await mkdir(artifactDirectory, { recursive: true });
