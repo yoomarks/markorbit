@@ -80,7 +80,7 @@ afterEach(() => {
 
 describe('M8-WP03 Gateway commercial checkout boundary', () => {
   it('forces the direct customer catalog scope and forwards trusted Principal truth', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
       new Response(JSON.stringify([{ product: { productId: 'product_filing' }, prices: [] }]), {
         status: 200,
         headers: { 'content-type': 'application/json' }
@@ -168,7 +168,9 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
   it('requires Session, trusted Origin, CSRF, idempotency and order:update authority', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }))
+      vi.fn(async () =>
+        new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+      )
     );
     const body = {
       workspaceId,
