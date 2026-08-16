@@ -68,6 +68,7 @@ jobs:
           pnpm exec prettier --write apps/gateway/tests/payment-http.test.ts scripts/m7-wp-05-deployment-rehearsal.integration.test.ts
       - name: Validate focused fixes
         run: |
+          pnpm turbo run build --filter=@markorbit/gateway...
           pnpm --filter @markorbit/gateway lint
           pnpm --filter @markorbit/gateway typecheck
           pnpm --filter @markorbit/gateway test
