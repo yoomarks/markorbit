@@ -28,6 +28,7 @@ export * from './auth.js';
 export * from './account-access-http.js';
 export * from './capability-http.js';
 export * from './order-http.js';
+export * from './payment-http.js';
 export * from './mgsn-http.js';
 export * from './product-loop-http.js';
 import {
@@ -43,6 +44,7 @@ import {
 import { createGatewayAccountAccessRoutes } from './account-access-http.js';
 import { createGatewayCapabilityRoutes } from './capability-http.js';
 import { createGatewayOrderRoutes } from './order-http.js';
+import { createGatewayPaymentRoutes } from './payment-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 export const serviceManifest = Object.freeze({
@@ -53,6 +55,7 @@ export const serviceManifest = Object.freeze({
 export interface GatewayOptions {
   port?: number;
   markRegUrl?: string;
+  paymentUrl?: string;
   executionUrl?: string;
   mgsnUrl?: string;
   liteUrl?: string;
@@ -74,6 +77,7 @@ function record(value: unknown): Record<string, unknown> {
 export function createRuntime(options: GatewayOptions = {}) {
   const markRegUrl = options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
   const executionUrl = options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  const paymentUrl = options.paymentUrl ?? process.env.PAYMENT_URL ?? 'http://127.0.0.1:4108';
   const mgsnUrl = options.mgsnUrl ?? process.env.MGSN_URL ?? 'http://127.0.0.1:4106';
   const liteUrl = options.liteUrl ?? process.env.LITE_URL ?? 'http://127.0.0.1:4107';
   const capabilityEngineUrl =
@@ -410,6 +414,18 @@ export function createRuntime(options: GatewayOptions = {}) {
         }),
         ...createGatewayOrderRoutes({
           markRegUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
+        }),
+        ...createGatewayPaymentRoutes({
+          paymentUrl,
           ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {
