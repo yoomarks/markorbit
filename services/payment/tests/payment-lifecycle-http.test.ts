@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
-import type {
-  PaymentEventApplyResult,
-  PaymentReconciliationObservation,
-  PaymentRefund
-} from '@markorbit/contracts/payment';
+import type { PaymentReconciliationObservation, PaymentRefund } from '@markorbit/contracts/payment';
 import { HttpError, type JsonRequest } from '@markorbit/service-kit';
 import { createPaymentLifecycleHttpRoutes } from '../src/payment-lifecycle-http.js';
+import type { PaymentEventApplyResult, PaymentWebhookInput } from '../src/payment-lifecycle.js';
 
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',
@@ -94,7 +91,11 @@ const reconciliation: PaymentReconciliationObservation = {
 
 describe('Payment lifecycle internal HTTP boundary', () => {
   it('passes exact raw webhook bytes to signature verification without Session authentication', async () => {
-    const handleWebhook = vi.fn(() => Promise.resolve(receipt));
+    let capturedWebhook: PaymentWebhookInput | undefined;
+    const handleWebhook = vi.fn((input: PaymentWebhookInput) => {
+      capturedWebhook = input;
+      return Promise.resolve(receipt);
+    });
     const routes = createPaymentLifecycleHttpRoutes({
       providerCode: 'TEST_PROVIDER',
       service: {
@@ -119,13 +120,13 @@ describe('Payment lifecycle internal HTTP boundary', () => {
     const response = await webhook.handle(req);
     expect(response).toEqual({ status: 200, body: receipt });
     expect(handleWebhook).toHaveBeenCalledTimes(1);
-    const input = handleWebhook.mock.calls[0]![0];
-    expect(Array.from(input.rawBody)).toEqual(Array.from(rawBody));
-    expect(input.headers['x-provider-signature']).toBe('signed-test-value');
+    expect(capturedWebhook).toBeDefined();
+    expect(Array.from(capturedWebhook!.rawBody)).toEqual(Array.from(rawBody));
+    expect(capturedWebhook!.headers['x-provider-signature']).toBe('signed-test-value');
   });
 
   it('rejects webhook provider mismatches before service invocation', async () => {
-    const handleWebhook = vi.fn(() => Promise.resolve(receipt));
+    const handleWebhook = vi.fn((_input: PaymentWebhookInput) => Promise.resolve(receipt));
     const routes = createPaymentLifecycleHttpRoutes({
       providerCode: 'TEST_PROVIDER',
       service: {
