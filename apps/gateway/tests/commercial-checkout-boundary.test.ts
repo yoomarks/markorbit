@@ -80,20 +80,17 @@ afterEach(() => {
 
 describe('M8-WP03 Gateway commercial checkout boundary', () => {
   it('forces the direct customer catalog scope and forwards trusted Principal truth', async () => {
-    const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
-      new Response(JSON.stringify([{ product: { productId: 'product_filing' }, prices: [] }]), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
+    const fetchMock = vi.fn(
+      async (_url: string | URL | Request, _init?: RequestInit) =>
+        new Response(JSON.stringify([{ product: { productId: 'product_filing' }, prices: [] }]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
     const routes = routesFor();
 
-    const response = await route(
-      routes,
-      'GET',
-      '/api/markreg/commercial/catalog'
-    ).handle(
+    const response = await route(routes, 'GET', '/api/markreg/commercial/catalog').handle(
       request('GET', '/api/markreg/commercial/catalog', {
         query: { channel: 'MARKREG_WHITE_LABEL', relationshipModel: 'WHITE_LABEL' }
       })
@@ -124,11 +121,12 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
       amount: { amountMinor: 29900, currency: 'USD' },
       status: 'INITIATED'
     };
-    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) =>
-      new Response(JSON.stringify(checkout), {
-        status: init?.method === 'POST' ? 201 : 200,
-        headers: { 'content-type': 'application/json' }
-      })
+    const fetchMock = vi.fn(
+      async (_url: string | URL | Request, init?: RequestInit) =>
+        new Response(JSON.stringify(checkout), {
+          status: init?.method === 'POST' ? 201 : 200,
+          headers: { 'content-type': 'application/json' }
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
     const routes = routesFor();
@@ -147,9 +145,9 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
     expect(created.status).toBe(201);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('http://markreg.test/v1/checkouts');
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: 'POST' });
-    expect((fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>)['idempotency-key']).toBe(
-      'checkout-key-1'
-    );
+    expect(
+      (fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>)['idempotency-key']
+    ).toBe('checkout-key-1');
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual(body);
 
     const read = await route(
@@ -170,8 +168,9 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
   it('requires Session, trusted Origin, CSRF, idempotency and order:update authority', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+      vi.fn(
+        async () =>
+          new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
       )
     );
     const body = {
