@@ -22,7 +22,7 @@ const principal: WorkspacePrincipal = {
 
 const authenticationClient = (value: WorkspacePrincipal = principal) =>
   ({
-    resolveWorkspace: vi.fn(async () => value)
+    resolveWorkspace: vi.fn(() => Promise.resolve(value))
   }) as unknown as CoreAuthenticationClient;
 
 const routesFor = (value: WorkspacePrincipal = principal) =>
@@ -76,13 +76,16 @@ afterEach(() => {
 
 describe('M8-WP03 Gateway commercial checkout boundary', () => {
   it('forces the direct customer catalog scope and forwards trusted Principal truth', async () => {
-    const fetchMock = vi.fn(
-      async (_url: string | URL | Request, _init?: RequestInit) =>
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      void url;
+      void init;
+      return Promise.resolve(
         new Response(JSON.stringify([{ product: { productId: 'product_filing' }, prices: [] }]), {
           status: 200,
           headers: { 'content-type': 'application/json' }
         })
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
     const routes = routesFor();
 
@@ -95,7 +98,8 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe(
+    const requestedUrl = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+    expect(requestedUrl).toBe(
       'http://markreg.test/v1/commercial/catalog?channel=MARKREG_DIRECT&relationshipModel=DIRECT'
     );
     expect(init?.headers).toMatchObject({
@@ -117,13 +121,15 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
       amount: { amountMinor: 29900, currency: 'USD' },
       status: 'INITIATED'
     };
-    const fetchMock = vi.fn(
-      async (_url: string | URL | Request, init?: RequestInit) =>
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      void url;
+      return Promise.resolve(
         new Response(JSON.stringify(checkout), {
           status: init?.method === 'POST' ? 201 : 200,
           headers: { 'content-type': 'application/json' }
         })
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
     const routes = routesFor();
     const body = {
@@ -144,7 +150,10 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
     expect(
       (fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>)['idempotency-key']
     ).toBe('checkout-key-1');
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual(body);
+    const postedBody = fetchMock.mock.calls[0]?.[1]?.body;
+    expect(typeof postedBody).toBe('string');
+    if (typeof postedBody !== 'string') throw new Error('Expected checkout request body string.');
+    expect(JSON.parse(postedBody)).toEqual(body);
 
     const read = await route(routes, 'GET', '/api/markreg/checkouts/:checkoutSessionId').handle(
       request('GET', '/api/markreg/checkouts/checkout_direct-1', {
@@ -158,9 +167,10 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
   it('requires Session, trusted Origin, CSRF, idempotency and order:update authority', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(
-        async () =>
+      vi.fn(() =>
+        Promise.resolve(
           new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+        )
       )
     );
     const body = {
