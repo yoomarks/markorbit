@@ -15,14 +15,22 @@ import {
 } from './payment-lifecycle.js';
 
 export interface PaymentLifecycleHttpOptions {
-  service?: Pick<PaymentLifecycleService, 'handleWebhook' | 'requestRefund' | 'reconcile'>;
+  service?: Pick<
+    PaymentLifecycleService,
+    'handleWebhook' | 'requestRefund' | 'reconcile'
+  >;
   providerCode: PaymentProviderCode;
   internalServiceSecret?: string;
 }
 
 function lifecycleService(options: PaymentLifecycleHttpOptions) {
   if (!options.service)
-    throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Payment lifecycle service is unavailable.', true);
+    throw new HttpError(
+      503,
+      'PERSISTENCE_UNAVAILABLE',
+      'Payment lifecycle service is unavailable.',
+      true
+    );
   return options.service;
 }
 
@@ -83,7 +91,13 @@ function idempotencyKey(request: JsonRequest, body: Readonly<Record<string, unkn
 }
 
 function rejectIdentitySpoof(body: Readonly<Record<string, unknown>>): void {
-  for (const field of ['workspaceId', 'actorId', 'userId', 'requestedByUserId', 'membershipId'])
+  for (const field of [
+    'workspaceId',
+    'actorId',
+    'userId',
+    'requestedByUserId',
+    'membershipId'
+  ])
     if (Object.prototype.hasOwnProperty.call(body, field))
       throw new HttpError(
         400,
@@ -129,7 +143,11 @@ export function createPaymentLifecycleHttpRoutes(
       bodyLimitBytes: 1024 * 1024,
       handle: (request) => {
         if (request.params.provider !== options.providerCode)
-          throw new HttpError(404, 'PAYMENT_PROVIDER_NOT_FOUND', 'Payment provider is not configured.');
+          throw new HttpError(
+            404,
+            'PAYMENT_PROVIDER_NOT_FOUND',
+            'Payment provider is not configured.'
+          );
         if (!request.rawBody)
           throw new HttpError(
             400,
