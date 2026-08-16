@@ -6,10 +6,7 @@ import {
   type PaymentAttemptId,
   type PaymentId
 } from '@markorbit/contracts/payment';
-import type {
-  PaymentInitiationReplay,
-  PaymentRepository
-} from './payment-service.js';
+import type { PaymentInitiationReplay, PaymentRepository } from './payment-service.js';
 import { PaymentServiceError } from './payment-service.js';
 
 export interface PaymentTransactionHost {
@@ -60,9 +57,7 @@ function mapPayment(row: Row): Payment {
       ? { succeededAt: new Date(row.succeeded_at as string).toISOString() }
       : {}),
     ...(row.failed_at ? { failedAt: new Date(row.failed_at as string).toISOString() } : {}),
-    ...(row.cancelled_at
-      ? { cancelledAt: new Date(row.cancelled_at as string).toISOString() }
-      : {})
+    ...(row.cancelled_at ? { cancelledAt: new Date(row.cancelled_at as string).toISOString() } : {})
   };
   assertPayment(value);
   return value;
@@ -271,7 +266,10 @@ export class PostgresPaymentRepository implements PaymentRepository {
     fingerprint: string
   ): PaymentInitiationReplay {
     if (replay.fingerprint !== fingerprint)
-      throw new PaymentServiceError('IDEMPOTENCY_CONFLICT', 'Idempotency key has conflicting input.');
+      throw new PaymentServiceError(
+        'IDEMPOTENCY_CONFLICT',
+        'Idempotency key has conflicting input.'
+      );
     return clone(replay);
   }
 }

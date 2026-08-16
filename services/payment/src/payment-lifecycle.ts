@@ -123,7 +123,10 @@ export interface PaymentLifecycleRepository {
     expectedPaymentVersion?: number | null,
     nextPayment?: Payment
   ): Promise<PaymentEventApplyResult>;
-  findRefundReplay(workspaceId: string, idempotencyKey: string): Promise<PaymentRefundReplay | null>;
+  findRefundReplay(
+    workspaceId: string,
+    idempotencyKey: string
+  ): Promise<PaymentRefundReplay | null>;
   sumReservedRefundMinor(paymentId: PaymentId): Promise<number>;
   createRefundAtomically(
     refund: PaymentRefund,
@@ -145,7 +148,10 @@ function authorize(
   adminOnly = false
 ): void {
   if (principal.kind !== 'WORKSPACE')
-    throw new PaymentLifecycleError('AUTHENTICATION_REQUIRED', 'A Workspace Principal is required.');
+    throw new PaymentLifecycleError(
+      'AUTHENTICATION_REQUIRED',
+      'A Workspace Principal is required.'
+    );
   if (principal.workspaceId !== workspaceId)
     throw new PaymentLifecycleError('WORKSPACE_MISMATCH', 'Workspace context does not match.');
   if (!principal.permissions.includes(permission))
@@ -316,7 +322,10 @@ export class InMemoryPaymentLifecycleRepository implements PaymentLifecycleRepos
     });
   }
 
-  findRefundReplay(workspaceId: string, idempotencyKey: string): Promise<PaymentRefundReplay | null> {
+  findRefundReplay(
+    workspaceId: string,
+    idempotencyKey: string
+  ): Promise<PaymentRefundReplay | null> {
     const value = this.refundCommands.get(`${workspaceId}:${idempotencyKey}`);
     return Promise.resolve(value ? clone(value) : null);
   }
@@ -342,7 +351,10 @@ export class InMemoryPaymentLifecycleRepository implements PaymentLifecycleRepos
       const existing = this.refundCommands.get(key);
       if (existing) {
         if (existing.fingerprint !== fingerprint)
-          throw new PaymentLifecycleError('IDEMPOTENCY_CONFLICT', 'Idempotency key has conflicting input.');
+          throw new PaymentLifecycleError(
+            'IDEMPOTENCY_CONFLICT',
+            'Idempotency key has conflicting input.'
+          );
         return clone(existing);
       }
       const payment = this.payments.get(refund.paymentId);
@@ -405,7 +417,9 @@ export class PaymentLifecycleService {
     assertPaymentProviderCode(provider.code);
   }
 
-  async handleWebhook(input: Readonly<PaymentWebhookInput>): Promise<Readonly<PaymentEventApplyResult>> {
+  async handleWebhook(
+    input: Readonly<PaymentWebhookInput>
+  ): Promise<Readonly<PaymentEventApplyResult>> {
     let event: VerifiedProviderPaymentEvent;
     try {
       event = await this.provider.verifyWebhook(input);
@@ -417,9 +431,15 @@ export class PaymentLifecycleService {
       );
     }
     if (event.provider !== this.provider.code)
-      throw new PaymentLifecycleError('PROVIDER_EVENT_INVALID', 'Webhook provider does not match adapter.');
+      throw new PaymentLifecycleError(
+        'PROVIDER_EVENT_INVALID',
+        'Webhook provider does not match adapter.'
+      );
     if (!event.providerEventId.trim() || !event.providerPaymentReference.trim())
-      throw new PaymentLifecycleError('PROVIDER_EVENT_INVALID', 'Webhook event identifiers are required.');
+      throw new PaymentLifecycleError(
+        'PROVIDER_EVENT_INVALID',
+        'Webhook event identifiers are required.'
+      );
     if (!Number.isFinite(Date.parse(event.occurredAt)))
       throw new PaymentLifecycleError('PROVIDER_EVENT_INVALID', 'Webhook occurredAt is invalid.');
 
@@ -443,7 +463,10 @@ export class PaymentLifecycleService {
     if (paymentStatus) return this.applyPaymentEvent(event, baseReceipt, paymentStatus);
     const refundStatus = eventToRefundStatus(event.canonicalType);
     if (refundStatus) return this.applyRefundEvent(event, baseReceipt, refundStatus);
-    throw new PaymentLifecycleError('PROVIDER_EVENT_INVALID', 'Unsupported canonical provider event.');
+    throw new PaymentLifecycleError(
+      'PROVIDER_EVENT_INVALID',
+      'Unsupported canonical provider event.'
+    );
   }
 
   async requestRefund(
@@ -452,21 +475,33 @@ export class PaymentLifecycleService {
   ): Promise<Readonly<PaymentRefund>> {
     authorize(principal, command.workspaceId, 'order:update', true);
     if (!Number.isSafeInteger(command.amountMinor) || command.amountMinor <= 0)
-      throw new PaymentLifecycleError('REFUND_NOT_ALLOWED', 'Refund amount must be a positive integer.');
+      throw new PaymentLifecycleError(
+        'REFUND_NOT_ALLOWED',
+        'Refund amount must be a positive integer.'
+      );
     if (!command.reason.trim())
       throw new PaymentLifecycleError('REFUND_NOT_ALLOWED', 'Refund reason is required.');
     const fingerprint = refundFingerprint(command);
-    const replay = await this.repository.findRefundReplay(command.workspaceId, command.idempotencyKey);
+    const replay = await this.repository.findRefundReplay(
+      command.workspaceId,
+      command.idempotencyKey
+    );
     if (replay) {
       if (replay.fingerprint !== fingerprint)
-        throw new PaymentLifecycleError('IDEMPOTENCY_CONFLICT', 'Idempotency key has conflicting input.');
+        throw new PaymentLifecycleError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key has conflicting input.'
+        );
       return Object.freeze(clone(replay.refund));
     }
 
     const aggregate = await this.findAggregateByPayment(command.workspaceId, command.paymentId);
     const { payment, attempt } = aggregate;
     if (payment.status !== 'SUCCEEDED')
-      throw new PaymentLifecycleError('REFUND_NOT_ALLOWED', 'Only a successful Payment can be refunded.');
+      throw new PaymentLifecycleError(
+        'REFUND_NOT_ALLOWED',
+        'Only a successful Payment can be refunded.'
+      );
     const reserved = await this.repository.sumReservedRefundMinor(payment.paymentId);
     if (reserved + command.amountMinor > payment.amount.amountMinor)
       throw new PaymentLifecycleError(
@@ -487,9 +522,13 @@ export class PaymentLifecycleService {
         reason: command.reason.trim()
       });
     } catch (cause) {
-      throw new PaymentLifecycleError('PROVIDER_UNAVAILABLE', 'Payment provider refund is unavailable.', {
-        cause: cause instanceof Error ? cause : undefined
-      });
+      throw new PaymentLifecycleError(
+        'PROVIDER_UNAVAILABLE',
+        'Payment provider refund is unavailable.',
+        {
+          cause: cause instanceof Error ? cause : undefined
+        }
+      );
     }
     if (!providerResult.providerRefundReference.trim() || providerResult.status !== 'PENDING')
       throw new PaymentLifecycleError(
@@ -531,9 +570,13 @@ export class PaymentLifecycleService {
     try {
       snapshot = await this.provider.retrievePayment(aggregate.attempt.providerPaymentReference);
     } catch (cause) {
-      throw new PaymentLifecycleError('PROVIDER_UNAVAILABLE', 'Payment provider reconciliation is unavailable.', {
-        cause: cause instanceof Error ? cause : undefined
-      });
+      throw new PaymentLifecycleError(
+        'PROVIDER_UNAVAILABLE',
+        'Payment provider reconciliation is unavailable.',
+        {
+          cause: cause instanceof Error ? cause : undefined
+        }
+      );
     }
     const match =
       snapshot.providerPaymentReference === aggregate.attempt.providerPaymentReference &&
@@ -571,7 +614,10 @@ export class PaymentLifecycleService {
     void candidates;
     if ('findByPaymentId' in this.repository) {
       const lookup = this.repository as PaymentLifecycleRepository & {
-        findByPaymentId(workspaceId: string, paymentId: PaymentId): Promise<PaymentLifecycleAggregate | null>;
+        findByPaymentId(
+          workspaceId: string,
+          paymentId: PaymentId
+        ): Promise<PaymentLifecycleAggregate | null>;
       };
       const aggregate = await lookup.findByPaymentId(workspaceId, paymentId);
       if (aggregate) return aggregate;
@@ -594,7 +640,9 @@ export class PaymentLifecycleService {
         applied: false,
         ignoredReason: 'PROVIDER_PAYMENT_REFERENCE_NOT_FOUND'
       };
-      return Object.freeze(clone(await this.repository.recordPaymentEventAtomically(receipt, null)));
+      return Object.freeze(
+        clone(await this.repository.recordPaymentEventAtomically(receipt, null))
+      );
     }
     const current = aggregate.payment;
     if (!validForwardPaymentTransition(current.status, nextStatus)) {
@@ -652,7 +700,9 @@ export class PaymentLifecycleService {
       };
       return Object.freeze(clone(await this.repository.recordRefundEventAtomically(receipt, null)));
     }
-    const refund = await this.repository.findRefundByProviderReference(event.providerRefundReference);
+    const refund = await this.repository.findRefundByProviderReference(
+      event.providerRefundReference
+    );
     if (!refund) {
       const receipt: PaymentProviderEventReceipt = {
         ...baseReceipt,

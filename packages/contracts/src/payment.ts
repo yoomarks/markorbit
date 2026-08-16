@@ -1,9 +1,5 @@
 import type { MarkOrbitId, Money } from './index.js';
-import type {
-  CheckoutSessionId,
-  CommercialPriceId,
-  CommercialProductId
-} from './commercial.js';
+import type { CheckoutSessionId, CommercialPriceId, CommercialProductId } from './commercial.js';
 import { assertCommercialMoney } from './commercial.js';
 import type { OrderId } from './order.js';
 
@@ -31,8 +27,7 @@ export type PaymentReconciliationClassification =
   (typeof paymentReconciliationClassifications)[number];
 
 export const paymentReconciliationDispositions = ['OPEN', 'ACKNOWLEDGED', 'RESOLVED'] as const;
-export type PaymentReconciliationDisposition =
-  (typeof paymentReconciliationDispositions)[number];
+export type PaymentReconciliationDisposition = (typeof paymentReconciliationDispositions)[number];
 
 export const canonicalProviderPaymentEvents = [
   'PAYMENT_REQUIRES_ACTION',
@@ -223,7 +218,10 @@ export function assertPayment(value: Readonly<Payment>): void {
     throw new PaymentContractError('Payment Product version must be a positive integer.');
   if (!Number.isSafeInteger(value.priceVersion) || value.priceVersion < 1)
     throw new PaymentContractError('Payment Price version must be a positive integer.');
-  if (!Number.isFinite(Date.parse(value.createdAt)) || !Number.isFinite(Date.parse(value.updatedAt)))
+  if (
+    !Number.isFinite(Date.parse(value.createdAt)) ||
+    !Number.isFinite(Date.parse(value.updatedAt))
+  )
     throw new PaymentContractError('Payment timestamps are invalid.');
 }
 
@@ -235,7 +233,10 @@ export function assertPaymentRefund(value: Readonly<PaymentRefund>): void {
     throw new PaymentContractError('Refund version must be a positive integer.');
   if (value.reason.trim().length === 0)
     throw new PaymentContractError('Refund reason is required.');
-  if (!Number.isFinite(Date.parse(value.createdAt)) || !Number.isFinite(Date.parse(value.updatedAt)))
+  if (
+    !Number.isFinite(Date.parse(value.createdAt)) ||
+    !Number.isFinite(Date.parse(value.updatedAt))
+  )
     throw new PaymentContractError('Refund timestamps are invalid.');
 }
 
@@ -245,6 +246,9 @@ export function assertPaymentReconciliation(
   assertCommercialMoney(value.localAmount);
   assertCommercialMoney(value.observedAmount);
   assertPaymentProviderCode(value.provider);
-  if (!Number.isFinite(Date.parse(value.observedAt)) || !Number.isFinite(Date.parse(value.createdAt)))
+  if (
+    !Number.isFinite(Date.parse(value.observedAt)) ||
+    !Number.isFinite(Date.parse(value.createdAt))
+  )
     throw new PaymentContractError('Reconciliation timestamps are invalid.');
 }

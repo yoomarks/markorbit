@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
-import type { Payment, PaymentAttempt, VerifiedProviderPaymentEvent } from '@markorbit/contracts/payment';
+import type {
+  Payment,
+  PaymentAttempt,
+  VerifiedProviderPaymentEvent
+} from '@markorbit/contracts/payment';
 import {
   InMemoryPaymentLifecycleRepository,
   PaymentLifecycleError,
@@ -60,7 +64,8 @@ function harness(initial: Payment = payment) {
       attempt.provider,
       attempt.providerPaymentReference
     );
-    return aggregate?.payment.workspaceId === workspaceId && aggregate.payment.paymentId === paymentId
+    return aggregate?.payment.workspaceId === workspaceId &&
+      aggregate.payment.paymentId === paymentId
       ? aggregate
       : null;
   };
@@ -127,10 +132,16 @@ describe('Payment lifecycle', () => {
     await expect(
       h.service.handleWebhook({ rawBody: new TextEncoder().encode('{"id":"evt"}'), headers: {} })
     ).rejects.toMatchObject({ code: 'WEBHOOK_VERIFICATION_FAILED' });
-    expect(await h.repository.findEventReceipt('TEST_PROVIDER', 'evt_payment-succeeded')).toBeNull();
     expect(
-      (await h.repository.findByProviderPaymentReference('TEST_PROVIDER', attempt.providerPaymentReference))
-        ?.payment.status
+      await h.repository.findEventReceipt('TEST_PROVIDER', 'evt_payment-succeeded')
+    ).toBeNull();
+    expect(
+      (
+        await h.repository.findByProviderPaymentReference(
+          'TEST_PROVIDER',
+          attempt.providerPaymentReference
+        )
+      )?.payment.status
     ).toBe('PROCESSING');
   });
 
@@ -141,7 +152,10 @@ describe('Payment lifecycle', () => {
     expect(first.receipt).toMatchObject({ applied: true, canonicalType: 'PAYMENT_SUCCEEDED' });
     expect(first.payment).toMatchObject({ status: 'SUCCEEDED', version: 3, succeededAt: at });
 
-    const duplicate = await h.service.handleWebhook({ rawBody: raw, headers: { signature: 'valid' } });
+    const duplicate = await h.service.handleWebhook({
+      rawBody: raw,
+      headers: { signature: 'valid' }
+    });
     expect(duplicate.receipt).toEqual(first.receipt);
     expect(duplicate.payment).toBeUndefined();
 
@@ -152,14 +166,21 @@ describe('Payment lifecycle', () => {
       canonicalType: 'PAYMENT_FAILED',
       occurredAt: '2026-08-16T07:20:00.000Z'
     });
-    const late = await h.service.handleWebhook({ rawBody: new TextEncoder().encode('late'), headers: {} });
+    const late = await h.service.handleWebhook({
+      rawBody: new TextEncoder().encode('late'),
+      headers: {}
+    });
     expect(late.receipt).toMatchObject({
       applied: false,
       ignoredReason: 'TERMINAL_OR_REGRESSIVE_PAYMENT_EVENT'
     });
     expect(
-      (await h.repository.findByProviderPaymentReference('TEST_PROVIDER', attempt.providerPaymentReference))
-        ?.payment.status
+      (
+        await h.repository.findByProviderPaymentReference(
+          'TEST_PROVIDER',
+          attempt.providerPaymentReference
+        )
+      )?.payment.status
     ).toBe('SUCCEEDED');
   });
 
@@ -173,14 +194,21 @@ describe('Payment lifecycle', () => {
       amount: { amountMinor: 29901, currency: 'USD' },
       occurredAt: at
     });
-    const result = await h.service.handleWebhook({ rawBody: new TextEncoder().encode('wrong'), headers: {} });
+    const result = await h.service.handleWebhook({
+      rawBody: new TextEncoder().encode('wrong'),
+      headers: {}
+    });
     expect(result.receipt).toMatchObject({
       applied: false,
       ignoredReason: 'PAYMENT_AMOUNT_OR_CURRENCY_MISMATCH'
     });
     expect(
-      (await h.repository.findByProviderPaymentReference('TEST_PROVIDER', attempt.providerPaymentReference))
-        ?.payment.status
+      (
+        await h.repository.findByProviderPaymentReference(
+          'TEST_PROVIDER',
+          attempt.providerPaymentReference
+        )
+      )?.payment.status
     ).toBe('PROCESSING');
   });
 
@@ -228,7 +256,10 @@ describe('Payment lifecycle', () => {
       amount: { amountMinor: 5000, currency: 'USD' },
       occurredAt: at
     });
-    const applied = await h.service.handleWebhook({ rawBody: new TextEncoder().encode('refund'), headers: {} });
+    const applied = await h.service.handleWebhook({
+      rawBody: new TextEncoder().encode('refund'),
+      headers: {}
+    });
     expect(applied.receipt.applied).toBe(true);
     expect(applied.refund?.status).toBe('SUCCEEDED');
     expect(applied.payment?.refundedMinor).toBe(5000);
@@ -247,7 +278,11 @@ describe('Payment lifecycle', () => {
       'TEST_PROVIDER',
       attempt.providerPaymentReference
     );
-    const observation = await h.service.reconcile(principal, payment.workspaceId, payment.paymentId);
+    const observation = await h.service.reconcile(
+      principal,
+      payment.workspaceId,
+      payment.paymentId
+    );
     const after = await h.repository.findByProviderPaymentReference(
       'TEST_PROVIDER',
       attempt.providerPaymentReference

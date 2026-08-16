@@ -51,9 +51,9 @@ function harness(
   }
 ) {
   const repository = new InMemoryPaymentRepository();
-  const createPayment = vi.fn<(command: PaymentProviderCreateCommand) => Promise<PaymentProviderCreateResult>>(
-    () => Promise.resolve(structuredClone(result))
-  );
+  const createPayment = vi.fn<
+    (command: PaymentProviderCreateCommand) => Promise<PaymentProviderCreateResult>
+  >(() => Promise.resolve(structuredClone(result)));
   const resumePayment = vi.fn<(reference: string) => Promise<PaymentProviderAction>>(() =>
     Promise.resolve({ kind: 'CLIENT_CONFIRMATION', secret: 'client_test_secret' })
   );

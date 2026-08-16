@@ -137,9 +137,11 @@ suite.sequential('PostgreSQL Payment initiation persistence', () => {
     expect((await migrationStatus(database.getPool(), namespace, owned)).at(-1)?.state).toBe(
       'applied'
     );
-    const relations = await database.getPool().query(
-      "SELECT to_regclass('payment_payments') payments,to_regclass('payment_attempts') attempts,to_regclass('payment_commands') commands,to_regclass('payment_provider_event_receipts') events,to_regclass('payment_refunds') refunds,to_regclass('payment_reconciliations') reconciliations"
-    );
+    const relations = await database
+      .getPool()
+      .query(
+        "SELECT to_regclass('payment_payments') payments,to_regclass('payment_attempts') attempts,to_regclass('payment_commands') commands,to_regclass('payment_provider_event_receipts') events,to_regclass('payment_refunds') refunds,to_regclass('payment_reconciliations') reconciliations"
+      );
     expect(relations.rows[0]).toEqual({
       payments: 'payment_payments',
       attempts: 'payment_attempts',

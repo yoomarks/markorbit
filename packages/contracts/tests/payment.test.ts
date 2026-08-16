@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  Payment,
-  PaymentReconciliationObservation,
-  PaymentRefund
-} from '../src/payment.js';
+import type { Payment, PaymentReconciliationObservation, PaymentRefund } from '../src/payment.js';
 import {
   PaymentContractError,
   assertPayment,
@@ -91,9 +87,9 @@ describe('Payment contracts', () => {
 
   it('requires positive refunds with a stated reason', () => {
     expect(() => assertPaymentRefund(refund())).not.toThrow();
-    expect(() => assertPaymentRefund(refund({ amount: { amountMinor: 0, currency: 'USD' } }))).toThrow(
-      PaymentContractError
-    );
+    expect(() =>
+      assertPaymentRefund(refund({ amount: { amountMinor: 0, currency: 'USD' } }))
+    ).toThrow(PaymentContractError);
     expect(() => assertPaymentRefund(refund({ reason: '   ' }))).toThrow(PaymentContractError);
   });
 

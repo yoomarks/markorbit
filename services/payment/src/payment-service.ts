@@ -39,7 +39,10 @@ export class PaymentServiceError extends Error {
 }
 
 export interface PaymentCheckoutSource {
-  findCheckout(workspaceId: string, checkoutSessionId: CheckoutSessionId): Promise<CheckoutSession | null>;
+  findCheckout(
+    workspaceId: string,
+    checkoutSessionId: CheckoutSessionId
+  ): Promise<CheckoutSession | null>;
 }
 
 export interface PaymentProviderCreateCommand {
@@ -60,7 +63,9 @@ export interface PaymentProviderCreateResult {
 
 export interface PaymentProviderAdapter {
   readonly code: PaymentProviderCode;
-  createPayment(command: Readonly<PaymentProviderCreateCommand>): Promise<PaymentProviderCreateResult>;
+  createPayment(
+    command: Readonly<PaymentProviderCreateCommand>
+  ): Promise<PaymentProviderCreateResult>;
   resumePayment(providerPaymentReference: string): Promise<PaymentProviderAction>;
 }
 
@@ -71,8 +76,14 @@ export interface PaymentInitiationReplay {
 }
 
 export interface PaymentRepository {
-  findInitiationReplay(workspaceId: string, idempotencyKey: string): Promise<PaymentInitiationReplay | null>;
-  findByCheckout(workspaceId: string, checkoutSessionId: CheckoutSessionId): Promise<Payment | null>;
+  findInitiationReplay(
+    workspaceId: string,
+    idempotencyKey: string
+  ): Promise<PaymentInitiationReplay | null>;
+  findByCheckout(
+    workspaceId: string,
+    checkoutSessionId: CheckoutSessionId
+  ): Promise<Payment | null>;
   findById(workspaceId: string, paymentId: PaymentId): Promise<Payment | null>;
   findAttempt(paymentId: PaymentId): Promise<PaymentAttempt | null>;
   createInitiationAtomically(
@@ -144,7 +155,10 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     return Promise.resolve(value ? clone(value) : null);
   }
 
-  findByCheckout(workspaceId: string, checkoutSessionId: CheckoutSessionId): Promise<Payment | null> {
+  findByCheckout(
+    workspaceId: string,
+    checkoutSessionId: CheckoutSessionId
+  ): Promise<Payment | null> {
     const value = [...this.payments.values()].find(
       (payment) =>
         payment.workspaceId === workspaceId && payment.checkoutSessionId === checkoutSessionId
@@ -187,10 +201,7 @@ export class InMemoryPaymentRepository implements PaymentRepository {
           value.checkoutSessionId === payment.checkoutSessionId
       );
       if (existing)
-        throw new PaymentServiceError(
-          'PAYMENT_ALREADY_EXISTS',
-          'Checkout already has a Payment.'
-        );
+        throw new PaymentServiceError('PAYMENT_ALREADY_EXISTS', 'Checkout already has a Payment.');
       this.payments.set(payment.paymentId, clone(payment));
       this.attempts.set(attempt.paymentAttemptId, clone(attempt));
       const replayValue = { fingerprint, payment: clone(payment), attempt: clone(attempt) };
@@ -285,11 +296,9 @@ export class PaymentService {
       });
     } catch (cause) {
       if (cause instanceof PaymentServiceError) throw cause;
-      throw new PaymentServiceError(
-        'PROVIDER_UNAVAILABLE',
-        'Payment provider is unavailable.',
-        { cause: cause instanceof Error ? cause : undefined }
-      );
+      throw new PaymentServiceError('PROVIDER_UNAVAILABLE', 'Payment provider is unavailable.', {
+        cause: cause instanceof Error ? cause : undefined
+      });
     }
     validateProviderResult(providerResult);
 
