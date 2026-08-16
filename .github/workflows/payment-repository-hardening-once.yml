@@ -124,6 +124,7 @@ jobs:
           http_tests.write_text(s)
           PY
           pnpm exec prettier --write services/payment/src/payment-lifecycle.ts services/payment/src/payment-postgres.ts services/payment/tests/payment-lifecycle.test.ts services/payment/tests/payment-lifecycle-http.test.ts
+          pnpm --filter @markorbit/payment-service exec eslint src tests --fix
       - name: Validate Payment package with workspace dependencies
         run: |
           pnpm --filter @markorbit/payment-service lint
