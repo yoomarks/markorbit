@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "extends": "GATEWAY_ROUTE_INVENTORY.json",
+  "workPackage": "MO-MVP-M8-WP-03",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/markreg/checkouts",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "CHECKOUT_ONLY_NO_PAYMENT_MATTER_PROVIDER_FILING_OR_OFFICIAL_TRUTH",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/checkouts/:checkoutSessionId",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/commercial/catalog",
+      "owner": "markreg",
+      "namespaceClass": "CANONICAL_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "scripts/order-http.integration.test.ts"
+    }
+  ]
+}
