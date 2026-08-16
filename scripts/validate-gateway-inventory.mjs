@@ -1,11 +1,20 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { extractGatewayRoutes } from './gateway-route-source.mjs';
+
 const source = extractGatewayRoutes();
-const inventory = JSON.parse(
+const baseline = JSON.parse(
   fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY.json', 'utf8')
 ).routes;
+const m8Wp03 = JSON.parse(
+  fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP03.json', 'utf8')
+).routes;
+const inventory = [...baseline, ...m8Wp03].sort((a, b) =>
+  `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`)
+);
 const key = (x) => `${x.method} ${x.path}`;
+
+assert.equal(new Set(inventory.map(key)).size, inventory.length, 'Gateway inventory contains duplicates');
 assert.deepEqual(
   inventory.map(key),
   source.map(key),
@@ -58,6 +67,7 @@ for (const row of inventory) {
   );
 }
 assert.equal(source.length, 89);
+assert.equal(inventory.length, 89);
 assert.equal(
   source.filter(
     (x) =>
