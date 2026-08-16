@@ -54,7 +54,6 @@ jobs:
           scripts/gateway-route-source.mjs
           scripts/validate-gateway-inventory.mjs
           docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json
-          infrastructure/persistence/migrations/0051_payment_foundation.sql
       - name: Commit patch and formatting
         shell: bash
         run: |
