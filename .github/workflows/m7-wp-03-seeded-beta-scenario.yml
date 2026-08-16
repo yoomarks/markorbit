@@ -65,15 +65,8 @@ jobs:
           psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_markreg'
           psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_execution'
           psql -h 127.0.0.1 -U markorbit_test -d postgres -c 'CREATE DATABASE markorbit_wp03_capability'
-      - name: Validate ownership boundaries and emit exact commercial checkout formatting
-        run: |
-          pnpm validate:workspace
-          pnpm validate:persistence-boundaries
-          pnpm exec prettier apps/gateway/tests/commercial-checkout-boundary.test.ts --write
-          echo '----- PRETTIER OUTPUT BEGIN -----'
-          cat apps/gateway/tests/commercial-checkout-boundary.test.ts
-          echo '----- PRETTIER OUTPUT END -----'
-          exit 1
+      - name: Validate ownership boundaries and formatting
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm format:check
       - name: Build seeded Beta dependency closure
         run: >-
           pnpm exec turbo run build
