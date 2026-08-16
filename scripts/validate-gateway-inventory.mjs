@@ -14,7 +14,11 @@ const inventory = [...baseline, ...m8Wp03].sort((a, b) =>
 );
 const key = (x) => `${x.method} ${x.path}`;
 
-assert.equal(new Set(inventory.map(key)).size, inventory.length, 'Gateway inventory contains duplicates');
+assert.equal(
+  new Set(inventory.map(key)).size,
+  inventory.length,
+  'Gateway inventory contains duplicates'
+);
 assert.deepEqual(
   inventory.map(key),
   source.map(key),
