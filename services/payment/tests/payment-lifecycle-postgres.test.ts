@@ -161,7 +161,7 @@ suite.sequential('PostgreSQL Payment lifecycle persistence', () => {
       provider: 'TEST_PROVIDER',
       providerEventId: 'evt_lifecycle-postgres-refund',
       providerPaymentReference: attempt.providerPaymentReference,
-      providerRefundReference: refund.providerRefundReference,
+      providerRefundReference: refund.providerRefundReference!,
       canonicalType: 'REFUND_SUCCEEDED',
       amount: refund.amount,
       occurredAt: '2026-08-16T08:25:00.000Z'

@@ -251,7 +251,7 @@ describe('Payment lifecycle', () => {
       provider: 'TEST_PROVIDER',
       providerEventId: 'evt_refund-succeeded',
       providerPaymentReference: attempt.providerPaymentReference,
-      providerRefundReference: refund.providerRefundReference,
+      providerRefundReference: refund.providerRefundReference!,
       canonicalType: 'REFUND_SUCCEEDED',
       amount: { amountMinor: 5000, currency: 'USD' },
       occurredAt: at
