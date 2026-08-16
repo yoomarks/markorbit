@@ -117,7 +117,10 @@ describe('Payment internal HTTP boundary', () => {
     expect(getPayment).toHaveBeenCalledWith(principal, principal.workspaceId, payment.paymentId);
 
     const unauthorized = request('GET', `/v1/payments/${payment.paymentId}`);
-    unauthorized.headers = { ...unauthorized.headers, 'x-markorbit-internal-authorization': 'wrong' };
+    unauthorized.headers = {
+      ...unauthorized.headers,
+      'x-markorbit-internal-authorization': 'wrong'
+    };
     await expect(read.handle(unauthorized)).rejects.toMatchObject({
       status: 401,
       code: 'INTERNAL_SERVICE_UNAUTHORIZED'

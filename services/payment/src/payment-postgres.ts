@@ -325,7 +325,12 @@ export class PostgresPaymentRepository
           );
           if (duplicate.rowCount) return { receipt: mapReceipt(duplicate.rows[0] as Row) };
           if (nextPayment)
-            await this.updatePayment(client, nextPayment, expectedPaymentVersion, 'Payment version changed.');
+            await this.updatePayment(
+              client,
+              nextPayment,
+              expectedPaymentVersion,
+              'Payment version changed.'
+            );
           await this.insertReceipt(client, receipt);
           return {
             receipt: clone(receipt),
@@ -344,7 +349,9 @@ export class PostgresPaymentRepository
     }
   }
 
-  async findRefundByProviderReference(providerRefundReference: string): Promise<PaymentRefund | null> {
+  async findRefundByProviderReference(
+    providerRefundReference: string
+  ): Promise<PaymentRefund | null> {
     try {
       const result = await this.query.query(
         'SELECT * FROM payment_refunds WHERE provider_refund_reference=$1 LIMIT 1',
@@ -372,9 +379,19 @@ export class PostgresPaymentRepository
           );
           if (duplicate.rowCount) return { receipt: mapReceipt(duplicate.rows[0] as Row) };
           if (nextRefund)
-            await this.updateRefund(client, nextRefund, expectedRefundVersion, 'Refund version changed.');
+            await this.updateRefund(
+              client,
+              nextRefund,
+              expectedRefundVersion,
+              'Refund version changed.'
+            );
           if (nextPayment)
-            await this.updatePayment(client, nextPayment, expectedPaymentVersion, 'Payment version changed.');
+            await this.updatePayment(
+              client,
+              nextPayment,
+              expectedPaymentVersion,
+              'Payment version changed.'
+            );
           await this.insertReceipt(client, receipt);
           return {
             receipt: clone(receipt),
@@ -442,7 +459,11 @@ export class PostgresPaymentRepository
             FOR UPDATE`,
             [refund.workspaceId, idempotencyKey]
           );
-          if (replay.rowCount) return this.resolveRefundReplay(refundReplayFromRow(replay.rows[0] as Row), fingerprint);
+          if (replay.rowCount)
+            return this.resolveRefundReplay(
+              refundReplayFromRow(replay.rows[0] as Row),
+              fingerprint
+            );
 
           const paymentResult = await client.query(
             'SELECT * FROM payment_payments WHERE workspace_id=$1 AND payment_id=$2 FOR UPDATE',
@@ -678,8 +699,7 @@ export class PostgresPaymentRepository
         expectedVersion
       ]
     );
-    if (result.rowCount !== 1)
-      throw new PaymentLifecycleError('PERSISTENCE_UNAVAILABLE', message);
+    if (result.rowCount !== 1) throw new PaymentLifecycleError('PERSISTENCE_UNAVAILABLE', message);
   }
 
   private async updateRefund(
@@ -705,8 +725,7 @@ export class PostgresPaymentRepository
         expectedVersion
       ]
     );
-    if (result.rowCount !== 1)
-      throw new PaymentLifecycleError('PERSISTENCE_UNAVAILABLE', message);
+    if (result.rowCount !== 1) throw new PaymentLifecycleError('PERSISTENCE_UNAVAILABLE', message);
   }
 
   private async insertReceipt(

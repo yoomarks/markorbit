@@ -452,6 +452,7 @@ export class PaymentLifecycleService {
       receiptId: eventReceiptId(event.provider, event.providerEventId),
       provider: event.provider,
       providerEventId: event.providerEventId,
+      providerPaymentReference: event.providerPaymentReference,
       rawSha256: sha256(input.rawBody),
       canonicalType: event.canonicalType,
       occurredAt: event.occurredAt,
@@ -518,7 +519,9 @@ export class PaymentLifecycleService {
         refundId,
         amountMinor: command.amountMinor,
         currency: payment.amount.currency,
-        providerIdempotencyKey: refundId,
+        providerIdempotencyKey: sha256(
+          `${payment.paymentId}:${command.workspaceId}:${command.idempotencyKey}`
+        ),
         reason: command.reason.trim()
       });
     } catch (cause) {

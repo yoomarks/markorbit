@@ -201,15 +201,22 @@ suite.sequential('PostgreSQL Payment lifecycle persistence', () => {
       });
       expect(
         await reconnected.findEventReceipt('TEST_PROVIDER', 'evt_lifecycle-postgres-success')
-      ).toMatchObject({ applied: true, providerPaymentReference: attempt.providerPaymentReference });
-      expect(await reconnected.findRefundByProviderReference(refund.providerRefundReference!)).toMatchObject({
+      ).toMatchObject({
+        applied: true,
+        providerPaymentReference: attempt.providerPaymentReference
+      });
+      expect(
+        await reconnected.findRefundByProviderReference(refund.providerRefundReference!)
+      ).toMatchObject({
         refundId: refund.refundId,
         status: 'SUCCEEDED'
       });
-      const reconciliationRows = await fresh.getPool().query(
-        'SELECT classification,disposition FROM payment_reconciliations WHERE reconciliation_id=$1',
-        [reconciliation.reconciliationId]
-      );
+      const reconciliationRows = await fresh
+        .getPool()
+        .query(
+          'SELECT classification,disposition FROM payment_reconciliations WHERE reconciliation_id=$1',
+          [reconciliation.reconciliationId]
+        );
       expect(reconciliationRows.rows[0]).toEqual({ classification: 'MATCH', disposition: 'OPEN' });
     } finally {
       await fresh.close();

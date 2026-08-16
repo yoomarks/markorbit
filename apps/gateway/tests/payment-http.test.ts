@@ -72,8 +72,13 @@ describe('Gateway Payment routes', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe('http://payment.test/v1/payments');
-    expect(init).toMatchObject({ method: 'POST', body: JSON.stringify({ checkoutSessionId: 'checkout_gateway-test' }) });
-    expect((init?.headers as Record<string, string>)['idempotency-key']).toBe('payment-gateway-key');
+    expect(init).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ checkoutSessionId: 'checkout_gateway-test' })
+    });
+    expect((init?.headers as Record<string, string>)['idempotency-key']).toBe(
+      'payment-gateway-key'
+    );
   });
 
   it('rejects browser monetary spoofing before authentication or provider forwarding', async () => {
@@ -110,14 +115,24 @@ describe('Gateway Payment routes', () => {
       allowedOrigins: [origin]
     });
     const create = routes.find((route) => route.method === 'POST')!;
-    const untrusted = request('POST', '/api/payments', { checkoutSessionId: 'checkout_gateway-test' });
+    const untrusted = request('POST', '/api/payments', {
+      checkoutSessionId: 'checkout_gateway-test'
+    });
     untrusted.headers = { ...untrusted.headers, origin: 'https://evil.test' };
-    await expect(create.handle(untrusted)).rejects.toMatchObject({ status: 403, code: 'UNTRUSTED_ORIGIN' });
+    await expect(create.handle(untrusted)).rejects.toMatchObject({
+      status: 403,
+      code: 'UNTRUSTED_ORIGIN'
+    });
 
-    const noIdempotency = request('POST', '/api/payments', { checkoutSessionId: 'checkout_gateway-test' });
+    const noIdempotency = request('POST', '/api/payments', {
+      checkoutSessionId: 'checkout_gateway-test'
+    });
     const { ['idempotency-key']: _removed, ...headers } = noIdempotency.headers;
     noIdempotency.headers = headers;
-    await expect(create.handle(noIdempotency)).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    await expect(create.handle(noIdempotency)).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST'
+    });
   });
 
   it('uses Workspace-scoped authenticated read without CSRF/idempotency requirements', async () => {

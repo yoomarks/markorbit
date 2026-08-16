@@ -136,7 +136,10 @@ export function createPaymentHttpRoutes(options: PaymentHttpOptions): readonly J
           );
         const command: InitiatePaymentCommand = {
           workspaceId: principal.workspaceId,
-          checkoutSessionId: requiredText(body, 'checkoutSessionId') as InitiatePaymentCommand['checkoutSessionId'],
+          checkoutSessionId: requiredText(
+            body,
+            'checkoutSessionId'
+          ) as InitiatePaymentCommand['checkoutSessionId'],
           idempotencyKey: idempotencyKey(request, body)
         };
         return run(201, () => paymentService(options).initiatePayment(principal, command));
