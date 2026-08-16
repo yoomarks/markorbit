@@ -109,9 +109,11 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
       'x-markorbit-internal-authorization': internalServiceSecret,
       'x-markorbit-workspace-id': workspaceId
     });
-    expect(String((init?.headers as Record<string, string>)['x-markorbit-principal'])).toContain(
-      principal.userId
-    );
+    const encodedPrincipal = (init?.headers as Record<string, string>)['x-markorbit-principal'];
+    expect(JSON.parse(Buffer.from(encodedPrincipal, 'base64url').toString('utf8'))).toMatchObject({
+      schemaVersion: 1,
+      principal: { userId: principal.userId, workspaceId }
+    });
   });
 
   it('forwards checkout initiation and lookup without accepting browser monetary truth', async () => {
