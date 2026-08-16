@@ -92,11 +92,13 @@ describe('Payment internal HTTP boundary', () => {
     });
     const route = routes.find((candidate) => candidate.method === 'POST')!;
     await expect(
-      route.handle(
-        request('POST', '/v1/payments', {
-          checkoutSessionId: payment.checkoutSessionId,
-          amountMinor: 1
-        })
+      Promise.resolve().then(() =>
+        route.handle(
+          request('POST', '/v1/payments', {
+            checkoutSessionId: payment.checkoutSessionId,
+            amountMinor: 1
+          })
+        )
       )
     ).rejects.toMatchObject({
       status: 400,
@@ -121,7 +123,7 @@ describe('Payment internal HTTP boundary', () => {
       ...unauthorized.headers,
       'x-markorbit-internal-authorization': 'wrong'
     };
-    await expect(read.handle(unauthorized)).rejects.toMatchObject({
+    await expect(Promise.resolve().then(() => read.handle(unauthorized))).rejects.toMatchObject({
       status: 401,
       code: 'INTERNAL_SERVICE_UNAUTHORIZED'
     });
