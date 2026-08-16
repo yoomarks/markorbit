@@ -1,0 +1,27 @@
+{
+  "name": "@markorbit/payment-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Governed payment, provider event, refund and reconciliation service.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests"
+  },
+  "dependencies": {
+    "@markorbit/contracts": "workspace:*",
+    "@markorbit/persistence": "workspace:*",
+    "@markorbit/service-kit": "workspace:*"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}
