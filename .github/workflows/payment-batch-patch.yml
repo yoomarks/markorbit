@@ -25,36 +25,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Patch lifecycle receipt and provider refund idempotency
+      - name: Fix exact optional refund event test fixtures
         shell: python
         run: |
           from pathlib import Path
-          path = Path('services/payment/src/payment-lifecycle.ts')
-          text = path.read_text()
-          old = "      providerEventId: event.providerEventId,\n      rawSha256: sha256(input.rawBody),"
-          new = "      providerEventId: event.providerEventId,\n      providerPaymentReference: event.providerPaymentReference,\n      rawSha256: sha256(input.rawBody),"
-          if old not in text:
-              raise SystemExit('receipt insertion point not found')
-          text = text.replace(old, new, 1)
-          old = "        providerIdempotencyKey: refundId,"
-          new = "        providerIdempotencyKey: sha256(`${payment.paymentId}:${command.workspaceId}:${command.idempotencyKey}`),"
-          if old not in text:
-              raise SystemExit('refund idempotency insertion point not found')
-          text = text.replace(old, new, 1)
-          path.write_text(text)
-      - name: Format WP04 files
+          for file in [
+              Path('services/payment/tests/payment-lifecycle.test.ts'),
+              Path('services/payment/tests/payment-lifecycle-postgres.test.ts'),
+          ]:
+              text = file.read_text()
+              old = 'providerRefundReference: refund.providerRefundReference,'
+              new = 'providerRefundReference: refund.providerRefundReference!,'
+              if old not in text:
+                  raise SystemExit(f'refund reference fixture not found in {file}')
+              file.write_text(text.replace(old, new, 1))
+      - name: Format focused files
         run: >-
           pnpm exec prettier --write
-          packages/contracts/src/payment.ts
-          services/payment/src
-          services/payment/tests
-          apps/gateway/src/order-http.ts
-          apps/gateway/src/payment-http.ts
-          apps/gateway/tests/payment-http.test.ts
-          scripts/gateway-route-source.mjs
-          scripts/validate-gateway-inventory.mjs
-          docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json
-      - name: Commit patch and formatting
+          services/payment/tests/payment-lifecycle.test.ts
+          services/payment/tests/payment-lifecycle-postgres.test.ts
+      - name: Commit focused fixes
         shell: bash
         run: |
           if git diff --quiet; then
@@ -62,8 +52,8 @@ jobs:
           fi
           git config user.name "markorbit-payment-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add packages/contracts/src/payment.ts services/payment apps/gateway/src/order-http.ts apps/gateway/src/payment-http.ts apps/gateway/tests/payment-http.test.ts scripts/gateway-route-source.mjs scripts/validate-gateway-inventory.mjs docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json infrastructure/persistence/migrations/0051_payment_foundation.sql
-          git commit -m "fix(payment): normalize durable lifecycle boundary"
+          git add services/payment/tests/payment-lifecycle.test.ts services/payment/tests/payment-lifecycle-postgres.test.ts
+          git commit -m "test(payment): tighten refund event fixtures"
           git push origin HEAD:agent/m8-wp04-payment-foundation-v2
       - name: Validate focused Payment slice
         run: |
