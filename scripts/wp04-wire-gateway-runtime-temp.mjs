@@ -79,7 +79,7 @@ afterEach(async () => {
 });
 
 describe('Gateway Payment runtime wiring', () => {
-  it('mounts /api/payments on the actual Gateway runtime', async () => {
+  it('mounts /api/payments on the actual Gateway runtime and fails closed without auth service', async () => {
     const runtime = createRuntime({
       port: 0,
       csrfSecret: 'runtime-wire-test-secret',
@@ -90,11 +90,11 @@ describe('Gateway Payment runtime wiring', () => {
     const response = await fetch(\`http://127.0.0.1:\${runtime.listeningPort}/api/payments\`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ checkoutSessionId: 'checkout_runtime-wire', amountMinor: 1 })
+      body: JSON.stringify({ checkoutSessionId: 'checkout_runtime-wire' })
     });
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
-      code: 'MONETARY_OR_ACTOR_SPOOF_REJECTED'
+      code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
     });
   });
 });
