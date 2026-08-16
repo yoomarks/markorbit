@@ -107,6 +107,10 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
       'x-markorbit-workspace-id': workspaceId
     });
     const encodedPrincipal = (init?.headers as Record<string, string>)['x-markorbit-principal'];
+    expect(typeof encodedPrincipal).toBe('string');
+    if (typeof encodedPrincipal !== 'string') {
+      throw new Error('Expected forwarded workspace principal.');
+    }
     expect(JSON.parse(Buffer.from(encodedPrincipal, 'base64url').toString('utf8'))).toMatchObject({
       schemaVersion: 1,
       principal: { userId: principal.userId, workspaceId }
