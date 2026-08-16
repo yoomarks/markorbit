@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { InitiatePaymentResult, Payment } from '@markorbit/contracts/payment';
-import type { HttpError} from '@markorbit/service-kit';
+import type { HttpError } from '@markorbit/service-kit';
 import { type JsonRequest } from '@markorbit/service-kit';
 import { createPaymentHttpRoutes } from '../src/payment-http.js';
 
