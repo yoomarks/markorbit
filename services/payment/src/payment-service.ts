@@ -18,6 +18,7 @@ export type PaymentServiceErrorCode =
   | 'WORKSPACE_MISMATCH'
   | 'PERMISSION_DENIED'
   | 'CHECKOUT_NOT_FOUND'
+  | 'CHECKOUT_SOURCE_UNAVAILABLE'
   | 'CHECKOUT_NOT_PAYABLE'
   | 'CHECKOUT_EXPIRED'
   | 'PAYMENT_NOT_FOUND'
@@ -40,6 +41,7 @@ export class PaymentServiceError extends Error {
 
 export interface PaymentCheckoutSource {
   findCheckout(
+    principal: WorkspacePrincipal,
     workspaceId: string,
     checkoutSessionId: CheckoutSessionId
   ): Promise<CheckoutSession | null>;
@@ -254,6 +256,7 @@ export class PaymentService {
     }
 
     const checkout = await this.checkouts.findCheckout(
+      principal,
       command.workspaceId,
       command.checkoutSessionId
     );
