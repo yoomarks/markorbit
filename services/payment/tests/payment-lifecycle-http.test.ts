@@ -46,6 +46,7 @@ const receipt: PaymentEventApplyResult = {
     receiptId: 'provider_event_http-test',
     provider: 'TEST_PROVIDER',
     providerEventId: 'evt_http-test',
+    providerPaymentReference: 'provider_payment_http-test',
     rawSha256: 'a'.repeat(64),
     canonicalType: 'PAYMENT_PROCESSING',
     occurredAt: '2026-08-16T08:00:00.000Z',
