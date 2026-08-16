@@ -106,6 +106,10 @@ export interface PaymentLifecycleRepository {
     provider: PaymentProviderCode,
     providerEventId: string
   ): Promise<PaymentProviderEventReceipt | null>;
+  findByPaymentId(
+    workspaceId: string,
+    paymentId: PaymentId
+  ): Promise<PaymentLifecycleAggregate | null>;
   findByProviderPaymentReference(
     provider: PaymentProviderCode,
     providerPaymentReference: string
@@ -251,6 +255,15 @@ export class InMemoryPaymentLifecycleRepository implements PaymentLifecycleRepos
   findEventReceipt(provider: string, providerEventId: string) {
     const value = this.receipts.get(`${provider}:${providerEventId}`);
     return Promise.resolve(value ? clone(value) : null);
+  }
+
+  findByPaymentId(workspaceId: string, paymentId: PaymentId) {
+    const payment = this.payments.get(paymentId);
+    if (!payment || payment.workspaceId !== workspaceId) return Promise.resolve(null);
+    const attempt = [...this.attempts.values()]
+      .filter((candidate) => candidate.paymentId === paymentId)
+      .sort((a, b) => b.attemptNumber - a.attemptNumber)[0];
+    return Promise.resolve(attempt ? { payment: clone(payment), attempt: clone(attempt) } : null);
   }
 
   findByProviderPaymentReference(provider: string, reference: string) {
@@ -400,7 +413,13 @@ export class InMemoryPaymentLifecycleRepository implements PaymentLifecycleRepos
       () => undefined
     );
     await run;
-    if (thrown) throw thrown;
+    if (thrown !== undefined) {
+      if (thrown instanceof Error) throw thrown;
+      throw new PaymentLifecycleError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Payment lifecycle operation failed.'
+      );
+    }
     return result;
   }
 }
@@ -612,19 +631,8 @@ export class PaymentLifecycleService {
     workspaceId: string,
     paymentId: PaymentId
   ): Promise<PaymentLifecycleAggregate> {
-    // Provider references are the durable join point; repositories may optimize this lookup.
-    const candidates = await Promise.all([] as Promise<PaymentLifecycleAggregate | null>[]);
-    void candidates;
-    if ('findByPaymentId' in this.repository) {
-      const lookup = this.repository as PaymentLifecycleRepository & {
-        findByPaymentId(
-          workspaceId: string,
-          paymentId: PaymentId
-        ): Promise<PaymentLifecycleAggregate | null>;
-      };
-      const aggregate = await lookup.findByPaymentId(workspaceId, paymentId);
-      if (aggregate) return aggregate;
-    }
+    const aggregate = await this.repository.findByPaymentId(workspaceId, paymentId);
+    if (aggregate) return aggregate;
     throw new PaymentLifecycleError('PAYMENT_NOT_FOUND', 'Payment was not found.');
   }
 
@@ -775,11 +783,4 @@ export class PaymentLifecycleService {
       )
     );
   }
-}
-
-export interface PaymentLifecycleLookupRepository extends PaymentLifecycleRepository {
-  findByPaymentId(
-    workspaceId: string,
-    paymentId: PaymentId
-  ): Promise<PaymentLifecycleAggregate | null>;
 }

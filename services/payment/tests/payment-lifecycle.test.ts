@@ -9,7 +9,6 @@ import {
   InMemoryPaymentLifecycleRepository,
   PaymentLifecycleError,
   PaymentLifecycleService,
-  type PaymentLifecycleLookupRepository,
   type PaymentLifecycleProviderAdapter,
   type PaymentProviderSnapshot
 } from '../src/payment-lifecycle.js';
@@ -21,7 +20,7 @@ const payment: Payment = {
   workspaceId: 'workspace_lifecycle-test',
   checkoutSessionId: 'checkout_lifecycle-test',
   orderId: 'order_lifecycle-test',
-  initiatedByUserId: 'user_lifecycle-test' as Payment['initiatedByUserId'],
+  initiatedByUserId: 'user_lifecycle-test',
   productId: 'product_trademark-filing',
   productVersion: 2,
   priceId: 'price_direct-v2',
@@ -56,19 +55,8 @@ const principal: WorkspacePrincipal = {
 };
 
 function harness(initial: Payment = payment) {
-  const repository = new InMemoryPaymentLifecycleRepository() as PaymentLifecycleLookupRepository &
-    InMemoryPaymentLifecycleRepository;
+  const repository = new InMemoryPaymentLifecycleRepository();
   repository.putPayment(initial, attempt);
-  repository.findByPaymentId = async (workspaceId, paymentId) => {
-    const aggregate = await repository.findByProviderPaymentReference(
-      attempt.provider,
-      attempt.providerPaymentReference
-    );
-    return aggregate?.payment.workspaceId === workspaceId &&
-      aggregate.payment.paymentId === paymentId
-      ? aggregate
-      : null;
-  };
 
   let verifiedEvent: VerifiedProviderPaymentEvent = {
     provider: 'TEST_PROVIDER',

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { PaymentReconciliationObservation, PaymentRefund } from '@markorbit/contracts/payment';
-import { HttpError, type JsonRequest } from '@markorbit/service-kit';
+import type { HttpError} from '@markorbit/service-kit';
+import { type JsonRequest } from '@markorbit/service-kit';
 import { createPaymentLifecycleHttpRoutes } from '../src/payment-lifecycle-http.js';
 import type { PaymentEventApplyResult, PaymentWebhookInput } from '../src/payment-lifecycle.js';
 
@@ -127,7 +128,7 @@ describe('Payment lifecycle internal HTTP boundary', () => {
   });
 
   it('rejects webhook provider mismatches before service invocation', async () => {
-    const handleWebhook = vi.fn((_input: PaymentWebhookInput) => Promise.resolve(receipt));
+    const handleWebhook = vi.fn(() => Promise.resolve(receipt));
     const routes = createPaymentLifecycleHttpRoutes({
       providerCode: 'TEST_PROVIDER',
       service: {

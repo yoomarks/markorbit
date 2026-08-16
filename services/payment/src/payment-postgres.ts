@@ -18,7 +18,7 @@ import {
   PaymentLifecycleError,
   type PaymentEventApplyResult,
   type PaymentLifecycleAggregate,
-  type PaymentLifecycleLookupRepository,
+  type PaymentLifecycleRepository,
   type PaymentRefundReplay
 } from './payment-lifecycle.js';
 import type { PaymentInitiationReplay, PaymentRepository } from './payment-service.js';
@@ -123,13 +123,13 @@ function mapReceipt(row: Row): PaymentProviderEventReceipt {
     providerPaymentReference: String(row.provider_payment_reference),
     rawSha256: String(row.raw_sha256),
     canonicalType: String(row.canonical_type) as PaymentProviderEventReceipt['canonicalType'],
-    ...(row.payment_id ? { paymentId: String(row.payment_id) as PaymentId } : {}),
-    ...(row.refund_id ? { refundId: String(row.refund_id) as PaymentRefundId } : {}),
+    ...(typeof row.payment_id === 'string' ? { paymentId: row.payment_id as PaymentId } : {}),
+    ...(typeof row.refund_id === 'string' ? { refundId: row.refund_id as PaymentRefundId } : {}),
     occurredAt: iso(row.occurred_at),
     receivedAt: iso(row.received_at),
     verifiedAt: iso(row.verified_at),
     applied: Boolean(row.applied),
-    ...(row.ignored_reason ? { ignoredReason: String(row.ignored_reason) } : {})
+    ...(typeof row.ignored_reason === 'string' ? { ignoredReason: row.ignored_reason } : {})
   };
 }
 
@@ -146,8 +146,8 @@ function mapRefund(row: Row): PaymentRefund {
     },
     status: String(row.status) as PaymentRefund['status'],
     version: Number(row.version),
-    ...(row.provider_refund_reference
-      ? { providerRefundReference: String(row.provider_refund_reference) }
+    ...(typeof row.provider_refund_reference === 'string'
+      ? { providerRefundReference: row.provider_refund_reference }
       : {}),
     reason: String(row.reason),
     createdAt: iso(row.created_at),
@@ -177,9 +177,7 @@ function refundReplayFromRow(row: Row): PaymentRefundReplay {
   };
 }
 
-export class PostgresPaymentRepository
-  implements PaymentRepository, PaymentLifecycleLookupRepository
-{
+export class PostgresPaymentRepository implements PaymentRepository, PaymentLifecycleRepository {
   constructor(
     private readonly database: PaymentTransactionHost,
     private readonly query: QueryClient
@@ -478,7 +476,7 @@ export class PostgresPaymentRepository
               'Only a successful Payment can be refunded.'
             );
 
-          const reservedRows = await client.query(
+          const reservedRows = await client.query<Row>(
             `SELECT amount_minor
             FROM payment_refunds
             WHERE payment_id=$1 AND status IN ('PENDING','SUCCEEDED')
@@ -486,7 +484,7 @@ export class PostgresPaymentRepository
             [refund.paymentId]
           );
           const reserved = reservedRows.rows.reduce(
-            (sum, row) => sum + Number((row as Row).amount_minor),
+            (sum, row) => sum + Number(row.amount_minor),
             0
           );
           if (reserved + refund.amount.amountMinor > payment.amount.amountMinor)
