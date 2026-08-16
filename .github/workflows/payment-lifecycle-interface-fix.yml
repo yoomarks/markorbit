@@ -98,10 +98,41 @@ jobs:
           s = s.replace(old_harness, new_harness, 1)
           p.write_text(s)
 
+          helper = """function captureSyncError(work: () => unknown): unknown {\n  try {\n    work();\n  } catch (error) {\n    return error;\n  }\n  throw new Error('Expected work to throw synchronously.');\n}\n"""
+
+          p = Path('services/payment/tests/payment-http.test.ts')
+          s = p.read_text()
+          assert s.count('await expect(') == 2
+          assert 'function captureSyncError' not in s
+          s = s.replace("\n\ndescribe('Payment internal HTTP boundary'", f"\n\n{helper}\ndescribe('Payment internal HTTP boundary'", 1)
+          s = s.replace('await expect(', 'expect(captureSyncError(() => ')
+          s = s.replace(').rejects.toMatchObject(', ')).toMatchObject(')
+          s = s.replace(
+            "it('rejects monetary and provider-state spoof fields before service invocation', async () => {",
+            "it('rejects monetary and provider-state spoof fields before service invocation', () => {",
+            1
+          )
+          p.write_text(s)
+
           p = Path('services/payment/tests/payment-lifecycle-http.test.ts')
           s = p.read_text().replace(
             "const handleWebhook = vi.fn((_input: PaymentWebhookInput) => Promise.resolve(receipt));",
             "const handleWebhook = vi.fn(() => Promise.resolve(receipt));",
+            1
+          )
+          assert s.count('await expect(') == 3
+          assert 'function captureSyncError' not in s
+          s = s.replace("\n\ndescribe('Payment lifecycle internal HTTP boundary'", f"\n\n{helper}\ndescribe('Payment lifecycle internal HTTP boundary'", 1)
+          s = s.replace('await expect(', 'expect(captureSyncError(() => ')
+          s = s.replace(').rejects.toMatchObject(', ')).toMatchObject(')
+          s = s.replace(
+            "it('rejects webhook provider mismatches before service invocation', async () => {",
+            "it('rejects webhook provider mismatches before service invocation', () => {",
+            1
+          )
+          s = s.replace(
+            "it('rejects refund identity spoofing before lifecycle invocation', async () => {",
+            "it('rejects refund identity spoofing before lifecycle invocation', () => {",
             1
           )
           p.write_text(s)
