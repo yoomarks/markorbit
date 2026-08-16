@@ -34,11 +34,7 @@ const routesFor = (value: WorkspacePrincipal = principal) =>
     allowedOrigins: [origin]
   });
 
-const route = (
-  routes: ReturnType<typeof routesFor>,
-  method: 'GET' | 'POST',
-  path: string
-) => {
+const route = (routes: ReturnType<typeof routesFor>, method: 'GET' | 'POST', path: string) => {
   const found = routes.find((candidate) => candidate.method === method && candidate.path === path);
   if (!found) throw new Error(`Missing route ${method} ${path}`);
   return found;
@@ -150,19 +146,13 @@ describe('M8-WP03 Gateway commercial checkout boundary', () => {
     ).toBe('checkout-key-1');
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual(body);
 
-    const read = await route(
-      routes,
-      'GET',
-      '/api/markreg/checkouts/:checkoutSessionId'
-    ).handle(
+    const read = await route(routes, 'GET', '/api/markreg/checkouts/:checkoutSessionId').handle(
       request('GET', '/api/markreg/checkouts/checkout_direct-1', {
         params: { checkoutSessionId: 'checkout_direct-1' }
       })
     );
     expect(read.status).toBe(200);
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      'http://markreg.test/v1/checkouts/checkout_direct-1'
-    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://markreg.test/v1/checkouts/checkout_direct-1');
   });
 
   it('requires Session, trusted Origin, CSRF, idempotency and order:update authority', async () => {
