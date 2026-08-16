@@ -52,7 +52,7 @@ jobs:
             1,
           )
           old = """    const { ['idempotency-key']: _removed, ...headers } = noIdempotency.headers;\n    noIdempotency.headers = headers;\n"""
-          new = """    delete noIdempotency.headers['idempotency-key'];\n"""
+          new = """    const headers = { ...noIdempotency.headers };\n    delete headers['idempotency-key'];\n    noIdempotency.headers = headers;\n"""
           assert old in s
           s = s.replace(old, new, 1)
           p.write_text(s)
