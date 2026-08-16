@@ -78,7 +78,7 @@ CREATE TABLE payment_refunds (
   currency text NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
   status text NOT NULL CHECK (status IN ('PENDING','SUCCEEDED','FAILED')),
   version integer NOT NULL CHECK (version > 0),
-  provider_refund_reference text,
+  provider_refund_reference text UNIQUE,
   reason text NOT NULL CHECK (length(btrim(reason)) > 0),
   created_at timestamptz NOT NULL,
   updated_at timestamptz NOT NULL,

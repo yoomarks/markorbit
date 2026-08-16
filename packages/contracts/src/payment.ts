@@ -118,6 +118,7 @@ export interface PaymentProviderEventReceipt {
   receiptId: PaymentProviderEventReceiptId;
   provider: PaymentProviderCode;
   providerEventId: string;
+  providerPaymentReference: string;
   rawSha256: string;
   canonicalType: CanonicalProviderPaymentEvent;
   paymentId?: PaymentId;

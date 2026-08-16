@@ -1,0 +1,77 @@
+name: Payment batch patch and validate
+
+on:
+  push:
+    branches:
+      - agent/m8-wp04-payment-foundation-v2
+    paths:
+      - .github/workflows/payment-batch-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-format-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp04-payment-foundation-v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch lifecycle receipt and provider refund idempotency
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('services/payment/src/payment-lifecycle.ts')
+          text = path.read_text()
+          old = "      providerEventId: event.providerEventId,\n      rawSha256: sha256(input.rawBody),"
+          new = "      providerEventId: event.providerEventId,\n      providerPaymentReference: event.providerPaymentReference,\n      rawSha256: sha256(input.rawBody),"
+          if old not in text:
+              raise SystemExit('receipt insertion point not found')
+          text = text.replace(old, new, 1)
+          old = "        providerIdempotencyKey: refundId,"
+          new = "        providerIdempotencyKey: sha256(`${payment.paymentId}:${command.workspaceId}:${command.idempotencyKey}`),"
+          if old not in text:
+              raise SystemExit('refund idempotency insertion point not found')
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+      - name: Format WP04 files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/src/payment.ts
+          services/payment/src
+          services/payment/tests
+          apps/gateway/src/order-http.ts
+          apps/gateway/src/payment-http.ts
+          apps/gateway/tests/payment-http.test.ts
+          scripts/gateway-route-source.mjs
+          scripts/validate-gateway-inventory.mjs
+          docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json
+          infrastructure/persistence/migrations/0051_payment_foundation.sql
+      - name: Commit patch and formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "markorbit-payment-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add packages/contracts/src/payment.ts services/payment apps/gateway/src/order-http.ts apps/gateway/src/payment-http.ts apps/gateway/tests/payment-http.test.ts scripts/gateway-route-source.mjs scripts/validate-gateway-inventory.mjs docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json infrastructure/persistence/migrations/0051_payment_foundation.sql
+          git commit -m "fix(payment): normalize durable lifecycle boundary"
+          git push origin HEAD:agent/m8-wp04-payment-foundation-v2
+      - name: Validate focused Payment slice
+        run: |
+          pnpm --filter @markorbit/contracts typecheck
+          pnpm --filter @markorbit/payment-service typecheck
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/contracts test -- payment.test.ts
+          pnpm --filter @markorbit/payment-service test
+          pnpm --filter @markorbit/gateway test -- payment-http.test.ts
+          node scripts/validate-gateway-inventory.mjs
