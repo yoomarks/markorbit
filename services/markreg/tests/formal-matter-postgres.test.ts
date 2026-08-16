@@ -179,7 +179,8 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
       '0026',
       '0034',
       '0035',
-      '0041'
+      '0041',
+      '0050'
     ]);
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
