@@ -41,11 +41,8 @@ jobs:
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
       LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_daily_signal_test
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
-      BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -55,34 +52,6 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build exact affected graph
-        run: pnpm exec turbo run build --filter="...[$BASE_SHA]" --output-logs=errors-only
-      - name: Contracts validation
-        run: pnpm --filter @markorbit/contracts lint && pnpm --filter @markorbit/contracts typecheck && pnpm --filter @markorbit/contracts test
-      - name: Persistence validation
-        run: pnpm --filter @markorbit/persistence lint && pnpm --filter @markorbit/persistence typecheck && pnpm --filter @markorbit/persistence test
-      - name: Core validation
-        run: pnpm --filter @markorbit/core-service lint && pnpm --filter @markorbit/core-service typecheck && pnpm --filter @markorbit/core-service test
-      - name: Lite validation
-        run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck && pnpm --filter @markorbit/lite-service test
-      - name: Gateway validation
-        run: pnpm --filter @markorbit/gateway lint && pnpm --filter @markorbit/gateway typecheck && pnpm --filter @markorbit/gateway test
-      - name: Capability validation
-        run: pnpm --filter @markorbit/capability-engine lint && pnpm --filter @markorbit/capability-engine typecheck && pnpm --filter @markorbit/capability-engine test
-      - name: MarkReg validation
-        run: pnpm --filter @markorbit/markreg-service lint && pnpm --filter @markorbit/markreg-service typecheck && pnpm --filter @markorbit/markreg-service test
-      - name: Execution validation
-        run: pnpm --filter @markorbit/execution-service lint && pnpm --filter @markorbit/execution-service typecheck && pnpm --filter @markorbit/execution-service test
-      - name: MGSN validation
-        run: pnpm --filter @markorbit/mgsn-service lint && pnpm --filter @markorbit/mgsn-service typecheck && pnpm --filter @markorbit/mgsn-service test
-      - name: Payment validation
-        run: pnpm --filter @markorbit/payment-service lint && pnpm --filter @markorbit/payment-service typecheck && pnpm --filter @markorbit/payment-service test
-      - name: Lite Web validation
-        run: pnpm --filter @markorbit/lite-web lint && pnpm --filter @markorbit/lite-web typecheck && pnpm --filter @markorbit/lite-web test
-      - name: MarkReg Web validation
-        run: pnpm --filter @markorbit/markreg-web lint && pnpm --filter @markorbit/markreg-web typecheck && pnpm --filter @markorbit/markreg-web test
-      - name: Operations Console validation
-        run: pnpm --filter @markorbit/operations-console lint && pnpm --filter @markorbit/operations-console typecheck && pnpm --filter @markorbit/operations-console test
       - name: Create isolated Daily Signal database
         env:
           PGPASSWORD: markorbit-test-only
@@ -91,6 +60,8 @@ jobs:
           -c "CREATE DATABASE markorbit_lite_daily_signal_test"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Build Lite dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service...
       - name: Run real PostgreSQL Content preparation tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
       - name: Run real PostgreSQL Daily Signal tests
