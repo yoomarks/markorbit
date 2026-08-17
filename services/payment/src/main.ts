@@ -7,6 +7,7 @@ import {
   UnconfiguredPaymentProviderAdapter
 } from './payment-runtime.js';
 import { PaymentService } from './payment-service.js';
+import { createConfiguredPaymentProvider } from './stripe-provider.js';
 
 const databaseUrl = process.env.PAYMENT_DATABASE_URL ?? process.env.DATABASE_URL;
 if (!databaseUrl)
@@ -27,7 +28,10 @@ const database = new ManagedDatabase(
 await database.start();
 const pool = database.getPool();
 const repository = new PostgresPaymentRepository(database, pool);
-const provider = new UnconfiguredPaymentProviderAdapter(providerCode);
+const provider =
+  providerCode === 'UNCONFIGURED'
+    ? new UnconfiguredPaymentProviderAdapter(providerCode)
+    : createConfiguredPaymentProvider(providerCode);
 const service = new PaymentService(
   repository,
   new HttpPaymentCheckoutSource(markRegUrl, internalServiceSecret),
