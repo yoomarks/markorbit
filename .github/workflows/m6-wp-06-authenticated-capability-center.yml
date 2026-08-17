@@ -9,14 +9,14 @@ on:
       - 'packages/contracts/src/index.ts'
       - 'services/capability-engine/**'
       - 'services/execution/**'
-      - 'apps/gateway/**'
+      - 'apps/gateway/src/capability-http.ts'
+      - 'apps/gateway/tests/capability-http.test.ts'
       - 'apps/lite-web/**'
       - 'scripts/m6-wp-06-capability-center-real-runtime.ts'
       - 'tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts'
       - 'playwright.m6-wp-06-capability-center-real-runtime.config.ts'
       - 'docs/tasks/MO-MVP-M6-WP-06-AUTHENTICATED-CAPABILITY-CENTER.md'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0047_capability_engine_reflection_disposition_profile_twin.sql'
 
 permissions:
   contents: read

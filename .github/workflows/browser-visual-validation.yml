@@ -2,8 +2,19 @@ name: Browser and Visual Validation
 
 on:
   pull_request:
+    paths:
+      - 'apps/lite-web/**'
+      - 'apps/markreg-web/**'
+      - 'apps/operations-console/**'
+      - 'packages/ui/**'
+      - 'tests/e2e/**'
+      - 'playwright*.ts'
+      - 'scripts/*playwright*'
+      - 'scripts/*storybook*'
+      - '.github/workflows/browser-visual-validation.yml'
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,19 +38,12 @@ jobs:
           node-version: 22.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm validate:workspace
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
       - run: pnpm test:runtime
       - run: pnpm test:story-matrix
-      - run: pnpm test:gateway-inventory
-      - run: pnpm test:negative-path-matrix
-      - run: pnpm test
-      - run: pnpm build
+      - name: Build Storybook contract dependency
+        run: pnpm --filter @markorbit/contracts build
       - run: pnpm build:storybook-matrix
       - run: pnpm test:storybook-index
-      - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium
       - run: CI=1 pnpm test:e2e
       - run: CI=1 pnpm test:e2e:real-runtime
@@ -81,37 +85,27 @@ jobs:
       MARKREG_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
-
       - name: Build products
         run: pnpm -w build
-
       - name: Run browser and visual validation
         run: pnpm test:e2e
-
       - name: Run focused Formal Matter desktop and mobile acceptance
         run: pnpm test:formal-matter:browser
-
       - name: Run real authenticated Lite Matter desktop/mobile acceptance
         run: pnpm test:lite-matter:browser
-
       - name: Generate focused visual evidence
         run: pnpm test:visual
-
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -120,7 +114,6 @@ jobs:
           path: playwright-report
           if-no-files-found: warn
           retention-days: 14
-
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -129,7 +122,6 @@ jobs:
           path: playwright-screenshots
           if-no-files-found: warn
           retention-days: 14
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

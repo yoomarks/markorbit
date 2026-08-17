@@ -7,14 +7,12 @@ on:
       - '.github/workflows/core-kv2-ready-package-v2.yml'
       - 'packages/contracts/src/knowledge-ready-package-v2.ts'
       - 'packages/contracts/src/index.ts'
-      - 'packages/contracts/package.json'
       - 'packages/service-kit/src/index.ts'
       - 'services/core/src/**'
       - 'services/core/tests/knowledge-v2-**'
       - 'services/core/tests/knowledge-content-http.test.ts'
       - 'services/core/package.json'
       - 'infrastructure/persistence/migrations/0048_core_knowledge_v2_deliveries.sql'
-      - 'infrastructure/persistence/migration-owners.json'
 
 permissions:
   contents: read

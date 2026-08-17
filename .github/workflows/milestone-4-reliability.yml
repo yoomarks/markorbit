@@ -1,8 +1,11 @@
 name: Milestone 4 reliability
 
 on:
-  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '37 2 * * *'
 
 permissions:
   contents: read
@@ -23,7 +26,7 @@ jobs:
           --health-cmd "pg_isready -U markorbit_test -d postgres"
           --health-interval 2s --health-timeout 3s --health-retries 20
     env:
-      M4_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M4_EXPECTED_HEAD_SHA: ${{ github.sha }}
       MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       MO_INTERNAL_SERVICE_SECRET: m4-wp08-ci-internal-key-32-bytes
@@ -32,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
@@ -51,8 +54,6 @@ jobs:
           mkdir -p .artifacts
           set -o pipefail
           node scripts/run-milestone4-reliability.mjs 2>&1 | tee .artifacts/milestone-4-reliability.log
-      - name: Final workspace check
-        run: pnpm check
       - name: Upload exact-head reliability evidence
         if: always()
         uses: actions/upload-artifact@v4

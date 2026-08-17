@@ -6,18 +6,17 @@ on:
   pull_request:
     paths:
       - '.github/workflows/product-loop-today-prepared-action.yml'
-      - 'apps/gateway/**'
+      - 'apps/gateway/src/product-loop-http.ts'
+      - 'apps/gateway/tests/product-loop-http.test.ts'
       - 'apps/lite-web/**'
       - 'services/lite/**'
       - 'services/markreg/**'
       - 'packages/contracts/src/product-loop.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0042_lite_prepared_action_journey.sql'
       - 'scripts/product-loop-today-runtime.integration.test.ts'
       - 'scripts/product-loop-today-real-runtime.ts'
       - 'tests/e2e/product-loop-today-real-runtime.spec.ts'
       - 'playwright.product-loop-today-real-runtime.config.ts'
-      - 'pnpm-lock.yaml'
 
 permissions:
   contents: read

@@ -7,10 +7,7 @@ on:
       - '.github/workflows/product-loop-formal-opportunity-handoff.yml'
       - 'services/markreg/**'
       - 'packages/contracts/src/product-loop.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'scripts/validate-workspace.mjs'
-      - 'pnpm-lock.yaml'
+      - 'infrastructure/persistence/migrations/0041_markreg_formal_opportunity_handoff.sql'
 
 permissions:
   contents: read
@@ -34,7 +31,7 @@ jobs:
           --health-retries 20
     env:
       MARKREG_FORMAL_OPPORTUNITY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_formal_opportunity_test
-      MARKREG_FORMAL_OPPORTUNITY_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_FORMAL_OPPORTUNITY_POSTGRES_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

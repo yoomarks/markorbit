@@ -6,14 +6,13 @@ on:
   pull_request:
     paths:
       - '.github/workflows/product-loop-feedback-observability.yml'
-      - 'apps/gateway/**'
+      - 'apps/gateway/src/product-loop-http.ts'
+      - 'apps/gateway/tests/product-loop-http.test.ts'
       - 'apps/lite-web/**'
       - 'services/lite/**'
       - 'packages/contracts/src/product-loop.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0043_lite_product_loop_feedback.sql'
       - 'scripts/product-loop-today-runtime.integration.test.ts'
-      - 'pnpm-lock.yaml'
 
 permissions:
   contents: read

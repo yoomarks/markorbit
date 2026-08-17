@@ -10,9 +10,6 @@ on:
       - 'services/lite/**'
       - 'apps/gateway/src/product-loop-http.ts'
       - 'apps/gateway/tests/product-loop-conversion-analytics-http.test.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'pnpm-lock.yaml'
 
 permissions:
   contents: read

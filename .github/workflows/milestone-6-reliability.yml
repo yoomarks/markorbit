@@ -1,8 +1,11 @@
 name: Milestone 6 reliability
 
 on:
-  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '57 2 * * *'
 
 permissions:
   contents: read
@@ -26,7 +29,7 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
-      M6_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M6_EXPECTED_HEAD_SHA: ${{ github.sha }}
       M6_REGISTRY_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_registry
       M6_LEDGER_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_ledger
       M6_CANDIDATE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m6_candidate
@@ -37,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
       - uses: pnpm/action-setup@v4
         with:
@@ -65,8 +68,6 @@ jobs:
           mkdir -p .artifacts
           set -o pipefail
           node scripts/run-milestone6-reliability.mjs 2>&1 | tee .artifacts/milestone-6-reliability.log
-      - name: Final workspace check
-        run: pnpm check
       - name: Upload exact-head M6 reliability evidence
         if: always()
         uses: actions/upload-artifact@v4

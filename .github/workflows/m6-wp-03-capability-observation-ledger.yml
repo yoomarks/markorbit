@@ -9,8 +9,7 @@ on:
       - 'services/execution/src/capability-observation-source-http.ts'
       - 'services/execution/src/main.ts'
       - 'services/execution/tests/capability-observation-source-http.test.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0045_capability_engine_observation_ledger.sql'
       - 'docs/tasks/MO-MVP-M6-WP-03-CAPABILITY-OBSERVATION-LEDGER.md'
 
 permissions:
