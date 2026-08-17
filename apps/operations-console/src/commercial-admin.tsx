@@ -131,7 +131,12 @@ export function CommercialAdminWorkspace() {
     });
   };
 
-  const load = (resource: ResourceKind, title: string, path: string, headers?: Record<string, string>) =>
+  const load = (
+    resource: ResourceKind,
+    title: string,
+    path: string,
+    headers?: Record<string, string>
+  ) =>
     run(resource, async () => {
       setState({ resource, title, value: await readJson(path, headers) });
     });
@@ -211,7 +216,11 @@ export function CommercialAdminWorkspace() {
         </Card>
       </div>
 
-      {error && <Alert tone="critical" title="Commercial admin request failed">{error}</Alert>}
+      {error && (
+        <Alert tone="critical" title="Commercial admin request failed">
+          {error}
+        </Alert>
+      )}
 
       <div className="mo-grid">
         <Card>
