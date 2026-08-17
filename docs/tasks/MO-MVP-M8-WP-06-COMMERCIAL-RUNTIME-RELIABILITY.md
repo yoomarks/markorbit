@@ -2,7 +2,7 @@
 
 - **Work package:** `M8-WP-06`
 - **Milestone:** `M8 — MVP Commercial Foundation`
-- **Baseline:** stacked on the current `M8-WP-05` commercial-admin head until WP05 receives owner merge authorization.
+- **Baseline:** `main` after merged M8-WP-05 / PR #109 (`32904d77ae490ba63a616a2c223d3eabd30dab3b`).
 - **Environment class:** `NON_PRODUCTION_REHEARSAL`
 - **Status:** `IMPLEMENTING`
 
