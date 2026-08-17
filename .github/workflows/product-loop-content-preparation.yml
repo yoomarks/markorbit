@@ -41,7 +41,6 @@ jobs:
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
       LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_daily_signal_test
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
-      BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,10 +54,16 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Diagnose affected workspace validation
-        run: |
-          pnpm exec turbo run build --filter="...[$BASE_SHA]" --output-logs=full --log-order=grouped
-          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]" --output-logs=full --log-order=grouped
+      - name: Diagnose contracts workspace
+        run: pnpm --filter @markorbit/contracts lint && pnpm --filter @markorbit/contracts typecheck && pnpm --filter @markorbit/contracts test
+      - name: Diagnose Core workspace
+        run: pnpm --filter @markorbit/core-service lint && pnpm --filter @markorbit/core-service typecheck && pnpm --filter @markorbit/core-service test
+      - name: Diagnose Lite workspace
+        run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck && pnpm --filter @markorbit/lite-service test
+      - name: Diagnose Gateway workspace
+        run: pnpm --filter @markorbit/gateway lint && pnpm --filter @markorbit/gateway typecheck && pnpm --filter @markorbit/gateway test
+      - name: Diagnose Lite Web workspace
+        run: pnpm --filter @markorbit/lite-web lint && pnpm --filter @markorbit/lite-web typecheck && pnpm --filter @markorbit/lite-web test
       - name: Create isolated Daily Signal database
         env:
           PGPASSWORD: markorbit-test-only
@@ -69,8 +74,6 @@ jobs:
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build Lite dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service...
-      - name: Validate Lite service
-        run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck
       - name: Run real PostgreSQL Content preparation tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
       - name: Run real PostgreSQL Daily Signal tests
