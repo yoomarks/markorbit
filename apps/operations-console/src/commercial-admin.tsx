@@ -217,7 +217,7 @@ export function CommercialAdminWorkspace() {
       </div>
 
       {error && (
-        <Alert tone="critical" title="Commercial admin request failed">
+        <Alert tone="danger" title="Commercial admin request failed">
           {error}
         </Alert>
       )}
