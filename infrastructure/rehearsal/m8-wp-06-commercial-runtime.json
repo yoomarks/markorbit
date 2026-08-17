@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "M8-WP-06",
+  "candidateClass": "MVP_COMMERCIAL_RUNTIME_CANDIDATE",
+  "environmentClass": "NON_PRODUCTION_REHEARSAL",
+  "exactHeadRequired": true,
+  "productionTrafficAllowed": false,
+  "releaseAuthorized": false,
+  "m8Complete": false,
+  "auditRequired": true,
+  "independentAuditComplete": false,
+  "secretsExcluded": true,
+  "knownLimitsFile": "infrastructure/rehearsal/m8-wp-06-known-limits.json",
+  "externalProviderAcceptance": {
+    "workflow": ".github/workflows/payment-stripe-sandbox-acceptance.yml",
+    "credentialSecretName": "STRIPE_TEST_SECRET_KEY",
+    "requiredForM8Completion": true,
+    "mayBeUnresolvedForDeterministicWP06": true,
+    "fakeProviderCounts": false,
+    "mockedFetchCounts": false,
+    "skippedTestCounts": false
+  },
+  "requiredGates": [
+    {
+      "id": "validation",
+      "workflow": ".github/workflows/ci.yml",
+      "coverage": [
+        "workspace",
+        "ownership",
+        "format",
+        "lint",
+        "typecheck",
+        "tests",
+        "build",
+        "persistence"
+      ]
+    },
+    {
+      "id": "browser-responsive",
+      "workflow": ".github/workflows/browser-visual-validation.yml",
+      "coverage": ["desktop", "mobile-390", "real-runtime", "visual", "reload"]
+    },
+    {
+      "id": "product-loop-reliability",
+      "workflow": ".github/workflows/product-loop-closure-reliability.yml",
+      "coverage": ["content", "opportunity", "prepared-action", "feedback", "responsive"]
+    },
+    {
+      "id": "m7-deployment-recovery",
+      "workflow": ".github/workflows/m7-wp-05-deployment-rehearsal.yml",
+      "coverage": ["migration", "startup", "restart", "snapshot-recovery", "forward-reapply"]
+    },
+    {
+      "id": "m7-exact-head-candidate",
+      "workflow": ".github/workflows/m7-wp-06-beta-rc.yml",
+      "coverage": ["exact-head", "config-fingerprint", "known-limits", "authority-locks"]
+    },
+    {
+      "id": "stripe-real-provider-acceptance",
+      "workflow": ".github/workflows/payment-stripe-sandbox-acceptance.yml",
+      "coverage": ["real-test-provider", "verified-webhook", "reconciliation", "refund", "evidence"]
+    },
+    {
+      "id": "m8-wp06-commercial-runtime-reliability",
+      "workflow": ".github/workflows/m8-wp-06-commercial-runtime-reliability.yml",
+      "coverage": [
+        "failure-handling",
+        "audit",
+        "security",
+        "migration-recovery",
+        "commercial-admin",
+        "payment",
+        "exact-head"
+      ]
+    }
+  ],
+  "requiredCoverage": {
+    "failureHandling": true,
+    "auditAndReplay": true,
+    "securityBoundaries": true,
+    "ownerMigrationOwnership": true,
+    "ownerRecovery": true,
+    "paymentPersistenceAndRecovery": true,
+    "commercialAdminAuthorization": true,
+    "commercialAdminOwnerRouting": true,
+    "desktopRealRuntime": true,
+    "mobile390RealRuntime": true,
+    "workspaceIsolation": true,
+    "idempotency": true,
+    "exactHead": true,
+    "candidateConfigFingerprint": true,
+    "machineReadableKnownLimits": true
+  },
+  "fingerprintInputs": [
+    "pnpm-lock.yaml",
+    "infrastructure/persistence/migration-owners.json",
+    "docs/tasks/MO-MVP-TASK-033A-MILESTONE-008-SCOPE-LOCK.md",
+    "docs/tasks/MO-MVP-M8-WP-06-COMMERCIAL-RUNTIME-RELIABILITY.md",
+    "infrastructure/rehearsal/m8-wp-06-commercial-runtime.json",
+    "infrastructure/rehearsal/m8-wp-06-known-limits.json",
+    ".github/workflows/ci.yml",
+    ".github/workflows/browser-visual-validation.yml",
+    ".github/workflows/product-loop-closure-reliability.yml",
+    ".github/workflows/m7-wp-05-deployment-rehearsal.yml",
+    ".github/workflows/m7-wp-06-beta-rc.yml",
+    ".github/workflows/payment-stripe-sandbox-acceptance.yml",
+    ".github/workflows/m8-wp-06-commercial-runtime-reliability.yml",
+    "services/payment/src/stripe-provider.ts",
+    "apps/operations-console/src/commercial-admin.tsx"
+  ],
+  "authority": {
+    "engineeringReadyForIndependentAuditMayBeTrue": true,
+    "releaseAuthorized": false,
+    "m8Complete": false,
+    "productionDeploymentPerformed": false,
+    "productionTrafficCutover": false,
+    "releaseTagPublished": false,
+    "businessAuthorityCreated": false,
+    "filingSubmitted": false,
+    "matterCompletedByPayment": false,
+    "officialTruthCreated": false,
+    "commercialAdminBecameOwnerDatabase": false
+  }
+}
