@@ -1,11 +1,9 @@
 import { createHash } from 'node:crypto';
 import type {
   ContentPick,
-  ContentPickId,
   ContentPickPlatform,
   CreatorPreference,
   DailyOrbitItem,
-  DailyOrbitItemId,
   DailyOrbitScoreComponent,
   DailyOrbitSection,
   DailySignal
@@ -281,7 +279,7 @@ export function rankDailyOrbitItem(
 
   return {
     schemaVersion: 1,
-    dailyOrbitItemId: `daily-orbit-item_${identity.slice(0, 32)}` as DailyOrbitItemId,
+    dailyOrbitItemId: `daily-orbit-item_${identity.slice(0, 32)}`,
     workspaceId: signal.workspaceId,
     version: 1,
     signal: { id: signal.dailySignalId, version: signal.version },
@@ -322,7 +320,7 @@ function contentPickFor(
   );
   return {
     schemaVersion: 1,
-    contentPickId: `content-pick_${identity.slice(0, 32)}` as ContentPickId,
+    contentPickId: `content-pick_${identity.slice(0, 32)}`,
     workspaceId: signal.workspaceId,
     version: 1,
     orbitItem: { id: item.dailyOrbitItemId, version: item.version },

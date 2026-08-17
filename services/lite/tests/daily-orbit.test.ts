@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type {
   CreatorPreference,
   DailySignal,
-  DailySignalId
 } from '@markorbit/contracts/daily-workspace';
 import type { LiteTodaySnapshot, TodayRecommendation } from '@markorbit/contracts/product-loop';
 import {
@@ -28,7 +27,7 @@ const source = {
 function signal(overrides: Partial<DailySignal> = {}): DailySignal {
   return {
     schemaVersion: 1,
-    dailySignalId: 'daily-signal_m9-wp03' as DailySignalId,
+    dailySignalId: 'daily-signal_m9-wp03',
     workspaceId,
     version: 1,
     source,
