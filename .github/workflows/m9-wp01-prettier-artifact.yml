@@ -1,15 +1,12 @@
 name: M9 WP01 Prettier Artifact
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - agent/m9-wp01-daily-workspace-contracts
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   CI: '1'
@@ -19,6 +16,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/m9-wp01-daily-workspace-contracts
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -34,11 +33,17 @@ jobs:
           docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md
           packages/contracts/src/daily-workspace.ts
           packages/contracts/tests/daily-workspace-contract.test.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: m9-wp01-prettier
-          path: |
-            docs/architecture/MO-LITE-DAILY-WORKSPACE-AUTHORITY-BOUNDARY.md
-            docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md
-            packages/contracts/src/daily-workspace.ts
+      - name: Commit exact Prettier output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture/MO-LITE-DAILY-WORKSPACE-AUTHORITY-BOUNDARY.md \
+            docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md \
+            packages/contracts/src/daily-workspace.ts \
             packages/contracts/tests/daily-workspace-contract.test.ts
+          if git diff --cached --quiet; then
+            echo "Already formatted."
+            exit 0
+          fi
+          git commit -m "chore: apply WP01 prettier"
+          git push origin HEAD:agent/m9-wp01-daily-workspace-contracts
