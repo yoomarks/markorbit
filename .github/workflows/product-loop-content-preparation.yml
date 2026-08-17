@@ -45,18 +45,23 @@ jobs:
               Path('services/lite/src/daily-orbit.ts'): [
                   ('  ContentPickId,\n', ''),
                   ('  DailyOrbitItemId,\n', ''),
+                  (' as DailyOrbitItemId', ''),
+                  (' as ContentPickId', ''),
               ],
               Path('services/lite/tests/daily-orbit.test.ts'): [
-                  ('  DailySignalId,\n', ''),
+                  ('  DailySignalId\n', ''),
+                  (' as DailySignalId', ''),
               ],
           }
           for path, pairs in replacements.items():
               text = path.read_text()
               for old, new in pairs:
+                  if old not in text:
+                      raise SystemExit(f'Expected lint target not found: {path}: {old!r}')
                   text = text.replace(old, new)
               path.write_text(text)
           PY
-          pnpm exec eslint services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts --fix
+          pnpm exec eslint services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts
       - name: Commit exact lint fixes
         run: |
           if git diff --quiet; then exit 0; fi
