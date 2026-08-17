@@ -40,6 +40,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:runtime
       - run: pnpm test:story-matrix
+      - name: Build Storybook contract dependency
+        run: pnpm --filter @markorbit/contracts build
       - run: pnpm build:storybook-matrix
       - run: pnpm test:storybook-index
       - run: pnpm exec playwright install --with-deps chromium
