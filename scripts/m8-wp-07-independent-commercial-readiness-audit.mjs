@@ -223,15 +223,12 @@ for (const maintenance of postCandidateMaintenance) {
   try {
     git('merge-base', '--is-ancestor', maintenance.commitSha, 'HEAD');
   } catch {
-    invariant(false, `pinned maintenance commit is not in the audited HEAD: ${maintenance.commitSha}`);
+    invariant(
+      false,
+      `pinned maintenance commit is not in the audited HEAD: ${maintenance.commitSha}`
+    );
   }
-  const commitFiles = git(
-    'diff-tree',
-    '--no-commit-id',
-    '--name-only',
-    '-r',
-    maintenance.commitSha
-  )
+  const commitFiles = git('diff-tree', '--no-commit-id', '--name-only', '-r', maintenance.commitSha)
     .split('\n')
     .filter(Boolean);
   invariant(
