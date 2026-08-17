@@ -6,7 +6,7 @@
 - **Candidate fingerprint:** `sha256:381b2e11355d51667536774eda575ae1a28ae9c52c164531cc9bfc973c6d21a9`
 - **WP06 PR:** `#110`
 - **WP06 main merge:** `4695e2c3de54abd7f73438a91425621646b4c318`
-- **Status:** `AUDIT_IMPLEMENTED_EXTERNAL_GATE_PENDING`
+- **Status:** `AUDIT_IMPLEMENTED_EXTERNAL_GATE_DEFERRED_ENGINEERING_CONTINUATION_ALLOWED`
 
 ## Objective
 
@@ -41,11 +41,24 @@ Post-candidate repository changes remain fail-closed. Audit implementation files
 - WP07 / #111 is merged into `main`;
 - post-WP07 repair #113 is merged as `20fbf41cad472b862fd247c77f8e76fc6904bf79`; it changed only `scripts/milestone3-reliability-command.test.mjs`, restoring the hosted Milestone 3 trigger assertion without changing commercial runtime or authority behavior;
 - that repair is pinned by commit and exact blob identity so future M8 re-audits remain repeatable without weakening the out-of-scope change gate;
-- the canonical `Payment Stripe Sandbox Acceptance` workflow has been dispatched on `main`;
-- run `32048225053` still fails at `Require Stripe test-mode credential` because repository secret `STRIPE_TEST_SECRET_KEY` is absent and the runner receives an empty `STRIPE_SECRET_KEY`;
-- therefore the remaining M8 external blocker is real Stripe test-mode credential/evidence, not deterministic Payment implementation.
+- the canonical `Payment Stripe Sandbox Acceptance` workflow has been dispatched on `main` multiple times;
+- latest observed run `32072472856` passed the syntactic test-mode credential guard and Stripe CLI installation, then failed at `Resolve ephemeral webhook signing secret`; no real payment/refund acceptance evidence was produced;
+- the Owner has confirmed there is currently no Stripe account and therefore cannot supply a real Stripe test-mode secret for provider acceptance;
+- deterministic Payment implementation remains complete, while real Stripe provider verification is intentionally deferred as an external dependency.
 
-Until a valid repository `STRIPE_TEST_SECRET_KEY` is configured and the canonical workflow succeeds with retained provider evidence, the independent audit must continue to return `FIX`.
+Until a real Stripe account/test-mode credential exists and the canonical workflow succeeds with retained provider evidence, the independent audit must continue to return `FIX` and `m8Complete` must remain false.
+
+## Deferred external gate and engineering continuation
+
+The deferred Stripe gate is now explicit policy rather than an ambiguous engineering blocker:
+
+- `STRIPE_REAL_PROVIDER_ACCEPTANCE_DEFERRED` means the real external provider path has not been verified;
+- the deferral **does block M8 completion / Stripe-ready claims**;
+- the deferral **does not block subsequent MarkOrbit engineering work** that does not depend on claiming real Stripe readiness;
+- deterministic tests, fake providers, a syntactically valid secret prefix, or skipped sandbox execution never count as real-provider verification;
+- when a Stripe account becomes available, configure a genuine test-mode credential, run the canonical sandbox acceptance, retain its evidence, and re-run WP07 before changing M8 completion status.
+
+This separation prevents an unavailable third-party account from freezing unrelated product development without weakening the provider-verification standard.
 
 ## Required audit checks
 
@@ -56,7 +69,7 @@ Until a valid repository `STRIPE_TEST_SECRET_KEY` is configured and the canonica
 5. audit-only changes stay inside the bounded WP07 workflow/script/audit/task paths, while any non-audit post-candidate maintenance must match its pinned commit, sole path and exact blob identity;
 6. repository workspace, persistence-boundary, gateway-inventory and full `pnpm check` pass;
 7. PR #110 must be merged before final `GO`, and the merged tree must match the audited candidate tree;
-8. a successful Stripe test-mode workflow-dispatch run on `main` must exist;
+8. a successful Stripe test-mode workflow-dispatch run on `main` must exist before M8 completion;
 9. its retained `stripe-sandbox-acceptance.json` must prove Stripe test mode, successful payment, successful refund, USD minor-unit amount and non-live provider mode;
 10. audit result must keep release/production authority false.
 
@@ -67,6 +80,8 @@ For squash-merged WP06, WP07 compares the audited candidate tree directly with t
 ```text
 Independent Audit GO != Owner Release Authorization
 Green CI != M8 complete
+Engineering continuation != M8 completion
+Deferred Stripe verification != Stripe-ready
 Deterministic Stripe tests != real-provider acceptance
 Order != Payment
 Payment succeeded != Filing submitted
@@ -79,6 +94,6 @@ Deployment/Rehearsal != Production Deployment
 
 WP07 audit implementation is complete when its hosted independent-audit workflow produces a retained machine-readable audit artifact for the exact candidate.
 
-M8 receives a final `GO` recommendation only when the audit finds no blockers. A `FIX` result is a valid completed audit result and must remain `FIX` until the missing external provider evidence is actually supplied and the audit is re-run.
+M8 receives a final `GO` recommendation only when the audit finds no blockers. A `FIX` result is a valid completed audit result and remains the M8 completion result while real Stripe evidence is absent. The explicit external-gate deferral permits unrelated engineering progression; it does not convert `FIX` into `GO` and does not make Stripe verified.
 
 No WP07 result auto-releases or deploys production traffic.
