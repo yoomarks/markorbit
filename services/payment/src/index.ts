@@ -11,6 +11,7 @@ export * from './payment-lifecycle.js';
 export * from './payment-http.js';
 export * from './payment-lifecycle-http.js';
 export * from './payment-runtime.js';
+export * from './stripe-provider.js';
 
 export const serviceManifest = Object.freeze({
   name: 'payment',
