@@ -46,21 +46,51 @@ invariant(audit.schemaVersion === 1, 'unsupported M8-WP-07 audit schema');
 invariant(audit.milestone === 'M8', 'audit milestone must be M8');
 invariant(audit.workPackage === 'M8-WP-07', 'audit work package must be M8-WP-07');
 invariant(candidateSha === audit.auditedCandidateSha, 'audited candidate SHA drifted');
-invariant(audit.authority.mergeRequiresExplicitOwnerAction === true, 'Owner merge lock must remain explicit');
-invariant(audit.authority.releaseRequiresExplicitOwnerAction === true, 'Owner release lock must remain explicit');
-invariant(audit.authority.auditCreatesMergeReleaseOrDeployment === false, 'audit may not create merge/release authority');
+invariant(
+  audit.authority.mergeRequiresExplicitOwnerAction === true,
+  'Owner merge lock must remain explicit'
+);
+invariant(
+  audit.authority.releaseRequiresExplicitOwnerAction === true,
+  'Owner release lock must remain explicit'
+);
+invariant(
+  audit.authority.auditCreatesMergeReleaseOrDeployment === false,
+  'audit may not create merge/release authority'
+);
 
-const candidate = readCandidateJson(candidateSha, 'infrastructure/rehearsal/m8-wp-06-commercial-runtime.json');
-const knownLimits = readCandidateJson(candidateSha, 'infrastructure/rehearsal/m8-wp-06-known-limits.json');
-const scopeLock = readCandidateText(candidateSha, 'docs/tasks/MO-MVP-TASK-033A-MILESTONE-008-SCOPE-LOCK.md');
-const wp06Task = readCandidateText(candidateSha, 'docs/tasks/MO-MVP-M8-WP-06-COMMERCIAL-RUNTIME-RELIABILITY.md');
+const candidate = readCandidateJson(
+  candidateSha,
+  'infrastructure/rehearsal/m8-wp-06-commercial-runtime.json'
+);
+const knownLimits = readCandidateJson(
+  candidateSha,
+  'infrastructure/rehearsal/m8-wp-06-known-limits.json'
+);
+const scopeLock = readCandidateText(
+  candidateSha,
+  'docs/tasks/MO-MVP-TASK-033A-MILESTONE-008-SCOPE-LOCK.md'
+);
+const wp06Task = readCandidateText(
+  candidateSha,
+  'docs/tasks/MO-MVP-M8-WP-06-COMMERCIAL-RUNTIME-RELIABILITY.md'
+);
 const agents = readCandidateText(candidateSha, 'AGENTS.md');
 
 invariant(candidate.workPackage === 'M8-WP-06', 'candidate is not M8-WP-06');
-invariant(candidate.candidateClass === 'MVP_COMMERCIAL_RUNTIME_CANDIDATE', 'candidate class drifted');
-invariant(candidate.environmentClass === 'NON_PRODUCTION_REHEARSAL', 'candidate environment drifted');
+invariant(
+  candidate.candidateClass === 'MVP_COMMERCIAL_RUNTIME_CANDIDATE',
+  'candidate class drifted'
+);
+invariant(
+  candidate.environmentClass === 'NON_PRODUCTION_REHEARSAL',
+  'candidate environment drifted'
+);
 invariant(candidate.exactHeadRequired === true, 'candidate must remain exact-head qualified');
-invariant(candidate.productionTrafficAllowed === false, 'candidate must not allow production traffic');
+invariant(
+  candidate.productionTrafficAllowed === false,
+  'candidate must not allow production traffic'
+);
 invariant(candidate.releaseAuthorized === false, 'candidate must not authorize release');
 invariant(candidate.m8Complete === false, 'WP06 candidate may not declare M8 complete');
 invariant(candidate.auditRequired === true, 'WP06 candidate must require independent audit');
@@ -77,17 +107,32 @@ const requiredScopeFragments = [
   'Knowledge evidence != Official structured truth'
 ];
 for (const fragment of requiredScopeFragments) {
-  invariant(scopeLock.includes(fragment), `M8 scope lock missing authority distinction: ${fragment}`);
+  invariant(
+    scopeLock.includes(fragment),
+    `M8 scope lock missing authority distinction: ${fragment}`
+  );
 }
-invariant(wp06Task.includes('Commercial Admin != owner database'), 'WP06 commercial-admin owner lock missing');
-invariant(wp06Task.includes('Green deterministic CI != real Stripe provider acceptance'), 'WP06 Stripe evidence lock missing');
-invariant(agents.includes('No direct cross-service database reads.'), 'repository cross-service SQL lock missing');
+invariant(
+  wp06Task.includes('Commercial Admin != owner database'),
+  'WP06 commercial-admin owner lock missing'
+);
+invariant(
+  wp06Task.includes('Green deterministic CI != real Stripe provider acceptance'),
+  'WP06 Stripe evidence lock missing'
+);
+invariant(
+  agents.includes('No direct cross-service database reads.'),
+  'repository cross-service SQL lock missing'
+);
 
 const limitIds = new Set(knownLimits.limits.map((limit) => limit.id));
 for (const id of audit.knownLimitIds) {
   invariant(limitIds.has(id), `missing audited WP06 known limit: ${id}`);
 }
-invariant(knownLimits.limits.length === audit.knownLimitIds.length, 'WP06 known-limit count drifted');
+invariant(
+  knownLimits.limits.length === audit.knownLimitIds.length,
+  'WP06 known-limit count drifted'
+);
 
 const wp06Evidence = await readJson(wp06EvidencePath);
 invariant(wp06Evidence.workPackage === 'M8-WP-06', 'downloaded artifact is not WP06 evidence');
@@ -121,7 +166,10 @@ for (const field of [
   'officialTruthCreated',
   'commercialAdminBecameOwnerDatabase'
 ]) {
-  invariant(wp06Evidence.authority[field] === false, `WP06 authority field must remain false: ${field}`);
+  invariant(
+    wp06Evidence.authority[field] === false,
+    `WP06 authority field must remain false: ${field}`
+  );
 }
 
 const candidateRuns = await readJson(candidateRunsPath);
