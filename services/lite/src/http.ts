@@ -16,6 +16,10 @@ import {
   ProductConversionAnalyticsError,
   type PostgresProductConversionAnalyticsStore
 } from './conversion-analytics.js';
+import {
+  DailySignalImportError,
+  type PostgresLiteDailySignalStore
+} from './daily-signal.js';
 import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
   PreparedActionJourneyError,
@@ -31,6 +35,7 @@ export interface LiteProductLoopRouteOptions {
   candidateStore: PostgresLiteCandidateQualificationStore;
   feedbackStore: PostgresProductLoopFeedbackStore;
   analyticsStore: PostgresProductConversionAnalyticsStore;
+  dailySignalStore?: PostgresLiteDailySignalStore;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -125,7 +130,8 @@ function mapError(error: unknown): never {
     error instanceof PreparedActionJourneyError ||
     error instanceof LiteCandidateQualificationError ||
     error instanceof ProductLoopFeedbackError ||
-    error instanceof ProductConversionAnalyticsError
+    error instanceof ProductConversionAnalyticsError ||
+    error instanceof DailySignalImportError
   )
     throw new HttpError(
       error.status,
@@ -139,6 +145,30 @@ function mapError(error: unknown): never {
 
 export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions): JsonRoute[] {
   return [
+    ...(options.dailySignalStore
+      ? [
+          {
+            method: 'POST' as const,
+            path: '/internal/v1/daily-signals/import',
+            handle: async (request: JsonRequest) => {
+              const workspaceId = internalWorkspace(request, options.internalServiceSecret);
+              const body = bodyOf(request);
+              try {
+                return json(
+                  201,
+                  await options.dailySignalStore!.importKnowledgeSource({
+                    workspaceId,
+                    readyPackageId: text(body.readyPackageId, 'readyPackageId'),
+                    idempotencyKey: keyOf(request)
+                  })
+                );
+              } catch (error) {
+                return mapError(error);
+              }
+            }
+          }
+        ]
+      : []),
     {
       method: 'GET',
       path: '/v1/today',
