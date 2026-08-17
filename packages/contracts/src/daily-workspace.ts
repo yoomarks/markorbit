@@ -169,9 +169,7 @@ export interface ContentKit {
   audience: string;
   platformVariants: readonly Readonly<PlatformVariant>[];
   draftReferences: ReadonlyArray<Readonly<ProductLoopExactReference<ContentDraftId>>>;
-  publishPackageReferences: ReadonlyArray<
-    Readonly<ProductLoopExactReference<PublishPackageId>>
-  >;
+  publishPackageReferences: ReadonlyArray<Readonly<ProductLoopExactReference<PublishPackageId>>>;
   visualBriefReferences: ReadonlyArray<Readonly<ProductLoopExactReference<VisualBriefId>>>;
   externalPublishExecuted: false;
   createdAt: string;
@@ -276,7 +274,8 @@ export interface ProductPreferenceEvent {
   workspaceId: string;
   subjectUserId: string;
   kind: ProductPreferenceEventKind;
-  targetType: 'DAILY_ORBIT_ITEM' | 'CONTENT_PICK' | 'CONTENT_KIT' | 'PLATFORM_VARIANT' | 'VISUAL_OUTPUT';
+  targetType:
+    'DAILY_ORBIT_ITEM' | 'CONTENT_PICK' | 'CONTENT_KIT' | 'PLATFORM_VARIANT' | 'VISUAL_OUTPUT';
   targetId: string;
   targetVersion: number | string;
   recordedAt: string;

@@ -261,8 +261,8 @@ describe('M9-WP-01 Daily Workspace contracts', () => {
       mayVerifyProfessionalCapability: false,
       mayCreateOfficialTruth: false
     });
-    expect(Object.values(noAutomaticDailyWorkspaceConsequences).every((value) => value === false)).toBe(
-      true
-    );
+    expect(
+      Object.values(noAutomaticDailyWorkspaceConsequences).every((value) => value === false)
+    ).toBe(true);
   });
 });

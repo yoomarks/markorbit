@@ -71,20 +71,20 @@ Workspace/user Product interaction evidence used for future relevance/product im
 
 ## Ownership matrix
 
-| State / responsibility | Owner |
-|---|---|
-| source discovery/fetch/provenance | markorbit-knowledge |
-| trusted Knowledge intake integrity | Core |
-| identity/Workspace/Principal/permission | Core |
-| DailySignal / DailyOrbit / ContentPick / ContentKit / CreatorPreference | Lite |
-| Content Opportunity/Draft/Review/PublishPackage | Lite |
-| visual assets/IP packages/recipes/provider routing/QC | MOKI universal visual engine |
-| formal trademark-service opportunity and professional work | MarkReg |
-| governed protected actions | Execution where applicable |
-| provider/network truth | MGSN |
-| professional Capability evidence/learning | Capability Engine |
-| browser/API composition | Gateway |
-| bulk/public trademark data | Data Engine via read-only contract only |
+| State / responsibility                                                  | Owner                                   |
+| ----------------------------------------------------------------------- | --------------------------------------- |
+| source discovery/fetch/provenance                                       | markorbit-knowledge                     |
+| trusted Knowledge intake integrity                                      | Core                                    |
+| identity/Workspace/Principal/permission                                 | Core                                    |
+| DailySignal / DailyOrbit / ContentPick / ContentKit / CreatorPreference | Lite                                    |
+| Content Opportunity/Draft/Review/PublishPackage                         | Lite                                    |
+| visual assets/IP packages/recipes/provider routing/QC                   | MOKI universal visual engine            |
+| formal trademark-service opportunity and professional work              | MarkReg                                 |
+| governed protected actions                                              | Execution where applicable              |
+| provider/network truth                                                  | MGSN                                    |
+| professional Capability evidence/learning                               | Capability Engine                       |
+| browser/API composition                                                 | Gateway                                 |
+| bulk/public trademark data                                              | Data Engine via read-only contract only |
 
 ## Permanent semantic locks
 
