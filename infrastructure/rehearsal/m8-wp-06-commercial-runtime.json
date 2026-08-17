@@ -24,7 +24,16 @@
     {
       "id": "validation",
       "workflow": ".github/workflows/ci.yml",
-      "coverage": ["workspace", "ownership", "format", "lint", "typecheck", "tests", "build", "persistence"]
+      "coverage": [
+        "workspace",
+        "ownership",
+        "format",
+        "lint",
+        "typecheck",
+        "tests",
+        "build",
+        "persistence"
+      ]
     },
     {
       "id": "browser-responsive",
@@ -54,7 +63,15 @@
     {
       "id": "m8-wp06-commercial-runtime-reliability",
       "workflow": ".github/workflows/m8-wp-06-commercial-runtime-reliability.yml",
-      "coverage": ["failure-handling", "audit", "security", "migration-recovery", "commercial-admin", "payment", "exact-head"]
+      "coverage": [
+        "failure-handling",
+        "audit",
+        "security",
+        "migration-recovery",
+        "commercial-admin",
+        "payment",
+        "exact-head"
+      ]
     }
   ],
   "requiredCoverage": {

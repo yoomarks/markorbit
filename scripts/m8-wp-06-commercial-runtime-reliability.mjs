@@ -55,7 +55,10 @@ async function readJson(relativePath) {
 async function requireText(relativePath, fragments) {
   const source = await readFile(path.join(root, relativePath), 'utf8');
   for (const fragment of fragments) {
-    invariant(source.includes(fragment), `${relativePath} is missing required fragment: ${fragment}`);
+    invariant(
+      source.includes(fragment),
+      `${relativePath} is missing required fragment: ${fragment}`
+    );
   }
 }
 
@@ -99,14 +102,26 @@ invariant(
   providerGate.credentialSecretName === 'STRIPE_TEST_SECRET_KEY',
   'Stripe test credential contract changed unexpectedly'
 );
-invariant(providerGate.requiredForM8Completion === true, 'real Stripe acceptance must gate M8 completion');
+invariant(
+  providerGate.requiredForM8Completion === true,
+  'real Stripe acceptance must gate M8 completion'
+);
 invariant(
   providerGate.mayBeUnresolvedForDeterministicWP06 === true,
   'deterministic WP06 must not forge external provider completion'
 );
-invariant(providerGate.fakeProviderCounts === false, 'fake provider may not count as Stripe acceptance');
-invariant(providerGate.mockedFetchCounts === false, 'mocked fetch may not count as Stripe acceptance');
-invariant(providerGate.skippedTestCounts === false, 'skipped sandbox test may not count as Stripe acceptance');
+invariant(
+  providerGate.fakeProviderCounts === false,
+  'fake provider may not count as Stripe acceptance'
+);
+invariant(
+  providerGate.mockedFetchCounts === false,
+  'mocked fetch may not count as Stripe acceptance'
+);
+invariant(
+  providerGate.skippedTestCounts === false,
+  'skipped sandbox test may not count as Stripe acceptance'
+);
 
 const knownLimits = await readJson(candidate.knownLimitsFile);
 invariant(knownLimits.schemaVersion === 1, 'unsupported WP06 known-limits schema version');
