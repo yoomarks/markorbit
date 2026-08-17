@@ -74,14 +74,20 @@ describe('M9-WP-02 Daily Signal derivation', () => {
   });
 
   it('fails closed when the Markdown bytes do not match their digest', () => {
-    const value = projection();
-    value.content.sha256 = 'f'.repeat(64);
+    const original = projection();
+    const value: CoreKnowledgeDailySourceProjection = {
+      ...original,
+      content: { ...original.content, sha256: 'f'.repeat(64) }
+    };
     expect(() => deriveDailySignal(workspaceId, value)).toThrowError(DailySignalImportError);
   });
 
   it('fails closed when source identity and ReadyPackage identity diverge', () => {
-    const value = projection();
-    value.source.sourceId = 'rdp_other';
+    const original = projection();
+    const value: CoreKnowledgeDailySourceProjection = {
+      ...original,
+      source: { ...original.source, sourceId: 'rdp_other' }
+    };
     expect(() => deriveDailySignal(workspaceId, value)).toThrowError(
       'Core Daily source identity does not match the ReadyPackage identity.'
     );
