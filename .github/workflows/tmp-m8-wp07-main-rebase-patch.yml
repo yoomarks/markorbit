@@ -1,0 +1,39 @@
+name: Temporary M8 WP07 Main Rebase Patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-m8-wp07-main-rebase-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp07-independent-commercial-readiness-audit
+          fetch-depth: 0
+      - name: Patch squash-merge audit range semantics
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/m8-wp-07-independent-commercial-readiness-audit.mjs')
+          text = path.read_text()
+          old = "git('diff', '--name-only', `${candidateSha}...HEAD`)"
+          new = "git('diff', '--name-only', candidateSha, 'HEAD')"
+          if old not in text:
+              raise SystemExit('expected audit diff expression not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit patch to WP07 branch
+        shell: bash
+        run: |
+          git config user.name markorbit-ci-bot
+          git config user.email actions@users.noreply.github.com
+          git add scripts/m8-wp-07-independent-commercial-readiness-audit.mjs
+          git commit -m 'fix(m8): audit squash-merged candidate tree directly'
+          git push origin HEAD:agent/m8-wp07-independent-commercial-readiness-audit
