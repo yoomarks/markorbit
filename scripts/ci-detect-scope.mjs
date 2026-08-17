@@ -217,9 +217,11 @@ function main() {
 
   if (!args.base || !args.head)
     throw new Error('--base and --head are required unless --full is used.');
-  const stdout = execFileSync('git', ['diff', '--name-only', args.base, args.head], {
-    encoding: 'utf8'
-  });
+  const stdout = execFileSync(
+    'git',
+    ['diff', '--name-only', args.base, args.head],
+    { encoding: 'utf8' }
+  );
   const files = stdout.split(/\r?\n/).filter(Boolean);
   const scope = classifyChangedFiles(files);
   writeOutputs(scope);
