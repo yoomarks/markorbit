@@ -34,6 +34,8 @@ import {
 import { CommercialCheckoutService } from './commercial-checkout.js';
 import { PostgresCommercialCatalogRepository } from './commercial-checkout-postgres.js';
 import { createCommercialCheckoutHttpRoutes } from './commercial-checkout-http.js';
+import { MarkRegCommercialAdminReadService } from './commercial-admin-read.js';
+import { createMarkRegCommercialAdminHttpRoutes } from './commercial-admin-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -73,6 +75,15 @@ if (fixtureRuntime) {
   const commercialCheckoutRoutes = createCommercialCheckoutHttpRoutes({
     internalServiceSecret,
     service: commercialCheckoutService
+  });
+  const commercialAdminReadService = new MarkRegCommercialAdminReadService(
+    commercialRepository,
+    orderRepository,
+    formalMatterRepository
+  );
+  const commercialAdminRoutes = createMarkRegCommercialAdminHttpRoutes({
+    internalServiceSecret,
+    service: commercialAdminReadService
   });
   const documentPackageService = new PostgresDocumentPackageService(database, pool, {
     async get(principal, reviewCaseId, correlationId) {
@@ -154,6 +165,7 @@ if (fixtureRuntime) {
     executionUrl,
     extraRoutes: [
       ...commercialCheckoutRoutes,
+      ...commercialAdminRoutes,
       ...lifecycleRoutes,
       ...lifecycleSurfaceRoutes,
       ...formalOpportunityRoutes
