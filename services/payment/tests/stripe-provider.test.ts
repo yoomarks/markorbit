@@ -30,24 +30,39 @@ function signedWebhook(value: unknown) {
   };
 }
 
+function fetchInputUrl(input: Parameters<typeof fetch>[0]): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+function formBody(init?: RequestInit): URLSearchParams {
+  const body = init?.body;
+  if (typeof body !== 'string') throw new Error('Expected a form-urlencoded string request body.');
+  return new URLSearchParams(body);
+}
+
 describe('Stripe Payment provider adapter', () => {
   it('creates governed PaymentIntents with metadata and idempotency', async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
-    const adapter = new StripePaymentProviderAdapter({
-      secretKey: stripeSecret,
-      webhookSecret,
-      nowSeconds: () => timestamp,
-      fetch: (async (input, init) => {
-        calls.push({ url: String(input), init });
-        return jsonResponse({
+    const fetcher: typeof fetch = (input, init) => {
+      calls.push({ url: fetchInputUrl(input), init });
+      return Promise.resolve(
+        jsonResponse({
           id: 'pi_markorbit_create',
           object: 'payment_intent',
           amount: 29900,
           currency: 'usd',
           status: 'requires_payment_method',
           client_secret: 'pi_markorbit_create_secret_contract'
-        });
-      }) as typeof fetch
+        })
+      );
+    };
+    const adapter = new StripePaymentProviderAdapter({
+      secretKey: stripeSecret,
+      webhookSecret,
+      nowSeconds: () => timestamp,
+      fetch: fetcher
     });
 
     const result = await adapter.createPayment({
@@ -78,7 +93,7 @@ describe('Stripe Payment provider adapter', () => {
       'stripe-version': STRIPE_API_VERSION,
       'idempotency-key': 'payment_contract'
     });
-    const body = new URLSearchParams(String(calls[0]?.init?.body));
+    const body = formBody(calls[0]?.init);
     expect(body.get('amount')).toBe('29900');
     expect(body.get('currency')).toBe('usd');
     expect(body.get('automatic_payment_methods[enabled]')).toBe('true');
@@ -157,30 +172,36 @@ describe('Stripe Payment provider adapter', () => {
 
   it('creates bounded refunds and retrieves reconciliation truth', async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
-    const adapter = new StripePaymentProviderAdapter({
-      secretKey: stripeSecret,
-      webhookSecret,
-      nowSeconds: () => timestamp,
-      fetch: (async (input, init) => {
-        calls.push({ url: String(input), init });
-        if (String(input).endsWith('/v1/refunds'))
-          return jsonResponse({
+    const fetcher: typeof fetch = (input, init) => {
+      const url = fetchInputUrl(input);
+      calls.push({ url, init });
+      if (url.endsWith('/v1/refunds'))
+        return Promise.resolve(
+          jsonResponse({
             id: 're_markorbit_contract',
             object: 'refund',
             amount: 5000,
             currency: 'usd',
             payment_intent: 'pi_markorbit_contract',
             status: 'pending'
-          });
-        return jsonResponse({
+          })
+        );
+      return Promise.resolve(
+        jsonResponse({
           id: 'pi_markorbit_contract',
           object: 'payment_intent',
           amount: 29900,
           amount_received: 29900,
           currency: 'usd',
           status: 'succeeded'
-        });
-      }) as typeof fetch
+        })
+      );
+    };
+    const adapter = new StripePaymentProviderAdapter({
+      secretKey: stripeSecret,
+      webhookSecret,
+      nowSeconds: () => timestamp,
+      fetch: fetcher
     });
 
     await expect(
@@ -195,7 +216,7 @@ describe('Stripe Payment provider adapter', () => {
       })
     ).resolves.toEqual({ providerRefundReference: 're_markorbit_contract', status: 'PENDING' });
 
-    const refundBody = new URLSearchParams(String(calls[0]?.init?.body));
+    const refundBody = formBody(calls[0]?.init);
     expect(refundBody.get('payment_intent')).toBe('pi_markorbit_contract');
     expect(refundBody.get('amount')).toBe('5000');
     expect(calls[0]?.init?.headers).toMatchObject({

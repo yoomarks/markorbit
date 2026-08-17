@@ -248,6 +248,8 @@ export class StripePaymentProviderAdapter
   }
 
   async verifyWebhook(input: Readonly<PaymentWebhookInput>): Promise<VerifiedProviderPaymentEvent> {
+    // Preserve the provider adapter's asynchronous rejection contract even though HMAC verification is local.
+    await Promise.resolve();
     const signatureHeader = input.headers['stripe-signature'] ?? input.headers['Stripe-Signature'];
     if (!signatureHeader)
       throw new PaymentLifecycleError(
