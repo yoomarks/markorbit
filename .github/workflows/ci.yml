@@ -78,7 +78,9 @@ jobs:
         if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: pnpm exec turbo run lint typecheck test build --filter="...[$BASE_SHA]"
+        run: |
+          pnpm exec turbo run build --filter="...[$BASE_SHA]"
+          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]"
       - name: Full typecheck for shared compiler configuration
         if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true' && needs.detect.outputs.full_typecheck == 'true'
         run: pnpm typecheck
@@ -274,6 +276,7 @@ jobs:
         if: github.event_name == 'push' || needs.detect.outputs.payment == 'true'
         run: |
           if [ -f services/payment/package.json ]; then
+            pnpm exec turbo run build --filter=@markorbit/payment-service...
             pnpm --filter @markorbit/payment-service exec vitest run tests/payment-http.test.ts tests/payment-lifecycle-http.test.ts tests/payment-postgres.test.ts tests/payment-lifecycle-postgres.test.ts
             if [ -f apps/gateway/tests/payment-http.test.ts ]; then
               pnpm --filter @markorbit/gateway exec vitest run tests/payment-http.test.ts tests/payment-runtime-wiring.test.ts

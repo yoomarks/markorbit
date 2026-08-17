@@ -372,6 +372,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/service-kit
 
+  services/payment:
+    dependencies:
+      '@markorbit/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@markorbit/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+      '@markorbit/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
+
 packages:
 
   '@adobe/css-tools@4.5.0':

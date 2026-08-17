@@ -12,6 +12,7 @@
     "markreg_audit_hardening": "@markorbit/markreg-service",
     "markreg_orders": "@markorbit/markreg-service",
     "markreg_commercial_checkout": "@markorbit/markreg-service",
+    "payment_foundation": "@markorbit/payment-service",
     "execution_filing_governance": "@markorbit/execution-service",
     "mgsn_provider_registry": "@markorbit/mgsn-service",
     "mgsn_service_package_eligibility": "@markorbit/mgsn-service",
@@ -65,6 +66,7 @@
     "0047_capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine",
     "0048_core_knowledge_v2_deliveries": "@markorbit/core-service",
     "0049_core_account_access": "@markorbit/core-service",
-    "0050_markreg_commercial_checkout": "@markorbit/markreg-service"
+    "0050_markreg_commercial_checkout": "@markorbit/markreg-service",
+    "0051_payment_foundation": "@markorbit/payment-service"
   }
 }
