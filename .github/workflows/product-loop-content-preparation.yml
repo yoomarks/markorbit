@@ -35,6 +35,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build Lite dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service...
       - name: Apply exact ESLint fixes
         run: pnpm exec eslint services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts --fix
       - name: Commit exact lint fixes
