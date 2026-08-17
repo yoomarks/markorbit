@@ -185,7 +185,7 @@ for (const required of audit.requiredWorkflowEvidence) {
   invariant(run.conclusion === 'success', `workflow run ${required.runId} did not succeed`);
 }
 
-const changedFiles = git('diff', '--name-only', `${candidateSha}...HEAD`)
+const changedFiles = git('diff', '--name-only', candidateSha, 'HEAD')
   .split('\n')
   .filter(Boolean);
 const allowedAuditPaths = new Set([
