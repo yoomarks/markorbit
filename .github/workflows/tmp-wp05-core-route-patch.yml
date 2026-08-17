@@ -1,0 +1,47 @@
+name: TMP WP05 Core Route Patch
+
+on:
+  push:
+    branches:
+      - agent/m8-wp05-commercial-admin-operator-control
+    paths:
+      - .github/workflows/tmp-wp05-core-route-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp05-commercial-admin-operator-control
+      - name: Patch Core runtime
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('services/core/src/index.ts')
+          text = path.read_text()
+
+          old_import = """import {\n  AuthenticationError,\n  SELF_SERVICE_ACCOUNT_TYPES,\n"""
+          new_import = """import {\n  AuthenticationError,\n  SELF_SERVICE_ACCOUNT_TYPES,\n  commercialAdminCapabilitiesForAccount,\n"""
+          if old_import not in text:
+              raise SystemExit('Core contracts import anchor not found')
+          text = text.replace(old_import, new_import, 1)
+
+          anchor = """        {\n          method: 'POST',\n          path: '/internal/auth/workspace-principals/resolve',\n          handle: internal(async (request) => {\n            const value = body(request);\n            if (typeof value.token !== 'string' || typeof value.workspaceId !== 'string')\n              throw new HttpError(400, 'INVALID_REQUEST', 'token and workspaceId are required.');\n            return json(\n              200,\n              await authentication.resolveWorkspacePrincipal(value.token, value.workspaceId)\n            );\n          })\n        },\n"""
+          insert = """        {\n          method: 'POST',\n          path: '/internal/commercial-admin/operator-principals/resolve',\n          handle: internal(async (request) => {\n            if (!options.accountAccess)\n              throw new HttpError(\n                503,\n                'AUTHENTICATION_SERVICE_UNAVAILABLE',\n                'Account access service is unavailable.',\n                true\n              );\n            const token = body(request).token;\n            if (typeof token !== 'string' || !token)\n              throw new HttpError(400, 'INVALID_REQUEST', 'token is required.');\n            const sessionPrincipal = await authentication.resolveSession(token);\n            const account = await options.accountAccess.inspectAccount(sessionPrincipal.userId);\n            if (!account)\n              throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Account was not found.');\n            const capabilities = commercialAdminCapabilitiesForAccount(account);\n            if (!capabilities.includes('commercial-admin:read'))\n              throw new AuthenticationError(\n                'PERMISSION_DENIED',\n                'Commercial admin capability is required.'\n              );\n            return json(200, {\n              kind: 'INTERNAL_OPERATOR',\n              sessionId: sessionPrincipal.sessionId,\n              userId: sessionPrincipal.userId,\n              capabilities,\n              sessionExpiresAt: sessionPrincipal.sessionExpiresAt\n            });\n          })\n        },\n        {\n          method: 'POST',\n          path: '/internal/commercial-admin/accounts/:userId/inspect',\n          handle: internal(async (request) => {\n            if (!options.accountAccess || !options.accountOnboarding)\n              throw new HttpError(\n                503,\n                'AUTHENTICATION_SERVICE_UNAVAILABLE',\n                'Commercial admin account inspection is unavailable.',\n                true\n              );\n            const token = body(request).token;\n            if (typeof token !== 'string' || !token)\n              throw new HttpError(400, 'INVALID_REQUEST', 'token is required.');\n            const sessionPrincipal = await authentication.resolveSession(token);\n            const operatorAccount = await options.accountAccess.inspectAccount(\n              sessionPrincipal.userId\n            );\n            if (\n              !operatorAccount ||\n              !commercialAdminCapabilitiesForAccount(operatorAccount).includes(\n                'commercial-admin:read'\n              )\n            )\n              throw new AuthenticationError(\n                'PERMISSION_DENIED',\n                'Commercial admin capability is required.'\n              );\n            const account = await options.accountAccess.inspectAccount(request.params.userId!);\n            if (!account) throw new HttpError(404, 'ACCOUNT_NOT_FOUND', 'Account was not found.');\n            return json(200, {\n              source: { domain: 'CORE', authority: 'ACCOUNT_AND_WORKSPACE' },\n              account,\n              workspaces: await options.accountOnboarding.listWorkspaces(account.userId)\n            });\n          })\n        },\n"""
+          if anchor not in text:
+              raise SystemExit('Core route insertion anchor not found')
+          text = text.replace(anchor, anchor + insert, 1)
+          path.write_text(text)
+      - name: Remove one-shot workflow and commit
+        run: |
+          git config user.name "markorbit-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/tmp-wp05-core-route-patch.yml
+          git add services/core/src/index.ts
+          git commit -m "feat(m8): add Core commercial admin resolution routes"
+          git push origin HEAD:agent/m8-wp05-commercial-admin-operator-control
