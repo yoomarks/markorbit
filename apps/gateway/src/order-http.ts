@@ -12,6 +12,7 @@ import {
   validateCsrf
 } from './auth.js';
 import { createGatewayLifecycleRoutes } from './lifecycle-http.js';
+import { createGatewayPaymentRoutes } from './payment-http.js';
 
 export interface GatewayOrderHttpOptions {
   markRegUrl: string;
@@ -223,6 +224,16 @@ export function createGatewayOrderRoutes(options: GatewayOrderHttpOptions): read
       'matter:read'
     ]),
     route('POST', '/api/markreg/orders/:orderId/cancel', ['order:cancel']),
+    ...createGatewayPaymentRoutes({
+      ...(options.authenticationClient
+        ? { authenticationClient: options.authenticationClient }
+        : {}),
+      ...(options.internalServiceSecret
+        ? { internalServiceSecret: options.internalServiceSecret }
+        : {}),
+      csrfSecret: options.csrfSecret,
+      allowedOrigins: options.allowedOrigins
+    }),
     ...createGatewayLifecycleRoutes({
       markRegUrl: options.markRegUrl,
       executionUrl: options.executionUrl ?? process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104',

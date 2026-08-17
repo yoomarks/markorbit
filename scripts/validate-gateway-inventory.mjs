@@ -9,7 +9,10 @@ const baseline = JSON.parse(
 const m8Wp03 = JSON.parse(
   fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP03.json', 'utf8')
 ).routes;
-const inventory = [...baseline, ...m8Wp03].sort((a, b) =>
+const m8Wp04 = JSON.parse(
+  fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json', 'utf8')
+).routes;
+const inventory = [...baseline, ...m8Wp03, ...m8Wp04].sort((a, b) =>
   `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`)
 );
 const key = (x) => `${x.method} ${x.path}`;
@@ -38,6 +41,7 @@ for (const row of inventory) {
   const authOwner = row.path.startsWith('/api/auth/') || row.path.endsWith('/context');
   const authenticated =
     authOwner ||
+    row.path.startsWith('/api/payments') ||
     row.path.startsWith('/api/markreg/checkouts') ||
     row.path.startsWith('/api/markreg/commercial/') ||
     row.path.startsWith('/api/markreg/formal-matters') ||
@@ -48,15 +52,17 @@ for (const row of inventory) {
     row.path.startsWith('/api/operations/');
   const expected = authOwner
     ? 'auth'
-    : row.path.startsWith('/__milestone/')
-      ? 'runtime'
-      : row.path.startsWith('/health')
+    : row.path.startsWith('/api/payments')
+      ? 'payment'
+      : row.path.startsWith('/__milestone/')
         ? 'runtime'
-        : row.path.includes('/execution/')
-          ? 'execution'
-          : row.path.includes('/lite/')
-            ? 'lite'
-            : 'markreg';
+        : row.path.startsWith('/health')
+          ? 'runtime'
+          : row.path.includes('/execution/')
+            ? 'execution'
+            : row.path.includes('/lite/')
+              ? 'lite'
+              : 'markreg';
   assert.equal(row.owner, expected, `${key(row)} owner mismatch`);
   assert.equal(
     row.authenticationMode,
@@ -70,8 +76,8 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 89);
-assert.equal(inventory.length, 89);
+assert.equal(source.length, 91);
+assert.equal(inventory.length, 91);
 assert.equal(
   source.filter(
     (x) =>
@@ -80,8 +86,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  83
+  85
 );
 console.log(
-  'Gateway inventory PASS: 89 runtime routes; authenticated Checkout, Commercial Catalog, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
+  'Gateway inventory PASS: 91 runtime routes; authenticated Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
 );

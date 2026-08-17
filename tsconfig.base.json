@@ -18,6 +18,7 @@
     "paths": {
       "@markorbit/contracts/order": ["packages/contracts/src/order.ts"],
       "@markorbit/contracts/commercial": ["packages/contracts/src/commercial.ts"],
+      "@markorbit/contracts/payment": ["packages/contracts/src/payment.ts"],
       "@markorbit/contracts/provider-execution": ["packages/contracts/src/provider-execution.ts"],
       "@markorbit/contracts/evidence-lifecycle": ["packages/contracts/src/evidence-lifecycle.ts"],
       "@markorbit/contracts/knowledge-content-export": [
