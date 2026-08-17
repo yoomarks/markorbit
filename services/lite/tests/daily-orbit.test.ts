@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  CreatorPreference,
-  DailySignal,
-} from '@markorbit/contracts/daily-workspace';
+import type { CreatorPreference, DailySignal } from '@markorbit/contracts/daily-workspace';
 import type { LiteTodaySnapshot, TodayRecommendation } from '@markorbit/contracts/product-loop';
 import {
   DailyOrbitService,
