@@ -17,60 +17,9 @@ on:
       - 'infrastructure/persistence/migration-owners.json'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  lint-fix-wp03-once:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Build Lite dependency closure
-        run: pnpm exec turbo run build --filter=@markorbit/lite-service...
-      - name: Apply exact WP03 lint fixes
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          replacements = {
-              Path('services/lite/src/daily-orbit.ts'): [
-                  ('  ContentPickId,\n', ''),
-                  ('  DailyOrbitItemId,\n', ''),
-                  (' as DailyOrbitItemId', ''),
-                  (' as ContentPickId', ''),
-              ],
-              Path('services/lite/tests/daily-orbit.test.ts'): [
-                  ('  DailySignalId\n', ''),
-                  (' as DailySignalId', ''),
-              ],
-          }
-          for path, pairs in replacements.items():
-              text = path.read_text()
-              for old, new in pairs:
-                  if old not in text:
-                      raise SystemExit(f'Expected lint target not found: {path}: {old!r}')
-                  text = text.replace(old, new)
-              path.write_text(text)
-          PY
-          pnpm exec eslint services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts
-      - name: Commit exact lint fixes
-        run: |
-          if git diff --quiet; then exit 0; fi
-          git config user.name "markorbit-ci"
-          git config user.email "markorbit-ci@users.noreply.github.com"
-          git add services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts
-          git commit -m "style: apply M9 WP03 lint fixes"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
   lite-content-postgres:
     runs-on: ubuntu-latest
     services:
