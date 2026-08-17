@@ -55,5 +55,5 @@ export function parseCoreKnowledgeDailySourceProjection(
     content.legalTruthVerified !== false
   )
     return null;
-  return structuredClone(value) as CoreKnowledgeDailySourceProjection;
+  return structuredClone(value) as unknown as CoreKnowledgeDailySourceProjection;
 }
