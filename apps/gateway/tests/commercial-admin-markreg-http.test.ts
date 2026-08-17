@@ -52,7 +52,9 @@ describe('Gateway MarkReg commercial admin boundary', () => {
       markRegUrl: 'http://markreg.test',
       authenticationClient,
       internalServiceSecret: 'internal-secret'
-    }).find((item) => item.path === '/api/internal/commercial-admin/workspaces/:workspaceId/orders')!;
+    }).find(
+      (item) => item.path === '/api/internal/commercial-admin/workspaces/:workspaceId/orders'
+    )!;
 
     const response = await route.handle(
       request(
@@ -82,7 +84,8 @@ describe('Gateway MarkReg commercial admin boundary', () => {
       authenticationClient,
       internalServiceSecret: 'internal-secret'
     }).find(
-      (item) => item.path === '/api/internal/commercial-admin/workspaces/:workspaceId/orders/:orderId'
+      (item) =>
+        item.path === '/api/internal/commercial-admin/workspaces/:workspaceId/orders/:orderId'
     )!;
 
     await expect(
@@ -111,10 +114,14 @@ describe('Gateway MarkReg commercial admin boundary', () => {
       authenticationClient: deniedClient,
       internalServiceSecret: 'internal-secret'
     }).find((item) => item.path === '/api/internal/commercial-admin/catalog')!;
-    const base = request('/api/internal/commercial-admin/catalog', {}, {
-      channel: 'MARKREG_DIRECT',
-      relationshipModel: 'DIRECT'
-    });
+    const base = request(
+      '/api/internal/commercial-admin/catalog',
+      {},
+      {
+        channel: 'MARKREG_DIRECT',
+        relationshipModel: 'DIRECT'
+      }
+    );
     const spoofed: JsonRequest = {
       ...base,
       headers: {

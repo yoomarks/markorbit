@@ -1,10 +1,23 @@
 import type { InternalOperatorPrincipal } from '@markorbit/contracts';
-import type { FormalMatter, FormalMatterListQuery, FormalMatterListResponse } from '@markorbit/contracts';
-import type { CheckoutSession, CommercialCatalogItem, CommercialCatalogQuery } from '@markorbit/contracts/commercial';
+import type {
+  FormalMatter,
+  FormalMatterListQuery,
+  FormalMatterListResponse
+} from '@markorbit/contracts';
+import type {
+  CheckoutSession,
+  CommercialCatalogItem,
+  CommercialCatalogQuery
+} from '@markorbit/contracts/commercial';
 import type { Order } from '@markorbit/contracts/order';
 import type { CommercialCatalogRepository } from './commercial-checkout.js';
 import type { FormalMatterRepository } from './formal-matter.js';
-import type { OrderAuditView, OrderListQuery, OrderListResponse, OrderRepository } from './order-persistence.js';
+import type {
+  OrderAuditView,
+  OrderListQuery,
+  OrderListResponse,
+  OrderRepository
+} from './order-persistence.js';
 
 export type MarkRegCommercialAdminReadErrorCode =
   | 'AUTHENTICATION_REQUIRED'

@@ -19,7 +19,11 @@ const operator: InternalOperatorPrincipal = {
   sessionExpiresAt: '2099-01-01T00:00:00.000Z'
 };
 
-function request(path: string, params: Record<string, string>, query: Record<string, string> = {}): JsonRequest {
+function request(
+  path: string,
+  params: Record<string, string>,
+  query: Record<string, string> = {}
+): JsonRequest {
   return {
     method: 'GET',
     path,
@@ -43,26 +47,21 @@ describe('MarkReg commercial admin owner reads', () => {
     );
 
     await expect(
-      service.listOrders(
-        { ...operator, capabilities: [] },
-        'workspace_admin-test',
-        { page: 1, pageSize: 20 }
-      )
+      service.listOrders({ ...operator, capabilities: [] }, 'workspace_admin-test', {
+        page: 1,
+        pageSize: 20
+      })
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
     expect(touched).not.toHaveBeenCalled();
   });
 
   it('requires internal service authentication and a server-encoded INTERNAL operator principal', async () => {
-    const listOrders = vi.fn(() =>
-      Promise.resolve({ items: [], page: 1, pageSize: 20, total: 0 })
-    );
+    const listOrders = vi.fn(() => Promise.resolve({ items: [], page: 1, pageSize: 20, total: 0 }));
     const service = { listOrders } as unknown as MarkRegCommercialAdminReadService;
     const route = createMarkRegCommercialAdminHttpRoutes({
       service,
       internalServiceSecret: secret
-    }).find(
-      (item) => item.path === '/internal/commercial-admin/workspaces/:workspaceId/orders'
-    )!;
+    }).find((item) => item.path === '/internal/commercial-admin/workspaces/:workspaceId/orders')!;
 
     const valid = request(
       '/internal/commercial-admin/workspaces/workspace_admin-test/orders',
@@ -102,17 +101,16 @@ describe('MarkReg commercial admin owner reads', () => {
     )!;
 
     const response = await route.handle(
-      request('/internal/commercial-admin/workspaces/workspace_admin-test/orders/order_admin-test', {
-        workspaceId: 'workspace_admin-test',
-        orderId: 'order_admin-test'
-      })
+      request(
+        '/internal/commercial-admin/workspaces/workspace_admin-test/orders/order_admin-test',
+        {
+          workspaceId: 'workspace_admin-test',
+          orderId: 'order_admin-test'
+        }
+      )
     );
     expect(response.status).toBe(200);
     expect(response.body).toEqual(inspection);
-    expect(inspectOrder).toHaveBeenCalledWith(
-      operator,
-      'workspace_admin-test',
-      'order_admin-test'
-    );
+    expect(inspectOrder).toHaveBeenCalledWith(operator, 'workspace_admin-test', 'order_admin-test');
   });
 });

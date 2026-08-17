@@ -55,11 +55,7 @@ function principalFor(
 function translate(error: unknown): never {
   if (!(error instanceof MarkRegCommercialAdminReadError)) throw error;
   const status =
-    error.code === 'AUTHENTICATION_REQUIRED'
-      ? 401
-      : error.code === 'PERMISSION_DENIED'
-        ? 403
-        : 404;
+    error.code === 'AUTHENTICATION_REQUIRED' ? 401 : error.code === 'PERMISSION_DENIED' ? 403 : 404;
   throw new HttpError(status, error.code, error.message);
 }
 
@@ -128,7 +124,9 @@ export function createMarkRegCommercialAdminHttpRoutes(
         };
         if (query.pageSize > 100)
           throw new HttpError(400, 'INVALID_REQUEST', 'pageSize cannot exceed 100.');
-        return run(() => service(options).listOrders(principal(request), workspace(request), query));
+        return run(() =>
+          service(options).listOrders(principal(request), workspace(request), query)
+        );
       }
     },
     {
@@ -176,7 +174,9 @@ export function createMarkRegCommercialAdminHttpRoutes(
         };
         if (query.pageSize > 100)
           throw new HttpError(400, 'INVALID_REQUEST', 'pageSize cannot exceed 100.');
-        return run(() => service(options).listMatters(principal(request), workspace(request), query));
+        return run(() =>
+          service(options).listMatters(principal(request), workspace(request), query)
+        );
       }
     },
     {
