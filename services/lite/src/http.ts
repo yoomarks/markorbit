@@ -16,6 +16,7 @@ import {
   ProductConversionAnalyticsError,
   type PostgresProductConversionAnalyticsStore
 } from './conversion-analytics.js';
+import { DailyOrbitError, type DailyOrbitService } from './daily-orbit.js';
 import { DailySignalImportError, type PostgresLiteDailySignalStore } from './daily-signal.js';
 import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
@@ -33,6 +34,7 @@ export interface LiteProductLoopRouteOptions {
   feedbackStore: PostgresProductLoopFeedbackStore;
   analyticsStore: PostgresProductConversionAnalyticsStore;
   dailySignalStore?: PostgresLiteDailySignalStore;
+  dailyOrbitService?: DailyOrbitService;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -128,7 +130,8 @@ function mapError(error: unknown): never {
     error instanceof LiteCandidateQualificationError ||
     error instanceof ProductLoopFeedbackError ||
     error instanceof ProductConversionAnalyticsError ||
-    error instanceof DailySignalImportError
+    error instanceof DailySignalImportError ||
+    error instanceof DailyOrbitError
   )
     throw new HttpError(
       error.status,
@@ -158,6 +161,32 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
                     readyPackageId: text(body.readyPackageId, 'readyPackageId'),
                     idempotencyKey: keyOf(request)
                   })
+                );
+              } catch (error) {
+                return mapError(error);
+              }
+            }
+          }
+        ]
+      : []),
+    ...(options.dailyOrbitService
+      ? [
+          {
+            method: 'GET' as const,
+            path: '/v1/daily-orbit',
+            handle: async (request: JsonRequest) => {
+              const principal = principalOf(
+                request,
+                options.internalServiceSecret,
+                'workspace:read'
+              );
+              try {
+                return json(
+                  200,
+                  await options.dailyOrbitService!.snapshot(
+                    principal.workspaceId,
+                    principal.userId
+                  )
                 );
               } catch (error) {
                 return mapError(error);
