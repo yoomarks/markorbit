@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   parseCoreKnowledgeDailySourceProjection,
   type CoreKnowledgeDailySourceProjection
-} from '@markorbit/contracts/daily-workspace';
+} from './daily-source-runtime.js';
 import type {
   DailySignal,
   DailySignalChangeType,

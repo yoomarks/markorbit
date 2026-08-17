@@ -313,8 +313,3 @@ export const noAutomaticDailyWorkspaceConsequences = Object.freeze({
   professionalCapabilityVerified: false,
   officialTruthCreated: false
 } as const);
-
-export {
-  parseCoreKnowledgeDailySourceProjection,
-  type CoreKnowledgeDailySourceProjection
-} from './daily-source.js';
