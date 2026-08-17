@@ -1,4 +1,8 @@
 import { createServiceRuntime } from '@markorbit/service-kit';
+import {
+  createMgsnCommercialAdminHttpRoutes,
+  type MgsnCommercialAdminHttpOptions
+} from './commercial-admin-http.js';
 import { createMgsnHttpRoutes, type MgsnHttpOptions } from './http.js';
 
 export * from './provider-registry.js';
@@ -11,6 +15,8 @@ export * from './provider-return.js';
 export * from './provider-return-postgres.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
+export * from './commercial-admin-read.js';
+export * from './commercial-admin-http.js';
 export * from './http.js';
 
 export const serviceManifest = Object.freeze({
@@ -21,11 +27,24 @@ export const serviceManifest = Object.freeze({
 
 export interface MgsnRuntimeOptions extends MgsnHttpOptions {
   port?: number;
+  commercialAdminReadService?: MgsnCommercialAdminHttpOptions['service'];
 }
 
 export function createRuntime(options: MgsnRuntimeOptions = {}) {
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
-    { routes: createMgsnHttpRoutes(options) }
+    {
+      routes: [
+        ...createMgsnHttpRoutes(options),
+        ...createMgsnCommercialAdminHttpRoutes({
+          ...(options.commercialAdminReadService
+            ? { service: options.commercialAdminReadService }
+            : {}),
+          ...(options.internalServiceSecret
+            ? { internalServiceSecret: options.internalServiceSecret }
+            : {})
+        })
+      ]
+    }
   );
 }

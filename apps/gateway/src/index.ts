@@ -29,6 +29,9 @@ export * from './account-access-http.js';
 export * from './capability-http.js';
 export * from './order-http.js';
 export * from './payment-http.js';
+export * from './commercial-admin-payment-http.js';
+export * from './commercial-admin-markreg-http.js';
+export * from './commercial-admin-mgsn-http.js';
 export * from './mgsn-http.js';
 export * from './product-loop-http.js';
 import {
@@ -45,6 +48,9 @@ import { createGatewayAccountAccessRoutes } from './account-access-http.js';
 import { createGatewayCapabilityRoutes } from './capability-http.js';
 import { createGatewayOrderRoutes } from './order-http.js';
 import { createGatewayPaymentRoutes } from './payment-http.js';
+import { createGatewayCommercialAdminPaymentRoutes } from './commercial-admin-payment-http.js';
+import { createGatewayCommercialAdminMarkRegRoutes } from './commercial-admin-markreg-http.js';
+import { createGatewayCommercialAdminMgsnRoutes } from './commercial-admin-mgsn-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 export const serviceManifest = Object.freeze({
@@ -435,6 +441,36 @@ export function createRuntime(options: GatewayOptions = {}) {
             : {}),
           csrfSecret,
           allowedOrigins
+        }),
+        ...createGatewayCommercialAdminPaymentRoutes({
+          paymentUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
+        }),
+        ...createGatewayCommercialAdminMarkRegRoutes({
+          markRegUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
+        }),
+        ...createGatewayCommercialAdminMgsnRoutes({
+          mgsnUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
         }),
         {
           method: 'GET',

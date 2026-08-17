@@ -6,6 +6,7 @@ import {
   type AccountProfile,
   type AccountSummary,
   type AccountType,
+  type CommercialAdminAccountView,
   type LoginAccountCommand,
   type RegisterAccountCommand,
   type User,
@@ -90,10 +91,26 @@ export interface AccountAccessStore {
     passwordHash: string;
   }): Promise<StoredAccountAccess>;
   findByNormalizedEmail(email: string): Promise<StoredAccountAccess | null>;
+  inspectByUserId(userId: string): Promise<CommercialAdminAccountView | null>;
 }
 
 function profile(userId: string, accountType: AccountType, at: string): AccountProfile {
   return { userId, accountType, createdAt: at, updatedAt: at };
+}
+
+function adminView(user: User, accountProfile: AccountProfile): CommercialAdminAccountView {
+  return {
+    userId: user.userId,
+    email: user.email,
+    displayName: user.displayName,
+    accountType: accountProfile.accountType,
+    status: user.status,
+    version: user.version,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    profileCreatedAt: accountProfile.createdAt,
+    profileUpdatedAt: accountProfile.updatedAt
+  };
 }
 
 function duplicate(error: unknown): never {
@@ -151,6 +168,12 @@ export class InMemoryAccountAccessStore implements AccountAccessStore {
         }
       : null;
   }
+
+  async inspectByUserId(userId: string): Promise<CommercialAdminAccountView | null> {
+    const user = await this.users.findById(userId);
+    const record = this.records.get(userId);
+    return user && record ? adminView(user, structuredClone(record.profile)) : null;
+  }
 }
 
 type ProfileRow = {
@@ -158,6 +181,18 @@ type ProfileRow = {
   created_at: Date;
   updated_at: Date;
   password_hash: string;
+};
+type AdminAccountRow = {
+  user_id: string;
+  email: string;
+  display_name: string;
+  status: User['status'];
+  version: number;
+  created_at: Date;
+  updated_at: Date;
+  account_type: AccountType;
+  profile_created_at: Date;
+  profile_updated_at: Date;
 };
 
 export class PostgresAccountAccessStore implements AccountAccessStore {
@@ -239,6 +274,40 @@ export class PostgresAccountAccessStore implements AccountAccessStore {
       );
     }
   }
+
+  async inspectByUserId(userId: string): Promise<CommercialAdminAccountView | null> {
+    try {
+      const result = await this.database.getPool().query<AdminAccountRow>(
+        `SELECT u.user_id,u.email,u.display_name,u.status,u.version,u.created_at,u.updated_at,
+                p.account_type,p.created_at AS profile_created_at,p.updated_at AS profile_updated_at
+         FROM users u
+         JOIN account_profiles p ON p.user_id=u.user_id
+         WHERE u.user_id=$1`,
+        [userId]
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      return {
+        userId: row.user_id,
+        email: row.email,
+        displayName: row.display_name,
+        accountType: row.account_type,
+        status: row.status,
+        version: row.version,
+        createdAt: row.created_at.toISOString(),
+        updatedAt: row.updated_at.toISOString(),
+        profileCreatedAt: row.profile_created_at.toISOString(),
+        profileUpdatedAt: row.profile_updated_at.toISOString()
+      };
+    } catch (error) {
+      if (error instanceof AuthenticationError || error instanceof IdentityError) throw error;
+      throw new AuthenticationError(
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Account inspection persistence is unavailable.',
+        { cause: error }
+      );
+    }
+  }
 }
 
 function summary(record: StoredAccountAccess): AccountSummary {
@@ -299,5 +368,9 @@ export class AccountAccessService {
         revokedAt: null
       }
     };
+  }
+
+  inspectAccount(userId: string) {
+    return this.store.inspectByUserId(userId);
   }
 }

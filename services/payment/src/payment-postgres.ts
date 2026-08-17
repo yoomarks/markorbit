@@ -159,6 +159,39 @@ function mapRefund(row: Row): PaymentRefund {
   return value;
 }
 
+function mapReconciliation(row: Row): PaymentReconciliationObservation {
+  const value: PaymentReconciliationObservation = {
+    schemaVersion: 1,
+    reconciliationId: String(
+      row.reconciliation_id
+    ) as PaymentReconciliationObservation['reconciliationId'],
+    workspaceId: String(row.workspace_id),
+    paymentId: String(row.payment_id) as PaymentId,
+    provider: String(row.provider),
+    providerPaymentReference: String(row.provider_payment_reference),
+    localStatus: String(row.local_status) as PaymentReconciliationObservation['localStatus'],
+    observedProviderStatus: String(row.observed_provider_status),
+    localAmount: {
+      amountMinor: Number(row.local_amount_minor),
+      currency: String(row.currency)
+    },
+    observedAmount: {
+      amountMinor: Number(row.observed_amount_minor),
+      currency: String(row.observed_currency)
+    },
+    classification: String(
+      row.classification
+    ) as PaymentReconciliationObservation['classification'],
+    disposition: String(row.disposition) as PaymentReconciliationObservation['disposition'],
+    ...(typeof row.operator_note === 'string' ? { operatorNote: row.operator_note } : {}),
+    observedAt: iso(row.observed_at),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at)
+  };
+  assertPaymentReconciliation(value);
+  return value;
+}
+
 function replayFromRow(row: Row): PaymentInitiationReplay {
   const payment = clone(row.payment_snapshot as Payment);
   const attempt = clone(row.attempt_snapshot as PaymentAttempt);
@@ -262,6 +295,64 @@ export class PostgresPaymentRepository implements PaymentRepository, PaymentLife
       return { payment: mapPayment(row), attempt: mapJoinedAttempt(row) };
     } catch (cause) {
       if (cause instanceof PaymentLifecycleError) throw cause;
+      throw lifecycleUnavailable(cause);
+    }
+  }
+
+  async listAttempts(paymentId: PaymentId): Promise<readonly PaymentAttempt[]> {
+    try {
+      const result = await this.query.query(
+        'SELECT * FROM payment_attempts WHERE payment_id=$1 ORDER BY attempt_number ASC',
+        [paymentId]
+      );
+      return result.rows.map((row) => mapAttempt(row as Row));
+    } catch (cause) {
+      throw lifecycleUnavailable(cause);
+    }
+  }
+
+  async listProviderEvents(paymentId: PaymentId): Promise<readonly PaymentProviderEventReceipt[]> {
+    try {
+      const result = await this.query.query(
+        `SELECT * FROM payment_provider_event_receipts
+         WHERE payment_id=$1
+            OR refund_id IN (SELECT refund_id FROM payment_refunds WHERE payment_id=$1)
+         ORDER BY occurred_at ASC, receipt_id ASC`,
+        [paymentId]
+      );
+      return result.rows.map((row) => mapReceipt(row as Row));
+    } catch (cause) {
+      throw lifecycleUnavailable(cause);
+    }
+  }
+
+  async listRefunds(workspaceId: string, paymentId: PaymentId): Promise<readonly PaymentRefund[]> {
+    try {
+      const result = await this.query.query(
+        `SELECT * FROM payment_refunds
+         WHERE workspace_id=$1 AND payment_id=$2
+         ORDER BY created_at ASC, refund_id ASC`,
+        [workspaceId, paymentId]
+      );
+      return result.rows.map((row) => mapRefund(row as Row));
+    } catch (cause) {
+      throw lifecycleUnavailable(cause);
+    }
+  }
+
+  async listReconciliations(
+    workspaceId: string,
+    paymentId: PaymentId
+  ): Promise<readonly PaymentReconciliationObservation[]> {
+    try {
+      const result = await this.query.query(
+        `SELECT * FROM payment_reconciliations
+         WHERE workspace_id=$1 AND payment_id=$2
+         ORDER BY observed_at DESC, reconciliation_id DESC`,
+        [workspaceId, paymentId]
+      );
+      return result.rows.map((row) => mapReconciliation(row as Row));
+    } catch (cause) {
       throw lifecycleUnavailable(cause);
     }
   }

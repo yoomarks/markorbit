@@ -174,6 +174,16 @@ export interface PaymentReconciliationObservation {
   updatedAt: string;
 }
 
+export interface PaymentAdminInspection {
+  schemaVersion: 1;
+  source: Readonly<{ domain: 'PAYMENT'; authority: 'PAYMENT_LIFECYCLE' }>;
+  payment: Readonly<Payment>;
+  attempts: readonly Readonly<PaymentAttempt>[];
+  providerEvents: readonly Readonly<PaymentProviderEventReceipt>[];
+  refunds: readonly Readonly<PaymentRefund>[];
+  reconciliations: readonly Readonly<PaymentReconciliationObservation>[];
+}
+
 export interface PaymentSucceededAuthorityConsequences {
   paymentSucceeded: true;
   orderMarkedPaid: false;
@@ -247,9 +257,14 @@ export function assertPaymentReconciliation(
   assertCommercialMoney(value.localAmount);
   assertCommercialMoney(value.observedAmount);
   assertPaymentProviderCode(value.provider);
+  if (!paymentReconciliationClassifications.includes(value.classification))
+    throw new PaymentContractError('Payment reconciliation classification is invalid.');
+  if (!paymentReconciliationDispositions.includes(value.disposition))
+    throw new PaymentContractError('Payment reconciliation disposition is invalid.');
   if (
     !Number.isFinite(Date.parse(value.observedAt)) ||
-    !Number.isFinite(Date.parse(value.createdAt))
+    !Number.isFinite(Date.parse(value.createdAt)) ||
+    !Number.isFinite(Date.parse(value.updatedAt))
   )
-    throw new PaymentContractError('Reconciliation timestamps are invalid.');
+    throw new PaymentContractError('Payment reconciliation timestamps are invalid.');
 }

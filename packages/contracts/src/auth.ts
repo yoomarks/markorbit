@@ -1,4 +1,4 @@
-import { PERMISSIONS, type Permission, type Role } from './identity.js';
+import { PERMISSIONS, type Permission, type Role, type UserStatus } from './identity.js';
 
 export const ACCOUNT_TYPES = ['CUSTOMER', 'PROFESSIONAL', 'PROVIDER', 'INTERNAL'] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
@@ -40,6 +40,83 @@ export interface AccountAccessResult {
   };
 }
 
+export const COMMERCIAL_ADMIN_CAPABILITIES = [
+  'commercial-admin:read',
+  'commercial-admin:operate'
+] as const;
+export type CommercialAdminCapability = (typeof COMMERCIAL_ADMIN_CAPABILITIES)[number];
+export interface CommercialAdminAccountView {
+  userId: string;
+  email: string;
+  displayName: string;
+  accountType: AccountType;
+  status: UserStatus;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  profileCreatedAt: string;
+  profileUpdatedAt: string;
+}
+export interface InternalOperatorPrincipal {
+  kind: 'INTERNAL_OPERATOR';
+  sessionId: string;
+  userId: string;
+  capabilities: readonly CommercialAdminCapability[];
+  sessionExpiresAt: string;
+}
+export function commercialAdminCapabilitiesForAccount(
+  account: Pick<CommercialAdminAccountView, 'accountType' | 'status'>
+): readonly CommercialAdminCapability[] {
+  return account.accountType === 'INTERNAL' && account.status === 'ACTIVE'
+    ? COMMERCIAL_ADMIN_CAPABILITIES
+    : [];
+}
+export interface InternalOperatorPrincipalEnvelope {
+  schemaVersion: 1;
+  principal: InternalOperatorPrincipal;
+}
+export function encodeInternalOperatorPrincipal(principal: InternalOperatorPrincipal): string {
+  return Buffer.from(JSON.stringify({ schemaVersion: 1, principal }), 'utf8').toString('base64url');
+}
+export function parseInternalOperatorPrincipal(
+  value: string | undefined
+): InternalOperatorPrincipal {
+  if (!value)
+    throw new AuthenticationError(
+      'AUTHENTICATION_REQUIRED',
+      'Internal operator Principal is required.'
+    );
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+  } catch {
+    throw new AuthenticationError(
+      'AUTHENTICATION_REQUIRED',
+      'Internal operator Principal is invalid.'
+    );
+  }
+  const envelope = decoded as Partial<InternalOperatorPrincipalEnvelope>;
+  const principal = envelope.principal as Partial<InternalOperatorPrincipal> | undefined;
+  if (
+    envelope.schemaVersion !== 1 ||
+    !principal ||
+    principal.kind !== 'INTERNAL_OPERATOR' ||
+    !Array.isArray(principal.capabilities) ||
+    principal.capabilities.some(
+      (capability) =>
+        !(COMMERCIAL_ADMIN_CAPABILITIES as readonly string[]).includes(String(capability))
+    ) ||
+    [principal.sessionId, principal.userId, principal.sessionExpiresAt].some(
+      (item) => typeof item !== 'string' || item.length === 0
+    )
+  )
+    throw new AuthenticationError(
+      'AUTHENTICATION_REQUIRED',
+      'Internal operator Principal is invalid.'
+    );
+  return structuredClone(principal as InternalOperatorPrincipal);
+}
+
 export const SESSION_STATUSES = ['ACTIVE', 'REVOKED'] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 export interface Session {
@@ -72,7 +149,8 @@ export interface WorkspacePrincipal {
   permissions: readonly Permission[];
   sessionExpiresAt: string;
 }
-export type Principal = AnonymousPrincipal | AuthenticatedUserPrincipal | WorkspacePrincipal;
+export type Principal =
+  AnonymousPrincipal | AuthenticatedUserPrincipal | WorkspacePrincipal | InternalOperatorPrincipal;
 export interface InternalWorkspacePrincipalEnvelope {
   schemaVersion: 1;
   principal: WorkspacePrincipal;

@@ -1,6 +1,7 @@
 import {
   AuthenticationError,
   SELF_SERVICE_ACCOUNT_TYPES,
+  commercialAdminCapabilitiesForAccount,
   type SelfServiceAccountType,
   type WorkspaceRepository
 } from '@markorbit/contracts';
@@ -209,6 +210,76 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
               200,
               await authentication.resolveWorkspacePrincipal(value.token, value.workspaceId)
             );
+          })
+        },
+        {
+          method: 'POST',
+          path: '/internal/commercial-admin/operator-principals/resolve',
+          handle: internal(async (request) => {
+            if (!options.accountAccess)
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Account access service is unavailable.',
+                true
+              );
+            const token = body(request).token;
+            if (typeof token !== 'string' || !token)
+              throw new HttpError(400, 'INVALID_REQUEST', 'token is required.');
+            const sessionPrincipal = await authentication.resolveSession(token);
+            const account = await options.accountAccess.inspectAccount(sessionPrincipal.userId);
+            if (!account)
+              throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Account was not found.');
+            const capabilities = commercialAdminCapabilitiesForAccount(account);
+            if (!capabilities.includes('commercial-admin:read'))
+              throw new AuthenticationError(
+                'PERMISSION_DENIED',
+                'Commercial admin capability is required.'
+              );
+            return json(200, {
+              kind: 'INTERNAL_OPERATOR',
+              sessionId: sessionPrincipal.sessionId,
+              userId: sessionPrincipal.userId,
+              capabilities,
+              sessionExpiresAt: sessionPrincipal.sessionExpiresAt
+            });
+          })
+        },
+        {
+          method: 'POST',
+          path: '/internal/commercial-admin/accounts/:userId/inspect',
+          handle: internal(async (request) => {
+            if (!options.accountAccess || !options.accountOnboarding)
+              throw new HttpError(
+                503,
+                'AUTHENTICATION_SERVICE_UNAVAILABLE',
+                'Commercial admin account inspection is unavailable.',
+                true
+              );
+            const token = body(request).token;
+            if (typeof token !== 'string' || !token)
+              throw new HttpError(400, 'INVALID_REQUEST', 'token is required.');
+            const sessionPrincipal = await authentication.resolveSession(token);
+            const operatorAccount = await options.accountAccess.inspectAccount(
+              sessionPrincipal.userId
+            );
+            if (
+              !operatorAccount ||
+              !commercialAdminCapabilitiesForAccount(operatorAccount).includes(
+                'commercial-admin:read'
+              )
+            )
+              throw new AuthenticationError(
+                'PERMISSION_DENIED',
+                'Commercial admin capability is required.'
+              );
+            const account = await options.accountAccess.inspectAccount(request.params.userId!);
+            if (!account) throw new HttpError(404, 'ACCOUNT_NOT_FOUND', 'Account was not found.');
+            return json(200, {
+              source: { domain: 'CORE', authority: 'ACCOUNT_AND_WORKSPACE' },
+              account,
+              workspaces: await options.accountOnboarding.listWorkspaces(account.userId)
+            });
           })
         },
         {

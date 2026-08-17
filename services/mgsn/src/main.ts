@@ -1,4 +1,5 @@
 import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
+import { MgsnCommercialAdminReadService } from './commercial-admin-read.js';
 import { createDurableMgsnServices } from './durable-runtime.js';
 import { createRuntime } from './index.js';
 
@@ -22,7 +23,11 @@ const services = createDurableMgsnServices({
   executionUrl: process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104',
   internalServiceSecret
 });
-const runtime = createRuntime({ internalServiceSecret, services });
+const runtime = createRuntime({
+  internalServiceSecret,
+  services,
+  commercialAdminReadService: new MgsnCommercialAdminReadService(services.providerRegistry)
+});
 
 async function shutdown(signal: string) {
   process.stdout.write(`${runtime.manifest.name}: received ${signal}, stopping.\n`);

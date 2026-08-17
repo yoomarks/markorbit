@@ -38,7 +38,8 @@ function mapAuthentication(error: unknown): never {
       'INVALID_CSRF_TOKEN',
       'USER_DISABLED',
       'WORKSPACE_ARCHIVED',
-      'MEMBERSHIP_SUSPENDED'
+      'MEMBERSHIP_SUSPENDED',
+      'PERMISSION_DENIED'
     ].includes(code)
   )
     status = 403;
@@ -208,6 +209,63 @@ export function createGatewayAccountAccessRoutes(
             correlation(request)
           );
           return json(201, workspace);
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/internal/commercial-admin/operator',
+      handle: async (request) => {
+        try {
+          const authentication = client(options);
+          if (!authentication.resolveInternalOperator)
+            throw new AuthenticationError(
+              'AUTHENTICATION_SERVICE_UNAVAILABLE',
+              'Commercial admin authentication is unavailable.'
+            );
+          return json(
+            200,
+            await authentication.resolveInternalOperator(token(request), correlation(request))
+          );
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/internal/commercial-admin/accounts/:userId',
+      handle: async (request) => {
+        try {
+          const authentication = client(options);
+          if (
+            !authentication.resolveInternalOperator ||
+            !authentication.inspectCommercialAdminAccount
+          )
+            throw new AuthenticationError(
+              'AUTHENTICATION_SERVICE_UNAVAILABLE',
+              'Commercial admin account inspection is unavailable.'
+            );
+          const rawToken = token(request);
+          const operator = await authentication.resolveInternalOperator(
+            rawToken,
+            correlation(request)
+          );
+          if (!operator.capabilities.includes('commercial-admin:read'))
+            throw new AuthenticationError(
+              'PERMISSION_DENIED',
+              'Commercial admin read capability is required.'
+            );
+          return json(
+            200,
+            await authentication.inspectCommercialAdminAccount(
+              rawToken,
+              request.params.userId!,
+              correlation(request)
+            )
+          );
         } catch (error) {
           return mapAuthentication(error);
         }

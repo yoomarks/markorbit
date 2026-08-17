@@ -1,5 +1,6 @@
 import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
 import { createRuntime } from './index.js';
+import { PaymentAdminReadService } from './payment-admin.js';
 import { PaymentLifecycleService } from './payment-lifecycle.js';
 import { PostgresPaymentRepository } from './payment-postgres.js';
 import {
@@ -38,9 +39,11 @@ const service = new PaymentService(
   provider
 );
 const lifecycleService = new PaymentLifecycleService(repository, provider);
+const adminReadService = new PaymentAdminReadService(repository);
 const runtime = createRuntime({
   service,
   lifecycleService,
+  adminReadService,
   providerCode,
   internalServiceSecret
 });
