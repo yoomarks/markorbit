@@ -78,7 +78,9 @@ jobs:
         if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: pnpm exec turbo run lint typecheck test build --filter="...[$BASE_SHA]"
+        run: |
+          pnpm exec turbo run build --filter="...[$BASE_SHA]"
+          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]"
       - name: Full typecheck for shared compiler configuration
         if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true' && needs.detect.outputs.full_typecheck == 'true'
         run: pnpm typecheck
