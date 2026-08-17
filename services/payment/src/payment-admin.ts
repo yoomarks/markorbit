@@ -10,10 +10,7 @@ import type {
 import type { PaymentLifecycleAggregate } from './payment-lifecycle.js';
 
 export type PaymentAdminReadErrorCode =
-  | 'AUTHENTICATION_REQUIRED'
-  | 'PERMISSION_DENIED'
-  | 'PAYMENT_NOT_FOUND'
-  | 'PERSISTENCE_UNAVAILABLE';
+  'AUTHENTICATION_REQUIRED' | 'PERMISSION_DENIED' | 'PAYMENT_NOT_FOUND' | 'PERSISTENCE_UNAVAILABLE';
 
 export class PaymentAdminReadError extends Error {
   constructor(
@@ -27,7 +24,10 @@ export class PaymentAdminReadError extends Error {
 }
 
 export interface PaymentAdminReadRepository {
-  findByPaymentId(workspaceId: string, paymentId: PaymentId): Promise<PaymentLifecycleAggregate | null>;
+  findByPaymentId(
+    workspaceId: string,
+    paymentId: PaymentId
+  ): Promise<PaymentLifecycleAggregate | null>;
   listAttempts(paymentId: PaymentId): Promise<readonly PaymentAttempt[]>;
   listProviderEvents(paymentId: PaymentId): Promise<readonly PaymentProviderEventReceipt[]>;
   listRefunds(workspaceId: string, paymentId: PaymentId): Promise<readonly PaymentRefund[]>;

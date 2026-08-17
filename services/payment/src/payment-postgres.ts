@@ -162,7 +162,9 @@ function mapRefund(row: Row): PaymentRefund {
 function mapReconciliation(row: Row): PaymentReconciliationObservation {
   const value: PaymentReconciliationObservation = {
     schemaVersion: 1,
-    reconciliationId: String(row.reconciliation_id) as PaymentReconciliationObservation['reconciliationId'],
+    reconciliationId: String(
+      row.reconciliation_id
+    ) as PaymentReconciliationObservation['reconciliationId'],
     workspaceId: String(row.workspace_id),
     paymentId: String(row.payment_id) as PaymentId,
     provider: String(row.provider),
@@ -309,9 +311,7 @@ export class PostgresPaymentRepository implements PaymentRepository, PaymentLife
     }
   }
 
-  async listProviderEvents(
-    paymentId: PaymentId
-  ): Promise<readonly PaymentProviderEventReceipt[]> {
+  async listProviderEvents(paymentId: PaymentId): Promise<readonly PaymentProviderEventReceipt[]> {
     try {
       const result = await this.query.query(
         `SELECT * FROM payment_provider_event_receipts
@@ -326,10 +326,7 @@ export class PostgresPaymentRepository implements PaymentRepository, PaymentLife
     }
   }
 
-  async listRefunds(
-    workspaceId: string,
-    paymentId: PaymentId
-  ): Promise<readonly PaymentRefund[]> {
+  async listRefunds(workspaceId: string, paymentId: PaymentId): Promise<readonly PaymentRefund[]> {
     try {
       const result = await this.query.query(
         `SELECT * FROM payment_refunds

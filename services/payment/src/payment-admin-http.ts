@@ -14,14 +14,16 @@ export interface PaymentAdminHttpOptions {
 
 function adminService(options: PaymentAdminHttpOptions) {
   if (!options.service)
-    throw new HttpError(503, 'PERSISTENCE_UNAVAILABLE', 'Payment admin read service is unavailable.', true);
+    throw new HttpError(
+      503,
+      'PERSISTENCE_UNAVAILABLE',
+      'Payment admin read service is unavailable.',
+      true
+    );
   return options.service;
 }
 
-function principalFor(
-  request: JsonRequest,
-  secret: string | undefined
-): InternalOperatorPrincipal {
+function principalFor(request: JsonRequest, secret: string | undefined): InternalOperatorPrincipal {
   if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
     throw new HttpError(
       401,
@@ -49,7 +51,9 @@ function translate(error: unknown): never {
   throw new HttpError(status, error.code, error.message, status === 503);
 }
 
-export function createPaymentAdminHttpRoutes(options: PaymentAdminHttpOptions): readonly JsonRoute[] {
+export function createPaymentAdminHttpRoutes(
+  options: PaymentAdminHttpOptions
+): readonly JsonRoute[] {
   return [
     {
       method: 'GET',

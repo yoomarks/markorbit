@@ -1,5 +1,8 @@
 import { createServiceRuntime } from '@markorbit/service-kit';
-import { createPaymentAdminHttpRoutes, type PaymentAdminHttpOptions } from './payment-admin-http.js';
+import {
+  createPaymentAdminHttpRoutes,
+  type PaymentAdminHttpOptions
+} from './payment-admin-http.js';
 import { createPaymentHttpRoutes, type PaymentHttpOptions } from './payment-http.js';
 import {
   createPaymentLifecycleHttpRoutes,

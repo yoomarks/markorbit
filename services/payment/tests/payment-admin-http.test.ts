@@ -11,10 +11,7 @@ import type {
   PaymentRefund
 } from '@markorbit/contracts/payment';
 import type { JsonRequest } from '@markorbit/service-kit';
-import {
-  PaymentAdminReadService,
-  type PaymentAdminReadRepository
-} from '../src/payment-admin.js';
+import { PaymentAdminReadService, type PaymentAdminReadRepository } from '../src/payment-admin.js';
 import { createPaymentAdminHttpRoutes } from '../src/payment-admin-http.js';
 
 const secret = 'internal-secret';
@@ -135,7 +132,11 @@ function request(principal = operator): JsonRequest {
 describe('Payment commercial admin owner read', () => {
   it('returns the Payment-owned lifecycle aggregate without provider client secrets', async () => {
     const service = new PaymentAdminReadService(repository());
-    const inspection = await service.inspectPayment(operator, payment.workspaceId, payment.paymentId);
+    const inspection = await service.inspectPayment(
+      operator,
+      payment.workspaceId,
+      payment.paymentId
+    );
     expect(inspection).toEqual({
       schemaVersion: 1,
       source: { domain: 'PAYMENT', authority: 'PAYMENT_LIFECYCLE' },
@@ -174,7 +175,10 @@ describe('Payment commercial admin owner read', () => {
       internalServiceSecret: secret
     })[0]!;
     await expect(
-      route.handle({ ...request(), headers: { ...request().headers, 'x-markorbit-internal-authorization': 'wrong' } })
+      route.handle({
+        ...request(),
+        headers: { ...request().headers, 'x-markorbit-internal-authorization': 'wrong' }
+      })
     ).rejects.toMatchObject({ status: 401, code: 'INTERNAL_SERVICE_UNAUTHORIZED' });
 
     const response = await route.handle(request());
