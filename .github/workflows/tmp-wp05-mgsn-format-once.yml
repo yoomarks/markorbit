@@ -1,0 +1,64 @@
+name: TMP WP05 MGSN Format Once
+
+on:
+  push:
+    branches:
+      - agent/m8-wp05-commercial-admin-operator-control
+    paths:
+      - .github/workflows/tmp-wp05-mgsn-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp05-commercial-admin-operator-control
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier
+        run: >-
+          pnpm exec prettier --write
+          services/mgsn/src/commercial-admin-read.ts
+          services/mgsn/src/commercial-admin-http.ts
+          services/mgsn/src/index.ts
+          services/mgsn/src/main.ts
+          services/mgsn/tests/commercial-admin-read.test.ts
+          apps/gateway/src/commercial-admin-mgsn-http.ts
+          apps/gateway/src/index.ts
+          apps/gateway/tests/commercial-admin-mgsn-http.test.ts
+      - name: Verify formatting
+        run: >-
+          pnpm exec prettier --check
+          services/mgsn/src/commercial-admin-read.ts
+          services/mgsn/src/commercial-admin-http.ts
+          services/mgsn/src/index.ts
+          services/mgsn/src/main.ts
+          services/mgsn/tests/commercial-admin-read.test.ts
+          apps/gateway/src/commercial-admin-mgsn-http.ts
+          apps/gateway/src/index.ts
+          apps/gateway/tests/commercial-admin-mgsn-http.test.ts
+      - name: Remove one-shot workflow and commit
+        run: |
+          git config user.name "markorbit-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/tmp-wp05-mgsn-format-once.yml
+          git add services/mgsn/src/commercial-admin-read.ts \
+            services/mgsn/src/commercial-admin-http.ts \
+            services/mgsn/src/index.ts \
+            services/mgsn/src/main.ts \
+            services/mgsn/tests/commercial-admin-read.test.ts \
+            apps/gateway/src/commercial-admin-mgsn-http.ts \
+            apps/gateway/src/index.ts \
+            apps/gateway/tests/commercial-admin-mgsn-http.test.ts
+          git commit -m "style(m8): format MGSN admin read batch"
+          git push origin HEAD:agent/m8-wp05-commercial-admin-operator-control
