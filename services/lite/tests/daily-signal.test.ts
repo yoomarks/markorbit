@@ -83,7 +83,7 @@ describe('M9-WP-02 Daily Signal derivation', () => {
     const value = projection();
     value.source.sourceId = 'rdp_other';
     expect(() => deriveDailySignal(workspaceId, value)).toThrowError(
-      expect.objectContaining({ code: 'SOURCE_FINGERPRINT_MISMATCH' })
+      'Core Daily source identity does not match the ReadyPackage identity.'
     );
   });
 });
