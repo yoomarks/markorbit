@@ -1,3 +1,4 @@
+# one-shot M9-WP02 branch wiring; this workflow removes itself after committing the exact runtime changes
 name: M9 WP02 Runtime Wiring
 
 on:
