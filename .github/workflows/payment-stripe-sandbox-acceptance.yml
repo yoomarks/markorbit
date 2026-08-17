@@ -1,0 +1,144 @@
+name: Payment Stripe Sandbox Acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payment-stripe-sandbox-acceptance
+  cancel-in-progress: false
+
+jobs:
+  stripe-sandbox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STRIPE_API_VERSION: 2026-02-25.clover
+      STRIPE_SANDBOX_ACCEPTANCE: '1'
+      STRIPE_WEBHOOK_PORT: '4318'
+      STRIPE_CLI_VERSION: v1.50.1
+      STRIPE_SANDBOX_EVIDENCE_DIR: ${{ runner.temp }}/stripe-sandbox-evidence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Require Stripe test-mode credential
+        shell: bash
+        run: |
+          if [[ -z "$STRIPE_SECRET_KEY" ]]; then
+            echo "::error::Repository secret STRIPE_TEST_SECRET_KEY is required."
+            exit 1
+          fi
+          case "$STRIPE_SECRET_KEY" in
+            sk_test_*|rk_test_*) ;;
+            *)
+              echo "::error::Stripe sandbox acceptance refuses non-test API credentials."
+              exit 1
+              ;;
+          esac
+          echo "::add-mask::$STRIPE_SECRET_KEY"
+
+      - name: Install pinned Stripe CLI
+        shell: bash
+        run: |
+          CLI_DEB="$RUNNER_TEMP/stripe_1.50.1_linux_amd64.deb"
+          curl --fail --silent --show-error --location \
+            --output "$CLI_DEB" \
+            https://github.com/stripe/stripe-cli/releases/download/v1.50.1/stripe_1.50.1_linux_amd64.deb
+          echo "f3fc6c1c24611878c5816e08ee2c140e8f51895ef19798743d8207aed356ed22  $CLI_DEB" | sha256sum --check --strict
+          sudo dpkg --install "$CLI_DEB"
+          stripe version
+
+      - name: Resolve ephemeral webhook signing secret
+        shell: bash
+        run: |
+          WEBHOOK_SECRET="$(stripe listen --print-secret --api-key "$STRIPE_SECRET_KEY" | tr -d '\r\n')"
+          if [[ "$WEBHOOK_SECRET" != whsec_* ]]; then
+            echo "::error::Stripe CLI did not return a webhook signing secret."
+            exit 1
+          fi
+          echo "::add-mask::$WEBHOOK_SECRET"
+          echo "STRIPE_WEBHOOK_SECRET=$WEBHOOK_SECRET" >> "$GITHUB_ENV"
+
+      - name: Start Stripe sandbox webhook forwarding
+        shell: bash
+        run: |
+          LISTENER_LOG="$RUNNER_TEMP/stripe-listener.log"
+          stripe listen \
+            --api-key "$STRIPE_SECRET_KEY" \
+            --events payment_intent.succeeded,refund.created,refund.updated,refund.failed \
+            --forward-to "http://127.0.0.1:${STRIPE_WEBHOOK_PORT}/stripe-webhook" \
+            > "$LISTENER_LOG" 2>&1 &
+          LISTENER_PID=$!
+          echo "STRIPE_LISTENER_PID=$LISTENER_PID" >> "$GITHUB_ENV"
+          echo "STRIPE_LISTENER_LOG=$LISTENER_LOG" >> "$GITHUB_ENV"
+
+          for _ in $(seq 1 30); do
+            if grep --quiet "Ready!" "$LISTENER_LOG"; then
+              exit 0
+            fi
+            if ! kill -0 "$LISTENER_PID" 2>/dev/null; then
+              sed -E 's/(whsec_|(sk|rk)_test_)[A-Za-z0-9_]+/[REDACTED]/g' "$LISTENER_LOG" >&2
+              echo "::error::Stripe CLI listener exited before becoming ready."
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::Timed out waiting for Stripe CLI listener readiness."
+          exit 1
+
+      - name: Build Payment typed dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/payment-service...
+
+      - name: Run real Stripe sandbox acceptance
+        run: >-
+          pnpm --filter @markorbit/payment-service exec vitest run
+          tests/stripe-provider.sandbox.test.ts --reporter=verbose
+
+      - name: Prepare redacted listener evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$STRIPE_SANDBOX_EVIDENCE_DIR"
+          if [[ -f "${STRIPE_LISTENER_LOG:-}" ]]; then
+            sed -E 's/(whsec_|(sk|rk)_test_)[A-Za-z0-9_]+/[REDACTED]/g' \
+              "$STRIPE_LISTENER_LOG" \
+              > "$STRIPE_SANDBOX_EVIDENCE_DIR/stripe-listener.redacted.log"
+          fi
+
+      - name: Publish acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripe-sandbox-acceptance-${{ github.run_id }}
+          path: ${{ runner.temp }}/stripe-sandbox-evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Record successful evidence in job summary
+        if: success()
+        shell: bash
+        run: |
+          echo "## Stripe sandbox acceptance" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat "$STRIPE_SANDBOX_EVIDENCE_DIR/stripe-sandbox-acceptance.json" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop Stripe listener
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${STRIPE_LISTENER_PID:-}" ]]; then
+            kill "$STRIPE_LISTENER_PID" 2>/dev/null || true
+            wait "$STRIPE_LISTENER_PID" 2>/dev/null || true
+          fi
