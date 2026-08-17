@@ -58,6 +58,10 @@ invariant(
   audit.authority.auditCreatesMergeReleaseOrDeployment === false,
   'audit may not create merge/release authority'
 );
+invariant(
+  audit.recommendationPolicy.failClosedOnUnpinnedPostCandidateChanges === true,
+  'post-candidate change policy must remain fail-closed'
+);
 
 const candidate = readCandidateJson(
   candidateSha,
@@ -193,8 +197,60 @@ const allowedAuditPaths = new Set([
   'docs/audits/MO-MVP-MILESTONE-008-COMMERCIAL-READINESS-AUDIT.md',
   'docs/tasks/MO-MVP-M8-WP-07-INDEPENDENT-COMMERCIAL-READINESS-AUDIT.md'
 ]);
+const postCandidateMaintenance = audit.postCandidateMaintenance ?? [];
+const allowedChangedPaths = new Set([
+  ...allowedAuditPaths,
+  ...postCandidateMaintenance.map((entry) => entry.path)
+]);
+const verifiedMaintenance = [];
+for (const maintenance of postCandidateMaintenance) {
+  invariant(
+    typeof maintenance.commitSha === 'string' && /^[0-9a-f]{40}$/u.test(maintenance.commitSha),
+    'post-candidate maintenance commit must be a full SHA'
+  );
+  invariant(
+    typeof maintenance.path === 'string' && maintenance.path.length > 0,
+    'post-candidate maintenance path is required'
+  );
+  invariant(
+    typeof maintenance.blobSha === 'string' && /^[0-9a-f]{40}$/u.test(maintenance.blobSha),
+    'post-candidate maintenance blob must be a full SHA'
+  );
+  invariant(
+    typeof maintenance.reason === 'string' && maintenance.reason.length > 0,
+    'post-candidate maintenance reason is required'
+  );
+  try {
+    git('merge-base', '--is-ancestor', maintenance.commitSha, 'HEAD');
+  } catch {
+    invariant(
+      false,
+      `pinned maintenance commit is not in the audited HEAD: ${maintenance.commitSha}`
+    );
+  }
+  const commitFiles = git('diff-tree', '--no-commit-id', '--name-only', '-r', maintenance.commitSha)
+    .split('\n')
+    .filter(Boolean);
+  invariant(
+    commitFiles.length === 1 && commitFiles[0] === maintenance.path,
+    `pinned maintenance commit changed unexpected paths: ${maintenance.commitSha}`
+  );
+  invariant(
+    git('rev-parse', `${maintenance.commitSha}:${maintenance.path}`) === maintenance.blobSha,
+    `pinned maintenance commit blob drifted: ${maintenance.path}`
+  );
+  invariant(
+    git('rev-parse', `HEAD:${maintenance.path}`) === maintenance.blobSha,
+    `pinned maintenance path changed after approved repair: ${maintenance.path}`
+  );
+  verifiedMaintenance.push({
+    commitSha: maintenance.commitSha,
+    path: maintenance.path,
+    blobSha: maintenance.blobSha
+  });
+}
 for (const changedFile of changedFiles) {
-  invariant(allowedAuditPaths.has(changedFile), `WP07 changed out-of-scope file: ${changedFile}`);
+  invariant(allowedChangedPaths.has(changedFile), `WP07 changed out-of-scope file: ${changedFile}`);
 }
 
 const blockers = [];
@@ -274,6 +330,11 @@ const evidence = {
   deterministicWp06Evidence: 'PASS',
   requiredWorkflowRunsVerified: audit.requiredWorkflowEvidence.length,
   knownLimitsVerified: audit.knownLimitIds.length,
+  postCandidateMaintenance: {
+    required: postCandidateMaintenance.length,
+    verified: verifiedMaintenance.length,
+    entries: verifiedMaintenance
+  },
   wp06Mainline: {
     pullRequest: audit.wp06PullRequestNumber,
     merged: Boolean(wp06Pr.merged_at),

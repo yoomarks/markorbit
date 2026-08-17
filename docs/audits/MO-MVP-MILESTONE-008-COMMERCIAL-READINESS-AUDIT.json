@@ -27,6 +27,14 @@
     "EXTERNAL_PROTECTED_ACTIONS_NOT_EXECUTED",
     "OWNER_MERGE_RELEASE_ACTION_REQUIRED"
   ],
+  "postCandidateMaintenance": [
+    {
+      "commitSha": "20fbf41cad472b862fd247c77f8e76fc6904bf79",
+      "path": "scripts/milestone3-reliability-command.test.mjs",
+      "blobSha": "4cdd115e3c07a470e7a95465fe38283bb092f3aa",
+      "reason": "Post-WP07 repair of the stale Milestone 3 hosted-trigger topology assertion; no commercial runtime or authority behavior changed."
+    }
+  ],
   "stripeAcceptance": {
     "workflow": ".github/workflows/payment-stripe-sandbox-acceptance.yml",
     "workflowName": "Payment Stripe Sandbox Acceptance",
@@ -54,6 +62,7 @@
   "recommendationPolicy": {
     "goOnlyWhenWp06MergedTreeMatchesCandidate": true,
     "goOnlyWhenStripeRealProviderEvidencePasses": true,
-    "fixWhenAnyRequiredEvidenceIsMissing": true
+    "fixWhenAnyRequiredEvidenceIsMissing": true,
+    "failClosedOnUnpinnedPostCandidateChanges": true
   }
 }

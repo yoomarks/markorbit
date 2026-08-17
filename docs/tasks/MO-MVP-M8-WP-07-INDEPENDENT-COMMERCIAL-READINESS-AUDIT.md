@@ -22,7 +22,7 @@ The audit may return `GO` or `FIX`.
 
 ## Independence rule
 
-WP07 does not silently create a replacement candidate. It audits the exact WP06 head and downloaded WP06 evidence artifact, then independently re-runs repository boundary checks and full workspace `pnpm check` on the audit branch.
+WP07 does not silently create a replacement candidate. It audits the exact WP06 head and downloaded WP06 evidence artifact, then independently re-runs repository boundary checks and full workspace `pnpm check` on the audit head.
 
 The audit also queries GitHub at runtime for:
 
@@ -31,13 +31,18 @@ The audit also queries GitHub at runtime for:
 - successful `Payment Stripe Sandbox Acceptance` workflow-dispatch evidence on `main`;
 - the retained Stripe sandbox evidence artifact when such a successful run exists.
 
+Post-candidate repository changes remain fail-closed. Audit implementation files may change inside the bounded WP07 paths. Any other post-candidate maintenance must be explicitly pinned in the machine-readable audit contract by commit SHA, sole changed path and exact Git blob SHA; the pinned commit must be an ancestor of the audited HEAD and the HEAD blob must still match. Unpinned changes remain an audit failure.
+
 ## Current verified state
 
 - WP05 / #109 is merged into `main`;
 - WP06 / #110 is merged into `main` as `4695e2c3de54abd7f73438a91425621646b4c318`;
 - the WP06 merge tree matches the audited WP06 candidate tree by construction of the clean main-relative merge;
-- the canonical `Payment Stripe Sandbox Acceptance` workflow has now been dispatched on `main`;
-- run `32048225053` failed at `Require Stripe test-mode credential` because repository secret `STRIPE_TEST_SECRET_KEY` is absent and the runner received an empty `STRIPE_SECRET_KEY`;
+- WP07 / #111 is merged into `main`;
+- post-WP07 repair #113 is merged as `20fbf41cad472b862fd247c77f8e76fc6904bf79`; it changed only `scripts/milestone3-reliability-command.test.mjs`, restoring the hosted Milestone 3 trigger assertion without changing commercial runtime or authority behavior;
+- that repair is pinned by commit and exact blob identity so future M8 re-audits remain repeatable without weakening the out-of-scope change gate;
+- the canonical `Payment Stripe Sandbox Acceptance` workflow has been dispatched on `main`;
+- run `32048225053` still fails at `Require Stripe test-mode credential` because repository secret `STRIPE_TEST_SECRET_KEY` is absent and the runner receives an empty `STRIPE_SECRET_KEY`;
 - therefore the remaining M8 external blocker is real Stripe test-mode credential/evidence, not deterministic Payment implementation.
 
 Until a valid repository `STRIPE_TEST_SECRET_KEY` is configured and the canonical workflow succeeds with retained provider evidence, the independent audit must continue to return `FIX`.
@@ -48,14 +53,14 @@ Until a valid repository `STRIPE_TEST_SECRET_KEY` is configured and the canonica
 2. required candidate workflow runs are completed successfully on the exact candidate;
 3. all WP06 known limits remain explicit;
 4. M8 scope and owner-authority distinctions remain intact;
-5. audit-only changes stay inside the bounded WP07 workflow/script/audit/task paths;
+5. audit-only changes stay inside the bounded WP07 workflow/script/audit/task paths, while any non-audit post-candidate maintenance must match its pinned commit, sole path and exact blob identity;
 6. repository workspace, persistence-boundary, gateway-inventory and full `pnpm check` pass;
 7. PR #110 must be merged before final `GO`, and the merged tree must match the audited candidate tree;
 8. a successful Stripe test-mode workflow-dispatch run on `main` must exist;
 9. its retained `stripe-sandbox-acceptance.json` must prove Stripe test mode, successful payment, successful refund, USD minor-unit amount and non-live provider mode;
 10. audit result must keep release/production authority false.
 
-For squash-merged WP06, WP07 compares the audited candidate tree directly with the audit head when enforcing audit-only changed-file scope. It must not use a merge-base range that would incorrectly reclassify already-merged WP06 files as WP07 changes.
+For squash-merged WP06, WP07 compares the audited candidate tree directly with the WP06 merge tree for commercial-candidate identity. Re-audits may run after bounded repository maintenance, but no later change is silently accepted: every non-WP07 path in the candidate-to-HEAD diff must be explicitly pinned and identity-verified.
 
 ## Permanent authority locks
 
