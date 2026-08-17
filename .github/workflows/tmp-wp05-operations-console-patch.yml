@@ -18,8 +18,9 @@ jobs:
         with:
           ref: agent/m8-wp05-commercial-admin-operator-control
       - name: Patch Operations Console
-        shell: python
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           path = Path('apps/operations-console/src/App.tsx')
@@ -59,7 +60,9 @@ jobs:
       <CommercialAdminWorkspace />'''
           text = text[:start] + replacement + text[end:]
           path.write_text(text)
+          PY
       - name: Remove one-shot workflow and commit
+        shell: bash
         run: |
           git config user.name "markorbit-ci-bot"
           git config user.email "actions@users.noreply.github.com"
