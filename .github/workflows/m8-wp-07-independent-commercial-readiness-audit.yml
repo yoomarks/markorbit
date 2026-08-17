@@ -1,0 +1,101 @@
+name: M8 WP-07 Independent Commercial Readiness Audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m8-wp-07-independent-commercial-readiness-audit.yml'
+      - 'scripts/m8-wp-07-independent-commercial-readiness-audit.mjs'
+      - 'docs/audits/MO-MVP-MILESTONE-008-COMMERCIAL-READINESS-AUDIT.*'
+      - 'docs/tasks/MO-MVP-M8-WP-07-INDEPENDENT-COMMERCIAL-READINESS-AUDIT.md'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: m8-wp07-independent-commercial-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independent-commercial-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      GH_TOKEN: ${{ github.token }}
+      M8_WP07_AUDITED_CANDIDATE_SHA: 6f4596a5172bd75702131361c85f90ddca0eac52
+      M8_WP07_WP06_PR: '110'
+      M8_WP07_WP06_RUN_ID: '32045466457'
+      M8_WP07_WP06_ARTIFACT: m8-wp-06-commercial-runtime-reliability-32045466457
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Collect exact WP06 and external-provider evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/wp06 .artifacts/stripe
+
+          download_artifact() {
+            local run_id="$1"
+            local artifact_name="$2"
+            local directory="$3"
+            for attempt in 1 2 3 4 5; do
+              if gh run download "$run_id" --name "$artifact_name" --dir "$directory"; then
+                return 0
+              fi
+              if [[ "$attempt" == "5" ]]; then
+                return 1
+              fi
+              sleep "$((attempt * 3))"
+            done
+          }
+
+          gh api "/repos/$GITHUB_REPOSITORY/pulls/$M8_WP07_WP06_PR" > .artifacts/m8-wp-07-wp06-pr.json
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M8_WP07_AUDITED_CANDIDATE_SHA&per_page=100" > .artifacts/m8-wp-07-candidate-runs.json
+          gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/payment-stripe-sandbox-acceptance.yml/runs?event=workflow_dispatch&per_page=100" > .artifacts/m8-wp-07-stripe-runs.json
+          download_artifact "$M8_WP07_WP06_RUN_ID" "$M8_WP07_WP06_ARTIFACT" .artifacts/wp06
+
+          STRIPE_RUN_ID="$(jq -r '[.workflow_runs[] | select(.name == "Payment Stripe Sandbox Acceptance" and .event == "workflow_dispatch" and .head_branch == "main" and .status == "completed" and .conclusion == "success")] | sort_by(.created_at) | reverse | .[0].id // empty' .artifacts/m8-wp-07-stripe-runs.json)"
+          if [[ -n "$STRIPE_RUN_ID" ]]; then
+            echo "$STRIPE_RUN_ID" > .artifacts/m8-wp-07-stripe-success-run-id.txt
+            download_artifact "$STRIPE_RUN_ID" "stripe-sandbox-acceptance-$STRIPE_RUN_ID" .artifacts/stripe || true
+          fi
+      - name: Independently re-check repository authority boundaries
+        run: |
+          pnpm validate:workspace
+          pnpm validate:persistence-boundaries
+          pnpm test:gateway-inventory
+          pnpm format:check
+      - name: Run full independent workspace check
+        run: pnpm check
+      - name: Produce independent M8 commercial readiness recommendation
+        run: node scripts/m8-wp-07-independent-commercial-readiness-audit.mjs
+      - name: Upload independent commercial audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m8-wp-07-independent-commercial-readiness-audit-${{ github.run_id }}
+          path: |
+            .artifacts/m8-wp-07-independent-commercial-readiness-audit.json
+            .artifacts/m8-wp-07-wp06-pr.json
+            .artifacts/m8-wp-07-candidate-runs.json
+            .artifacts/m8-wp-07-stripe-runs.json
+            .artifacts/m8-wp-07-stripe-success-run-id.txt
+            .artifacts/wp06/m8-wp-06-commercial-runtime-reliability.json
+            .artifacts/stripe/stripe-sandbox-acceptance.json
+            .artifacts/stripe/stripe-listener.redacted.log
+          if-no-files-found: warn
+          retention-days: 30

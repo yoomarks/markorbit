@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M8",
+  "workPackage": "M8-WP-07",
+  "auditedCandidateSha": "6f4596a5172bd75702131361c85f90ddca0eac52",
+  "candidateConfigFingerprint": "sha256:381b2e11355d51667536774eda575ae1a28ae9c52c164531cc9bfc973c6d21a9",
+  "wp06PullRequestNumber": 110,
+  "wp06EvidenceRunId": 32045466457,
+  "wp06EvidenceArtifact": "m8-wp-06-commercial-runtime-reliability-32045466457",
+  "requiredWorkflowEvidence": [
+    {
+      "runId": 32045466406,
+      "name": "validation",
+      "event": "pull_request"
+    },
+    {
+      "runId": 32045466457,
+      "name": "M8 WP-06 Commercial Runtime Reliability",
+      "event": "pull_request"
+    }
+  ],
+  "knownLimitIds": [
+    "STRIPE_TEST_CREDENTIAL_REQUIRED",
+    "FORWARD_ONLY_MIGRATIONS_NO_DOWN",
+    "NON_PRODUCTION_REHEARSAL_ONLY",
+    "COMMERCIAL_ADMIN_OWNER_ROUTING_ONLY",
+    "EXTERNAL_PROTECTED_ACTIONS_NOT_EXECUTED",
+    "OWNER_MERGE_RELEASE_ACTION_REQUIRED"
+  ],
+  "stripeAcceptance": {
+    "workflow": ".github/workflows/payment-stripe-sandbox-acceptance.yml",
+    "workflowName": "Payment Stripe Sandbox Acceptance",
+    "requiredEvent": "workflow_dispatch",
+    "requiredHeadBranch": "main",
+    "requiredArtifactPrefix": "stripe-sandbox-acceptance-",
+    "requiredProvider": "STRIPE",
+    "requiredProviderMode": "test",
+    "requiredPaymentStatus": "SUCCEEDED",
+    "requiredRefundStatus": "succeeded",
+    "requiredCurrency": "USD",
+    "requiredAmountMinor": 100
+  },
+  "authority": {
+    "mergeRequiresExplicitOwnerAction": true,
+    "releaseRequiresExplicitOwnerAction": true,
+    "auditCreatesMergeReleaseOrDeployment": false,
+    "m8Complete": false,
+    "releaseAuthorized": false,
+    "productionTrafficAllowed": false,
+    "productionDeploymentPerformed": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false
+  },
+  "recommendationPolicy": {
+    "goOnlyWhenWp06MergedTreeMatchesCandidate": true,
+    "goOnlyWhenStripeRealProviderEvidencePasses": true,
+    "fixWhenAnyRequiredEvidenceIsMissing": true
+  }
+}
