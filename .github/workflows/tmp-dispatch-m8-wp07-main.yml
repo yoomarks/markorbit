@@ -1,0 +1,28 @@
+name: Temporary Dispatch M8 WP07 Main
+
+on:
+  push:
+    branches: [agent/tmp-dispatch-m8-wp07-main]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical M8 WP07 on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/m8-wp-07-independent-commercial-readiness-audit.yml/dispatches" -f ref=main; then
+              exit 0
+            fi
+            if [[ "$attempt" == "5" ]]; then
+              exit 1
+            fi
+            sleep "$((attempt * 3))"
+          done
