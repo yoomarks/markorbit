@@ -21,7 +21,7 @@ if (required && !url)
 const suite = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
-const namespace = 'payment_lifecycle_test';
+const namespace = 'payment_test';
 const at = '2026-08-16T08:30:00.000Z';
 
 const principal: WorkspacePrincipal = {
@@ -96,7 +96,6 @@ suite.sequential('PostgreSQL Payment lifecycle persistence', () => {
   );
 
   afterAll(() => database.close());
-
   it('survives reconnect with verified event, refund and reconciliation evidence intact', async () => {
     const repository = new PostgresPaymentRepository(database, database.getPool());
     await repository.createInitiationAtomically(
