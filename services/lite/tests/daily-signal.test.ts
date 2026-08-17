@@ -6,7 +6,7 @@ import { DailySignalImportError, deriveDailySignal } from '../src/daily-signal.j
 const workspaceId = '71717171-7171-4717-8717-717171717171';
 const markdown = `# USPTO trademark fee rule update
 
-The USPTO announced a trademark fee rule update effective next month.
+The USPTO announced a trademark fee rule update effective from next month.
 
 - Applicants should review the new fee schedule.
 - The notice includes an effective date and filing guidance.
