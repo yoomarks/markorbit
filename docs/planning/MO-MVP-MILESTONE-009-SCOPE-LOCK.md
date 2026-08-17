@@ -236,21 +236,21 @@ M9 does not require a Photoshop-style editor or unrestricted AI-image control su
 
 ## 10. Cross-module ownership matrix
 
-| Responsibility | Owner in M9 |
-|---|---|
-| source discovery/fetch/provenance | markorbit-knowledge |
-| trusted Knowledge intake/integrity | Core |
-| Workspace/User/Principal/permissions | Core |
-| Daily Orbit Product state/projection | Lite |
-| Content Opportunity/Draft/Review/PublishPackage | Lite |
-| personalization/ranking for Lite | Lite-owned logical intelligence in M9 |
-| visual production internals/assets/recipes/QC | MOKI universal visual engine |
-| trademark professional work / formal opportunity | MarkReg |
-| protected action governance | Execution where applicable |
-| provider/network truth | MGSN |
-| professional Capability evidence/learning | Capability Engine |
-| trademark bulk/public data | Data Engine, via read-only contract only |
-| browser/API composition | Gateway |
+| Responsibility                                   | Owner in M9                              |
+| ------------------------------------------------ | ---------------------------------------- |
+| source discovery/fetch/provenance                | markorbit-knowledge                      |
+| trusted Knowledge intake/integrity               | Core                                     |
+| Workspace/User/Principal/permissions             | Core                                     |
+| Daily Orbit Product state/projection             | Lite                                     |
+| Content Opportunity/Draft/Review/PublishPackage  | Lite                                     |
+| personalization/ranking for Lite                 | Lite-owned logical intelligence in M9    |
+| visual production internals/assets/recipes/QC    | MOKI universal visual engine             |
+| trademark professional work / formal opportunity | MarkReg                                  |
+| protected action governance                      | Execution where applicable               |
+| provider/network truth                           | MGSN                                     |
+| professional Capability evidence/learning        | Capability Engine                        |
+| trademark bulk/public data                       | Data Engine, via read-only contract only |
+| browser/API composition                          | Gateway                                  |
 
 ## 11. Work packages
 
