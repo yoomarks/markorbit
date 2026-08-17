@@ -83,6 +83,69 @@ jobs:
         run: pnpm check
       - name: Produce independent M8 commercial readiness recommendation
         run: node scripts/m8-wp-07-independent-commercial-readiness-audit.mjs
+      - name: Apply deferred external-gate continuation policy
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const contractPath = 'docs/audits/MO-MVP-MILESTONE-008-COMMERCIAL-READINESS-AUDIT.json';
+          const evidencePath = '.artifacts/m8-wp-07-independent-commercial-readiness-audit.json';
+          const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+          const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+          const policy = contract.externalGatePolicy?.stripeRealProviderAcceptance;
+
+          if (!policy) throw new Error('Stripe external-gate policy is required');
+          if (policy.status !== 'DEFERRED_BY_OWNER_NO_ACCOUNT') {
+            throw new Error('Unexpected Stripe external-gate deferral status');
+          }
+          if (policy.blocksM8Completion !== true) {
+            throw new Error('Deferred Stripe verification must continue to block M8 completion');
+          }
+          if (policy.blocksFurtherEngineering !== false) {
+            throw new Error('Deferred Stripe verification policy must not block unrelated engineering');
+          }
+          if (policy.verificationRequiredBeforeClaimingStripeReady !== true) {
+            throw new Error('Stripe-ready claims must require real-provider verification');
+          }
+
+          const deferrableStripeBlockers = new Set([
+            'STRIPE_REAL_PROVIDER_ACCEPTANCE_MISSING',
+            'STRIPE_ACCEPTANCE_ARTIFACT_MISSING'
+          ]);
+          const blockers = Array.isArray(evidence.blockers) ? evidence.blockers : [];
+          const nonDeferredBlockers = blockers.filter((blocker) => !deferrableStripeBlockers.has(blocker));
+          const onlyDeferredExternalGateRemains =
+            blockers.length > 0 && nonDeferredBlockers.length === 0;
+          const policyAllowsContinuation =
+            contract.recommendationPolicy?.allowEngineeringContinuationWhenOnlyDeferredExternalGatesRemain === true;
+          const engineeringContinuationAllowed =
+            evidence.finalRecommendation === 'GO' ||
+            (policyAllowsContinuation && onlyDeferredExternalGateRemains);
+
+          evidence.stripeRealProviderAcceptance = {
+            ...evidence.stripeRealProviderAcceptance,
+            requiredForM8Completion: true,
+            deferred: !evidence.stripeRealProviderAcceptance?.artifactEvidenceVerified,
+            deferralStatus: !evidence.stripeRealProviderAcceptance?.artifactEvidenceVerified
+              ? policy.status
+              : null,
+            blocksFurtherEngineering: policy.blocksFurtherEngineering,
+            verificationRequiredBeforeClaimingStripeReady:
+              policy.verificationRequiredBeforeClaimingStripeReady
+          };
+          evidence.engineeringContinuation = {
+            allowed: engineeringContinuationAllowed,
+            onlyDeferredExternalGateRemains,
+            nonDeferredBlockers,
+            m8CompletionStillRequiresStripeEvidence: true,
+            doesNotChangeFinalRecommendation: true,
+            doesNotAuthorizeMergeReleaseOrDeployment: true
+          };
+
+          fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+          console.log(JSON.stringify(evidence.engineeringContinuation));
+          NODE
       - name: Upload independent commercial audit evidence
         if: always()
         uses: actions/upload-artifact@v4
