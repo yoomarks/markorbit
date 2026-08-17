@@ -7,9 +7,7 @@ import type {
 } from './provider-registry.js';
 
 export type MgsnCommercialAdminReadErrorCode =
-  | 'AUTHENTICATION_REQUIRED'
-  | 'PERMISSION_DENIED'
-  | 'PROVIDER_NOT_FOUND';
+  'AUTHENTICATION_REQUIRED' | 'PERMISSION_DENIED' | 'PROVIDER_NOT_FOUND';
 
 export class MgsnCommercialAdminReadError extends Error {
   constructor(
