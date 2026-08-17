@@ -88,7 +88,7 @@ describe('MarkReg commercial admin owner reads', () => {
     const inspection: MarkRegAdminOrderInspection = {
       schemaVersion: 1,
       source: { domain: 'MARKREG', authority: 'ORDER' },
-      order: { orderId: 'order_admin-test' } as MarkRegAdminOrderInspection['order'],
+      order: { orderId: 'order_admin-test' } as unknown as MarkRegAdminOrderInspection['order'],
       audit: []
     };
     const inspectOrder = vi.fn(() => Promise.resolve(inspection));
