@@ -171,7 +171,9 @@ jobs:
           MGSN_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.mgsn == 'true' }}
         run: |
           create_db() { psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $1;"; }
-          [ "$PERSISTENCE_SCOPE" = "true" ] && create_db markorbit_persistence_test || true
+          if [ "$PERSISTENCE_SCOPE" = "true" ]; then
+            create_db markorbit_persistence_test
+          fi
           if [ "$CORE_SCOPE" = "true" ]; then
             create_db markorbit_identity_test
             create_db markorbit_auth_test
@@ -190,10 +192,18 @@ jobs:
             create_db markorbit_capability_reflection_test
             create_db markorbit_capability_profile_test
           fi
-          [ "$MARKREG_SCOPE" = "true" ] && create_db markorbit_markreg_test || true
-          [ "$PAYMENT_SCOPE" = "true" ] && create_db markorbit_payment_test || true
-          [ "$EXECUTION_SCOPE" = "true" ] && create_db markorbit_execution_test || true
-          [ "$MGSN_SCOPE" = "true" ] && create_db markorbit_mgsn_test || true
+          if [ "$MARKREG_SCOPE" = "true" ]; then
+            create_db markorbit_markreg_test
+          fi
+          if [ "$PAYMENT_SCOPE" = "true" ]; then
+            create_db markorbit_payment_test
+          fi
+          if [ "$EXECUTION_SCOPE" = "true" ]; then
+            create_db markorbit_execution_test
+          fi
+          if [ "$MGSN_SCOPE" = "true" ]; then
+            create_db markorbit_mgsn_test
+          fi
           if [ "$EXECUTION_SCOPE" = "true" ] && [ "$MARKREG_SCOPE" = "true" ]; then
             create_db markorbit_wp05_execution_test
             create_db markorbit_wp05_markreg_test
@@ -239,7 +249,7 @@ jobs:
           pnpm test:lite-matter:http
           pnpm test:document-package:postgres
           pnpm test:document-package:http
-          pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts tests/formal-opportunity-postgres.test.ts
+          pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts
           pnpm test:order:http
           pnpm test:order:client
           pnpm test:order:journey
