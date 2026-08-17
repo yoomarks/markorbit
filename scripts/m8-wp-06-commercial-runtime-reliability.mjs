@@ -151,7 +151,7 @@ for (const testPath of requiredReliabilityTests) {
 await requireText('.github/workflows/ci.yml', [
   'Payment integration',
   "PAYMENT_POSTGRES_REQUIRED: '1'",
-  'Run pnpm test:gateway-inventory'
+  'pnpm test:gateway-inventory'
 ]);
 await requireText('.github/workflows/payment-stripe-sandbox-acceptance.yml', [
   'STRIPE_TEST_SECRET_KEY',
