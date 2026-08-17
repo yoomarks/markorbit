@@ -5,7 +5,6 @@ import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/per
 import type { CoreKnowledgeDailySourceProjection } from '@markorbit/contracts/daily-source';
 import type { DailySignalId } from '@markorbit/contracts/daily-workspace';
 import {
-  DailySignalImportError,
   PostgresLiteDailySignalStore,
   type DailyKnowledgeSourceAuthority
 } from '../src/daily-signal.js';
@@ -150,7 +149,8 @@ suite('PostgreSQL Lite Daily Signal import', () => {
       .query('SELECT count(*)::int AS count FROM lite_daily_signals WHERE workspace_id=$1', [
         workspaceId
       ]);
-    expect(rows.rows[0]?.count).toBe(1);
+    const row = rows.rows[0] as { count: number } | undefined;
+    expect(row?.count).toBe(1);
   });
 
   it('rejects changed immutable source evidence for the same source version', async () => {
@@ -167,7 +167,7 @@ suite('PostgreSQL Lite Daily Signal import', () => {
         readyPackageId: source.readyPackageId,
         idempotencyKey: 'import-changed'
       })
-    ).rejects.toMatchObject<Partial<DailySignalImportError>>({
+    ).rejects.toMatchObject({
       code: 'SOURCE_FINGERPRINT_MISMATCH',
       status: 409
     });
