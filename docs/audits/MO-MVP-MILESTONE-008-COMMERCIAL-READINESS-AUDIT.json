@@ -48,6 +48,15 @@
     "requiredCurrency": "USD",
     "requiredAmountMinor": 100
   },
+  "externalGatePolicy": {
+    "stripeRealProviderAcceptance": {
+      "status": "DEFERRED_BY_OWNER_NO_ACCOUNT",
+      "blocksM8Completion": true,
+      "blocksFurtherEngineering": false,
+      "verificationRequiredBeforeClaimingStripeReady": true,
+      "reason": "Owner currently has no Stripe account and cannot provide a real Stripe test-mode secret. Real-provider acceptance remains required before M8 completion or any Stripe-ready claim, but the external dependency does not block subsequent engineering work."
+    }
+  },
   "authority": {
     "mergeRequiresExplicitOwnerAction": true,
     "releaseRequiresExplicitOwnerAction": true,
@@ -63,6 +72,7 @@
     "goOnlyWhenWp06MergedTreeMatchesCandidate": true,
     "goOnlyWhenStripeRealProviderEvidencePasses": true,
     "fixWhenAnyRequiredEvidenceIsMissing": true,
-    "failClosedOnUnpinnedPostCandidateChanges": true
+    "failClosedOnUnpinnedPostCandidateChanges": true,
+    "allowEngineeringContinuationWhenOnlyDeferredExternalGatesRemain": true
   }
 }
