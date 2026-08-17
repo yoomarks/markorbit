@@ -1,6 +1,9 @@
 name: M9 WP01 Prettier Artifact
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - agent/m9-wp01-daily-workspace-contracts
