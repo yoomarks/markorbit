@@ -1,0 +1,52 @@
+name: TMP WP05 Format Once
+
+on:
+  push:
+    branches:
+      - agent/m8-wp05-commercial-admin-operator-control
+    paths:
+      - .github/workflows/tmp-wp05-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp05-commercial-admin-operator-control
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier
+        run: >-
+          pnpm exec prettier --write
+          apps/gateway/src/account-access-http.ts
+          apps/gateway/tests/commercial-admin-account-http.test.ts
+          packages/contracts/src/auth.ts
+          packages/contracts/tests/commercial-admin-auth.test.ts
+      - name: Verify formatting
+        run: >-
+          pnpm exec prettier --check
+          apps/gateway/src/account-access-http.ts
+          apps/gateway/tests/commercial-admin-account-http.test.ts
+          packages/contracts/src/auth.ts
+          packages/contracts/tests/commercial-admin-auth.test.ts
+      - name: Remove one-shot workflow and commit
+        run: |
+          git config user.name "markorbit-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/tmp-wp05-format-once.yml
+          git add apps/gateway/src/account-access-http.ts \
+            apps/gateway/tests/commercial-admin-account-http.test.ts \
+            packages/contracts/src/auth.ts \
+            packages/contracts/tests/commercial-admin-auth.test.ts
+          git commit -m "style(m8): format commercial admin boundary"
+          git push origin HEAD:agent/m8-wp05-commercial-admin-operator-control
