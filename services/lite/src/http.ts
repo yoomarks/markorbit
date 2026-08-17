@@ -16,10 +16,7 @@ import {
   ProductConversionAnalyticsError,
   type PostgresProductConversionAnalyticsStore
 } from './conversion-analytics.js';
-import {
-  DailySignalImportError,
-  type PostgresLiteDailySignalStore
-} from './daily-signal.js';
+import { DailySignalImportError, type PostgresLiteDailySignalStore } from './daily-signal.js';
 import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
   PreparedActionJourneyError,

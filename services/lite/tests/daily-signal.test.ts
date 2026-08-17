@@ -11,7 +11,8 @@ The USPTO announced a trademark fee rule update effective next month.
 - Applicants should review the new fee schedule.
 - The notice includes an effective date and filing guidance.
 `;
-const sha256 = (value: string) => createHash('sha256').update(Buffer.from(value, 'utf8')).digest('hex');
+const sha256 = (value: string) =>
+  createHash('sha256').update(Buffer.from(value, 'utf8')).digest('hex');
 
 function projection(content = markdown): CoreKnowledgeDailySourceProjection {
   return {

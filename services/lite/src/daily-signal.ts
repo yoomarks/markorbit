@@ -43,14 +43,17 @@ export interface DailyKnowledgeSourceAuthority {
 function cleanWorkspaceId(value: string): string {
   const cleaned = value.trim().toLowerCase();
   if (!UUID.test(cleaned))
-    throw new DailySignalImportError('INVALID_INPUT', 'workspaceId must be a Core Workspace UUID.', 422);
+    throw new DailySignalImportError(
+      'INVALID_INPUT',
+      'workspaceId must be a Core Workspace UUID.',
+      422
+    );
   return cleaned;
 }
 
 function cleanText(value: string, field: string, maximum: number): string {
   const cleaned = value.trim();
-  if (!cleaned)
-    throw new DailySignalImportError('INVALID_INPUT', `${field} is required.`, 422);
+  if (!cleaned) throw new DailySignalImportError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
     throw new DailySignalImportError('INVALID_INPUT', `${field} exceeds the allowed length.`, 422);
   return cleaned;
@@ -182,20 +185,50 @@ function keyFactsFrom(markdown: string, summary: string): string[] {
 const markerGroups: ReadonlyArray<
   Readonly<{ jurisdiction: string; institution?: string; markers: readonly string[] }>
 > = [
-  { jurisdiction: 'US', institution: 'USPTO', markers: ['uspto', 'united states patent and trademark'] },
-  { jurisdiction: 'EU', institution: 'EUIPO', markers: ['euipo', 'european union intellectual property'] },
-  { jurisdiction: 'CN', institution: 'CNIPA', markers: ['cnipa', 'china national intellectual property'] },
+  {
+    jurisdiction: 'US',
+    institution: 'USPTO',
+    markers: ['uspto', 'united states patent and trademark']
+  },
+  {
+    jurisdiction: 'EU',
+    institution: 'EUIPO',
+    markers: ['euipo', 'european union intellectual property']
+  },
+  {
+    jurisdiction: 'CN',
+    institution: 'CNIPA',
+    markers: ['cnipa', 'china national intellectual property']
+  },
   { jurisdiction: 'JP', institution: 'JPO', markers: ['jpo', 'japan patent office'] },
-  { jurisdiction: 'KR', institution: 'KIPO', markers: ['kipo', 'korean intellectual property office'] },
-  { jurisdiction: 'GB', institution: 'UKIPO', markers: ['ukipo', 'uk intellectual property office'] },
-  { jurisdiction: 'CA', institution: 'CIPO', markers: ['cipo', 'canadian intellectual property office'] },
+  {
+    jurisdiction: 'KR',
+    institution: 'KIPO',
+    markers: ['kipo', 'korean intellectual property office']
+  },
+  {
+    jurisdiction: 'GB',
+    institution: 'UKIPO',
+    markers: ['ukipo', 'uk intellectual property office']
+  },
+  {
+    jurisdiction: 'CA',
+    institution: 'CIPO',
+    markers: ['cipo', 'canadian intellectual property office']
+  },
   { jurisdiction: 'AU', institution: 'IP AUSTRALIA', markers: ['ip australia'] },
-  { jurisdiction: 'INT', institution: 'WIPO', markers: ['wipo', 'world intellectual property organization'] }
+  {
+    jurisdiction: 'INT',
+    institution: 'WIPO',
+    markers: ['wipo', 'world intellectual property organization']
+  }
 ];
 
 function jurisdictionsFrom(text: string): { jurisdictions: string[]; institution?: string } {
   const normalized = text.toLowerCase();
-  const hits = markerGroups.filter((entry) => entry.markers.some((marker) => normalized.includes(marker)));
+  const hits = markerGroups.filter((entry) =>
+    entry.markers.some((marker) => normalized.includes(marker))
+  );
   const jurisdictions = [...new Set(hits.map((entry) => entry.jurisdiction))];
   return {
     jurisdictions,
@@ -210,7 +243,8 @@ function topicsFrom(text: string): string[] {
   if (/\bpatent(s)?\b|专利/u.test(normalized)) topics.push('patent');
   if (/\bcopyright\b|著作权|版权/u.test(normalized)) topics.push('copyright');
   if (/brand|品牌/u.test(normalized)) topics.push('branding');
-  if (/intellectual property|\bip\b|知识产权/u.test(normalized)) topics.push('intellectual-property');
+  if (/intellectual property|\bip\b|知识产权/u.test(normalized))
+    topics.push('intellectual-property');
   return topics.length ? [...new Set(topics)] : ['professional-update'];
 }
 
@@ -310,7 +344,9 @@ export class PostgresLiteDailySignalStore {
       `daily-signal_${randomUUID().replaceAll('-', '')}`
   ) {}
 
-  async importKnowledgeSource(command: Readonly<ImportKnowledgeDailySignalCommand>): Promise<DailySignal> {
+  async importKnowledgeSource(
+    command: Readonly<ImportKnowledgeDailySignalCommand>
+  ): Promise<DailySignal> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const readyPackageId = cleanText(command.readyPackageId, 'readyPackageId', 300);
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
@@ -385,7 +421,13 @@ export class PostgresLiteDailySignalStore {
           `INSERT INTO lite_daily_signal_commands(
             workspace_id,idempotency_key,command_type,request_fingerprint_sha256,result_json,created_at
           ) VALUES($1,$2,'IMPORT_KNOWLEDGE_SOURCE',$3,$4::jsonb,$5)`,
-          [workspaceId, idempotencyKey, requestFingerprintSha256, JSON.stringify(signal), this.now()]
+          [
+            workspaceId,
+            idempotencyKey,
+            requestFingerprintSha256,
+            JSON.stringify(signal),
+            this.now()
+          ]
         );
         return clone(signal);
       });
@@ -401,7 +443,10 @@ export class PostgresLiteDailySignalStore {
     }
   }
 
-  async find(workspaceIdValue: string, dailySignalId: DailySignalId): Promise<DailySignal | undefined> {
+  async find(
+    workspaceIdValue: string,
+    dailySignalId: DailySignalId
+  ): Promise<DailySignal | undefined> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const result = await this.query.query(
       'SELECT document_json FROM lite_daily_signals WHERE workspace_id=$1 AND daily_signal_id=$2 AND version=1',
