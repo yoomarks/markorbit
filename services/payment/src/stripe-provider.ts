@@ -74,11 +74,7 @@ interface StripeEvent {
 }
 
 class StripeProviderError extends Error {
-  constructor(
-    message: string,
-    readonly requestId?: string,
-    readonly status?: number
-  ) {
+  constructor(message: string, readonly requestId?: string, readonly status?: number) {
     super(message);
     this.name = 'StripeProviderError';
   }
@@ -167,7 +163,8 @@ function canonicalPaymentStatus(intent: StripePaymentIntent): PaymentProviderSna
 
 function providerAction(intent: StripePaymentIntent): PaymentProviderAction {
   const redirect = intent.next_action?.redirect_to_url?.url;
-  if (typeof redirect === 'string' && redirect.length > 0) return { kind: 'REDIRECT', url: redirect };
+  if (typeof redirect === 'string' && redirect.length > 0)
+    return { kind: 'REDIRECT', url: redirect };
   if (typeof intent.client_secret === 'string' && intent.client_secret.length > 0)
     return { kind: 'CLIENT_CONFIRMATION', secret: intent.client_secret };
   return { kind: 'NONE' };
@@ -222,7 +219,8 @@ export class StripePaymentProviderAdapter
     body.set('amount', String(command.amountMinor));
     body.set('currency', command.currency.toLowerCase());
     body.set('automatic_payment_methods[enabled]', 'true');
-    for (const [key, value] of Object.entries(command.metadata)) body.set(`metadata[${key}]`, value);
+    for (const [key, value] of Object.entries(command.metadata))
+      body.set(`metadata[${key}]`, value);
     body.set('metadata[markorbitPaymentId]', command.paymentId);
     body.set('metadata[markorbitCheckoutSessionId]', command.checkoutSessionId);
     body.set('metadata[markorbitOrderId]', command.orderId);
@@ -313,9 +311,8 @@ export class StripePaymentProviderAdapter
           case 'payment_intent.payment_failed':
             // Stripe PaymentIntents have no terminal FAILED status. A failed attempt can return
             // to requires_payment_method and later succeed, so do not freeze MarkOrbit truth as FAILED.
-            return intent.status === 'requires_action'
-              ? ('PAYMENT_REQUIRES_ACTION' as const)
-              : ('PAYMENT_REQUIRES_ACTION' as const);
+            void intent.status;
+            return 'PAYMENT_REQUIRES_ACTION' as const;
           default:
             throw new PaymentLifecycleError(
               'PROVIDER_EVENT_INVALID',
@@ -339,7 +336,11 @@ export class StripePaymentProviderAdapter
       };
     }
 
-    if (event.type === 'refund.created' || event.type === 'refund.updated' || event.type === 'refund.failed') {
+    if (
+      event.type === 'refund.created' ||
+      event.type === 'refund.updated' ||
+      event.type === 'refund.failed'
+    ) {
       const refund = asRefund(event.data.object);
       const status = event.type === 'refund.failed' ? 'failed' : refund.status;
       const canonicalType =
@@ -384,7 +385,9 @@ export class StripePaymentProviderAdapter
     if (text(refund.currency, 'Refund currency').toUpperCase() !== command.currency.toUpperCase())
       throw new StripeProviderError('Stripe Refund currency does not match the governed command.');
     if (paymentIntentReference(refund.payment_intent) !== command.providerPaymentReference)
-      throw new StripeProviderError('Stripe Refund PaymentIntent does not match the governed command.');
+      throw new StripeProviderError(
+        'Stripe Refund PaymentIntent does not match the governed command.'
+      );
     return { providerRefundReference: text(refund.id, 'Refund ID'), status: 'PENDING' };
   }
 
@@ -422,12 +425,8 @@ export class StripePaymentProviderAdapter
         },
         ...(body ? { body: body.toString() } : {})
       });
-    } catch (cause) {
-      throw new StripeProviderError(
-        'Stripe API is unavailable.',
-        undefined,
-        undefined
-      );
+    } catch {
+      throw new StripeProviderError('Stripe API is unavailable.');
     }
     const requestId = response.headers.get('request-id') ?? undefined;
     let payload: unknown;
