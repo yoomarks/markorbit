@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "workPackage": "M8-WP-06",
+  "environmentClass": "NON_PRODUCTION_REHEARSAL",
+  "releaseAuthorized": false,
+  "productionTrafficAllowed": false,
+  "m8Complete": false,
+  "limits": [
+    {
+      "id": "STRIPE_TEST_CREDENTIAL_REQUIRED",
+      "severity": "EXTERNAL_GATE",
+      "description": "Real Stripe test-mode acceptance requires the repository secret STRIPE_TEST_SECRET_KEY and cannot be replaced by deterministic adapter tests, fake providers, mocked fetches or a skipped sandbox test."
+    },
+    {
+      "id": "FORWARD_ONLY_MIGRATIONS_NO_DOWN",
+      "severity": "ARCHITECTURE",
+      "description": "The repository migration model is forward-only. Recovery evidence uses owner-local snapshot restore plus exact forward reapply rather than down migrations."
+    },
+    {
+      "id": "NON_PRODUCTION_REHEARSAL_ONLY",
+      "severity": "AUTHORITY",
+      "description": "WP06 reliability evidence is non-production rehearsal evidence and does not perform or authorize production traffic cutover."
+    },
+    {
+      "id": "COMMERCIAL_ADMIN_OWNER_ROUTING_ONLY",
+      "severity": "AUTHORITY",
+      "description": "Operations Console and Gateway route governed inspection/commands to owner domains; they do not become a universal commercial truth database and cannot invent owner status."
+    },
+    {
+      "id": "EXTERNAL_PROTECTED_ACTIONS_NOT_EXECUTED",
+      "severity": "AUTHORITY",
+      "description": "Reliability acceptance does not itself appoint a provider/professional, submit a filing, create Official Truth or execute another protected external action."
+    },
+    {
+      "id": "OWNER_MERGE_RELEASE_ACTION_REQUIRED",
+      "severity": "AUTHORITY",
+      "description": "Green CI, a passing WP06 matrix or a passing independent audit does not auto-merge, auto-release or authorize production deployment."
+    }
+  ]
+}
