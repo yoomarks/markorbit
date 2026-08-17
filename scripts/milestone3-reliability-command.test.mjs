@@ -82,15 +82,12 @@ test('required M3 Order reliability evidence is selected explicitly', () => {
     );
 });
 
-test('hosted workflow checks out the exact PR head and keeps owner databases explicit', () => {
-  assert.match(
-    workflow,
-    /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u
-  );
-  assert.match(
-    workflow,
-    /M3_EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u
-  );
+test('hosted workflow checks out the exact triggered head and keeps owner databases explicit', () => {
+  assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/u);
+  assert.match(workflow, /M3_EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/u);
+  assert.match(workflow, /push:\n\s+branches: \[main\]/u);
+  assert.match(workflow, /workflow_dispatch:/u);
+  assert.match(workflow, /schedule:/u);
   assert.match(workflow, /MARKREG_TEST_DATABASE_URL:/u);
   assert.match(workflow, /MILESTONE2_MARKREG_DATABASE_URL:/u);
   assert.match(workflow, /MILESTONE3_STARTUP_DATABASE_URL:/u);
