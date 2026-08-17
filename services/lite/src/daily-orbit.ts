@@ -148,7 +148,10 @@ function personalRelevance(
   preference: Readonly<CreatorPreference> | undefined
 ): DailyOrbitScoreComponent {
   if (!preference)
-    return component(50, 'This is a Workspace-scoped signal; no explicit Creator Preference is available.');
+    return component(
+      50,
+      'This is a Workspace-scoped signal; no explicit Creator Preference is available.'
+    );
 
   const preferredJurisdictions = normalized(preference.primaryJurisdictions);
   const preferredTopics = normalized(preference.professionalTopics);
@@ -162,17 +165,30 @@ function personalRelevance(
     [...signalJurisdictions].some((value) => preferredJurisdictions.has(value));
   const topicMatch =
     preferredTopics.size > 0 && [...signalTopics].some((value) => preferredTopics.has(value));
-  const configuredDimensions = Number(preferredJurisdictions.size > 0) + Number(preferredTopics.size > 0);
+  const configuredDimensions =
+    Number(preferredJurisdictions.size > 0) + Number(preferredTopics.size > 0);
   const matchedDimensions = Number(jurisdictionMatch) + Number(topicMatch);
 
   if (matchedDimensions === configuredDimensions)
-    return component(95, 'The signal matches every configured jurisdiction/topic preference dimension.');
+    return component(
+      95,
+      'The signal matches every configured jurisdiction/topic preference dimension.'
+    );
   if (matchedDimensions > 0)
-    return component(75, 'The signal matches part of the explicit jurisdiction/topic Creator Preference.');
-  return component(25, 'The signal does not match the configured jurisdiction/topic Creator Preference.');
+    return component(
+      75,
+      'The signal matches part of the explicit jurisdiction/topic Creator Preference.'
+    );
+  return component(
+    25,
+    'The signal does not match the configured jurisdiction/topic Creator Preference.'
+  );
 }
 
-function exactSource(left: Readonly<ProductLoopSourceReference>, right: Readonly<ProductLoopSourceReference>) {
+function exactSource(
+  left: Readonly<ProductLoopSourceReference>,
+  right: Readonly<ProductLoopSourceReference>
+) {
   return (
     left.owner === right.owner &&
     left.kind === right.kind &&
@@ -193,14 +209,19 @@ function sectionFor(
   rankedAt: string
 ): DailyOrbitSection {
   const text = evidenceText(signal);
-  if (/\brisk\b|penalt|refusal|rejection|cancellation|expiration|风险|罚款|驳回|撤销|失效/u.test(text))
+  if (
+    /\brisk\b|penalt|refusal|rejection|cancellation|expiration|风险|罚款|驳回|撤销|失效/u.test(text)
+  )
     return 'RISK';
-  if (/\bopportunit(y|ies)\b|new (route|program|option)|available now|机会|新渠道|新途径|新选项/u.test(text))
+  if (
+    /\bopportunit(y|ies)\b|new (route|program|option)|available now|机会|新渠道|新途径|新选项/u.test(
+      text
+    )
+  )
     return 'OPPORTUNITY';
 
   const ageMs = Math.max(0, Date.parse(rankedAt) - Date.parse(signal.observedAt));
-  if (signal.timeSensitivity === 'LOW' && ageMs >= 72 * 60 * 60 * 1000)
-    return 'WORTH_REVISITING';
+  if (signal.timeSensitivity === 'LOW' && ageMs >= 72 * 60 * 60 * 1000) return 'WORTH_REVISITING';
   if (preference && relevance.score >= 75) return 'FOR_YOU';
   return 'TODAYS_ORBIT';
 }
@@ -224,9 +245,17 @@ export function rankDailyOrbitItem(
   const subjectUserId = cleanUserId(subjectUserIdValue);
   if (preference) {
     if (preference.workspaceId.toLowerCase() !== signal.workspaceId.toLowerCase())
-      throw new DailyOrbitError('INVALID_INPUT', 'Creator Preference belongs to a different Workspace.', 422);
+      throw new DailyOrbitError(
+        'INVALID_INPUT',
+        'Creator Preference belongs to a different Workspace.',
+        422
+      );
     if (preference.subjectUserId !== subjectUserId)
-      throw new DailyOrbitError('INVALID_INPUT', 'Creator Preference belongs to a different user.', 422);
+      throw new DailyOrbitError(
+        'INVALID_INPUT',
+        'Creator Preference belongs to a different user.',
+        422
+      );
   }
 
   const importanceScore = importance(signal);
@@ -354,7 +383,10 @@ export class DailyOrbitService {
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
 
-  async snapshot(workspaceIdValue: string, subjectUserIdValue: string): Promise<DailyOrbitSnapshot> {
+  async snapshot(
+    workspaceIdValue: string,
+    subjectUserIdValue: string
+  ): Promise<DailyOrbitSnapshot> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const subjectUserId = cleanUserId(subjectUserIdValue);
     const generatedAt = new Date(this.now()).toISOString();
@@ -369,9 +401,17 @@ export class DailyOrbitService {
     }
     if (preference) {
       if (preference.workspaceId.toLowerCase() !== workspaceId)
-        throw new DailyOrbitError('INVALID_INPUT', 'Creator Preference belongs to a different Workspace.', 422);
+        throw new DailyOrbitError(
+          'INVALID_INPUT',
+          'Creator Preference belongs to a different Workspace.',
+          422
+        );
       if (preference.subjectUserId !== subjectUserId)
-        throw new DailyOrbitError('INVALID_INPUT', 'Creator Preference belongs to a different user.', 422);
+        throw new DailyOrbitError(
+          'INVALID_INPUT',
+          'Creator Preference belongs to a different user.',
+          422
+        );
     }
 
     let recommendations: readonly Readonly<TodayRecommendation>[] = [];

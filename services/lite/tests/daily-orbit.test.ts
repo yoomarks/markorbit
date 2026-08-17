@@ -4,10 +4,7 @@ import type {
   DailySignal,
   DailySignalId
 } from '@markorbit/contracts/daily-workspace';
-import type {
-  LiteTodaySnapshot,
-  TodayRecommendation
-} from '@markorbit/contracts/product-loop';
+import type { LiteTodaySnapshot, TodayRecommendation } from '@markorbit/contracts/product-loop';
 import {
   DailyOrbitService,
   rankDailyOrbitItem,
@@ -124,7 +121,10 @@ class Today implements DailyOrbitTodayReader {
 
 class Preferences implements DailyOrbitPreferenceProvider {
   constructor(private readonly value: CreatorPreference | Error | undefined) {}
-  resolve(requestWorkspaceId: string, requestUserId: string): Promise<CreatorPreference | undefined> {
+  resolve(
+    requestWorkspaceId: string,
+    requestUserId: string
+  ): Promise<CreatorPreference | undefined> {
     expect(requestWorkspaceId).toBe(workspaceId);
     expect(requestUserId).toBe(userId);
     if (this.value instanceof Error) return Promise.reject(this.value);

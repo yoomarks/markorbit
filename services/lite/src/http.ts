@@ -183,10 +183,7 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
               try {
                 return json(
                   200,
-                  await options.dailyOrbitService!.snapshot(
-                    principal.workspaceId,
-                    principal.userId
-                  )
+                  await options.dailyOrbitService!.snapshot(principal.workspaceId, principal.userId)
                 );
               } catch (error) {
                 return mapError(error);
