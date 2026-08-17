@@ -28,6 +28,7 @@
     "markreg_formal_opportunity_handoff": "@markorbit/markreg-service",
     "lite_prepared_action_journey": "@markorbit/lite-service",
     "lite_product_loop_feedback": "@markorbit/lite-service",
+    "lite_daily_signals": "@markorbit/lite-service",
     "capability_engine_runtime_registry": "@markorbit/capability-engine",
     "capability_engine_observation_ledger": "@markorbit/capability-engine",
     "capability_engine_reflection_candidates": "@markorbit/capability-engine",
@@ -67,6 +68,7 @@
     "0048_core_knowledge_v2_deliveries": "@markorbit/core-service",
     "0049_core_account_access": "@markorbit/core-service",
     "0050_markreg_commercial_checkout": "@markorbit/markreg-service",
-    "0051_payment_foundation": "@markorbit/payment-service"
+    "0051_payment_foundation": "@markorbit/payment-service",
+    "0052_lite_daily_signals": "@markorbit/lite-service"
   }
 }
