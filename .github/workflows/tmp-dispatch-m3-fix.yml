@@ -1,0 +1,22 @@
+name: Temporary Dispatch M3 Fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-dispatch-m3-fix.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical M3 reliability on fix branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api --method POST
+          "/repos/$GITHUB_REPOSITORY/actions/workflows/milestone-3-reliability.yml/dispatches"
+          -f ref=agent/fix-m3-reliability-trigger-contract
