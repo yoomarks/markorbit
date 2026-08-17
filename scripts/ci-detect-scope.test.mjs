@@ -9,6 +9,7 @@ test('payment-only changes stay in the payment lane', () => {
       'apps/gateway/src/payment-http.ts',
       'packages/contracts/src/payment.ts',
       'packages/contracts/package.json',
+      'infrastructure/persistence/migration-owners.json',
       'infrastructure/persistence/migrations/0051_payment_foundation.sql',
       'pnpm-lock.yaml',
       'tsconfig.base.json'
@@ -29,17 +30,26 @@ test('payment-only changes stay in the payment lane', () => {
   assert.equal(scope.full_typecheck, true);
 });
 
-test('owned migrations select only their domain plus persistence', () => {
-  const markreg = classifyChangedFiles(['infrastructure/persistence/migrations/0050_markreg_commercial_checkout.sql']);
-  assert.equal(markreg.markreg, true);
-  assert.equal(markreg.persistence, true);
-  assert.equal(markreg.core, false);
-  assert.equal(markreg.execution, false);
+test('owned migration plus owner map remains owner-scoped', () => {
+  const scope = classifyChangedFiles([
+    'infrastructure/persistence/migration-owners.json',
+    'infrastructure/persistence/migrations/0050_markreg_commercial_checkout.sql'
+  ]);
+  assert.equal(scope.shared, false);
+  assert.equal(scope.markreg, true);
+  assert.equal(scope.persistence, true);
+  assert.equal(scope.core, false);
+  assert.equal(scope.execution, false);
+});
 
-  const capability = classifyChangedFiles(['infrastructure/persistence/migrations/0047_capability_engine_reflection_disposition_profile_twin.sql']);
-  assert.equal(capability.capability, true);
-  assert.equal(capability.persistence, true);
-  assert.equal(capability.markreg, false);
+test('owner map without an owned migration is conservatively shared', () => {
+  const scope = classifyChangedFiles(['infrastructure/persistence/migration-owners.json'], {
+    paymentAvailable: true
+  });
+  assert.equal(scope.shared, true);
+  assert.equal(scope.core, true);
+  assert.equal(scope.markreg, true);
+  assert.equal(scope.payment, true);
 });
 
 test('unknown migrations conservatively expand downstream coverage', () => {

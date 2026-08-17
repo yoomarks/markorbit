@@ -50,6 +50,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       !(path === 'packages/contracts/package.json' && paymentSignal)
   );
   const migrationOwnerMap = files.includes('infrastructure/persistence/migration-owners.json');
+  const hasKnownOwnedMigration = files.some(knownOwnedMigration);
+  const ownerMapWithoutOwnedMigration = migrationOwnerMap && !hasKnownOwnedMigration;
   const unknownMigration = files.some(
     (path) => starts(path, 'infrastructure/persistence/migrations/') && !knownOwnedMigration(path)
   );
@@ -61,7 +63,12 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'packages/config/')
   );
   const shared =
-    ciGovernance || genericContracts || migrationOwnerMap || unknownMigration || persistenceSource || sharedRuntime;
+    ciGovernance ||
+    genericContracts ||
+    ownerMapWithoutOwnedMigration ||
+    unknownMigration ||
+    persistenceSource ||
+    sharedRuntime;
 
   let core = files.some(
     (path) =>
