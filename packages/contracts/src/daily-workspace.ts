@@ -275,7 +275,11 @@ export interface ProductPreferenceEvent {
   subjectUserId: string;
   kind: ProductPreferenceEventKind;
   targetType:
-    'DAILY_ORBIT_ITEM' | 'CONTENT_PICK' | 'CONTENT_KIT' | 'PLATFORM_VARIANT' | 'VISUAL_OUTPUT';
+    | 'DAILY_ORBIT_ITEM'
+    | 'CONTENT_PICK'
+    | 'CONTENT_KIT'
+    | 'PLATFORM_VARIANT'
+    | 'VISUAL_OUTPUT';
   targetId: string;
   targetVersion: number | string;
   recordedAt: string;
@@ -313,3 +317,8 @@ export const noAutomaticDailyWorkspaceConsequences = Object.freeze({
   professionalCapabilityVerified: false,
   officialTruthCreated: false
 } as const);
+
+export {
+  parseCoreKnowledgeDailySourceProjection,
+  type CoreKnowledgeDailySourceProjection
+} from './daily-source.js';
