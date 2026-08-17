@@ -37,8 +37,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build Lite dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service...
-      - name: Apply exact ESLint fixes
-        run: pnpm exec eslint services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts --fix
+      - name: Apply exact WP03 lint fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          replacements = {
+              Path('services/lite/src/daily-orbit.ts'): [
+                  ('  ContentPickId,\n', ''),
+                  ('  DailyOrbitItemId,\n', ''),
+              ],
+              Path('services/lite/tests/daily-orbit.test.ts'): [
+                  ('  DailySignalId,\n', ''),
+              ],
+          }
+          for path, pairs in replacements.items():
+              text = path.read_text()
+              for old, new in pairs:
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+          pnpm exec eslint services/lite/src/daily-orbit.ts services/lite/tests/daily-orbit.test.ts --fix
       - name: Commit exact lint fixes
         run: |
           if git diff --quiet; then exit 0; fi
