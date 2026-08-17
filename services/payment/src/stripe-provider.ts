@@ -46,10 +46,12 @@ interface StripePaymentIntent {
     | 'canceled'
     | 'succeeded';
   client_secret?: string | null;
-  next_action?: {
-    type?: string;
-    redirect_to_url?: { url?: string | null } | null;
-  } | null;
+  next_action?:
+    | {
+        type?: string;
+        redirect_to_url?: { url?: string | null } | null;
+      }
+    | null;
   created?: number;
 }
 
