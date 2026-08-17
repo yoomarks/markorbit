@@ -17,7 +17,7 @@ on:
       - 'infrastructure/persistence/migration-owners.json'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   lite-content-postgres:
@@ -43,6 +43,8 @@ jobs:
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/m9-wp02-knowledge-daily-signal
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -52,6 +54,24 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Apply exact WP02 Prettier output
+        run: >-
+          pnpm exec prettier --write
+          services/core/src/index.ts
+          services/lite/src/daily-signal.ts
+          services/lite/src/http.ts
+          services/lite/tests/daily-signal.test.ts
+      - name: Commit exact Prettier output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/core/src/index.ts services/lite/src/daily-signal.ts services/lite/src/http.ts services/lite/tests/daily-signal.test.ts
+          if git diff --cached --quiet; then
+            echo "Already formatted."
+          else
+            git commit -m "chore: apply WP02 prettier"
+            git push origin HEAD:agent/m9-wp02-knowledge-daily-signal
+          fi
       - name: Create isolated Daily Signal database
         env:
           PGPASSWORD: markorbit-test-only
