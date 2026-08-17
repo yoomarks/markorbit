@@ -72,8 +72,11 @@ async function stripeApiRequest(
 
 async function readRawBody(request: IncomingMessage): Promise<Uint8Array> {
   const chunks: Buffer[] = [];
-  for await (const chunk of request)
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  for await (const chunk of request as AsyncIterable<unknown>) {
+    if (!(chunk instanceof Uint8Array))
+      throw new Error('Stripe sandbox webhook stream chunk is not binary data.');
+    chunks.push(Buffer.from(chunk));
+  }
   return new Uint8Array(Buffer.concat(chunks));
 }
 
