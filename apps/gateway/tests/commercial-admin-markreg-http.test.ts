@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { InternalOperatorPrincipal } from '@markorbit/contracts';
+import { AuthenticationError, type InternalOperatorPrincipal } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
 import type { CoreAuthenticationClient } from '../src/auth.js';
 import { createGatewayCommercialAdminMarkRegRoutes } from '../src/commercial-admin-markreg-http.js';
@@ -81,7 +81,9 @@ describe('Gateway MarkReg commercial admin boundary', () => {
       markRegUrl: 'http://markreg.test',
       authenticationClient,
       internalServiceSecret: 'internal-secret'
-    }).find((item) => item.path === '/api/internal/commercial-admin/workspaces/:workspaceId/orders/:orderId')!;
+    }).find(
+      (item) => item.path === '/api/internal/commercial-admin/workspaces/:workspaceId/orders/:orderId'
+    )!;
 
     await expect(
       route.handle(
@@ -101,10 +103,7 @@ describe('Gateway MarkReg commercial admin boundary', () => {
     const deniedClient = {
       resolveInternalOperator: () =>
         Promise.reject(
-          Object.assign(new Error('Commercial admin capability is required.'), {
-            name: 'AuthenticationError',
-            code: 'PERMISSION_DENIED'
-          })
+          new AuthenticationError('PERMISSION_DENIED', 'Commercial admin capability is required.')
         )
     } as unknown as CoreAuthenticationClient;
     const route = createGatewayCommercialAdminMarkRegRoutes({
@@ -125,6 +124,9 @@ describe('Gateway MarkReg commercial admin boundary', () => {
       }
     };
 
-    await expect(route.handle(spoofed)).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
+    await expect(route.handle(spoofed)).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSION_DENIED'
+    });
   });
 });
