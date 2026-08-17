@@ -46,12 +46,10 @@ interface StripePaymentIntent {
     | 'canceled'
     | 'succeeded';
   client_secret?: string | null;
-  next_action?:
-    | {
-        type?: string;
-        redirect_to_url?: { url?: string | null } | null;
-      }
-    | null;
+  next_action?: {
+    type?: string;
+    redirect_to_url?: { url?: string | null } | null;
+  } | null;
   created?: number;
 }
 
@@ -74,7 +72,11 @@ interface StripeEvent {
 }
 
 class StripeProviderError extends Error {
-  constructor(message: string, readonly requestId?: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly requestId?: string,
+    readonly status?: number
+  ) {
     super(message);
     this.name = 'StripeProviderError';
   }
@@ -254,9 +256,7 @@ export class StripePaymentProviderAdapter
       );
     const parts = signatureHeader.split(',').map((part) => part.trim());
     const timestampText = parts.find((part) => part.startsWith('t='))?.slice(2);
-    const signatures = parts
-      .filter((part) => part.startsWith('v1='))
-      .map((part) => part.slice(3));
+    const signatures = parts.filter((part) => part.startsWith('v1=')).map((part) => part.slice(3));
     const timestamp = Number(timestampText);
     if (!Number.isSafeInteger(timestamp) || signatures.length === 0)
       throw new PaymentLifecycleError(
@@ -430,7 +430,11 @@ export class StripePaymentProviderAdapter
     try {
       payload = await response.json();
     } catch {
-      throw new StripeProviderError('Stripe API returned invalid JSON.', requestId, response.status);
+      throw new StripeProviderError(
+        'Stripe API returned invalid JSON.',
+        requestId,
+        response.status
+      );
     }
     if (!response.ok) {
       const message =
