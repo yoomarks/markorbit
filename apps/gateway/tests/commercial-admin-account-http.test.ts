@@ -152,9 +152,15 @@ describe('Gateway commercial admin account boundary', () => {
     const route = routes(client()).find(
       (item) => item.path === '/api/internal/commercial-admin/operator'
     )!;
-    const malicious = request();
-    malicious.headers['x-markorbit-role'] = 'WORKSPACE_ADMIN';
-    malicious.headers['x-markorbit-account-type'] = 'INTERNAL';
+    const base = request();
+    const malicious: JsonRequest = {
+      ...base,
+      headers: {
+        ...base.headers,
+        'x-markorbit-role': 'WORKSPACE_ADMIN',
+        'x-markorbit-account-type': 'INTERNAL'
+      }
+    };
 
     const response = await route.handle(malicious);
     expect(response.status).toBe(200);
