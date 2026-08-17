@@ -1,0 +1,41 @@
+name: M9 WP01 Prettier Artifact
+
+on:
+  push:
+    branches:
+      - agent/m9-wp01-daily-workspace-contracts
+
+permissions:
+  contents: read
+
+env:
+  CI: '1'
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP01 files
+        run: >-
+          pnpm exec prettier --write
+          docs/architecture/MO-LITE-DAILY-WORKSPACE-AUTHORITY-BOUNDARY.md
+          docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md
+          packages/contracts/src/daily-workspace.ts
+          packages/contracts/tests/daily-workspace-contract.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m9-wp01-prettier
+          path: |
+            docs/architecture/MO-LITE-DAILY-WORKSPACE-AUTHORITY-BOUNDARY.md
+            docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md
+            packages/contracts/src/daily-workspace.ts
+            packages/contracts/tests/daily-workspace-contract.test.ts
