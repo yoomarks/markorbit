@@ -45,13 +45,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate persistence and owner boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
-      - name: Exact Prettier probe
-        run: |
-          pnpm exec prettier --write scripts/ci-detect-scope.mjs
-          echo '--- BEGIN FORMATTED DETECTOR ---'
-          cat scripts/ci-detect-scope.mjs
-          echo '--- END FORMATTED DETECTOR ---'
-          exit 1
+      - name: Check repository formatting
+        run: pnpm format:check
       - name: Build typed dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
       - name: Validate Capability Engine

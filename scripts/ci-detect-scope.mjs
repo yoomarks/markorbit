@@ -79,7 +79,9 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'services/core/') ||
       starts(path, 'services/knowledge/') ||
       ownedMigration(path, 'core') ||
-      /^apps\/gateway\/(src|tests)\/(auth|account|workspace|session|identity|knowledge)(?:-|\.|\/)/.test(path)
+      /^apps\/gateway\/(src|tests)\/(auth|account|workspace|session|identity|knowledge)(?:-|\.|\/)/.test(
+        path
+      )
   );
   let lite = files.some(
     (path) =>
@@ -97,13 +99,17 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     (path) =>
       starts(path, 'services/markreg/') ||
       ownedMigration(path, 'markreg') ||
-      /^apps\/gateway\/(src|tests)\/(order|markreg|matter|commercial|checkout)(?:-|\.|\/)/.test(path)
+      /^apps\/gateway\/(src|tests)\/(order|markreg|matter|commercial|checkout)(?:-|\.|\/)/.test(
+        path
+      )
   );
   let execution = files.some(
     (path) =>
       starts(path, 'services/execution/') ||
       ownedMigration(path, 'execution') ||
-      /^apps\/gateway\/(src|tests)\/(execution|professional|filing|evidence|document-package)(?:-|\.|\/)/.test(path)
+      /^apps\/gateway\/(src|tests)\/(execution|professional|filing|evidence|document-package)(?:-|\.|\/)/.test(
+        path
+      )
   );
   let mgsn = files.some(
     (path) =>
@@ -217,11 +223,9 @@ function main() {
 
   if (!args.base || !args.head)
     throw new Error('--base and --head are required unless --full is used.');
-  const stdout = execFileSync(
-    'git',
-    ['diff', '--name-only', args.base, args.head],
-    { encoding: 'utf8' }
-  );
+  const stdout = execFileSync('git', ['diff', '--name-only', args.base, args.head], {
+    encoding: 'utf8'
+  });
   const files = stdout.split(/\r?\n/).filter(Boolean);
   const scope = classifyChangedFiles(files);
   writeOutputs(scope);
