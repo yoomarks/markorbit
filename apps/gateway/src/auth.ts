@@ -2,7 +2,9 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type {
   AccountAccessResult,
   AuthenticatedUserPrincipal,
+  CommercialAdminAccountView,
   CreateWorkspaceCommand,
+  InternalOperatorPrincipal,
   LoginAccountCommand,
   RegisterAccountCommand,
   WorkspaceEntry,
@@ -43,6 +45,13 @@ export function requireTrustedOrigin(origin: string | undefined, allowed: readon
   if (!origin || !allowed.includes(origin))
     throw new AuthenticationError('UNTRUSTED_ORIGIN', 'Request origin is not trusted.');
 }
+
+export interface CommercialAdminAccountInspection {
+  source: { domain: 'CORE'; authority: 'ACCOUNT_AND_WORKSPACE' };
+  account: CommercialAdminAccountView;
+  workspaces: readonly WorkspaceEntry[];
+}
+
 export interface CoreAuthenticationClient {
   register?(command: RegisterAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
   login?(command: LoginAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
@@ -65,6 +74,15 @@ export interface CoreAuthenticationClient {
     workspaceId: string,
     correlationId?: string
   ): Promise<WorkspacePrincipal>;
+  resolveInternalOperator?(
+    token: string,
+    correlationId?: string
+  ): Promise<InternalOperatorPrincipal>;
+  inspectCommercialAdminAccount?(
+    token: string,
+    userId: string,
+    correlationId?: string
+  ): Promise<CommercialAdminAccountInspection>;
   revoke(sessionId: string, correlationId?: string): Promise<void>;
 }
 export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
@@ -154,6 +172,20 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     return this.call<WorkspacePrincipal>(
       '/internal/auth/workspace-principals/resolve',
       { token, workspaceId },
+      correlationId
+    );
+  }
+  resolveInternalOperator(token: string, correlationId?: string) {
+    return this.call<InternalOperatorPrincipal>(
+      '/internal/commercial-admin/operator-principals/resolve',
+      { token },
+      correlationId
+    );
+  }
+  inspectCommercialAdminAccount(token: string, userId: string, correlationId?: string) {
+    return this.call<CommercialAdminAccountInspection>(
+      `/internal/commercial-admin/accounts/${encodeURIComponent(userId)}/inspect`,
+      { token },
       correlationId
     );
   }
