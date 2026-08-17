@@ -1,9 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  STRIPE_API_VERSION,
-  StripePaymentProviderAdapter
-} from '../src/stripe-provider.js';
+import { STRIPE_API_VERSION, StripePaymentProviderAdapter } from '../src/stripe-provider.js';
 
 const stripeSecret = 'sk_test_markorbit_contract';
 const webhookSecret = 'whsec_markorbit_contract';
@@ -34,7 +31,7 @@ function signedWebhook(value: unknown) {
 }
 
 describe('Stripe Payment provider adapter', () => {
-  it('creates a PaymentIntent from governed money with deterministic idempotency and metadata', async () => {
+  it('creates governed PaymentIntents with metadata and idempotency', async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const adapter = new StripePaymentProviderAdapter({
       secretKey: stripeSecret,
@@ -91,7 +88,7 @@ describe('Stripe Payment provider adapter', () => {
     expect(body.get('metadata[markorbitWorkspaceId]')).toBe('workspace_contract');
   });
 
-  it('verifies the exact raw Stripe webhook before normalizing succeeded payment truth', async () => {
+  it('verifies exact raw webhook bytes before succeeded truth', async () => {
     const adapter = new StripePaymentProviderAdapter({
       secretKey: stripeSecret,
       webhookSecret,
@@ -130,7 +127,7 @@ describe('Stripe Payment provider adapter', () => {
     ).rejects.toMatchObject({ code: 'WEBHOOK_VERIFICATION_FAILED' });
   });
 
-  it('does not make Stripe payment_intent.payment_failed a terminal MarkOrbit failure', async () => {
+  it('keeps payment_failed retryable instead of terminal FAILED', async () => {
     const adapter = new StripePaymentProviderAdapter({
       secretKey: stripeSecret,
       webhookSecret,
@@ -158,7 +155,7 @@ describe('Stripe Payment provider adapter', () => {
     });
   });
 
-  it('creates bounded refunds and retrieves provider truth for reconciliation', async () => {
+  it('creates bounded refunds and retrieves reconciliation truth', async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const adapter = new StripePaymentProviderAdapter({
       secretKey: stripeSecret,
@@ -213,7 +210,7 @@ describe('Stripe Payment provider adapter', () => {
     });
   });
 
-  it('normalizes refund webhooks without trusting unsigned JSON', async () => {
+  it('normalizes signed refund webhooks', async () => {
     const adapter = new StripePaymentProviderAdapter({
       secretKey: stripeSecret,
       webhookSecret,
