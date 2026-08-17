@@ -39,7 +39,7 @@ jobs:
     env:
       LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_test
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
-      LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_test
+      LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_daily_signal_test
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +52,12 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Create isolated Daily Signal database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: >-
+          psql -h 127.0.0.1 -U markorbit_test -d postgres
+          -c "CREATE DATABASE markorbit_lite_daily_signal_test"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build Lite dependency closure
