@@ -44,7 +44,7 @@ function formBody(init?: RequestInit): URLSearchParams {
 
 describe('Stripe Payment provider adapter', () => {
   it('creates governed PaymentIntents with metadata and idempotency', async () => {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
     const fetcher: typeof fetch = (input, init) => {
       calls.push({ url: fetchInputUrl(input), init });
       return Promise.resolve(
@@ -171,7 +171,7 @@ describe('Stripe Payment provider adapter', () => {
   });
 
   it('creates bounded refunds and retrieves reconciliation truth', async () => {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
     const fetcher: typeof fetch = (input, init) => {
       const url = fetchInputUrl(input);
       calls.push({ url, init });
