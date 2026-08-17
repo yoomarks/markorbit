@@ -41,8 +41,11 @@ jobs:
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
       LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_daily_signal_test
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -52,6 +55,10 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Diagnose affected workspace validation
+        run: |
+          pnpm exec turbo run build --filter="...[$BASE_SHA]" --output-logs=full --log-order=grouped
+          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]" --output-logs=full --log-order=grouped
       - name: Create isolated Daily Signal database
         env:
           PGPASSWORD: markorbit-test-only
