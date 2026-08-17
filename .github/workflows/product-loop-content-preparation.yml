@@ -17,7 +17,7 @@ on:
       - 'infrastructure/persistence/migration-owners.json'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   lite-content-postgres:
@@ -43,8 +43,6 @@ jobs:
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/m9-wp02-knowledge-daily-signal
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -54,36 +52,6 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Use local source-runtime adapter
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('services/lite/src/daily-signal.ts')
-          text = path.read_text()
-          old = "import {\n  parseCoreKnowledgeDailySourceProjection,\n  type CoreKnowledgeDailySourceProjection\n} from '@markorbit/contracts/daily-workspace';"
-          new = "import {\n  parseCoreKnowledgeDailySourceProjection,\n  type CoreKnowledgeDailySourceProjection\n} from './daily-source-runtime.js';"
-          if old not in text:
-              raise SystemExit('Daily runtime import marker missing')
-          path.write_text(text.replace(old, new, 1))
-
-          workspace = Path('packages/contracts/src/daily-workspace.ts')
-          workspace_text = workspace.read_text()
-          bridge = "\nexport {\n  parseCoreKnowledgeDailySourceProjection,\n  type CoreKnowledgeDailySourceProjection\n} from './daily-source.js';\n"
-          if bridge in workspace_text:
-              workspace.write_text(workspace_text.replace(bridge, '\n', 1))
-          PY
-          pnpm exec prettier --write services/lite/src/daily-signal.ts services/lite/src/daily-source-runtime.ts packages/contracts/src/daily-workspace.ts
-      - name: Commit source-runtime adapter wiring
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/lite/src/daily-signal.ts services/lite/src/daily-source-runtime.ts packages/contracts/src/daily-workspace.ts
-          if git diff --cached --quiet; then
-            echo "Source-runtime adapter already wired."
-          else
-            git commit -m "fix: avoid new contract subpaths in Lite source runtime"
-            git push origin HEAD:agent/m9-wp02-knowledge-daily-signal
-          fi
       - name: Create isolated Daily Signal database
         env:
           PGPASSWORD: markorbit-test-only
