@@ -240,7 +240,10 @@ export function createGatewayAccountAccessRoutes(
       handle: async (request) => {
         try {
           const authentication = client(options);
-          if (!authentication.resolveInternalOperator || !authentication.inspectCommercialAdminAccount)
+          if (
+            !authentication.resolveInternalOperator ||
+            !authentication.inspectCommercialAdminAccount
+          )
             throw new AuthenticationError(
               'AUTHENTICATION_SERVICE_UNAVAILABLE',
               'Commercial admin account inspection is unavailable.'

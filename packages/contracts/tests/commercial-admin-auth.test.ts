@@ -7,7 +7,10 @@ import {
   type InternalOperatorPrincipal
 } from '../src/auth.js';
 
-const account = (accountType: CommercialAdminAccountView['accountType'], status: 'ACTIVE' | 'DISABLED') => ({
+const account = (
+  accountType: CommercialAdminAccountView['accountType'],
+  status: 'ACTIVE' | 'DISABLED'
+) => ({
   accountType,
   status
 });
@@ -32,7 +35,9 @@ describe('commercial admin authority contract', () => {
       capabilities: ['commercial-admin:read'],
       sessionExpiresAt: '2099-01-01T00:00:00.000Z'
     };
-    expect(parseInternalOperatorPrincipal(encodeInternalOperatorPrincipal(principal))).toEqual(principal);
+    expect(parseInternalOperatorPrincipal(encodeInternalOperatorPrincipal(principal))).toEqual(
+      principal
+    );
   });
 
   it('rejects browser-invented or unknown commercial admin capabilities', () => {
@@ -49,6 +54,8 @@ describe('commercial admin authority contract', () => {
       }),
       'utf8'
     ).toString('base64url');
-    expect(() => parseInternalOperatorPrincipal(value)).toThrow('Internal operator Principal is invalid.');
+    expect(() => parseInternalOperatorPrincipal(value)).toThrow(
+      'Internal operator Principal is invalid.'
+    );
   });
 });

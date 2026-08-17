@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AuthenticationError, type InternalOperatorPrincipal } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
 import { createGatewayAccountAccessRoutes } from '../src/account-access-http.js';
-import type {
-  CommercialAdminAccountInspection,
-  CoreAuthenticationClient
-} from '../src/auth.js';
+import type { CommercialAdminAccountInspection, CoreAuthenticationClient } from '../src/auth.js';
 
 const sessionToken = 'opaque-internal-session';
 const operator: InternalOperatorPrincipal = {
@@ -113,10 +110,7 @@ describe('Gateway commercial admin account boundary', () => {
       client({
         resolveInternalOperator: () =>
           Promise.reject(
-            new AuthenticationError(
-              'PERMISSION_DENIED',
-              'Commercial admin capability is required.'
-            )
+            new AuthenticationError('PERMISSION_DENIED', 'Commercial admin capability is required.')
           )
       })
     ).find((item) => item.path === '/api/internal/commercial-admin/accounts/:userId')!;

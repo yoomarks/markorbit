@@ -82,12 +82,18 @@ export function parseInternalOperatorPrincipal(
   value: string | undefined
 ): InternalOperatorPrincipal {
   if (!value)
-    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Internal operator Principal is required.');
+    throw new AuthenticationError(
+      'AUTHENTICATION_REQUIRED',
+      'Internal operator Principal is required.'
+    );
   let decoded: unknown;
   try {
     decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
   } catch {
-    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Internal operator Principal is invalid.');
+    throw new AuthenticationError(
+      'AUTHENTICATION_REQUIRED',
+      'Internal operator Principal is invalid.'
+    );
   }
   const envelope = decoded as Partial<InternalOperatorPrincipalEnvelope>;
   const principal = envelope.principal as Partial<InternalOperatorPrincipal> | undefined;
@@ -104,7 +110,10 @@ export function parseInternalOperatorPrincipal(
       (item) => typeof item !== 'string' || item.length === 0
     )
   )
-    throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Internal operator Principal is invalid.');
+    throw new AuthenticationError(
+      'AUTHENTICATION_REQUIRED',
+      'Internal operator Principal is invalid.'
+    );
   return structuredClone(principal as InternalOperatorPrincipal);
 }
 
@@ -141,10 +150,7 @@ export interface WorkspacePrincipal {
   sessionExpiresAt: string;
 }
 export type Principal =
-  | AnonymousPrincipal
-  | AuthenticatedUserPrincipal
-  | WorkspacePrincipal
-  | InternalOperatorPrincipal;
+  AnonymousPrincipal | AuthenticatedUserPrincipal | WorkspacePrincipal | InternalOperatorPrincipal;
 export interface InternalWorkspacePrincipalEnvelope {
   schemaVersion: 1;
   principal: WorkspacePrincipal;
