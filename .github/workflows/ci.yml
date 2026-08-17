@@ -274,6 +274,7 @@ jobs:
         if: github.event_name == 'push' || needs.detect.outputs.payment == 'true'
         run: |
           if [ -f services/payment/package.json ]; then
+            pnpm exec turbo run build --filter=@markorbit/payment-service...
             pnpm --filter @markorbit/payment-service exec vitest run tests/payment-http.test.ts tests/payment-lifecycle-http.test.ts tests/payment-postgres.test.ts tests/payment-lifecycle-postgres.test.ts
             if [ -f apps/gateway/tests/payment-http.test.ts ]; then
               pnpm --filter @markorbit/gateway exec vitest run tests/payment-http.test.ts tests/payment-runtime-wiring.test.ts
