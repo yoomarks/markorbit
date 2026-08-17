@@ -1,0 +1,30 @@
+name: Temporary Dispatch Final M8 Stripe Acceptance
+
+on:
+  push:
+    branches:
+      - agent/tmp-dispatch-stripe-final-20260818
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical Stripe sandbox acceptance on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/payment-stripe-sandbox-acceptance.yml/dispatches" -f ref=main; then
+              exit 0
+            fi
+            if [[ "$attempt" -eq 5 ]]; then
+              exit 1
+            fi
+            sleep $((attempt * 4))
+          done
