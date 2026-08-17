@@ -1,0 +1,34 @@
+name: Temporary M8 WP07 Final Prettier
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-m8-wp07-final-prettier.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/tmp-m8-wp07-final-prettier
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact WP07 audit script
+        run: pnpm exec prettier --write scripts/m8-wp-07-independent-commercial-readiness-audit.mjs
+      - name: Commit formatted output
+        run: |
+          git config user.name markorbit-ci-bot
+          git config user.email actions@users.noreply.github.com
+          git add scripts/m8-wp-07-independent-commercial-readiness-audit.mjs
+          git commit -m 'style(m8): format final WP07 audit script'
+          git push origin HEAD:agent/tmp-m8-wp07-final-prettier
