@@ -94,6 +94,19 @@ test('payment contract manifest plus payment contract remains payment-specific',
   assert.equal(scope.core, false);
 });
 
+test('workspace topology changes upgrade to full downstream validation', () => {
+  const scope = classifyChangedFiles(['turbo.json'], { paymentAvailable: true });
+  assert.equal(scope.full_workspace, true);
+  assert.equal(scope.shared, true);
+  assert.equal(scope.core, true);
+  assert.equal(scope.lite, true);
+  assert.equal(scope.capability, true);
+  assert.equal(scope.markreg, true);
+  assert.equal(scope.execution, true);
+  assert.equal(scope.mgsn, true);
+  assert.equal(scope.payment, true);
+});
+
 test('CI governance intentionally exercises cross-domain lanes', () => {
   const scope = classifyChangedFiles(['.github/workflows/ci.yml'], { paymentAvailable: false });
   assert.equal(scope.shared, true);

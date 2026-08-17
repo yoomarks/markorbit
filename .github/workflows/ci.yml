@@ -52,7 +52,7 @@ jobs:
           fi
 
   validate:
-    name: PR Fast / affected workspace
+    name: validate
     needs: detect
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -82,12 +82,12 @@ jobs:
       - name: Full typecheck for shared compiler configuration
         if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true' && needs.detect.outputs.full_typecheck == 'true'
         run: pnpm typecheck
-      - name: Story matrix for product UI changes
-        if: github.event_name == 'push' || needs.detect.outputs.web == 'true'
+      - name: Story matrix for product UI or full-workspace changes
+        if: github.event_name == 'push' || needs.detect.outputs.web == 'true' || needs.detect.outputs.full_workspace == 'true'
         run: pnpm test:story-matrix
 
   persistence:
-    name: Domain Integration / PostgreSQL + HTTP
+    name: persistence
     needs: detect
     if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
     runs-on: ubuntu-latest
@@ -287,7 +287,7 @@ jobs:
       - run: pnpm test:gateway-inventory
 
   professional-review-browser:
-    name: Selective browser journey
+    name: professional-review-browser
     needs: detect
     if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
     runs-on: ubuntu-latest

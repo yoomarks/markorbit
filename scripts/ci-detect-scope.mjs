@@ -36,6 +36,9 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   const files = [...new Set(rawFiles.map(normalize).filter(Boolean))];
   const paymentSignal = files.some(paymentSpecific);
   const paymentAvailable = options.paymentAvailable ?? existsSync('services/payment/package.json');
+  const workspaceTopology = files.some(
+    (path) => path === 'turbo.json' || path === 'pnpm-workspace.yaml' || path === 'package.json'
+  );
 
   const ciGovernance = files.some(
     (path) =>
@@ -63,6 +66,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'packages/config/')
   );
   const shared =
+    workspaceTopology ||
     ciGovernance ||
     genericContracts ||
     ownerMapWithoutOwnedMigration ||
@@ -145,10 +149,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
 
   if (payment) gateway = true;
 
-  const fullWorkspace = files.some(
-    (path) => path === 'turbo.json' || path === 'pnpm-workspace.yaml' || path === 'package.json'
-  );
-  const fullTypecheck = fullWorkspace || files.some((path) => path === 'tsconfig.base.json');
+  const fullTypecheck = workspaceTopology || files.some((path) => path === 'tsconfig.base.json');
   const integration = core || lite || capability || markreg || execution || mgsn || payment || persistence || gateway;
 
   return {
@@ -165,7 +166,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     shared,
     integration,
     browser,
-    full_workspace: fullWorkspace,
+    full_workspace: workspaceTopology,
     full_typecheck: fullTypecheck
   };
 }
