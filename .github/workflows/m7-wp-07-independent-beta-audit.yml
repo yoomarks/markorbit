@@ -2,14 +2,6 @@ name: M7 WP-07 Independent Beta Audit
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/m7-wp-07-independent-beta-audit.yml'
-      - 'scripts/m7-wp-07-independent-beta-audit.mjs'
-      - 'docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.json'
-      - 'docs/audits/MO-MVP-MILESTONE-007-BETA-READINESS-AUDIT.md'
-      - 'docs/tasks/MO-MVP-M7-WP-07-INDEPENDENT-BETA-READINESS-AUDIT.md'
-      - 'README.md'
 
 permissions:
   actions: read
@@ -45,9 +37,7 @@ jobs:
         run: |
           mkdir -p .artifacts/wp06
           gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M7_WP07_AUDITED_CANDIDATE_SHA&per_page=100" > .artifacts/m7-wp-07-run-inventory.json
-          gh run download 31612894763 \
-            --name m7-wp-06-beta-rc-matrix-31612894763 \
-            --dir .artifacts/wp06
+          gh run download 31612894763 --name m7-wp-06-beta-rc-matrix-31612894763 --dir .artifacts/wp06
       - name: Independently re-check repository ownership boundaries
         run: |
           pnpm validate:workspace
@@ -56,8 +46,6 @@ jobs:
           pnpm test:gateway-inventory
       - name: Run independent Beta readiness and authority audit
         run: node scripts/m7-wp-07-independent-beta-audit.mjs
-      - name: Final workspace check
-        run: pnpm check
       - name: Upload independent audit evidence
         if: always()
         uses: actions/upload-artifact@v4

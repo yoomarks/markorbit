@@ -2,22 +2,6 @@ name: M7 WP-06 Beta RC Matrix
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/**'
-      - '!.github/workflows/m7-wp-07-independent-beta-audit.yml'
-      - 'apps/**'
-      - 'services/**'
-      - 'packages/**'
-      - 'infrastructure/**'
-      - 'scripts/**'
-      - '!scripts/m7-wp-07-independent-beta-audit.mjs'
-      - 'tests/**'
-      - 'playwright*.ts'
-      - 'pnpm-lock.yaml'
-      - 'package.json'
-      - 'README.md'
-      - 'docs/tasks/MO-MVP-M7-WP-06-BETA-RC-RELIABILITY-MATRIX.md'
 
 permissions:
   actions: write
@@ -29,12 +13,12 @@ jobs:
     timeout-minutes: 120
     env:
       GH_TOKEN: ${{ github.token }}
-      M7_WP06_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      M7_WP06_HEAD_REF: ${{ github.head_ref || github.ref_name }}
+      M7_WP06_EXPECTED_HEAD_SHA: ${{ github.sha }}
+      M7_WP06_HEAD_REF: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
       - uses: pnpm/action-setup@v4
         with:
@@ -49,7 +33,7 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$M7_WP06_EXPECTED_HEAD_SHA"
       - name: Run full workspace release-candidate regression
         run: pnpm check
-      - name: Dispatch path-filtered predecessor gates on the exact candidate ref
+      - name: Dispatch predecessor gates on the exact candidate ref
         run: |
           workflows=(
             product-loop-closure-reliability.yml
@@ -61,7 +45,7 @@ jobs:
           for workflow in "${workflows[@]}"; do
             gh workflow run "$workflow" --ref "$M7_WP06_HEAD_REF"
           done
-      - name: Wait for path-filtered predecessor gates and record exact-head results
+      - name: Wait for predecessor gates and record exact-head results
         run: |
           mkdir -p .artifacts
           result_lines="$(mktemp)"
@@ -73,36 +57,26 @@ jobs:
             m7-wp-04-three-loop-full-journey.yml
             m7-wp-05-deployment-rehearsal.yml
           )
-
           for workflow in "${workflows[@]}"; do
             run_id=""
             for attempt in $(seq 1 60); do
               run_id="$(gh run list --workflow "$workflow" --branch "$M7_WP06_HEAD_REF" --event workflow_dispatch --limit 20 --json databaseId,headSha --jq ".[] | select(.headSha == \"$M7_WP06_EXPECTED_HEAD_SHA\") | .databaseId" | head -n 1)"
-              if [ -n "$run_id" ]; then
-                break
-              fi
+              if [ -n "$run_id" ]; then break; fi
               sleep 5
             done
-
             if [ -z "$run_id" ]; then
               jq -n --arg workflow "$workflow" '{workflow: $workflow, runId: null, conclusion: "missing"}' >> "$result_lines"
               failed=1
               continue
             fi
-
             gh run watch "$run_id" --interval 10 >/dev/null 2>&1 || true
             conclusion="$(gh run view "$run_id" --json conclusion --jq '.conclusion')"
             jq -n --arg workflow "$workflow" --argjson runId "$run_id" --arg conclusion "$conclusion" '{workflow: $workflow, runId: $runId, conclusion: $conclusion}' >> "$result_lines"
-            if [ "$conclusion" != "success" ]; then
-              failed=1
-            fi
+            if [ "$conclusion" != "success" ]; then failed=1; fi
           done
-
           jq -s --arg exactHeadSha "$M7_WP06_EXPECTED_HEAD_SHA" '{schemaVersion: 1, workPackage: "M7-WP-06", exactHeadSha: $exactHeadSha, gates: .}' "$result_lines" > .artifacts/m7-wp-06-required-gates.json
           cat .artifacts/m7-wp-06-required-gates.json
-          if [ "$failed" -ne 0 ]; then
-            exit 1
-          fi
+          if [ "$failed" -ne 0 ]; then exit 1; fi
       - name: Generate exact-head candidate fingerprint and known-limits evidence
         run: node scripts/m7-wp-06-beta-rc-matrix.mjs
       - name: Upload Beta RC matrix evidence

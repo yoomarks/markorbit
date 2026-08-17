@@ -7,10 +7,7 @@ on:
       - '.github/workflows/product-loop-candidate-qualification.yml'
       - 'services/lite/**'
       - 'packages/contracts/src/product-loop.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'scripts/validate-workspace.mjs'
-      - 'pnpm-lock.yaml'
+      - 'infrastructure/persistence/migrations/0040_lite_candidate_qualification.sql'
 
 permissions:
   contents: read

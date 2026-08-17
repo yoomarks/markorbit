@@ -6,8 +6,7 @@ on:
     paths:
       - '.github/workflows/m6-wp-05-reflection-disposition-profile-twin.yml'
       - 'services/capability-engine/**'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0047_capability_engine_reflection_disposition_profile_twin.sql'
       - 'docs/tasks/MO-MVP-M6-WP-05-REFLECTION-DISPOSITION-PROFILE-TWIN.md'
 
 permissions:

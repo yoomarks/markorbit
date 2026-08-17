@@ -121,7 +121,18 @@ For bug fixes, reproduce when practical:
 
 **failure before fix → change → passing verification after fix**
 
-A PR is not ready until these repository gates pass:
+PR validation uses affected-scope testing rather than treating every PR as a release candidate:
+
+- always run repository/workspace boundary validation, formatting and the CI scope-detector tests;
+- run Turbo lint, typecheck, test and build for changed packages plus their affected dependency graph;
+- run PostgreSQL/HTTP integration only for affected owners (`core`, `lite`, `capability`, `markreg`, `execution`, `mgsn`, `payment`) and affected Gateway/Persistence boundaries;
+- owner-specific migrations select their owner plus Persistence; unknown/shared migrations, `packages/persistence`, shared runtime packages and generic shared contracts conservatively expand downstream coverage;
+- UI/browser checks run only for affected UI/Playwright/Storybook surfaces;
+- root workspace topology changes may intentionally upgrade a PR to full-workspace validation.
+
+Full workspace regression remains mandatory on `main` and for explicit release-candidate/reliability workflows. Release-level reliability, full-journey and browser matrices must not be used as unconditional ordinary-PR gates.
+
+The canonical full regression remains:
 
 ```bash
 pnpm format:check
@@ -130,6 +141,8 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+Selective CI is a scheduling policy, not reduced quality. Do not skip a relevant test to make a PR faster; fix scope detection or escalate the affected domain when ownership is uncertain.
 
 New behavior requires tests. New contract behavior requires fixtures. New user journeys require Playwright coverage when a UI exists.
 

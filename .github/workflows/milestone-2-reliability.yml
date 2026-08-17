@@ -1,8 +1,11 @@
 name: Milestone 2 reliability
 
 on:
-  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
 
 permissions:
   contents: read
@@ -60,8 +63,6 @@ jobs:
           mkdir -p .artifacts
           set -o pipefail
           pnpm test:milestone2:reliability 2>&1 | tee .artifacts/milestone-2-reliability.log
-      - name: Final workspace check
-        run: pnpm check
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

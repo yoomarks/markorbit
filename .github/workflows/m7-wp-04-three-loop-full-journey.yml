@@ -1,37 +1,11 @@
 name: M7 WP-04 Three-loop Full-journey Acceptance
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/m7-wp-04-three-loop-full-journey.yml'
-      - 'services/core/**'
-      - 'services/lite/**'
-      - 'services/markreg/**'
-      - 'services/execution/**'
-      - 'services/mgsn/**'
-      - 'services/capability-engine/**'
-      - 'apps/gateway/**'
-      - 'apps/lite-web/**'
-      - 'apps/markreg-web/**'
-      - 'packages/contracts/**'
-      - 'infrastructure/persistence/**'
-      - 'scripts/m7-wp-04-product-opportunity-runtime.integration.test.ts'
-      - 'scripts/m4-provider-runtime.integration.test.ts'
-      - 'scripts/m5-evidence-lifecycle-runtime.integration.test.ts'
-      - 'scripts/product-loop-closure-real-runtime.ts'
-      - 'scripts/order-journey-real-runtime.ts'
-      - 'scripts/m6-wp-06-capability-center-real-runtime.ts'
-      - 'scripts/validate-product-loop-closure-no-interception.mjs'
-      - 'scripts/validate-order-journey-no-interception.mjs'
-      - 'tests/e2e/product-loop-closure-real-runtime.spec.ts'
-      - 'tests/e2e/order-journey-real-runtime.spec.ts'
-      - 'tests/e2e/m6-wp-06-capability-center-real-runtime.spec.ts'
-      - 'playwright.product-loop-closure-real-runtime.config.ts'
-      - 'playwright.order-journey-real-runtime.config.ts'
-      - 'playwright.m6-wp-06-capability-center-real-runtime.config.ts'
-      - 'docs/tasks/MO-MVP-M7-WP-04-THREE-LOOP-FULL-JOURNEY-REAL-RUNTIME.md'
-      - 'pnpm-lock.yaml'
+  schedule:
+    - cron: '17 4 * * *'
 
 permissions:
   contents: read
@@ -55,7 +29,7 @@ jobs:
           --health-retries 20
     env:
       PGPASSWORD: markorbit-test-only
-      M7_WP04_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M7_WP04_EXPECTED_HEAD_SHA: ${{ github.sha }}
       M7_WP04_PRODUCT_OPPORTUNITY_REQUIRED: '1'
       M7_WP04_CORE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_core
       M7_WP04_LITE_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp04_lite
@@ -75,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
       - uses: pnpm/action-setup@v4
         with:

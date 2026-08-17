@@ -7,10 +7,7 @@ on:
       - '.github/workflows/product-loop-content-preparation.yml'
       - 'services/lite/**'
       - 'packages/contracts/src/product-loop.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'scripts/validate-workspace.mjs'
-      - 'pnpm-lock.yaml'
+      - 'infrastructure/persistence/migrations/0039_lite_content_preparation.sql'
 
 permissions:
   contents: read

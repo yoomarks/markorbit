@@ -6,8 +6,7 @@ on:
     paths:
       - '.github/workflows/m6-wp-04-private-reflection-candidate.yml'
       - 'services/capability-engine/**'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0046_capability_engine_reflection_candidates.sql'
       - 'docs/tasks/MO-MVP-M6-WP-04-PRIVATE-REFLECTION-CANDIDATE.md'
 
 permissions:

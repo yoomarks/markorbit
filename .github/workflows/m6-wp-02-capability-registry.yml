@@ -7,9 +7,7 @@ on:
       - '.github/workflows/m6-wp-02-capability-registry.yml'
       - 'services/capability-engine/**'
       - 'packages/contracts/src/capability-learning.ts'
-      - 'infrastructure/persistence/migrations/**'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'pnpm-lock.yaml'
+      - 'infrastructure/persistence/migrations/0044_capability_engine_runtime_registry.sql'
 
 permissions:
   contents: read
