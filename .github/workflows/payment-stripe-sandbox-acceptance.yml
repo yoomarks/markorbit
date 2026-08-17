@@ -20,7 +20,7 @@ jobs:
       STRIPE_SANDBOX_ACCEPTANCE: '1'
       STRIPE_WEBHOOK_PORT: '4318'
       STRIPE_CLI_VERSION: v1.50.1
-      STRIPE_SANDBOX_EVIDENCE_DIR: ${{ runner.temp }}/stripe-sandbox-evidence
+      STRIPE_SANDBOX_EVIDENCE_DIR: /tmp/markorbit-stripe-sandbox-evidence
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -121,7 +121,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: stripe-sandbox-acceptance-${{ github.run_id }}
-          path: ${{ runner.temp }}/stripe-sandbox-evidence
+          path: /tmp/markorbit-stripe-sandbox-evidence
           if-no-files-found: warn
           retention-days: 30
 
