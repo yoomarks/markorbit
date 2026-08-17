@@ -267,8 +267,7 @@ export function deriveDailySignal(
   const createdAt = new Date(options.createdAt ?? projection.source.observedAt).toISOString();
   const base = {
     schemaVersion: 1 as const,
-    dailySignalId:
-      options.id ?? (`daily-signal_${randomUUID().replaceAll('-', '')}` as DailySignalId),
+    dailySignalId: options.id ?? `daily-signal_${randomUUID().replaceAll('-', '')}`,
     workspaceId,
     version: 1,
     source: clone(projection.source),
@@ -308,7 +307,7 @@ export class PostgresLiteDailySignalStore {
     private readonly sourceAuthority: DailyKnowledgeSourceAuthority,
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly nextId: () => DailySignalId = () =>
-      `daily-signal_${randomUUID().replaceAll('-', '')}` as DailySignalId
+      `daily-signal_${randomUUID().replaceAll('-', '')}`
   ) {}
 
   async importKnowledgeSource(command: Readonly<ImportKnowledgeDailySignalCommand>): Promise<DailySignal> {
