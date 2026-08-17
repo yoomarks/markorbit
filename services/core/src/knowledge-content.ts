@@ -17,6 +17,10 @@ export interface KnowledgeReadyPackageContentRepository {
   createOrFind(
     content: KnowledgeReadyPackageContent
   ): Promise<{ content: KnowledgeReadyPackageContent; created: boolean }>;
+  findByReadyPackage(
+    workspaceId: string,
+    readyPackageId: string
+  ): Promise<KnowledgeReadyPackageContent | null>;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -30,6 +34,14 @@ export class MemoryKnowledgeReadyPackageContentRepository implements KnowledgeRe
     if (existing) return { content: clone(existing), created: false };
     this.rows.set(candidate.intakeId, clone(candidate));
     return { content: clone(candidate), created: true };
+  }
+
+  async findByReadyPackage(workspaceId: string, readyPackageId: string) {
+    await Promise.resolve();
+    const value = [...this.rows.values()].find(
+      (row) => row.workspaceId === workspaceId && row.readyPackageId === readyPackageId
+    );
+    return value ? clone(value) : null;
   }
 
   count() {
@@ -157,5 +169,13 @@ export class PostgresKnowledgeReadyPackageContentRepository implements Knowledge
     );
     const row = result.rows[0] as Row & { created: boolean };
     return { content: mapRow(row), created: row.created };
+  }
+
+  async findByReadyPackage(workspaceId: string, readyPackageId: string) {
+    const result = await this.query.query(
+      'SELECT * FROM knowledge_intake_contents WHERE workspace_id=$1 AND ready_package_id=$2 ORDER BY consumed_at DESC LIMIT 1',
+      [workspaceId, readyPackageId]
+    );
+    return result.rows[0] ? mapRow(result.rows[0] as Row) : null;
   }
 }
