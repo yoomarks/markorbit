@@ -62,14 +62,14 @@ describe('M9-WP-02 Daily Signal derivation', () => {
   });
 
   it('does not invent jurisdiction or institution when the source has no marker', () => {
-    const content = '# Professional update\n\nA general industry update was published.\n';
+    const content = '# Professional update\n\nA general professional update was published.\n';
     const signal = deriveDailySignal(workspaceId, projection(content), {
       id: 'daily-signal_m9-wp02-generic'
     });
     expect(signal.jurisdictions).toEqual([]);
     expect(signal.institution).toBeUndefined();
     expect(signal.topicTags).toEqual(['professional-update']);
-    expect(signal.changeType).toBe('INDUSTRY_NEWS');
+    expect(signal.changeType).toBe('OTHER');
     expect(signal.timeSensitivity).toBe('LOW');
   });
 
