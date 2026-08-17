@@ -8,6 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsup src/index.ts src/main.ts --format esm --dts --clean",
     "test": "vitest run",
+    "test:stripe-sandbox": "vitest run tests/stripe-provider.sandbox.test.ts --reporter=verbose",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
   },
