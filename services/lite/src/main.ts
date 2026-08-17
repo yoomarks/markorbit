@@ -12,6 +12,10 @@ import {
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
+import {
+  HttpCoreDailyKnowledgeSourceAuthority,
+  PostgresLiteDailySignalStore
+} from './daily-signal.js';
 import { PostgresProductLoopFeedbackStore } from './feedback.js';
 import { createLiteProductLoopRoutes } from './http.js';
 import {
@@ -35,6 +39,7 @@ if (!configuredInternalServiceSecret)
   throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable Lite runtime.');
 const internalServiceSecret: string = configuredInternalServiceSecret;
 const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
+const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
 
 const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
 const database = new ManagedDatabase(
@@ -48,6 +53,11 @@ await database.start();
 const pool = database.getPool();
 const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool);
 const analyticsStore = new PostgresProductConversionAnalyticsStore(pool);
+const dailySignalStore = new PostgresLiteDailySignalStore(
+  database,
+  pool,
+  new HttpCoreDailyKnowledgeSourceAuthority(coreUrl, internalServiceSecret)
+);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   async resolve(workspaceId, locator) {
@@ -200,7 +210,8 @@ const runtime = createServiceRuntime(serviceManifest, {
     journeyService,
     candidateStore,
     feedbackStore,
-    analyticsStore
+    analyticsStore,
+    dailySignalStore
   })
 });
 

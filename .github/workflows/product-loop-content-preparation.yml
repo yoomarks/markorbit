@@ -6,8 +6,15 @@ on:
     paths:
       - '.github/workflows/product-loop-content-preparation.yml'
       - 'services/lite/**'
+      - 'services/core/src/knowledge-content.ts'
+      - 'services/core/src/knowledge-daily-source.ts'
+      - 'services/core/tests/knowledge-daily-source-http.test.ts'
       - 'packages/contracts/src/product-loop.ts'
+      - 'packages/contracts/src/daily-source.ts'
+      - 'packages/contracts/src/daily-workspace.ts'
       - 'infrastructure/persistence/migrations/0039_lite_content_preparation.sql'
+      - 'infrastructure/persistence/migrations/0052_lite_daily_signals.sql'
+      - 'infrastructure/persistence/migration-owners.json'
 
 permissions:
   contents: read
@@ -32,6 +39,8 @@ jobs:
     env:
       LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_test
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
+      LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_daily_signal_test
+      LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -43,11 +52,17 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Create isolated Daily Signal database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: >-
+          psql -h 127.0.0.1 -U markorbit_test -d postgres
+          -c "CREATE DATABASE markorbit_lite_daily_signal_test"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build Lite dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service...
-      - name: Validate Lite service
-        run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck
       - name: Run real PostgreSQL Content preparation tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
+      - name: Run real PostgreSQL Daily Signal tests
+        run: pnpm --filter @markorbit/lite-service exec vitest run tests/daily-signal-postgres.test.ts

@@ -24,6 +24,7 @@ import {
   validateReadyPackageContentExport,
   type KnowledgeReadyPackageContentRepository
 } from './knowledge-content.js';
+import { resolveAcceptedKnowledgeDailySource } from './knowledge-daily-source.js';
 import {
   fingerprintCoreIntakeRequest,
   parseCoreIntakeRequest,
@@ -509,6 +510,42 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         },
         {
           method: 'GET' as const,
+          path: '/internal/knowledge/ready-packages/:readyPackageId/daily-source',
+          handle: internal(async (request) => {
+            const workspaceId = request.headers['x-markorbit-workspace-id'];
+            const readyPackageId = request.params.readyPackageId;
+            if (!workspaceId || !canonicalUuid(workspaceId))
+              throw new HttpError(
+                400,
+                'INVALID_WORKSPACE_CONTEXT',
+                'Workspace context is required.'
+              );
+            if (!readyPackageId?.trim())
+              throw new HttpError(400, 'INVALID_REQUEST', 'readyPackageId is required.');
+            if (!options.knowledgeIntakes || !options.knowledgeContents)
+              throw new HttpError(
+                503,
+                'KNOWLEDGE_DAILY_SOURCE_UNAVAILABLE',
+                'Accepted Knowledge Daily source projection is unavailable.',
+                true
+              );
+            const projection = await resolveAcceptedKnowledgeDailySource(
+              options.knowledgeIntakes,
+              options.knowledgeContents,
+              workspaceId.toLowerCase(),
+              readyPackageId
+            );
+            if (!projection)
+              throw new HttpError(
+                404,
+                'ACCEPTED_KNOWLEDGE_DAILY_SOURCE_NOT_FOUND',
+                'Accepted Knowledge ReadyPackage content was not found for this Workspace.'
+              );
+            return json(200, projection);
+          })
+        },
+        {
+          method: 'GET' as const,
           path: '/internal/knowledge/ready-packages/:readyPackageId/product-loop-source',
           handle: internal(async (request) => {
             const workspaceId = request.headers['x-markorbit-workspace-id'];
@@ -564,5 +601,6 @@ export * from './account-access.js';
 export * from './account-onboarding.js';
 export * from './knowledge-intake.js';
 export * from './knowledge-content.js';
+export * from './knowledge-daily-source.js';
 export * from './knowledge-v2-delivery.js';
 export * from './knowledge-v2-ingress.js';
