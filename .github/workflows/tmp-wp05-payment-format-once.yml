@@ -1,0 +1,55 @@
+name: TMP WP05 Payment Format Once
+
+on:
+  push:
+    branches:
+      - agent/m8-wp05-commercial-admin-operator-control
+    paths:
+      - .github/workflows/tmp-wp05-payment-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m8-wp05-commercial-admin-operator-control
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier
+        run: >-
+          pnpm exec prettier --write
+          services/payment/src/index.ts
+          services/payment/src/payment-admin-http.ts
+          services/payment/src/payment-admin.ts
+          services/payment/src/payment-postgres.ts
+          services/payment/tests/payment-admin-http.test.ts
+      - name: Verify formatting
+        run: >-
+          pnpm exec prettier --check
+          services/payment/src/index.ts
+          services/payment/src/payment-admin-http.ts
+          services/payment/src/payment-admin.ts
+          services/payment/src/payment-postgres.ts
+          services/payment/tests/payment-admin-http.test.ts
+      - name: Remove one-shot workflow and commit
+        run: |
+          git config user.name "markorbit-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/tmp-wp05-payment-format-once.yml
+          git add services/payment/src/index.ts \
+            services/payment/src/payment-admin-http.ts \
+            services/payment/src/payment-admin.ts \
+            services/payment/src/payment-postgres.ts \
+            services/payment/tests/payment-admin-http.test.ts
+          git commit -m "style(m8): format Payment admin read batch"
+          git push origin HEAD:agent/m8-wp05-commercial-admin-operator-control
