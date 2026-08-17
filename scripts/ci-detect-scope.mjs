@@ -150,7 +150,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   if (payment) gateway = true;
 
   const fullTypecheck = workspaceTopology || files.some((path) => path === 'tsconfig.base.json');
-  const integration = core || lite || capability || markreg || execution || mgsn || payment || persistence || gateway;
+  const integration =
+    core || lite || capability || markreg || execution || mgsn || payment || persistence || gateway;
 
   return {
     core,
@@ -214,8 +215,11 @@ function main() {
     return;
   }
 
-  if (!args.base || !args.head) throw new Error('--base and --head are required unless --full is used.');
-  const stdout = execFileSync('git', ['diff', '--name-only', args.base, args.head], { encoding: 'utf8' });
+  if (!args.base || !args.head)
+    throw new Error('--base and --head are required unless --full is used.');
+  const stdout = execFileSync('git', ['diff', '--name-only', args.base, args.head], {
+    encoding: 'utf8'
+  });
   const files = stdout.split(/\r?\n/).filter(Boolean);
   const scope = classifyChangedFiles(files);
   writeOutputs(scope);

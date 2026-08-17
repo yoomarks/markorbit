@@ -53,7 +53,10 @@ test('owner map without an owned migration is conservatively shared', () => {
 });
 
 test('unknown migrations conservatively expand downstream coverage', () => {
-  const scope = classifyChangedFiles(['infrastructure/persistence/migrations/9999_shared_unknown.sql'], { paymentAvailable: true });
+  const scope = classifyChangedFiles(
+    ['infrastructure/persistence/migrations/9999_shared_unknown.sql'],
+    { paymentAvailable: true }
+  );
   assert.equal(scope.shared, true);
   assert.equal(scope.core, true);
   assert.equal(scope.lite, true);
@@ -72,7 +75,9 @@ test('web changes select browser validation without forcing database integration
 });
 
 test('generic contracts expand to downstream domains without forcing browser E2E', () => {
-  const scope = classifyChangedFiles(['packages/contracts/src/workspace.ts'], { paymentAvailable: true });
+  const scope = classifyChangedFiles(['packages/contracts/src/workspace.ts'], {
+    paymentAvailable: true
+  });
   assert.equal(scope.shared, true);
   assert.equal(scope.core, true);
   assert.equal(scope.lite, true);
