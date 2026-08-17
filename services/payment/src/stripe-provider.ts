@@ -46,12 +46,10 @@ interface StripePaymentIntent {
     | 'canceled'
     | 'succeeded';
   client_secret?: string | null;
-  next_action?:
-    | {
-        type?: string;
-        redirect_to_url?: { url?: string | null } | null;
-      }
-    | null;
+  next_action?: {
+    type?: string;
+    redirect_to_url?: { url?: string | null } | null;
+  } | null;
   created?: number;
 }
 
@@ -245,9 +243,7 @@ export class StripePaymentProviderAdapter
     return providerAction(intent);
   }
 
-  async verifyWebhook(
-    input: Readonly<PaymentWebhookInput>
-  ): Promise<VerifiedProviderPaymentEvent> {
+  async verifyWebhook(input: Readonly<PaymentWebhookInput>): Promise<VerifiedProviderPaymentEvent> {
     const signatureHeader = input.headers['stripe-signature'] ?? input.headers['Stripe-Signature'];
     if (!signatureHeader)
       throw new PaymentLifecycleError(
@@ -311,7 +307,6 @@ export class StripePaymentProviderAdapter
           case 'payment_intent.payment_failed':
             // Stripe PaymentIntents have no terminal FAILED status. A failed attempt can return
             // to requires_payment_method and later succeed, so do not freeze MarkOrbit truth as FAILED.
-            void intent.status;
             return 'PAYMENT_REQUIRES_ACTION' as const;
           default:
             throw new PaymentLifecycleError(
