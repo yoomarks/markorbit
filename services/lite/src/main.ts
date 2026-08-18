@@ -7,12 +7,18 @@ import type {
 } from '@markorbit/contracts/product-loop';
 import { createServiceRuntime } from '@markorbit/service-kit';
 import { PostgresLiteCandidateQualificationStore } from './candidate-qualification.js';
+import { ContentKitService, PostgresContentKitLifecycleReader } from './content-kit.js';
+import { createContentKitRoutes } from './content-kit-http.js';
 import {
   PostgresLiteContentPreparationStore,
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
-import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';
+import {
+  DailyOrbitService,
+  NoCreatorPreferenceProvider,
+  PostgresDailySignalReader
+} from './daily-orbit.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
   PostgresLiteDailySignalStore
@@ -205,20 +211,30 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 };
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
+const creatorPreferences = new NoCreatorPreferenceProvider();
 const dailyOrbitService = new DailyOrbitService(
   new PostgresDailySignalReader(pool),
-  journeyService
+  journeyService,
+  creatorPreferences
+);
+const contentKitService = new ContentKitService(
+  dailyOrbitService,
+  new PostgresContentKitLifecycleReader(pool),
+  creatorPreferences
 );
 const runtime = createServiceRuntime(serviceManifest, {
-  routes: createLiteProductLoopRoutes({
-    internalServiceSecret,
-    journeyService,
-    candidateStore,
-    feedbackStore,
-    analyticsStore,
-    dailySignalStore,
-    dailyOrbitService
-  })
+  routes: [
+    ...createLiteProductLoopRoutes({
+      internalServiceSecret,
+      journeyService,
+      candidateStore,
+      feedbackStore,
+      analyticsStore,
+      dailySignalStore,
+      dailyOrbitService
+    }),
+    ...createContentKitRoutes({ internalServiceSecret, contentKitService })
+  ]
 });
 
 async function shutdown(signal: string) {
