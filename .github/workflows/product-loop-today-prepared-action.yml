@@ -1,6 +1,6 @@
 name: Product Loop Today Prepared Action
 
-# Exact-head gate for the authenticated Today -> Prepared Action -> owner handoff journey, including completed-handoff replay safety.
+# Exact-head gate for the authenticated Daily Workspace SEE -> CREATE -> MOVE journey.
 on:
   workflow_dispatch:
   pull_request:
@@ -8,11 +8,15 @@ on:
       - '.github/workflows/product-loop-today-prepared-action.yml'
       - 'apps/gateway/src/product-loop-http.ts'
       - 'apps/gateway/tests/product-loop-http.test.ts'
+      - 'apps/gateway/tests/product-loop-daily-workspace-http.test.ts'
       - 'apps/lite-web/**'
       - 'services/lite/**'
       - 'services/markreg/**'
       - 'packages/contracts/src/product-loop.ts'
+      - 'packages/contracts/src/daily-workspace.ts'
       - 'infrastructure/persistence/migrations/0042_lite_prepared_action_journey.sql'
+      - 'infrastructure/persistence/migrations/0052_lite_daily_signals.sql'
+      - 'infrastructure/persistence/migrations/0053_lite_visual_bridge.sql'
       - 'scripts/product-loop-today-runtime.integration.test.ts'
       - 'scripts/product-loop-today-real-runtime.ts'
       - 'tests/e2e/product-loop-today-real-runtime.spec.ts'
@@ -54,9 +58,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
-      - name: Build WP-05 dependency closure
+      - name: Build M9 WP06 dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
-      - name: Lint and typecheck WP-05 packages
+      - name: Lint and typecheck M9 WP06 packages
         run: |
           pnpm --filter @markorbit/lite-service lint
           pnpm --filter @markorbit/lite-service typecheck
@@ -71,8 +75,10 @@ jobs:
       - name: Run authenticated Lite HTTP integration
         run: pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
       - name: Run Gateway Product-loop boundary tests
-        run: pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
-      - name: Build Today Storybook
+        run: |
+          pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
+          pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-daily-workspace-http.test.ts
+      - name: Build Daily Workspace Storybook
         run: pnpm --filter @markorbit/lite-web build-storybook
 
   real-runtime-browser:
@@ -106,7 +112,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
-      - name: Build WP-05 browser dependency closure
+      - name: Build M9 WP06 browser dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
-      - name: Run desktop and mobile real-runtime journey
+      - name: Run desktop and mobile Daily Workspace journey
         run: pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts
