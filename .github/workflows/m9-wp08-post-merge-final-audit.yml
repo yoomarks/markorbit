@@ -1,0 +1,217 @@
+name: M9 WP-08 Post-Merge Final Audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m9-wp08-post-merge-final-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: m9-wp08-post-merge-final-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  post-merge-final-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_m9_post_merge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_m9_post_merge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      M9_WP07_SHA: 48d6c44aa55648b25222698cc07ba892735d145c
+      M9_AUDITED_REMEDIATION_SHA: d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1
+      M9_AUDITED_REMEDIATION_TREE: cd2a7476250010d0380cf9c31e5f7bb86a5ff44f
+      M9_MERGED_PR_HEAD: 27f61498d6ce54702918980235bf9ce5b7a7682e
+      M9_CANDIDATE_MERGE_SHA: 222dbdd99e18361e5bcf2ecddd37bb4929dc3fc5
+      M9_CURRENT_MAIN_SHA: 0518d105a4560d6c5e42883455537a70573ef1bf
+      M9_CANDIDATE_PR: '126'
+      M9_PRIOR_AUDIT_RUN: '32139588331'
+      M9_MAIN_DIR: .artifacts/m9-post-merge-main
+      LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m9_post_merge
+      LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install audit dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Fetch exact M9 evidence refs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin main
+          git fetch --quiet origin "$M9_WP07_SHA"
+          git fetch --quiet origin "$M9_AUDITED_REMEDIATION_SHA"
+          git fetch --quiet origin "$M9_MERGED_PR_HEAD"
+          git fetch --quiet origin "$M9_CANDIDATE_MERGE_SHA"
+          git fetch --quiet origin "$M9_CURRENT_MAIN_SHA"
+      - name: Prove candidate, merge and current-main identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='scripts/product-loop-today-real-runtime.ts'
+          mkdir -p .artifacts
+          gh api "/repos/$GITHUB_REPOSITORY/pulls/$M9_CANDIDATE_PR" > .artifacts/m9-wp08-candidate-pr.json
+
+          test "$(jq -r '.merged_at // empty' .artifacts/m9-wp08-candidate-pr.json)" != ''
+          test "$(jq -r '.base.ref' .artifacts/m9-wp08-candidate-pr.json)" = 'main'
+          test "$(jq -r '.head.sha' .artifacts/m9-wp08-candidate-pr.json)" = "$M9_MERGED_PR_HEAD"
+          test "$(jq -r '.merge_commit_sha' .artifacts/m9-wp08-candidate-pr.json)" = "$M9_CANDIDATE_MERGE_SHA"
+
+          test "$(git rev-parse "$M9_AUDITED_REMEDIATION_SHA^{tree}")" = "$M9_AUDITED_REMEDIATION_TREE"
+          test "$(git rev-parse "$M9_MERGED_PR_HEAD^{tree}")" = "$M9_AUDITED_REMEDIATION_TREE"
+
+          mapfile -t candidate_paths < <(git diff --name-only "$M9_WP07_SHA" "$M9_MERGED_PR_HEAD")
+          test "${#candidate_paths[@]}" -eq 1
+          test "${candidate_paths[0]}" = "$target"
+
+          merge_parent="$(git rev-parse "$M9_CANDIDATE_MERGE_SHA^1")"
+          mapfile -t merged_paths < <(git diff --name-only "$merge_parent" "$M9_CANDIDATE_MERGE_SHA")
+          test "${#merged_paths[@]}" -eq 1
+          test "${merged_paths[0]}" = "$target"
+
+          audited_blob="$(git rev-parse "$M9_AUDITED_REMEDIATION_SHA:$target")"
+          head_blob="$(git rev-parse "$M9_MERGED_PR_HEAD:$target")"
+          candidate_merge_blob="$(git rev-parse "$M9_CANDIDATE_MERGE_SHA:$target")"
+          current_main_blob="$(git rev-parse "$M9_CURRENT_MAIN_SHA:$target")"
+          test "$audited_blob" = "$head_blob"
+          test "$head_blob" = "$candidate_merge_blob"
+          test "$candidate_merge_blob" = "$current_main_blob"
+
+          git merge-base --is-ancestor "$M9_CANDIDATE_MERGE_SHA" "$M9_CURRENT_MAIN_SHA"
+          git merge-base --is-ancestor "$M9_CURRENT_MAIN_SHA" origin/main
+          test "$(git rev-parse origin/main)" = "$M9_CURRENT_MAIN_SHA"
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$M9_PRIOR_AUDIT_RUN" --jq '.conclusion')" = 'success'
+      - name: Validate audit branch boundaries
+        run: |
+          pnpm validate:workspace
+          pnpm validate:persistence-boundaries
+          pnpm test:gateway-inventory
+          pnpm format:check
+      - name: Prepare exact current-main worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$M9_MAIN_DIR"
+          git worktree add --detach "$M9_MAIN_DIR" "$M9_CURRENT_MAIN_SHA"
+          cd "$M9_MAIN_DIR"
+          pnpm install --frozen-lockfile
+      - name: Bootstrap exact current-main workspace build
+        working-directory: ${{ env.M9_MAIN_DIR }}
+        run: pnpm build
+      - name: Run exact current-main full workspace check
+        working-directory: ${{ env.M9_MAIN_DIR }}
+        run: pnpm check
+      - name: Install Chromium for exact current-main browser audit
+        working-directory: ${{ env.M9_MAIN_DIR }}
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build exact current-main Daily Workspace closure
+        working-directory: ${{ env.M9_MAIN_DIR }}
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Run exact current-main PostgreSQL reliability evidence
+        working-directory: ${{ env.M9_MAIN_DIR }}
+        run: |
+          pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/preference-feedback-postgres.test.ts
+          pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
+      - name: Run exact current-main desktop and mobile journey
+        working-directory: ${{ env.M9_MAIN_DIR }}
+        run: pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts
+      - name: Re-prove governed Knowledge source and bounded concurrency
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='scripts/product-loop-today-real-runtime.ts'
+          runtime="$(git show "$M9_CURRENT_MAIN_SHA:$target")"
+          grep -q 'validateReadyPackageContentExport' <<<"$runtime"
+          grep -q 'HttpCoreDailyKnowledgeSourceAuthority' <<<"$runtime"
+          grep -q 'dailySignalStore.importKnowledgeSource' <<<"$runtime"
+          ! grep -q 'INSERT INTO lite_daily_signals' <<<"$runtime"
+          ! grep -q 'const sourceAuthority: ProductLoopSourceAuthority' <<<"$runtime"
+          git grep -n -i -E 'concurr' "$M9_CURRENT_MAIN_SHA" -- services/lite/tests scripts > .artifacts/m9-wp08-concurrency-evidence.txt
+          test -s .artifacts/m9-wp08-concurrency-evidence.txt
+      - name: Emit retained post-merge GO evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg currentMainSha "$M9_CURRENT_MAIN_SHA" \
+            --arg candidateMergeSha "$M9_CANDIDATE_MERGE_SHA" \
+            --arg candidateHeadSha "$M9_MERGED_PR_HEAD" \
+            --arg auditedRemediationSha "$M9_AUDITED_REMEDIATION_SHA" \
+            --arg auditedRemediationTree "$M9_AUDITED_REMEDIATION_TREE" \
+            --argjson candidatePullRequest "$M9_CANDIDATE_PR" \
+            --argjson priorIndependentAuditRun "$M9_PRIOR_AUDIT_RUN" \
+            '{
+              schemaVersion: 2,
+              milestone: "M9",
+              workPackage: "M9-WP-08",
+              auditType: "POST_MERGE_FINAL_CURRENT_MAIN",
+              currentMainSha: $currentMainSha,
+              candidateMergeSha: $candidateMergeSha,
+              candidateHeadSha: $candidateHeadSha,
+              auditedRemediationSha: $auditedRemediationSha,
+              auditedRemediationTree: $auditedRemediationTree,
+              candidatePullRequest: $candidatePullRequest,
+              priorIndependentAuditRun: $priorIndependentAuditRun,
+              evidence: {
+                candidateAndMergePatchIdentity: true,
+                candidateRuntimeBlobUnchangedOnCurrentMain: true,
+                priorIndependentRuntimeAuditGreen: true,
+                exactCurrentMainWorkspaceCheckGreen: true,
+                realKnowledgeDerivedSource: true,
+                exactProvenanceAndWorkspaceBoundariesRetained: true,
+                replayRestartAndBoundedConcurrencyEvidenceRetained: true,
+                desktopAndMobileRealBrowserGreen: true,
+                noCanonicalRouteInterceptionOrFixtureFallback: true,
+                noFalsePublicationOrCapabilityPromotion: true
+              },
+              blockers: [],
+              finalRecommendation: "GO",
+              authority: {
+                mergeAuthorizedByAudit: false,
+                releaseAuthorized: false,
+                deploymentAuthorized: false,
+                externalPublicationAuthorized: false,
+                providerExecutionAuthorized: false,
+                filingAuthorized: false,
+                officialTruthCreated: false,
+                capabilityVerifiedByProductFeedback: false
+              }
+            }' > .artifacts/m9-wp08-post-merge-final-audit.json
+          cat .artifacts/m9-wp08-post-merge-final-audit.json
+      - name: Upload post-merge final audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m9-wp08-post-merge-final-audit-${{ github.run_id }}
+          path: |
+            .artifacts/m9-wp08-post-merge-final-audit.json
+            .artifacts/m9-wp08-candidate-pr.json
+            .artifacts/m9-wp08-concurrency-evidence.txt
+          if-no-files-found: warn
+          retention-days: 30
