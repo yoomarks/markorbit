@@ -119,15 +119,20 @@ function cleanVersion(value: number | string): number | string {
   return cleanText(value, 'targetVersion', 200);
 }
 
-function cleanValues(values: readonly string[], field: string, maximum = 25): string[] {
+function cleanValues(values: unknown, field: string, maximum = 25): string[] {
   if (!Array.isArray(values))
     throw new ProductPreferenceError('INVALID_INPUT', `${field} must be an array.`, 422);
-  const cleaned = [
-    ...new Set(values.map((value) => cleanText(value, field, 200)).map((value) => value.trim()))
-  ];
-  if (cleaned.length > maximum)
+  const entries: readonly unknown[] = values;
+  const cleaned: string[] = [];
+  for (const raw of entries) {
+    if (typeof raw !== 'string')
+      throw new ProductPreferenceError('INVALID_INPUT', `${field} must contain strings.`, 422);
+    cleaned.push(cleanText(raw, field, 200));
+  }
+  const unique = [...new Set(cleaned)];
+  if (unique.length > maximum)
     throw new ProductPreferenceError('INVALID_INPUT', `${field} has too many values.`, 422);
-  return cleaned;
+  return unique;
 }
 
 function isContentPickPlatform(value: string): value is ContentPickPlatform {
