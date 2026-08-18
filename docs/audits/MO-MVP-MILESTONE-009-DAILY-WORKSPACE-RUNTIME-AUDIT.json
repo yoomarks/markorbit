@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M9",
+  "workPackage": "M9-WP-08",
+  "auditClass": "DAILY_WORKSPACE_REAL_RUNTIME_INDEPENDENT_AUDIT",
+  "auditedCandidateSha": "d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1",
+  "auditedCandidateTreeSha": "cd2a7476250010d0380cf9c31e5f7bb86a5ff44f",
+  "candidatePullRequestNumber": 126,
+  "wp07BaseSha": "48d6c44aa55648b25222698cc07ba892735d145c",
+  "wp07BaseTreeSha": "1f5d3001972c9247b8653aa9afa1307cc9a0d373",
+  "wp07BasePullRequestNumber": 123,
+  "auditBranchBaselineSha": "31ce27276dedaa3b95c2bc8029f22c5d24bedda9",
+  "inheritedWp07WorkflowEvidence": [
+    { "runId": 32131652576, "name": "Product Loop Candidate Qualification" },
+    { "runId": 32131652552, "name": "Product Loop Content Preparation" },
+    { "runId": 32131652574, "name": "M7 WP-02 Conversion Analytics" },
+    { "runId": 32131652543, "name": "Product Loop Feedback Observability" },
+    { "runId": 32131652597, "name": "Product Loop Today Prepared Action" },
+    { "runId": 32131652643, "name": "M8 WP-06 Commercial Runtime Reliability" },
+    { "runId": 32131652545, "name": "M6 WP-06 Authenticated Capability Center" },
+    { "runId": 32131652534, "name": "Browser and Visual Validation" },
+    { "runId": 32131652620, "name": "validation" }
+  ],
+  "candidateWorkflowEvidence": [
+    { "runId": 32137824495, "name": "validation" },
+    { "runId": 32137824537, "name": "Product Loop Today Prepared Action" }
+  ],
+  "requiredEvidence": {
+    "realKnowledgeDerivedSource": true,
+    "exactProvenancePreserved": true,
+    "workspaceIsolation": true,
+    "staleSourceRejected": true,
+    "idempotentReplaySafeMutations": true,
+    "restartRecovery": true,
+    "boundedConcurrency": true,
+    "desktopAndMobileRealBrowser": true,
+    "canonicalAcceptanceHasNoRouteInterceptionOrFixtureFallback": true,
+    "noFalsePublicationOrCapabilityClaims": true,
+    "m1ThroughM8AuthorityRegressions": true
+  },
+  "authority": {
+    "auditCreatesMergeReleaseOrDeployment": false,
+    "mergeRequiresExplicitOwnerAction": true,
+    "releaseRequiresExplicitOwnerAction": true,
+    "productionTrafficAllowed": false,
+    "externalPublicationAuthorized": false,
+    "providerExecutionAuthorized": false,
+    "filingAuthorized": false,
+    "officialTruthCreated": false,
+    "capabilityVerifiedByProductFeedback": false
+  },
+  "recommendationPolicy": {
+    "goOnlyWhenNoBlockersRemain": true,
+    "fixIsAValidCompletedAuditResult": true,
+    "candidateMustBeMergedToMainWithExactTreeIdentityBeforeGo": true,
+    "realKnowledgeDerivedAcceptanceMustBeProvenBeforeGo": true,
+    "wp07EvidenceMayBeInheritedOnlyWhenCandidateDeltaIsBounded": true
+  }
+}
