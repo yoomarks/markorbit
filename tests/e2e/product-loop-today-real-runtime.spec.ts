@@ -141,6 +141,23 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     await expect(page.getByText('Prepare the content line first', { exact: true })).toBeVisible();
     await expect(page.getByText(/Content Pick is editorial guidance only/)).toBeVisible();
 
+    const openedResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/product-preference-events') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByRole('button', { name: 'Selected for Quick Create' }).click();
+    const opened = await openedResponse;
+    expect(opened.status()).toBe(201);
+    const openedBody = (await opened.json()) as {
+      event: { kind: string; targetType: string; targetId: string };
+    };
+    expect(openedBody.event).toMatchObject({
+      kind: 'OPENED',
+      targetType: 'CONTENT_PICK'
+    });
+    expect(openedBody.event.targetId).toContain('content-pick_');
+
     const prepareResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/prepared-actions') &&

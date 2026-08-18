@@ -649,6 +649,19 @@ export function TodayWorkspace({
   }, [dailyClient, selectedPick]);
 
   const selectContentPick = (pick: Readonly<ContentPick>) => {
+    void dailyClient
+      .recordPreferenceEvent(
+        'OPENED',
+        {
+          targetType: 'CONTENT_PICK',
+          targetId: pick.contentPickId,
+          targetVersion: pick.version
+        },
+        `preference:opened:${pick.contentPickId}:${pick.version}`
+      )
+      .catch(() => {
+        // Product preference evidence must never block the primary Product navigation.
+      });
     setSelection({
       contentPickId: pick.contentPickId,
       recommendationId: pick.recommendation.id,
