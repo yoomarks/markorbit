@@ -186,38 +186,39 @@ describe('M9-WP07 use feedback preference derivation', () => {
   });
 
   it('records Published preference evidence with deterministic feedback identity and keeps Delivered unmapped', async () => {
-    const recordCanonicalEvent = vi.fn((command) =>
-      Promise.resolve({
-        event: {
-          schemaVersion: 1 as const,
-          productPreferenceEventId: 'product-preference-event_wp07-use-feedback',
-          workspaceId,
-          subjectUserId: userId,
-          kind: command.kind,
-          targetType: command.targetType,
-          targetId: command.targetId,
-          targetVersion: command.targetVersion,
-          recordedAt: '2026-08-18T07:06:00.000Z',
-          externalActionExecutedByMarkOrbit: false as const,
-          externalOutcomeVerifiedByMarkOrbit: false as const,
-          capabilityVerified: false as const
-        },
-        preference: {
-          schemaVersion: 1 as const,
-          creatorPreferenceId: 'creator-preference_wp07-use-feedback',
-          workspaceId,
-          subjectUserId: userId,
-          version: 1,
-          source: 'PRODUCT_FEEDBACK' as const,
-          primaryJurisdictions: ['US'],
-          professionalTopics: ['trademark'],
-          targetAudiences: [],
-          preferredPlatforms: ['WECHAT_OFFICIAL_ACCOUNT'] as const,
-          tonePreferences: [],
-          capabilityVerified: false as const,
-          updatedAt: '2026-08-18T07:06:00.000Z'
-        }
-      })
+    const recordCanonicalEvent = vi.fn(
+      (command: Parameters<PostgresProductPreferenceStore['recordCanonicalEvent']>[0]) =>
+        Promise.resolve({
+          event: {
+            schemaVersion: 1 as const,
+            productPreferenceEventId: 'product-preference-event_wp07-use-feedback',
+            workspaceId,
+            subjectUserId: userId,
+            kind: command.kind,
+            targetType: command.targetType,
+            targetId: command.targetId,
+            targetVersion: command.targetVersion,
+            recordedAt: '2026-08-18T07:06:00.000Z',
+            externalActionExecutedByMarkOrbit: false as const,
+            externalOutcomeVerifiedByMarkOrbit: false as const,
+            capabilityVerified: false as const
+          },
+          preference: {
+            schemaVersion: 1 as const,
+            creatorPreferenceId: 'creator-preference_wp07-use-feedback',
+            workspaceId,
+            subjectUserId: userId,
+            version: 1,
+            source: 'PRODUCT_FEEDBACK' as const,
+            primaryJurisdictions: ['US'],
+            professionalTopics: ['trademark'],
+            targetAudiences: [],
+            preferredPlatforms: ['WECHAT_OFFICIAL_ACCOUNT'] as const,
+            tonePreferences: [],
+            capabilityVerified: false as const,
+            updatedAt: '2026-08-18T07:06:00.000Z'
+          }
+        })
     );
     const store = { recordCanonicalEvent } as unknown as PostgresProductPreferenceStore;
     const service = new ProductPreferenceService(store, resolver());
