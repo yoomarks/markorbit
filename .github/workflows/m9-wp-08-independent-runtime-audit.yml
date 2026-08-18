@@ -27,6 +27,7 @@ jobs:
       M9_WP08_AUDITED_CANDIDATE_SHA: d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1
       M9_WP08_WP07_BASE_SHA: 48d6c44aa55648b25222698cc07ba892735d145c
       M9_WP08_CANDIDATE_PR: '126'
+      M9_WP08_CANDIDATE_DIR: .artifacts/m9-wp08-candidate
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,15 +60,34 @@ jobs:
           pnpm validate:persistence-boundaries
           pnpm test:gateway-inventory
           pnpm format:check
-      - name: Independently run full exact-candidate workspace check
+      - name: Prepare exact candidate clean worktree
         shell: bash
         run: |
           set -euo pipefail
-          git worktree add --detach .artifacts/m9-wp08-candidate "$M9_WP08_AUDITED_CANDIDATE_SHA"
-          cd .artifacts/m9-wp08-candidate
+          git worktree add --detach "$M9_WP08_CANDIDATE_DIR" "$M9_WP08_AUDITED_CANDIDATE_SHA"
+          cd "$M9_WP08_CANDIDATE_DIR"
           pnpm install --frozen-lockfile
           pnpm build
-          pnpm check
+      - name: Exact candidate governance and formatting
+        working-directory: ${{ env.M9_WP08_CANDIDATE_DIR }}
+        run: |
+          pnpm validate:workspace
+          pnpm validate:persistence-boundaries
+          pnpm test:story-matrix
+          pnpm test:gateway-inventory
+          pnpm format:check
+      - name: Exact candidate lint
+        working-directory: ${{ env.M9_WP08_CANDIDATE_DIR }}
+        run: pnpm lint
+      - name: Exact candidate typecheck
+        working-directory: ${{ env.M9_WP08_CANDIDATE_DIR }}
+        run: pnpm typecheck
+      - name: Exact candidate tests
+        working-directory: ${{ env.M9_WP08_CANDIDATE_DIR }}
+        run: pnpm test
+      - name: Exact candidate final build
+        working-directory: ${{ env.M9_WP08_CANDIDATE_DIR }}
+        run: pnpm build
       - name: Produce independent M9 runtime recommendation
         run: node scripts/m9-wp-08-independent-runtime-audit.mjs
       - name: Upload independent runtime audit evidence
