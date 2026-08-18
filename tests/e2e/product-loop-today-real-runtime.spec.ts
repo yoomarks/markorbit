@@ -6,8 +6,8 @@ const desktopWorkspaceId = '31313131-3131-4313-8313-313131313131';
 const mobileWorkspaceId = '32323232-3232-4323-8323-323232323232';
 const title = 'Prepare the reviewed trademark maintenance update';
 
-test.describe('M9 WP06 real durable Daily Workspace', () => {
-  test('runs SEE → CREATE → MOVE through authenticated real runtime without interception', async ({
+test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
+  test('runs SEE → personalize → CREATE → MOVE through authenticated real runtime without interception', async ({
     page
   }) => {
     const productLoopRequests: string[] = [];
@@ -23,6 +23,8 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
       data: { fixture: 'wp06' }
     });
     expect(auth.status()).toBe(201);
+    const authPayload = (await auth.json()) as { csrfToken?: string };
+    expect(authPayload.csrfToken).toBeTruthy();
     const sessionCookie = auth.headers()['set-cookie']?.match(/mo_session=([^;]+)/)?.[1];
     expect(sessionCookie).toBeTruthy();
     await page
@@ -39,7 +41,19 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
     );
     await page.goto(`${lite}/?workspaceId=${workspaceId}#today`);
     expect((await todayResponse).status()).toBe(200);
-    expect((await orbitResponse).status()).toBe(200);
+    const initialOrbitResponse = await orbitResponse;
+    expect(initialOrbitResponse.status()).toBe(200);
+    const initialOrbit = (await initialOrbitResponse.json()) as {
+      preferenceSource: string;
+      items: Array<{
+        dailyOrbitItemId: string;
+        version: number;
+        score: { personalRelevance: { score: number } };
+      }>;
+    };
+    expect(initialOrbit.preferenceSource).toBe('NONE');
+    expect(initialOrbit.items).toHaveLength(1);
+    const initialItem = initialOrbit.items[0]!;
 
     await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: "Today's Orbit", exact: true })).toBeVisible();
@@ -57,6 +71,66 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
     await orbitCard.getByText('Source & ranking reasons', { exact: true }).click();
     await expect(
       orbitCard.getByText(`rdp_wp06-browser-${workspaceId}`, { exact: false })
+    ).toBeVisible();
+
+    const preferenceResponse = await page.request.post(
+      `${gateway}/api/lite/product-preference-events`,
+      {
+        headers: {
+          origin: lite,
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': authPayload.csrfToken!,
+          'idempotency-key': `wp07-browser-save-${workspaceId}`
+        },
+        data: {
+          kind: 'SAVED',
+          targetType: 'DAILY_ORBIT_ITEM',
+          targetId: initialItem.dailyOrbitItemId,
+          targetVersion: initialItem.version
+        }
+      }
+    );
+    expect(preferenceResponse.status()).toBe(201);
+    const preferenceBody = (await preferenceResponse.json()) as {
+      event: {
+        subjectUserId: string;
+        externalActionExecutedByMarkOrbit: boolean;
+        externalOutcomeVerifiedByMarkOrbit: boolean;
+        capabilityVerified: boolean;
+      };
+      preference: { source: string; capabilityVerified: boolean };
+    };
+    expect(preferenceBody.event.externalActionExecutedByMarkOrbit).toBe(false);
+    expect(preferenceBody.event.externalOutcomeVerifiedByMarkOrbit).toBe(false);
+    expect(preferenceBody.event.capabilityVerified).toBe(false);
+    expect(preferenceBody.preference).toMatchObject({
+      source: 'PRODUCT_FEEDBACK',
+      capabilityVerified: false
+    });
+
+    const personalizedOrbitResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/daily-orbit') && response.request().method() === 'GET'
+    );
+    await page.reload();
+    const personalizedOrbit = (await (await personalizedOrbitResponse).json()) as {
+      preferenceSource: string;
+      items: Array<{
+        dailyOrbitItemId: string;
+        score: { personalRelevance: { score: number; reason: string } };
+      }>;
+    };
+    expect(personalizedOrbit.preferenceSource).toBe('PRODUCT_FEEDBACK');
+    const personalizedItem = personalizedOrbit.items.find(
+      (candidate) => candidate.dailyOrbitItemId === initialItem.dailyOrbitItemId
+    );
+    expect(personalizedItem).toBeTruthy();
+    expect(personalizedItem!.score.personalRelevance.score).toBeGreaterThan(
+      initialItem.score.personalRelevance.score
+    );
+    expect(personalizedItem!.score.personalRelevance.reason).toContain('configured');
+    await expect(
+      page.getByText(`Relevance ${personalizedItem!.score.personalRelevance.score}`, { exact: true })
     ).toBeVisible();
 
     await expect(page.getByText('Prepare the content line first', { exact: true })).toBeVisible();
