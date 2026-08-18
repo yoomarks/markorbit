@@ -199,6 +199,8 @@ suite('PostgreSQL M9-WP07 Product preference evidence', () => {
     expect(after.preferenceSource).toBe('PRODUCT_FEEDBACK');
     expect(after.items[0]?.score.personalRelevance.score).toBe(95);
     expect(after.items[0]?.score.personalRelevance.reason).toContain('every configured');
-    expect((await restartedPreferenceStore.resolve(workspaceId, userId))?.capabilityVerified).toBe(false);
+    expect((await restartedPreferenceStore.resolve(workspaceId, userId))?.capabilityVerified).toBe(
+      false
+    );
   });
 });
