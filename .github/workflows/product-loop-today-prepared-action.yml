@@ -57,20 +57,35 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Capture final WP07 Prettier deltas
+      - name: Capture all remaining WP07 formatter output
         run: |
           pnpm prettier --write \
+            .github/workflows/product-loop-today-prepared-action.yml \
+            apps/gateway/src/product-loop-http.ts \
+            apps/gateway/tests/product-loop-daily-workspace-http.test.ts \
+            apps/lite-web/src/api/daily-workspace.test.ts \
+            apps/lite-web/src/api/daily-workspace.ts \
+            docs/tasks/MO-MVP-M9-WP-07-PREFERENCE-FEEDBACK.md \
+            infrastructure/persistence/migration-owners.json \
+            packages/contracts/src/daily-workspace.ts \
             scripts/product-loop-today-real-runtime.ts \
+            services/lite/package.json \
+            services/lite/src/http.ts \
+            services/lite/src/index.ts \
+            services/lite/src/main.ts \
+            services/lite/src/preference-feedback.ts \
+            services/lite/src/preference-http.ts \
             services/lite/src/preference-target.ts \
+            services/lite/tests/preference-feedback-postgres.test.ts \
+            services/lite/tests/preference-http.test.ts \
+            services/lite/tests/preference-target.test.ts \
             tests/e2e/product-loop-today-real-runtime.spec.ts
-          git diff -- \
-            scripts/product-loop-today-real-runtime.ts \
-            services/lite/src/preference-target.ts \
-            tests/e2e/product-loop-today-real-runtime.spec.ts
-          git checkout -- \
-            scripts/product-loop-today-real-runtime.ts \
-            services/lite/src/preference-target.ts \
-            tests/e2e/product-loop-today-real-runtime.spec.ts
+          for f in $(git diff --name-only); do
+            echo "__MO_FORMAT_FILE__ ${f}"
+            base64 -w0 "${f}"
+            echo
+          done
+          git checkout -- .
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build M9 Daily Workspace dependency closure
