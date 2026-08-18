@@ -172,4 +172,50 @@ describe('Daily Workspace preference event wiring', () => {
         targetVersion: output.version
       });
   });
+
+  it('records only VISUAL_REQUESTED when the Visual Engine requires more planning', async () => {
+    const preferenceBodies: Record<string, unknown>[] = [];
+    const output = {
+      schemaVersion: 1 as const,
+      visualOutputReferenceId: 'visual-output_wp07-planning',
+      workspaceId,
+      version: 1,
+      visualBrief: { id: brief.visualBriefId, version: brief.version },
+      owner: 'VISUAL_ENGINE' as const,
+      requestReference: 'illustration-request://wp07-planning',
+      status: 'PLANNING_REQUIRED' as const,
+      providerExecutionAuthorizedByLite: false as const,
+      paidExecutionAuthorizedByLite: false as const,
+      createdAt: '2026-08-18T06:03:00.000Z'
+    };
+    const primary = {
+      requestReference: output.requestReference,
+      output,
+      acceptedAt: output.createdAt
+    };
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = requestUrl(input);
+      if (url.endsWith('/api/auth/session'))
+        return Promise.resolve(jsonResponse({ csrfToken: csrf }));
+      if (url.includes('/api/lite/visual-briefs/visual-brief_wp07/request'))
+        return Promise.resolve(jsonResponse(primary, 201));
+      if (url.endsWith('/api/lite/product-preference-events')) {
+        preferenceBodies.push(parsedBody(init));
+        return Promise.resolve(jsonResponse({ event: {}, preference: {} }, 201));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await createDailyWorkspaceClient(workspaceId).startVisualRequest(visualRecord);
+
+    expect(result).toEqual(primary);
+    expect(preferenceBodies.map((body) => body.kind)).toEqual(['VISUAL_REQUESTED']);
+    expect(preferenceBodies[0]).toMatchObject({
+      workspaceId,
+      targetType: 'VISUAL_OUTPUT',
+      targetId: output.visualOutputReferenceId,
+      targetVersion: output.version
+    });
+  });
 });
