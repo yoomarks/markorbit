@@ -128,7 +128,11 @@ jobs:
         run: pnpm check
       - name: Install Chromium for exact current-main browser audit
         working-directory: ${{ env.M9_MAIN_DIR }}
-        run: pnpm exec playwright install --with-deps chromium
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p ../m9-wp08-browser-diagnostics
+          timeout 10m pnpm exec playwright install --with-deps chromium 2>&1 | tee ../m9-wp08-browser-diagnostics/playwright-install.log
       - name: Build exact current-main Daily Workspace closure
         working-directory: ${{ env.M9_MAIN_DIR }}
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
@@ -168,6 +172,7 @@ jobs:
         with:
           name: m9-wp08-browser-diagnostics-${{ github.run_id }}
           path: |
+            .artifacts/m9-wp08-browser-diagnostics/playwright-install.log
             .artifacts/m9-wp08-browser-diagnostics/playwright.log
             .artifacts/m9-post-merge-main/test-results
           if-no-files-found: warn
