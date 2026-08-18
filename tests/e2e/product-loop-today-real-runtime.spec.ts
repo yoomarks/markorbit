@@ -48,11 +48,10 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
     await expect(page.getByRole('heading', { name: 'Today Actions', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: title, exact: true }).first()).toBeVisible();
 
-    const orbitCard = page
-      .locator('#daily-orbit')
-      .getByRole('heading', { name: title, exact: true })
-      .locator('..')
-      .locator('..');
+    const orbitCard = page.locator('#daily-orbit section.mo-card').filter({
+      has: page.getByRole('heading', { name: title, exact: true })
+    });
+    await expect(orbitCard).toHaveCount(1);
     await expect(orbitCard.getByLabel(/Orbit score/i)).toBeVisible();
     await expect(orbitCard.getByText(/Importance 90/)).toBeVisible();
     await orbitCard.getByText('Source & ranking reasons', { exact: true }).click();
