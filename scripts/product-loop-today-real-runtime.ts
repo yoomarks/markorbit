@@ -109,14 +109,14 @@ const sourceAuthority: ProductLoopSourceAuthority = {
     if (![desktopWorkspaceId, mobileWorkspaceId].includes(workspaceId))
       throw new Error('Unexpected browser Workspace.');
     if (
-      locator.owner !== 'KNOWLEDGE' ||
+      locator.owner !== 'CORE' ||
       locator.kind !== 'KNOWLEDGE_READY_PACKAGE' ||
       locator.sourceId !== `rdp_wp06-browser-${workspaceId}`
     )
       throw new Error('Unexpected browser source locator.');
     return Promise.resolve({
       schemaVersion: 1,
-      owner: 'KNOWLEDGE',
+      owner: 'CORE',
       kind: 'KNOWLEDGE_READY_PACKAGE',
       sourceId: locator.sourceId,
       sourceVersion: 'accepted-v6',
@@ -146,7 +146,7 @@ async function seedWorkspace(
       'Accepted governed Knowledge changed the timing explanation and is ready for one bounded professional content preparation step.',
     sources: [
       {
-        owner: 'KNOWLEDGE',
+        owner: 'CORE',
         kind: 'KNOWLEDGE_READY_PACKAGE',
         sourceId: `rdp_wp06-browser-${workspaceId}`
       }
@@ -163,7 +163,7 @@ async function seedDailySignal(workspaceId: string) {
     version: 1,
     source: {
       schemaVersion: 1,
-      owner: 'KNOWLEDGE',
+      owner: 'CORE',
       kind: 'KNOWLEDGE_READY_PACKAGE',
       sourceId: `rdp_wp06-browser-${workspaceId}`,
       sourceVersion: 'accepted-v6',
