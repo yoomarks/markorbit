@@ -24,8 +24,9 @@ jobs:
     timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
-      M9_WP08_AUDITED_CANDIDATE_SHA: 48d6c44aa55648b25222698cc07ba892735d145c
-      M9_WP08_WP07_PR: '123'
+      M9_WP08_AUDITED_CANDIDATE_SHA: d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1
+      M9_WP08_WP07_BASE_SHA: 48d6c44aa55648b25222698cc07ba892735d145c
+      M9_WP08_CANDIDATE_PR: '126'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,15 +41,18 @@ jobs:
           cache: pnpm
       - name: Install audit dependencies
         run: pnpm install --frozen-lockfile
-      - name: Fetch exact audited candidate
-        run: git fetch --no-tags origin "$M9_WP08_AUDITED_CANDIDATE_SHA"
+      - name: Fetch exact audited and inherited candidates
+        run: |
+          git fetch --no-tags origin "$M9_WP08_AUDITED_CANDIDATE_SHA"
+          git fetch --no-tags origin "$M9_WP08_WP07_BASE_SHA"
       - name: Collect exact candidate GitHub evidence
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p .artifacts
-          gh api "/repos/$GITHUB_REPOSITORY/pulls/$M9_WP08_WP07_PR" > .artifacts/m9-wp08-wp07-pr.json
+          gh api "/repos/$GITHUB_REPOSITORY/pulls/$M9_WP08_CANDIDATE_PR" > .artifacts/m9-wp08-candidate-pr.json
           gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M9_WP08_AUDITED_CANDIDATE_SHA&per_page=100" > .artifacts/m9-wp08-candidate-runs.json
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M9_WP08_WP07_BASE_SHA&per_page=100" > .artifacts/m9-wp08-wp07-runs.json
       - name: Validate independent audit branch boundaries
         run: |
           pnpm validate:workspace
@@ -62,9 +66,6 @@ jobs:
           git worktree add --detach .artifacts/m9-wp08-candidate "$M9_WP08_AUDITED_CANDIDATE_SHA"
           cd .artifacts/m9-wp08-candidate
           pnpm install --frozen-lockfile
-          # The repository's clean PR validation builds affected workspace packages before
-          # type-aware lint/typecheck so workspace package dist exports exist. Reproduce
-          # that clean-build precondition before the full exact-candidate check.
           pnpm build
           pnpm check
       - name: Produce independent M9 runtime recommendation
@@ -76,7 +77,8 @@ jobs:
           name: m9-wp-08-independent-runtime-audit-${{ github.run_id }}
           path: |
             .artifacts/m9-wp-08-independent-runtime-audit.json
-            .artifacts/m9-wp08-wp07-pr.json
+            .artifacts/m9-wp08-candidate-pr.json
             .artifacts/m9-wp08-candidate-runs.json
+            .artifacts/m9-wp08-wp07-runs.json
           if-no-files-found: warn
           retention-days: 30
