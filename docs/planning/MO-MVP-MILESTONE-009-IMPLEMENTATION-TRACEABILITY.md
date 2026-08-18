@@ -10,16 +10,14 @@
 
 ## Work-package trace
 
-| Work package | Delivered by | Merge commit | Result |
-| --- | --- | --- | --- |
-| M9-WP-01 — Daily Workspace contracts and scope boundary | PR #117 | `e9d8d9ae5673d050d28a5049de3a8736767b414c` | COMPLETE |
-| M9-WP-02 — Knowledge to Daily Signal | PR #118 | `db30495ffcb7686fb6ad94a587d5fd5f0192d7e4` | COMPLETE |
-| M9-WP-03 — Personal Daily Orbit | PR #119 | `5726f72e2986c3b4fdc634c38313b29d315014c7` | COMPLETE |
-| M9-WP-04 — Content Kit and Content Studio | PR #120 | `a8a2c144f8538e4aafce3a3d7f68ff2c960ac0e9` | COMPLETE |
-| M9-WP-05 — Visual Bridge | PR #121 | `82aa58f307a45aad5f77e197f44826fac522a625` | COMPLETE with external visual-runtime transport explicitly deferred/fail-closed |
-| M9-WP-06 — Daily Workspace Product UI | PR #122 | `31ce27276dedaa3b95c2bc8029f22c5d24bedda9` | COMPLETE |
-| M9-WP-07 — Preference and Feedback Loop | PR #123 | `52486d1b0642f265ca505b9aef662d2e20136e57` | COMPLETE |
-| M9-WP-08 — Reliability and independent audit | final audit PR #129; bounded remediation through #126 and Core source-governance compatibility through #128 | `b5b05c439284376e0afb2f275ca1ca51229305b7` | COMPLETE / GO |
+- **M9-WP-01 — Daily Workspace contracts and scope boundary:** PR #117, merge `e9d8d9ae5673d050d28a5049de3a8736767b414c`, COMPLETE.
+- **M9-WP-02 — Knowledge to Daily Signal:** PR #118, merge `db30495ffcb7686fb6ad94a587d5fd5f0192d7e4`, COMPLETE.
+- **M9-WP-03 — Personal Daily Orbit:** PR #119, merge `5726f72e2986c3b4fdc634c38313b29d315014c7`, COMPLETE.
+- **M9-WP-04 — Content Kit and Content Studio:** PR #120, merge `a8a2c144f8538e4aafce3a3d7f68ff2c960ac0e9`, COMPLETE.
+- **M9-WP-05 — Visual Bridge:** PR #121, merge `82aa58f307a45aad5f77e197f44826fac522a625`, COMPLETE with external visual-runtime transport explicitly deferred/fail-closed.
+- **M9-WP-06 — Daily Workspace Product UI:** PR #122, merge `31ce27276dedaa3b95c2bc8029f22c5d24bedda9`, COMPLETE.
+- **M9-WP-07 — Preference and Feedback Loop:** PR #123, merge `52486d1b0642f265ca505b9aef662d2e20136e57`, COMPLETE.
+- **M9-WP-08 — Reliability and independent audit:** final audit PR #129; bounded remediation through #126 and Core source-governance compatibility through #128; merge `b5b05c439284376e0afb2f275ca1ca51229305b7`; COMPLETE / GO.
 
 ## Final WP08 retained evidence
 
