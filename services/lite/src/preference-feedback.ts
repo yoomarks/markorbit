@@ -129,11 +129,19 @@ function cleanValues(values: readonly string[], field: string, maximum = 25): st
   return cleaned;
 }
 
+function isContentPickPlatform(value: string): value is ContentPickPlatform {
+  return (contentPickPlatforms as readonly string[]).includes(value);
+}
+
 function normalizeContext(value: Readonly<ProductPreferenceContext>): ProductPreferenceContext {
   const platforms = cleanValues(value.platforms, 'context.platforms').map((platform) => {
-    if (!contentPickPlatforms.includes(platform as ContentPickPlatform))
-      throw new ProductPreferenceError('INVALID_INPUT', 'context.platforms contains an invalid platform.', 422);
-    return platform as ContentPickPlatform;
+    if (!isContentPickPlatform(platform))
+      throw new ProductPreferenceError(
+        'INVALID_INPUT',
+        'context.platforms contains an invalid platform.',
+        422
+      );
+    return platform;
   });
   return {
     jurisdictions: cleanValues(value.jurisdictions, 'context.jurisdictions'),
@@ -145,7 +153,12 @@ function normalizeContext(value: Readonly<ProductPreferenceContext>): ProductPre
 function timestamp(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime()))
-    throw new ProductPreferenceError('PERSISTENCE_UNAVAILABLE', 'Preference clock returned an invalid timestamp.', 503, true);
+    throw new ProductPreferenceError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Preference clock returned an invalid timestamp.',
+      503,
+      true
+    );
   return parsed.toISOString();
 }
 
@@ -153,15 +166,19 @@ function eventId(): ProductPreferenceEventId {
   return `product-preference-event_${randomUUID().replaceAll('-', '')}`;
 }
 
-function preferenceId(workspaceId: string, subjectUserId: string): CreatorPreference['creatorPreferenceId'] {
+function preferenceId(
+  workspaceId: string,
+  subjectUserId: string
+): CreatorPreference['creatorPreferenceId'] {
   return `creator-preference_${fingerprint(`${workspaceId}:${subjectUserId}`).slice(0, 32)}`;
 }
 
 function sortedPositiveScores(scores: ReadonlyMap<string, number>, limit: number): string[] {
   return [...scores.entries()]
     .filter(([, score]) => score > 0)
-    .sort(([leftValue, leftScore], [rightValue, rightScore]) =>
-      rightScore - leftScore || leftValue.localeCompare(rightValue)
+    .sort(
+      ([leftValue, leftScore], [rightValue, rightScore]) =>
+        rightScore - leftScore || leftValue.localeCompare(rightValue)
     )
     .slice(0, limit)
     .map(([value]) => value);
@@ -188,8 +205,16 @@ export function projectProductFeedbackPreference(
   const platforms = new Map<string, number>();
 
   for (const entry of evidence) {
-    if (entry.event.workspaceId.toLowerCase() !== workspaceId || entry.event.subjectUserId !== subjectUserId)
-      throw new ProductPreferenceError('PERSISTENCE_UNAVAILABLE', 'Stored Product preference evidence violates Workspace/user isolation.', 503, true);
+    if (
+      entry.event.workspaceId.toLowerCase() !== workspaceId ||
+      entry.event.subjectUserId !== subjectUserId
+    )
+      throw new ProductPreferenceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Stored Product preference evidence violates Workspace/user isolation.',
+        503,
+        true
+      );
     const weight = weights[entry.event.kind];
     addScores(jurisdictions, entry.context.jurisdictions, weight);
     addScores(topics, entry.context.topics, weight);
@@ -210,7 +235,10 @@ export function projectProductFeedbackPreference(
     primaryJurisdictions: sortedPositiveScores(jurisdictions, 12),
     professionalTopics: sortedPositiveScores(topics, 20),
     targetAudiences: [],
-    preferredPlatforms: sortedPositiveScores(platforms, contentPickPlatforms.length) as ContentPickPlatform[],
+    preferredPlatforms: sortedPositiveScores(
+      platforms,
+      contentPickPlatforms.length
+    ) as ContentPickPlatform[],
     tonePreferences: [],
     capabilityVerified: false,
     updatedAt
@@ -317,7 +345,12 @@ export class PostgresProductPreferenceStore implements DailyOrbitPreferenceProvi
         }));
         const preference = projectProductFeedbackPreference(workspaceId, subjectUserId, evidence);
         if (!preference)
-          throw new ProductPreferenceError('PERSISTENCE_UNAVAILABLE', 'Preference projection unexpectedly produced no result.', 503, true);
+          throw new ProductPreferenceError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Preference projection unexpectedly produced no result.',
+            503,
+            true
+          );
 
         await client.query(
           `INSERT INTO lite_creator_preferences(
@@ -368,7 +401,10 @@ export class PostgresProductPreferenceStore implements DailyOrbitPreferenceProvi
     }
   }
 
-  async resolve(workspaceIdValue: string, subjectUserIdValue: string): Promise<CreatorPreference | undefined> {
+  async resolve(
+    workspaceIdValue: string,
+    subjectUserIdValue: string
+  ): Promise<CreatorPreference | undefined> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const subjectUserId = cleanText(subjectUserIdValue, 'subjectUserId', 300);
     try {
@@ -420,7 +456,9 @@ export class PostgresProductPreferenceStore implements DailyOrbitPreferenceProvi
           ORDER BY recorded_at DESC,product_preference_event_id DESC LIMIT $3`,
         [workspaceId, subjectUserId, limit]
       );
-      return result.rows.map((row) => structuredClone((row as Row).document_json as ProductPreferenceEvent));
+      return result.rows.map((row) =>
+        structuredClone((row as Row).document_json as ProductPreferenceEvent)
+      );
     } catch (error) {
       if (error instanceof ProductPreferenceError) throw error;
       throw new ProductPreferenceError(
