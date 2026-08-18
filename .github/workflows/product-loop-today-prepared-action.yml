@@ -57,6 +57,20 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Capture final WP07 Prettier deltas
+        run: |
+          pnpm prettier --write \
+            scripts/product-loop-today-real-runtime.ts \
+            services/lite/src/preference-target.ts \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          git diff -- \
+            scripts/product-loop-today-real-runtime.ts \
+            services/lite/src/preference-target.ts \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          git checkout -- \
+            scripts/product-loop-today-real-runtime.ts \
+            services/lite/src/preference-target.ts \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build M9 Daily Workspace dependency closure
