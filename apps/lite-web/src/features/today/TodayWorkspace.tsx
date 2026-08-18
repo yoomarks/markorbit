@@ -318,7 +318,8 @@ function ContentKitPanel({
   onCreateVisualBrief,
   onStartVisualRequest,
   onSelectAngle,
-  onCopyVariant
+  onCopyVariant,
+  onExportVariant
 }: {
   pick: Readonly<ContentPick>;
   kit?: Readonly<ContentKit>;
@@ -335,13 +336,16 @@ function ContentKitPanel({
   onStartVisualRequest: () => void;
   onSelectAngle: (angleId: string) => void;
   onCopyVariant: (variant: Readonly<PlatformVariant>) => Promise<void>;
+  onExportVariant: (variant: Readonly<PlatformVariant>) => void;
 }) {
   const [ipPackage, setIpPackage] = useState('');
   const [outputKind, setOutputKind] = useState<VisualOutputKind>('XIAOHONGSHU_COVER');
   const [sceneIntent, setSceneIntent] = useState('');
   const [selectedAngleId, setSelectedAngleId] = useState('');
   const [copiedVariantId, setCopiedVariantId] = useState('');
+  const [exportedVariantId, setExportedVariantId] = useState('');
   const [copyError, setCopyError] = useState('');
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     setSceneIntent(pick.suggestedAngles[0] ?? pick.whyPublish);
@@ -350,7 +354,9 @@ function ContentKitPanel({
   useEffect(() => {
     setSelectedAngleId('');
     setCopiedVariantId('');
+    setExportedVariantId('');
     setCopyError('');
+    setExportError('');
   }, [kit?.contentKitId, kit?.version]);
 
   const copyVariant = async (variant: Readonly<PlatformVariant>) => {
@@ -360,6 +366,16 @@ function ContentKitPanel({
       setCopiedVariantId(variant.variantId);
     } catch {
       setCopyError('This browser could not copy the platform variant.');
+    }
+  };
+
+  const exportVariant = (variant: Readonly<PlatformVariant>) => {
+    setExportError('');
+    try {
+      onExportVariant(variant);
+      setExportedVariantId(variant.variantId);
+    } catch {
+      setExportError('This browser could not export the platform variant.');
     }
   };
 
@@ -438,6 +454,13 @@ function ContentKitPanel({
                   >
                     {copiedVariantId === variant.variantId ? 'Copied' : 'Copy'}
                   </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={exportedVariantId === variant.variantId}
+                    onClick={() => exportVariant(variant)}
+                  >
+                    {exportedVariantId === variant.variantId ? 'Exported' : 'Export'}
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -446,6 +469,11 @@ function ContentKitPanel({
         {copyError ? (
           <Alert tone="warning" title="Copy unavailable">
             {copyError}
+          </Alert>
+        ) : null}
+        {exportError ? (
+          <Alert tone="warning" title="Export unavailable">
+            {exportError}
           </Alert>
         ) : null}
       </Card>
@@ -931,6 +959,34 @@ export function TodayWorkspace({
       });
   };
 
+  const exportPlatformVariant = (variant: Readonly<PlatformVariant>) => {
+    if (!kit) throw new Error('Content Kit is required before exporting a platform variant.');
+    const blob = new Blob([`${variant.title}\n\n${variant.body}\n`], {
+      type: 'text/plain;charset=utf-8'
+    });
+    const href = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = href;
+    anchor.download = `markorbit-${variant.kind.toLowerCase().replaceAll('_', '-')}.txt`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 0);
+    void dailyClient
+      .recordPreferenceEvent(
+        'EXPORTED',
+        {
+          targetType: 'PLATFORM_VARIANT',
+          targetId: variant.variantId,
+          targetVersion: kit.version
+        },
+        `preference:exported:${kit.contentKitId}:${kit.version}:${variant.variantId}`
+      )
+      .catch(() => {
+        // A local download remains valid even when preference evidence cannot persist.
+      });
+  };
+
   const recordOrbitPreference = async (
     kind: 'SAVED' | 'DISMISSED',
     item: Readonly<DailyOrbitItem>
@@ -1105,6 +1161,7 @@ export function TodayWorkspace({
             onStartVisualRequest={() => void startVisualRequest()}
             onSelectAngle={selectContentAngle}
             onCopyVariant={copyPlatformVariant}
+            onExportVariant={exportPlatformVariant}
           />
         ) : (
           <EmptyState
