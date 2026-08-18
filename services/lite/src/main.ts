@@ -29,6 +29,11 @@ import {
   type PreparedActionPlan
 } from './prepared-action.js';
 import { PostgresProductPreferenceStore } from './preference-feedback.js';
+import { createProductPreferenceRoutes } from './preference-http.js';
+import {
+  DailyWorkspacePreferenceTargetResolver,
+  ProductPreferenceService
+} from './preference-target.js';
 import {
   PostgresVisualBridgeStore,
   UnavailableVisualEngineConsumer,
@@ -216,8 +221,9 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 };
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
+const dailySignalReader = new PostgresDailySignalReader(pool);
 const dailyOrbitService = new DailyOrbitService(
-  new PostgresDailySignalReader(pool),
+  dailySignalReader,
   journeyService,
   creatorPreferences
 );
@@ -227,6 +233,15 @@ const contentKitService = new ContentKitService(
   new PostgresContentKitLifecycleReader(pool),
   creatorPreferences,
   visualBridgeStore
+);
+const preferenceService = new ProductPreferenceService(
+  creatorPreferences,
+  new DailyWorkspacePreferenceTargetResolver(
+    dailyOrbitService,
+    dailySignalReader,
+    contentKitService,
+    visualBridgeStore
+  )
 );
 const visualBridgeService = new VisualBridgeService(
   contentKitService,
@@ -246,6 +261,7 @@ const runtime = createServiceRuntime(serviceManifest, {
       dailyOrbitService
     }),
     ...createContentKitRoutes({ internalServiceSecret, contentKitService }),
+    ...createProductPreferenceRoutes({ internalServiceSecret, service: preferenceService }),
     ...createVisualBridgeRoutes({
       internalServiceSecret,
       visualBridgeService,
