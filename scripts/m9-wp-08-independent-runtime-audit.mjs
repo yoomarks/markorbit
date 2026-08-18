@@ -4,8 +4,9 @@ import path from 'node:path';
 
 const root = process.cwd();
 const auditPath = 'docs/audits/MO-MVP-MILESTONE-009-DAILY-WORKSPACE-RUNTIME-AUDIT.json';
-const prSnapshotPath = '.artifacts/m9-wp08-wp07-pr.json';
+const candidatePrPath = '.artifacts/m9-wp08-candidate-pr.json';
 const candidateRunsPath = '.artifacts/m9-wp08-candidate-runs.json';
+const wp07RunsPath = '.artifacts/m9-wp08-wp07-runs.json';
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -31,6 +32,18 @@ function candidateGrep(candidateSha, pattern, paths) {
   }
 }
 
+function verifyRuns(runInventory, requiredRuns, expectedHeadSha, label) {
+  const runsById = new Map((runInventory.workflow_runs ?? []).map((run) => [run.id, run]));
+  for (const required of requiredRuns) {
+    const run = runsById.get(required.runId);
+    invariant(run, `missing ${label} workflow run ${required.runId}`);
+    invariant(run.name === required.name, `${label} workflow name mismatch for ${required.runId}`);
+    invariant(run.head_sha === expectedHeadSha, `${label} workflow head mismatch for ${required.runId}`);
+    invariant(run.status === 'completed', `${label} workflow run ${required.runId} is incomplete`);
+    invariant(run.conclusion === 'success', `${label} workflow run ${required.runId} did not succeed`);
+  }
+}
+
 const audit = await readJson(auditPath);
 const candidateSha = process.env.M9_WP08_AUDITED_CANDIDATE_SHA ?? audit.auditedCandidateSha;
 
@@ -41,6 +54,10 @@ invariant(candidateSha === audit.auditedCandidateSha, 'audited candidate SHA dri
 invariant(
   git('rev-parse', `${candidateSha}^{tree}`) === audit.auditedCandidateTreeSha,
   'audited candidate tree drifted'
+);
+invariant(
+  git('rev-parse', `${audit.wp07BaseSha}^{tree}`) === audit.wp07BaseTreeSha,
+  'WP07 base tree drifted'
 );
 invariant(
   audit.authority.auditCreatesMergeReleaseOrDeployment === false,
@@ -55,6 +72,14 @@ invariant(
   'Owner release lock must remain explicit'
 );
 
+const candidateDelta = git('diff', '--name-only', audit.wp07BaseSha, candidateSha)
+  .split('\n')
+  .filter(Boolean);
+invariant(
+  candidateDelta.length === 1 && candidateDelta[0] === 'scripts/product-loop-today-real-runtime.ts',
+  `M9 remediation candidate changed unexpected paths: ${candidateDelta.join(', ')}`
+);
+
 const deliveryPlan = readCandidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md'
@@ -63,14 +88,8 @@ const scopeLock = readCandidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md'
 );
-const browserRuntime = readCandidateText(
-  candidateSha,
-  'scripts/product-loop-today-real-runtime.ts'
-);
-const browserSpec = readCandidateText(
-  candidateSha,
-  'tests/e2e/product-loop-today-real-runtime.spec.ts'
-);
+const browserRuntime = readCandidateText(candidateSha, 'scripts/product-loop-today-real-runtime.ts');
+const browserSpec = readCandidateText(candidateSha, 'tests/e2e/product-loop-today-real-runtime.spec.ts');
 const browserWorkflow = readCandidateText(
   candidateSha,
   '.github/workflows/product-loop-today-prepared-action.yml'
@@ -107,20 +126,17 @@ for (const required of [
   invariant(scopeLock.includes(required), `M9 scope lock authority rule drifted: ${required}`);
 }
 
-const pr = await readJson(prSnapshotPath);
-invariant(pr.number === audit.wp07PullRequestNumber, 'WP07 PR snapshot number drifted');
-invariant(pr.head?.sha === candidateSha, 'WP07 PR head does not match audited candidate');
+const candidatePr = await readJson(candidatePrPath);
+invariant(
+  candidatePr.number === audit.candidatePullRequestNumber,
+  'candidate PR snapshot number drifted'
+);
+invariant(candidatePr.head?.sha === candidateSha, 'candidate PR head does not match audited candidate');
 
+const wp07Runs = await readJson(wp07RunsPath);
+verifyRuns(wp07Runs, audit.inheritedWp07WorkflowEvidence, audit.wp07BaseSha, 'WP07 base');
 const candidateRuns = await readJson(candidateRunsPath);
-const runsById = new Map((candidateRuns.workflow_runs ?? []).map((run) => [run.id, run]));
-for (const required of audit.requiredWorkflowEvidence) {
-  const run = runsById.get(required.runId);
-  invariant(run, `missing required candidate workflow run ${required.runId}`);
-  invariant(run.name === required.name, `workflow name mismatch for run ${required.runId}`);
-  invariant(run.head_sha === candidateSha, `workflow head mismatch for run ${required.runId}`);
-  invariant(run.status === 'completed', `workflow run ${required.runId} is incomplete`);
-  invariant(run.conclusion === 'success', `workflow run ${required.runId} did not succeed`);
-}
+verifyRuns(candidateRuns, audit.candidateWorkflowEvidence, candidateSha, 'remediation candidate');
 
 const exactProvenancePreserved =
   dailySignalPostgres.includes('persists exact Core provenance') &&
@@ -150,16 +166,19 @@ const noFalsePublicationOrCapabilityClaims =
   preferencePostgres.includes('externalOutcomeVerifiedByMarkOrbit).toBe(false)') &&
   preferencePostgres.includes('capabilityVerified).toBe(false)');
 
-const inProcessSourceAuthority = browserRuntime.includes(
+const acceptedReadyPackageValidated = browserRuntime.includes('validateReadyPackageContentExport');
+const coreDailyHttpAuthority = browserRuntime.includes('HttpCoreDailyKnowledgeSourceAuthority');
+const dailySignalImported = browserRuntime.includes('dailySignalStore.importKnowledgeSource(');
+const directLiteDailySignalSeed = browserRuntime.includes('INSERT INTO lite_daily_signals');
+const syntheticProductLoopSourceAuthority = browserRuntime.includes(
   'const sourceAuthority: ProductLoopSourceAuthority'
 );
-const directLiteDailySignalSeed = browserRuntime.includes('INSERT INTO lite_daily_signals');
-const canonicalCoreKnowledgeTransport =
-  browserRuntime.includes('HttpCoreDaily') ||
-  browserRuntime.includes('/v1/internal/daily') ||
-  browserRuntime.includes('importKnowledgeSource(');
 const realKnowledgeDerivedSource =
-  canonicalCoreKnowledgeTransport && !inProcessSourceAuthority && !directLiteDailySignalSeed;
+  acceptedReadyPackageValidated &&
+  coreDailyHttpAuthority &&
+  dailySignalImported &&
+  !directLiteDailySignalSeed &&
+  !syntheticProductLoopSourceAuthority;
 
 const concurrencyEvidence = candidateGrep(candidateSha, 'concurr', [
   'services/lite/tests',
@@ -168,17 +187,20 @@ const concurrencyEvidence = candidateGrep(candidateSha, 'concurr', [
 const boundedConcurrency = concurrencyEvidence.length > 0;
 
 const blockers = [];
-if (!pr.merged_at) blockers.push('WP07_NOT_MERGED_TO_MAIN');
-
 let mainlineTreeIdentityVerified = false;
-if (pr.merged_at && pr.merge_commit_sha) {
+const mergedToMain = candidatePr.merged_at && candidatePr.base?.ref === 'main';
+if (!mergedToMain) {
+  blockers.push('M9_CANDIDATE_NOT_MERGED_TO_MAIN');
+} else if (!candidatePr.merge_commit_sha) {
+  blockers.push('M9_CANDIDATE_MERGE_COMMIT_MISSING');
+} else {
   try {
-    git('fetch', '--quiet', 'origin', pr.merge_commit_sha);
+    git('fetch', '--quiet', 'origin', candidatePr.merge_commit_sha);
     mainlineTreeIdentityVerified =
-      git('rev-parse', `${pr.merge_commit_sha}^{tree}`) === audit.auditedCandidateTreeSha;
-    if (!mainlineTreeIdentityVerified) blockers.push('WP07_MERGED_TREE_MISMATCH');
+      git('rev-parse', `${candidatePr.merge_commit_sha}^{tree}`) === audit.auditedCandidateTreeSha;
+    if (!mainlineTreeIdentityVerified) blockers.push('M9_CANDIDATE_MERGED_TREE_MISMATCH');
   } catch {
-    blockers.push('WP07_MERGE_IDENTITY_UNVERIFIED');
+    blockers.push('M9_CANDIDATE_MERGE_IDENTITY_UNVERIFIED');
   }
 }
 
@@ -215,7 +237,9 @@ const evidence = {
   workPackage: 'M9-WP-08',
   auditedCandidateSha: candidateSha,
   auditedCandidateTreeSha: audit.auditedCandidateTreeSha,
-  requiredWorkflowRunsVerified: audit.requiredWorkflowEvidence.length,
+  inheritedWp07WorkflowRunsVerified: audit.inheritedWp07WorkflowEvidence.length,
+  candidateWorkflowRunsVerified: audit.candidateWorkflowEvidence.length,
+  candidateDelta,
   runtimeEvidence: {
     realKnowledgeDerivedSource,
     exactProvenancePreserved,
@@ -230,15 +254,18 @@ const evidence = {
     m1ThroughM8AuthorityRegressions: true
   },
   sourceAcceptanceDiagnostics: {
-    inProcessSourceAuthority,
+    acceptedReadyPackageValidated,
+    coreDailyHttpAuthority,
+    dailySignalImported,
     directLiteDailySignalSeed,
-    canonicalCoreKnowledgeTransport
+    syntheticProductLoopSourceAuthority
   },
   concurrencyEvidence: concurrencyEvidence ? concurrencyEvidence.split('\n').slice(0, 20) : [],
-  wp07Mainline: {
-    pullRequest: audit.wp07PullRequestNumber,
-    merged: Boolean(pr.merged_at),
-    mergeCommitSha: pr.merge_commit_sha ?? null,
+  candidateMainline: {
+    pullRequest: audit.candidatePullRequestNumber,
+    baseRef: candidatePr.base?.ref ?? null,
+    merged: Boolean(candidatePr.merged_at),
+    mergeCommitSha: candidatePr.merge_commit_sha ?? null,
     treeIdentityVerified: mainlineTreeIdentityVerified
   },
   independentAuditComplete: true,
