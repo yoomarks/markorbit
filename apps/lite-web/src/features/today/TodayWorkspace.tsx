@@ -3,6 +3,7 @@ import type {
   ContentKit,
   ContentPick,
   DailyOrbitItem,
+  PlatformVariant,
   VisualOutputKind
 } from '@markorbit/contracts/daily-workspace';
 import type {
@@ -315,7 +316,9 @@ function ContentKitPanel({
   visualError,
   busy,
   onCreateVisualBrief,
-  onStartVisualRequest
+  onStartVisualRequest,
+  onSelectAngle,
+  onCopyVariant
 }: {
   pick: Readonly<ContentPick>;
   kit?: Readonly<ContentKit>;
@@ -330,14 +333,35 @@ function ContentKitPanel({
     sceneIntent: string;
   }) => void;
   onStartVisualRequest: () => void;
+  onSelectAngle: (angleId: string) => void;
+  onCopyVariant: (variant: Readonly<PlatformVariant>) => Promise<void>;
 }) {
   const [ipPackage, setIpPackage] = useState('');
   const [outputKind, setOutputKind] = useState<VisualOutputKind>('XIAOHONGSHU_COVER');
   const [sceneIntent, setSceneIntent] = useState('');
+  const [selectedAngleId, setSelectedAngleId] = useState('');
+  const [copiedVariantId, setCopiedVariantId] = useState('');
+  const [copyError, setCopyError] = useState('');
 
   useEffect(() => {
     setSceneIntent(pick.suggestedAngles[0] ?? pick.whyPublish);
   }, [pick.contentPickId, pick.suggestedAngles, pick.whyPublish]);
+
+  useEffect(() => {
+    setSelectedAngleId('');
+    setCopiedVariantId('');
+    setCopyError('');
+  }, [kit?.contentKitId, kit?.version]);
+
+  const copyVariant = async (variant: Readonly<PlatformVariant>) => {
+    setCopyError('');
+    try {
+      await onCopyVariant(variant);
+      setCopiedVariantId(variant.variantId);
+    } catch {
+      setCopyError('This browser could not copy the platform variant.');
+    }
+  };
 
   if (loading) return <LoadingState label="Opening Content Kit" />;
   if (error?.code === 'CONTENT_OPPORTUNITY_REQUIRED') {
@@ -377,12 +401,25 @@ function ContentKitPanel({
           <div>
             <h4>Angles</h4>
             <ul className="daily-angle-list">
-              {kit.angles.map((angle) => (
-                <li key={angle.angleId}>
-                  <strong>{angle.title}</strong>
-                  <span>{angle.thesis}</span>
-                </li>
-              ))}
+              {kit.angles.map((angle) => {
+                const selected = selectedAngleId === angle.angleId;
+                return (
+                  <li key={angle.angleId}>
+                    <strong>{angle.title}</strong>
+                    <span>{angle.thesis}</span>
+                    <Button
+                      variant={selected ? 'secondary' : 'primary'}
+                      disabled={selected}
+                      onClick={() => {
+                        setSelectedAngleId(angle.angleId);
+                        onSelectAngle(angle.angleId);
+                      }}
+                    >
+                      {selected ? 'Selected angle' : 'Use this angle'}
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
           <div>
@@ -394,11 +431,23 @@ function ContentKitPanel({
                   <strong>{variant.title}</strong>
                   <p>{variant.body}</p>
                   <small>Human review required · external publish executed: No</small>
+                  <Button
+                    variant="secondary"
+                    disabled={copiedVariantId === variant.variantId}
+                    onClick={() => void copyVariant(variant)}
+                  >
+                    {copiedVariantId === variant.variantId ? 'Copied' : 'Copy'}
+                  </Button>
                 </li>
               ))}
             </ul>
           </div>
         </div>
+        {copyError ? (
+          <Alert tone="warning" title="Copy unavailable">
+            {copyError}
+          </Alert>
+        ) : null}
       </Card>
 
       <Card>
@@ -845,6 +894,43 @@ export function TodayWorkspace({
     }
   };
 
+  const selectContentAngle = (angleId: string) => {
+    if (!kit) return;
+    void dailyClient
+      .recordPreferenceEvent(
+        'ANGLE_SELECTED',
+        {
+          targetType: 'CONTENT_KIT',
+          targetId: kit.contentKitId,
+          targetVersion: kit.version
+        },
+        `preference:angle-selected:${kit.contentKitId}:${kit.version}:${angleId}`
+      )
+      .catch(() => {
+        // Angle selection is the primary local action; preference evidence is best-effort.
+      });
+  };
+
+  const copyPlatformVariant = async (variant: Readonly<PlatformVariant>) => {
+    if (!kit) throw new Error('Content Kit is required before copying a platform variant.');
+    if (!navigator.clipboard?.writeText)
+      throw new Error('Clipboard write is unavailable in this browser.');
+    await navigator.clipboard.writeText(`${variant.title}\n\n${variant.body}`);
+    void dailyClient
+      .recordPreferenceEvent(
+        'COPIED',
+        {
+          targetType: 'PLATFORM_VARIANT',
+          targetId: variant.variantId,
+          targetVersion: kit.version
+        },
+        `preference:copied:${kit.contentKitId}:${kit.version}:${variant.variantId}`
+      )
+      .catch(() => {
+        // A successful clipboard write remains successful even if preference evidence cannot persist.
+      });
+  };
+
   const recordOrbitPreference = async (
     kind: 'SAVED' | 'DISMISSED',
     item: Readonly<DailyOrbitItem>
@@ -1017,6 +1103,8 @@ export function TodayWorkspace({
             busy={busy}
             onCreateVisualBrief={(input) => void createVisualBrief(input)}
             onStartVisualRequest={() => void startVisualRequest()}
+            onSelectAngle={selectContentAngle}
+            onCopyVariant={copyPlatformVariant}
           />
         ) : (
           <EmptyState

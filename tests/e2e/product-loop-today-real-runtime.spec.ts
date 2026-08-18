@@ -190,6 +190,38 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       ).toBeVisible();
     }
 
+    const firstAngle = page.locator('.daily-angle-list > li').first();
+    await expect(firstAngle).toBeVisible();
+    const angleResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/product-preference-events') &&
+        response.request().method() === 'POST'
+    );
+    await firstAngle.getByRole('button', { name: 'Use this angle', exact: true }).click();
+    const angleResponse = await angleResponsePromise;
+    expect(angleResponse.status()).toBe(201);
+    const angleBody = (await angleResponse.json()) as {
+      event: { kind: string; targetType: string };
+    };
+    expect(angleBody.event).toMatchObject({ kind: 'ANGLE_SELECTED', targetType: 'CONTENT_KIT' });
+    await expect(
+      firstAngle.getByRole('button', { name: 'Selected angle', exact: true })
+    ).toBeDisabled();
+
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: lite });
+    const firstVariant = nativeVariants.first();
+    const copyResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/product-preference-events') &&
+        response.request().method() === 'POST'
+    );
+    await firstVariant.getByRole('button', { name: 'Copy', exact: true }).click();
+    const copyResponse = await copyResponsePromise;
+    expect(copyResponse.status()).toBe(201);
+    const copyBody = (await copyResponse.json()) as { event: { kind: string; targetType: string } };
+    expect(copyBody.event).toMatchObject({ kind: 'COPIED', targetType: 'PLATFORM_VARIANT' });
+    await expect(firstVariant.getByRole('button', { name: 'Copied', exact: true })).toBeDisabled();
+
     const durableUrl = page.url();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
