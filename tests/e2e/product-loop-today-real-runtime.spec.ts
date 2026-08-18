@@ -90,9 +90,16 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
     await expect(page.getByText(/No automatic publication, customer outreach/)).toBeVisible();
     await expect(page.getByText('CONTENT KIT', { exact: true })).toBeVisible();
     await expect(page.getByText('Native variants', { exact: true })).toBeVisible();
-    await expect(
-      page.getByText(/Human review required · external publish executed: No/)
-    ).toBeVisible();
+    const nativeVariants = page.locator('.daily-variant-list > li');
+    const nativeVariantCount = await nativeVariants.count();
+    expect(nativeVariantCount).toBeGreaterThan(0);
+    for (let index = 0; index < nativeVariantCount; index += 1) {
+      await expect(
+        nativeVariants
+          .nth(index)
+          .getByText('Human review required · external publish executed: No', { exact: true })
+      ).toBeVisible();
+    }
 
     const durableUrl = page.url();
     await page.reload();
