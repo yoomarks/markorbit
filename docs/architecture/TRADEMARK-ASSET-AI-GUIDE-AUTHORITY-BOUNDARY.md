@@ -8,17 +8,13 @@ It extends existing MarkOrbit owner boundaries. It does not create a new registr
 
 ## 1. Ownership model
 
-| Concern | Owning boundary | Lite M10 role |
-| --- | --- | --- |
-| User / Workspace / Principal / permissions | Core | authenticated Product consumer |
-| Order / Matter / Lifecycle Projection | MarkReg | exact reference and Product projection |
-| protected execution / review evidence | Execution | exact reference and governed handoff |
-| rules, office notices and source provenance | Knowledge | source/reference consumer |
-| bulk/public trademark data | Data Engine | read-only contract consumer |
-| private Trademark Asset working projection | Lite | Product owner |
-| private tags / notes / attention | Lite | Product owner |
-| contextual AI Guide suggestion | Lite-owned Product intelligence | assistive, non-executing output |
-| professional Capability evidence | Capability Engine | separate governed evidence boundary |
+- **Core:** owns User, Workspace, Principal and permissions; Lite is an authenticated Product consumer.
+- **MarkReg:** owns Order, Matter and Lifecycle Projection truth; Lite keeps exact references and Product projections.
+- **Execution:** owns protected execution and review evidence; Lite keeps exact references and governed handoffs.
+- **Knowledge:** owns rules, office notices and source provenance; Lite consumes source references.
+- **Data Engine:** owns bulk/public trademark data; Lite consumes only read-only contract projections.
+- **Lite:** owns the private Trademark Asset working projection, private tags/notes/attention and contextual AI Guide Product suggestions.
+- **Capability Engine:** owns professional Capability evidence under its separate governed evidence boundary.
 
 No owner database may be reached through cross-service SQL.
 
