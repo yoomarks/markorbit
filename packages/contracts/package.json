@@ -39,11 +39,13 @@
     },
     "./product-loop": {
       "types": "./dist/product-loop.d.ts",
-      "import": "./dist/product-loop.js"
+      "import": "./dist/product-loop.js",
+      "default": "./dist/product-loop.js"
     },
     "./daily-workspace": {
       "types": "./dist/daily-workspace.d.ts",
-      "import": "./dist/daily-workspace.js"
+      "import": "./dist/daily-workspace.js",
+      "default": "./dist/daily-workspace.js"
     },
     "./daily-source": {
       "types": "./dist/daily-source.d.ts",
@@ -59,7 +61,8 @@
     },
     "./beta-readiness": {
       "types": "./dist/beta-readiness.d.ts",
-      "import": "./dist/beta-readiness.js"
+      "import": "./dist/beta-readiness.js",
+      "default": "./dist/beta-readiness.js"
     }
   },
   "scripts": {
