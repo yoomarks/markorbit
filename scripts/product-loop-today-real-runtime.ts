@@ -341,7 +341,8 @@ async function main() {
           candidateStore,
           feedbackStore,
           analyticsStore,
-          dailyOrbitService
+          dailyOrbitService,
+          useFeedbackPreferenceRecorder: preferenceService
         }),
         ...createContentKitRoutes({ internalServiceSecret: secret, contentKitService }),
         ...createProductPreferenceRoutes({
