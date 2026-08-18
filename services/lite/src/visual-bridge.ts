@@ -1,17 +1,20 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type {
-  ContentKit,
-  ContentKitId,
-  VisualAssetReference,
-  VisualBrief,
-  VisualBriefId,
-  VisualOutput,
-  VisualOutputId
+import {
+  visualOutputKinds,
+  visualOutputStatuses,
+  type ContentKit,
+  type ContentKitId,
+  type VisualBrief,
+  type VisualBriefId,
+  type VisualOutputKind,
+  type VisualOutputReference,
+  type VisualOutputReferenceId,
+  type VisualOutputStatus
 } from '@markorbit/contracts/daily-workspace';
 import type { ProductLoopExactReference } from '@markorbit/contracts/product-loop';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
-import type { ContentKitService, ContentKitVisualBriefReferenceReader } from './content-kit.js';
+import type { ContentKitVisualBriefReferenceReader } from './content-kit.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/u;
@@ -23,6 +26,7 @@ export type VisualBridgeErrorCode =
   | 'INVALID_INPUT'
   | 'CONTENT_KIT_STALE'
   | 'VISUAL_BRIEF_NOT_FOUND'
+  | 'VISUAL_REQUEST_NOT_FOUND'
   | 'VISUAL_CONSUMER_UNAVAILABLE'
   | 'VISUAL_CONSUMER_REJECTED'
   | 'IDEMPOTENCY_CONFLICT'
@@ -50,21 +54,14 @@ export interface LiteVisualRequestEnvelope {
     style_id: string;
     scene_intent: string;
     composition?: string;
-    mood?: string;
-    props?: readonly string[];
   }>;
 }
 
-export type VisualConsumerStatus =
-  | 'ACCEPTED'
-  | 'PLANNING_ONLY'
-  | 'REUSE_SELECTION_REQUIRED'
-  | 'REUSE_SELECTED';
-
 export interface VisualConsumerAcceptance {
   readonly requestReference: string;
-  readonly status: VisualConsumerStatus;
-  readonly certifiedAssetReferences?: readonly string[];
+  readonly status: VisualOutputStatus;
+  readonly outputReference?: string;
+  readonly qcStatus?: 'PASS' | 'PASS_WITH_WARNINGS';
 }
 
 export interface VisualEngineConsumerPort {
@@ -98,9 +95,12 @@ export interface VisualRequestRecord {
   readonly requestReference: string;
   readonly requestSha256: string;
   readonly request: Readonly<LiteVisualRequestEnvelope>;
-  readonly consumerStatus: VisualConsumerStatus;
-  readonly certifiedAssetReferences: readonly string[];
+  readonly output: Readonly<VisualOutputReference>;
   readonly acceptedAt: string;
+}
+
+export interface ContentKitReader {
+  find(workspaceId: string, subjectUserId: string, contentPickId: string): Promise<ContentKit>;
 }
 
 export interface CreateVisualBriefCommand {
@@ -108,8 +108,9 @@ export interface CreateVisualBriefCommand {
   readonly subjectUserId: string;
   readonly contentPickId: string;
   readonly expectedContentKit: ProductLoopExactReference<ContentKitId>;
-  readonly ipId: string;
-  readonly reusableAssets: readonly VisualAssetReference[];
+  readonly requestedIpPackage: string;
+  readonly outputKind: VisualOutputKind;
+  readonly sceneIntent: string;
   readonly idempotencyKey: string;
 }
 
@@ -123,8 +124,11 @@ export interface StartVisualRequestCommand {
 export interface RecordVisualOutputCommand {
   readonly workspaceId: string;
   readonly visualBrief: ProductLoopExactReference<VisualBriefId>;
-  readonly assetReferences: readonly string[];
-  readonly generatedAt: string;
+  readonly requestReference: string;
+  readonly status: VisualOutputStatus;
+  readonly outputReference?: string;
+  readonly qcStatus?: 'PASS' | 'PASS_WITH_WARNINGS';
+  readonly createdAt: string;
   readonly idempotencyKey: string;
 }
 
@@ -137,7 +141,7 @@ function cleanWorkspaceId(value: string): string {
   return cleaned;
 }
 
-function text(value: string, field: string, maximum = 500): string {
+function text(value: string, field: string, maximum = 1000): string {
   const cleaned = value.trim();
   if (!cleaned) throw new VisualBridgeError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
@@ -153,42 +157,15 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-function assetPriority(asset: Readonly<VisualAssetReference>): number {
-  if (asset.discriminative && asset.reusable && asset.source === 'USER_IP') return 0;
-  if (asset.discriminative && asset.reusable && asset.source === 'USER_COMMERCIAL') return 1;
-  if (asset.discriminative && asset.reusable && asset.source === 'BRAND_KIT') return 2;
-  if (asset.reusable && asset.source === 'VISUAL_LIBRARY') return 3;
-  if (asset.reusable) return 4;
-  return 5;
+function aspectRatioFor(kind: VisualOutputKind): string {
+  if (kind === 'XIAOHONGSHU_COVER') return '3:4';
+  if (kind === 'WECHAT_OFFICIAL_ACCOUNT_COVER') return '2.35:1';
+  if (kind === 'MOMENTS_SOCIAL_CARD') return '1:1';
+  return '9:16';
 }
 
-export function normalizeReusableAssets(
-  values: readonly Readonly<VisualAssetReference>[]
-): readonly VisualAssetReference[] {
-  const seen = new Set<string>();
-  return values
-    .map((asset) => ({
-      assetId: text(asset.assetId, 'reusableAssets.assetId', 500),
-      source: asset.source,
-      discriminative: Boolean(asset.discriminative),
-      reusable: Boolean(asset.reusable)
-    }))
-    .filter((asset) => {
-      const key = `${asset.source}:${asset.assetId}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort(
-      (left, right) =>
-        assetPriority(left) - assetPriority(right) || left.assetId.localeCompare(right.assetId)
-    );
-}
-
-function conceptsFrom(kit: Readonly<ContentKit>): readonly string[] {
-  const angles = kit.angles.map((angle) => angle.title.trim()).filter(Boolean);
-  if (angles.length) return [...new Set(angles)].slice(0, 8);
-  return [kit.whyPublish.trim()].filter(Boolean);
+function titleFrom(kit: Readonly<ContentKit>): string {
+  return kit.angles[0]?.title.trim() || kit.whyPublish.trim();
 }
 
 function requestId(brief: Readonly<VisualBrief>): string {
@@ -198,22 +175,15 @@ function requestId(brief: Readonly<VisualBrief>): string {
 export function buildLiteVisualRequest(
   record: Readonly<VisualBriefRecord>
 ): LiteVisualRequestEnvelope {
-  const brief = record.brief;
-  const props = brief.reusableAssets
-    .filter((asset) => asset.reusable && asset.discriminative)
-    .map((asset) => asset.assetId)
-    .slice(0, 20);
   return {
     api_version: LITE_VISUAL_API_VERSION,
     operation: 'request.start',
-    request_id: requestId(brief),
+    request_id: requestId(record.brief),
     input: {
       ip_id: record.consumerIdentity.ipId,
       style_id: record.consumerIdentity.styleId,
-      scene_intent: brief.objective,
-      composition: 'MO Lite Content Kit editorial visual',
-      ...(brief.concepts[0] ? { mood: brief.concepts[0] } : {}),
-      ...(props.length ? { props } : {})
+      scene_intent: record.brief.sceneIntent,
+      composition: `${record.brief.outputKind} ${record.brief.aspectRatio}`
     }
   };
 }
@@ -225,14 +195,64 @@ function assertConsumerAcceptance(value: Readonly<VisualConsumerAcceptance>): vo
       'Visual Engine returned an invalid opaque request reference.',
       502
     );
-  for (const reference of value.certifiedAssetReferences ?? []) {
-    if (!/^library:\/\/[^\s]+$/u.test(reference))
-      throw new VisualBridgeError(
-        'VISUAL_CONSUMER_REJECTED',
-        'Visual Engine returned a non-certified reuse reference.',
-        502
-      );
-  }
+  if (!visualOutputStatuses.includes(value.status))
+    throw new VisualBridgeError(
+      'VISUAL_CONSUMER_REJECTED',
+      'Visual Engine returned an unsupported output status.',
+      502
+    );
+  if (value.outputReference && !OUTPUT_REFERENCE.test(value.outputReference))
+    throw new VisualBridgeError(
+      'VISUAL_CONSUMER_REJECTED',
+      'Visual Engine returned an invalid opaque output reference.',
+      502
+    );
+  if (value.status === 'REUSED_CERTIFIED_ASSET' && !value.outputReference?.startsWith('library://'))
+    throw new VisualBridgeError(
+      'VISUAL_CONSUMER_REJECTED',
+      'Certified reuse must return a library:// reference.',
+      502
+    );
+  if (value.status === 'READY' && !value.outputReference)
+    throw new VisualBridgeError(
+      'VISUAL_CONSUMER_REJECTED',
+      'Ready Visual output must include an opaque output reference.',
+      502
+    );
+  if (
+    (value.status === 'PLANNING_REQUIRED' || value.status === 'FAILED') &&
+    value.outputReference
+  )
+    throw new VisualBridgeError(
+      'VISUAL_CONSUMER_REJECTED',
+      'Planning/failed Visual output cannot expose a completed output reference.',
+      502
+    );
+}
+
+function outputReference(
+  workspaceId: string,
+  visualBrief: Readonly<ProductLoopExactReference<VisualBriefId>>,
+  requestReference: string,
+  acceptance: Readonly<Pick<VisualConsumerAcceptance, 'status' | 'outputReference' | 'qcStatus'>>,
+  id: VisualOutputReferenceId,
+  createdAt: string
+): VisualOutputReference {
+  return {
+    schemaVersion: 1,
+    visualOutputReferenceId: id,
+    workspaceId,
+    version: 1,
+    visualBrief: clone(visualBrief),
+    owner: 'VISUAL_ENGINE',
+    requestReference,
+    ...(acceptance.outputReference ? { outputReference: acceptance.outputReference } : {}),
+    status: acceptance.status,
+    ...(acceptance.qcStatus ? { qcStatus: acceptance.qcStatus } : {}),
+    providerExecutionAuthorizedByLite: false,
+    paidExecutionAuthorizedByLite: false,
+    createdAt
+  };
 }
 
 export class PostgresVisualBridgeStore implements ContentKitVisualBriefReferenceReader {
@@ -242,7 +262,7 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly nextBriefId: () => VisualBriefId = () =>
       `visual-brief_${randomUUID().replaceAll('-', '')}`,
-    private readonly nextOutputId: () => VisualOutputId = () =>
+    private readonly nextOutputId: () => VisualOutputReferenceId = () =>
       `visual-output_${randomUUID().replaceAll('-', '')}`
   ) {}
 
@@ -264,12 +284,17 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
   async createBrief(
     command: Readonly<CreateVisualBriefCommand>,
     kit: Readonly<ContentKit>,
-    styleIdValue: string
+    styleIdValue: string,
+    styleIntentValue: string
   ): Promise<VisualBriefRecord> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
-    const ipId = text(command.ipId, 'ipId', 300);
+    const ipId = text(command.requestedIpPackage, 'requestedIpPackage', 300);
     const styleId = text(styleIdValue, 'styleId', 300);
+    const styleIntent = text(styleIntentValue, 'styleIntent', 500);
+    const sceneIntent = text(command.sceneIntent, 'sceneIntent', 2000);
     const idempotencyKey = text(command.idempotencyKey, 'idempotencyKey', 300);
+    if (!visualOutputKinds.includes(command.outputKind))
+      throw new VisualBridgeError('INVALID_INPUT', 'outputKind is invalid.', 422);
     if (
       kit.workspaceId.toLowerCase() !== workspaceId ||
       kit.contentKitId !== command.expectedContentKit.id ||
@@ -280,41 +305,39 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
         'Content Kit changed before the Visual Brief could be created.',
         409
       );
-    const reusableAssets = normalizeReusableAssets(command.reusableAssets);
     const createdAt = new Date(this.now()).toISOString();
-    const base = {
-      schemaVersion: 1 as const,
+    const brief: VisualBrief = {
+      schemaVersion: 1,
       visualBriefId: this.nextBriefId(),
       workspaceId,
       version: 1,
       contentKit: { id: kit.contentKitId, version: kit.version },
-      objective: kit.whyPublish,
+      title: titleFrom(kit),
+      keyMessage: kit.whyPublish,
       audience: kit.audience,
-      concepts: conceptsFrom(kit),
-      reusableAssets,
-      reuseFirstRequired: true as const,
-      providerOverrideAllowed: false as const,
-      modelOverrideAllowed: false as const,
-      styleOverrideAllowed: false as const,
-      paymentOverrideAllowed: false as const,
-      qcOverrideAllowed: false as const,
-      paidExecutionAuthorized: false as const,
-      externalPublishAuthorized: false as const,
-      createdAt,
-      updatedAt: createdAt
+      outputKind: command.outputKind,
+      aspectRatio: aspectRatioFor(command.outputKind),
+      styleIntent,
+      requestedIpPackage: ipId,
+      sceneIntent,
+      reuseFirstRequired: true,
+      paidExecutionAuthorized: false,
+      createdAt
     };
-    const visualBriefFingerprintSha256 = fingerprint(base);
+    const visualBriefFingerprintSha256 = fingerprint(brief);
     const record: VisualBriefRecord = {
-      brief: base,
+      brief,
       visualBriefFingerprintSha256,
       consumerIdentity: { ipId, styleId }
     };
     const requestFingerprintSha256 = fingerprint({
       workspaceId,
       contentKit: command.expectedContentKit,
-      ipId,
+      requestedIpPackage: ipId,
+      outputKind: command.outputKind,
+      sceneIntent,
       styleId,
-      reusableAssets
+      styleIntent
     });
 
     try {
@@ -339,11 +362,11 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
         await client.query(
           `INSERT INTO lite_visual_briefs(
             workspace_id,visual_brief_id,version,content_kit_id,content_kit_version,
-            visual_brief_fingerprint_sha256,document_json,created_at,updated_at
-          ) VALUES($1,$2,1,$3,$4,$5,$6::jsonb,$7,$7)`,
+            visual_brief_fingerprint_sha256,document_json,created_at
+          ) VALUES($1,$2,1,$3,$4,$5,$6::jsonb,$7)`,
           [
             workspaceId,
-            record.brief.visualBriefId,
+            brief.visualBriefId,
             kit.contentKitId,
             kit.version,
             visualBriefFingerprintSha256,
@@ -384,17 +407,57 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
     return row ? clone(row.document_json as VisualBriefRecord) : undefined;
   }
 
+  async replayVisualRequest(
+    workspaceIdValue: string,
+    idempotencyKeyValue: string,
+    visualBrief: Readonly<ProductLoopExactReference<VisualBriefId>>,
+    request: Readonly<LiteVisualRequestEnvelope>
+  ): Promise<VisualRequestRecord | undefined> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const idempotencyKey = text(idempotencyKeyValue, 'idempotencyKey', 300);
+    const expected = fingerprint({ visualBrief, request });
+    const result = await this.query.query(
+      'SELECT request_fingerprint_sha256,result_json FROM lite_visual_bridge_commands WHERE workspace_id=$1 AND idempotency_key=$2',
+      [workspaceId, idempotencyKey]
+    );
+    const row = result.rows[0] as Row | undefined;
+    if (!row) return undefined;
+    if (String(row.request_fingerprint_sha256) !== expected)
+      throw new VisualBridgeError(
+        'IDEMPOTENCY_CONFLICT',
+        'Idempotency key was already used for a different Visual request.',
+        409
+      );
+    return clone(row.result_json as VisualRequestRecord);
+  }
+
   async saveRequest(
     workspaceIdValue: string,
-    record: Readonly<VisualRequestRecord>,
+    visualBrief: Readonly<ProductLoopExactReference<VisualBriefId>>,
+    request: Readonly<LiteVisualRequestEnvelope>,
+    acceptance: Readonly<VisualConsumerAcceptance>,
     idempotencyKeyValue: string
   ): Promise<VisualRequestRecord> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const idempotencyKey = text(idempotencyKeyValue, 'idempotencyKey', 300);
-    const requestFingerprintSha256 = fingerprint({
-      visualBrief: record.visualBrief,
-      request: record.request
-    });
+    const requestFingerprintSha256 = fingerprint({ visualBrief, request });
+    const acceptedAt = new Date(this.now()).toISOString();
+    const output = outputReference(
+      workspaceId,
+      visualBrief,
+      acceptance.requestReference,
+      acceptance,
+      this.nextOutputId(),
+      acceptedAt
+    );
+    const record: VisualRequestRecord = {
+      visualBrief: clone(visualBrief),
+      requestReference: acceptance.requestReference,
+      requestSha256: fingerprint(request),
+      request: clone(request),
+      output,
+      acceptedAt
+    };
     try {
       return await this.database.transact(async (client) => {
         const replay = await client.query(
@@ -414,24 +477,41 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
         await client.query(
           `INSERT INTO lite_visual_requests(
             workspace_id,visual_brief_id,visual_brief_version,request_reference,request_sha256,
-            request_json,consumer_status,accepted_at
-          ) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8)`,
+            request_json,accepted_at
+          ) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)`,
           [
             workspaceId,
-            record.visualBrief.id,
-            record.visualBrief.version,
-            record.requestReference,
+            visualBrief.id,
+            visualBrief.version,
+            acceptance.requestReference,
             record.requestSha256,
-            JSON.stringify(record.request),
-            record.consumerStatus,
-            record.acceptedAt
+            JSON.stringify(request),
+            acceptedAt
+          ]
+        );
+        await client.query(
+          `INSERT INTO lite_visual_output_references(
+            workspace_id,visual_output_reference_id,version,visual_brief_id,visual_brief_version,
+            request_reference,output_reference,status,qc_status,document_json,created_at
+          ) VALUES($1,$2,1,$3,$4,$5,$6,$7,$8,$9::jsonb,$10)`,
+          [
+            workspaceId,
+            output.visualOutputReferenceId,
+            visualBrief.id,
+            visualBrief.version,
+            output.requestReference,
+            output.outputReference ?? null,
+            output.status,
+            output.qcStatus ?? null,
+            JSON.stringify(output),
+            acceptedAt
           ]
         );
         await client.query(
           `INSERT INTO lite_visual_bridge_commands(
             workspace_id,idempotency_key,command_type,request_fingerprint_sha256,result_json,created_at
           ) VALUES($1,$2,'START_VISUAL_REQUEST',$3,$4::jsonb,$5)`,
-          [workspaceId, idempotencyKey, requestFingerprintSha256, JSON.stringify(record), record.acceptedAt]
+          [workspaceId, idempotencyKey, requestFingerprintSha256, JSON.stringify(record), acceptedAt]
         );
         return clone(record);
       });
@@ -449,49 +529,46 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
 
   async recordOutput(
     command: Readonly<RecordVisualOutputCommand>
-  ): Promise<VisualOutput> {
+  ): Promise<VisualOutputReference> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const idempotencyKey = text(command.idempotencyKey, 'idempotencyKey', 300);
-    const references = [...new Set(command.assetReferences.map((value) => text(value, 'assetReference', 1000)))];
-    if (!references.length || references.some((reference) => !OUTPUT_REFERENCE.test(reference)))
-      throw new VisualBridgeError(
-        'INVALID_INPUT',
-        'Visual outputs must contain only opaque library:// or delivery:// references.',
-        422
-      );
-    const generatedAt = new Date(command.generatedAt).toISOString();
-    const outputFingerprintSha256 = fingerprint({
-      visualBrief: command.visualBrief,
-      assetReferences: references,
-      generatedAt
-    });
-    const output: VisualOutput = {
-      schemaVersion: 1,
-      visualOutputId: this.nextOutputId(),
-      workspaceId,
-      version: 1,
-      visualBrief: clone(command.visualBrief),
-      owner: 'VISUAL_ENGINE',
-      outputFingerprintSha256,
-      assetReferences: references,
-      generatedAt,
-      externalPublishExecuted: false,
-      officialTruthClaimed: false
+    const requestReference = text(command.requestReference, 'requestReference', 1000);
+    if (!REQUEST_REFERENCE.test(requestReference))
+      throw new VisualBridgeError('INVALID_INPUT', 'requestReference is invalid.', 422);
+    const acceptance: VisualConsumerAcceptance = {
+      requestReference,
+      status: command.status,
+      ...(command.outputReference ? { outputReference: command.outputReference } : {}),
+      ...(command.qcStatus ? { qcStatus: command.qcStatus } : {})
     };
+    assertConsumerAcceptance(acceptance);
+    const createdAt = new Date(command.createdAt).toISOString();
     const requestFingerprintSha256 = fingerprint({
       visualBrief: command.visualBrief,
-      outputFingerprintSha256
+      requestReference,
+      status: command.status,
+      outputReference: command.outputReference ?? null,
+      qcStatus: command.qcStatus ?? null,
+      createdAt
     });
+    const output = outputReference(
+      workspaceId,
+      command.visualBrief,
+      requestReference,
+      acceptance,
+      this.nextOutputId(),
+      createdAt
+    );
     try {
       return await this.database.transact(async (client) => {
-        const brief = await client.query(
-          'SELECT 1 FROM lite_visual_briefs WHERE workspace_id=$1 AND visual_brief_id=$2 AND version=$3',
-          [workspaceId, command.visualBrief.id, command.visualBrief.version]
+        const requestResult = await client.query(
+          'SELECT 1 FROM lite_visual_requests WHERE workspace_id=$1 AND visual_brief_id=$2 AND visual_brief_version=$3 AND request_reference=$4',
+          [workspaceId, command.visualBrief.id, command.visualBrief.version, requestReference]
         );
-        if (!brief.rows[0])
+        if (!requestResult.rows[0])
           throw new VisualBridgeError(
-            'VISUAL_BRIEF_NOT_FOUND',
-            'Visual Brief was not found in this Workspace.',
+            'VISUAL_REQUEST_NOT_FOUND',
+            'Visual request was not found in this Workspace.',
             404
           );
         const replay = await client.query(
@@ -506,21 +583,24 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
               'Idempotency key was already used for different Visual output evidence.',
               409
             );
-          return clone(prior.result_json as VisualOutput);
+          return clone(prior.result_json as VisualOutputReference);
         }
         await client.query(
-          `INSERT INTO lite_visual_outputs(
-            workspace_id,visual_output_id,version,visual_brief_id,visual_brief_version,
-            output_fingerprint_sha256,document_json,generated_at
-          ) VALUES($1,$2,1,$3,$4,$5,$6::jsonb,$7)`,
+          `INSERT INTO lite_visual_output_references(
+            workspace_id,visual_output_reference_id,version,visual_brief_id,visual_brief_version,
+            request_reference,output_reference,status,qc_status,document_json,created_at
+          ) VALUES($1,$2,1,$3,$4,$5,$6,$7,$8,$9::jsonb,$10)`,
           [
             workspaceId,
-            output.visualOutputId,
+            output.visualOutputReferenceId,
             output.visualBrief.id,
             output.visualBrief.version,
-            output.outputFingerprintSha256,
+            output.requestReference,
+            output.outputReference ?? null,
+            output.status,
+            output.qcStatus ?? null,
             JSON.stringify(output),
-            output.generatedAt
+            output.createdAt
           ]
         );
         await client.query(
@@ -542,23 +622,42 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
       );
     }
   }
+
+  async findOutput(
+    workspaceIdValue: string,
+    reference: Readonly<ProductLoopExactReference<VisualOutputReferenceId>>
+  ): Promise<VisualOutputReference | undefined> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const result = await this.query.query(
+      'SELECT document_json FROM lite_visual_output_references WHERE workspace_id=$1 AND visual_output_reference_id=$2 AND version=$3',
+      [workspaceId, reference.id, reference.version]
+    );
+    const row = result.rows[0] as Row | undefined;
+    return row ? clone(row.document_json as VisualOutputReference) : undefined;
+  }
 }
 
 export class VisualBridgeService {
   constructor(
-    private readonly contentKits: ContentKitService,
+    private readonly contentKits: ContentKitReader,
     private readonly store: PostgresVisualBridgeStore,
     private readonly consumer: VisualEngineConsumerPort,
     private readonly productStyleId: string,
-    private readonly now: () => string = () => new Date().toISOString()
+    private readonly productStyleIntent = 'MarkOrbit Lite editorial visual'
   ) {
     text(productStyleId, 'productStyleId', 300);
+    text(productStyleIntent, 'productStyleIntent', 500);
   }
 
   async createBrief(command: Readonly<CreateVisualBriefCommand>): Promise<VisualBriefRecord> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const kit = await this.contentKits.find(workspaceId, command.subjectUserId, command.contentPickId);
-    return this.store.createBrief(command, kit, this.productStyleId);
+    return this.store.createBrief(
+      command,
+      kit,
+      this.productStyleId,
+      this.productStyleIntent
+    );
   }
 
   async startRequest(command: Readonly<StartVisualRequestCommand>): Promise<VisualRequestRecord> {
@@ -579,18 +678,21 @@ export class VisualBridgeService {
         409
       );
     const request = buildLiteVisualRequest(stored);
+    const replay = await this.store.replayVisualRequest(
+      workspaceId,
+      command.idempotencyKey,
+      command.visualBrief,
+      request
+    );
+    if (replay) return replay;
     const acceptance = await this.consumer.start(request);
     assertConsumerAcceptance(acceptance);
-    const acceptedAt = new Date(this.now()).toISOString();
-    const record: VisualRequestRecord = {
-      visualBrief: clone(command.visualBrief),
-      requestReference: acceptance.requestReference,
-      requestSha256: fingerprint(request),
+    return this.store.saveRequest(
+      workspaceId,
+      command.visualBrief,
       request,
-      consumerStatus: acceptance.status,
-      certifiedAssetReferences: [...(acceptance.certifiedAssetReferences ?? [])],
-      acceptedAt
-    };
-    return this.store.saveRequest(workspaceId, record, command.idempotencyKey);
+      acceptance,
+      command.idempotencyKey
+    );
   }
 }
