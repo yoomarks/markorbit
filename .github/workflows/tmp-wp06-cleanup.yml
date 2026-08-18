@@ -1,0 +1,68 @@
+name: Temporary WP06 Cleanup
+
+on:
+  push:
+    branches:
+      - agent/m9-wp06-daily-workspace-ui
+    paths:
+      - '.github/workflows/tmp-wp06-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m9-wp06-daily-workspace-ui
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fix exact WP06 acceptance issues
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          runtime = Path('scripts/product-loop-today-real-runtime.ts')
+          text = runtime.read_text()
+          text = text.replace(
+              "import type { DailySignal } from '@markorbit/contracts/daily-workspace';",
+              "import type { DailySignal } from '../packages/contracts/src/daily-workspace.js';",
+          )
+          runtime.write_text(text)
+
+          spec = Path('tests/e2e/product-loop-today-real-runtime.spec.ts')
+          text = spec.read_text()
+          text = text.replace(
+              "await expect(orbitCard.getByText(/Orbit score/i)).toBeVisible();",
+              "await expect(orbitCard.getByLabel(/Orbit score/i)).toBeVisible();",
+          )
+          spec.write_text(text)
+          PY
+      - name: Format exact WP06 files
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/tests/product-loop-daily-workspace-http.test.ts \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            scripts/product-loop-today-real-runtime.ts \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/gateway/tests/product-loop-daily-workspace-http.test.ts \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            scripts/product-loop-today-real-runtime.ts \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          if ! git diff --cached --quiet; then
+            git commit -m 'M9 WP06: clean Daily Workspace acceptance'
+            git push origin HEAD:agent/m9-wp06-daily-workspace-ui
+          fi
