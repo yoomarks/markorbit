@@ -17,6 +17,7 @@ on:
       - 'infrastructure/persistence/migrations/0042_lite_prepared_action_journey.sql'
       - 'infrastructure/persistence/migrations/0052_lite_daily_signals.sql'
       - 'infrastructure/persistence/migrations/0053_lite_visual_bridge.sql'
+      - 'infrastructure/persistence/migrations/0054_lite_product_preferences.sql'
       - 'scripts/product-loop-today-runtime.integration.test.ts'
       - 'scripts/product-loop-today-real-runtime.ts'
       - 'tests/e2e/product-loop-today-real-runtime.spec.ts'
@@ -58,9 +59,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
-      - name: Build M9 WP06 dependency closure
+      - name: Build M9 Daily Workspace dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
-      - name: Lint and typecheck M9 WP06 packages
+      - name: Lint and typecheck M9 Daily Workspace packages
         run: |
           pnpm --filter @markorbit/lite-service lint
           pnpm --filter @markorbit/lite-service typecheck
@@ -70,8 +71,10 @@ jobs:
           pnpm --filter @markorbit/gateway typecheck
           pnpm --filter @markorbit/lite-web lint
           pnpm --filter @markorbit/lite-web typecheck
-      - name: Run real PostgreSQL Prepared Action tests
-        run: pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+      - name: Run real PostgreSQL Prepared Action and preference tests
+        run: |
+          pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/preference-feedback-postgres.test.ts
       - name: Run authenticated Lite HTTP integration
         run: pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
       - name: Run Gateway Product-loop boundary tests
@@ -112,7 +115,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
-      - name: Build M9 WP06 browser dependency closure
+      - name: Build M9 Daily Workspace browser dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
       - name: Run desktop and mobile Daily Workspace journey
         run: pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts
