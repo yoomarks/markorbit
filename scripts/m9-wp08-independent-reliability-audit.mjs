@@ -20,7 +20,7 @@ async function readJson(relativePath) {
   return JSON.parse(await readFile(path.join(root, relativePath), 'utf8'));
 }
 
-function readCandidateText(candidateSha, relativePath) {
+function candidateText(candidateSha, relativePath) {
   return git('show', `${candidateSha}:${relativePath}`);
 }
 
@@ -35,42 +35,36 @@ invariant(
   git('rev-parse', `${candidateSha}^{tree}`) === audit.auditedCandidateTreeSha,
   'audited candidate tree drifted'
 );
-invariant(
-  audit.authority.mergeRequiresExplicitOwnerAction === true,
-  'Owner merge lock must remain explicit'
-);
-invariant(
-  audit.authority.releaseRequiresExplicitOwnerAction === true,
-  'Owner release lock must remain explicit'
-);
+invariant(audit.authority.mergeRequiresExplicitOwnerAction === true, 'Owner merge lock missing');
+invariant(audit.authority.releaseRequiresExplicitOwnerAction === true, 'Owner release lock missing');
 invariant(
   audit.authority.auditCreatesMergeReleaseOrDeployment === false,
   'audit may not create merge/release/deployment authority'
 );
 
-const deliveryPlan = readCandidateText(
+const deliveryPlan = candidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md'
 );
-const scopeLock = readCandidateText(
+const scopeLock = candidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md'
 );
-const wp07Task = readCandidateText(
+const wp07Task = candidateText(
   candidateSha,
   'docs/tasks/MO-MVP-M9-WP-07-PREFERENCE-FEEDBACK.md'
 );
-const browserRuntime = readCandidateText(candidateSha, audit.canonicalAcceptance.browserRuntimePath);
-const browserSpec = readCandidateText(candidateSha, audit.independentCandidateTests.realBrowser);
+const browserRuntime = candidateText(candidateSha, audit.canonicalAcceptance.browserRuntimePath);
+const browserSpec = candidateText(candidateSha, audit.independentCandidateTests.realBrowser);
 const dailySignalTests = [
-  readCandidateText(candidateSha, 'services/lite/tests/daily-signal.test.ts'),
-  readCandidateText(candidateSha, audit.independentCandidateTests.dailySignalPostgres)
+  candidateText(candidateSha, 'services/lite/tests/daily-signal.test.ts'),
+  candidateText(candidateSha, audit.independentCandidateTests.dailySignalPostgres)
 ].join('\n');
 const durableTests = [
   dailySignalTests,
-  readCandidateText(candidateSha, audit.independentCandidateTests.dailyOrbitPostgres),
-  readCandidateText(candidateSha, audit.independentCandidateTests.visualBridgePostgres),
-  readCandidateText(candidateSha, audit.independentCandidateTests.preferenceFeedbackPostgres)
+  candidateText(candidateSha, audit.independentCandidateTests.dailyOrbitPostgres),
+  candidateText(candidateSha, audit.independentCandidateTests.visualBridgePostgres),
+  candidateText(candidateSha, audit.independentCandidateTests.preferenceFeedbackPostgres)
 ].join('\n');
 
 for (const fragment of [
@@ -80,26 +74,29 @@ for (const fragment of [
   'real browser flow desktop + mobile',
   'no route interception/fixture fallback for canonical acceptance'
 ]) {
-  invariant(deliveryPlan.includes(fragment), `M9 delivery plan missing WP08 requirement: ${fragment}`);
+  invariant(deliveryPlan.includes(fragment), `M9 delivery plan missing: ${fragment}`);
 }
 for (const fragment of [
   'PublishPackage != Published',
   'Preference feedback != Capability verification',
   'Knowledge remains acquisition + provenance'
 ]) {
-  invariant(scopeLock.includes(fragment), `M9 scope lock missing authority distinction: ${fragment}`);
+  invariant(scopeLock.includes(fragment), `M9 scope lock missing: ${fragment}`);
 }
 invariant(
-  wp07Task.includes('Product preference evidence does not become Capability evidence'),
+  wp07Task.includes('is not professional Capability evidence'),
   'WP07 Product/Capability authority lock missing'
+);
+invariant(
+  wp07Task.includes('does not independently verify an external publication or outcome'),
+  'WP07 external-outcome authority lock missing'
 );
 
 const candidateRuns = await readJson(candidateRunsPath);
-const runs = candidateRuns.workflow_runs ?? [];
-const runsById = new Map(runs.map((run) => [run.id, run]));
+const runsById = new Map((candidateRuns.workflow_runs ?? []).map((run) => [run.id, run]));
 for (const required of audit.requiredWorkflowEvidence) {
   const run = runsById.get(required.runId);
-  invariant(run, `missing required candidate workflow run ${required.runId}: ${required.name}`);
+  invariant(run, `missing candidate workflow run ${required.runId}: ${required.name}`);
   invariant(run.name === required.name, `workflow name mismatch for run ${required.runId}`);
   invariant(run.head_sha === candidateSha, `workflow head mismatch for run ${required.runId}`);
   invariant(run.status === 'completed', `workflow run ${required.runId} is incomplete`);
@@ -107,8 +104,8 @@ for (const required of audit.requiredWorkflowEvidence) {
 }
 
 const candidateTests = await readJson(candidateTestsPath);
-invariant(candidateTests.schemaVersion === 1, 'independent candidate test marker schema drifted');
-invariant(candidateTests.auditedCandidateSha === candidateSha, 'independent candidate tests used wrong SHA');
+invariant(candidateTests.schemaVersion === 1, 'candidate test marker schema drifted');
+invariant(candidateTests.auditedCandidateSha === candidateSha, 'candidate tests used wrong SHA');
 invariant(candidateTests.result === 'PASS', 'independent candidate test matrix did not PASS');
 
 const changedFiles = git('diff', '--name-only', audit.baselineMainSha, 'HEAD')
@@ -128,12 +125,12 @@ for (const changedFile of changedFiles) {
 const requiredSourceMarkersPresent = audit.canonicalAcceptance.requiredSourceMarkers.every((marker) =>
   browserRuntime.includes(marker)
 );
-const blockingSourceMarkers = audit.canonicalAcceptance.fixtureOrDirectSeedMarkersThatBlockRealKnowledgeProof.filter(
-  (marker) => browserRuntime.includes(marker)
-);
+const blockingSourceMarkers =
+  audit.canonicalAcceptance.fixtureOrDirectSeedMarkersThatBlockRealKnowledgeProof.filter((marker) =>
+    browserRuntime.includes(marker)
+  );
 const realKnowledgeDerivedSourceProven =
   requiredSourceMarkersPresent && blockingSourceMarkers.length === 0;
-
 const exactProvenanceVerified =
   browserSpec.includes('Source & ranking reasons') &&
   browserSpec.includes('rdp_wp06-browser-') &&
@@ -143,9 +140,9 @@ const workspaceIsolationVerified =
   browserSpec.includes('desktopWorkspaceId') &&
   browserSpec.includes('mobileWorkspaceId');
 const staleSourceRejectionVerified = /stale|mismatch|fingerprint/iu.test(dailySignalTests);
+const replaySafetyVerified = /idempot|replay|ON CONFLICT/iu.test(durableTests);
 const restartRecoveryVerified = /restart|reopen|second store|new Postgres/iu.test(durableTests);
 const boundedConcurrencyVerified = /Promise\.all|concurr/iu.test(durableTests);
-const replaySafetyVerified = /idempot|replay|ON CONFLICT/iu.test(durableTests);
 const noRouteInterceptionVerified =
   !browserSpec.includes('page.route(') &&
   !browserSpec.includes('route.fulfill(') &&
@@ -153,12 +150,11 @@ const noRouteInterceptionVerified =
 const desktopMobileVerified =
   browserSpec.includes("project.name.includes('mobile')") && browserSpec.includes('mobileWorkspaceId');
 const noFalsePublicationVerified =
-  wp07Task.includes('Product event never implies external execution or outcome truth') &&
+  wp07Task.includes('does not independently verify an external publication or outcome') &&
   browserSpec.includes('externalActionExecutedByMarkOrbit') &&
   browserSpec.includes('externalOutcomeVerifiedByMarkOrbit');
 const noFalseCapabilityVerified =
-  wp07Task.includes('Product preference evidence does not become Capability evidence') &&
-  browserSpec.includes('capabilityVerified');
+  wp07Task.includes('is not professional Capability evidence') && browserSpec.includes('capabilityVerified');
 
 const blockers = [];
 if (!realKnowledgeDerivedSourceProven)
@@ -177,7 +173,6 @@ if (!noFalseCapabilityVerified) blockers.push('FALSE_CAPABILITY_GUARD_EVIDENCE_M
 const wp07Pr = await readJson(wp07PrPath);
 invariant(wp07Pr.number === audit.wp07PullRequestNumber, 'WP07 PR snapshot number drifted');
 invariant(wp07Pr.head?.sha === candidateSha, 'WP07 PR head does not match audited candidate');
-
 let mainlineTreeIdentityVerified = false;
 if (!wp07Pr.merged_at) {
   blockers.push('WP07_NOT_MERGED_TO_MAIN');
@@ -257,5 +252,4 @@ await writeFile(
   `${JSON.stringify(evidence, null, 2)}\n`,
   'utf8'
 );
-
 console.log(JSON.stringify(evidence));
