@@ -48,6 +48,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       items: Array<{
         dailyOrbitItemId: string;
         version: number;
+        signal: { id: string; version: number };
         score: { personalRelevance: { score: number } };
       }>;
     };
@@ -116,13 +117,15 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     const personalizedOrbit = (await (await personalizedOrbitResponse).json()) as {
       preferenceSource: string;
       items: Array<{
-        dailyOrbitItemId: string;
+        signal: { id: string; version: number };
         score: { personalRelevance: { score: number; reason: string } };
       }>;
     };
     expect(personalizedOrbit.preferenceSource).toBe('PRODUCT_FEEDBACK');
     const personalizedItem = personalizedOrbit.items.find(
-      (candidate) => candidate.dailyOrbitItemId === initialItem.dailyOrbitItemId
+      (candidate) =>
+        candidate.signal.id === initialItem.signal.id &&
+        candidate.signal.version === initialItem.signal.version
     );
     expect(personalizedItem).toBeTruthy();
     expect(personalizedItem!.score.personalRelevance.score).toBeGreaterThan(
