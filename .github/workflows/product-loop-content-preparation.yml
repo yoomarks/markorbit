@@ -14,6 +14,7 @@ on:
       - 'packages/contracts/src/daily-workspace.ts'
       - 'infrastructure/persistence/migrations/0039_lite_content_preparation.sql'
       - 'infrastructure/persistence/migrations/0052_lite_daily_signals.sql'
+      - 'infrastructure/persistence/migrations/0053_lite_visual_bridge.sql'
       - 'infrastructure/persistence/migration-owners.json'
 
 permissions:
@@ -43,6 +44,8 @@ jobs:
       LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
       LITE_CONTENT_KIT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_kit_test
       LITE_CONTENT_KIT_POSTGRES_TEST_REQUIRED: '1'
+      LITE_VISUAL_BRIDGE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_visual_bridge_test
+      LITE_VISUAL_BRIDGE_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -60,10 +63,13 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE markorbit_lite_daily_signal_test"
           psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE markorbit_lite_content_kit_test"
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE markorbit_lite_visual_bridge_test"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build Lite dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service...
+      - name: Run Visual Bridge contract tests
+        run: pnpm --filter @markorbit/lite-service exec vitest run tests/visual-bridge.test.ts
       - name: Run real PostgreSQL Content preparation tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
       - name: Run real PostgreSQL Daily Signal tests
@@ -72,3 +78,5 @@ jobs:
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/daily-orbit-postgres.test.ts
       - name: Run real PostgreSQL Content Kit tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/content-kit-postgres.test.ts
+      - name: Run real PostgreSQL Visual Bridge tests
+        run: pnpm --filter @markorbit/lite-service exec vitest run tests/visual-bridge-postgres.test.ts
