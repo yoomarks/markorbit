@@ -198,7 +198,7 @@ function isSourceGovernanceSnapshot(
     !isAllowed(value.authorityTier, AUTHORITY_TIERS) ||
     !Array.isArray(value.intendedUses) ||
     !value.intendedUses.every((item) => isAllowed(item, INTENDED_USES)) ||
-    !uniqueStrings(value.intendedUses as string[]) ||
+    !uniqueStrings(value.intendedUses) ||
     !isAllowed(value.factEligibility, FACT_ELIGIBILITY) ||
     !record(value.verification) ||
     !exactKeys(value.verification, [
@@ -211,7 +211,7 @@ function isSourceGovernanceSnapshot(
     !value.verification.verifyAgainstSourceIds.every(
       (item) => typeof item === 'string' && item.trim().length > 0
     ) ||
-    !uniqueStrings(value.verification.verifyAgainstSourceIds as string[]) ||
+    !uniqueStrings(value.verification.verifyAgainstSourceIds) ||
     typeof value.verification.verifyAgainstJurisdictionOfficialSource !== 'boolean' ||
     !isAllowed(value.contentReusePolicy, CONTENT_REUSE_POLICIES)
   ) {
