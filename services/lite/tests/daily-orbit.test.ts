@@ -142,7 +142,7 @@ describe('M9-WP-03 Personal Daily Orbit', () => {
     expect(item.score.importance.reason).toContain('FEE_CHANGE');
     expect(item.score.timeSensitivity.reason).toContain('HIGH');
     expect(item.score.contentPotential.reason).toContain('editorial potential');
-    expect(item.whyThisMatters).toContain('Creator Preference');
+    expect(item.whyThisMatters).toContain('jurisdiction/topic preference dimension');
     expect(item.source).toEqual(source);
     expect(item.recommendation).toEqual({ id: recommendation().todayRecommendationId, version: 1 });
     expect(item.executionAuthorized).toBe(false);
