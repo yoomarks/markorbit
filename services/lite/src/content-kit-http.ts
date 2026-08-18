@@ -37,10 +37,12 @@ function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   return principal;
 }
 
-export function createContentKitRoutes(options: Readonly<{
-  internalServiceSecret: string;
-  contentKitService: ContentKitService;
-}>): JsonRoute[] {
+export function createContentKitRoutes(
+  options: Readonly<{
+    internalServiceSecret: string;
+    contentKitService: ContentKitService;
+  }>
+): JsonRoute[] {
   return [
     {
       method: 'GET',

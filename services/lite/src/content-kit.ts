@@ -118,10 +118,7 @@ function anglesFor(
   }));
 }
 
-function variantKind(
-  platform: ContentPickPlatform,
-  hasDraft: boolean
-): PlatformVariantKind {
+function variantKind(platform: ContentPickPlatform, hasDraft: boolean): PlatformVariantKind {
   if (platform === 'WECHAT_MOMENTS') return 'WECHAT_MOMENTS_POST';
   if (platform === 'XIAOHONGSHU') return 'XIAOHONGSHU_POST';
   if (platform === 'WECHAT_OFFICIAL_ACCOUNT')
@@ -134,7 +131,9 @@ function starterBody(pick: Readonly<ContentPick>): string {
   return pick.suggestedAngles.map((angle, index) => `${index + 1}. ${angle}`).join('\n');
 }
 
-function latestDraft(drafts: readonly Readonly<ContentDraft>[]): Readonly<ContentDraft> | undefined {
+function latestDraft(
+  drafts: readonly Readonly<ContentDraft>[]
+): Readonly<ContentDraft> | undefined {
   return [...drafts].sort(
     (left, right) =>
       right.version - left.version || left.contentDraftId.localeCompare(right.contentDraftId)
@@ -215,20 +214,31 @@ function assertWorkspaceDocuments(
   }
 }
 
-export function projectContentKit(input: Readonly<{
-  pick: ContentPick;
-  orbitItem: DailyOrbitItem;
-  lifecycle: ContentKitLifecycleSnapshot;
-  preference?: CreatorPreference;
-}>): ContentKit {
+export function projectContentKit(
+  input: Readonly<{
+    pick: ContentPick;
+    orbitItem: DailyOrbitItem;
+    lifecycle: ContentKitLifecycleSnapshot;
+    preference?: CreatorPreference;
+  }>
+): ContentKit {
   const workspaceId = cleanWorkspaceId(input.pick.workspaceId);
   if (input.orbitItem.workspaceId.toLowerCase() !== workspaceId)
-    throw new ContentKitError('INVALID_INPUT', 'Daily Orbit Item belongs to a different Workspace.', 422);
+    throw new ContentKitError(
+      'INVALID_INPUT',
+      'Daily Orbit Item belongs to a different Workspace.',
+      422
+    );
   if (input.orbitItem.dailyOrbitItemId !== input.pick.orbitItem.id)
-    throw new ContentKitError('INVALID_INPUT', 'Content Pick does not match the Daily Orbit Item.', 422);
+    throw new ContentKitError(
+      'INVALID_INPUT',
+      'Content Pick does not match the Daily Orbit Item.',
+      422
+    );
   if (
     input.lifecycle.opportunity.sourceRecommendation.id !== input.pick.recommendation.id ||
-    Number(input.lifecycle.opportunity.sourceRecommendation.version) !== input.pick.recommendation.version
+    Number(input.lifecycle.opportunity.sourceRecommendation.version) !==
+      input.pick.recommendation.version
   )
     throw new ContentKitError(
       'INVALID_INPUT',
@@ -237,7 +247,11 @@ export function projectContentKit(input: Readonly<{
     );
   if (input.preference) {
     if (input.preference.workspaceId.toLowerCase() !== workspaceId)
-      throw new ContentKitError('INVALID_INPUT', 'Creator Preference belongs to a different Workspace.', 422);
+      throw new ContentKitError(
+        'INVALID_INPUT',
+        'Creator Preference belongs to a different Workspace.',
+        422
+      );
   }
   assertWorkspaceDocuments(workspaceId, input.lifecycle);
 
@@ -305,7 +319,9 @@ export class PostgresContentKitLifecycleReader implements ContentKitLifecycleRea
         'SELECT DISTINCT ON (content_draft_id) document_json FROM lite_content_drafts WHERE workspace_id=$1 AND content_opportunity_id=$2 AND content_opportunity_version=$3 ORDER BY content_draft_id,version DESC',
         [workspaceId, opportunity.contentOpportunityId, opportunity.version]
       );
-      const drafts = draftResult.rows.map((row) => clone((row as Row).document_json as ContentDraft));
+      const drafts = draftResult.rows.map((row) =>
+        clone((row as Row).document_json as ContentDraft)
+      );
 
       const publishResult = await this.query.query(
         'SELECT p.document_json FROM lite_publish_packages p JOIN lite_content_drafts d ON d.workspace_id=p.workspace_id AND d.content_draft_id=p.content_draft_id AND d.version=p.content_draft_version WHERE p.workspace_id=$1 AND d.content_opportunity_id=$2 AND d.content_opportunity_version=$3 ORDER BY p.created_at,p.publish_package_id,p.version',
@@ -334,9 +350,7 @@ export class ContentKitService {
   constructor(
     private readonly orbit: DailyOrbitSnapshotReader,
     private readonly lifecycle: ContentKitLifecycleReader,
-    private readonly preferences?:
-      | DailyOrbitPreferenceProvider
-      | NoCreatorPreferenceProvider
+    private readonly preferences?: DailyOrbitPreferenceProvider | NoCreatorPreferenceProvider
   ) {}
 
   async find(
@@ -357,7 +371,8 @@ export class ContentKitService {
       );
     const orbitItem = orbit.items.find(
       (candidate) =>
-        candidate.dailyOrbitItemId === pick.orbitItem.id && candidate.version === pick.orbitItem.version
+        candidate.dailyOrbitItemId === pick.orbitItem.id &&
+        candidate.version === pick.orbitItem.version
     );
     if (!orbitItem)
       throw new ContentKitError(

@@ -7,10 +7,7 @@ import type {
 } from '@markorbit/contracts/product-loop';
 import { createServiceRuntime } from '@markorbit/service-kit';
 import { PostgresLiteCandidateQualificationStore } from './candidate-qualification.js';
-import {
-  ContentKitService,
-  PostgresContentKitLifecycleReader
-} from './content-kit.js';
+import { ContentKitService, PostgresContentKitLifecycleReader } from './content-kit.js';
 import { createContentKitRoutes } from './content-kit-http.js';
 import {
   PostgresLiteContentPreparationStore,
