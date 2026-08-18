@@ -3,7 +3,8 @@ import type { VisualBrief } from '@markorbit/contracts/daily-workspace';
 import {
   UnavailableVisualEngineConsumer,
   buildLiteVisualRequest,
-  type VisualBriefRecord
+  type VisualBriefRecord,
+  type VisualEngineConsumerPort
 } from '../src/visual-bridge.js';
 
 const brief: VisualBrief = {
@@ -61,7 +62,7 @@ describe('Lite Visual Bridge consumer boundary', () => {
   });
 
   it('fails closed when no governed Visual Engine transport exists', async () => {
-    const consumer = new UnavailableVisualEngineConsumer();
+    const consumer: VisualEngineConsumerPort = new UnavailableVisualEngineConsumer();
     await expect(consumer.start(buildLiteVisualRequest(record))).rejects.toMatchObject({
       code: 'VISUAL_CONSUMER_UNAVAILABLE',
       status: 503,
