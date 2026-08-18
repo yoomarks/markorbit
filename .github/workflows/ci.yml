@@ -74,6 +74,9 @@ jobs:
       - name: Full workspace regression on main or workspace topology changes
         if: github.event_name == 'push' || needs.detect.outputs.full_workspace == 'true'
         run: pnpm lint && pnpm typecheck && pnpm test && pnpm build
+      - name: Build Gateway source-test runtime dependency
+        if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true' && needs.detect.outputs.gateway == 'true'
+        run: pnpm --filter @markorbit/events build
       - name: Affected workspace validation on PR
         if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true'
         env:
@@ -220,112 +223,26 @@ jobs:
           pnpm test:persistence
       - name: Core integration
         if: github.event_name == 'push' || needs.detect.outputs.core == 'true'
-        run: |
-          pnpm test:identity:postgres
-          pnpm test:auth:postgres
-          pnpm test:knowledge-intake:postgres
-          pnpm test:auth
-          pnpm test:auth:http
+        run: pnpm exec turbo run build --filter=@markorbit/core-service... && pnpm test:identity:postgres && pnpm test:auth:postgres && pnpm test:knowledge-intake:postgres
       - name: Lite integration
         if: github.event_name == 'push' || needs.detect.outputs.lite == 'true'
-        run: |
-          pnpm exec turbo run build --filter=@markorbit/lite-service...
-          pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
-          pnpm --filter @markorbit/lite-service exec vitest run tests/candidate-qualification-postgres.test.ts
-          pnpm --filter @markorbit/lite-service exec vitest run tests/product-loop-feedback-postgres.test.ts
-          pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
-          pnpm --filter @markorbit/lite-service exec vitest run tests/conversion-analytics-postgres.test.ts
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... && pnpm test:lite-content:postgres && pnpm test:lite-candidate:postgres && pnpm test:lite-feedback:postgres && pnpm test:lite-today:postgres && pnpm test:lite-conversion:postgres
       - name: Capability integration
         if: github.event_name == 'push' || needs.detect.outputs.capability == 'true'
-        run: |
-          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_registry_test pnpm --filter @markorbit/capability-engine test:runtime-registry:postgres
-          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_observation_test pnpm --filter @markorbit/capability-engine test:observation-ledger:postgres
-          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_reflection_test pnpm --filter @markorbit/capability-engine test:reflection-candidates:postgres
-          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_profile_test pnpm --filter @markorbit/capability-engine test:reflection-disposition-profile:postgres
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine... && pnpm test:capability-registry:postgres && pnpm test:capability-observation:postgres && pnpm test:capability-reflection:postgres && pnpm test:capability-profile:postgres
       - name: MarkReg integration
         if: github.event_name == 'push' || needs.detect.outputs.markreg == 'true'
-        run: |
-          pnpm test:customer-confirmation
-          pnpm test:customer-confirmation:postgres
-          pnpm test:customer-confirmation:http
-          pnpm test:lite-matter:postgres
-          pnpm test:lite-matter:http
-          pnpm test:document-package:postgres
-          pnpm test:document-package:http
-          pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts
-          pnpm test:order:http
-          pnpm test:order:client
-          pnpm test:order:journey
-          pnpm test:audit-idempotency:postgres
-          pnpm test:audit-idempotency:http
-          pnpm test:audit-idempotency:restart
+        run: pnpm test:markreg:postgres
       - name: Execution integration
         if: github.event_name == 'push' || needs.detect.outputs.execution == 'true'
-        run: |
-          pnpm test:professional-review:postgres
-          pnpm test:professional-review:http
-          pnpm test:filing-governance:auth
-          pnpm test:filing-governance:postgres
-          pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
-          pnpm test:evidence-review:postgres
+        run: pnpm test:execution:postgres && pnpm test:execution-provider-return-evidence:postgres && pnpm test:execution-evidence-review:postgres
       - name: MGSN integration
         if: github.event_name == 'push' || needs.detect.outputs.mgsn == 'true'
-        run: |
-          pnpm test:mgsn-provider-registry:postgres
-          pnpm --filter @markorbit/mgsn-service exec vitest run tests/service-package-eligibility-postgres.test.ts tests/allocation-provider-acceptance-postgres.test.ts tests/provider-return-postgres.test.ts
+        run: pnpm test:mgsn-provider:postgres && pnpm test:mgsn-service-package:postgres && pnpm test:mgsn-allocation:postgres && pnpm test:mgsn-provider-return:postgres
       - name: Payment integration
         if: github.event_name == 'push' || needs.detect.outputs.payment == 'true'
-        run: |
-          if [ -f services/payment/package.json ]; then
-            pnpm exec turbo run build --filter=@markorbit/payment-service...
-            pnpm --filter @markorbit/payment-service exec vitest run tests/payment-http.test.ts tests/payment-lifecycle-http.test.ts tests/payment-postgres.test.ts tests/payment-lifecycle-postgres.test.ts
-            if [ -f apps/gateway/tests/payment-http.test.ts ]; then
-              pnpm --filter @markorbit/gateway exec vitest run tests/payment-http.test.ts tests/payment-runtime-wiring.test.ts
-            fi
-          else
-            echo 'Payment package is not present on this revision; skipping Payment lane.'
-          fi
+        run: pnpm test:payment:postgres
       - name: Cross-domain Execution to MarkReg handoff
         if: github.event_name == 'push' || (needs.detect.outputs.execution == 'true' && needs.detect.outputs.markreg == 'true')
-        run: pnpm exec vitest run scripts/milestone5-reviewed-source-handoff.integration.test.ts
+        run: pnpm test:reviewed-source-handoff:postgres
       - run: pnpm test:gateway-inventory
-
-  professional-review-browser:
-    name: professional-review-browser
-    needs: detect
-    if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: markorbit_test
-          POSTGRES_PASSWORD: markorbit-test-only
-          POSTGRES_DB: markorbit_review_browser
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U markorbit_test -d markorbit_review_browser"
-          --health-interval 2s --health-timeout 3s --health-retries 20
-    env:
-      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_review_browser
-      MARKREG_POSTGRES_TEST_REQUIRED: '1'
-      MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED: '1'
-      EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_review_browser
-      EXECUTION_POSTGRES_TEST_REQUIRED: '1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 10.28.1 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - name: Create Execution browser database
-        env:
-          PGPASSWORD: markorbit-test-only
-        run: psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_review_browser;'
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:professional-review:browser
-      - run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop --reporter=line
-      - name: Run durable Order journey real runtime
-        run: pnpm test:order:journey:browser
