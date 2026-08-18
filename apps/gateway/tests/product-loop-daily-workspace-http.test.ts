@@ -132,7 +132,9 @@ describe('Gateway Daily Workspace boundary', () => {
       expect(init.method).toBe('POST');
       const headers = init.headers as Record<string, string>;
       expect(headers['idempotency-key']).toBe('preference-ui-1');
-      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      expect(typeof init.body).toBe('string');
+      if (typeof init.body !== 'string') throw new Error('Expected JSON request body.');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
       expect(body).toEqual({
         kind: 'SAVED',
         targetType: 'DAILY_ORBIT_ITEM',
