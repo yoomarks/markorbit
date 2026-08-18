@@ -7,4 +7,6 @@ export * from './feedback.js';
 export * from './conversion-analytics.js';
 export * from './daily-signal.js';
 export * from './daily-orbit.js';
+export * from './visual-bridge.js';
+export * from './visual-bridge-http.js';
 export * from './http.js';
