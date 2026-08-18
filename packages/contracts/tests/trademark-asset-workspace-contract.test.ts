@@ -5,6 +5,7 @@ import {
   trademarkAssetAiGuideAuthority,
   trademarkAssetAttentionDimensions,
   trademarkAssetAttentionSeverities,
+  trademarkAssetAuthorityBoundary,
   trademarkAssetFreshnessStates,
   trademarkAssetRelationKinds,
   trademarkAssetSourceKinds,
@@ -133,16 +134,19 @@ const suggestion = {
 } as const satisfies AiGuideSuggestion;
 
 describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
-  it('freezes source, freshness, relation and attention vocabulary', () => {
+  it('freezes source, freshness, relation, attention and AI Guide vocabulary', () => {
     expect(trademarkAssetSourceOwners).toContain('DATA_ENGINE');
     expect(trademarkAssetSourceOwners).toContain('WORKSPACE_USER');
     expect(trademarkAssetSourceKinds).toContain('MARKREG_LIFECYCLE_PROJECTION');
     expect(trademarkAssetSourceKinds).toContain('DATA_ENGINE_TRADEMARK_RECORD');
+    expect(trademarkAssetSourceKinds).toContain('WORKSPACE_ADMISSION');
     expect(trademarkAssetFreshnessStates).toContain('CONFLICTING');
     expect(trademarkAssetRelationKinds).toContain('MATTER');
     expect(trademarkAssetAttentionDimensions).toContain('SOURCE_FRESHNESS');
     expect(trademarkAssetAttentionDimensions).toContain('LIFECYCLE_RECOMMENDATION');
     expect(trademarkAssetAttentionSeverities).toEqual(['INFO', 'NOTICE', 'IMPORTANT', 'URGENT']);
+    expect(aiGuideSuggestionKinds).toContain('SUMMARIZE_OWNER_CONTEXT');
+    expect(aiGuideSuggestionKinds).toContain('PREPARE_OWNER_ACTION_CANDIDATE');
   });
 
   it('keeps the Asset a private projection instead of official or execution truth', () => {
@@ -151,6 +155,17 @@ describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
     expect(asset.relations[1]?.owner).toBe('DATA_ENGINE');
     expect(asset.officialTruthVerifiedByLite).toBe(false);
     expect(asset.filingExecutedByLite).toBe(false);
+    expect(trademarkAssetAuthorityBoundary).toMatchObject({
+      assetIsWorkspacePrivateProjection: true,
+      exactSourceAndFreshnessRequiredForConsequentialClaims: true,
+      markRegRemainsMatterAndLifecycleOwner: true,
+      executionRemainsProtectedActionOwner: true,
+      dataEngineConsumptionReadOnlyAndContractBound: true,
+      knowledgeRemainsAcquisitionAndProvenanceOwner: true,
+      crossServiceSqlAllowed: false,
+      assetCreatesOfficialTruth: false,
+      assetCreatesMatterAutomatically: false
+    });
   });
 
   it('keeps attention explainable and unable to certify deadlines, status or execution', () => {
@@ -159,6 +174,7 @@ describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
     expect(attention.legalDeadlineCertified).toBe(false);
     expect(attention.officialStatusVerifiedByLite).toBe(false);
     expect(attention.executionAuthorized).toBe(false);
+    expect(trademarkAssetAuthorityBoundary.attentionCertifiesDeadline).toBe(false);
   });
 
   it('requires permission-safe context and preserves visible freshness', () => {
@@ -172,8 +188,8 @@ describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
   });
 
   it('allows AI to prepare candidates but never grants protected consequences', () => {
-    expect(aiGuideSuggestionKinds).toContain('PREPARE_OWNER_ACTION_CANDIDATE');
     expect(trademarkAssetAiGuideAuthority.mayPrepareOwnerActionCandidate).toBe(true);
+    expect(trademarkAssetAiGuideAuthority.maySummarizeOwnerContext).toBe(true);
     expect(trademarkAssetAiGuideAuthority.mayCertifyDeadline).toBe(false);
     expect(trademarkAssetAiGuideAuthority.mayVerifyOfficialStatus).toBe(false);
     expect(trademarkAssetAiGuideAuthority.mayFileExternally).toBe(false);
@@ -181,6 +197,8 @@ describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
     expect(trademarkAssetAiGuideAuthority.mayCreateVerifiedCapability).toBe(false);
     expect(trademarkAssetAiGuideAuthority.mayAuthorizePaidExecution).toBe(false);
     expect(trademarkAssetAiGuideAuthority.mayBypassOwnerDomainValidation).toBe(false);
+    expect(trademarkAssetAuthorityBoundary.aiGuideExecutesProtectedAction).toBe(false);
+    expect(trademarkAssetAuthorityBoundary.aiGuideVerifiesCapability).toBe(false);
     expect(suggestion.userConfirmationRequiredForAnyConsequence).toBe(true);
     expect(suggestion.externalActionAuthorized).toBe(false);
     expect(suggestion.filingAuthorized).toBe(false);
