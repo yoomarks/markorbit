@@ -3,6 +3,7 @@ import type {
   ContentKit,
   ContentPick,
   DailyOrbitItem,
+  PlatformVariant,
   VisualOutputKind
 } from '@markorbit/contracts/daily-workspace';
 import type {
@@ -113,7 +114,19 @@ function sourceLabel(item: Readonly<DailyOrbitItem>) {
   )}`;
 }
 
-function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: string }) {
+function OrbitCard({
+  item,
+  title,
+  saved,
+  onSave,
+  onDismiss
+}: {
+  item: Readonly<DailyOrbitItem>;
+  title: string;
+  saved: boolean;
+  onSave: () => void;
+  onDismiss: () => void;
+}) {
   return (
     <Card>
       <div className="daily-card-heading">
@@ -137,6 +150,14 @@ function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: str
         <span title={item.score.contentPotential.reason}>
           Content {item.score.contentPotential.score}
         </span>
+      </div>
+      <div className="daily-chip-row" aria-label="Orbit preference actions">
+        <Button variant={saved ? 'secondary' : 'primary'} onClick={onSave} disabled={saved}>
+          {saved ? 'Saved' : 'Save'}
+        </Button>
+        <Button variant="secondary" onClick={onDismiss}>
+          Dismiss
+        </Button>
       </div>
       <details className="daily-provenance">
         <summary>Source & ranking reasons</summary>
@@ -295,7 +316,10 @@ function ContentKitPanel({
   visualError,
   busy,
   onCreateVisualBrief,
-  onStartVisualRequest
+  onStartVisualRequest,
+  onSelectAngle,
+  onCopyVariant,
+  onExportVariant
 }: {
   pick: Readonly<ContentPick>;
   kit?: Readonly<ContentKit>;
@@ -310,14 +334,50 @@ function ContentKitPanel({
     sceneIntent: string;
   }) => void;
   onStartVisualRequest: () => void;
+  onSelectAngle: (angleId: string) => void;
+  onCopyVariant: (variant: Readonly<PlatformVariant>) => Promise<void>;
+  onExportVariant: (variant: Readonly<PlatformVariant>) => void;
 }) {
   const [ipPackage, setIpPackage] = useState('');
   const [outputKind, setOutputKind] = useState<VisualOutputKind>('XIAOHONGSHU_COVER');
   const [sceneIntent, setSceneIntent] = useState('');
+  const [selectedAngleId, setSelectedAngleId] = useState('');
+  const [copiedVariantId, setCopiedVariantId] = useState('');
+  const [exportedVariantId, setExportedVariantId] = useState('');
+  const [copyError, setCopyError] = useState('');
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     setSceneIntent(pick.suggestedAngles[0] ?? pick.whyPublish);
   }, [pick.contentPickId, pick.suggestedAngles, pick.whyPublish]);
+
+  useEffect(() => {
+    setSelectedAngleId('');
+    setCopiedVariantId('');
+    setExportedVariantId('');
+    setCopyError('');
+    setExportError('');
+  }, [kit?.contentKitId, kit?.version]);
+
+  const copyVariant = async (variant: Readonly<PlatformVariant>) => {
+    setCopyError('');
+    try {
+      await onCopyVariant(variant);
+      setCopiedVariantId(variant.variantId);
+    } catch {
+      setCopyError('This browser could not copy the platform variant.');
+    }
+  };
+
+  const exportVariant = (variant: Readonly<PlatformVariant>) => {
+    setExportError('');
+    try {
+      onExportVariant(variant);
+      setExportedVariantId(variant.variantId);
+    } catch {
+      setExportError('This browser could not export the platform variant.');
+    }
+  };
 
   if (loading) return <LoadingState label="Opening Content Kit" />;
   if (error?.code === 'CONTENT_OPPORTUNITY_REQUIRED') {
@@ -357,12 +417,25 @@ function ContentKitPanel({
           <div>
             <h4>Angles</h4>
             <ul className="daily-angle-list">
-              {kit.angles.map((angle) => (
-                <li key={angle.angleId}>
-                  <strong>{angle.title}</strong>
-                  <span>{angle.thesis}</span>
-                </li>
-              ))}
+              {kit.angles.map((angle) => {
+                const selected = selectedAngleId === angle.angleId;
+                return (
+                  <li key={angle.angleId}>
+                    <strong>{angle.title}</strong>
+                    <span>{angle.thesis}</span>
+                    <Button
+                      variant={selected ? 'secondary' : 'primary'}
+                      disabled={selected}
+                      onClick={() => {
+                        setSelectedAngleId(angle.angleId);
+                        onSelectAngle(angle.angleId);
+                      }}
+                    >
+                      {selected ? 'Selected angle' : 'Use this angle'}
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
           <div>
@@ -374,11 +447,35 @@ function ContentKitPanel({
                   <strong>{variant.title}</strong>
                   <p>{variant.body}</p>
                   <small>Human review required · external publish executed: No</small>
+                  <Button
+                    variant="secondary"
+                    disabled={copiedVariantId === variant.variantId}
+                    onClick={() => void copyVariant(variant)}
+                  >
+                    {copiedVariantId === variant.variantId ? 'Copied' : 'Copy'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={exportedVariantId === variant.variantId}
+                    onClick={() => exportVariant(variant)}
+                  >
+                    {exportedVariantId === variant.variantId ? 'Exported' : 'Export'}
+                  </Button>
                 </li>
               ))}
             </ul>
           </div>
         </div>
+        {copyError ? (
+          <Alert tone="warning" title="Copy unavailable">
+            {copyError}
+          </Alert>
+        ) : null}
+        {exportError ? (
+          <Alert tone="warning" title="Export unavailable">
+            {exportError}
+          </Alert>
+        ) : null}
       </Card>
 
       <Card>
@@ -554,6 +651,10 @@ export function TodayWorkspace({
   const [feedbackBusyPackageId, setFeedbackBusyPackageId] = useState('');
   const [visualRecord, setVisualRecord] = useState<VisualBriefRecordResponse>();
   const [visualError, setVisualError] = useState<DailyWorkspaceHttpError>();
+  const [savedOrbitItemIds, setSavedOrbitItemIds] = useState<ReadonlySet<string>>(new Set());
+  const [dismissedOrbitItemIds, setDismissedOrbitItemIds] = useState<ReadonlySet<string>>(
+    new Set()
+  );
 
   const reload = async () => {
     setTodayError(undefined);
@@ -649,6 +750,19 @@ export function TodayWorkspace({
   }, [dailyClient, selectedPick]);
 
   const selectContentPick = (pick: Readonly<ContentPick>) => {
+    void dailyClient
+      .recordPreferenceEvent(
+        'OPENED',
+        {
+          targetType: 'CONTENT_PICK',
+          targetId: pick.contentPickId,
+          targetVersion: pick.version
+        },
+        `preference:opened:${pick.contentPickId}:${pick.version}`
+      )
+      .catch(() => {
+        // Product preference evidence must never block the primary Product navigation.
+      });
     setSelection({
       contentPickId: pick.contentPickId,
       recommendationId: pick.recommendation.id,
@@ -808,6 +922,103 @@ export function TodayWorkspace({
     }
   };
 
+  const selectContentAngle = (angleId: string) => {
+    if (!kit) return;
+    void dailyClient
+      .recordPreferenceEvent(
+        'ANGLE_SELECTED',
+        {
+          targetType: 'CONTENT_KIT',
+          targetId: kit.contentKitId,
+          targetVersion: kit.version
+        },
+        `preference:angle-selected:${kit.contentKitId}:${kit.version}:${angleId}`
+      )
+      .catch(() => {
+        // Angle selection is the primary local action; preference evidence is best-effort.
+      });
+  };
+
+  const copyPlatformVariant = async (variant: Readonly<PlatformVariant>) => {
+    if (!kit) throw new Error('Content Kit is required before copying a platform variant.');
+    if (!navigator.clipboard?.writeText)
+      throw new Error('Clipboard write is unavailable in this browser.');
+    await navigator.clipboard.writeText(`${variant.title}\n\n${variant.body}`);
+    void dailyClient
+      .recordPreferenceEvent(
+        'COPIED',
+        {
+          targetType: 'PLATFORM_VARIANT',
+          targetId: variant.variantId,
+          targetVersion: kit.version
+        },
+        `preference:copied:${kit.contentKitId}:${kit.version}:${variant.variantId}`
+      )
+      .catch(() => {
+        // A successful clipboard write remains successful even if preference evidence cannot persist.
+      });
+  };
+
+  const exportPlatformVariant = (variant: Readonly<PlatformVariant>) => {
+    if (!kit) throw new Error('Content Kit is required before exporting a platform variant.');
+    const blob = new Blob([`${variant.title}\n\n${variant.body}\n`], {
+      type: 'text/plain;charset=utf-8'
+    });
+    const href = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = href;
+    anchor.download = `markorbit-${variant.kind.toLowerCase().replaceAll('_', '-')}.txt`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 0);
+    void dailyClient
+      .recordPreferenceEvent(
+        'EXPORTED',
+        {
+          targetType: 'PLATFORM_VARIANT',
+          targetId: variant.variantId,
+          targetVersion: kit.version
+        },
+        `preference:exported:${kit.contentKitId}:${kit.version}:${variant.variantId}`
+      )
+      .catch(() => {
+        // A local download remains valid even when preference evidence cannot persist.
+      });
+  };
+
+  const recordOrbitPreference = async (
+    kind: 'SAVED' | 'DISMISSED',
+    item: Readonly<DailyOrbitItem>
+  ) => {
+    setDailyError(undefined);
+    try {
+      await dailyClient.recordPreferenceEvent(
+        kind,
+        {
+          targetType: 'DAILY_ORBIT_ITEM',
+          targetId: item.dailyOrbitItemId,
+          targetVersion: item.version
+        },
+        `preference:${kind.toLowerCase()}:${item.dailyOrbitItemId}:${item.version}`
+      );
+      if (kind === 'SAVED')
+        setSavedOrbitItemIds((current) => new Set([...current, item.dailyOrbitItemId]));
+      else setDismissedOrbitItemIds((current) => new Set([...current, item.dailyOrbitItemId]));
+    } catch (cause) {
+      setDailyError(
+        cause instanceof DailyWorkspaceHttpError
+          ? cause
+          : new DailyWorkspaceHttpError(
+              503,
+              'PREFERENCE_RECORD_FAILED',
+              'Orbit preference could not be saved.',
+              true
+            )
+      );
+    }
+  };
+
   if (!today && !orbit && !todayError && !dailyError)
     return <LoadingState label="Loading your Daily Workspace" />;
   if (!today && !orbit && (todayError || dailyError)) {
@@ -822,8 +1033,16 @@ export function TodayWorkspace({
     );
   }
 
-  const mainOrbit = orbit?.items.filter((item) => item.section !== 'WORTH_REVISITING') ?? [];
-  const revisiting = orbit?.items.filter((item) => item.section === 'WORTH_REVISITING') ?? [];
+  const mainOrbit =
+    orbit?.items.filter(
+      (item) =>
+        item.section !== 'WORTH_REVISITING' && !dismissedOrbitItemIds.has(item.dailyOrbitItemId)
+    ) ?? [];
+  const revisiting =
+    orbit?.items.filter(
+      (item) =>
+        item.section === 'WORTH_REVISITING' && !dismissedOrbitItemIds.has(item.dailyOrbitItemId)
+    ) ?? [];
   const contentPicks = orbit?.contentPicks ?? [];
 
   return (
@@ -875,7 +1094,14 @@ export function TodayWorkspace({
         {mainOrbit.length ? (
           <div className="daily-card-grid">
             {mainOrbit.map((item) => (
-              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />
+              <OrbitCard
+                key={item.dailyOrbitItemId}
+                item={item}
+                title={orbitTitle(item, today)}
+                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}
+                onSave={() => void recordOrbitPreference('SAVED', item)}
+                onDismiss={() => void recordOrbitPreference('DISMISSED', item)}
+              />
             ))}
           </div>
         ) : (
@@ -933,6 +1159,9 @@ export function TodayWorkspace({
             busy={busy}
             onCreateVisualBrief={(input) => void createVisualBrief(input)}
             onStartVisualRequest={() => void startVisualRequest()}
+            onSelectAngle={selectContentAngle}
+            onCopyVariant={copyPlatformVariant}
+            onExportVariant={exportPlatformVariant}
           />
         ) : (
           <EmptyState
@@ -958,7 +1187,14 @@ export function TodayWorkspace({
         {revisiting.length ? (
           <div className="daily-card-grid">
             {revisiting.map((item) => (
-              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />
+              <OrbitCard
+                key={item.dailyOrbitItemId}
+                item={item}
+                title={orbitTitle(item, today)}
+                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}
+                onSave={() => void recordOrbitPreference('SAVED', item)}
+                onDismiss={() => void recordOrbitPreference('DISMISSED', item)}
+              />
             ))}
           </div>
         ) : (

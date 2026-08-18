@@ -1,7 +1,10 @@
 import type {
   ContentKit,
   ContentPick,
+  CreatorPreference,
   DailyOrbitItem,
+  ProductPreferenceEvent,
+  ProductPreferenceEventKind,
   VisualBrief,
   VisualBriefId,
   VisualOutputKind,
@@ -36,6 +39,17 @@ export interface VisualRequestResponse {
   readonly acceptedAt: string;
 }
 
+export interface ProductPreferenceEventResponse {
+  readonly event: Readonly<ProductPreferenceEvent>;
+  readonly preference: Readonly<CreatorPreference>;
+}
+
+export type ProductPreferenceTarget = Readonly<{
+  targetType: ProductPreferenceEvent['targetType'];
+  targetId: string;
+  targetVersion: number | string;
+}>;
+
 export class DailyWorkspaceHttpError extends Error {
   constructor(
     readonly status: number,
@@ -64,6 +78,11 @@ export interface DailyWorkspaceClient {
     }>
   ): Promise<VisualBriefRecordResponse>;
   startVisualRequest(record: Readonly<VisualBriefRecordResponse>): Promise<VisualRequestResponse>;
+  recordPreferenceEvent(
+    kind: ProductPreferenceEventKind,
+    target: ProductPreferenceTarget,
+    idempotencyKey: string
+  ): Promise<ProductPreferenceEventResponse>;
 }
 
 async function csrfToken(): Promise<string> {
@@ -131,6 +150,36 @@ function visualBriefKey(contentPickId: string, kit: Readonly<ContentKit>, sceneI
 }
 
 export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceClient {
+  const recordPreferenceEvent = (
+    kind: ProductPreferenceEventKind,
+    target: ProductPreferenceTarget,
+    idempotencyKey: string
+  ) =>
+    request<ProductPreferenceEventResponse>(
+      '/api/lite/product-preference-events',
+      workspaceId,
+      'POST',
+      {
+        kind,
+        targetType: target.targetType,
+        targetId: target.targetId,
+        targetVersion: target.targetVersion
+      },
+      idempotencyKey
+    );
+
+  const recordPreferenceBestEffort = async (
+    kind: ProductPreferenceEventKind,
+    target: ProductPreferenceTarget,
+    idempotencyKey: string
+  ) => {
+    try {
+      await recordPreferenceEvent(kind, target, idempotencyKey);
+    } catch {
+      // Product preference evidence must never manufacture or block the primary Product action.
+    }
+  };
+
   return {
     loadOrbit: () => request<DailyOrbitSnapshot>('/api/lite/daily-orbit', workspaceId),
     loadContentKit: (contentPickId) =>
@@ -143,8 +192,8 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
         `/api/lite/visual-briefs/${encodeURIComponent(reference.id)}?version=${reference.version}`,
         workspaceId
       ),
-    createVisualBrief: (contentPickId, kit, input) =>
-      request<VisualBriefRecordResponse>(
+    createVisualBrief: async (contentPickId, kit, input) => {
+      const record = await request<VisualBriefRecordResponse>(
         `/api/lite/content-kits/${encodeURIComponent(contentPickId)}/visual-briefs`,
         workspaceId,
         'POST',
@@ -156,9 +205,20 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
           sceneIntent: input.sceneIntent
         },
         visualBriefKey(contentPickId, kit, input.sceneIntent)
-      ),
-    startVisualRequest: (record) =>
-      request<VisualRequestResponse>(
+      );
+      await recordPreferenceBestEffort(
+        'CONTENT_STARTED',
+        {
+          targetType: 'CONTENT_KIT',
+          targetId: kit.contentKitId,
+          targetVersion: kit.version
+        },
+        `preference:content-started:${kit.contentKitId}:${kit.version}`
+      );
+      return record;
+    },
+    startVisualRequest: async (record) => {
+      const result = await request<VisualRequestResponse>(
         `/api/lite/visual-briefs/${encodeURIComponent(record.brief.visualBriefId)}/request`,
         workspaceId,
         'POST',
@@ -167,6 +227,25 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
           expectedVisualBriefFingerprintSha256: record.visualBriefFingerprintSha256
         },
         `visual-request:${record.brief.visualBriefId}:${record.brief.version}`
-      )
+      );
+      const target: ProductPreferenceTarget = {
+        targetType: 'VISUAL_OUTPUT',
+        targetId: result.output.visualOutputReferenceId,
+        targetVersion: result.output.version
+      };
+      await recordPreferenceBestEffort(
+        'VISUAL_REQUESTED',
+        target,
+        `preference:visual-requested:${result.output.visualOutputReferenceId}:${result.output.version}`
+      );
+      if (result.output.status === 'READY' || result.output.status === 'REUSED_CERTIFIED_ASSET')
+        await recordPreferenceBestEffort(
+          'VISUAL_GENERATED',
+          target,
+          `preference:visual-generated:${result.output.visualOutputReferenceId}:${result.output.version}`
+        );
+      return result;
+    },
+    recordPreferenceEvent
   };
 }

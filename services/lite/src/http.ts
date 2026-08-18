@@ -5,6 +5,7 @@ import type {
   OpportunityQualificationDecisionId,
   PreparedActionId,
   ProductLoopFeedbackOutcome,
+  ProductLoopUseFeedback,
   PublishPackageId
 } from '@markorbit/contracts/product-loop';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
@@ -27,6 +28,10 @@ import {
 
 type Body = Record<string, unknown>;
 
+export interface UseFeedbackPreferenceRecorder {
+  recordUseFeedback(feedback: Readonly<ProductLoopUseFeedback>): Promise<unknown>;
+}
+
 export interface LiteProductLoopRouteOptions {
   internalServiceSecret: string;
   journeyService: PreparedActionJourneyService;
@@ -35,6 +40,7 @@ export interface LiteProductLoopRouteOptions {
   analyticsStore: PostgresProductConversionAnalyticsStore;
   dailySignalStore?: PostgresLiteDailySignalStore;
   dailyOrbitService?: DailyOrbitService;
+  useFeedbackPreferenceRecorder?: UseFeedbackPreferenceRecorder;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -316,6 +322,12 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
             recordedByPrincipalId: principal.userId,
             idempotencyKey: keyOf(request)
           });
+          if (options.useFeedbackPreferenceRecorder)
+            try {
+              await options.useFeedbackPreferenceRecorder.recordUseFeedback(feedback);
+            } catch {
+              // Preference evidence is secondary and must never rewrite accepted use feedback.
+            }
           return json(201, feedback);
         } catch (error) {
           return mapError(error);

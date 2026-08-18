@@ -14,11 +14,7 @@ import {
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
-import {
-  DailyOrbitService,
-  NoCreatorPreferenceProvider,
-  PostgresDailySignalReader
-} from './daily-orbit.js';
+import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
   PostgresLiteDailySignalStore
@@ -32,6 +28,12 @@ import {
   type PreparedActionHandoffAuthority,
   type PreparedActionPlan
 } from './prepared-action.js';
+import { PostgresProductPreferenceStore } from './preference-feedback.js';
+import { createProductPreferenceRoutes } from './preference-http.js';
+import {
+  DailyWorkspacePreferenceTargetResolver,
+  ProductPreferenceService
+} from './preference-target.js';
 import {
   PostgresVisualBridgeStore,
   UnavailableVisualEngineConsumer,
@@ -109,6 +111,7 @@ const candidateStore = new PostgresLiteCandidateQualificationStore(
   }
 );
 const preparedActionStore = new PostgresPreparedActionStore(database, pool);
+const creatorPreferences = new PostgresProductPreferenceStore(database, pool);
 
 async function postMarkReg<T>(
   path: string,
@@ -218,9 +221,9 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 };
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
-const creatorPreferences = new NoCreatorPreferenceProvider();
+const dailySignalReader = new PostgresDailySignalReader(pool);
 const dailyOrbitService = new DailyOrbitService(
-  new PostgresDailySignalReader(pool),
+  dailySignalReader,
   journeyService,
   creatorPreferences
 );
@@ -230,6 +233,15 @@ const contentKitService = new ContentKitService(
   new PostgresContentKitLifecycleReader(pool),
   creatorPreferences,
   visualBridgeStore
+);
+const preferenceService = new ProductPreferenceService(
+  creatorPreferences,
+  new DailyWorkspacePreferenceTargetResolver(
+    dailyOrbitService,
+    dailySignalReader,
+    contentKitService,
+    visualBridgeStore
+  )
 );
 const visualBridgeService = new VisualBridgeService(
   contentKitService,
@@ -246,9 +258,11 @@ const runtime = createServiceRuntime(serviceManifest, {
       feedbackStore,
       analyticsStore,
       dailySignalStore,
-      dailyOrbitService
+      dailyOrbitService,
+      useFeedbackPreferenceRecorder: preferenceService
     }),
     ...createContentKitRoutes({ internalServiceSecret, contentKitService }),
+    ...createProductPreferenceRoutes({ internalServiceSecret, service: preferenceService }),
     ...createVisualBridgeRoutes({
       internalServiceSecret,
       visualBridgeService,

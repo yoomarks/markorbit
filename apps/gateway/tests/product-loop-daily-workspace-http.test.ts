@@ -121,6 +121,96 @@ describe('Gateway Daily Workspace boundary', () => {
     expect(result.status).toBe(200);
   });
 
+  it('forwards bounded preference evidence with workspace:read plus CSRF and idempotency', async () => {
+    const readOnlyPrincipal: WorkspacePrincipal = {
+      ...principal,
+      permissions: ['workspace:read']
+    };
+    resolveWorkspace.mockResolvedValueOnce(readOnlyPrincipal);
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/product-preference-events');
+      expect(init.method).toBe('POST');
+      const headers = init.headers as Record<string, string>;
+      expect(headers['idempotency-key']).toBe('preference-ui-1');
+      expect(typeof init.body).toBe('string');
+      if (typeof init.body !== 'string') throw new Error('Expected JSON request body.');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
+      expect(body).toEqual({
+        kind: 'SAVED',
+        targetType: 'DAILY_ORBIT_ITEM',
+        targetId: 'daily-orbit-item_1',
+        targetVersion: 1
+      });
+      expect(body.subjectUserId).toBeUndefined();
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            event: {
+              productPreferenceEventId: 'product-preference-event_1',
+              capabilityVerified: false,
+              externalActionExecutedByMarkOrbit: false,
+              externalOutcomeVerifiedByMarkOrbit: false
+            }
+          }),
+          { status: 201, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('POST', '/api/lite/product-preference-events').handle({
+      method: 'POST',
+      path: '/api/lite/product-preference-events',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'preference-ui-1'
+      },
+      body: {
+        kind: 'SAVED',
+        targetType: 'DAILY_ORBIT_ITEM',
+        targetId: 'daily-orbit-item_1',
+        targetVersion: 1
+      }
+    });
+
+    expect(result.status).toBe(201);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects subjectUserId spoofing before preference evidence reaches Lite', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+
+    await expect(
+      route('POST', '/api/lite/product-preference-events').handle({
+        method: 'POST',
+        path: '/api/lite/product-preference-events',
+        params: {},
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+          'idempotency-key': 'preference-ui-spoof'
+        },
+        body: {
+          subjectUserId: 'attacker',
+          kind: 'SAVED',
+          targetType: 'DAILY_ORBIT_ITEM',
+          targetId: 'daily-orbit-item_1',
+          targetVersion: 1
+        }
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
   it('requires governed mutation headers before Visual Brief creation', async () => {
     const downstream = vi.fn((url: string, init: RequestInit) => {
       expect(url).toBe('http://lite.test/v1/content-kits/content-pick_1/visual-briefs');

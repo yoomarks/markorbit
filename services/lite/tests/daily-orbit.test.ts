@@ -162,6 +162,31 @@ describe('M9-WP-03 Personal Daily Orbit', () => {
     expect(item.score.personalRelevance.reason).toContain('no explicit Creator Preference');
   });
 
+  it('keeps Orbit and Content Pick identities stable when preference changes relevance', async () => {
+    const baselineService = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(undefined),
+      () => '2026-08-18T03:00:00.000Z'
+    );
+    const personalizedService = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(preference()),
+      () => '2026-08-18T03:00:00.000Z'
+    );
+
+    const baseline = await baselineService.snapshot(workspaceId, userId);
+    const personalized = await personalizedService.snapshot(workspaceId, userId);
+
+    expect(baseline.items[0]?.score.personalRelevance.score).toBe(50);
+    expect(personalized.items[0]?.score.personalRelevance.score).toBe(95);
+    expect(personalized.items[0]?.dailyOrbitItemId).toBe(baseline.items[0]?.dailyOrbitItemId);
+    expect(personalized.contentPicks[0]?.contentPickId).toBe(
+      baseline.contentPicks[0]?.contentPickId
+    );
+  });
+
   it('uses RISK only when the source-derived signal carries explicit risk evidence', () => {
     const neutral = rankDailyOrbitItem(
       signal({ title: 'Trademark deadline update', changeType: 'DEADLINE_CHANGE' }),

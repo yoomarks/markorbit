@@ -273,9 +273,7 @@ export function rankDailyOrbitItem(
     contentPotential: contentScore,
     total
   };
-  const identity = digest(
-    `${signal.dailySignalFingerprintSha256}:${subjectUserId}:${preference?.creatorPreferenceId ?? 'workspace-baseline'}:${preference?.version ?? 0}`
-  );
+  const identity = digest(`${signal.dailySignalFingerprintSha256}:${subjectUserId}`);
 
   return {
     schemaVersion: 1,

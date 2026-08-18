@@ -259,6 +259,7 @@ export const productPreferenceEventKinds = [
   'PLATFORM_VARIANT_GENERATED',
   'DRAFT_EDITED',
   'VISUAL_REQUESTED',
+  'VISUAL_GENERATED',
   'VISUAL_SELECTED',
   'COPIED',
   'EXPORTED',
