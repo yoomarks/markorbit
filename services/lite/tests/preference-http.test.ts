@@ -21,7 +21,7 @@ const principal: WorkspacePrincipal = {
   sessionExpiresAt: '2030-01-01T00:00:00.000Z',
   workspaceId,
   membershipId: 'membership_m9_wp07_http',
-  role: 'WORKSPACE_MEMBER',
+  role: 'READ_ONLY',
   permissions: ['workspace:read']
 };
 
