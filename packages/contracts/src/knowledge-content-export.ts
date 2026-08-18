@@ -166,7 +166,7 @@ const validTimestamp = (value: unknown): value is string =>
   Number.isFinite(Date.parse(value));
 const nonNegativeSafeInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-const uniqueStrings = (value: string[]) => new Set(value).size === value.length;
+const uniqueStrings = (value: readonly unknown[]) => new Set(value).size === value.length;
 const isAllowed = <T extends string>(value: unknown, allowed: readonly T[]): value is T =>
   typeof value === 'string' && allowed.includes(value as T);
 
