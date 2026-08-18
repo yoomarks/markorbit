@@ -16,7 +16,7 @@ export interface DailyOrbitSnapshot {
   readonly workspaceId: string;
   readonly subjectUserId: string;
   readonly generatedAt: string;
-  readonly preferenceSource: 'EXPLICIT' | 'INFERRED_FROM_PRODUCT_FEEDBACK' | 'NONE';
+  readonly preferenceSource: 'EXPLICIT' | 'PRODUCT_FEEDBACK' | 'NONE';
   readonly items: ReadonlyArray<Readonly<DailyOrbitItem>>;
   readonly contentPicks: ReadonlyArray<Readonly<ContentPick>>;
   readonly partial: boolean;
@@ -51,7 +51,9 @@ export class DailyWorkspaceHttpError extends Error {
 export interface DailyWorkspaceClient {
   loadOrbit(): Promise<DailyOrbitSnapshot>;
   loadContentKit(contentPickId: string): Promise<ContentKit>;
-  loadVisualBrief(reference: Readonly<ProductLoopExactReference<VisualBriefId>>): Promise<VisualBriefRecordResponse>;
+  loadVisualBrief(
+    reference: Readonly<ProductLoopExactReference<VisualBriefId>>
+  ): Promise<VisualBriefRecordResponse>;
   createVisualBrief(
     contentPickId: string,
     kit: Readonly<ContentKit>,
@@ -61,9 +63,7 @@ export interface DailyWorkspaceClient {
       sceneIntent: string;
     }>
   ): Promise<VisualBriefRecordResponse>;
-  startVisualRequest(
-    record: Readonly<VisualBriefRecordResponse>
-  ): Promise<VisualRequestResponse>;
+  startVisualRequest(record: Readonly<VisualBriefRecordResponse>): Promise<VisualRequestResponse>;
 }
 
 async function csrfToken(): Promise<string> {
@@ -103,7 +103,7 @@ async function request<T>(
       },
       ...(method === 'GET' ? {} : { body: JSON.stringify({ workspaceId, ...body }) })
     });
-  } catch (cause) {
+  } catch {
     throw new DailyWorkspaceHttpError(
       503,
       'DOWNSTREAM_UNAVAILABLE',
