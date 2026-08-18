@@ -11,8 +11,7 @@ export const trademarkAssetSourceOwners = [
   'DATA_ENGINE',
   'WORKSPACE_USER'
 ] as const;
-export type TrademarkAssetSourceOwner =
-  (typeof trademarkAssetSourceOwners)[number];
+export type TrademarkAssetSourceOwner = (typeof trademarkAssetSourceOwners)[number];
 
 export const trademarkAssetSourceKinds = [
   'MARKREG_MATTER',
@@ -24,8 +23,7 @@ export const trademarkAssetSourceKinds = [
   'WORKSPACE_ADMISSION',
   'WORKSPACE_NOTE'
 ] as const;
-export type TrademarkAssetSourceKind =
-  (typeof trademarkAssetSourceKinds)[number];
+export type TrademarkAssetSourceKind = (typeof trademarkAssetSourceKinds)[number];
 
 export const trademarkAssetFreshnessStates = [
   'CURRENT',
@@ -33,8 +31,7 @@ export const trademarkAssetFreshnessStates = [
   'UNKNOWN',
   'CONFLICTING'
 ] as const;
-export type TrademarkAssetFreshnessState =
-  (typeof trademarkAssetFreshnessStates)[number];
+export type TrademarkAssetFreshnessState = (typeof trademarkAssetFreshnessStates)[number];
 
 export interface TrademarkAssetIdentity {
   jurisdiction: string;
@@ -67,8 +64,7 @@ export const trademarkAssetRelationKinds = [
   'KNOWLEDGE_SOURCE',
   'DATA_RECORD'
 ] as const;
-export type TrademarkAssetRelationKind =
-  (typeof trademarkAssetRelationKinds)[number];
+export type TrademarkAssetRelationKind = (typeof trademarkAssetRelationKinds)[number];
 
 export interface TrademarkAssetRelation {
   kind: TrademarkAssetRelationKind;
@@ -111,17 +107,10 @@ export const trademarkAssetAttentionDimensions = [
   'KNOWLEDGE_CHANGE_RELEVANCE',
   'USER_PRIORITY'
 ] as const;
-export type TrademarkAssetAttentionDimension =
-  (typeof trademarkAssetAttentionDimensions)[number];
+export type TrademarkAssetAttentionDimension = (typeof trademarkAssetAttentionDimensions)[number];
 
-export const trademarkAssetAttentionSeverities = [
-  'INFO',
-  'NOTICE',
-  'IMPORTANT',
-  'URGENT'
-] as const;
-export type TrademarkAssetAttentionSeverity =
-  (typeof trademarkAssetAttentionSeverities)[number];
+export const trademarkAssetAttentionSeverities = ['INFO', 'NOTICE', 'IMPORTANT', 'URGENT'] as const;
+export type TrademarkAssetAttentionSeverity = (typeof trademarkAssetAttentionSeverities)[number];
 
 export interface TrademarkAssetAttentionSignal {
   schemaVersion: 1;
