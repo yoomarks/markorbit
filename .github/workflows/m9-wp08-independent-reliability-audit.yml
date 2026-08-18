@@ -71,6 +71,11 @@ jobs:
           git worktree add --detach "$CANDIDATE_DIR" "$M9_WP08_AUDITED_CANDIDATE_SHA"
           cd "$CANDIDATE_DIR"
           pnpm install --frozen-lockfile
+          pnpm exec turbo run build \
+            --filter=@markorbit/lite-service... \
+            --filter=@markorbit/markreg-service... \
+            --filter=@markorbit/gateway... \
+            --filter=@markorbit/lite-web...
       - name: Create isolated M9 audit databases
         shell: bash
         run: |
