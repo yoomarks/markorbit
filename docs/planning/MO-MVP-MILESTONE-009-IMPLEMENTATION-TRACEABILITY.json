@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M9",
+  "name": "MO Lite Daily Workspace & Content Production",
+  "engineeringStatus": "COMPLETE",
+  "finalRecommendation": "GO",
+  "completionMainSha": "b5b05c439284376e0afb2f275ca1ca51229305b7",
+  "scopeLock": "docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md",
+  "deliveryPlan": "docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md",
+  "workPackages": [
+    {
+      "id": "M9-WP-01",
+      "pr": 117,
+      "mergeSha": "e9d8d9ae5673d050d28a5049de3a8736767b414c",
+      "status": "COMPLETE"
+    },
+    {
+      "id": "M9-WP-02",
+      "pr": 118,
+      "mergeSha": "db30495ffcb7686fb6ad94a587d5fd5f0192d7e4",
+      "status": "COMPLETE"
+    },
+    {
+      "id": "M9-WP-03",
+      "pr": 119,
+      "mergeSha": "5726f72e2986c3b4fdc634c38313b29d315014c7",
+      "status": "COMPLETE"
+    },
+    {
+      "id": "M9-WP-04",
+      "pr": 120,
+      "mergeSha": "a8a2c144f8538e4aafce3a3d7f68ff2c960ac0e9",
+      "status": "COMPLETE"
+    },
+    {
+      "id": "M9-WP-05",
+      "pr": 121,
+      "mergeSha": "82aa58f307a45aad5f77e197f44826fac522a625",
+      "status": "COMPLETE_WITH_DEFERRED_EXTERNAL_TRANSPORT_GATE"
+    },
+    {
+      "id": "M9-WP-06",
+      "pr": 122,
+      "mergeSha": "31ce27276dedaa3b95c2bc8029f22c5d24bedda9",
+      "status": "COMPLETE"
+    },
+    {
+      "id": "M9-WP-07",
+      "pr": 123,
+      "mergeSha": "52486d1b0642f265ca505b9aef662d2e20136e57",
+      "status": "COMPLETE"
+    },
+    {
+      "id": "M9-WP-08",
+      "pr": 129,
+      "mergeSha": "b5b05c439284376e0afb2f275ca1ca51229305b7",
+      "status": "COMPLETE",
+      "finalAuditRun": 32164841629
+    }
+  ],
+  "finalAudit": {
+    "workflowRun": 32164841629,
+    "artifactId": 9335151262,
+    "artifactName": "m9-wp08-post-merge-final-audit-32164841629",
+    "artifactDigest": "sha256:d3ea3201edaca52cb4ebb3d3c045afc33298214379eb70413008fe4c1bda7abc",
+    "blockers": [],
+    "evidence": {
+      "realKnowledgeDerivedSource": true,
+      "exactProvenance": true,
+      "workspaceIsolation": true,
+      "staleSourceRejection": true,
+      "replayRestartIdempotency": true,
+      "boundedConcurrency": true,
+      "desktopAndMobileRealBrowser": true,
+      "noCanonicalRouteInterceptionOrFixtureFallback": true,
+      "noFalsePublicationOrCapabilityPromotion": true,
+      "m1ThroughM8AuthorityRegression": true
+    }
+  },
+  "deferredExternalGates": [
+    "stable governed MOKI production visual runtime HTTP/authentication transport"
+  ],
+  "authority": {
+    "productionDeploymentAuthorized": false,
+    "gaAuthorized": false,
+    "externalPublicationAuthorized": false,
+    "providerExecutionAuthorized": false,
+    "paidExecutionAuthorized": false,
+    "filingAuthorized": false,
+    "customerOutreachAuthorized": false,
+    "officialTruthCreated": false,
+    "capabilityVerifiedByProductFeedback": false
+  }
+}
