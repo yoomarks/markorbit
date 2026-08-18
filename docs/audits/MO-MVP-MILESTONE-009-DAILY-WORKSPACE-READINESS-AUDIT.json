@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M9",
+  "workPackage": "M9-WP-08",
+  "auditedCandidateSha": "48d6c44aa55648b25222698cc07ba892735d145c",
+  "auditedCandidateTreeSha": "1f5d3001972c9247b8653aa9afa1307cc9a0d373",
+  "wp07PullRequestNumber": 123,
+  "wp06MainBaselineSha": "31ce27276dedaa3b95c2bc8029f22c5d24bedda9",
+  "requiredWorkflowEvidence": [
+    {"runId": 32131652620, "name": "validation"},
+    {"runId": 32131652597, "name": "Product Loop Today Prepared Action"},
+    {"runId": 32131652543, "name": "Product Loop Feedback Observability"},
+    {"runId": 32131652552, "name": "Product Loop Content Preparation"},
+    {"runId": 32131652576, "name": "Product Loop Candidate Qualification"},
+    {"runId": 32131652534, "name": "Browser and Visual Validation"},
+    {"runId": 32131652545, "name": "M6 WP-06 Authenticated Capability Center"},
+    {"runId": 32131652574, "name": "M7 WP-02 Conversion Analytics"},
+    {"runId": 32131652643, "name": "M8 WP-06 Commercial Runtime Reliability"}
+  ],
+  "requiredAuditClaims": {
+    "realKnowledgeDerivedSourceOnCanonicalAcceptancePath": true,
+    "exactProvenancePreserved": true,
+    "workspaceIsolation": true,
+    "staleSourceRejected": true,
+    "idempotentReplaySafeMutations": true,
+    "restartRecovery": true,
+    "boundedConcurrencyBehavior": true,
+    "desktopAndMobileRealBrowser": true,
+    "noCanonicalRouteInterception": true,
+    "noFixtureUiFallback": true,
+    "noFalsePublicationClaim": true,
+    "noCapabilityPromotionFromProductFeedback": true,
+    "m1ThroughM8AuthorityRegressionGreen": true
+  },
+  "sourceAcceptancePolicy": {
+    "requiredOwner": "CORE",
+    "requiredKind": "KNOWLEDGE_READY_PACKAGE",
+    "rejectTestLocalSourceAuthorityAsRealAcceptance": true,
+    "rejectDirectLiteDailySignalInsertAsRealAcceptance": true,
+    "coreToLiteGovernedTransportRequired": true
+  },
+  "authority": {
+    "auditCreatesMergeReleaseOrDeployment": false,
+    "auditAuthorizesExternalPublication": false,
+    "auditAuthorizesProviderExecution": false,
+    "auditCreatesCapabilityEvidence": false,
+    "auditCreatesOfficialTruth": false,
+    "m9CompleteBeforeGo": false
+  },
+  "recommendationPolicy": {
+    "failClosedOnMissingEvidence": true,
+    "goOnlyWhenNoBlockersRemain": true,
+    "wp07MainlineIdentityRequired": true,
+    "realKnowledgeSourceAcceptanceRequired": true
+  },
+  "expectedCurrentBlockers": [
+    "WP07_NOT_MERGED_TO_MAIN",
+    "REAL_KNOWLEDGE_SOURCE_ACCEPTANCE_MISSING"
+  ]
+}
