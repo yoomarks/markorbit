@@ -8,10 +8,7 @@ import {
   type DailyOrbitTodayReader,
   type DailySignalReader
 } from '../src/daily-orbit.js';
-import {
-  PostgresProductPreferenceStore,
-  ProductPreferenceError
-} from '../src/preference-feedback.js';
+import { PostgresProductPreferenceStore } from '../src/preference-feedback.js';
 
 const url = process.env.LITE_TODAY_TEST_DATABASE_URL;
 const required = process.env.LITE_TODAY_POSTGRES_TEST_REQUIRED === '1';
@@ -157,7 +154,7 @@ suite('PostgreSQL M9-WP07 Product preference evidence', () => {
 
     await expect(
       writer.recordCanonicalEvent({ ...command, kind: 'DISMISSED' })
-    ).rejects.toMatchObject<ProductPreferenceError>({ code: 'IDEMPOTENCY_CONFLICT' });
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
 
     const restarted = store();
     expect(await restarted.resolve(workspaceId, userId)).toEqual(first.preference);
