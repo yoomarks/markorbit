@@ -63,8 +63,14 @@ const scopeLock = readCandidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md'
 );
-const browserRuntime = readCandidateText(candidateSha, 'scripts/product-loop-today-real-runtime.ts');
-const browserSpec = readCandidateText(candidateSha, 'tests/e2e/product-loop-today-real-runtime.spec.ts');
+const browserRuntime = readCandidateText(
+  candidateSha,
+  'scripts/product-loop-today-real-runtime.ts'
+);
+const browserSpec = readCandidateText(
+  candidateSha,
+  'tests/e2e/product-loop-today-real-runtime.spec.ts'
+);
 const browserWorkflow = readCandidateText(
   candidateSha,
   '.github/workflows/product-loop-today-prepared-action.yml'
@@ -195,12 +201,7 @@ const allowedAuditPaths = new Set([
   'docs/audits/MO-MVP-MILESTONE-009-DAILY-WORKSPACE-RUNTIME-AUDIT.json',
   'docs/tasks/MO-MVP-M9-WP-08-RELIABILITY-INDEPENDENT-AUDIT.md'
 ]);
-const auditChangedFiles = git(
-  'diff',
-  '--name-only',
-  audit.auditBranchBaselineSha,
-  'HEAD'
-)
+const auditChangedFiles = git('diff', '--name-only', audit.auditBranchBaselineSha, 'HEAD')
   .split('\n')
   .filter(Boolean);
 for (const changedFile of auditChangedFiles) {
