@@ -219,10 +219,7 @@ function assertConsumerAcceptance(value: Readonly<VisualConsumerAcceptance>): vo
       'Ready Visual output must include an opaque output reference.',
       502
     );
-  if (
-    (value.status === 'PLANNING_REQUIRED' || value.status === 'FAILED') &&
-    value.outputReference
-  )
+  if ((value.status === 'PLANNING_REQUIRED' || value.status === 'FAILED') && value.outputReference)
     throw new VisualBridgeError(
       'VISUAL_CONSUMER_REJECTED',
       'Planning/failed Visual output cannot expose a completed output reference.',
@@ -511,7 +508,13 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
           `INSERT INTO lite_visual_bridge_commands(
             workspace_id,idempotency_key,command_type,request_fingerprint_sha256,result_json,created_at
           ) VALUES($1,$2,'START_VISUAL_REQUEST',$3,$4::jsonb,$5)`,
-          [workspaceId, idempotencyKey, requestFingerprintSha256, JSON.stringify(record), acceptedAt]
+          [
+            workspaceId,
+            idempotencyKey,
+            requestFingerprintSha256,
+            JSON.stringify(record),
+            acceptedAt
+          ]
         );
         return clone(record);
       });
@@ -527,9 +530,7 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
     }
   }
 
-  async recordOutput(
-    command: Readonly<RecordVisualOutputCommand>
-  ): Promise<VisualOutputReference> {
+  async recordOutput(command: Readonly<RecordVisualOutputCommand>): Promise<VisualOutputReference> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const idempotencyKey = text(command.idempotencyKey, 'idempotencyKey', 300);
     const requestReference = text(command.requestReference, 'requestReference', 1000);
@@ -607,7 +608,13 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
           `INSERT INTO lite_visual_bridge_commands(
             workspace_id,idempotency_key,command_type,request_fingerprint_sha256,result_json,created_at
           ) VALUES($1,$2,'RECORD_VISUAL_OUTPUT',$3,$4::jsonb,$5)`,
-          [workspaceId, idempotencyKey, requestFingerprintSha256, JSON.stringify(output), this.now()]
+          [
+            workspaceId,
+            idempotencyKey,
+            requestFingerprintSha256,
+            JSON.stringify(output),
+            this.now()
+          ]
         );
         return clone(output);
       });
@@ -651,13 +658,12 @@ export class VisualBridgeService {
 
   async createBrief(command: Readonly<CreateVisualBriefCommand>): Promise<VisualBriefRecord> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
-    const kit = await this.contentKits.find(workspaceId, command.subjectUserId, command.contentPickId);
-    return this.store.createBrief(
-      command,
-      kit,
-      this.productStyleId,
-      this.productStyleIntent
+    const kit = await this.contentKits.find(
+      workspaceId,
+      command.subjectUserId,
+      command.contentPickId
     );
+    return this.store.createBrief(command, kit, this.productStyleId, this.productStyleIntent);
   }
 
   async startRequest(command: Readonly<StartVisualRequestCommand>): Promise<VisualRequestRecord> {

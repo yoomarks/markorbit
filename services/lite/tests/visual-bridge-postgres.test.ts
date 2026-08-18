@@ -93,20 +93,9 @@ suite('PostgreSQL Lite Visual Bridge', () => {
     }
   };
   const store = () =>
-    new PostgresVisualBridgeStore(
-      database,
-      database.getPool(),
-      now,
-      nextBriefId,
-      nextOutputId
-    );
+    new PostgresVisualBridgeStore(database, database.getPool(), now, nextBriefId, nextOutputId);
   const service = (visualStore: PostgresVisualBridgeStore) =>
-    new VisualBridgeService(
-      contentKits,
-      visualStore,
-      consumer,
-      'markorbit-lite-editorial-v1'
-    );
+    new VisualBridgeService(contentKits, visualStore, consumer, 'markorbit-lite-editorial-v1');
 
   beforeAll(async () => {
     await database.start();

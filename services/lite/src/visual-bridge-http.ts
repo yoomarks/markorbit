@@ -136,10 +136,7 @@ function outputKind(value: unknown): VisualOutputKind {
 }
 
 function outputStatus(value: unknown): VisualOutputStatus {
-  if (
-    typeof value !== 'string' ||
-    !visualOutputStatuses.some((candidate) => candidate === value)
-  )
+  if (typeof value !== 'string' || !visualOutputStatuses.some((candidate) => candidate === value))
     throw new HttpError(400, 'INVALID_REQUEST', 'status is invalid.');
   return value as VisualOutputStatus;
 }
@@ -157,11 +154,13 @@ function mapVisualError(error: unknown): never {
   throw error;
 }
 
-export function createVisualBridgeRoutes(options: Readonly<{
-  internalServiceSecret: string;
-  visualBridgeService: VisualBridgeService;
-  visualBridgeStore: PostgresVisualBridgeStore;
-}>): JsonRoute[] {
+export function createVisualBridgeRoutes(
+  options: Readonly<{
+    internalServiceSecret: string;
+    visualBridgeService: VisualBridgeService;
+    visualBridgeStore: PostgresVisualBridgeStore;
+  }>
+): JsonRoute[] {
   return [
     {
       method: 'POST',
@@ -202,7 +201,8 @@ export function createVisualBridgeRoutes(options: Readonly<{
           id: text(request.params.visualBriefId, 'visualBriefId') as VisualBriefId,
           version: version(request.query.version, 'version')
         });
-        if (!record) throw new HttpError(404, 'VISUAL_BRIEF_NOT_FOUND', 'Visual Brief was not found.');
+        if (!record)
+          throw new HttpError(404, 'VISUAL_BRIEF_NOT_FOUND', 'Visual Brief was not found.');
         return json(200, {
           brief: record.brief,
           visualBriefFingerprintSha256: record.visualBriefFingerprintSha256
