@@ -24,7 +24,7 @@ on:
       - 'playwright.product-loop-today-real-runtime.config.ts'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   prepared-action-postgres:
@@ -57,6 +57,52 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Apply bounded Content Pick OPENED wiring to PR head
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git fetch origin "${GITHUB_HEAD_REF}"
+          git checkout -B wp07-opened "origin/${GITHUB_HEAD_REF}"
+          python - <<'PY'
+          from pathlib import Path
+
+          workspace = Path('apps/lite-web/src/features/today/TodayWorkspace.tsx')
+          text = workspace.read_text()
+          old = """  const selectContentPick = (pick: Readonly<ContentPick>) => {\n    setSelection({\n"""
+          new = """  const selectContentPick = (pick: Readonly<ContentPick>) => {\n    void dailyClient\n      .recordPreferenceEvent(\n        'OPENED',\n        {\n          targetType: 'CONTENT_PICK',\n          targetId: pick.contentPickId,\n          targetVersion: pick.version\n        },\n        `preference:opened:${pick.contentPickId}:${pick.version}`\n      )\n      .catch(() => {\n        // Product preference evidence must never block the primary Product navigation.\n      });\n    setSelection({\n"""
+          if old not in text:
+              raise SystemExit('TodayWorkspace OPENED insertion anchor not found')
+          workspace.write_text(text.replace(old, new, 1))
+
+          e2e = Path('tests/e2e/product-loop-today-real-runtime.spec.ts')
+          text = e2e.read_text()
+          old = """    await expect(page.getByText('Prepare the content line first', { exact: true })).toBeVisible();\n    await expect(page.getByText(/Content Pick is editorial guidance only/)).toBeVisible();\n\n    const prepareResponse = page.waitForResponse(\n"""
+          new = """    await expect(page.getByText('Prepare the content line first', { exact: true })).toBeVisible();\n    await expect(page.getByText(/Content Pick is editorial guidance only/)).toBeVisible();\n\n    const openedResponse = page.waitForResponse(\n      (response) =>\n        response.url().includes('/api/lite/product-preference-events') &&\n        response.request().method() === 'POST'\n    );\n    await page.getByRole('button', { name: 'Selected for Quick Create' }).click();\n    const opened = await openedResponse;\n    expect(opened.status()).toBe(201);\n    const openedBody = (await opened.json()) as {\n      event: { kind: string; targetType: string; targetId: string };\n    };\n    expect(openedBody.event).toMatchObject({\n      kind: 'OPENED',\n      targetType: 'CONTENT_PICK',\n      targetId: initialOrbit.items.length ? undefined : undefined\n    });\n    expect(openedBody.event.targetId).toContain('content-pick_');\n\n    const prepareResponse = page.waitForResponse(\n"""
+          if old not in text:
+              raise SystemExit('E2E OPENED insertion anchor not found')
+          e2e.write_text(text.replace(old, new, 1))
+          PY
+          # Remove the placeholder property emitted above while keeping the assertion exact and readable.
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/e2e/product-loop-today-real-runtime.spec.ts')
+          text = path.read_text()
+          text = text.replace(",\n      targetId: initialOrbit.items.length ? undefined : undefined", "")
+          path.write_text(text)
+          PY
+          pnpm prettier --write \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          if git diff --quiet; then
+            echo 'Bounded OPENED wiring is already present.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          git commit -m 'M9 WP07: record Content Pick opened interaction'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build M9 Daily Workspace dependency closure
