@@ -6,10 +6,13 @@ import {
   type ProductPreferenceEventKind
 } from '@markorbit/contracts/daily-workspace';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
-import { ProductPreferenceError } from './preference-feedback.js';
 import {
-  ProductPreferenceService,
-  ProductPreferenceTargetError
+  ProductPreferenceError,
+  type RecordProductPreferenceEventResult
+} from './preference-feedback.js';
+import {
+  ProductPreferenceTargetError,
+  type RecordProductPreferenceEventCommand
 } from './preference-target.js';
 
 const TARGET_TYPES: readonly ProductPreferenceEvent['targetType'][] = [
@@ -33,9 +36,15 @@ const CONTEXT_SPOOF_FIELDS = [
 
 type Body = Record<string, unknown>;
 
+export interface ProductPreferenceRecorder {
+  record(
+    command: Readonly<RecordProductPreferenceEventCommand>
+  ): Promise<RecordProductPreferenceEventResult>;
+}
+
 export interface ProductPreferenceRouteOptions {
   internalServiceSecret: string;
-  service: ProductPreferenceService;
+  service: ProductPreferenceRecorder;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
