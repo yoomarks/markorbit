@@ -76,7 +76,9 @@ jobs:
           pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/preference-feedback-postgres.test.ts
       - name: Run authenticated Lite HTTP integration
-        run: pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
+        run: |
+          pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/preference-http.test.ts
       - name: Run Gateway Product-loop boundary tests
         run: |
           pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
