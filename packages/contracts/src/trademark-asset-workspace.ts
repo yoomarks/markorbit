@@ -20,6 +20,7 @@ export const trademarkAssetSourceKinds = [
   'EXECUTION_EVIDENCE',
   'KNOWLEDGE_SOURCE',
   'DATA_ENGINE_TRADEMARK_RECORD',
+  'WORKSPACE_ADMISSION',
   'WORKSPACE_NOTE'
 ] as const;
 export type TrademarkAssetSourceKind = (typeof trademarkAssetSourceKinds)[number];
@@ -131,6 +132,7 @@ export interface TrademarkAssetAttentionSignal {
 
 export const aiGuideSuggestionKinds = [
   'EXPLAIN_ASSET',
+  'SUMMARIZE_OWNER_CONTEXT',
   'IDENTIFY_MISSING_INFORMATION',
   'EXPLAIN_SOURCE_CHANGE',
   'COMPARE_ASSETS',
@@ -196,6 +198,21 @@ export const trademarkAssetAiGuideAuthority = {
   mayCreateVerifiedCapability: false,
   mayAuthorizePaidExecution: false,
   mayBypassOwnerDomainValidation: false
+} as const;
+
+export const trademarkAssetAuthorityBoundary = {
+  assetIsWorkspacePrivateProjection: true,
+  exactSourceAndFreshnessRequiredForConsequentialClaims: true,
+  markRegRemainsMatterAndLifecycleOwner: true,
+  executionRemainsProtectedActionOwner: true,
+  dataEngineConsumptionReadOnlyAndContractBound: true,
+  knowledgeRemainsAcquisitionAndProvenanceOwner: true,
+  crossServiceSqlAllowed: false,
+  assetCreatesOfficialTruth: false,
+  assetCreatesMatterAutomatically: false,
+  attentionCertifiesDeadline: false,
+  aiGuideExecutesProtectedAction: false,
+  aiGuideVerifiesCapability: false
 } as const;
 
 export const noAutomaticTrademarkAssetConsequences = [
