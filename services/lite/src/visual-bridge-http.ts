@@ -1,9 +1,13 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
-import type {
-  ContentKitId,
-  VisualAssetReference,
-  VisualBriefId
+import {
+  visualOutputKinds,
+  visualOutputStatuses,
+  type ContentKitId,
+  type VisualBriefId,
+  type VisualOutputKind,
+  type VisualOutputReferenceId,
+  type VisualOutputStatus
 } from '@markorbit/contracts/daily-workspace';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
@@ -13,6 +17,26 @@ import {
 } from './visual-bridge.js';
 
 type Body = Record<string, unknown>;
+const FORBIDDEN_VISUAL_OVERRIDES = new Set([
+  'providerId',
+  'provider_id',
+  'modelId',
+  'model_id',
+  'styleId',
+  'style_id',
+  'recipeId',
+  'recipe_id',
+  'routeId',
+  'route_id',
+  'paidConfirmation',
+  'paid_confirmation',
+  'paidExecutionAuthorized',
+  'paid_execution_authorized',
+  'qcOverride',
+  'qc_override',
+  'identityOverride',
+  'identity_override'
+]);
 
 function trusted(configured: string, supplied: string | undefined): boolean {
   if (Buffer.byteLength(configured) < 32)
@@ -71,6 +95,16 @@ function bodyOf(request: JsonRequest): Body {
   return request.body as Body;
 }
 
+function rejectForbiddenOverrides(body: Readonly<Body>): void {
+  const field = Object.keys(body).find((key) => FORBIDDEN_VISUAL_OVERRIDES.has(key));
+  if (field)
+    throw new HttpError(
+      400,
+      'VISUAL_OVERRIDE_FORBIDDEN',
+      `${field} is not accepted at the Lite Visual boundary.`
+    );
+}
+
 function keyOf(request: JsonRequest): string {
   const key = request.headers['idempotency-key'];
   if (!key || !key.trim())
@@ -84,35 +118,37 @@ function text(value: unknown, field: string): string {
   return value.trim();
 }
 
+function optionalText(value: unknown, field: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return text(value, field);
+}
+
 function version(value: unknown, field: string): number {
   if (!Number.isInteger(value) || Number(value) < 1)
     throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive integer.`);
   return Number(value);
 }
 
-function reusableAssets(value: unknown): readonly VisualAssetReference[] {
-  if (!Array.isArray(value))
-    throw new HttpError(400, 'INVALID_REQUEST', 'reusableAssets must be an array.');
-  return value.map((entry) => {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry))
-      throw new HttpError(400, 'INVALID_REQUEST', 'reusableAssets entries must be objects.');
-    const candidate = entry as Record<string, unknown>;
-    const source = text(candidate.source, 'reusableAssets.source');
-    if (!['USER_IP', 'USER_COMMERCIAL', 'BRAND_KIT', 'VISUAL_LIBRARY', 'GENERATED'].includes(source))
-      throw new HttpError(400, 'INVALID_REQUEST', 'reusableAssets.source is invalid.');
-    if (typeof candidate.discriminative !== 'boolean' || typeof candidate.reusable !== 'boolean')
-      throw new HttpError(
-        400,
-        'INVALID_REQUEST',
-        'reusableAssets discriminative/reusable flags must be boolean.'
-      );
-    return {
-      assetId: text(candidate.assetId, 'reusableAssets.assetId'),
-      source: source as VisualAssetReference['source'],
-      discriminative: candidate.discriminative,
-      reusable: candidate.reusable
-    };
-  });
+function outputKind(value: unknown): VisualOutputKind {
+  if (typeof value !== 'string' || !visualOutputKinds.some((candidate) => candidate === value))
+    throw new HttpError(400, 'INVALID_REQUEST', 'outputKind is invalid.');
+  return value as VisualOutputKind;
+}
+
+function outputStatus(value: unknown): VisualOutputStatus {
+  if (
+    typeof value !== 'string' ||
+    !visualOutputStatuses.some((candidate) => candidate === value)
+  )
+    throw new HttpError(400, 'INVALID_REQUEST', 'status is invalid.');
+  return value as VisualOutputStatus;
+}
+
+function qcStatus(value: unknown): 'PASS' | 'PASS_WITH_WARNINGS' | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (value !== 'PASS' && value !== 'PASS_WITH_WARNINGS')
+    throw new HttpError(400, 'INVALID_REQUEST', 'qcStatus is invalid.');
+  return value;
 }
 
 function mapVisualError(error: unknown): never {
@@ -133,6 +169,7 @@ export function createVisualBridgeRoutes(options: Readonly<{
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
         const body = bodyOf(request);
+        rejectForbiddenOverrides(body);
         try {
           const record = await options.visualBridgeService.createBrief({
             workspaceId: principal.workspaceId,
@@ -142,8 +179,9 @@ export function createVisualBridgeRoutes(options: Readonly<{
               id: text(body.expectedContentKitId, 'expectedContentKitId') as ContentKitId,
               version: version(body.expectedContentKitVersion, 'expectedContentKitVersion')
             },
-            ipId: text(body.ipId, 'ipId'),
-            reusableAssets: reusableAssets(body.reusableAssets ?? []),
+            requestedIpPackage: text(body.requestedIpPackage, 'requestedIpPackage'),
+            outputKind: outputKind(body.outputKind),
+            sceneIntent: text(body.sceneIntent, 'sceneIntent'),
             idempotencyKey: keyOf(request)
           });
           return json(201, {
@@ -177,25 +215,45 @@ export function createVisualBridgeRoutes(options: Readonly<{
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
         const body = bodyOf(request);
+        rejectForbiddenOverrides(body);
         try {
-          return json(
-            201,
-            await options.visualBridgeService.startRequest({
-              workspaceId: principal.workspaceId,
-              visualBrief: {
-                id: text(request.params.visualBriefId, 'visualBriefId') as VisualBriefId,
-                version: version(body.visualBriefVersion, 'visualBriefVersion')
-              },
-              expectedVisualBriefFingerprintSha256: text(
-                body.expectedVisualBriefFingerprintSha256,
-                'expectedVisualBriefFingerprintSha256'
-              ),
-              idempotencyKey: keyOf(request)
-            })
-          );
+          const result = await options.visualBridgeService.startRequest({
+            workspaceId: principal.workspaceId,
+            visualBrief: {
+              id: text(request.params.visualBriefId, 'visualBriefId') as VisualBriefId,
+              version: version(body.visualBriefVersion, 'visualBriefVersion')
+            },
+            expectedVisualBriefFingerprintSha256: text(
+              body.expectedVisualBriefFingerprintSha256,
+              'expectedVisualBriefFingerprintSha256'
+            ),
+            idempotencyKey: keyOf(request)
+          });
+          return json(201, {
+            requestReference: result.requestReference,
+            output: result.output,
+            acceptedAt: result.acceptedAt
+          });
         } catch (error) {
           return mapVisualError(error);
         }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/visual-outputs/:visualOutputReferenceId',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        const output = await options.visualBridgeStore.findOutput(principal.workspaceId, {
+          id: text(
+            request.params.visualOutputReferenceId,
+            'visualOutputReferenceId'
+          ) as VisualOutputReferenceId,
+          version: version(request.query.version, 'version')
+        });
+        if (!output)
+          throw new HttpError(404, 'VISUAL_OUTPUT_NOT_FOUND', 'Visual output was not found.');
+        return json(200, output);
       }
     },
     {
@@ -204,10 +262,9 @@ export function createVisualBridgeRoutes(options: Readonly<{
       handle: async (request) => {
         const workspaceId = internalWorkspace(request, options.internalServiceSecret);
         const body = bodyOf(request);
-        const assets = body.assetReferences;
-        if (!Array.isArray(assets) || assets.some((asset) => typeof asset !== 'string'))
-          throw new HttpError(400, 'INVALID_REQUEST', 'assetReferences must be a string array.');
         try {
+          const outputReferenceValue = optionalText(body.outputReference, 'outputReference');
+          const qcStatusValue = qcStatus(body.qcStatus);
           return json(
             201,
             await options.visualBridgeStore.recordOutput({
@@ -216,8 +273,11 @@ export function createVisualBridgeRoutes(options: Readonly<{
                 id: text(request.params.visualBriefId, 'visualBriefId') as VisualBriefId,
                 version: version(body.visualBriefVersion, 'visualBriefVersion')
               },
-              assetReferences: assets as string[],
-              generatedAt: text(body.generatedAt, 'generatedAt'),
+              requestReference: text(body.requestReference, 'requestReference'),
+              status: outputStatus(body.status),
+              ...(outputReferenceValue ? { outputReference: outputReferenceValue } : {}),
+              ...(qcStatusValue ? { qcStatus: qcStatusValue } : {}),
+              createdAt: text(body.createdAt, 'createdAt'),
               idempotencyKey: keyOf(request)
             })
           );
