@@ -1,0 +1,76 @@
+name: M9 WP-08 Independent Daily Workspace Audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m9-wp08-independent-daily-workspace-audit.yml'
+      - 'scripts/m9-wp08-independent-daily-workspace-audit.mjs'
+      - 'docs/audits/MO-MVP-MILESTONE-009-DAILY-WORKSPACE-READINESS-AUDIT.*'
+      - 'docs/tasks/MO-MVP-M9-WP-08-RELIABILITY-INDEPENDENT-AUDIT.md'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: m9-wp08-independent-daily-workspace-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independent-daily-workspace-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      GH_TOKEN: ${{ github.token }}
+      M9_WP08_AUDITED_CANDIDATE_SHA: 48d6c44aa55648b25222698cc07ba892735d145c
+      M9_WP08_WP07_PR: '123'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Fetch exact audited candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin "$M9_WP08_AUDITED_CANDIDATE_SHA"
+          test "$(git rev-parse "$M9_WP08_AUDITED_CANDIDATE_SHA^{tree}")" = "1f5d3001972c9247b8653aa9afa1307cc9a0d373"
+      - name: Collect exact WP07 candidate evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          gh api "/repos/$GITHUB_REPOSITORY/pulls/$M9_WP08_WP07_PR" > .artifacts/m9-wp08-wp07-pr.json
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M9_WP08_AUDITED_CANDIDATE_SHA&per_page=100" > .artifacts/m9-wp08-candidate-runs.json
+      - name: Independently re-check repository authority boundaries
+        run: |
+          pnpm validate:workspace
+          pnpm validate:persistence-boundaries
+          pnpm test:gateway-inventory
+          pnpm format:check
+      - name: Run full independent workspace check
+        run: pnpm check
+      - name: Produce independent M9 Daily Workspace recommendation
+        run: node scripts/m9-wp08-independent-daily-workspace-audit.mjs
+      - name: Upload independent M9 audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m9-wp08-independent-daily-workspace-audit-${{ github.run_id }}
+          path: |
+            .artifacts/m9-wp08-independent-daily-workspace-audit.json
+            .artifacts/m9-wp08-wp07-pr.json
+            .artifacts/m9-wp08-candidate-runs.json
+          if-no-files-found: warn
+          retention-days: 30
