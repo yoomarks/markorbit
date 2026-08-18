@@ -1,7 +1,11 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import type { DailySignal } from '@markorbit/contracts/daily-workspace';
-import { ManagedDatabase, loadMigrationsForOwner, migrate } from '../packages/persistence/src/index.js';
+import type { DailySignal } from '../packages/contracts/src/daily-workspace.js';
+import {
+  ManagedDatabase,
+  loadMigrationsForOwner,
+  migrate
+} from '../packages/persistence/src/index.js';
 import {
   AuthenticationService,
   InMemoryMembershipRepository,
@@ -180,7 +184,8 @@ async function seedDailySignal(workspaceId: string) {
     changeType: 'RULE_CHANGE',
     observedAt: at,
     timeSensitivity: 'HIGH',
-    dailySignalFingerprintSha256: workspaceId === desktopWorkspaceId ? 'c'.repeat(64) : 'd'.repeat(64),
+    dailySignalFingerprintSha256:
+      workspaceId === desktopWorkspaceId ? 'c'.repeat(64) : 'd'.repeat(64),
     legalTruthVerified: false,
     recommendationCreatedAutomatically: false,
     createdAt: at

@@ -113,13 +113,7 @@ function sourceLabel(item: Readonly<DailyOrbitItem>) {
   )}`;
 }
 
-function OrbitCard({
-  item,
-  title
-}: {
-  item: Readonly<DailyOrbitItem>;
-  title: string;
-}) {
+function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: string }) {
   return (
     <Card>
       <div className="daily-card-heading">
@@ -432,7 +426,9 @@ function ContentKitPanel({
           />
         </div>
         <Button
-          onClick={() => onCreateVisualBrief({ requestedIpPackage: ipPackage, outputKind, sceneIntent })}
+          onClick={() =>
+            onCreateVisualBrief({ requestedIpPackage: ipPackage, outputKind, sceneIntent })
+          }
           disabled={busy !== '' || !ipPackage.trim() || !sceneIntent.trim()}
         >
           {busy === 'visual-brief' ? 'Saving Visual Brief…' : 'Create Visual Brief'}
@@ -441,7 +437,8 @@ function ContentKitPanel({
           <div className="daily-visual-result">
             <strong>{visualRecord.brief.visualBriefId}</strong>
             <span>
-              Reuse first: Yes · Paid execution authorized by Lite: No · {visualRecord.brief.outputKind}
+              Reuse first: Yes · Paid execution authorized by Lite: No ·{' '}
+              {visualRecord.brief.outputKind}
             </span>
             <Button variant="secondary" onClick={onStartVisualRequest} disabled={busy !== ''}>
               {busy === 'visual-request' ? 'Requesting…' : 'Request reuse-first visual'}
@@ -636,7 +633,11 @@ export function TodayWorkspace({
         setKitError(
           cause instanceof DailyWorkspaceHttpError
             ? cause
-            : new DailyWorkspaceHttpError(503, 'CONTENT_KIT_UNAVAILABLE', 'Content Kit is unavailable.')
+            : new DailyWorkspaceHttpError(
+                503,
+                'CONTENT_KIT_UNAVAILABLE',
+                'Content Kit is unavailable.'
+              )
         );
       })
       .finally(() => {
@@ -766,7 +767,11 @@ export function TodayWorkspace({
       setVisualError(
         cause instanceof DailyWorkspaceHttpError
           ? cause
-          : new DailyWorkspaceHttpError(503, 'VISUAL_BRIEF_FAILED', 'Visual Brief could not be saved.')
+          : new DailyWorkspaceHttpError(
+              503,
+              'VISUAL_BRIEF_FAILED',
+              'Visual Brief could not be saved.'
+            )
       );
     } finally {
       setBusy('');
@@ -781,13 +786,22 @@ export function TodayWorkspace({
       const result = await dailyClient.startVisualRequest(visualRecord);
       if (result.output.status === 'FAILED')
         setVisualError(
-          new DailyWorkspaceHttpError(502, 'VISUAL_REQUEST_FAILED', 'Visual Engine reported failure.')
+          new DailyWorkspaceHttpError(
+            502,
+            'VISUAL_REQUEST_FAILED',
+            'Visual Engine reported failure.'
+          )
         );
     } catch (cause) {
       setVisualError(
         cause instanceof DailyWorkspaceHttpError
           ? cause
-          : new DailyWorkspaceHttpError(503, 'VISUAL_REQUEST_FAILED', 'Visual request failed.', true)
+          : new DailyWorkspaceHttpError(
+              503,
+              'VISUAL_REQUEST_FAILED',
+              'Visual request failed.',
+              true
+            )
       );
     } finally {
       setBusy('');

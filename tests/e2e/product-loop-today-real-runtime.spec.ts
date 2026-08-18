@@ -53,10 +53,12 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
       .getByRole('heading', { name: title, exact: true })
       .locator('..')
       .locator('..');
-    await expect(orbitCard.getByText(/Orbit score/i)).toBeVisible();
+    await expect(orbitCard.getByLabel(/Orbit score/i)).toBeVisible();
     await expect(orbitCard.getByText(/Importance 90/)).toBeVisible();
     await orbitCard.getByText('Source & ranking reasons', { exact: true }).click();
-    await expect(orbitCard.getByText(`rdp_wp06-browser-${workspaceId}`, { exact: false })).toBeVisible();
+    await expect(
+      orbitCard.getByText(`rdp_wp06-browser-${workspaceId}`, { exact: false })
+    ).toBeVisible();
 
     await expect(page.getByText('Prepare the content line first', { exact: true })).toBeVisible();
     await expect(page.getByText(/Content Pick is editorial guidance only/)).toBeVisible();
@@ -89,7 +91,9 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
     await expect(page.getByText(/No automatic publication, customer outreach/)).toBeVisible();
     await expect(page.getByText('CONTENT KIT', { exact: true })).toBeVisible();
     await expect(page.getByText('Native variants', { exact: true })).toBeVisible();
-    await expect(page.getByText(/Human review required · external publish executed: No/)).toBeVisible();
+    await expect(
+      page.getByText(/Human review required · external publish executed: No/)
+    ).toBeVisible();
 
     const durableUrl = page.url();
     await page.reload();
