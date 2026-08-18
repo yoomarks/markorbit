@@ -259,6 +259,7 @@ export const productPreferenceEventKinds = [
   'PLATFORM_VARIANT_GENERATED',
   'DRAFT_EDITED',
   'VISUAL_REQUESTED',
+  'VISUAL_GENERATED',
   'VISUAL_SELECTED',
   'COPIED',
   'EXPORTED',
@@ -275,7 +276,11 @@ export interface ProductPreferenceEvent {
   subjectUserId: string;
   kind: ProductPreferenceEventKind;
   targetType:
-    'DAILY_ORBIT_ITEM' | 'CONTENT_PICK' | 'CONTENT_KIT' | 'PLATFORM_VARIANT' | 'VISUAL_OUTPUT';
+    | 'DAILY_ORBIT_ITEM'
+    | 'CONTENT_PICK'
+    | 'CONTENT_KIT'
+    | 'PLATFORM_VARIANT'
+    | 'VISUAL_OUTPUT';
   targetId: string;
   targetVersion: number | string;
   recordedAt: string;
