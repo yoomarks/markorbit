@@ -225,6 +225,23 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     expect(copyBody.event).toMatchObject({ kind: 'COPIED', targetType: 'PLATFORM_VARIANT' });
     await expect(firstVariant.getByRole('button', { name: 'Copied', exact: true })).toBeDisabled();
 
+    const downloadPromise = page.waitForEvent('download');
+    const exportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/product-preference-events') &&
+        response.request().method() === 'POST'
+    );
+    await firstVariant.getByRole('button', { name: 'Export', exact: true }).click();
+    const [download, exportResponse] = await Promise.all([downloadPromise, exportResponsePromise]);
+    expect(exportResponse.status()).toBe(201);
+    const exportBody = (await exportResponse.json()) as {
+      event: { kind: string; targetType: string };
+    };
+    expect(exportBody.event).toMatchObject({ kind: 'EXPORTED', targetType: 'PLATFORM_VARIANT' });
+    expect(download.suggestedFilename()).toMatch(/^markorbit-.*\.txt$/);
+    expect(await download.path()).toBeTruthy();
+    await expect(firstVariant.getByRole('button', { name: 'Exported', exact: true })).toBeDisabled();
+
     const durableUrl = page.url();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
