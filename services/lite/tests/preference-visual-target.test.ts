@@ -8,12 +8,11 @@ import type {
   VisualOutputReference
 } from '@markorbit/contracts/daily-workspace';
 import type { ContentKitService } from '../src/content-kit.js';
-import type {
-  DailyOrbitSnapshot,
-  DailyOrbitSnapshotReader,
-  DailySignalReader
+import type { DailySignalReader } from '../src/daily-orbit.js';
+import {
+  DailyWorkspacePreferenceTargetResolver,
+  type DailyOrbitSnapshotReader
 } from '../src/preference-target.js';
-import { DailyWorkspacePreferenceTargetResolver } from '../src/preference-target.js';
 import type { PostgresVisualBridgeStore } from '../src/visual-bridge.js';
 
 const workspaceId = '95959595-9595-4959-8959-959595959595';
