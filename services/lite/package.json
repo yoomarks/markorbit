@@ -5,9 +5,10 @@
   "type": "module",
   "description": "Lite Product-owned durable state and governed Product-loop preparation.",
   "scripts": {
-    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/http.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/preference-feedback.ts src/http.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:conversion-analytics:postgres": "vitest run tests/conversion-analytics-postgres.test.ts",
+    "test:preference-feedback:postgres": "vitest run tests/preference-feedback-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
   },
@@ -42,6 +43,10 @@
     "./conversion-analytics": {
       "types": "./dist/conversion-analytics.d.ts",
       "import": "./dist/conversion-analytics.js"
+    },
+    "./preference-feedback": {
+      "types": "./dist/preference-feedback.d.ts",
+      "import": "./dist/preference-feedback.js"
     },
     "./http": {
       "types": "./dist/http.d.ts",
