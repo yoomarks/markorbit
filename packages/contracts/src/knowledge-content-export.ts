@@ -1,9 +1,64 @@
 export const READY_PACKAGE_CONTENT_EXPORT_VERSION = '1.0' as const;
+export const READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION = '1.1' as const;
+export const SOURCE_GOVERNANCE_SNAPSHOT_VERSION = '1.0' as const;
 
 export type ReadyPackageContentExportVerificationOutcome = 'PASS' | 'PASS_WITH_WARNINGS';
 
+export type StandardSourceGovernanceSnapshotV1 = {
+  snapshotVersion: typeof SOURCE_GOVERNANCE_SNAPSHOT_VERSION;
+  kind: 'STANDARD_SOURCE';
+  sourceId: string;
+};
+
+export type GlobalReferenceSourceGovernanceSnapshotV1 = {
+  snapshotVersion: typeof SOURCE_GOVERNANCE_SNAPSHOT_VERSION;
+  kind: 'GLOBAL_REFERENCE';
+  sourceId: string;
+  referenceProtocolVersion: '1.0';
+  sourceRole:
+    | 'COUNTRY_CONTEXT'
+    | 'INVESTMENT_GUIDE'
+    | 'COUNTRY_STATISTICS'
+    | 'PROPERTY_RIGHTS_INDEX'
+    | 'TM_PRACTICE_GUIDE'
+    | 'TM_CHANGE_SIGNAL'
+    | 'IP_AUTHORITY_REFERENCE'
+    | 'IP_CASE_STUDY'
+    | 'IP_LEGAL_SOURCE'
+    | 'TM_EXPERT_GUIDE'
+    | 'CONTENT_MARKETING_REFERENCE'
+    | 'COMPETITOR_BENCHMARK'
+    | 'LEGACY_REFERENCE';
+  authorityTier: 'A_PLUS' | 'A' | 'B_PLUS' | 'B' | 'C_PLUS' | 'C' | 'D';
+  intendedUses: Array<
+    | 'COUNTRY_PROFILE'
+    | 'TRADEMARK_PROFILE'
+    | 'CHANGE_SIGNAL'
+    | 'CASE_LIBRARY'
+    | 'CONTENT_IDEATION'
+    | 'PROVIDER_BENCHMARK'
+    | 'LEGACY_CROSSCHECK'
+  >;
+  factEligibility:
+    'PRIMARY' | 'AUTHORITATIVE_AGGREGATOR' | 'SECONDARY' | 'SUPPORTING_ONLY' | 'NONE';
+  verification: {
+    policy: 'NOT_REQUIRED' | 'CONDITIONAL' | 'REQUIRED';
+    verifyAgainstSourceIds: string[];
+    verifyAgainstJurisdictionOfficialSource: boolean;
+  };
+  contentReusePolicy:
+    | 'FACT_EXTRACTION_WITH_PROVENANCE'
+    | 'STRUCTURE_AND_TOPIC_ONLY'
+    | 'BENCHMARK_ONLY'
+    | 'LEGACY_CROSSCHECK_ONLY';
+};
+
+export type SourceGovernanceSnapshotV1 =
+  StandardSourceGovernanceSnapshotV1 | GlobalReferenceSourceGovernanceSnapshotV1;
+
 export interface ReadyPackageContentExportV1 {
-  contractVersion: typeof READY_PACKAGE_CONTENT_EXPORT_VERSION;
+  contractVersion:
+    typeof READY_PACKAGE_CONTENT_EXPORT_VERSION | typeof READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION;
   objectType: 'READY_PACKAGE_CONTENT_EXPORT';
   readyPackageId: string;
   knowledgeWorkspaceId: string;
@@ -35,6 +90,7 @@ export interface ReadyPackageContentExportV1 {
     encoding: 'utf-8';
     content: string;
   };
+  sourceGovernance?: SourceGovernanceSnapshotV1;
 }
 
 export interface ReadyPackageContentConsumptionResult {
@@ -58,6 +114,46 @@ const patterns = {
   semver: /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u
 } as const;
 
+const SOURCE_ROLES = [
+  'COUNTRY_CONTEXT',
+  'INVESTMENT_GUIDE',
+  'COUNTRY_STATISTICS',
+  'PROPERTY_RIGHTS_INDEX',
+  'TM_PRACTICE_GUIDE',
+  'TM_CHANGE_SIGNAL',
+  'IP_AUTHORITY_REFERENCE',
+  'IP_CASE_STUDY',
+  'IP_LEGAL_SOURCE',
+  'TM_EXPERT_GUIDE',
+  'CONTENT_MARKETING_REFERENCE',
+  'COMPETITOR_BENCHMARK',
+  'LEGACY_REFERENCE'
+] as const;
+const AUTHORITY_TIERS = ['A_PLUS', 'A', 'B_PLUS', 'B', 'C_PLUS', 'C', 'D'] as const;
+const INTENDED_USES = [
+  'COUNTRY_PROFILE',
+  'TRADEMARK_PROFILE',
+  'CHANGE_SIGNAL',
+  'CASE_LIBRARY',
+  'CONTENT_IDEATION',
+  'PROVIDER_BENCHMARK',
+  'LEGACY_CROSSCHECK'
+] as const;
+const FACT_ELIGIBILITY = [
+  'PRIMARY',
+  'AUTHORITATIVE_AGGREGATOR',
+  'SECONDARY',
+  'SUPPORTING_ONLY',
+  'NONE'
+] as const;
+const VERIFICATION_POLICIES = ['NOT_REQUIRED', 'CONDITIONAL', 'REQUIRED'] as const;
+const CONTENT_REUSE_POLICIES = [
+  'FACT_EXTRACTION_WITH_PROVENANCE',
+  'STRUCTURE_AND_TOPIC_ONLY',
+  'BENCHMARK_ONLY',
+  'LEGACY_CROSSCHECK_ONLY'
+] as const;
+
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const exactKeys = (value: Record<string, unknown>, expected: string[]) => {
@@ -70,22 +166,80 @@ const validTimestamp = (value: unknown): value is string =>
   Number.isFinite(Date.parse(value));
 const nonNegativeSafeInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+const uniqueStrings = (value: readonly unknown[]) => new Set(value).size === value.length;
+const isAllowed = <T extends string>(value: unknown, allowed: readonly T[]): value is T =>
+  typeof value === 'string' && allowed.includes(value as T);
+
+function isSourceGovernanceSnapshot(
+  value: unknown,
+  sourceId: string
+): value is SourceGovernanceSnapshotV1 {
+  if (!record(value) || value.snapshotVersion !== SOURCE_GOVERNANCE_SNAPSHOT_VERSION) return false;
+  if (value.kind === 'STANDARD_SOURCE') {
+    return exactKeys(value, ['snapshotVersion', 'kind', 'sourceId']) && value.sourceId === sourceId;
+  }
+  if (
+    value.kind !== 'GLOBAL_REFERENCE' ||
+    !exactKeys(value, [
+      'snapshotVersion',
+      'kind',
+      'sourceId',
+      'referenceProtocolVersion',
+      'sourceRole',
+      'authorityTier',
+      'intendedUses',
+      'factEligibility',
+      'verification',
+      'contentReusePolicy'
+    ]) ||
+    value.sourceId !== sourceId ||
+    value.referenceProtocolVersion !== '1.0' ||
+    !isAllowed(value.sourceRole, SOURCE_ROLES) ||
+    !isAllowed(value.authorityTier, AUTHORITY_TIERS) ||
+    !Array.isArray(value.intendedUses) ||
+    !value.intendedUses.every((item) => isAllowed(item, INTENDED_USES)) ||
+    !uniqueStrings(value.intendedUses) ||
+    !isAllowed(value.factEligibility, FACT_ELIGIBILITY) ||
+    !record(value.verification) ||
+    !exactKeys(value.verification, [
+      'policy',
+      'verifyAgainstSourceIds',
+      'verifyAgainstJurisdictionOfficialSource'
+    ]) ||
+    !isAllowed(value.verification.policy, VERIFICATION_POLICIES) ||
+    !Array.isArray(value.verification.verifyAgainstSourceIds) ||
+    !value.verification.verifyAgainstSourceIds.every(
+      (item) => typeof item === 'string' && item.trim().length > 0
+    ) ||
+    !uniqueStrings(value.verification.verifyAgainstSourceIds) ||
+    typeof value.verification.verifyAgainstJurisdictionOfficialSource !== 'boolean' ||
+    !isAllowed(value.contentReusePolicy, CONTENT_REUSE_POLICIES)
+  ) {
+    return false;
+  }
+  return true;
+}
 
 export function parseReadyPackageContentExportV1(
   value: unknown
 ): ReadyPackageContentExportV1 | null {
+  if (!record(value)) return null;
+  const isV1 = value.contractVersion === READY_PACKAGE_CONTENT_EXPORT_VERSION;
+  const isV1_1 = value.contractVersion === READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION;
+  if (!isV1 && !isV1_1) return null;
+  const topLevelKeys = [
+    'contractVersion',
+    'objectType',
+    'readyPackageId',
+    'knowledgeWorkspaceId',
+    'readyPackageDigest',
+    'provenance',
+    'rawArtifact',
+    'stagingDocument',
+    ...(isV1_1 ? ['sourceGovernance'] : [])
+  ];
   if (
-    !record(value) ||
-    !exactKeys(value, [
-      'contractVersion',
-      'objectType',
-      'readyPackageId',
-      'knowledgeWorkspaceId',
-      'readyPackageDigest',
-      'provenance',
-      'rawArtifact',
-      'stagingDocument'
-    ]) ||
+    !exactKeys(value, topLevelKeys) ||
     !record(value.provenance) ||
     !record(value.rawArtifact) ||
     !record(value.stagingDocument)
@@ -120,7 +274,6 @@ export function parseReadyPackageContentExportV1(
     return null;
 
   if (
-    value.contractVersion !== READY_PACKAGE_CONTENT_EXPORT_VERSION ||
     value.objectType !== 'READY_PACKAGE_CONTENT_EXPORT' ||
     typeof value.readyPackageId !== 'string' ||
     !patterns.readyPackage.test(value.readyPackageId) ||
@@ -158,15 +311,16 @@ export function parseReadyPackageContentExportV1(
     !nonNegativeSafeInteger(stagingDocument.sizeBytes) ||
     stagingDocument.mediaType !== 'text/markdown' ||
     stagingDocument.encoding !== 'utf-8' ||
-    typeof stagingDocument.content !== 'string'
+    typeof stagingDocument.content !== 'string' ||
+    (isV1_1 && !isSourceGovernanceSnapshot(value.sourceGovernance, provenance.sourceId))
   )
     return null;
 
   return structuredClone(value) as unknown as ReadyPackageContentExportV1;
 }
 
-export const serializeReadyPackageContentExportV1 = (value: ReadyPackageContentExportV1) =>
-  JSON.stringify({
+export const serializeReadyPackageContentExportV1 = (value: ReadyPackageContentExportV1) => {
+  const serialized = {
     contractVersion: value.contractVersion,
     objectType: value.objectType,
     readyPackageId: value.readyPackageId,
@@ -182,7 +336,7 @@ export const serializeReadyPackageContentExportV1 = (value: ReadyPackageContentE
         converterId: value.provenance.converter.converterId,
         version: value.provenance.converter.version
       },
-      legalTruthVerified: false
+      legalTruthVerified: false as const
     },
     rawArtifact: {
       artifactId: value.rawArtifact.artifactId,
@@ -195,8 +349,16 @@ export const serializeReadyPackageContentExportV1 = (value: ReadyPackageContentE
       documentId: value.stagingDocument.documentId,
       sha256: value.stagingDocument.sha256,
       sizeBytes: value.stagingDocument.sizeBytes,
-      mediaType: 'text/markdown',
-      encoding: 'utf-8',
+      mediaType: 'text/markdown' as const,
+      encoding: 'utf-8' as const,
       content: value.stagingDocument.content
     }
-  } satisfies ReadyPackageContentExportV1);
+  };
+  if (value.contractVersion === READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION) {
+    if (!isSourceGovernanceSnapshot(value.sourceGovernance, value.provenance.sourceId)) {
+      throw new TypeError('Invalid ReadyPackage Content Export V1.1 source governance');
+    }
+    return JSON.stringify({ ...serialized, sourceGovernance: value.sourceGovernance });
+  }
+  return JSON.stringify(serialized);
+};
