@@ -240,7 +240,9 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     expect(exportBody.event).toMatchObject({ kind: 'EXPORTED', targetType: 'PLATFORM_VARIANT' });
     expect(download.suggestedFilename()).toMatch(/^markorbit-.*\.txt$/);
     expect(await download.path()).toBeTruthy();
-    await expect(firstVariant.getByRole('button', { name: 'Exported', exact: true })).toBeDisabled();
+    await expect(
+      firstVariant.getByRole('button', { name: 'Exported', exact: true })
+    ).toBeDisabled();
 
     const durableUrl = page.url();
     await page.reload();
