@@ -87,6 +87,8 @@ jobs:
         run: |
           pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
           pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-daily-workspace-http.test.ts
+      - name: Run Daily Workspace preference client tests
+        run: pnpm --filter @markorbit/lite-web exec vitest run src/api/daily-workspace.test.ts
       - name: Build Daily Workspace Storybook
         run: pnpm --filter @markorbit/lite-web build-storybook
 
