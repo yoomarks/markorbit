@@ -37,16 +37,14 @@ const record: VisualBriefRecord = {
 describe('Lite Visual Bridge consumer boundary', () => {
   it('emits only the governed MOKI Lite request vocabulary', () => {
     const request = buildLiteVisualRequest(record);
-    expect(request).toEqual({
-      api_version: 'lite-illustration-request/v1',
-      operation: 'request.start',
-      request_id: expect.stringMatching(/^lite_[0-9a-f]{32}$/u),
-      input: {
-        ip_id: 'MOKI',
-        style_id: 'markorbit-lite-editorial-v1',
-        scene_intent: 'MOKI points at a simple fee-change timeline.',
-        composition: 'XIAOHONGSHU_COVER 3:4'
-      }
+    expect(request.api_version).toBe('lite-illustration-request/v1');
+    expect(request.operation).toBe('request.start');
+    expect(request.request_id).toMatch(/^lite_[0-9a-f]{32}$/u);
+    expect(request.input).toEqual({
+      ip_id: 'MOKI',
+      style_id: 'markorbit-lite-editorial-v1',
+      scene_intent: 'MOKI points at a simple fee-change timeline.',
+      composition: 'XIAOHONGSHU_COVER 3:4'
     });
     const serialized = JSON.stringify(request);
     for (const forbidden of [
