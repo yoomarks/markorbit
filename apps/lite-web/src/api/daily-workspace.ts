@@ -1,7 +1,10 @@
 import type {
   ContentKit,
   ContentPick,
+  CreatorPreference,
   DailyOrbitItem,
+  ProductPreferenceEvent,
+  ProductPreferenceEventKind,
   VisualBrief,
   VisualBriefId,
   VisualOutputKind,
@@ -36,6 +39,17 @@ export interface VisualRequestResponse {
   readonly acceptedAt: string;
 }
 
+export interface ProductPreferenceEventResponse {
+  readonly event: Readonly<ProductPreferenceEvent>;
+  readonly preference: Readonly<CreatorPreference>;
+}
+
+export type ProductPreferenceTarget = Readonly<{
+  targetType: ProductPreferenceEvent['targetType'];
+  targetId: string;
+  targetVersion: number | string;
+}>;
+
 export class DailyWorkspaceHttpError extends Error {
   constructor(
     readonly status: number,
@@ -64,6 +78,11 @@ export interface DailyWorkspaceClient {
     }>
   ): Promise<VisualBriefRecordResponse>;
   startVisualRequest(record: Readonly<VisualBriefRecordResponse>): Promise<VisualRequestResponse>;
+  recordPreferenceEvent(
+    kind: ProductPreferenceEventKind,
+    target: ProductPreferenceTarget,
+    idempotencyKey: string
+  ): Promise<ProductPreferenceEventResponse>;
 }
 
 async function csrfToken(): Promise<string> {
@@ -167,6 +186,19 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
           expectedVisualBriefFingerprintSha256: record.visualBriefFingerprintSha256
         },
         `visual-request:${record.brief.visualBriefId}:${record.brief.version}`
+      ),
+    recordPreferenceEvent: (kind, target, idempotencyKey) =>
+      request<ProductPreferenceEventResponse>(
+        '/api/lite/product-preference-events',
+        workspaceId,
+        'POST',
+        {
+          kind,
+          targetType: target.targetType,
+          targetId: target.targetId,
+          targetVersion: target.targetVersion
+        },
+        idempotencyKey
       )
   };
 }
