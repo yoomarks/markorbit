@@ -7,16 +7,11 @@ import type {
   PlatformVariant,
   ProductPreferenceEvent,
   ProductPreferenceEventKind,
-  VisualBriefId,
   VisualOutputKind,
   VisualOutputReferenceId
 } from '@markorbit/contracts/daily-workspace';
 import type { ProductLoopExactReference } from '@markorbit/contracts/product-loop';
-import type {
-  DailyOrbitSnapshot,
-  DailyOrbitSnapshot as OrbitSnapshot,
-  DailySignalReader
-} from './daily-orbit.js';
+import type { DailyOrbitSnapshot, DailySignalReader } from './daily-orbit.js';
 import type { ContentKitError, ContentKitService } from './content-kit.js';
 import type {
   PostgresProductPreferenceStore,
@@ -66,10 +61,6 @@ function cloneContext(context: Readonly<ProductPreferenceContext>): ProductPrefe
     topics: [...context.topics],
     platforms: [...context.platforms]
   };
-}
-
-function exactVersion(left: number | string, right: number | string): boolean {
-  return String(left) === String(right);
 }
 
 function contextFromSignal(
@@ -126,7 +117,7 @@ export class DailyWorkspacePreferenceTargetResolver {
   private async current(
     workspaceId: string,
     subjectUserId: string
-  ): Promise<Readonly<OrbitSnapshot>> {
+  ): Promise<Readonly<DailyOrbitSnapshot>> {
     return this.orbit.snapshot(workspaceId, subjectUserId);
   }
 
@@ -222,7 +213,9 @@ export class DailyWorkspacePreferenceTargetResolver {
       snapshot,
       brief.brief.contentKit
     );
-    return this.contextForPick(workspaceId, snapshot, pick, [platformForVisual(brief.brief.outputKind)]);
+    return this.contextForPick(workspaceId, snapshot, pick, [
+      platformForVisual(brief.brief.outputKind)
+    ]);
   }
 
   async resolve(
@@ -286,11 +279,17 @@ export class DailyWorkspacePreferenceTargetResolver {
       const variant = found.kit.platformVariants.find(
         (candidate) => candidate.variantId === target.targetId
       )!;
-      return this.contextForPick(workspaceId, snapshot, found.pick, [platformForVariant(variant.kind)]);
+      return this.contextForPick(workspaceId, snapshot, found.pick, [
+        platformForVariant(variant.kind)
+      ]);
     }
 
     if (!target.targetId.startsWith('visual-output_'))
-      throw new ProductPreferenceTargetError('INVALID_TARGET', 'Visual Output target id is invalid.', 422);
+      throw new ProductPreferenceTargetError(
+        'INVALID_TARGET',
+        'Visual Output target id is invalid.',
+        422
+      );
     const outputVersion = numericVersion(target.targetVersion, 'targetVersion');
     const output = await this.visuals.findOutput(workspaceId, {
       id: target.targetId as VisualOutputReferenceId,
