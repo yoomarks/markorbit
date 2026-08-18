@@ -10,7 +10,11 @@ import type {
   VisualOutputKind,
   VisualOutputReferenceId
 } from '@markorbit/contracts/daily-workspace';
-import type { ProductLoopExactReference } from '@markorbit/contracts/product-loop';
+import type {
+  ProductLoopExactReference,
+  ProductLoopUseFeedback,
+  PublishPackageId
+} from '@markorbit/contracts/product-loop';
 import type { DailyOrbitSnapshot, DailySignalReader } from './daily-orbit.js';
 import type { ContentKitError, ContentKitService } from './content-kit.js';
 import type {
@@ -42,6 +46,11 @@ export interface ProductPreferenceTargetReference {
   targetVersion: number | string;
 }
 
+export interface ResolvedProductPreferenceTarget {
+  target: Readonly<ProductPreferenceTargetReference>;
+  context: Readonly<ProductPreferenceContext>;
+}
+
 export interface RecordProductPreferenceEventCommand extends ProductPreferenceTargetReference {
   workspaceId: string;
   subjectUserId: string;
@@ -51,6 +60,15 @@ export interface RecordProductPreferenceEventCommand extends ProductPreferenceTa
 
 export interface DailyOrbitSnapshotReader {
   snapshot(workspaceId: string, subjectUserId: string): Promise<DailyOrbitSnapshot>;
+}
+
+export function productPreferenceKindForUseOutcome(
+  outcome: ProductLoopUseFeedback['outcome']
+): ProductPreferenceEventKind | undefined {
+  if (outcome === 'USER_REPORTED_PUBLISHED') return 'USER_REPORTED_PUBLISHED';
+  if (outcome === 'USER_REPORTED_USED') return 'USER_REPORTED_USED';
+  if (outcome === 'NOT_USED') return 'NOT_USED';
+  return undefined;
 }
 
 function cloneContext(context: Readonly<ProductPreferenceContext>): ProductPreferenceContext {
@@ -102,6 +120,13 @@ function contentKitMiss(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const code = (error as Partial<ContentKitError>).code;
   return code === 'CONTENT_OPPORTUNITY_REQUIRED' || code === 'CONTENT_PICK_NOT_FOUND';
+}
+
+function samePublishPackage(
+  left: Readonly<ProductLoopExactReference<PublishPackageId>>,
+  right: Readonly<ProductLoopExactReference<PublishPackageId>>
+): boolean {
+  return left.id === right.id && left.version === right.version;
 }
 
 export class DailyWorkspacePreferenceTargetResolver {
@@ -215,6 +240,26 @@ export class DailyWorkspacePreferenceTargetResolver {
     return this.contextForPick(workspaceId, snapshot, pick, [
       platformForVisual(brief.brief.outputKind)
     ]);
+  }
+
+  async resolvePublishPackageTarget(
+    workspaceId: string,
+    subjectUserId: string,
+    publishPackage: Readonly<ProductLoopExactReference<PublishPackageId>>
+  ): Promise<ResolvedProductPreferenceTarget | undefined> {
+    const snapshot = await this.current(workspaceId, subjectUserId);
+    const found = (await this.currentKits(workspaceId, subjectUserId, snapshot)).find(({ kit }) =>
+      kit.publishPackageReferences.some((reference) => samePublishPackage(reference, publishPackage))
+    );
+    if (!found) return undefined;
+    return {
+      target: {
+        targetType: 'CONTENT_KIT',
+        targetId: found.kit.contentKitId,
+        targetVersion: found.kit.version
+      },
+      context: await this.contextForPick(workspaceId, snapshot, found.pick)
+    };
   }
 
   async resolve(
@@ -332,6 +377,29 @@ export class ProductPreferenceService {
       targetVersion: command.targetVersion,
       context,
       idempotencyKey: command.idempotencyKey
+    });
+  }
+
+  async recordUseFeedback(
+    feedback: Readonly<ProductLoopUseFeedback>
+  ): Promise<RecordProductPreferenceEventResult | undefined> {
+    const kind = productPreferenceKindForUseOutcome(feedback.outcome);
+    if (!kind) return undefined;
+    const resolved = await this.targets.resolvePublishPackageTarget(
+      feedback.workspaceId,
+      feedback.recordedByPrincipalId,
+      feedback.publishPackage
+    );
+    if (!resolved) return undefined;
+    return this.store.recordCanonicalEvent({
+      workspaceId: feedback.workspaceId,
+      subjectUserId: feedback.recordedByPrincipalId,
+      kind,
+      targetType: resolved.target.targetType,
+      targetId: resolved.target.targetId,
+      targetVersion: resolved.target.targetVersion,
+      context: resolved.context,
+      idempotencyKey: `preference-use-feedback:${feedback.productLoopFeedbackId}`
     });
   }
 }
