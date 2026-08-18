@@ -52,7 +52,7 @@ test.describe('M9 WP06 real durable Daily Workspace', () => {
       has: page.getByRole('heading', { name: title, exact: true })
     });
     await expect(orbitCard).toHaveCount(1);
-    await expect(orbitCard.getByLabel(/Orbit score/i)).toBeVisible();
+    await expect(orbitCard.getByLabel(/^Orbit score \d+$/i)).toBeVisible();
     await expect(orbitCard.getByText(/Importance 90/)).toBeVisible();
     await orbitCard.getByText('Source & ranking reasons', { exact: true }).click();
     await expect(
