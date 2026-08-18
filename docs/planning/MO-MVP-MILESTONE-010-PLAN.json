@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M10",
+  "name": "Professional Trademark Asset Portfolio",
+  "status": "APPROVED_FOR_IMPLEMENTATION_BY_OWNER_CONTINUATION",
+  "baselineSha": "b974a568ba2d78817a0f61612eb47fc740485a74",
+  "primaryProduct": "MarkOrbit Lite",
+  "alignedTask": "MO-MVP-TASK-053",
+  "scopeLock": "docs/planning/MO-MVP-MILESTONE-010-SCOPE-LOCK.md",
+  "deliveryPlan": "docs/planning/MO-MVP-MILESTONE-010-DELIVERY-PLAN.md",
+  "workPackages": [
+    {
+      "id": "M10-WP-01",
+      "name": "Contracts, ownership and authority boundary"
+    },
+    {
+      "id": "M10-WP-02",
+      "name": "Durable private Trademark Asset registry"
+    },
+    {
+      "id": "M10-WP-03",
+      "name": "Governed import and duplicate assistance"
+    },
+    {
+      "id": "M10-WP-04",
+      "name": "MarkReg Matter/Lifecycle linking projection"
+    },
+    {
+      "id": "M10-WP-05",
+      "name": "Portfolio read, search and watch projection"
+    },
+    {
+      "id": "M10-WP-06",
+      "name": "Lite Trademark Assets product UI and Daily integration"
+    },
+    {
+      "id": "M10-WP-07",
+      "name": "Reliability and independent authority audit"
+    }
+  ],
+  "sourceClasses": [
+    "USER_ENTERED",
+    "MARKREG_LINKED",
+    "DATA_ENGINE_PUBLIC_REFERENCE",
+    "KNOWLEDGE_REFERENCE",
+    "IMPORTED_FILE"
+  ],
+  "authorityLocks": {
+    "trademarkAssetIsOfficialTruth": false,
+    "trademarkAssetIsMatter": false,
+    "liteMayMutateMarkRegThroughAssetLink": false,
+    "liteMayUseCrossServiceSql": false,
+    "dataEngineIsReadOnlyConsumerDependency": true,
+    "watchSignalIsOfficialDeadline": false,
+    "assetViewAuthorizesExternalAction": false,
+    "importAuthorizesExternalAction": false,
+    "productionDeploymentAuthorized": false,
+    "gaAuthorized": false
+  },
+  "deferredIntegrations": [
+    "stable Data Engine public trademark read-only consumer endpoint if unavailable during implementation"
+  ]
+}
