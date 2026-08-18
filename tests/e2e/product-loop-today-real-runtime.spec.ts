@@ -179,7 +179,10 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     await expect(page.getByText(/No automatic publication, customer outreach/)).toBeVisible();
     await expect(page.getByText('CONTENT KIT', { exact: true })).toBeVisible();
     await expect(page.getByText('Native variants', { exact: true })).toBeVisible();
-    const nativeVariants = page.locator('.daily-variant-list > li');
+    const contentKitCard = page.locator('section.mo-card').filter({
+      has: page.getByText('CONTENT KIT', { exact: true })
+    });
+    const nativeVariants = contentKitCard.locator('.daily-variant-list > li');
     const nativeVariantCount = await nativeVariants.count();
     expect(nativeVariantCount).toBeGreaterThan(0);
     for (let index = 0; index < nativeVariantCount; index += 1) {
@@ -190,7 +193,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       ).toBeVisible();
     }
 
-    const firstAngle = page.locator('.daily-angle-list > li').first();
+    const firstAngle = contentKitCard.locator('.daily-angle-list > li').first();
     await expect(firstAngle).toBeVisible();
     const angleResponsePromise = page.waitForResponse(
       (response) =>
