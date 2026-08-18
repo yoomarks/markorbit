@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { parseInternalWorkspacePrincipal } from '@markorbit/contracts';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import { ContentKitError, type ContentKitService } from './content-kit.js';
 
@@ -12,14 +12,14 @@ function trusted(configured: string, supplied: string | undefined): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function principalOf(request: JsonRequest, secret: string) {
+function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
     throw new HttpError(
       401,
       'UNTRUSTED_INTERNAL_CALLER',
       'Trusted internal authorization is required.'
     );
-  let principal;
+  let principal: WorkspacePrincipal;
   try {
     principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
   } catch {
