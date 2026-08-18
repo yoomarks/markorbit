@@ -24,7 +24,7 @@ on:
       - 'playwright.product-loop-today-real-runtime.config.ts'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   prepared-action-postgres:
@@ -57,6 +57,97 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Apply Angle Select and Copy actions to PR head
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git fetch origin "${GITHUB_HEAD_REF}"
+          git checkout -B wp07-create-actions "origin/${GITHUB_HEAD_REF}"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/lite-web/src/features/today/TodayWorkspace.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "  ContentPick,\n  DailyOrbitItem,\n  VisualOutputKind\n",
+                  "  ContentPick,\n  DailyOrbitItem,\n  PlatformVariant,\n  VisualOutputKind\n",
+                  'PlatformVariant import'
+              ),
+              (
+                  "  busy,\n  onCreateVisualBrief,\n  onStartVisualRequest\n}: {\n",
+                  "  busy,\n  onCreateVisualBrief,\n  onStartVisualRequest,\n  onSelectAngle,\n  onCopyVariant\n}: {\n",
+                  'ContentKitPanel props'
+              ),
+              (
+                  "  onStartVisualRequest: () => void;\n}) {\n",
+                  "  onStartVisualRequest: () => void;\n  onSelectAngle: (angleId: string) => void;\n  onCopyVariant: (variant: Readonly<PlatformVariant>) => Promise<void>;\n}) {\n",
+                  'ContentKitPanel callback types'
+              ),
+              (
+                  "  const [sceneIntent, setSceneIntent] = useState('');\n\n  useEffect(() => {\n",
+                  "  const [sceneIntent, setSceneIntent] = useState('');\n  const [selectedAngleId, setSelectedAngleId] = useState('');\n  const [copiedVariantId, setCopiedVariantId] = useState('');\n  const [copyError, setCopyError] = useState('');\n\n  useEffect(() => {\n",
+                  'ContentKitPanel local state'
+              ),
+              (
+                  "  }, [pick.contentPickId, pick.suggestedAngles, pick.whyPublish]);\n\n  if (loading) return <LoadingState label=\"Opening Content Kit\" />;\n",
+                  "  }, [pick.contentPickId, pick.suggestedAngles, pick.whyPublish]);\n\n  useEffect(() => {\n    setSelectedAngleId('');\n    setCopiedVariantId('');\n    setCopyError('');\n  }, [kit?.contentKitId, kit?.version]);\n\n  const copyVariant = async (variant: Readonly<PlatformVariant>) => {\n    setCopyError('');\n    try {\n      await onCopyVariant(variant);\n      setCopiedVariantId(variant.variantId);\n    } catch {\n      setCopyError('This browser could not copy the platform variant.');\n    }\n  };\n\n  if (loading) return <LoadingState label=\"Opening Content Kit\" />;\n",
+                  'ContentKitPanel local actions'
+              ),
+              (
+                  """            <ul className=\"daily-angle-list\">\n              {kit.angles.map((angle) => (\n                <li key={angle.angleId}>\n                  <strong>{angle.title}</strong>\n                  <span>{angle.thesis}</span>\n                </li>\n              ))}\n            </ul>\n""",
+                  """            <ul className=\"daily-angle-list\">\n              {kit.angles.map((angle) => {\n                const selected = selectedAngleId === angle.angleId;\n                return (\n                  <li key={angle.angleId}>\n                    <strong>{angle.title}</strong>\n                    <span>{angle.thesis}</span>\n                    <Button\n                      variant={selected ? 'secondary' : 'primary'}\n                      disabled={selected}\n                      onClick={() => {\n                        setSelectedAngleId(angle.angleId);\n                        onSelectAngle(angle.angleId);\n                      }}\n                    >\n                      {selected ? 'Selected angle' : 'Use this angle'}\n                    </Button>\n                  </li>\n                );\n              })}\n            </ul>\n""",
+                  'Angle list'
+              ),
+              (
+                  "                  <p>{variant.body}</p>\n                  <small>Human review required · external publish executed: No</small>\n                </li>\n",
+                  "                  <p>{variant.body}</p>\n                  <small>Human review required · external publish executed: No</small>\n                  <Button\n                    variant=\"secondary\"\n                    disabled={copiedVariantId === variant.variantId}\n                    onClick={() => void copyVariant(variant)}\n                  >\n                    {copiedVariantId === variant.variantId ? 'Copied' : 'Copy'}\n                  </Button>\n                </li>\n",
+                  'Variant copy button'
+              ),
+              (
+                  """        </div>\n      </Card>\n\n      <Card>\n        <div className=\"daily-card-heading\">\n          <div>\n            <p className=\"daily-kicker\">VISUAL</p>\n""",
+                  """        </div>\n        {copyError ? (\n          <Alert tone=\"warning\" title=\"Copy unavailable\">\n            {copyError}\n          </Alert>\n        ) : null}\n      </Card>\n\n      <Card>\n        <div className=\"daily-card-heading\">\n          <div>\n            <p className=\"daily-kicker\">VISUAL</p>\n""",
+                  'Copy error UI'
+              ),
+              (
+                  "  const recordOrbitPreference = async (\n    kind: 'SAVED' | 'DISMISSED',\n    item: Readonly<DailyOrbitItem>\n  ) => {\n",
+                  """  const selectContentAngle = (angleId: string) => {\n    if (!kit) return;\n    void dailyClient\n      .recordPreferenceEvent(\n        'ANGLE_SELECTED',\n        {\n          targetType: 'CONTENT_KIT',\n          targetId: kit.contentKitId,\n          targetVersion: kit.version\n        },\n        `preference:angle-selected:${kit.contentKitId}:${kit.version}:${angleId}`\n      )\n      .catch(() => {\n        // Angle selection is the primary local action; preference evidence is best-effort.\n      });\n  };\n\n  const copyPlatformVariant = async (variant: Readonly<PlatformVariant>) => {\n    if (!kit) throw new Error('Content Kit is required before copying a platform variant.');\n    if (!navigator.clipboard?.writeText)\n      throw new Error('Clipboard write is unavailable in this browser.');\n    await navigator.clipboard.writeText(`${variant.title}\\n\\n${variant.body}`);\n    void dailyClient\n      .recordPreferenceEvent(\n        'COPIED',\n        {\n          targetType: 'PLATFORM_VARIANT',\n          targetId: variant.variantId,\n          targetVersion: kit.version\n        },\n        `preference:copied:${kit.contentKitId}:${kit.version}:${variant.variantId}`\n      )\n      .catch(() => {\n        // A successful clipboard write remains successful even if preference evidence cannot persist.\n      });\n  };\n\n  const recordOrbitPreference = async (\n    kind: 'SAVED' | 'DISMISSED',\n    item: Readonly<DailyOrbitItem>\n  ) => {\n""",
+                  'Parent CREATE actions'
+              ),
+              (
+                  "            onCreateVisualBrief={(input) => void createVisualBrief(input)}\n            onStartVisualRequest={() => void startVisualRequest()}\n          />\n",
+                  "            onCreateVisualBrief={(input) => void createVisualBrief(input)}\n            onStartVisualRequest={() => void startVisualRequest()}\n            onSelectAngle={selectContentAngle}\n            onCopyVariant={copyPlatformVariant}\n          />\n",
+                  'ContentKitPanel render props'
+              )
+          ]
+          for old, new, label in replacements:
+              if old not in text:
+                  raise SystemExit(f'{label} anchor not found')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+
+          e2e = Path('tests/e2e/product-loop-today-real-runtime.spec.ts')
+          text = e2e.read_text()
+          anchor = """    for (let index = 0; index < nativeVariantCount; index += 1) {\n      await expect(\n        nativeVariants\n          .nth(index)\n          .getByText('Human review required · external publish executed: No', { exact: true })\n      ).toBeVisible();\n    }\n\n    const durableUrl = page.url();\n"""
+          addition = """    for (let index = 0; index < nativeVariantCount; index += 1) {\n      await expect(\n        nativeVariants\n          .nth(index)\n          .getByText('Human review required · external publish executed: No', { exact: true })\n      ).toBeVisible();\n    }\n\n    const firstAngle = page.locator('.daily-angle-list > li').first();\n    await expect(firstAngle).toBeVisible();\n    const angleResponsePromise = page.waitForResponse(\n      (response) =>\n        response.url().includes('/api/lite/product-preference-events') &&\n        response.request().method() === 'POST'\n    );\n    await firstAngle.getByRole('button', { name: 'Use this angle', exact: true }).click();\n    const angleResponse = await angleResponsePromise;\n    expect(angleResponse.status()).toBe(201);\n    const angleBody = (await angleResponse.json()) as { event: { kind: string; targetType: string } };\n    expect(angleBody.event).toMatchObject({ kind: 'ANGLE_SELECTED', targetType: 'CONTENT_KIT' });\n    await expect(\n      firstAngle.getByRole('button', { name: 'Selected angle', exact: true })\n    ).toBeDisabled();\n\n    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: lite });\n    const firstVariant = nativeVariants.first();\n    const copyResponsePromise = page.waitForResponse(\n      (response) =>\n        response.url().includes('/api/lite/product-preference-events') &&\n        response.request().method() === 'POST'\n    );\n    await firstVariant.getByRole('button', { name: 'Copy', exact: true }).click();\n    const copyResponse = await copyResponsePromise;\n    expect(copyResponse.status()).toBe(201);\n    const copyBody = (await copyResponse.json()) as { event: { kind: string; targetType: string } };\n    expect(copyBody.event).toMatchObject({ kind: 'COPIED', targetType: 'PLATFORM_VARIANT' });\n    await expect(firstVariant.getByRole('button', { name: 'Copied', exact: true })).toBeDisabled();\n\n    const durableUrl = page.url();\n"""
+          if anchor not in text:
+              raise SystemExit('E2E CREATE actions anchor not found')
+          e2e.write_text(text.replace(anchor, addition, 1))
+          PY
+          pnpm prettier --write \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          if git diff --quiet; then
+            echo 'Angle Select and Copy actions are already present.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+          git commit -m 'M9 WP07: add angle selection and variant copy actions'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build M9 Daily Workspace dependency closure
