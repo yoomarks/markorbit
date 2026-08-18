@@ -1,0 +1,38 @@
+name: Temporary M9 WP08 Audit Formatter
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tmp-m9-wp08-audit-format.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format-audit-verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m9-wp08-independent-runtime-audit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact repository Prettier output
+        run: |
+          set -euo pipefail
+          pnpm prettier --write scripts/m9-wp-08-independent-runtime-audit.mjs
+          if git diff --quiet -- scripts/m9-wp-08-independent-runtime-audit.mjs; then
+            echo 'No formatting delta remains.'
+          else
+            git config user.name 'markorbit-ci'
+            git config user.email 'markorbit-ci@users.noreply.github.com'
+            git add scripts/m9-wp-08-independent-runtime-audit.mjs
+            git commit -m 'chore(m9): format WP08 audit verifier'
+            git push origin HEAD:agent/m9-wp08-independent-runtime-audit
+          fi
