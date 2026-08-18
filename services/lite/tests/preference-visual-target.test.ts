@@ -166,25 +166,23 @@ function resolver() {
     find: vi.fn(() => Promise.resolve(kit))
   } as unknown as ContentKitService;
   const visuals = {
-    findOutput: vi.fn(
-      (_workspaceId: string, reference: { id: string; version: number }) =>
-        Promise.resolve(
-          reference.id === output.visualOutputReferenceId && reference.version === output.version
-            ? output
-            : undefined
-        )
+    findOutput: vi.fn((_workspaceId: string, reference: { id: string; version: number }) =>
+      Promise.resolve(
+        reference.id === output.visualOutputReferenceId && reference.version === output.version
+          ? output
+          : undefined
+      )
     ),
-    findBrief: vi.fn(
-      (_workspaceId: string, reference: { id: string; version: number }) =>
-        Promise.resolve(
-          reference.id === brief.visualBriefId && reference.version === brief.version
-            ? {
-                brief,
-                visualBriefFingerprintSha256: '8'.repeat(64),
-                consumerIdentity: { ipId: 'MOKI', styleId: 'markorbit-lite-editorial-v1' }
-              }
-            : undefined
-        )
+    findBrief: vi.fn((_workspaceId: string, reference: { id: string; version: number }) =>
+      Promise.resolve(
+        reference.id === brief.visualBriefId && reference.version === brief.version
+          ? {
+              brief,
+              visualBriefFingerprintSha256: '8'.repeat(64),
+              consumerIdentity: { ipId: 'MOKI', styleId: 'markorbit-lite-editorial-v1' }
+            }
+          : undefined
+      )
     )
   } as unknown as PostgresVisualBridgeStore;
   return new DailyWorkspacePreferenceTargetResolver(orbit, signals, contentKits, visuals);
