@@ -147,7 +147,7 @@ The M6 authority locks remain:
 - Capability Twin is a private read model, not an autonomous identity or protected-action authority;
 - no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
 
-### Milestone 7 — Beta Release Readiness and Operational Hardening — complete
+### Milestone 7 — Beta Release Readiness and Operational Hardening — approved
 
 TASK 032A / PR #94 approved the direction `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING` to close the remaining four-week Beta obligations without creating a new business domain.
 
@@ -173,7 +173,7 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 ```
 
-Milestone 7 closed the Beta engineering-readiness scope while preserving release/deployment authority as a separate owner decision.
+M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 added the Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection. M7-WP-03 added the explicitly enabled TEST/REHEARSAL deterministic owner-separated seed harness. M7-WP-04 merged in PR #98 and composes the three MVP loops through real owner PostgreSQL and real HTTP authority boundaries, including desktop and 390px mobile critical paths without business-route interception. M7-WP-05 merged in PR #99 and established an exact-head non-production candidate rehearsal across the six durable owner databases, using the repository's forward-only immutable-checksum migration model and owner-local logical snapshot restore/reapply recovery procedure; it also made the existing Lite owner-local structural workspace prerequisite explicit. M7-WP-06 now composes the established M2–M6, Product Loop and M7 predecessor gates on one exact candidate head, records a deterministic candidate/config fingerprint, carries machine-readable known limits and keeps `releaseAuthorized: false`. A passing WP-06 matrix means engineering readiness for the independent M7-WP-07 audit only; it does not release Beta or deploy production traffic.
 
 ### Milestone 9 — MO Lite Daily Workspace & Content Production — complete
 
@@ -203,6 +203,13 @@ See:
 - `docs/planning/MO-MVP-MILESTONE-007-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-007-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-007-PLAN.json`;
+- `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`;
+- `docs/tasks/MO-MVP-M7-WP-01-BETA-READINESS-CONTRACTS-AUTHORITY.md`;
+- `docs/tasks/MO-MVP-M7-WP-02-BOUNDED-CONVERSION-ANALYTICS.md`;
+- `docs/tasks/MO-MVP-M7-WP-03-DETERMINISTIC-SEEDED-BETA-SCENARIO.md`;
+- `docs/tasks/MO-MVP-M7-WP-04-THREE-LOOP-FULL-JOURNEY-REAL-RUNTIME.md`;
+- `docs/tasks/MO-MVP-M7-WP-05-DEPLOYMENT-REHEARSAL-RECOVERY.md`;
+- `docs/tasks/MO-MVP-M7-WP-06-BETA-RC-RELIABILITY-MATRIX.md`;
 - `docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-009-IMPLEMENTATION-TRACEABILITY.{md,json}`;
