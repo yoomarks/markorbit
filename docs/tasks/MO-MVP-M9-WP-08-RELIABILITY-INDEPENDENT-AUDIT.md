@@ -2,14 +2,15 @@
 
 - **Work package:** `M9-WP-08`
 - **Milestone:** `M9 — MO Lite Daily Workspace & Content Production`
-- **Audited candidate:** `48d6c44aa55648b25222698cc07ba892735d145c`
-- **Candidate tree:** `1f5d3001972c9247b8653aa9afa1307cc9a0d373`
-- **WP07 PR:** `#123`
+- **Audited candidate:** `d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1`
+- **Candidate tree:** `cd2a7476250010d0380cf9c31e5f7bb86a5ff44f`
+- **WP07 base:** `48d6c44aa55648b25222698cc07ba892735d145c` / PR `#123`
+- **Real-source remediation PR:** `#126`
 - **Status:** `INDEPENDENT_AUDIT_IMPLEMENTATION`
 
 ## Objective
 
-Independently audit the exact M9-WP-07 candidate against the approved M9 Scope Lock and Delivery Plan. WP08 proves whether M9 is a real runtime path rather than a collection of screenshots, fixtures, locally seeded projections or green unit tests.
+Independently audit the exact remediated M9 candidate against the approved M9 Scope Lock and Delivery Plan. WP08 proves whether M9 is a real runtime path rather than a collection of screenshots, fixtures, locally seeded projections or green unit tests.
 
 The required M9 path remains:
 
@@ -35,19 +36,44 @@ The independent audit must verify all requirements frozen in the M9 Delivery Pla
 10. Product feedback does not fabricate publication, external outcome or Capability verification;
 11. Product Loop and M1-M8 authority regressions remain green.
 
-## Current independent finding
+## Audit history and bounded remediation
 
-The exact WP07 candidate has strong real-runtime evidence for PostgreSQL persistence, Workspace isolation, preference replay safety, browser desktop/mobile behavior, canonical target derivation, exact Visual Output resolution and M1-M8 regressions.
+The first hosted WP08 audit, run `32136662329`, successfully audited exact WP07 head `48d6c44aa55648b25222698cc07ba892735d145c` and returned `FIX` with exactly two blockers:
 
-However, the canonical browser runtime currently constructs an in-process `ProductLoopSourceAuthority` and directly seeds `lite_daily_signals` inside `scripts/product-loop-today-real-runtime.ts`. That proves the Lite runtime over realistic governed source-shaped data, but it does **not** prove that a real Core/Knowledge-derived source traverses the canonical acceptance path.
+- `WP07_NOT_MERGED_TO_MAIN`;
+- `REAL_KNOWLEDGE_DERIVED_SOURCE_NOT_PROVEN`.
 
-Therefore WP08 must keep the blocker `REAL_KNOWLEDGE_DERIVED_SOURCE_NOT_PROVEN` until the canonical acceptance path consumes the governed Core/Knowledge source boundary instead of synthesizing the source authority and Daily Signal inside the browser harness.
+That audit also verified exact provenance, Workspace isolation, stale-source rejection, replay safety, restart recovery, bounded concurrency, desktop/mobile browser behavior, no canonical route interception, no false publication/Capability claims, and the inherited M1-M8 regression evidence.
 
-WP07 is also still Draft and unmerged. The audit must keep `WP07_NOT_MERGED_TO_MAIN` until PR #123 is explicitly merged and the merged tree is proven identical to the audited candidate tree.
+PR #126 is a bounded remediation stacked on the exact WP07 head. Its final candidate delta is restricted to `scripts/product-loop-today-real-runtime.ts`.
+
+The canonical browser runtime now:
+
+- constructs accepted ReadyPackage content in Core's existing Knowledge repositories;
+- validates that ReadyPackage content against the existing Core intake/content integrity contract before acceptance;
+- resolves the accepted source through the existing Core internal Daily source HTTP boundary using `HttpCoreDailyKnowledgeSourceAuthority`;
+- imports the Daily Signal through `PostgresLiteDailySignalStore.importKnowledgeSource()`;
+- derives the Recommendation source from the same Core Daily projection so exact-source matching remains intact;
+- no longer directly inserts `lite_daily_signals` or uses the former synthetic in-process source resolver.
+
+Clean remediation head `d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1` passed:
+
+- `validation` run `32137824495`;
+- `Product Loop Today Prepared Action` run `32137824537`, including real PostgreSQL, HTTP/Gateway/client/Storybook checks and the real desktop/mobile browser journey.
+
+WP08 may inherit the original WP07 workflow evidence only because it independently proves the remediation candidate differs from that exact WP07 base by the single bounded canonical-runtime harness path above, and it independently performs a clean build plus full `pnpm check` on the remediated candidate.
+
+## Mainline lock
+
+The real-source evidence blocker is expected to clear on the remediated candidate. M9 must still remain `FIX` while that exact candidate has not been explicitly merged to `main` with matching tree identity.
+
+The correct remaining blocker before Owner merge authorization is therefore `M9_CANDIDATE_NOT_MERGED_TO_MAIN`.
+
+A green independent audit does not itself authorize a merge. A `GO` recommendation becomes possible only after the exact remediated candidate is explicitly merged to `main` and the merged tree identity is independently verified.
 
 ## Independence rule
 
-WP08 is audit/workflow/documentation scope only. It does not silently repair the candidate, replace the exact audited candidate, weaken M9 completion rules or convert missing evidence into a pass.
+WP08 changes only audit workflow/script/contract/task files. It does not silently repair the candidate, replace missing evidence, weaken M9 completion rules or convert a missing mainline identity into a pass.
 
 A `FIX` recommendation is a valid completed audit result. It means the audit ran successfully and found real blockers. It is not a CI failure and must not be hidden by fixture evidence.
 
@@ -68,6 +94,6 @@ WP08 must never publish externally, authorize provider/payment execution, create
 
 ## Exit gate
 
-WP08 is implementation-complete when its dedicated hosted workflow produces retained machine-readable audit evidence for the exact WP07 candidate.
+WP08 is implementation-complete when its dedicated hosted workflow produces retained machine-readable audit evidence for exact candidate `d4d9595bcf8d1fe57ee0e4b4885b7c4c451274b1`.
 
-M9 receives `GO` only when no blockers remain, including exact mainline tree identity for the explicitly merged WP07 candidate and a canonical real Knowledge-derived source path. Until then the correct independent recommendation is `FIX`.
+M9 receives `GO` only when no blockers remain, including exact `main` tree identity for the explicitly merged remediated candidate. Until then the correct independent recommendation is `FIX`.
