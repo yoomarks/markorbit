@@ -32,6 +32,12 @@ import {
   type PreparedActionHandoffAuthority,
   type PreparedActionPlan
 } from './prepared-action.js';
+import {
+  PostgresVisualBridgeStore,
+  UnavailableVisualEngineConsumer,
+  VisualBridgeService
+} from './visual-bridge.js';
+import { createVisualBridgeRoutes } from './visual-bridge-http.js';
 
 export const serviceManifest = Object.freeze({
   name: 'lite',
@@ -47,6 +53,7 @@ if (!configuredInternalServiceSecret)
 const internalServiceSecret: string = configuredInternalServiceSecret;
 const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
 const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
+const liteVisualStyleId = process.env.MOKI_LITE_STYLE_ID ?? 'markorbit-lite-editorial-v1';
 
 const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
 const database = new ManagedDatabase(
@@ -217,10 +224,18 @@ const dailyOrbitService = new DailyOrbitService(
   journeyService,
   creatorPreferences
 );
+const visualBridgeStore = new PostgresVisualBridgeStore(database, pool);
 const contentKitService = new ContentKitService(
   dailyOrbitService,
   new PostgresContentKitLifecycleReader(pool),
-  creatorPreferences
+  creatorPreferences,
+  visualBridgeStore
+);
+const visualBridgeService = new VisualBridgeService(
+  contentKitService,
+  visualBridgeStore,
+  new UnavailableVisualEngineConsumer(),
+  liteVisualStyleId
 );
 const runtime = createServiceRuntime(serviceManifest, {
   routes: [
@@ -233,7 +248,12 @@ const runtime = createServiceRuntime(serviceManifest, {
       dailySignalStore,
       dailyOrbitService
     }),
-    ...createContentKitRoutes({ internalServiceSecret, contentKitService })
+    ...createContentKitRoutes({ internalServiceSecret, contentKitService }),
+    ...createVisualBridgeRoutes({
+      internalServiceSecret,
+      visualBridgeService,
+      visualBridgeStore
+    })
   ]
 });
 
