@@ -7,7 +7,8 @@ import type {
   CreatorPreference,
   DailyOrbitItem,
   PlatformVariant,
-  PlatformVariantKind
+  PlatformVariantKind,
+  VisualBriefId
 } from '@markorbit/contracts/daily-workspace';
 import type {
   ContentDraft,
@@ -59,6 +60,13 @@ export interface ContentKitLifecycleReader {
     workspaceId: string,
     recommendation: Readonly<ProductLoopExactReference<TodayRecommendationId>>
   ): Promise<ContentKitLifecycleSnapshot | undefined>;
+}
+
+export interface ContentKitVisualBriefReferenceReader {
+  listByContentKit(
+    workspaceId: string,
+    contentKit: Readonly<ProductLoopExactReference<ContentKit['contentKitId']>>
+  ): Promise<readonly ProductLoopExactReference<VisualBriefId>[]>;
 }
 
 type Row = Record<string, unknown>;
@@ -350,7 +358,8 @@ export class ContentKitService {
   constructor(
     private readonly orbit: DailyOrbitSnapshotReader,
     private readonly lifecycle: ContentKitLifecycleReader,
-    private readonly preferences?: DailyOrbitPreferenceProvider | NoCreatorPreferenceProvider
+    private readonly preferences?: DailyOrbitPreferenceProvider | NoCreatorPreferenceProvider,
+    private readonly visualBriefs?: ContentKitVisualBriefReferenceReader
   ) {}
 
   async find(
@@ -398,6 +407,20 @@ export class ContentKitService {
     }
     if (preference?.subjectUserId !== subjectUserId) preference = undefined;
 
-    return projectContentKit({ pick, orbitItem, lifecycle, ...(preference ? { preference } : {}) });
+    const kit = projectContentKit({
+      pick,
+      orbitItem,
+      lifecycle,
+      ...(preference ? { preference } : {})
+    });
+    if (!this.visualBriefs) return kit;
+    const visualBriefReferences = await this.visualBriefs.listByContentKit(workspaceId, {
+      id: kit.contentKitId,
+      version: kit.version
+    });
+    return {
+      ...kit,
+      visualBriefReferences: visualBriefReferences.map(clone)
+    };
   }
 }
