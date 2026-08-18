@@ -7,13 +7,12 @@ CREATE TABLE lite_visual_briefs (
  visual_brief_fingerprint_sha256 text NOT NULL CHECK (visual_brief_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
  document_json jsonb NOT NULL,
  created_at timestamptz NOT NULL,
- updated_at timestamptz NOT NULL,
  PRIMARY KEY (workspace_id, visual_brief_id, version),
  UNIQUE (workspace_id, content_kit_id, content_kit_version, visual_brief_fingerprint_sha256)
 );
 
 CREATE INDEX lite_visual_briefs_content_kit
- ON lite_visual_briefs(workspace_id, content_kit_id, content_kit_version, updated_at DESC);
+ ON lite_visual_briefs(workspace_id, content_kit_id, content_kit_version, created_at DESC);
 
 CREATE TABLE lite_visual_requests (
  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
@@ -22,7 +21,6 @@ CREATE TABLE lite_visual_requests (
  request_reference text NOT NULL CHECK (request_reference ~ '^illustration-request://[^[:space:]]+$'),
  request_sha256 text NOT NULL CHECK (request_sha256 ~ '^[0-9a-f]{64}$'),
  request_json jsonb NOT NULL,
- consumer_status text NOT NULL CHECK (consumer_status IN ('ACCEPTED','PLANNING_ONLY','REUSE_SELECTION_REQUIRED','REUSE_SELECTED')),
  accepted_at timestamptz NOT NULL,
  PRIMARY KEY (workspace_id, request_reference),
  UNIQUE (workspace_id, visual_brief_id, visual_brief_version),
@@ -30,23 +28,25 @@ CREATE TABLE lite_visual_requests (
    REFERENCES lite_visual_briefs(workspace_id, visual_brief_id, version)
 );
 
-CREATE TABLE lite_visual_outputs (
+CREATE TABLE lite_visual_output_references (
  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
- visual_output_id text NOT NULL CHECK (visual_output_id LIKE 'visual-output_%'),
+ visual_output_reference_id text NOT NULL CHECK (visual_output_reference_id LIKE 'visual-output_%'),
  version integer NOT NULL CHECK (version > 0),
  visual_brief_id text NOT NULL,
  visual_brief_version integer NOT NULL,
- output_fingerprint_sha256 text NOT NULL CHECK (output_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
+ request_reference text NOT NULL CHECK (request_reference ~ '^illustration-request://[^[:space:]]+$'),
+ output_reference text NULL CHECK (output_reference IS NULL OR output_reference ~ '^(library|delivery)://[^[:space:]]+$'),
+ status text NOT NULL CHECK (status IN ('REUSED_CERTIFIED_ASSET','READY','PLANNING_REQUIRED','FAILED')),
+ qc_status text NULL CHECK (qc_status IS NULL OR qc_status IN ('PASS','PASS_WITH_WARNINGS')),
  document_json jsonb NOT NULL,
- generated_at timestamptz NOT NULL,
- PRIMARY KEY (workspace_id, visual_output_id, version),
- UNIQUE (workspace_id, visual_brief_id, visual_brief_version, output_fingerprint_sha256),
+ created_at timestamptz NOT NULL,
+ PRIMARY KEY (workspace_id, visual_output_reference_id, version),
  FOREIGN KEY (workspace_id, visual_brief_id, visual_brief_version)
    REFERENCES lite_visual_briefs(workspace_id, visual_brief_id, version)
 );
 
-CREATE INDEX lite_visual_outputs_brief
- ON lite_visual_outputs(workspace_id, visual_brief_id, visual_brief_version, generated_at DESC);
+CREATE INDEX lite_visual_output_references_brief
+ ON lite_visual_output_references(workspace_id, visual_brief_id, visual_brief_version, created_at DESC);
 
 CREATE TABLE lite_visual_bridge_commands (
  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
