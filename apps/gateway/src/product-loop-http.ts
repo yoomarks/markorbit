@@ -23,6 +23,7 @@ export interface GatewayProductLoopOptions {
 const actorSpoofFields = [
   'actorId',
   'userId',
+  'subjectUserId',
   'confirmedByPrincipalId',
   'decidedByPrincipalId',
   'reviewerPrincipalId',
@@ -194,6 +195,7 @@ export function createGatewayProductLoopRoutes(
     route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], false),
     route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read'], false),
     route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], false),
+    route('POST', '/api/lite/product-preference-events', ['workspace:read']),
     route('POST', '/api/lite/today/:todayRecommendationId/prepared-actions', ['matter:manage']),
     route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage']),
     route('POST', '/api/lite/content-kits/:contentPickId/visual-briefs', ['matter:manage']),
