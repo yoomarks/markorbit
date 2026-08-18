@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import type { DailySignal } from '../packages/contracts/src/daily-workspace.js';
+import type { ReadyPackageContentExportV1 } from '../packages/contracts/src/knowledge-content-export.js';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
@@ -19,6 +20,16 @@ import {
   InMemoryAccountOnboardingRepository
 } from '../services/core/src/account-onboarding.js';
 import {
+  fingerprintReadyPackageContentExport,
+  MemoryKnowledgeReadyPackageContentRepository,
+  validateReadyPackageContentExport
+} from '../services/core/src/knowledge-content.js';
+import {
+  fingerprintCoreIntakeRequest,
+  MemoryKnowledgeIntakeRepository,
+  type KnowledgeIntake
+} from '../services/core/src/knowledge-intake.js';
+import {
   createRuntime as createGateway,
   HttpCoreAuthenticationClient
 } from '../apps/gateway/src/index.js';
@@ -35,6 +46,10 @@ import {
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
 import { PostgresProductConversionAnalyticsStore } from '../services/lite/src/conversion-analytics.js';
 import { DailyOrbitService, PostgresDailySignalReader } from '../services/lite/src/daily-orbit.js';
+import {
+  HttpCoreDailyKnowledgeSourceAuthority,
+  PostgresLiteDailySignalStore
+} from '../services/lite/src/daily-signal.js';
 import { PostgresProductLoopFeedbackStore } from '../services/lite/src/feedback.js';
 import {
   handoffResult,
@@ -62,6 +77,7 @@ if (!url) throw new Error('LITE_TODAY_TEST_DATABASE_URL is required for the Toda
 const secret = 'wp06-browser-internal-service-secret-32-bytes';
 const csrfSecret = 'wp06-browser-csrf-secret-32-bytes-minimum';
 const origin = 'http://127.0.0.1:4475';
+const coreUrl = 'http://127.0.0.1:4411';
 process.env.WEB_ORIGINS = origin;
 const desktopWorkspaceId = '31313131-3131-4313-8313-313131313131';
 const mobileWorkspaceId = '32323232-3232-4323-8323-323232323232';
@@ -82,6 +98,8 @@ const users = new InMemoryUserRepository();
 const workspaces = new InMemoryWorkspaceRepository();
 const memberships = new InMemoryMembershipRepository(users, workspaces);
 const sessions = new InMemorySessionRepository();
+const knowledgeIntakes = new MemoryKnowledgeIntakeRepository();
+const knowledgeContents = new MemoryKnowledgeReadyPackageContentRepository();
 const auth = new AuthenticationService({
   users,
   workspaces,
@@ -96,38 +114,140 @@ const core = createCore({
   port: 4411,
   authentication: auth,
   accountOnboarding: onboarding,
+  knowledgeIntakes,
+  knowledgeContents,
   internalServiceSecret: secret
 });
 let liteRuntime: ReturnType<typeof createServiceRuntime>;
 let gateway: ReturnType<typeof createGateway>;
 let vite: ChildProcess;
 
-function sourceFingerprint(workspaceId: string) {
-  return workspaceId === desktopWorkspaceId ? 'a'.repeat(64) : 'b'.repeat(64);
+const sha256 = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
+
+function stable(value: unknown): string {
+  if (value === undefined) return 'null';
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value as Record<string, unknown>)
+      .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
-const sourceAuthority: ProductLoopSourceAuthority = {
-  resolve(workspaceId, locator) {
-    if (![desktopWorkspaceId, mobileWorkspaceId].includes(workspaceId))
-      throw new Error('Unexpected browser Workspace.');
-    if (
-      locator.owner !== 'CORE' ||
-      locator.kind !== 'KNOWLEDGE_READY_PACKAGE' ||
-      locator.sourceId !== `rdp_wp06-browser-${workspaceId}`
-    )
-      throw new Error('Unexpected browser source locator.');
-    return Promise.resolve({
-      schemaVersion: 1,
-      owner: 'CORE',
-      kind: 'KNOWLEDGE_READY_PACKAGE',
-      sourceId: locator.sourceId,
-      sourceVersion: 'accepted-v6',
-      sourceFingerprintSha256: sourceFingerprint(workspaceId),
-      observedAt: at,
-      correlationId: `correlation_wp06-${workspaceId}`
-    });
-  }
-};
+function readyPackageId(workspaceId: string) {
+  return `rdp_wp06-browser-${workspaceId}`;
+}
+
+function acceptedKnowledgeIdentity(workspaceId: string) {
+  if (workspaceId === desktopWorkspaceId)
+    return {
+      intakeId: '33333333-3333-4333-8333-333333333333',
+      suffix: 'desktop'
+    };
+  if (workspaceId === mobileWorkspaceId)
+    return {
+      intakeId: '34343434-3434-4343-8343-343434343434',
+      suffix: 'mobile'
+    };
+  throw new Error('Unexpected browser Workspace.');
+}
+
+async function seedAcceptedKnowledgeSource(workspaceId: string) {
+  const { intakeId, suffix } = acceptedKnowledgeIdentity(workspaceId);
+  const sourceReadyPackageId = readyPackageId(workspaceId);
+  const markdown = [
+    '# Trademark maintenance timing rule changes next month',
+    '',
+    'The USPTO published a trademark maintenance rule update effective from next month.',
+    '',
+    '- The reviewed timing explanation changes next month.',
+    '- Practitioners should review maintenance plans before the effective date.'
+  ].join('\n');
+  const rawArtifact = {
+    artifactId: `art_wp06-browser-${suffix}`,
+    sha256: sha256(`raw:${workspaceId}:${markdown}`),
+    sizeBytes: Buffer.byteLength(markdown),
+    mimeType: 'text/html',
+    originalName: `uspto-maintenance-${suffix}.html`
+  };
+  const stagingDocument = {
+    documentId: `std_wp06-browser-${suffix}`,
+    sha256: sha256(markdown),
+    sizeBytes: Buffer.byteLength(markdown),
+    mediaType: 'text/markdown' as const,
+    encoding: 'utf-8' as const,
+    content: markdown
+  };
+  const provenance = {
+    sourceId: `src_wp06-browser-${suffix}`,
+    conversionRunId: `cvr_wp06-browser-${suffix}`,
+    verificationId: `svr_wp06-browser-${suffix}`,
+    verificationOutcome: 'PASS' as const,
+    capturedAt: at,
+    converter: { converterId: 'markdown', version: '1.0.0' },
+    legalTruthVerified: false as const
+  };
+  const readyPackageDigest = sha256(
+    stable({
+      artifactIds: [rawArtifact.artifactId],
+      stagingDocumentId: stagingDocument.documentId,
+      sourceId: provenance.sourceId,
+      conversionRunId: provenance.conversionRunId,
+      rawArtifactSha256: rawArtifact.sha256,
+      stagingSha256: stagingDocument.sha256,
+      verificationId: provenance.verificationId,
+      verificationOutcome: provenance.verificationOutcome,
+      converter: provenance.converter,
+      capturedAt: provenance.capturedAt,
+      legalTruthVerified: false
+    })
+  );
+  const contentExport: ReadyPackageContentExportV1 = {
+    contractVersion: '1.0',
+    objectType: 'READY_PACKAGE_CONTENT_EXPORT',
+    readyPackageId: sourceReadyPackageId,
+    knowledgeWorkspaceId: `wsp_wp06-browser-${suffix}`,
+    readyPackageDigest,
+    provenance,
+    rawArtifact,
+    stagingDocument
+  };
+  const request = {
+    readyPackageId: sourceReadyPackageId,
+    workspaceId,
+    digest: readyPackageDigest,
+    evidence: {
+      artifactIds: [rawArtifact.artifactId],
+      stagingDocumentId: stagingDocument.documentId
+    },
+    submittedAt: at
+  };
+  const intake: KnowledgeIntake = {
+    intakeId,
+    idempotencyKey: `wp06-browser-knowledge-intake-${suffix}`,
+    request,
+    requestSha256: fingerprintCoreIntakeRequest(request),
+    status: 'RECEIVED',
+    receivedAt: at
+  };
+  const issue = validateReadyPackageContentExport(intake, contentExport);
+  if (issue) throw new Error(`Browser Knowledge source validation failed: ${issue.code}`);
+  await knowledgeIntakes.createOrFind(intake);
+  await knowledgeContents.createOrFind({
+    intakeId,
+    workspaceId,
+    readyPackageId: sourceReadyPackageId,
+    export: contentExport,
+    exportSha256: fingerprintReadyPackageContentExport(contentExport),
+    consumedAt: at
+  });
+  const accepted = await knowledgeIntakes.markAccepted(intakeId);
+  if (accepted?.status !== 'ACCEPTED')
+    throw new Error('Browser Knowledge source was not accepted.');
+}
 
 async function seedWorkspace(
   contentStore: PostgresLiteContentPreparationStore,
@@ -150,68 +270,11 @@ async function seedWorkspace(
       {
         owner: 'CORE',
         kind: 'KNOWLEDGE_READY_PACKAGE',
-        sourceId: `rdp_wp06-browser-${workspaceId}`
+        sourceId: readyPackageId(workspaceId)
       }
     ],
     idempotencyKey: `wp06-browser-recommendation-${workspaceId}`
   });
-}
-
-async function seedDailySignal(workspaceId: string) {
-  const signal: DailySignal = {
-    schemaVersion: 1,
-    dailySignalId: `daily-signal_wp06-${workspaceId}`,
-    workspaceId,
-    version: 1,
-    source: {
-      schemaVersion: 1,
-      owner: 'CORE',
-      kind: 'KNOWLEDGE_READY_PACKAGE',
-      sourceId: `rdp_wp06-browser-${workspaceId}`,
-      sourceVersion: 'accepted-v6',
-      sourceFingerprintSha256: sourceFingerprint(workspaceId),
-      observedAt: at,
-      correlationId: `correlation_wp06-${workspaceId}`
-    },
-    title: 'Trademark maintenance timing rule changes next month',
-    summary:
-      'A reviewed source changes the timing explanation practitioners should use for trademark maintenance planning.',
-    keyFacts: [
-      'The reviewed timing explanation changes next month.',
-      'Practitioners should review maintenance plans before the effective date.'
-    ],
-    jurisdictions: ['US'],
-    institution: 'USPTO',
-    topicTags: ['trademark'],
-    changeType: 'RULE_CHANGE',
-    observedAt: at,
-    timeSensitivity: 'HIGH',
-    dailySignalFingerprintSha256:
-      workspaceId === desktopWorkspaceId ? 'c'.repeat(64) : 'd'.repeat(64),
-    legalTruthVerified: false,
-    recommendationCreatedAutomatically: false,
-    createdAt: at
-  };
-  await database.getPool().query(
-    `INSERT INTO lite_daily_signals(
-      workspace_id,daily_signal_id,version,source_owner,source_kind,source_id,source_version,
-      source_fingerprint_sha256,daily_signal_fingerprint_sha256,document_json,observed_at,created_at
-    ) VALUES($1,$2,1,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11)
-    ON CONFLICT (workspace_id,daily_signal_id,version) DO NOTHING`,
-    [
-      workspaceId,
-      signal.dailySignalId,
-      signal.source.owner,
-      signal.source.kind,
-      signal.source.sourceId,
-      String(signal.source.sourceVersion),
-      signal.source.sourceFingerprintSha256,
-      signal.dailySignalFingerprintSha256,
-      JSON.stringify(signal),
-      signal.observedAt,
-      signal.createdAt
-    ]
-  );
 }
 
 async function main() {
@@ -242,18 +305,36 @@ async function main() {
     email: 'wp06-browser@example.test',
     displayName: 'WP06 Browser User'
   });
+  await seedAcceptedKnowledgeSource(desktopWorkspaceId);
+  await seedAcceptedKnowledgeSource(mobileWorkspaceId);
+  await core.start();
 
+  const coreDailySourceAuthority = new HttpCoreDailyKnowledgeSourceAuthority(coreUrl, secret);
+  const productLoopSourceAuthority: ProductLoopSourceAuthority = {
+    async resolve(workspaceId, locator) {
+      if (locator.owner !== 'CORE' || locator.kind !== 'KNOWLEDGE_READY_PACKAGE')
+        throw new Error('Browser recommendation source must be accepted Core Knowledge.');
+      const projection = await coreDailySourceAuthority.resolve(workspaceId, locator.sourceId);
+      return projection.source;
+    }
+  };
   const contentStore = new PostgresLiteContentPreparationStore(
     database,
     pool,
-    sourceAuthority,
+    productLoopSourceAuthority,
     () => at
   );
   const candidateStore = new PostgresLiteCandidateQualificationStore(
     database,
     pool,
-    sourceAuthority,
+    productLoopSourceAuthority,
     { isAccessible: async () => true },
+    () => at
+  );
+  const dailySignalStore = new PostgresLiteDailySignalStore(
+    database,
+    pool,
+    coreDailySourceAuthority,
     () => at
   );
   const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool, () => at);
@@ -324,10 +405,17 @@ async function main() {
     mobileWorkspaceId,
     'wp06-browser-mobile'
   );
-  await seedDailySignal(desktopWorkspaceId);
-  await seedDailySignal(mobileWorkspaceId);
+  await dailySignalStore.importKnowledgeSource({
+    workspaceId: desktopWorkspaceId,
+    readyPackageId: readyPackageId(desktopWorkspaceId),
+    idempotencyKey: 'wp06-browser-daily-source-desktop'
+  });
+  await dailySignalStore.importKnowledgeSource({
+    workspaceId: mobileWorkspaceId,
+    readyPackageId: readyPackageId(mobileWorkspaceId),
+    idempotencyKey: 'wp06-browser-daily-source-mobile'
+  });
 
-  await core.start();
   liteRuntime = createServiceRuntime(
     { name: 'wp06-lite', port: 4417, version: '0.1.0' },
     {
@@ -358,7 +446,7 @@ async function main() {
   gateway = createGateway({
     port: 4410,
     liteUrl: 'http://127.0.0.1:4417',
-    authenticationClient: new HttpCoreAuthenticationClient('http://127.0.0.1:4411', secret),
+    authenticationClient: new HttpCoreAuthenticationClient(coreUrl, secret),
     internalServiceSecret: secret,
     milestoneTestRuntime: true,
     fixtureUsers: { wp06: 'user_wp06_browser' },
