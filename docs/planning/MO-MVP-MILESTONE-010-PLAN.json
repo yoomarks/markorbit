@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M10",
+  "name": "Trademark Asset Workspace & Contextual AI Guide",
+  "status": "APPROVED_FOR_IMPLEMENTATION_AFTER_SCOPE_MERGE",
+  "baselineSha": "b974a568ba2d78817a0f61612eb47fc740485a74",
+  "direction": "DURABLE_TRADEMARK_ASSET_WORKSPACE_AND_CONTEXTUAL_AI_GUIDE",
+  "primaryProduct": "MO Lite",
+  "workPackages": [
+    {
+      "id": "M10-WP-01",
+      "name": "Asset and AI Guide contracts / authority boundary"
+    },
+    {
+      "id": "M10-WP-02",
+      "name": "Durable Workspace Trademark Asset projection"
+    },
+    {
+      "id": "M10-WP-03",
+      "name": "Owner and Data source composition"
+    },
+    {
+      "id": "M10-WP-04",
+      "name": "Explainable Asset attention model"
+    },
+    {
+      "id": "M10-WP-05",
+      "name": "Contextual AI Guide runtime"
+    },
+    {
+      "id": "M10-WP-06",
+      "name": "Trademark Asset Workspace UI"
+    },
+    {
+      "id": "M10-WP-07",
+      "name": "Today / Content / Work integration and feedback"
+    },
+    {
+      "id": "M10-WP-08",
+      "name": "Reliability and independent audit"
+    }
+  ],
+  "permanentLocks": [
+    "TrademarkAsset != official registry truth",
+    "TrademarkAsset != Matter != Order != Execution",
+    "AiGuideSuggestion != legal or official truth",
+    "AiGuideSuggestion != protected execution authority",
+    "Product feedback != verified Capability",
+    "Data Engine consumption is read-only and contract-bound",
+    "no cross-service SQL",
+    "merge != production deployment or GA"
+  ],
+  "externalActionAuthority": {
+    "productionDeploymentAuthorized": false,
+    "gaAuthorized": false,
+    "filingAuthorized": false,
+    "externalPublicationAuthorized": false,
+    "customerOutreachAuthorized": false,
+    "providerExecutionAuthorized": false,
+    "paidExecutionAuthorized": false,
+    "officialTruthCreated": false
+  }
+}
