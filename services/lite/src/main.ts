@@ -14,11 +14,7 @@ import {
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
-import {
-  DailyOrbitService,
-  NoCreatorPreferenceProvider,
-  PostgresDailySignalReader
-} from './daily-orbit.js';
+import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
   PostgresLiteDailySignalStore
@@ -32,6 +28,7 @@ import {
   type PreparedActionHandoffAuthority,
   type PreparedActionPlan
 } from './prepared-action.js';
+import { PostgresProductPreferenceStore } from './preference-feedback.js';
 import {
   PostgresVisualBridgeStore,
   UnavailableVisualEngineConsumer,
@@ -109,6 +106,7 @@ const candidateStore = new PostgresLiteCandidateQualificationStore(
   }
 );
 const preparedActionStore = new PostgresPreparedActionStore(database, pool);
+const creatorPreferences = new PostgresProductPreferenceStore(database, pool);
 
 async function postMarkReg<T>(
   path: string,
@@ -218,7 +216,6 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 };
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
-const creatorPreferences = new NoCreatorPreferenceProvider();
 const dailyOrbitService = new DailyOrbitService(
   new PostgresDailySignalReader(pool),
   journeyService,
