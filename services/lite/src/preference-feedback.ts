@@ -22,9 +22,7 @@ const TARGET_TYPES: readonly ProductPreferenceEvent['targetType'][] = [
 ];
 
 export type ProductPreferenceErrorCode =
-  | 'INVALID_INPUT'
-  | 'IDEMPOTENCY_CONFLICT'
-  | 'PERSISTENCE_UNAVAILABLE';
+  'INVALID_INPUT' | 'IDEMPOTENCY_CONFLICT' | 'PERSISTENCE_UNAVAILABLE';
 
 export class ProductPreferenceError extends Error {
   constructor(
@@ -97,14 +95,17 @@ function fingerprint(value: unknown): string {
 function cleanWorkspaceId(value: string): string {
   const cleaned = value.trim().toLowerCase();
   if (!UUID.test(cleaned))
-    throw new ProductPreferenceError('INVALID_INPUT', 'workspaceId must be a Core Workspace UUID.', 422);
+    throw new ProductPreferenceError(
+      'INVALID_INPUT',
+      'workspaceId must be a Core Workspace UUID.',
+      422
+    );
   return cleaned;
 }
 
 function cleanText(value: string, field: string, maximum: number): string {
   const cleaned = value.trim();
-  if (!cleaned)
-    throw new ProductPreferenceError('INVALID_INPUT', `${field} is required.`, 422);
+  if (!cleaned) throw new ProductPreferenceError('INVALID_INPUT', `${field} is required.`, 422);
   if (cleaned.length > maximum)
     throw new ProductPreferenceError('INVALID_INPUT', `${field} exceeds the allowed length.`, 422);
   return cleaned;
@@ -265,9 +266,17 @@ export class PostgresProductPreferenceStore implements DailyOrbitPreferenceProvi
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const subjectUserId = cleanText(command.subjectUserId, 'subjectUserId', 300);
     if (!productPreferenceEventKinds.includes(command.kind))
-      throw new ProductPreferenceError('INVALID_INPUT', 'Product preference event kind is invalid.', 422);
+      throw new ProductPreferenceError(
+        'INVALID_INPUT',
+        'Product preference event kind is invalid.',
+        422
+      );
     if (!TARGET_TYPES.includes(command.targetType))
-      throw new ProductPreferenceError('INVALID_INPUT', 'Product preference target type is invalid.', 422);
+      throw new ProductPreferenceError(
+        'INVALID_INPUT',
+        'Product preference target type is invalid.',
+        422
+      );
     const targetId = cleanText(command.targetId, 'targetId', 500);
     const targetVersion = cleanVersion(command.targetVersion);
     const context = normalizeContext(command.context);
