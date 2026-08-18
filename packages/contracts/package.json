@@ -47,6 +47,11 @@
       "import": "./dist/daily-workspace.js",
       "default": "./dist/daily-workspace.js"
     },
+    "./trademark-asset-workspace": {
+      "types": "./dist/trademark-asset-workspace.d.ts",
+      "import": "./dist/trademark-asset-workspace.js",
+      "default": "./dist/trademark-asset-workspace.js"
+    },
     "./daily-source": {
       "types": "./dist/daily-source.d.ts",
       "import": "./dist/daily-source.js"
@@ -67,7 +72,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/daily-source.ts src/data-engine.ts src/capability-learning.ts src/beta-readiness.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/daily-source.ts src/data-engine.ts src/capability-learning.ts src/beta-readiness.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
