@@ -258,7 +258,8 @@ const runtime = createServiceRuntime(serviceManifest, {
       feedbackStore,
       analyticsStore,
       dailySignalStore,
-      dailyOrbitService
+      dailyOrbitService,
+      useFeedbackPreferenceRecorder: preferenceService
     }),
     ...createContentKitRoutes({ internalServiceSecret, contentKitService }),
     ...createProductPreferenceRoutes({ internalServiceSecret, service: preferenceService }),
