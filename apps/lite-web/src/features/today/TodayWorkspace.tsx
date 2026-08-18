@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type {
+  ContentKit,
+  ContentPick,
+  DailyOrbitItem,
+  VisualOutputKind
+} from '@markorbit/contracts/daily-workspace';
 import type {
   PreparedActionJourney,
   ProductLoopFeedbackOutcome,
@@ -14,8 +20,17 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader
+  PageHeader,
+  Select,
+  TextInput
 } from '@markorbit/ui';
+import {
+  createDailyWorkspaceClient,
+  DailyWorkspaceHttpError,
+  type DailyOrbitSnapshot,
+  type DailyWorkspaceClient,
+  type VisualBriefRecordResponse
+} from '../../api/daily-workspace.js';
 import {
   createTodayClient,
   TodayHttpError,
@@ -27,262 +42,179 @@ import './today.css';
 export interface TodayWorkspaceProps {
   workspaceId: string;
   client?: TodayClient;
+  dailyClient?: DailyWorkspaceClient;
 }
 
-function querySelection() {
+type BusyState = 'prepare' | 'confirm' | 'visual-brief' | 'visual-request' | '';
+
+type Selection = {
+  recommendationId: string;
+  preparedActionId: string;
+  contentPickId: string;
+};
+
+function querySelection(): Selection {
   const query = new URLSearchParams(window.location.search);
   return {
     recommendationId: query.get('todayRecommendationId') ?? '',
-    preparedActionId: query.get('preparedActionId') ?? ''
+    preparedActionId: query.get('preparedActionId') ?? '',
+    contentPickId: query.get('contentPickId') ?? ''
   };
 }
 
-function setSelection(recommendationId: string, preparedActionId?: string) {
+function setSelection(next: Partial<Selection>) {
   const url = new URL(window.location.href);
-  url.searchParams.set('todayRecommendationId', recommendationId);
-  if (preparedActionId) url.searchParams.set('preparedActionId', preparedActionId);
-  else url.searchParams.delete('preparedActionId');
+  const current = querySelection();
+  const selection = { ...current, ...next };
+  const entries = [
+    ['todayRecommendationId', selection.recommendationId],
+    ['preparedActionId', selection.preparedActionId],
+    ['contentPickId', selection.contentPickId]
+  ] as const;
+  for (const [key, value] of entries) {
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+  }
   url.hash = 'today';
   window.history.pushState({}, '', url);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 function kindLabel(kind: TodayRecommendation['kind']) {
-  if (kind === 'CONTENT_PREPARATION') return 'Content preparation';
-  if (kind === 'OPPORTUNITY_REVIEW') return 'Opportunity review';
-  if (kind === 'MARKREG_HANDOFF') return 'MarkReg handoff';
-  return 'Work follow-up';
-}
-
-function feedbackLabel(outcome: ProductLoopUseFeedback['outcome']) {
-  if (outcome === 'USER_REPORTED_PUBLISHED') return 'Reported published';
-  if (outcome === 'USER_REPORTED_DELIVERED') return 'Reported delivered';
-  if (outcome === 'USER_REPORTED_USED') return 'Reported used';
-  return 'Reported not used';
+  if (kind === 'CONTENT_PREPARATION') return 'Create';
+  if (kind === 'OPPORTUNITY_REVIEW') return 'Review';
+  if (kind === 'MARKREG_HANDOFF') return 'Move to MarkReg';
+  return 'Follow up';
 }
 
 function actionStatus(journey: PreparedActionJourney) {
   if (journey.handoffState === 'HANDOFF_COMPLETED') return 'Completed';
-  if (journey.handoffState === 'HANDOFF_PENDING') return 'Confirmed · handoff pending';
-  return 'Prepared · confirmation required';
+  if (journey.handoffState === 'HANDOFF_PENDING') return 'Handoff pending';
+  return 'Confirmation required';
 }
 
-function RecommendationList({
-  snapshot,
-  selectedId,
+function orbitTitle(
+  item: Readonly<DailyOrbitItem>,
+  today: Readonly<TodayProductLoopSnapshot> | undefined
+): string {
+  const recommendation = item.recommendation
+    ? today?.items.find(
+        (candidate) =>
+          candidate.recommendation.todayRecommendationId === item.recommendation?.id &&
+          candidate.recommendation.version === item.recommendation.version
+      )?.recommendation
+    : undefined;
+  return recommendation?.title ?? `${item.source.kind} · ${item.source.sourceId}`;
+}
+
+function sourceLabel(item: Readonly<DailyOrbitItem>) {
+  return `${item.source.owner}/${item.source.kind} · ${item.source.sourceId} · v${String(
+    item.source.sourceVersion
+  )}`;
+}
+
+function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: string }) {
+  return (
+    <Card>
+      <div className="daily-card-heading">
+        <div>
+          <p className="daily-kicker">{item.section.replaceAll('_', ' ')}</p>
+          <h3>{title}</h3>
+        </div>
+        <span className="daily-score" aria-label={`Orbit score ${item.score.total}`}>
+          {item.score.total}
+        </span>
+      </div>
+      <p>{item.whyThisMatters}</p>
+      <div className="daily-score-grid" aria-label="Explainable Orbit score">
+        <span title={item.score.importance.reason}>Importance {item.score.importance.score}</span>
+        <span title={item.score.personalRelevance.reason}>
+          Relevance {item.score.personalRelevance.score}
+        </span>
+        <span title={item.score.timeSensitivity.reason}>
+          Timing {item.score.timeSensitivity.score}
+        </span>
+        <span title={item.score.contentPotential.reason}>
+          Content {item.score.contentPotential.score}
+        </span>
+      </div>
+      <details className="daily-provenance">
+        <summary>Source & ranking reasons</summary>
+        <p>{sourceLabel(item)}</p>
+        <p>{item.score.importance.reason}</p>
+        <p>{item.score.personalRelevance.reason}</p>
+        <p>{item.score.timeSensitivity.reason}</p>
+        <p>{item.score.contentPotential.reason}</p>
+        <code title={item.source.sourceFingerprintSha256}>
+          {item.source.sourceFingerprintSha256.slice(0, 20)}…
+        </code>
+      </details>
+    </Card>
+  );
+}
+
+function ContentPickCard({
+  pick,
+  selected,
   onSelect
 }: {
-  snapshot: TodayProductLoopSnapshot;
-  selectedId: string;
-  onSelect: (recommendationId: string) => void;
+  pick: Readonly<ContentPick>;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   return (
     <Card>
-      <div className="lite-row">
+      <div className="daily-card-heading">
         <div>
-          <h2>Needs your attention</h2>
-          <p className="today-muted">Real Workspace recommendations, newest first.</p>
+          <p className="daily-kicker">CONTENT PICK</p>
+          <h3>{pick.title}</h3>
         </div>
-        <Badge>{snapshot.items.length}</Badge>
+        {selected ? <Badge>In Quick Create</Badge> : null}
       </div>
-      <div className="today-recommendation-list" role="list" aria-label="Today recommendations">
-        {snapshot.items.map(({ recommendation, preparedActions }) => (
-          <button
-            type="button"
-            role="listitem"
-            className={`today-recommendation ${
-              selectedId === recommendation.todayRecommendationId
-                ? 'today-recommendation--active'
-                : ''
-            }`}
-            key={recommendation.todayRecommendationId}
-            onClick={() => onSelect(recommendation.todayRecommendationId)}
-            aria-current={selectedId === recommendation.todayRecommendationId ? 'true' : undefined}
-          >
-            <span className="today-recommendation__meta">
-              <span>{kindLabel(recommendation.kind)}</span>
-              <span>v{recommendation.version}</span>
-            </span>
-            <strong>{recommendation.title}</strong>
-            <span>{recommendation.explanation}</span>
-            <span className="today-recommendation__footer">
-              <Badge>{recommendation.status}</Badge>
-              {preparedActions[0] ? <small>{actionStatus(preparedActions[0])}</small> : null}
-            </span>
-          </button>
+      <p>{pick.whyPublish}</p>
+      {pick.suggestedAngles.length ? (
+        <ul className="daily-angle-list">
+          {pick.suggestedAngles.slice(0, 3).map((angle) => (
+            <li key={angle}>{angle}</li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="daily-chip-row">
+        {pick.recommendedPlatforms.map((platform) => (
+          <span key={platform}>{platform.replaceAll('_', ' ')}</span>
         ))}
       </div>
+      <Button variant={selected ? 'secondary' : 'primary'} onClick={onSelect}>
+        {selected ? 'Selected for Quick Create' : 'Open in Quick Create'}
+      </Button>
     </Card>
   );
 }
 
-function Provenance({ recommendation }: { recommendation: TodayRecommendation }) {
-  return (
-    <Card>
-      <h2>Why this is here</h2>
-      <p>{recommendation.explanation}</p>
-      <h3>Exact sources</h3>
-      <ul className="today-source-list">
-        {recommendation.sources.map((source) => (
-          <li
-            key={`${source.owner}:${source.kind}:${source.sourceId}:${String(source.sourceVersion)}`}
-          >
-            <strong>
-              {source.owner} · {source.kind}
-            </strong>
-            <span>{source.sourceId}</span>
-            <small>
-              version {String(source.sourceVersion)} · observed{' '}
-              {new Date(source.observedAt).toLocaleString()}
-            </small>
-            <code title={source.sourceFingerprintSha256}>
-              {source.sourceFingerprintSha256.slice(0, 16)}…
-            </code>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function PendingFeedback({
-  packages,
-  busyPackageId,
-  onRecord
-}: {
-  packages: ReadonlyArray<Readonly<PublishPackage>>;
-  busyPackageId: string;
-  onRecord: (publishPackage: Readonly<PublishPackage>, outcome: ProductLoopFeedbackOutcome) => void;
-}) {
-  if (!packages.length) return null;
-  return (
-    <Card>
-      <div className="lite-row">
-        <div>
-          <h2>Outcome feedback needed</h2>
-          <p className="today-muted">
-            Reviewed PublishPackages waiting for your after-the-fact usage report.
-          </p>
-        </div>
-        <Badge>{packages.length}</Badge>
-      </div>
-      <Alert tone="warning" title="Reporting does not publish anything">
-        Choose only what already happened outside MarkOrbit. This records your report; it does not
-        execute an external action or independently verify the result.
-      </Alert>
-      <ul className="today-feedback-pending-list">
-        {packages.map((publishPackage) => {
-          const busy = busyPackageId === publishPackage.publishPackageId;
-          return (
-            <li key={publishPackage.publishPackageId}>
-              <div>
-                <strong>{publishPackage.title}</strong>
-                <span className="today-muted">
-                  {publishPackage.publishPackageId} · v{publishPackage.version}
-                </span>
-              </div>
-              <div
-                className="today-feedback-actions"
-                aria-label={`Report outcome for ${publishPackage.title}`}
-              >
-                <Button
-                  variant="secondary"
-                  disabled={Boolean(busyPackageId)}
-                  onClick={() => onRecord(publishPackage, 'USER_REPORTED_PUBLISHED')}
-                >
-                  {busy ? 'Saving…' : 'Published'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={Boolean(busyPackageId)}
-                  onClick={() => onRecord(publishPackage, 'USER_REPORTED_DELIVERED')}
-                >
-                  Delivered
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={Boolean(busyPackageId)}
-                  onClick={() => onRecord(publishPackage, 'USER_REPORTED_USED')}
-                >
-                  Used
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={Boolean(busyPackageId)}
-                  onClick={() => onRecord(publishPackage, 'NOT_USED')}
-                >
-                  Not used
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
-  );
-}
-
-function FeedbackEvidence({
-  feedback
-}: {
-  feedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
-}) {
-  if (!feedback.length) return null;
-  return (
-    <Card>
-      <div className="lite-row">
-        <div>
-          <h2>Recent Product-loop evidence</h2>
-          <p className="today-muted">
-            Returned outcomes from work already recorded in this Workspace.
-          </p>
-        </div>
-        <Badge>{feedback.length}</Badge>
-      </div>
-      <Alert tone="info" title="User-reported evidence">
-        These records describe what an authenticated user reported after the fact. MarkOrbit did not
-        execute or independently verify the external action, and this evidence is not Capability
-        verification.
-      </Alert>
-      <ul className="today-feedback-list">
-        {feedback.map((item) => (
-          <li key={item.productLoopFeedbackId}>
-            <div>
-              <strong>{feedbackLabel(item.outcome)}</strong>
-              <span>
-                {item.publishPackage.id} · v{String(item.publishPackage.version)}
-              </span>
-            </div>
-            <small>{new Date(item.recordedAt).toLocaleString()}</small>
-            {item.externalReference ? <code>{item.externalReference}</code> : null}
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function PreparedActionPanel({
+function PreparedActionCard({
   recommendation,
   journey,
   busy,
   onPrepare,
   onConfirm
 }: {
-  recommendation: TodayRecommendation;
-  journey?: PreparedActionJourney;
-  busy: 'prepare' | 'confirm' | '';
+  recommendation: Readonly<TodayRecommendation>;
+  journey?: Readonly<PreparedActionJourney>;
+  busy: BusyState;
   onPrepare: () => void;
   onConfirm: () => void;
 }) {
   if (!journey) {
     return (
       <Card>
-        <h2>Prepared Action</h2>
-        <p>
-          Nothing has been prepared yet. A Recommendation can explain what should happen next, but
-          it does not authorize a business mutation by itself.
-        </p>
+        <div className="daily-card-heading">
+          <div>
+            <p className="daily-kicker">{kindLabel(recommendation.kind)}</p>
+            <h3>{recommendation.title}</h3>
+          </div>
+          <Badge>{recommendation.status}</Badge>
+        </div>
+        <p>{recommendation.explanation}</p>
         {recommendation.kind === 'CONTENT_PREPARATION' ? (
           <>
             <Alert title="What Prepare will do">
@@ -294,10 +226,9 @@ function PreparedActionPanel({
             </Button>
           </>
         ) : (
-          <Alert tone="info" title="Exact handoff context required">
-            This Recommendation needs structured owner context before a Prepared Action can be
-            created. Lite will not infer customer intent, relationship model, qualification
-            evidence, or a Formal Opportunity from display text.
+          <Alert tone="info" title="Structured owner context required">
+            Lite will not infer customer intent, qualification evidence or a formal instruction from
+            display text.
           </Alert>
         )}
       </Card>
@@ -306,12 +237,10 @@ function PreparedActionPanel({
 
   return (
     <Card>
-      <div className="lite-row">
+      <div className="daily-card-heading">
         <div>
-          <h2>Prepared Action</h2>
-          <p className="today-muted">
-            {journey.preparedAction.preparedActionId} · v{journey.preparedAction.version}
-          </p>
+          <p className="daily-kicker">Prepared Action</p>
+          <h3>{recommendation.title}</h3>
         </div>
         <Badge>{actionStatus(journey)}</Badge>
       </div>
@@ -320,29 +249,11 @@ function PreparedActionPanel({
         <strong>Confirmation effect</strong>
         <p>{journey.preparedAction.confirmationEffect}</p>
       </div>
-      <dl className="today-definition-list">
-        <div>
-          <dt>Target owner</dt>
-          <dd>{journey.preparedAction.handoffTarget}</dd>
-        </div>
-        <div>
-          <dt>Source Recommendation</dt>
-          <dd>
-            {journey.preparedAction.recommendation.id} · v
-            {String(journey.preparedAction.recommendation.version)}
-          </dd>
-        </div>
-        <div>
-          <dt>Execution authorized</dt>
-          <dd>No</dd>
-        </div>
-      </dl>
-
       {journey.handoffState === 'AWAITING_CONFIRMATION' ? (
         <>
           <Alert tone="warning" title="Your confirmation is required">
-            Review the effect above before confirming. Confirmation records your authenticated Core
-            Principal and then attempts the bounded owner handoff.
+            Review the effect above. Confirmation records your authenticated Core Principal and then
+            attempts only the bounded owner handoff.
           </Alert>
           <Button onClick={onConfirm} disabled={busy !== ''}>
             {busy === 'confirm' ? 'Confirming…' : 'Confirm and hand off'}
@@ -350,9 +261,9 @@ function PreparedActionPanel({
         </>
       ) : journey.handoffState === 'HANDOFF_PENDING' ? (
         <>
-          <Alert tone="warning" title="Confirmed · owner handoff pending">
-            Your confirmation is durable. The owner handoff did not complete yet; retrying reuses
-            the same confirmation and idempotency boundary.
+          <Alert tone="warning" title="Confirmed · handoff pending">
+            Confirmation is durable. Retrying reuses the existing confirmation and idempotency
+            boundary.
           </Alert>
           <Button onClick={onConfirm} disabled={busy !== ''}>
             {busy === 'confirm' ? 'Retrying…' : 'Retry owner handoff'}
@@ -375,34 +286,306 @@ function PreparedActionPanel({
   );
 }
 
-export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWorkspaceProps) {
-  const client = useMemo(
-    () => suppliedClient ?? createTodayClient(workspaceId),
-    [suppliedClient, workspaceId]
+function ContentKitPanel({
+  pick,
+  kit,
+  loading,
+  error,
+  visualRecord,
+  visualError,
+  busy,
+  onCreateVisualBrief,
+  onStartVisualRequest
+}: {
+  pick: Readonly<ContentPick>;
+  kit?: Readonly<ContentKit>;
+  loading: boolean;
+  error?: Readonly<DailyWorkspaceHttpError>;
+  visualRecord?: Readonly<VisualBriefRecordResponse>;
+  visualError?: Readonly<DailyWorkspaceHttpError>;
+  busy: BusyState;
+  onCreateVisualBrief: (input: {
+    requestedIpPackage: string;
+    outputKind: VisualOutputKind;
+    sceneIntent: string;
+  }) => void;
+  onStartVisualRequest: () => void;
+}) {
+  const [ipPackage, setIpPackage] = useState('');
+  const [outputKind, setOutputKind] = useState<VisualOutputKind>('XIAOHONGSHU_COVER');
+  const [sceneIntent, setSceneIntent] = useState('');
+
+  useEffect(() => {
+    setSceneIntent(pick.suggestedAngles[0] ?? pick.whyPublish);
+  }, [pick.contentPickId, pick.suggestedAngles, pick.whyPublish]);
+
+  if (loading) return <LoadingState label="Opening Content Kit" />;
+  if (error?.code === 'CONTENT_OPPORTUNITY_REQUIRED') {
+    return (
+      <Alert tone="info" title="Prepare the content line first">
+        This Content Pick is editorial guidance only. Use Today Actions to prepare and explicitly
+        confirm the existing Content Recommendation before a Content Kit can exist.
+      </Alert>
+    );
+  }
+  if (error)
+    return (
+      <Alert tone="warning" title="Content Kit unavailable">
+        {error.message}
+      </Alert>
+    );
+  if (!kit) return null;
+
+  return (
+    <div className="daily-create-stack">
+      <Card>
+        <div className="daily-card-heading">
+          <div>
+            <p className="daily-kicker">CONTENT KIT</p>
+            <h3>{pick.title}</h3>
+          </div>
+          <Badge>v{kit.version}</Badge>
+        </div>
+        <p>{kit.whyItMatters}</p>
+        <p>
+          <strong>Why publish:</strong> {kit.whyPublish}
+        </p>
+        <p>
+          <strong>Audience:</strong> {kit.audience}
+        </p>
+        <div className="daily-create-columns">
+          <div>
+            <h4>Angles</h4>
+            <ul className="daily-angle-list">
+              {kit.angles.map((angle) => (
+                <li key={angle.angleId}>
+                  <strong>{angle.title}</strong>
+                  <span>{angle.thesis}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4>Native variants</h4>
+            <ul className="daily-variant-list">
+              {kit.platformVariants.map((variant) => (
+                <li key={variant.variantId}>
+                  <Badge>{variant.kind.replaceAll('_', ' ')}</Badge>
+                  <strong>{variant.title}</strong>
+                  <p>{variant.body}</p>
+                  <small>Human review required · external publish executed: No</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="daily-card-heading">
+          <div>
+            <p className="daily-kicker">VISUAL</p>
+            <h3>Reuse-first visual brief</h3>
+          </div>
+          <Badge>{kit.visualBriefReferences.length} brief(s)</Badge>
+        </div>
+        <Alert tone="info" title="Visual production remains governed">
+          Lite can prepare a Visual Brief, but it cannot choose provider/model, authorize paid
+          execution or override Visual QC.
+        </Alert>
+        {kit.visualBriefReferences.length ? (
+          <ul className="daily-reference-list">
+            {kit.visualBriefReferences.map((reference) => (
+              <li key={`${reference.id}:${reference.version}`}>
+                {reference.id} · v{reference.version}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="daily-visual-form">
+          <TextInput
+            label="Governed IP package"
+            value={ipPackage}
+            onChange={(event) => setIpPackage(event.target.value)}
+            placeholder="e.g. MOKI"
+          />
+          <Select
+            label="Output format"
+            value={outputKind}
+            onChange={(event) => setOutputKind(event.target.value as VisualOutputKind)}
+          >
+            <option value="XIAOHONGSHU_COVER">Xiaohongshu cover</option>
+            <option value="WECHAT_OFFICIAL_ACCOUNT_COVER">WeChat article cover</option>
+            <option value="MOMENTS_SOCIAL_CARD">Moments / social card</option>
+            <option value="VIDEO_COVER">Video cover</option>
+          </Select>
+          <TextInput
+            label="Scene intent"
+            value={sceneIntent}
+            onChange={(event) => setSceneIntent(event.target.value)}
+          />
+        </div>
+        <Button
+          onClick={() =>
+            onCreateVisualBrief({ requestedIpPackage: ipPackage, outputKind, sceneIntent })
+          }
+          disabled={busy !== '' || !ipPackage.trim() || !sceneIntent.trim()}
+        >
+          {busy === 'visual-brief' ? 'Saving Visual Brief…' : 'Create Visual Brief'}
+        </Button>
+        {visualRecord ? (
+          <div className="daily-visual-result">
+            <strong>{visualRecord.brief.visualBriefId}</strong>
+            <span>
+              Reuse first: Yes · Paid execution authorized by Lite: No ·{' '}
+              {visualRecord.brief.outputKind}
+            </span>
+            <Button variant="secondary" onClick={onStartVisualRequest} disabled={busy !== ''}>
+              {busy === 'visual-request' ? 'Requesting…' : 'Request reuse-first visual'}
+            </Button>
+          </div>
+        ) : null}
+        {visualError ? (
+          <Alert
+            tone={visualError.code === 'VISUAL_CONSUMER_UNAVAILABLE' ? 'info' : 'warning'}
+            title={
+              visualError.code === 'VISUAL_CONSUMER_UNAVAILABLE'
+                ? 'Visual Engine connection not configured'
+                : 'Visual request unavailable'
+            }
+          >
+            {visualError.message} No provider or paid execution is assumed from this state.
+          </Alert>
+        ) : null}
+      </Card>
+    </div>
   );
-  const [snapshot, setSnapshot] = useState<TodayProductLoopSnapshot>();
-  const [error, setError] = useState<TodayHttpError>();
-  const [busy, setBusy] = useState<'prepare' | 'confirm' | ''>('');
+}
+
+function FeedbackSummary({
+  pending,
+  recent,
+  busyPackageId,
+  onRecord
+}: {
+  pending: ReadonlyArray<Readonly<PublishPackage>>;
+  recent: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+  busyPackageId: string;
+  onRecord: (publishPackage: Readonly<PublishPackage>, outcome: ProductLoopFeedbackOutcome) => void;
+}) {
+  if (!pending.length && !recent.length) return null;
+  return (
+    <Card>
+      <div className="daily-card-heading">
+        <div>
+          <p className="daily-kicker">FEEDBACK</p>
+          <h3>What happened after preparation?</h3>
+        </div>
+        <Badge>{pending.length + recent.length}</Badge>
+      </div>
+      <Alert tone="info" title="Reporting is not publication">
+        These controls only record what a user says already happened outside MarkOrbit. They do not
+        publish or independently verify the result.
+      </Alert>
+      {pending.map((publishPackage) => (
+        <div className="daily-feedback-row" key={publishPackage.publishPackageId}>
+          <div>
+            <strong>{publishPackage.title}</strong>
+            <span>{publishPackage.publishPackageId}</span>
+          </div>
+          <div className="daily-feedback-actions">
+            {(
+              [
+                ['Published', 'USER_REPORTED_PUBLISHED'],
+                ['Used', 'USER_REPORTED_USED'],
+                ['Not used', 'NOT_USED']
+              ] as const
+            ).map(([label, outcome]) => (
+              <Button
+                key={outcome}
+                variant="secondary"
+                disabled={Boolean(busyPackageId)}
+                onClick={() => onRecord(publishPackage, outcome)}
+              >
+                {busyPackageId === publishPackage.publishPackageId ? 'Saving…' : label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {recent.length ? (
+        <details className="daily-provenance">
+          <summary>Recent user-reported outcomes ({recent.length})</summary>
+          <ul className="daily-reference-list">
+            {recent.map((item) => (
+              <li key={item.productLoopFeedbackId}>
+                {item.outcome.replaceAll('_', ' ')} · {item.publishPackage.id}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </Card>
+  );
+}
+
+export function TodayWorkspace({
+  workspaceId,
+  client: suppliedTodayClient,
+  dailyClient: suppliedDailyClient
+}: TodayWorkspaceProps) {
+  const todayClient = useMemo(
+    () => suppliedTodayClient ?? createTodayClient(workspaceId),
+    [suppliedTodayClient, workspaceId]
+  );
+  const dailyClient = useMemo(
+    () => suppliedDailyClient ?? createDailyWorkspaceClient(workspaceId),
+    [suppliedDailyClient, workspaceId]
+  );
+  const [today, setToday] = useState<TodayProductLoopSnapshot>();
+  const [orbit, setOrbit] = useState<DailyOrbitSnapshot>();
+  const [todayError, setTodayError] = useState<TodayHttpError>();
+  const [dailyError, setDailyError] = useState<DailyWorkspaceHttpError>();
+  const [selection, setCurrentSelection] = useState<Selection>(querySelection);
+  const [kit, setKit] = useState<ContentKit>();
+  const [kitLoading, setKitLoading] = useState(false);
+  const [kitError, setKitError] = useState<DailyWorkspaceHttpError>();
+  const [busy, setBusy] = useState<BusyState>('');
   const [feedbackBusyPackageId, setFeedbackBusyPackageId] = useState('');
-  const [selection, setCurrentSelection] = useState(querySelection);
-  const lastSelectedButton = useRef<string>();
+  const [visualRecord, setVisualRecord] = useState<VisualBriefRecordResponse>();
+  const [visualError, setVisualError] = useState<DailyWorkspaceHttpError>();
 
   const reload = async () => {
-    setError(undefined);
-    try {
-      setSnapshot(await client.loadToday());
-    } catch (cause) {
-      setError(
-        cause instanceof TodayHttpError
-          ? cause
+    setTodayError(undefined);
+    setDailyError(undefined);
+    const [todayResult, orbitResult] = await Promise.allSettled([
+      todayClient.loadToday(),
+      dailyClient.loadOrbit()
+    ]);
+    if (todayResult.status === 'fulfilled') setToday(todayResult.value);
+    else
+      setTodayError(
+        todayResult.reason instanceof TodayHttpError
+          ? todayResult.reason
           : new TodayHttpError(503, 'TODAY_REQUEST_FAILED', 'Lite Today is unavailable.')
       );
-    }
+    if (orbitResult.status === 'fulfilled') setOrbit(orbitResult.value);
+    else
+      setDailyError(
+        orbitResult.reason instanceof DailyWorkspaceHttpError
+          ? orbitResult.reason
+          : new DailyWorkspaceHttpError(
+              503,
+              'DAILY_ORBIT_UNAVAILABLE',
+              'Daily Orbit is unavailable.',
+              true
+            )
+      );
   };
 
   useEffect(() => {
     void reload();
-  }, [client]);
+  }, [todayClient, dailyClient]);
 
   useEffect(() => {
     const followLocation = () => setCurrentSelection(querySelection());
@@ -411,54 +594,99 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
   }, []);
 
   useEffect(() => {
-    if (!snapshot?.items.length) return;
-    const requested = snapshot.items.find(
-      ({ recommendation }) => recommendation.todayRecommendationId === selection.recommendationId
-    );
-    if (!requested) {
-      const first = snapshot.items[0]!;
-      setCurrentSelection({
-        recommendationId: first.recommendation.todayRecommendationId,
-        preparedActionId: first.preparedActions[0]?.preparedAction.preparedActionId ?? ''
-      });
-    }
-  }, [snapshot, selection.recommendationId]);
+    if (!today?.items.length || selection.recommendationId) return;
+    const first = today.items[0]!;
+    setCurrentSelection((current) => ({
+      ...current,
+      recommendationId: first.recommendation.todayRecommendationId,
+      preparedActionId: first.preparedActions[0]?.preparedAction.preparedActionId ?? ''
+    }));
+  }, [today, selection.recommendationId]);
 
-  const item = snapshot?.items.find(
-    ({ recommendation }) => recommendation.todayRecommendationId === selection.recommendationId
+  useEffect(() => {
+    if (!orbit?.contentPicks.length || selection.contentPickId) return;
+    setCurrentSelection((current) => ({
+      ...current,
+      contentPickId: orbit.contentPicks[0]!.contentPickId
+    }));
+  }, [orbit, selection.contentPickId]);
+
+  const selectedPick = orbit?.contentPicks.find(
+    (candidate) => candidate.contentPickId === selection.contentPickId
   );
-  const journey =
-    item?.preparedActions.find(
-      ({ preparedAction }) => preparedAction.preparedActionId === selection.preparedActionId
-    ) ?? item?.preparedActions[0];
 
-  const selectRecommendation = (recommendationId: string) => {
-    lastSelectedButton.current = recommendationId;
-    const next = snapshot?.items.find(
-      ({ recommendation }) => recommendation.todayRecommendationId === recommendationId
-    );
-    const preparedActionId = next?.preparedActions[0]?.preparedAction.preparedActionId;
-    setSelection(recommendationId, preparedActionId);
-    setCurrentSelection({ recommendationId, preparedActionId: preparedActionId ?? '' });
+  useEffect(() => {
+    setKit(undefined);
+    setKitError(undefined);
+    setVisualRecord(undefined);
+    setVisualError(undefined);
+    if (!selectedPick) return;
+    let active = true;
+    setKitLoading(true);
+    dailyClient
+      .loadContentKit(selectedPick.contentPickId)
+      .then((value) => {
+        if (active) setKit(value);
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setKitError(
+          cause instanceof DailyWorkspaceHttpError
+            ? cause
+            : new DailyWorkspaceHttpError(
+                503,
+                'CONTENT_KIT_UNAVAILABLE',
+                'Content Kit is unavailable.'
+              )
+        );
+      })
+      .finally(() => {
+        if (active) setKitLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dailyClient, selectedPick]);
+
+  const selectContentPick = (pick: Readonly<ContentPick>) => {
+    setSelection({
+      contentPickId: pick.contentPickId,
+      recommendationId: pick.recommendation.id,
+      preparedActionId: ''
+    });
+    setCurrentSelection((current) => ({
+      ...current,
+      contentPickId: pick.contentPickId,
+      recommendationId: pick.recommendation.id,
+      preparedActionId: ''
+    }));
   };
 
-  const prepare = async () => {
-    if (!item) return;
+  const selectedToday = today?.items.find(
+    (candidate) => candidate.recommendation.todayRecommendationId === selection.recommendationId
+  );
+  const selectedJourney =
+    selectedToday?.preparedActions.find(
+      (candidate) => candidate.preparedAction.preparedActionId === selection.preparedActionId
+    ) ?? selectedToday?.preparedActions[0];
+
+  const prepare = async (recommendation: Readonly<TodayRecommendation>) => {
     setBusy('prepare');
-    setError(undefined);
+    setTodayError(undefined);
     try {
-      const created = await client.prepareContent(item.recommendation);
+      const created = await todayClient.prepareContent(recommendation);
       await reload();
-      setSelection(
-        item.recommendation.todayRecommendationId,
-        created.preparedAction.preparedActionId
-      );
-      setCurrentSelection({
-        recommendationId: item.recommendation.todayRecommendationId,
+      setSelection({
+        recommendationId: recommendation.todayRecommendationId,
         preparedActionId: created.preparedAction.preparedActionId
       });
+      setCurrentSelection((current) => ({
+        ...current,
+        recommendationId: recommendation.todayRecommendationId,
+        preparedActionId: created.preparedAction.preparedActionId
+      }));
     } catch (cause) {
-      setError(
+      setTodayError(
         cause instanceof TodayHttpError
           ? cause
           : new TodayHttpError(503, 'PREPARE_FAILED', 'Prepared Action could not be created.')
@@ -468,27 +696,35 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
     }
   };
 
-  const confirm = async () => {
-    if (!journey) return;
+  const confirm = async (journey: Readonly<PreparedActionJourney>) => {
     setBusy('confirm');
-    setError(undefined);
+    setTodayError(undefined);
     try {
-      const result = await client.confirm(journey);
+      const result = await todayClient.confirm(journey);
       await reload();
-      setSelection(
-        item!.recommendation.todayRecommendationId,
-        result.preparedAction.preparedActionId
-      );
-      setCurrentSelection({
-        recommendationId: item!.recommendation.todayRecommendationId,
+      setSelection({
+        recommendationId: journey.preparedAction.recommendation.id,
         preparedActionId: result.preparedAction.preparedActionId
       });
+      setCurrentSelection((current) => ({
+        ...current,
+        recommendationId: journey.preparedAction.recommendation.id,
+        preparedActionId: result.preparedAction.preparedActionId
+      }));
+      if (selectedPick) {
+        try {
+          setKit(await dailyClient.loadContentKit(selectedPick.contentPickId));
+          setKitError(undefined);
+        } catch {
+          // The Today mutation is authoritative; a read refresh can recover independently.
+        }
+      }
     } catch (cause) {
       const mapped =
         cause instanceof TodayHttpError
           ? cause
           : new TodayHttpError(503, 'HANDOFF_FAILED', 'Owner handoff did not complete.');
-      setError(mapped);
+      setTodayError(mapped);
       if (mapped.status === 503) await reload();
     } finally {
       setBusy('');
@@ -500,118 +736,288 @@ export function TodayWorkspace({ workspaceId, client: suppliedClient }: TodayWor
     outcome: ProductLoopFeedbackOutcome
   ) => {
     setFeedbackBusyPackageId(publishPackage.publishPackageId);
-    setError(undefined);
+    setTodayError(undefined);
     try {
-      await client.recordUseFeedback(publishPackage, outcome);
+      await todayClient.recordUseFeedback(publishPackage, outcome);
       await reload();
     } catch (cause) {
-      setError(
+      setTodayError(
         cause instanceof TodayHttpError
           ? cause
-          : new TodayHttpError(
-              503,
-              'FEEDBACK_RECORD_FAILED',
-              'Outcome feedback could not be saved.'
-            )
+          : new TodayHttpError(503, 'FEEDBACK_RECORD_FAILED', 'Feedback could not be saved.')
       );
     } finally {
       setFeedbackBusyPackageId('');
     }
   };
 
-  if (!snapshot && !error) return <LoadingState label="Loading real Workspace recommendations" />;
-  if (!snapshot && error) {
+  const createVisualBrief = async (input: {
+    requestedIpPackage: string;
+    outputKind: VisualOutputKind;
+    sceneIntent: string;
+  }) => {
+    if (!selectedPick || !kit) return;
+    setBusy('visual-brief');
+    setVisualError(undefined);
+    try {
+      const record = await dailyClient.createVisualBrief(selectedPick.contentPickId, kit, input);
+      setVisualRecord(record);
+      setKit(await dailyClient.loadContentKit(selectedPick.contentPickId));
+    } catch (cause) {
+      setVisualError(
+        cause instanceof DailyWorkspaceHttpError
+          ? cause
+          : new DailyWorkspaceHttpError(
+              503,
+              'VISUAL_BRIEF_FAILED',
+              'Visual Brief could not be saved.'
+            )
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const startVisualRequest = async () => {
+    if (!visualRecord) return;
+    setBusy('visual-request');
+    setVisualError(undefined);
+    try {
+      const result = await dailyClient.startVisualRequest(visualRecord);
+      if (result.output.status === 'FAILED')
+        setVisualError(
+          new DailyWorkspaceHttpError(
+            502,
+            'VISUAL_REQUEST_FAILED',
+            'Visual Engine reported failure.'
+          )
+        );
+    } catch (cause) {
+      setVisualError(
+        cause instanceof DailyWorkspaceHttpError
+          ? cause
+          : new DailyWorkspaceHttpError(
+              503,
+              'VISUAL_REQUEST_FAILED',
+              'Visual request failed.',
+              true
+            )
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  if (!today && !orbit && !todayError && !dailyError)
+    return <LoadingState label="Loading your Daily Workspace" />;
+  if (!today && !orbit && (todayError || dailyError)) {
+    const error = todayError ?? dailyError!;
     const permission = error.status === 401 || error.status === 403;
     return (
       <ErrorState
-        title={permission ? 'Today access denied' : 'Lite Today unavailable'}
+        title={permission ? 'Daily Workspace access denied' : 'Daily Workspace unavailable'}
         description={error.message}
         {...(!permission ? { onRetry: () => void reload() } : {})}
       />
     );
   }
-  if (!snapshot) return null;
+
+  const mainOrbit = orbit?.items.filter((item) => item.section !== 'WORTH_REVISITING') ?? [];
+  const revisiting = orbit?.items.filter((item) => item.section === 'WORTH_REVISITING') ?? [];
+  const contentPicks = orbit?.contentPicks ?? [];
 
   return (
-    <section aria-labelledby="today-heading">
+    <section aria-labelledby="today-heading" className="daily-workspace">
       <PageHeader
-        title="Today"
-        description="Understand what needs attention, review what is prepared, then confirm the exact next step."
+        title="Good morning"
+        description="See what matters, create what is worth expressing, and move the right work forward."
         actions={<Badge>Authenticated Workspace</Badge>}
       />
       <span id="today-heading" className="sr-only">
         Today
       </span>
 
-      {snapshot.partial ? (
-        <Alert tone="warning" title="Partial or stale Today context">
-          {snapshot.warnings.length
-            ? snapshot.warnings.join(' ')
-            : 'Some upstream context could not be refreshed. Review source provenance before acting.'}
+      {(orbit?.partial || today?.partial) && (
+        <Alert tone="warning" title="Partial or stale context">
+          {[...(orbit?.warnings ?? []), ...(today?.warnings ?? [])].join(' ') ||
+            'Some upstream context could not be refreshed. Exact stored provenance remains visible.'}
+        </Alert>
+      )}
+      {dailyError ? (
+        <Alert tone="warning" title="SEE is partially unavailable">
+          {dailyError.message} Existing Today Actions remain available where their durable state was
+          loaded.
         </Alert>
       ) : null}
-      {error ? (
-        <Alert
-          tone="warning"
-          title={
-            error.code === 'DEPENDENCY_UNAVAILABLE' ? 'Confirmed · handoff pending' : error.code
-          }
-        >
-          {error.message}
+      {todayError ? (
+        <Alert tone="warning" title="MOVE is partially unavailable">
+          {todayError.message}
         </Alert>
       ) : null}
 
-      {snapshot.items.length === 0 ? (
-        <EmptyState
-          title="Nothing needs attention"
-          description="There are no open durable Today Recommendations in this Workspace."
-        />
-      ) : (
-        <div className="today-layout">
-          <RecommendationList
-            snapshot={snapshot}
-            selectedId={item?.recommendation.todayRecommendationId ?? ''}
-            onSelect={selectRecommendation}
+      <nav className="daily-jump-nav" aria-label="Daily Workspace sections">
+        <a href="#daily-orbit">SEE · Today's Orbit</a>
+        <a href="#content-picks">CREATE · Content Picks</a>
+        <a href="#quick-create">Quick Create</a>
+        <a href="#worth-revisiting">Worth Revisiting</a>
+        <a href="#today-actions">MOVE · Today Actions</a>
+      </nav>
+
+      <section id="daily-orbit" className="daily-section" aria-labelledby="daily-orbit-heading">
+        <div className="daily-section-heading">
+          <div>
+            <p className="daily-kicker">SEE</p>
+            <h2 id="daily-orbit-heading">Today's Orbit</h2>
+            <p>Explainable priorities from governed Workspace sources.</p>
+          </div>
+          <Badge>{mainOrbit.length}</Badge>
+        </div>
+        {mainOrbit.length ? (
+          <div className="daily-card-grid">
+            {mainOrbit.map((item) => (
+              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Your Orbit is clear"
+            description="No current Daily Signals are ranked for this Workspace yet."
           />
-          <div className="today-detail" aria-live="polite">
-            {item ? (
-              <>
-                <Card>
-                  <div className="lite-row">
-                    <div>
-                      <p className="today-eyebrow">{kindLabel(item.recommendation.kind)}</p>
-                      <h1>{item.recommendation.title}</h1>
-                    </div>
-                    <Badge>{item.recommendation.status}</Badge>
-                  </div>
-                  <p>{item.recommendation.explanation}</p>
-                  <p className="today-muted">
-                    Recommendation {item.recommendation.todayRecommendationId} · v
-                    {item.recommendation.version}
-                  </p>
-                </Card>
-                <PreparedActionPanel
-                  recommendation={item.recommendation}
-                  {...(journey ? { journey } : {})}
-                  busy={busy}
-                  onPrepare={() => void prepare()}
-                  onConfirm={() => void confirm()}
-                />
-                <Provenance recommendation={item.recommendation} />
-              </>
-            ) : null}
+        )}
+      </section>
+
+      <section id="content-picks" className="daily-section" aria-labelledby="content-picks-heading">
+        <div className="daily-section-heading">
+          <div>
+            <p className="daily-kicker">CREATE</p>
+            <h2 id="content-picks-heading">Content Picks</h2>
+            <p>Worth expressing today. A pick is not a Draft or a publication.</p>
+          </div>
+          <Badge>{contentPicks.length}</Badge>
+        </div>
+        {contentPicks.length ? (
+          <div className="daily-card-grid">
+            {contentPicks.map((pick) => (
+              <ContentPickCard
+                key={pick.contentPickId}
+                pick={pick}
+                selected={selectedPick?.contentPickId === pick.contentPickId}
+                onSelect={() => selectContentPick(pick)}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No Content Picks yet"
+            description="Content Picks appear only when a ranked signal has an exact content Recommendation."
+          />
+        )}
+      </section>
+
+      <section id="quick-create" className="daily-section" aria-labelledby="quick-create-heading">
+        <div className="daily-section-heading">
+          <div>
+            <p className="daily-kicker">CREATE</p>
+            <h2 id="quick-create-heading">Quick Create</h2>
+            <p>Work from the existing Content lifecycle; no second draft or publication truth.</p>
           </div>
         </div>
-      )}
+        {selectedPick ? (
+          <ContentKitPanel
+            pick={selectedPick}
+            {...(kit ? { kit } : {})}
+            loading={kitLoading}
+            {...(kitError ? { error: kitError } : {})}
+            {...(visualRecord ? { visualRecord } : {})}
+            {...(visualError ? { visualError } : {})}
+            busy={busy}
+            onCreateVisualBrief={(input) => void createVisualBrief(input)}
+            onStartVisualRequest={() => void startVisualRequest()}
+          />
+        ) : (
+          <EmptyState
+            title="Choose a Content Pick"
+            description="Select a Content Pick above to open its governed Content Kit."
+          />
+        )}
+      </section>
 
-      <div className="today-feedback-stack">
-        <PendingFeedback
-          packages={snapshot.feedbackPendingPackages}
-          busyPackageId={feedbackBusyPackageId}
-          onRecord={(publishPackage, outcome) => void recordFeedback(publishPackage, outcome)}
-        />
-        <FeedbackEvidence feedback={snapshot.recentFeedback} />
-      </div>
+      <section
+        id="worth-revisiting"
+        className="daily-section"
+        aria-labelledby="worth-revisiting-heading"
+      >
+        <div className="daily-section-heading">
+          <div>
+            <p className="daily-kicker">SEE</p>
+            <h2 id="worth-revisiting-heading">Worth Revisiting</h2>
+            <p>Lower-urgency context that may still be useful today.</p>
+          </div>
+          <Badge>{revisiting.length}</Badge>
+        </div>
+        {revisiting.length ? (
+          <div className="daily-card-grid">
+            {revisiting.map((item) => (
+              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />
+            ))}
+          </div>
+        ) : (
+          <p className="daily-muted-block">Nothing has been intentionally carried forward.</p>
+        )}
+      </section>
+
+      <section id="today-actions" className="daily-section" aria-labelledby="today-actions-heading">
+        <div className="daily-section-heading">
+          <div>
+            <p className="daily-kicker">MOVE</p>
+            <h2 id="today-actions-heading">Today Actions</h2>
+            <p>Review the exact effect, then explicitly confirm the owner handoff.</p>
+          </div>
+          <Badge>{today?.items.length ?? 0}</Badge>
+        </div>
+        {today?.items.length ? (
+          <div className="daily-action-stack">
+            {today.items.map(({ recommendation, preparedActions }) => {
+              const journey =
+                recommendation.todayRecommendationId === selection.recommendationId
+                  ? selectedJourney
+                  : preparedActions[0];
+              return (
+                <PreparedActionCard
+                  key={recommendation.todayRecommendationId}
+                  recommendation={recommendation}
+                  {...(journey ? { journey } : {})}
+                  busy={busy}
+                  onPrepare={() => {
+                    setSelection({ recommendationId: recommendation.todayRecommendationId });
+                    setCurrentSelection((current) => ({
+                      ...current,
+                      recommendationId: recommendation.todayRecommendationId
+                    }));
+                    void prepare(recommendation);
+                  }}
+                  onConfirm={() => {
+                    if (journey) void confirm(journey);
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            title="No Today Actions"
+            description="There are no open durable Today Recommendations in this Workspace."
+          />
+        )}
+        {today ? (
+          <FeedbackSummary
+            pending={today.feedbackPendingPackages}
+            recent={today.recentFeedback}
+            busyPackageId={feedbackBusyPackageId}
+            onRecord={(publishPackage, outcome) => void recordFeedback(publishPackage, outcome)}
+          />
+        ) : null}
+      </section>
     </section>
   );
 }
