@@ -84,6 +84,7 @@ jobs:
           pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/preference-http.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/preference-target.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/preference-visual-target.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/daily-orbit.test.ts
       - name: Run Gateway Product-loop boundary tests
         run: |
