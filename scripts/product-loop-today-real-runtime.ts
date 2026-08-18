@@ -344,7 +344,10 @@ async function main() {
           dailyOrbitService
         }),
         ...createContentKitRoutes({ internalServiceSecret: secret, contentKitService }),
-        ...createProductPreferenceRoutes({ internalServiceSecret: secret, service: preferenceService }),
+        ...createProductPreferenceRoutes({
+          internalServiceSecret: secret,
+          service: preferenceService
+        }),
         ...createVisualBridgeRoutes({
           internalServiceSecret: secret,
           visualBridgeService,
