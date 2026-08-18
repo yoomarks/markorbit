@@ -113,7 +113,19 @@ function sourceLabel(item: Readonly<DailyOrbitItem>) {
   )}`;
 }
 
-function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: string }) {
+function OrbitCard({
+  item,
+  title,
+  saved,
+  onSave,
+  onDismiss
+}: {
+  item: Readonly<DailyOrbitItem>;
+  title: string;
+  saved: boolean;
+  onSave: () => void;
+  onDismiss: () => void;
+}) {
   return (
     <Card>
       <div className="daily-card-heading">
@@ -137,6 +149,14 @@ function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: str
         <span title={item.score.contentPotential.reason}>
           Content {item.score.contentPotential.score}
         </span>
+      </div>
+      <div className="daily-chip-row" aria-label="Orbit preference actions">
+        <Button variant={saved ? 'secondary' : 'primary'} onClick={onSave} disabled={saved}>
+          {saved ? 'Saved' : 'Save'}
+        </Button>
+        <Button variant="secondary" onClick={onDismiss}>
+          Dismiss
+        </Button>
       </div>
       <details className="daily-provenance">
         <summary>Source & ranking reasons</summary>
@@ -554,6 +574,10 @@ export function TodayWorkspace({
   const [feedbackBusyPackageId, setFeedbackBusyPackageId] = useState('');
   const [visualRecord, setVisualRecord] = useState<VisualBriefRecordResponse>();
   const [visualError, setVisualError] = useState<DailyWorkspaceHttpError>();
+  const [savedOrbitItemIds, setSavedOrbitItemIds] = useState<ReadonlySet<string>>(new Set());
+  const [dismissedOrbitItemIds, setDismissedOrbitItemIds] = useState<ReadonlySet<string>>(
+    new Set()
+  );
 
   const reload = async () => {
     setTodayError(undefined);
@@ -821,6 +845,38 @@ export function TodayWorkspace({
     }
   };
 
+  const recordOrbitPreference = async (
+    kind: 'SAVED' | 'DISMISSED',
+    item: Readonly<DailyOrbitItem>
+  ) => {
+    setDailyError(undefined);
+    try {
+      await dailyClient.recordPreferenceEvent(
+        kind,
+        {
+          targetType: 'DAILY_ORBIT_ITEM',
+          targetId: item.dailyOrbitItemId,
+          targetVersion: item.version
+        },
+        `preference:${kind.toLowerCase()}:${item.dailyOrbitItemId}:${item.version}`
+      );
+      if (kind === 'SAVED')
+        setSavedOrbitItemIds((current) => new Set([...current, item.dailyOrbitItemId]));
+      else setDismissedOrbitItemIds((current) => new Set([...current, item.dailyOrbitItemId]));
+    } catch (cause) {
+      setDailyError(
+        cause instanceof DailyWorkspaceHttpError
+          ? cause
+          : new DailyWorkspaceHttpError(
+              503,
+              'PREFERENCE_RECORD_FAILED',
+              'Orbit preference could not be saved.',
+              true
+            )
+      );
+    }
+  };
+
   if (!today && !orbit && !todayError && !dailyError)
     return <LoadingState label="Loading your Daily Workspace" />;
   if (!today && !orbit && (todayError || dailyError)) {
@@ -835,8 +891,16 @@ export function TodayWorkspace({
     );
   }
 
-  const mainOrbit = orbit?.items.filter((item) => item.section !== 'WORTH_REVISITING') ?? [];
-  const revisiting = orbit?.items.filter((item) => item.section === 'WORTH_REVISITING') ?? [];
+  const mainOrbit =
+    orbit?.items.filter(
+      (item) =>
+        item.section !== 'WORTH_REVISITING' && !dismissedOrbitItemIds.has(item.dailyOrbitItemId)
+    ) ?? [];
+  const revisiting =
+    orbit?.items.filter(
+      (item) =>
+        item.section === 'WORTH_REVISITING' && !dismissedOrbitItemIds.has(item.dailyOrbitItemId)
+    ) ?? [];
   const contentPicks = orbit?.contentPicks ?? [];
 
   return (
@@ -888,7 +952,14 @@ export function TodayWorkspace({
         {mainOrbit.length ? (
           <div className="daily-card-grid">
             {mainOrbit.map((item) => (
-              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />
+              <OrbitCard
+                key={item.dailyOrbitItemId}
+                item={item}
+                title={orbitTitle(item, today)}
+                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}
+                onSave={() => void recordOrbitPreference('SAVED', item)}
+                onDismiss={() => void recordOrbitPreference('DISMISSED', item)}
+              />
             ))}
           </div>
         ) : (
@@ -971,7 +1042,14 @@ export function TodayWorkspace({
         {revisiting.length ? (
           <div className="daily-card-grid">
             {revisiting.map((item) => (
-              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />
+              <OrbitCard
+                key={item.dailyOrbitItemId}
+                item={item}
+                title={orbitTitle(item, today)}
+                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}
+                onSave={() => void recordOrbitPreference('SAVED', item)}
+                onDismiss={() => void recordOrbitPreference('DISMISSED', item)}
+              />
             ))}
           </div>
         ) : (

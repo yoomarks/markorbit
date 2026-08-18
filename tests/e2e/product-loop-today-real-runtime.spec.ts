@@ -74,26 +74,18 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       orbitCard.getByText(`rdp_wp06-browser-${workspaceId}`, { exact: false })
     ).toBeVisible();
 
-    const preferenceResponse = await page.request.post(
-      `${gateway}/api/lite/product-preference-events`,
-      {
-        headers: {
-          origin: lite,
-          'x-markorbit-workspace-id': workspaceId,
-          'x-markorbit-csrf-token': authPayload.csrfToken!,
-          'idempotency-key': `wp07-browser-save-${workspaceId}`
-        },
-        data: {
-          kind: 'SAVED',
-          targetType: 'DAILY_ORBIT_ITEM',
-          targetId: initialItem.dailyOrbitItemId,
-          targetVersion: initialItem.version
-        }
-      }
+    const preferenceResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/product-preference-events') &&
+        response.request().method() === 'POST'
     );
+    await orbitCard.getByRole('button', { name: 'Save', exact: true }).click();
+    const preferenceResponse = await preferenceResponsePromise;
     expect(preferenceResponse.status()).toBe(201);
+    await expect(orbitCard.getByRole('button', { name: 'Saved', exact: true })).toBeDisabled();
     const preferenceBody = (await preferenceResponse.json()) as {
       event: {
+        kind: string;
         subjectUserId: string;
         externalActionExecutedByMarkOrbit: boolean;
         externalOutcomeVerifiedByMarkOrbit: boolean;
@@ -101,6 +93,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       };
       preference: { source: string; capabilityVerified: boolean };
     };
+    expect(preferenceBody.event.kind).toBe('SAVED');
     expect(preferenceBody.event.externalActionExecutedByMarkOrbit).toBe(false);
     expect(preferenceBody.event.externalOutcomeVerifiedByMarkOrbit).toBe(false);
     expect(preferenceBody.event.capabilityVerified).toBe(false);
@@ -209,6 +202,21 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     await expect(direct.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
     await expect(direct.getByText('Owner handoff completed', { exact: true })).toBeVisible();
     await direct.close();
+
+    const dismissCard = page.locator('#daily-orbit section.mo-card').filter({
+      has: page.getByRole('heading', { name: title, exact: true })
+    });
+    const dismissResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/product-preference-events') &&
+        response.request().method() === 'POST'
+    );
+    await dismissCard.getByRole('button', { name: 'Dismiss', exact: true }).click();
+    const dismissResponse = await dismissResponsePromise;
+    expect(dismissResponse.status()).toBe(201);
+    const dismissBody = (await dismissResponse.json()) as { event: { kind: string } };
+    expect(dismissBody.event.kind).toBe('DISMISSED');
+    await expect(dismissCard).toHaveCount(0);
 
     expect(productLoopRequests.some((url) => url.includes('/api/lite/today'))).toBe(true);
     expect(productLoopRequests.some((url) => url.includes('/api/lite/daily-orbit'))).toBe(true);
