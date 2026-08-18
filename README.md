@@ -62,7 +62,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Product Loop Closure and Milestone 6 are complete with final GO recommendations. M7-WP-01 merged in PR #95 as `88032709d1252392ce57dfe1823eaf238810011f`; M7-WP-02 merged in PR #96 as `a199da11a725a08072c32a18c8304997f4f0ea2e`; M7-WP-03 merged in PR #97 as `2fd372c3fc96f89a391833819e51d15a9a34d228`; M7-WP-04 merged in PR #98 as `347495d8028ef7c25a06ea16240c77120c2c9847`; M7-WP-05 merged in PR #99 as `7b5fe161237eca65c7bd657dbf070825a726db2e`; `M7-WP-06 — Exact-head Beta RC reliability, responsive and known-limits matrix` is the current bounded implementation step in PR #100.**
+**Milestone 9 — MO Lite Daily Workspace & Content Production is complete with a final engineering GO recommendation. M9-WP-01 through M9-WP-07 merged in PRs #117–#123; M9-WP-08 completed its bounded remediation and post-merge independent audit in PR #129. Completion main is `b5b05c439284376e0afb2f275ca1ca51229305b7`. No production deployment, GA, external publication, provider execution, paid execution, filing or Official Truth is authorized by this engineering completion.**
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -147,7 +147,7 @@ The M6 authority locks remain:
 - Capability Twin is a private read model, not an autonomous identity or protected-action authority;
 - no public rating/ranking, certification, Payment/Invoice, legal appointment, external filing or Official Truth is introduced.
 
-### Milestone 7 — Beta Release Readiness and Operational Hardening — approved
+### Milestone 7 — Beta Release Readiness and Operational Hardening — complete
 
 TASK 032A / PR #94 approved the direction `BETA_RELEASE_READINESS_AND_OPERATIONAL_HARDENING` to close the remaining four-week Beta obligations without creating a new business domain.
 
@@ -173,7 +173,25 @@ Beta Release Candidate != Released Beta
 Green CI != Owner Release Authorization
 ```
 
-M7-WP-01 froze the Beta readiness semantics and Week 4 gap inventory. M7-WP-02 added the Lite-owned, Workspace-scoped, read-only Content/Opportunity conversion projection. M7-WP-03 added the explicitly enabled TEST/REHEARSAL deterministic owner-separated seed harness. M7-WP-04 merged in PR #98 and composes the three MVP loops through real owner PostgreSQL and real HTTP authority boundaries, including desktop and 390px mobile critical paths without business-route interception. M7-WP-05 merged in PR #99 and established an exact-head non-production candidate rehearsal across the six durable owner databases, using the repository's forward-only immutable-checksum migration model and owner-local logical snapshot restore/reapply recovery procedure; it also made the existing Lite owner-local structural workspace prerequisite explicit. M7-WP-06 now composes the established M2–M6, Product Loop and M7 predecessor gates on one exact candidate head, records a deterministic candidate/config fingerprint, carries machine-readable known limits and keeps `releaseAuthorized: false`. A passing WP-06 matrix means engineering readiness for the independent M7-WP-07 audit only; it does not release Beta or deploy production traffic.
+Milestone 7 closed the Beta engineering-readiness scope while preserving release/deployment authority as a separate owner decision.
+
+### Milestone 9 — MO Lite Daily Workspace & Content Production — complete
+
+M9 turns the governed Product Loop into the authenticated daily product surface:
+
+```text
+real governed Knowledge source
+-> Daily Signal
+-> explainable Daily Orbit
+-> Content Pick
+-> existing Content Opportunity / Draft / Human Review / PublishPackage lifecycle
+-> Content Kit / platform variants
+-> governed Visual Brief / output-reference boundary
+-> SEE / CREATE / MOVE Daily Workspace
+-> durable Product preference / feedback
+```
+
+The parallel MOVE path retains explicit confirmation and owner handoff. The final M9 WP08 post-merge audit run `32164841629` returned `GO` with no blockers and retained real-source, exact-provenance, Workspace-isolation, stale-source, replay/restart/concurrency and desktop/mobile browser evidence. The MOKI production visual runtime transport remains an explicitly deferred external gate and is fail-closed rather than represented as verified.
 
 See:
 
@@ -185,12 +203,8 @@ See:
 - `docs/planning/MO-MVP-MILESTONE-007-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-007-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-007-PLAN.json`;
-- `docs/tasks/MO-MVP-TASK-032A-MILESTONE-007-SCOPE-LOCK.md`;
-- `docs/tasks/MO-MVP-M7-WP-01-BETA-READINESS-CONTRACTS-AUTHORITY.md`;
-- `docs/tasks/MO-MVP-M7-WP-02-BOUNDED-CONVERSION-ANALYTICS.md`;
-- `docs/tasks/MO-MVP-M7-WP-03-DETERMINISTIC-SEEDED-BETA-SCENARIO.md`;
-- `docs/tasks/MO-MVP-M7-WP-04-THREE-LOOP-FULL-JOURNEY-REAL-RUNTIME.md`;
-- `docs/tasks/MO-MVP-M7-WP-05-DEPLOYMENT-REHEARSAL-RECOVERY.md`;
-- `docs/tasks/MO-MVP-M7-WP-06-BETA-RC-RELIABILITY-MATRIX.md`;
+- `docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md`;
+- `docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md`;
+- `docs/planning/MO-MVP-MILESTONE-009-IMPLEMENTATION-TRACEABILITY.{md,json}`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.
