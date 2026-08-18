@@ -36,7 +36,6 @@ import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/ca
 import { PostgresProductConversionAnalyticsStore } from '../services/lite/src/conversion-analytics.js';
 import {
   DailyOrbitService,
-  NoCreatorPreferenceProvider,
   PostgresDailySignalReader
 } from '../services/lite/src/daily-orbit.js';
 import { PostgresProductLoopFeedbackStore } from '../services/lite/src/feedback.js';
@@ -46,6 +45,12 @@ import {
   PreparedActionJourneyService,
   type PreparedActionHandoffAuthority
 } from '../services/lite/src/prepared-action.js';
+import { PostgresProductPreferenceStore } from '../services/lite/src/preference-feedback.js';
+import { createProductPreferenceRoutes } from '../services/lite/src/preference-http.js';
+import {
+  DailyWorkspacePreferenceTargetResolver,
+  ProductPreferenceService
+} from '../services/lite/src/preference-target.js';
 import { createLiteProductLoopRoutes } from '../services/lite/src/http.js';
 import {
   PostgresVisualBridgeStore,
@@ -281,9 +286,10 @@ async function main() {
     }
   };
   const journeyService = new PreparedActionJourneyService(preparedStore, handoffAuthority);
-  const preferences = new NoCreatorPreferenceProvider();
+  const preferences = new PostgresProductPreferenceStore(database, pool, () => at);
+  const dailySignalReader = new PostgresDailySignalReader(pool);
   const dailyOrbitService = new DailyOrbitService(
-    new PostgresDailySignalReader(pool),
+    dailySignalReader,
     journeyService,
     preferences,
     () => at
@@ -294,6 +300,15 @@ async function main() {
     new PostgresContentKitLifecycleReader(pool),
     preferences,
     visualStore
+  );
+  const preferenceService = new ProductPreferenceService(
+    preferences,
+    new DailyWorkspacePreferenceTargetResolver(
+      dailyOrbitService,
+      dailySignalReader,
+      contentKitService,
+      visualStore
+    )
   );
   const visualBridgeService = new VisualBridgeService(
     contentKitService,
@@ -329,6 +344,7 @@ async function main() {
           dailyOrbitService
         }),
         ...createContentKitRoutes({ internalServiceSecret: secret, contentKitService }),
+        ...createProductPreferenceRoutes({ internalServiceSecret: secret, service: preferenceService }),
         ...createVisualBridgeRoutes({
           internalServiceSecret: secret,
           visualBridgeService,
