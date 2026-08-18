@@ -176,7 +176,10 @@ const uniqueStrings = (value: string[]) => new Set(value).size === value.length;
 const isAllowed = <T extends string>(value: unknown, allowed: readonly T[]): value is T =>
   typeof value === 'string' && allowed.includes(value as T);
 
-function isSourceGovernanceSnapshot(value: unknown, sourceId: string): value is SourceGovernanceSnapshotV1 {
+function isSourceGovernanceSnapshot(
+  value: unknown,
+  sourceId: string
+): value is SourceGovernanceSnapshotV1 {
   if (!record(value) || value.snapshotVersion !== SOURCE_GOVERNANCE_SNAPSHOT_VERSION) return false;
   if (value.kind === 'STANDARD_SOURCE') {
     return exactKeys(value, ['snapshotVersion', 'kind', 'sourceId']) && value.sourceId === sourceId;
