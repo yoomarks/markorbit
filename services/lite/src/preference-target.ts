@@ -249,7 +249,9 @@ export class DailyWorkspacePreferenceTargetResolver {
   ): Promise<ResolvedProductPreferenceTarget | undefined> {
     const snapshot = await this.current(workspaceId, subjectUserId);
     const found = (await this.currentKits(workspaceId, subjectUserId, snapshot)).find(({ kit }) =>
-      kit.publishPackageReferences.some((reference) => samePublishPackage(reference, publishPackage))
+      kit.publishPackageReferences.some((reference) =>
+        samePublishPackage(reference, publishPackage)
+      )
     );
     if (!found) return undefined;
     return {

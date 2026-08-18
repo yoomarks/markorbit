@@ -34,10 +34,7 @@ import {
 } from '../services/lite/src/content-preparation.js';
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
 import { PostgresProductConversionAnalyticsStore } from '../services/lite/src/conversion-analytics.js';
-import {
-  DailyOrbitService,
-  PostgresDailySignalReader
-} from '../services/lite/src/daily-orbit.js';
+import { DailyOrbitService, PostgresDailySignalReader } from '../services/lite/src/daily-orbit.js';
 import { PostgresProductLoopFeedbackStore } from '../services/lite/src/feedback.js';
 import {
   handoffResult,
