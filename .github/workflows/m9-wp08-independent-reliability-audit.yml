@@ -147,6 +147,8 @@ jobs:
           pnpm validate:persistence-boundaries
           pnpm test:gateway-inventory
           pnpm format:check
+      - name: Build audit-head workspace dependency closure
+        run: pnpm build
       - name: Run full independent audit-head workspace check
         run: pnpm check
       - name: Produce independent M9 reliability recommendation
