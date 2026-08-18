@@ -38,9 +38,15 @@ function verifyRuns(runInventory, requiredRuns, expectedHeadSha, label) {
     const run = runsById.get(required.runId);
     invariant(run, `missing ${label} workflow run ${required.runId}`);
     invariant(run.name === required.name, `${label} workflow name mismatch for ${required.runId}`);
-    invariant(run.head_sha === expectedHeadSha, `${label} workflow head mismatch for ${required.runId}`);
+    invariant(
+      run.head_sha === expectedHeadSha,
+      `${label} workflow head mismatch for ${required.runId}`
+    );
     invariant(run.status === 'completed', `${label} workflow run ${required.runId} is incomplete`);
-    invariant(run.conclusion === 'success', `${label} workflow run ${required.runId} did not succeed`);
+    invariant(
+      run.conclusion === 'success',
+      `${label} workflow run ${required.runId} did not succeed`
+    );
   }
 }
 
@@ -88,8 +94,14 @@ const scopeLock = readCandidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md'
 );
-const browserRuntime = readCandidateText(candidateSha, 'scripts/product-loop-today-real-runtime.ts');
-const browserSpec = readCandidateText(candidateSha, 'tests/e2e/product-loop-today-real-runtime.spec.ts');
+const browserRuntime = readCandidateText(
+  candidateSha,
+  'scripts/product-loop-today-real-runtime.ts'
+);
+const browserSpec = readCandidateText(
+  candidateSha,
+  'tests/e2e/product-loop-today-real-runtime.spec.ts'
+);
 const browserWorkflow = readCandidateText(
   candidateSha,
   '.github/workflows/product-loop-today-prepared-action.yml'
@@ -131,7 +143,10 @@ invariant(
   candidatePr.number === audit.candidatePullRequestNumber,
   'candidate PR snapshot number drifted'
 );
-invariant(candidatePr.head?.sha === candidateSha, 'candidate PR head does not match audited candidate');
+invariant(
+  candidatePr.head?.sha === candidateSha,
+  'candidate PR head does not match audited candidate'
+);
 
 const wp07Runs = await readJson(wp07RunsPath);
 verifyRuns(wp07Runs, audit.inheritedWp07WorkflowEvidence, audit.wp07BaseSha, 'WP07 base');
