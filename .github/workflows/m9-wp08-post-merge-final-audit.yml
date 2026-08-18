@@ -140,7 +140,21 @@ jobs:
           pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
       - name: Run exact current-main desktop and mobile journey
         working-directory: ${{ env.M9_MAIN_DIR }}
-        run: pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p ../m9-wp08-browser-diagnostics
+          pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts 2>&1 | tee ../m9-wp08-browser-diagnostics/playwright.log
+      - name: Retain browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m9-wp08-browser-diagnostics-${{ github.run_id }}
+          path: |
+            .artifacts/m9-wp08-browser-diagnostics/playwright.log
+            .artifacts/m9-post-merge-main/test-results
+          if-no-files-found: warn
+          retention-days: 30
       - name: Re-prove governed Knowledge source and bounded concurrency
         shell: bash
         run: |
