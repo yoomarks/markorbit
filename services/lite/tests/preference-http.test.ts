@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   CreatorPreference,
   ProductPreferenceEvent
@@ -73,7 +70,10 @@ function request(body: Record<string, unknown>, headers: Record<string, string> 
 }
 
 function route(recorder: ProductPreferenceRecorder) {
-  const found = createProductPreferenceRoutes({ internalServiceSecret: secret, service: recorder })[0];
+  const found = createProductPreferenceRoutes({
+    internalServiceSecret: secret,
+    service: recorder
+  })[0];
   if (!found) throw new Error('Product preference route missing.');
   return found;
 }
