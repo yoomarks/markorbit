@@ -36,7 +36,10 @@ invariant(
   'audited candidate tree drifted'
 );
 invariant(audit.authority.mergeRequiresExplicitOwnerAction === true, 'Owner merge lock missing');
-invariant(audit.authority.releaseRequiresExplicitOwnerAction === true, 'Owner release lock missing');
+invariant(
+  audit.authority.releaseRequiresExplicitOwnerAction === true,
+  'Owner release lock missing'
+);
 invariant(
   audit.authority.auditCreatesMergeReleaseOrDeployment === false,
   'audit may not create merge/release/deployment authority'
@@ -46,14 +49,8 @@ const deliveryPlan = candidateText(
   candidateSha,
   'docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md'
 );
-const scopeLock = candidateText(
-  candidateSha,
-  'docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md'
-);
-const wp07Task = candidateText(
-  candidateSha,
-  'docs/tasks/MO-MVP-M9-WP-07-PREFERENCE-FEEDBACK.md'
-);
+const scopeLock = candidateText(candidateSha, 'docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md');
+const wp07Task = candidateText(candidateSha, 'docs/tasks/MO-MVP-M9-WP-07-PREFERENCE-FEEDBACK.md');
 const browserRuntime = candidateText(candidateSha, audit.canonicalAcceptance.browserRuntimePath);
 const browserSpec = candidateText(candidateSha, audit.independentCandidateTests.realBrowser);
 const dailySignalTests = [
@@ -122,8 +119,8 @@ for (const changedFile of changedFiles) {
   invariant(allowedAuditPaths.has(changedFile), `WP08 changed out-of-scope file: ${changedFile}`);
 }
 
-const requiredSourceMarkersPresent = audit.canonicalAcceptance.requiredSourceMarkers.every((marker) =>
-  browserRuntime.includes(marker)
+const requiredSourceMarkersPresent = audit.canonicalAcceptance.requiredSourceMarkers.every(
+  (marker) => browserRuntime.includes(marker)
 );
 const blockingSourceMarkers =
   audit.canonicalAcceptance.fixtureOrDirectSeedMarkersThatBlockRealKnowledgeProof.filter((marker) =>
@@ -148,13 +145,15 @@ const noRouteInterceptionVerified =
   !browserSpec.includes('route.fulfill(') &&
   !browserSpec.includes('context.route(');
 const desktopMobileVerified =
-  browserSpec.includes("project.name.includes('mobile')") && browserSpec.includes('mobileWorkspaceId');
+  browserSpec.includes("project.name.includes('mobile')") &&
+  browserSpec.includes('mobileWorkspaceId');
 const noFalsePublicationVerified =
   wp07Task.includes('does not independently verify an external publication or outcome') &&
   browserSpec.includes('externalActionExecutedByMarkOrbit') &&
   browserSpec.includes('externalOutcomeVerifiedByMarkOrbit');
 const noFalseCapabilityVerified =
-  wp07Task.includes('is not professional Capability evidence') && browserSpec.includes('capabilityVerified');
+  wp07Task.includes('is not professional Capability evidence') &&
+  browserSpec.includes('capabilityVerified');
 
 const blockers = [];
 if (!realKnowledgeDerivedSourceProven)

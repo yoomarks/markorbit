@@ -46,10 +46,7 @@
   ],
   "canonicalAcceptance": {
     "browserRuntimePath": "scripts/product-loop-today-real-runtime.ts",
-    "requiredSourceMarkers": [
-      "owner: 'CORE'",
-      "kind: 'KNOWLEDGE_READY_PACKAGE'"
-    ],
+    "requiredSourceMarkers": ["owner: 'CORE'", "kind: 'KNOWLEDGE_READY_PACKAGE'"],
     "fixtureOrDirectSeedMarkersThatBlockRealKnowledgeProof": [
       "const sourceAuthority: ProductLoopSourceAuthority = {",
       "INSERT INTO lite_daily_signals"
