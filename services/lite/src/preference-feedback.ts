@@ -81,6 +81,7 @@ const weights: Readonly<Record<ProductPreferenceEventKind, number>> = Object.fre
   PLATFORM_VARIANT_GENERATED: 2,
   DRAFT_EDITED: 3,
   VISUAL_REQUESTED: 2,
+  VISUAL_GENERATED: 0,
   VISUAL_SELECTED: 3,
   COPIED: 2,
   EXPORTED: 3,
