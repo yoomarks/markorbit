@@ -21,9 +21,7 @@ import type {
 import type { PostgresVisualBridgeStore, VisualBriefRecord } from './visual-bridge.js';
 
 export type ProductPreferenceTargetErrorCode =
-  | 'INVALID_TARGET'
-  | 'TARGET_NOT_FOUND'
-  | 'TARGET_CONTEXT_UNAVAILABLE';
+  'INVALID_TARGET' | 'TARGET_NOT_FOUND' | 'TARGET_CONTEXT_UNAVAILABLE';
 
 export class ProductPreferenceTargetError extends Error {
   constructor(
@@ -145,7 +143,8 @@ export class DailyWorkspacePreferenceTargetResolver {
   ): Readonly<DailyOrbitItem> {
     const item = snapshot.items.find(
       (candidate) =>
-        candidate.dailyOrbitItemId === pick.orbitItem.id && candidate.version === pick.orbitItem.version
+        candidate.dailyOrbitItemId === pick.orbitItem.id &&
+        candidate.version === pick.orbitItem.version
     );
     if (!item)
       throw new ProductPreferenceTargetError(
