@@ -40,11 +40,7 @@ export type GlobalReferenceSourceGovernanceSnapshotV1 = {
     | 'LEGACY_CROSSCHECK'
   >;
   factEligibility:
-    | 'PRIMARY'
-    | 'AUTHORITATIVE_AGGREGATOR'
-    | 'SECONDARY'
-    | 'SUPPORTING_ONLY'
-    | 'NONE';
+    'PRIMARY' | 'AUTHORITATIVE_AGGREGATOR' | 'SECONDARY' | 'SUPPORTING_ONLY' | 'NONE';
   verification: {
     policy: 'NOT_REQUIRED' | 'CONDITIONAL' | 'REQUIRED';
     verifyAgainstSourceIds: string[];
@@ -58,13 +54,11 @@ export type GlobalReferenceSourceGovernanceSnapshotV1 = {
 };
 
 export type SourceGovernanceSnapshotV1 =
-  | StandardSourceGovernanceSnapshotV1
-  | GlobalReferenceSourceGovernanceSnapshotV1;
+  StandardSourceGovernanceSnapshotV1 | GlobalReferenceSourceGovernanceSnapshotV1;
 
 export interface ReadyPackageContentExportV1 {
   contractVersion:
-    | typeof READY_PACKAGE_CONTENT_EXPORT_VERSION
-    | typeof READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION;
+    typeof READY_PACKAGE_CONTENT_EXPORT_VERSION | typeof READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION;
   objectType: 'READY_PACKAGE_CONTENT_EXPORT';
   readyPackageId: string;
   knowledgeWorkspaceId: string;
