@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M9",
+  "workPackage": "M9-WP-08",
+  "auditClass": "DAILY_WORKSPACE_REAL_RUNTIME_INDEPENDENT_AUDIT",
+  "auditedCandidateSha": "48d6c44aa55648b25222698cc07ba892735d145c",
+  "auditedCandidateTreeSha": "1f5d3001972c9247b8653aa9afa1307cc9a0d373",
+  "wp07PullRequestNumber": 123,
+  "auditBranchBaselineSha": "31ce27276dedaa3b95c2bc8029f22c5d24bedda9",
+  "requiredWorkflowEvidence": [
+    { "runId": 32131652576, "name": "Product Loop Candidate Qualification" },
+    { "runId": 32131652552, "name": "Product Loop Content Preparation" },
+    { "runId": 32131652574, "name": "M7 WP-02 Conversion Analytics" },
+    { "runId": 32131652543, "name": "Product Loop Feedback Observability" },
+    { "runId": 32131652597, "name": "Product Loop Today Prepared Action" },
+    { "runId": 32131652643, "name": "M8 WP-06 Commercial Runtime Reliability" },
+    { "runId": 32131652545, "name": "M6 WP-06 Authenticated Capability Center" },
+    { "runId": 32131652534, "name": "Browser and Visual Validation" },
+    { "runId": 32131652620, "name": "validation" }
+  ],
+  "requiredEvidence": {
+    "realKnowledgeDerivedSource": true,
+    "exactProvenancePreserved": true,
+    "workspaceIsolation": true,
+    "staleSourceRejected": true,
+    "idempotentReplaySafeMutations": true,
+    "restartRecovery": true,
+    "boundedConcurrency": true,
+    "desktopAndMobileRealBrowser": true,
+    "canonicalAcceptanceHasNoRouteInterceptionOrFixtureFallback": true,
+    "noFalsePublicationOrCapabilityClaims": true,
+    "m1ThroughM8AuthorityRegressions": true
+  },
+  "authority": {
+    "auditCreatesMergeReleaseOrDeployment": false,
+    "mergeRequiresExplicitOwnerAction": true,
+    "releaseRequiresExplicitOwnerAction": true,
+    "productionTrafficAllowed": false,
+    "externalPublicationAuthorized": false,
+    "providerExecutionAuthorized": false,
+    "filingAuthorized": false,
+    "officialTruthCreated": false,
+    "capabilityVerifiedByProductFeedback": false
+  },
+  "recommendationPolicy": {
+    "goOnlyWhenNoBlockersRemain": true,
+    "fixIsAValidCompletedAuditResult": true,
+    "wp07MustBeMergedWithExactTreeIdentityBeforeGo": true,
+    "realKnowledgeDerivedAcceptanceMustBeProvenBeforeGo": true
+  }
+}
