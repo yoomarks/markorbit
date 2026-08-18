@@ -24,7 +24,7 @@ on:
       - 'playwright.product-loop-today-real-runtime.config.ts'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   prepared-action-postgres:
@@ -57,81 +57,6 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Apply real Orbit Save and Dismiss interactions to PR head
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          git fetch origin "${GITHUB_HEAD_REF}"
-          git checkout -B wp07-orbit-actions "origin/${GITHUB_HEAD_REF}"
-          python - <<'PY'
-          from pathlib import Path
-
-          workspace = Path('apps/lite-web/src/features/today/TodayWorkspace.tsx')
-          text = workspace.read_text()
-          old = """function OrbitCard({ item, title }: { item: Readonly<DailyOrbitItem>; title: string }) {\n"""
-          new = """function OrbitCard({\n  item,\n  title,\n  saved,\n  onSave,\n  onDismiss\n}: {\n  item: Readonly<DailyOrbitItem>;\n  title: string;\n  saved: boolean;\n  onSave: () => void;\n  onDismiss: () => void;\n}) {\n"""
-          if old not in text:
-              raise SystemExit('OrbitCard signature anchor not found')
-          text = text.replace(old, new, 1)
-
-          old = """      </div>\n      <details className=\"daily-provenance\">\n"""
-          new = """      </div>\n      <div className=\"daily-chip-row\" aria-label=\"Orbit preference actions\">\n        <Button variant={saved ? 'secondary' : 'primary'} onClick={onSave} disabled={saved}>\n          {saved ? 'Saved' : 'Save'}\n        </Button>\n        <Button variant=\"secondary\" onClick={onDismiss}>\n          Dismiss\n        </Button>\n      </div>\n      <details className=\"daily-provenance\">\n"""
-          if old not in text:
-              raise SystemExit('OrbitCard action insertion anchor not found')
-          text = text.replace(old, new, 1)
-
-          old = """  const [visualRecord, setVisualRecord] = useState<VisualBriefRecordResponse>();\n  const [visualError, setVisualError] = useState<DailyWorkspaceHttpError>();\n"""
-          new = """  const [visualRecord, setVisualRecord] = useState<VisualBriefRecordResponse>();\n  const [visualError, setVisualError] = useState<DailyWorkspaceHttpError>();\n  const [savedOrbitItemIds, setSavedOrbitItemIds] = useState<ReadonlySet<string>>(new Set());\n  const [dismissedOrbitItemIds, setDismissedOrbitItemIds] = useState<ReadonlySet<string>>(new Set());\n"""
-          if old not in text:
-              raise SystemExit('Orbit action state anchor not found')
-          text = text.replace(old, new, 1)
-
-          old = """  if (!today && !orbit && !todayError && !dailyError)\n    return <LoadingState label=\"Loading your Daily Workspace\" />;\n"""
-          new = """  const recordOrbitPreference = async (\n    kind: 'SAVED' | 'DISMISSED',\n    item: Readonly<DailyOrbitItem>\n  ) => {\n    setDailyError(undefined);\n    try {\n      await dailyClient.recordPreferenceEvent(\n        kind,\n        {\n          targetType: 'DAILY_ORBIT_ITEM',\n          targetId: item.dailyOrbitItemId,\n          targetVersion: item.version\n        },\n        `preference:${kind.toLowerCase()}:${item.dailyOrbitItemId}:${item.version}`\n      );\n      if (kind === 'SAVED')\n        setSavedOrbitItemIds((current) => new Set([...current, item.dailyOrbitItemId]));\n      else\n        setDismissedOrbitItemIds((current) => new Set([...current, item.dailyOrbitItemId]));\n    } catch (cause) {\n      setDailyError(\n        cause instanceof DailyWorkspaceHttpError\n          ? cause\n          : new DailyWorkspaceHttpError(\n              503,\n              'PREFERENCE_RECORD_FAILED',\n              'Orbit preference could not be saved.',\n              true\n            )\n      );\n    }\n  };\n\n  if (!today && !orbit && !todayError && !dailyError)\n    return <LoadingState label=\"Loading your Daily Workspace\" />;\n"""
-          if old not in text:
-              raise SystemExit('Orbit action handler anchor not found')
-          text = text.replace(old, new, 1)
-
-          old = """  const mainOrbit = orbit?.items.filter((item) => item.section !== 'WORTH_REVISITING') ?? [];\n  const revisiting = orbit?.items.filter((item) => item.section === 'WORTH_REVISITING') ?? [];\n"""
-          new = """  const mainOrbit =\n    orbit?.items.filter(\n      (item) =>\n        item.section !== 'WORTH_REVISITING' && !dismissedOrbitItemIds.has(item.dailyOrbitItemId)\n    ) ?? [];\n  const revisiting =\n    orbit?.items.filter(\n      (item) =>\n        item.section === 'WORTH_REVISITING' && !dismissedOrbitItemIds.has(item.dailyOrbitItemId)\n    ) ?? [];\n"""
-          if old not in text:
-              raise SystemExit('Orbit filtering anchor not found')
-          text = text.replace(old, new, 1)
-
-          old = """              <OrbitCard key={item.dailyOrbitItemId} item={item} title={orbitTitle(item, today)} />\n"""
-          new = """              <OrbitCard\n                key={item.dailyOrbitItemId}\n                item={item}\n                title={orbitTitle(item, today)}\n                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}\n                onSave={() => void recordOrbitPreference('SAVED', item)}\n                onDismiss={() => void recordOrbitPreference('DISMISSED', item)}\n              />\n"""
-          count = text.count(old)
-          if count != 2:
-              raise SystemExit(f'Expected 2 OrbitCard render anchors, found {count}')
-          text = text.replace(old, new)
-          workspace.write_text(text)
-
-          e2e = Path('tests/e2e/product-loop-today-real-runtime.spec.ts')
-          text = e2e.read_text()
-          start = text.index("    const preferenceResponse = await page.request.post(")
-          end = text.index("    const personalizedOrbitResponse = page.waitForResponse(", start)
-          replacement = """    const preferenceResponsePromise = page.waitForResponse(\n      (response) =>\n        response.url().includes('/api/lite/product-preference-events') &&\n        response.request().method() === 'POST'\n    );\n    await orbitCard.getByRole('button', { name: 'Save', exact: true }).click();\n    const preferenceResponse = await preferenceResponsePromise;\n    expect(preferenceResponse.status()).toBe(201);\n    await expect(orbitCard.getByRole('button', { name: 'Saved', exact: true })).toBeDisabled();\n    const preferenceBody = (await preferenceResponse.json()) as {\n      event: {\n        kind: string;\n        subjectUserId: string;\n        externalActionExecutedByMarkOrbit: boolean;\n        externalOutcomeVerifiedByMarkOrbit: boolean;\n        capabilityVerified: boolean;\n      };\n      preference: { source: string; capabilityVerified: boolean };\n    };\n    expect(preferenceBody.event.kind).toBe('SAVED');\n    expect(preferenceBody.event.externalActionExecutedByMarkOrbit).toBe(false);\n    expect(preferenceBody.event.externalOutcomeVerifiedByMarkOrbit).toBe(false);\n    expect(preferenceBody.event.capabilityVerified).toBe(false);\n    expect(preferenceBody.preference).toMatchObject({\n      source: 'PRODUCT_FEEDBACK',\n      capabilityVerified: false\n    });\n\n"""
-          text = text[:start] + replacement + text[end:]
-
-          anchor = """    await direct.close();\n\n    expect(productLoopRequests.some((url) => url.includes('/api/lite/today'))).toBe(true);\n"""
-          addition = """    await direct.close();\n\n    const dismissCard = page.locator('#daily-orbit section.mo-card').filter({\n      has: page.getByRole('heading', { name: title, exact: true })\n    });\n    const dismissResponsePromise = page.waitForResponse(\n      (response) =>\n        response.url().includes('/api/lite/product-preference-events') &&\n        response.request().method() === 'POST'\n    );\n    await dismissCard.getByRole('button', { name: 'Dismiss', exact: true }).click();\n    const dismissResponse = await dismissResponsePromise;\n    expect(dismissResponse.status()).toBe(201);\n    const dismissBody = (await dismissResponse.json()) as { event: { kind: string } };\n    expect(dismissBody.event.kind).toBe('DISMISSED');\n    await expect(dismissCard).toHaveCount(0);\n\n    expect(productLoopRequests.some((url) => url.includes('/api/lite/today'))).toBe(true);\n"""
-          if anchor not in text:
-              raise SystemExit('E2E Dismiss insertion anchor not found')
-          e2e.write_text(text.replace(anchor, addition, 1))
-          PY
-          pnpm prettier --write \
-            apps/lite-web/src/features/today/TodayWorkspace.tsx \
-            tests/e2e/product-loop-today-real-runtime.spec.ts
-          if git diff --quiet; then
-            echo 'Orbit Save/Dismiss interactions are already present.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            apps/lite-web/src/features/today/TodayWorkspace.tsx \
-            tests/e2e/product-loop-today-real-runtime.spec.ts
-          git commit -m 'M9 WP07: add real Orbit save and dismiss actions'
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build M9 Daily Workspace dependency closure
