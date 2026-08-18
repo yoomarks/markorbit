@@ -57,6 +57,32 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Surface exact WP07 Prettier patch
+        run: |
+          pnpm prettier --write \
+            apps/lite-web/src/api/daily-workspace.test.ts \
+            packages/contracts/src/daily-workspace.ts \
+            services/lite/src/preference-feedback.ts \
+            services/lite/src/preference-http.ts \
+            services/lite/src/preference-target.ts \
+            services/lite/tests/preference-feedback-postgres.test.ts \
+            services/lite/tests/preference-http.test.ts
+          git diff -- \
+            apps/lite-web/src/api/daily-workspace.test.ts \
+            packages/contracts/src/daily-workspace.ts \
+            services/lite/src/preference-feedback.ts \
+            services/lite/src/preference-http.ts \
+            services/lite/src/preference-target.ts \
+            services/lite/tests/preference-feedback-postgres.test.ts \
+            services/lite/tests/preference-http.test.ts
+          git checkout -- \
+            apps/lite-web/src/api/daily-workspace.test.ts \
+            packages/contracts/src/daily-workspace.ts \
+            services/lite/src/preference-feedback.ts \
+            services/lite/src/preference-http.ts \
+            services/lite/src/preference-target.ts \
+            services/lite/tests/preference-feedback-postgres.test.ts \
+            services/lite/tests/preference-http.test.ts
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build M9 Daily Workspace dependency closure
