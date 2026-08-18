@@ -63,6 +63,12 @@ function parsedBody(init: RequestInit | undefined): Record<string, unknown> {
   return JSON.parse(init.body) as Record<string, unknown>;
 }
 
+function requestUrl(input: string | URL | Request): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -72,8 +78,9 @@ describe('Daily Workspace preference event wiring', () => {
   it('records CONTENT_STARTED after a successful Visual Brief creation', async () => {
     const preferenceBodies: Record<string, unknown>[] = [];
     const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith('/api/auth/session')) return Promise.resolve(jsonResponse({ csrfToken: csrf }));
+      const url = requestUrl(input);
+      if (url.endsWith('/api/auth/session'))
+        return Promise.resolve(jsonResponse({ csrfToken: csrf }));
       if (url.includes('/api/lite/content-kits/content-pick_wp07/visual-briefs'))
         return Promise.resolve(jsonResponse(visualRecord, 201));
       if (url.endsWith('/api/lite/product-preference-events')) {
@@ -129,8 +136,9 @@ describe('Daily Workspace preference event wiring', () => {
       acceptedAt: output.createdAt
     };
     const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith('/api/auth/session')) return Promise.resolve(jsonResponse({ csrfToken: csrf }));
+      const url = requestUrl(input);
+      if (url.endsWith('/api/auth/session'))
+        return Promise.resolve(jsonResponse({ csrfToken: csrf }));
       if (url.includes('/api/lite/visual-briefs/visual-brief_wp07/request'))
         return Promise.resolve(jsonResponse(primary, 201));
       if (url.endsWith('/api/lite/product-preference-events')) {
