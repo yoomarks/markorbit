@@ -11,7 +11,6 @@ import type {
   PublishPackage
 } from '@markorbit/contracts/product-loop';
 import {
-  ContentKitError,
   ContentKitService,
   projectContentKit,
   type ContentKitLifecycleReader,
@@ -199,11 +198,9 @@ describe('M9-WP-04 Content Kit / Studio projection', () => {
 
   it('does not expose a Content Kit before the existing Content Opportunity is accepted', async () => {
     const service = new ContentKitService(new Orbit(), new Lifecycle(false));
-    await expect(service.find(workspaceId, userId, pick.contentPickId)).rejects.toEqual(
-      expect.objectContaining<Partial<ContentKitError>>({
-        code: 'CONTENT_OPPORTUNITY_REQUIRED',
-        status: 409
-      })
-    );
+    await expect(service.find(workspaceId, userId, pick.contentPickId)).rejects.toMatchObject({
+      code: 'CONTENT_OPPORTUNITY_REQUIRED',
+      status: 409
+    });
   });
 });
