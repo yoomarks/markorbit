@@ -8,6 +8,8 @@ export * from './conversion-analytics.js';
 export * from './daily-signal.js';
 export * from './daily-orbit.js';
 export * from './preference-feedback.js';
+export * from './preference-target.js';
+export * from './preference-http.js';
 export * from './visual-bridge.js';
 export * from './visual-bridge-http.js';
 export * from './http.js';
