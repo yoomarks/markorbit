@@ -105,7 +105,11 @@ function targetVersion(value: unknown): number | string {
 function kind(value: unknown): ProductPreferenceEventKind {
   const cleaned = text(value, 'kind');
   if (!(productPreferenceEventKinds as readonly string[]).includes(cleaned))
-    throw new HttpError(400, 'INVALID_REQUEST', 'kind is not a supported Product preference event.');
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'kind is not a supported Product preference event.'
+    );
   return cleaned as ProductPreferenceEventKind;
 }
 
