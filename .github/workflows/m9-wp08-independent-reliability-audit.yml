@@ -1,0 +1,167 @@
+name: M9 WP08 Independent Reliability Audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m9-wp08-independent-reliability-audit.yml'
+      - 'scripts/m9-wp08-independent-reliability-audit.mjs'
+      - 'docs/audits/MO-MVP-MILESTONE-009-RELIABILITY-AUDIT.*'
+      - 'docs/tasks/MO-MVP-M9-WP-08-INDEPENDENT-RELIABILITY-AUDIT.md'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: m9-wp08-independent-reliability-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independent-reliability-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_m9_wp08
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_m9_wp08"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      M9_WP08_AUDITED_CANDIDATE_SHA: 48d6c44aa55648b25222698cc07ba892735d145c
+      M9_WP08_WP07_PR: '123'
+      PGPASSWORD: markorbit-test-only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install audit dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Collect exact WP07 candidate evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          git fetch --quiet origin "$M9_WP08_AUDITED_CANDIDATE_SHA"
+          gh api "/repos/$GITHUB_REPOSITORY/pulls/$M9_WP08_WP07_PR" > .artifacts/m9-wp08-wp07-pr.json
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$M9_WP08_AUDITED_CANDIDATE_SHA&per_page=100" > .artifacts/m9-wp08-candidate-runs.json
+      - name: Prepare exact candidate worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE_DIR="$RUNNER_TEMP/m9-wp08-candidate"
+          git worktree add --detach "$CANDIDATE_DIR" "$M9_WP08_AUDITED_CANDIDATE_SHA"
+          cd "$CANDIDATE_DIR"
+          pnpm install --frozen-lockfile
+          pnpm exec turbo run build \
+            --filter=@markorbit/lite-service... \
+            --filter=@markorbit/markreg-service... \
+            --filter=@markorbit/gateway... \
+            --filter=@markorbit/lite-web...
+      - name: Create isolated M9 audit databases
+        shell: bash
+        run: |
+          set -euo pipefail
+          for db in \
+            markorbit_m9_wp08_signal \
+            markorbit_m9_wp08_orbit \
+            markorbit_m9_wp08_visual \
+            markorbit_m9_wp08_preference; do
+            psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $db"
+          done
+      - name: Independently verify exact candidate persistence and preference reliability
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE_DIR="$RUNNER_TEMP/m9-wp08-candidate"
+          cd "$CANDIDATE_DIR"
+
+          pnpm --filter @markorbit/lite-service lint
+          pnpm --filter @markorbit/lite-service typecheck
+
+          LITE_DAILY_SIGNAL_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m9_wp08_signal \
+          LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED=1 \
+            pnpm --filter @markorbit/lite-service exec vitest run tests/daily-signal-postgres.test.ts
+
+          LITE_DAILY_SIGNAL_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m9_wp08_orbit \
+          LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED=1 \
+            pnpm --filter @markorbit/lite-service exec vitest run tests/daily-orbit-postgres.test.ts
+
+          LITE_VISUAL_BRIDGE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m9_wp08_visual \
+          LITE_VISUAL_BRIDGE_POSTGRES_TEST_REQUIRED=1 \
+            pnpm --filter @markorbit/lite-service exec vitest run tests/visual-bridge-postgres.test.ts
+
+          LITE_TODAY_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m9_wp08_preference \
+          LITE_TODAY_POSTGRES_TEST_REQUIRED=1 \
+            pnpm --filter @markorbit/lite-service exec vitest run tests/preference-feedback-postgres.test.ts
+
+          pnpm --filter @markorbit/lite-service exec vitest run \
+            tests/preference-target.test.ts \
+            tests/preference-visual-target.test.ts \
+            tests/daily-orbit.test.ts
+
+          cd "$GITHUB_WORKSPACE"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const evidence = {
+            schemaVersion: 1,
+            auditedCandidateSha: process.env.M9_WP08_AUDITED_CANDIDATE_SHA,
+            result: 'PASS',
+            suites: [
+              'daily-signal-postgres',
+              'daily-orbit-postgres',
+              'visual-bridge-postgres',
+              'preference-feedback-postgres',
+              'preference-target',
+              'preference-visual-target',
+              'daily-orbit'
+            ]
+          };
+          fs.writeFileSync(
+            '.artifacts/m9-wp08-independent-candidate-tests.json',
+            `${JSON.stringify(evidence, null, 2)}\n`,
+            'utf8'
+          );
+          NODE
+      - name: Independently re-check audit-head authority boundaries
+        run: |
+          pnpm validate:workspace
+          pnpm validate:persistence-boundaries
+          pnpm test:gateway-inventory
+          pnpm format:check
+      - name: Build audit-head workspace dependency closure
+        run: pnpm build
+      - name: Run full independent audit-head workspace check
+        run: pnpm check
+      - name: Produce independent M9 reliability recommendation
+        run: node scripts/m9-wp08-independent-reliability-audit.mjs
+      - name: Upload independent M9 audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m9-wp08-independent-reliability-audit-${{ github.run_id }}
+          path: |
+            .artifacts/m9-wp08-independent-reliability-audit.json
+            .artifacts/m9-wp08-independent-candidate-tests.json
+            .artifacts/m9-wp08-wp07-pr.json
+            .artifacts/m9-wp08-candidate-runs.json
+          if-no-files-found: warn
+          retention-days: 30

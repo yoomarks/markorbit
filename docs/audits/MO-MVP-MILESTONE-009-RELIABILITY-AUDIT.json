@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M9",
+  "workPackage": "M9-WP-08",
+  "auditedCandidateSha": "48d6c44aa55648b25222698cc07ba892735d145c",
+  "auditedCandidateTreeSha": "1f5d3001972c9247b8653aa9afa1307cc9a0d373",
+  "baselineMainSha": "31ce27276dedaa3b95c2bc8029f22c5d24bedda9",
+  "wp07PullRequestNumber": 123,
+  "requiredWorkflowEvidence": [
+    {
+      "runId": 32131652576,
+      "name": "Product Loop Candidate Qualification"
+    },
+    {
+      "runId": 32131652552,
+      "name": "Product Loop Content Preparation"
+    },
+    {
+      "runId": 32131652574,
+      "name": "M7 WP-02 Conversion Analytics"
+    },
+    {
+      "runId": 32131652543,
+      "name": "Product Loop Feedback Observability"
+    },
+    {
+      "runId": 32131652597,
+      "name": "Product Loop Today Prepared Action"
+    },
+    {
+      "runId": 32131652643,
+      "name": "M8 WP-06 Commercial Runtime Reliability"
+    },
+    {
+      "runId": 32131652545,
+      "name": "M6 WP-06 Authenticated Capability Center"
+    },
+    {
+      "runId": 32131652534,
+      "name": "Browser and Visual Validation"
+    },
+    {
+      "runId": 32131652620,
+      "name": "validation"
+    }
+  ],
+  "canonicalAcceptance": {
+    "browserRuntimePath": "scripts/product-loop-today-real-runtime.ts",
+    "requiredSourceMarkers": ["owner: 'CORE'", "kind: 'KNOWLEDGE_READY_PACKAGE'"],
+    "fixtureOrDirectSeedMarkersThatBlockRealKnowledgeProof": [
+      "const sourceAuthority: ProductLoopSourceAuthority = {",
+      "INSERT INTO lite_daily_signals"
+    ],
+    "realKnowledgeDerivedSourceRequired": true,
+    "requestInterceptionAllowed": false,
+    "fixtureUiFallbackAllowed": false
+  },
+  "independentCandidateTests": {
+    "dailySignalPostgres": "services/lite/tests/daily-signal-postgres.test.ts",
+    "dailyOrbitPostgres": "services/lite/tests/daily-orbit-postgres.test.ts",
+    "visualBridgePostgres": "services/lite/tests/visual-bridge-postgres.test.ts",
+    "preferenceFeedbackPostgres": "services/lite/tests/preference-feedback-postgres.test.ts",
+    "preferenceTarget": "services/lite/tests/preference-target.test.ts",
+    "preferenceVisualTarget": "services/lite/tests/preference-visual-target.test.ts",
+    "dailyOrbit": "services/lite/tests/daily-orbit.test.ts",
+    "realBrowser": "tests/e2e/product-loop-today-real-runtime.spec.ts"
+  },
+  "requiredEvidence": {
+    "exactProvenance": true,
+    "workspaceIsolation": true,
+    "staleSourceRejection": true,
+    "idempotentReplaySafeMutations": true,
+    "restartRecovery": true,
+    "boundedConcurrency": true,
+    "desktopMobileRealBrowser": true,
+    "noFalsePublication": true,
+    "noFalseCapability": true,
+    "m1ToM8Regression": true
+  },
+  "authority": {
+    "mergeRequiresExplicitOwnerAction": true,
+    "releaseRequiresExplicitOwnerAction": true,
+    "auditCreatesMergeReleaseOrDeployment": false,
+    "productionTrafficAllowed": false,
+    "externalPublicationAuthorized": false,
+    "capabilityVerificationCreated": false,
+    "filingSubmitted": false,
+    "officialTruthCreated": false
+  },
+  "recommendationPolicy": {
+    "failClosedOnUnmergedWp07": true,
+    "failClosedOnUnprovenRealKnowledgePath": true,
+    "failClosedOnMissingRequiredWorkflow": true,
+    "goOnlyWhenNoBlockersRemain": true
+  }
+}
