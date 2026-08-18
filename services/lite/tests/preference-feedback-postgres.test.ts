@@ -78,7 +78,7 @@ suite('PostgreSQL M9-WP07 Product preference evidence', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'lite_product_preference_test'
+    migrationNamespace: 'lite_today_test'
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
@@ -100,7 +100,7 @@ suite('PostgreSQL M9-WP07 Product preference evidence', () => {
       );
     await migrate(
       database.getPool(),
-      'lite_product_preference_test',
+      'lite_today_test',
       await loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/lite-service')
     );
     await database.getPool().query(
