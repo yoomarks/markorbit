@@ -188,10 +188,16 @@ export function createGatewayProductLoopRoutes(
 
   return [
     route('GET', '/api/lite/today', ['workspace:read'], false),
+    route('GET', '/api/lite/daily-orbit', ['workspace:read'], false),
+    route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], false),
+    route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], false),
+    route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], false),
     route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read'], false),
     route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], false),
     route('POST', '/api/lite/today/:todayRecommendationId/prepared-actions', ['matter:manage']),
     route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage']),
+    route('POST', '/api/lite/content-kits/:contentPickId/visual-briefs', ['matter:manage']),
+    route('POST', '/api/lite/visual-briefs/:visualBriefId/request', ['matter:manage']),
     route('POST', '/api/lite/publish-packages/:publishPackageId/use-feedback', ['matter:manage'])
   ];
 }
