@@ -48,6 +48,11 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Capture export E2E Prettier delta
+        run: |
+          pnpm prettier --write tests/e2e/product-loop-today-real-runtime.spec.ts
+          git diff -- tests/e2e/product-loop-today-real-runtime.spec.ts
+          git checkout -- tests/e2e/product-loop-today-real-runtime.spec.ts
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Check repository formatting
