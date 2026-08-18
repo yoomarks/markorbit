@@ -66,3 +66,5 @@ jobs:
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
       - name: Run real PostgreSQL Daily Signal tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/daily-signal-postgres.test.ts
+      - name: Run real PostgreSQL Daily Orbit tests
+        run: pnpm --filter @markorbit/lite-service exec vitest run tests/daily-orbit-postgres.test.ts

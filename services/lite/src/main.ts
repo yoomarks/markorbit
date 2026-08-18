@@ -12,6 +12,7 @@ import {
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
+import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
   PostgresLiteDailySignalStore
@@ -204,6 +205,10 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 };
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
+const dailyOrbitService = new DailyOrbitService(
+  new PostgresDailySignalReader(pool),
+  journeyService
+);
 const runtime = createServiceRuntime(serviceManifest, {
   routes: createLiteProductLoopRoutes({
     internalServiceSecret,
@@ -211,7 +216,8 @@ const runtime = createServiceRuntime(serviceManifest, {
     candidateStore,
     feedbackStore,
     analyticsStore,
-    dailySignalStore
+    dailySignalStore,
+    dailyOrbitService
   })
 });
 

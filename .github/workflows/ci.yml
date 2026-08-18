@@ -229,6 +229,7 @@ jobs:
       - name: Lite integration
         if: github.event_name == 'push' || needs.detect.outputs.lite == 'true'
         run: |
+          pnpm exec turbo run build --filter=@markorbit/lite-service...
           pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/candidate-qualification-postgres.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/product-loop-feedback-postgres.test.ts
