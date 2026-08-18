@@ -79,10 +79,11 @@ jobs:
         run: |
           pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
           LITE_TODAY_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_preference_test pnpm --filter @markorbit/lite-service exec vitest run tests/preference-feedback-postgres.test.ts
-      - name: Run authenticated Lite HTTP integration
+      - name: Run authenticated Lite HTTP and preference derivation tests
         run: |
           pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/preference-http.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/preference-target.test.ts
       - name: Run Gateway Product-loop boundary tests
         run: |
           pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts
