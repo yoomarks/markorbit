@@ -11,7 +11,7 @@ on:
 
 permissions:
   actions: read
-  contents: write
+  contents: read
   pull-requests: read
 
 concurrency:
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/m9-wp08-independent-runtime-audit
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
@@ -40,20 +40,6 @@ jobs:
           cache: pnpm
       - name: Install audit dependencies
         run: pnpm install --frozen-lockfile
-      - name: Apply exact WP08 verifier formatting
-        shell: bash
-        run: |
-          set -euo pipefail
-          pnpm prettier --write scripts/m9-wp-08-independent-runtime-audit.mjs
-          if git diff --quiet -- scripts/m9-wp-08-independent-runtime-audit.mjs; then
-            echo "No WP08 verifier formatting delta remains."
-          else
-            git config user.name "markorbit-ci"
-            git config user.email "markorbit-ci@users.noreply.github.com"
-            git add scripts/m9-wp-08-independent-runtime-audit.mjs
-            git commit -m "chore(m9): format WP08 audit verifier"
-            git push origin HEAD:agent/m9-wp08-independent-runtime-audit
-          fi
       - name: Fetch exact audited candidate
         run: git fetch --no-tags origin "$M9_WP08_AUDITED_CANDIDATE_SHA"
       - name: Collect exact candidate GitHub evidence
