@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { VisualBrief } from '@markorbit/contracts/daily-workspace';
 import {
   UnavailableVisualEngineConsumer,
-  VisualBridgeError,
   buildLiteVisualRequest,
   type VisualBriefRecord
 } from '../src/visual-bridge.js';
@@ -65,9 +64,7 @@ describe('Lite Visual Bridge consumer boundary', () => {
 
   it('fails closed when no governed Visual Engine transport exists', async () => {
     const consumer = new UnavailableVisualEngineConsumer();
-    await expect(consumer.start(buildLiteVisualRequest(record))).rejects.toMatchObject<
-      Partial<VisualBridgeError>
-    >({
+    await expect(consumer.start(buildLiteVisualRequest(record))).rejects.toMatchObject({
       code: 'VISUAL_CONSUMER_UNAVAILABLE',
       status: 503,
       retryable: true
