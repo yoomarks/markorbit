@@ -1,3 +1,5 @@
+-- Lite owns only the workspace-private Trademark Asset anchor.
+-- Source-domain lifecycle/status facts remain referenced and are composed outside this table.
 CREATE TABLE lite_trademark_assets (
  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
  trademark_asset_id text NOT NULL CHECK (btrim(trademark_asset_id) <> ''),
@@ -12,6 +14,7 @@ CREATE TABLE lite_trademark_assets (
 CREATE INDEX lite_trademark_assets_recent
  ON lite_trademark_assets(workspace_id, updated_at DESC, trademark_asset_id ASC);
 
+-- External identifiers can accumulate without changing the stable internal Trademark Asset ID.
 CREATE TABLE lite_trademark_asset_identifiers (
  workspace_id uuid NOT NULL,
  trademark_asset_id text NOT NULL,
