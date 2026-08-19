@@ -89,7 +89,7 @@ export class TrademarkAssetAiGuidePreparer {
       view.freshness !== 'CURRENT' ||
       view.conflicts.length > 0 ||
       view.sourceReferences.some((reference) => reference.freshness !== 'CURRENT') ||
-      marketplaceSource?.freshness !== 'CURRENT';
+      Boolean(marketplaceSource && marketplaceSource.freshness !== 'CURRENT');
 
     const factMap = new Map(view.observedFacts.map((fact) => [fact.kind, fact]));
     const recommendedActions = view.contextSignals
