@@ -1,5 +1,6 @@
 -- Lite owns only the workspace-private Trademark Asset anchor.
 -- Source-domain lifecycle/status facts remain referenced and are composed outside this table.
+-- Marketplace source assets/listings are referenced read-only; this persistence never owns their truth.
 CREATE TABLE lite_trademark_assets (
  workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
  trademark_asset_id text NOT NULL CHECK (btrim(trademark_asset_id) <> ''),
