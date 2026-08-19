@@ -31,6 +31,7 @@
     "lite_daily_signals": "@markorbit/lite-service",
     "lite_visual_bridge": "@markorbit/lite-service",
     "lite_product_preferences": "@markorbit/lite-service",
+    "lite_trademark_assets": "@markorbit/lite-service",
     "capability_engine_runtime_registry": "@markorbit/capability-engine",
     "capability_engine_observation_ledger": "@markorbit/capability-engine",
     "capability_engine_reflection_candidates": "@markorbit/capability-engine",
@@ -73,6 +74,7 @@
     "0051_payment_foundation": "@markorbit/payment-service",
     "0052_lite_daily_signals": "@markorbit/lite-service",
     "0053_lite_visual_bridge": "@markorbit/lite-service",
-    "0054_lite_product_preferences": "@markorbit/lite-service"
+    "0054_lite_product_preferences": "@markorbit/lite-service",
+    "0055_lite_trademark_assets": "@markorbit/lite-service"
   }
 }

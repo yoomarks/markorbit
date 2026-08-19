@@ -7,30 +7,41 @@ import {
   trademarkAssetAttentionSeverities,
   trademarkAssetAuthorityBoundary,
   trademarkAssetFreshnessStates,
+  trademarkAssetIdentifierKinds,
   trademarkAssetRelationKinds,
   trademarkAssetSourceKinds,
   trademarkAssetSourceOwners,
+  trademarkAssetWorkspaceRelationshipKinds,
   type AiGuideContext,
   type AiGuideSuggestion,
   type TrademarkAsset,
   type TrademarkAssetAttentionSignal
 } from '../src/trademark-asset-workspace.js';
 
-const workspaceId = 'workspace_m10-wp01';
+const workspaceId = 'workspace_m10-wp02';
 const observedAt = '2026-08-19T00:00:00.000Z';
 const markregLifecycleSource = {
   owner: 'MARKREG',
   kind: 'MARKREG_LIFECYCLE_PROJECTION',
-  sourceId: 'lifecycle_m10-wp01',
+  sourceId: 'lifecycle_m10-wp02',
   sourceVersion: '4',
   sourceFingerprintSha256: 'a'.repeat(64),
+  observedAt,
+  freshness: 'CURRENT'
+} as const;
+const marketplaceSource = {
+  owner: 'MARKETPLACE',
+  kind: 'MARKETPLACE_LISTING',
+  sourceId: 'listing_m10-wp02',
+  sourceVersion: '8',
+  sourceFingerprintSha256: 'c'.repeat(64),
   observedAt,
   freshness: 'CURRENT'
 } as const;
 const knowledgeSource = {
   owner: 'KNOWLEDGE',
   kind: 'KNOWLEDGE_SOURCE',
-  sourceId: 'ready-package_m10-wp01',
+  sourceId: 'ready-package_m10-wp02',
   sourceVersion: '1.1',
   sourceFingerprintSha256: 'b'.repeat(64),
   observedAt,
@@ -39,7 +50,7 @@ const knowledgeSource = {
 const dataSource = {
   owner: 'DATA_ENGINE',
   kind: 'DATA_ENGINE_TRADEMARK_RECORD',
-  sourceId: 'data-record_m10-wp01',
+  sourceId: 'data-record_m10-wp02',
   sourceVersion: '2026-08-18',
   observedAt,
   freshness: 'CURRENT'
@@ -47,37 +58,60 @@ const dataSource = {
 
 const asset = {
   schemaVersion: 1,
-  trademarkAssetId: 'trademark-asset_m10-wp01',
+  trademarkAssetId: 'trademark-asset_m10-wp02',
   workspaceId,
   version: 1,
   identity: {
     jurisdiction: 'US',
-    applicationNumber: '98123456',
-    registrationNumber: '7654321',
     markText: 'MARKORBIT'
   },
-  niceClasses: ['35', '42'],
+  externalIdentifiers: [
+    {
+      kind: 'APPLICATION_NUMBER',
+      jurisdiction: 'US',
+      value: '98123456',
+      sourceReference: dataSource,
+      officialTruthVerifiedByLite: false
+    }
+  ],
+  workspaceRelationships: [
+    {
+      kind: 'MANAGED',
+      sourceAssetEditableByWorkspace: false
+    },
+    {
+      kind: 'MARKETPLACE_ADDED',
+      sourceAssetId: 'marketplace-asset_001',
+      sourceReference: marketplaceSource,
+      sourceAssetEditableByWorkspace: false
+    }
+  ],
   ownerOrClientReference: 'client_private-001',
-  applicationDate: '2024-01-02',
-  registrationDate: '2025-06-03',
-  sourceObservedStatus: 'REGISTERED',
-  sourceReferences: [markregLifecycleSource, dataSource],
+  sourceReferences: [markregLifecycleSource, dataSource, marketplaceSource],
   relations: [
     {
       kind: 'LIFECYCLE_PROJECTION',
       owner: 'MARKREG',
-      referenceId: 'lifecycle_m10-wp01',
+      referenceId: 'lifecycle_m10-wp02',
       referenceVersion: '4'
     },
     {
       kind: 'DATA_RECORD',
       owner: 'DATA_ENGINE',
-      referenceId: 'data-record_m10-wp01',
+      referenceId: 'data-record_m10-wp02',
       referenceVersion: '2026-08-18'
+    },
+    {
+      kind: 'MARKETPLACE_LISTING',
+      owner: 'MARKETPLACE',
+      referenceId: 'listing_m10-wp02',
+      referenceVersion: '8'
     }
   ],
   workspaceTags: ['priority-client'],
   workspaceNotes: ['Private working note.'],
+  workspacePriority: 'HIGH',
+  workspaceAlias: 'MarkOrbit US',
   officialTruthVerifiedByLite: false,
   filingExecutedByLite: false,
   createdAt: observedAt,
@@ -86,7 +120,7 @@ const asset = {
 
 const attention = {
   schemaVersion: 1,
-  attentionSignalId: 'trademark-asset-attention_m10-wp01',
+  attentionSignalId: 'trademark-asset-attention_m10-wp02',
   workspaceId,
   version: 1,
   asset: { id: asset.trademarkAssetId, version: asset.version },
@@ -103,7 +137,7 @@ const attention = {
 const context = {
   schemaVersion: 1,
   workspaceId,
-  subjectUserId: 'user_m10-wp01',
+  subjectUserId: 'user_m10-wp02',
   asset: { id: asset.trademarkAssetId, version: asset.version },
   sourceReferences: [markregLifecycleSource, knowledgeSource, dataSource],
   relatedOwnerReferences: asset.relations,
@@ -114,7 +148,7 @@ const context = {
 
 const suggestion = {
   schemaVersion: 1,
-  aiGuideSuggestionId: 'ai-guide-suggestion_m10-wp01',
+  aiGuideSuggestionId: 'ai-guide-suggestion_m10-wp02',
   workspaceId,
   version: 1,
   asset: { id: asset.trademarkAssetId, version: asset.version },
@@ -133,44 +167,73 @@ const suggestion = {
   createdAt: observedAt
 } as const satisfies AiGuideSuggestion;
 
-describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
-  it('freezes source, freshness, relation, attention and AI Guide vocabulary', () => {
+describe('M10 Trademark Asset Workspace contracts', () => {
+  it('freezes durable identifiers, relationships, source and AI vocabulary', () => {
+    expect(trademarkAssetSourceOwners).toContain('MARKETPLACE');
     expect(trademarkAssetSourceOwners).toContain('DATA_ENGINE');
-    expect(trademarkAssetSourceOwners).toContain('WORKSPACE_USER');
-    expect(trademarkAssetSourceKinds).toContain('MARKREG_LIFECYCLE_PROJECTION');
+    expect(trademarkAssetSourceKinds).toContain('MARKETPLACE_LISTING');
     expect(trademarkAssetSourceKinds).toContain('DATA_ENGINE_TRADEMARK_RECORD');
-    expect(trademarkAssetSourceKinds).toContain('WORKSPACE_ADMISSION');
+    expect(trademarkAssetIdentifierKinds).toContain('APPLICATION_NUMBER');
+    expect(trademarkAssetIdentifierKinds).toContain('REGISTRATION_NUMBER');
+    expect(trademarkAssetWorkspaceRelationshipKinds).toEqual([
+      'OWNED',
+      'MANAGED',
+      'REPRESENTED',
+      'MARKETPLACE_ADDED'
+    ]);
     expect(trademarkAssetFreshnessStates).toContain('CONFLICTING');
-    expect(trademarkAssetRelationKinds).toContain('MATTER');
+    expect(trademarkAssetRelationKinds).toContain('MARKETPLACE_LISTING');
     expect(trademarkAssetAttentionDimensions).toContain('SOURCE_FRESHNESS');
-    expect(trademarkAssetAttentionDimensions).toContain('LIFECYCLE_RECOMMENDATION');
     expect(trademarkAssetAttentionSeverities).toEqual(['INFO', 'NOTICE', 'IMPORTANT', 'URGENT']);
-    expect(aiGuideSuggestionKinds).toContain('SUMMARIZE_OWNER_CONTEXT');
     expect(aiGuideSuggestionKinds).toContain('PREPARE_OWNER_ACTION_CANDIDATE');
   });
 
-  it('keeps the Asset a private projection instead of official or execution truth', () => {
-    expect(asset.identity.registrationNumber).toBe('7654321');
+  it('keeps the durable Asset ID independent from mutable external identifiers', () => {
+    expect(asset.trademarkAssetId).toBe('trademark-asset_m10-wp02');
+    expect(asset.externalIdentifiers[0]?.value).toBe('98123456');
+    expect(asset.identity).not.toHaveProperty('applicationNumber');
+    expect(asset).not.toHaveProperty('sourceObservedStatus');
+    expect(asset).not.toHaveProperty('registrationDate');
+    expect(trademarkAssetAuthorityBoundary).toMatchObject({
+      assetIsWorkspacePrivateProjection: true,
+      assetIdIsStableAndIndependentOfExternalIdentifiers: true,
+      externalIdentifiersMayAccumulateWithoutChangingAssetId: true,
+      exactSourceAndFreshnessRequiredForConsequentialClaims: true,
+      assetCreatesOfficialTruth: false
+    });
+  });
+
+  it('keeps Marketplace assets referenced and source read-only', () => {
+    const marketplaceRelationship = asset.workspaceRelationships.find(
+      (relationship) => relationship.kind === 'MARKETPLACE_ADDED'
+    );
+    expect(marketplaceRelationship?.sourceAssetId).toBe('marketplace-asset_001');
+    expect(marketplaceRelationship?.sourceReference?.owner).toBe('MARKETPLACE');
+    expect(marketplaceRelationship?.sourceAssetEditableByWorkspace).toBe(false);
+    expect(trademarkAssetAuthorityBoundary.marketplaceAssetsAreReferencedNotCopied).toBe(true);
+    expect(trademarkAssetAuthorityBoundary.marketplaceSourceAssetEditableByWorkspace).toBe(false);
+    expect(trademarkAssetAuthorityBoundary.marketplaceRemainsListingSourceOwner).toBe(true);
+    expect(noAutomaticTrademarkAssetConsequences).toContain('MARKETPLACE_SOURCE_MUTATION');
+  });
+
+  it('keeps owner-domain facts out of Lite authority', () => {
     expect(asset.relations[0]?.owner).toBe('MARKREG');
     expect(asset.relations[1]?.owner).toBe('DATA_ENGINE');
     expect(asset.officialTruthVerifiedByLite).toBe(false);
     expect(asset.filingExecutedByLite).toBe(false);
     expect(trademarkAssetAuthorityBoundary).toMatchObject({
-      assetIsWorkspacePrivateProjection: true,
-      exactSourceAndFreshnessRequiredForConsequentialClaims: true,
       markRegRemainsMatterAndLifecycleOwner: true,
       executionRemainsProtectedActionOwner: true,
       dataEngineConsumptionReadOnlyAndContractBound: true,
       knowledgeRemainsAcquisitionAndProvenanceOwner: true,
       crossServiceSqlAllowed: false,
-      assetCreatesOfficialTruth: false,
       assetCreatesMatterAutomatically: false
     });
   });
 
   it('keeps attention explainable and unable to certify deadlines, status or execution', () => {
     expect(attention.reason).toContain('source');
-    expect(attention.evidence[0]?.sourceId).toBe('lifecycle_m10-wp01');
+    expect(attention.evidence[0]?.sourceId).toBe('lifecycle_m10-wp02');
     expect(attention.legalDeadlineCertified).toBe(false);
     expect(attention.officialStatusVerifiedByLite).toBe(false);
     expect(attention.executionAuthorized).toBe(false);
@@ -206,13 +269,5 @@ describe('M10-WP-01 Trademark Asset Workspace contracts', () => {
     expect(suggestion.paidExecutionAuthorized).toBe(false);
     expect(suggestion.officialTruthVerified).toBe(false);
     expect(suggestion.capabilityVerified).toBe(false);
-  });
-
-  it('locks automatic Matter, filing, paid execution, Capability and Official Truth consequences out', () => {
-    expect(noAutomaticTrademarkAssetConsequences).toContain('ORDER_OR_MATTER_CREATION');
-    expect(noAutomaticTrademarkAssetConsequences).toContain('FILING_SUBMISSION');
-    expect(noAutomaticTrademarkAssetConsequences).toContain('PAID_EXECUTION');
-    expect(noAutomaticTrademarkAssetConsequences).toContain('CAPABILITY_VERIFICATION');
-    expect(noAutomaticTrademarkAssetConsequences).toContain('OFFICIAL_TRUTH_CREATION');
   });
 });
