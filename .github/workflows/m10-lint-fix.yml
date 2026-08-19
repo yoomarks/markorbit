@@ -38,7 +38,8 @@ jobs:
           PY
           pnpm exec eslint --fix services/lite/tests/trademark-asset-postgres.test.ts
           pnpm exec prettier --write services/lite/src/trademark-asset.ts services/lite/tests/trademark-asset-postgres.test.ts
-          pnpm exec eslint services/lite/src/trademark-asset.ts services/lite/tests/trademark-asset-postgres.test.ts
+          pnpm exec turbo run build --filter=@markorbit/lite-service...
+          pnpm --filter @markorbit/lite-service lint
           git rm .github/workflows/m10-lint-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
