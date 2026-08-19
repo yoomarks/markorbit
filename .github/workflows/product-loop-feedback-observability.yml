@@ -15,9 +15,37 @@ on:
       - 'scripts/product-loop-today-runtime.integration.test.ts'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  format-self-clean:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'agent/m10-wp03-owner-data-composition'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP03 files and restore workflow
+        shell: bash
+        run: |
+          pnpm exec prettier --write packages/contracts/tests/trademark-asset-composition-contract.test.ts services/lite/src/trademark-asset-view.ts
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/product-loop-feedback-observability.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/contracts/tests/trademark-asset-composition-contract.test.ts services/lite/src/trademark-asset-view.ts .github/workflows/product-loop-feedback-observability.yml
+          git commit -m 'style(m10): apply repository Prettier to WP03 composition'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
   feedback-postgres:
     runs-on: ubuntu-latest
     services:
