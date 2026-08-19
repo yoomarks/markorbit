@@ -9,6 +9,7 @@ export const trademarkAssetSourceOwners = [
   'EXECUTION',
   'KNOWLEDGE',
   'DATA_ENGINE',
+  'MARKETPLACE',
   'WORKSPACE_USER'
 ] as const;
 export type TrademarkAssetSourceOwner = (typeof trademarkAssetSourceOwners)[number];
@@ -20,6 +21,7 @@ export const trademarkAssetSourceKinds = [
   'EXECUTION_EVIDENCE',
   'KNOWLEDGE_SOURCE',
   'DATA_ENGINE_TRADEMARK_RECORD',
+  'MARKETPLACE_LISTING',
   'WORKSPACE_ADMISSION',
   'WORKSPACE_NOTE'
 ] as const;
@@ -33,18 +35,40 @@ export const trademarkAssetFreshnessStates = [
 ] as const;
 export type TrademarkAssetFreshnessState = (typeof trademarkAssetFreshnessStates)[number];
 
+/**
+ * Human-recognisable identity hints only. These fields help render and find an Asset,
+ * but they are not used to derive the durable internal Asset ID.
+ */
 export interface TrademarkAssetIdentity {
   jurisdiction: string;
-  applicationNumber?: string;
-  registrationNumber?: string;
   markText?: string;
   markImageReference?: string;
+}
+
+export const trademarkAssetIdentifierKinds = [
+  'APPLICATION_NUMBER',
+  'REGISTRATION_NUMBER',
+  'MADRID_IR_NUMBER',
+  'INTERNAL_REFERENCE'
+] as const;
+export type TrademarkAssetIdentifierKind = (typeof trademarkAssetIdentifierKinds)[number];
+
+/**
+ * External identifiers may be added as the trademark progresses without changing the
+ * internal TrademarkAssetId. Presence in Lite is a reference, not official verification.
+ */
+export interface TrademarkAssetExternalIdentifier {
+  kind: TrademarkAssetIdentifierKind;
+  jurisdiction: string;
+  value: string;
+  sourceReference?: Readonly<TrademarkAssetSourceReference>;
+  officialTruthVerifiedByLite: false;
 }
 
 /**
  * Exact source pointer used by Lite to explain where an Asset claim came from.
  * Source references are evidence/projection pointers; they do not promote Lite into
- * the owning registry, Matter, lifecycle, Execution, Knowledge or Data Engine domain.
+ * the owning registry, Matter, lifecycle, Execution, Knowledge, Marketplace or Data Engine domain.
  */
 export interface TrademarkAssetSourceReference {
   owner: TrademarkAssetSourceOwner;
@@ -56,13 +80,34 @@ export interface TrademarkAssetSourceReference {
   freshness: TrademarkAssetFreshnessState;
 }
 
+export const trademarkAssetWorkspaceRelationshipKinds = [
+  'OWNED',
+  'MANAGED',
+  'REPRESENTED',
+  'MARKETPLACE_ADDED'
+] as const;
+export type TrademarkAssetWorkspaceRelationshipKind =
+  (typeof trademarkAssetWorkspaceRelationshipKinds)[number];
+
+/**
+ * Describes why an Asset is present in a workspace. A Marketplace Asset is referenced,
+ * never copied into user ownership, and its source asset/listing remains read-only.
+ */
+export interface TrademarkAssetWorkspaceRelationship {
+  kind: TrademarkAssetWorkspaceRelationshipKind;
+  sourceAssetId?: string;
+  sourceReference?: Readonly<TrademarkAssetSourceReference>;
+  sourceAssetEditableByWorkspace: boolean;
+}
+
 export const trademarkAssetRelationKinds = [
   'MATTER',
   'ORDER',
   'LIFECYCLE_PROJECTION',
   'EXECUTION_EVIDENCE',
   'KNOWLEDGE_SOURCE',
-  'DATA_RECORD'
+  'DATA_RECORD',
+  'MARKETPLACE_LISTING'
 ] as const;
 export type TrademarkAssetRelationKind = (typeof trademarkAssetRelationKinds)[number];
 
@@ -74,8 +119,9 @@ export interface TrademarkAssetRelation {
 }
 
 /**
- * Workspace-private Product projection. It may assemble convenient context, but it
- * is never itself official registry truth, a Matter, an Order or an Execution record.
+ * Durable workspace-private Asset Anchor. Lite owns only the user's private workspace context.
+ * Current official facts such as status, lifecycle dates, owner and Nice classes are composed
+ * from their owner domains rather than persisted here as canonical truth.
  */
 export interface TrademarkAsset {
   schemaVersion: 1;
@@ -83,16 +129,15 @@ export interface TrademarkAsset {
   workspaceId: string;
   version: number;
   identity: Readonly<TrademarkAssetIdentity>;
-  niceClasses: readonly string[];
-  ownerOrClientReference?: string;
-  applicationDate?: string;
-  registrationDate?: string;
-  renewalDate?: string;
-  sourceObservedStatus?: string;
+  externalIdentifiers: ReadonlyArray<Readonly<TrademarkAssetExternalIdentifier>>;
+  workspaceRelationships: ReadonlyArray<Readonly<TrademarkAssetWorkspaceRelationship>>;
   sourceReferences: ReadonlyArray<Readonly<TrademarkAssetSourceReference>>;
   relations: ReadonlyArray<Readonly<TrademarkAssetRelation>>;
+  ownerOrClientReference?: string;
   workspaceTags: readonly string[];
   workspaceNotes: readonly string[];
+  workspacePriority?: string;
+  workspaceAlias?: string;
   officialTruthVerifiedByLite: false;
   filingExecutedByLite: false;
   createdAt: string;
@@ -200,11 +245,16 @@ export const trademarkAssetAiGuideAuthority = {
 
 export const trademarkAssetAuthorityBoundary = {
   assetIsWorkspacePrivateProjection: true,
+  assetIdIsStableAndIndependentOfExternalIdentifiers: true,
+  externalIdentifiersMayAccumulateWithoutChangingAssetId: true,
+  marketplaceAssetsAreReferencedNotCopied: true,
+  marketplaceSourceAssetEditableByWorkspace: false,
   exactSourceAndFreshnessRequiredForConsequentialClaims: true,
   markRegRemainsMatterAndLifecycleOwner: true,
   executionRemainsProtectedActionOwner: true,
   dataEngineConsumptionReadOnlyAndContractBound: true,
   knowledgeRemainsAcquisitionAndProvenanceOwner: true,
+  marketplaceRemainsListingSourceOwner: true,
   crossServiceSqlAllowed: false,
   assetCreatesOfficialTruth: false,
   assetCreatesMatterAutomatically: false,
@@ -222,5 +272,6 @@ export const noAutomaticTrademarkAssetConsequences = [
   'PROFESSIONAL_REVIEW_APPROVAL',
   'PAID_EXECUTION',
   'CAPABILITY_VERIFICATION',
-  'OFFICIAL_TRUTH_CREATION'
+  'OFFICIAL_TRUTH_CREATION',
+  'MARKETPLACE_SOURCE_MUTATION'
 ] as const;
