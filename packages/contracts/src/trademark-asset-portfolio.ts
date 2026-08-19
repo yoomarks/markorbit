@@ -65,6 +65,7 @@ export interface TrademarkAssetBulkTagResult {
   officialTruthVerifiedByLite: false;
 }
 
+/** Portfolio operations govern Lite-owned Asset Anchors and private metadata, never source truth. */
 export const trademarkAssetPortfolioAuthority = {
   maySearchWorkspaceAssets: true,
   mayFilterByWorkspaceRelationship: true,
