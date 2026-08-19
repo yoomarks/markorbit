@@ -57,6 +57,8 @@ export interface TrademarkAssetContextSignal {
 /**
  * Current read model assembled from a durable Lite Asset Anchor plus source-owned facts and signals.
  * Conflicting facts remain visible; contextual signals remain distinct from factual claims.
+ * The separation is intentional: downstream reasoning may consume both, but must never recast a
+ * recommendation or relevance signal as a source-owned fact.
  */
 export interface TrademarkAssetView {
   schemaVersion: 1;
