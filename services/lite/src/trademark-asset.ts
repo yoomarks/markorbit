@@ -254,7 +254,7 @@ function cleanIdentifiers(
   }
   const byKey = new Map<string, TrademarkAssetExternalIdentifier>();
   for (const value of values) {
-    const cleaned = cleanIdentifier(value);
+    const cleaned = cleanIdentifier(value as Readonly<TrademarkAssetExternalIdentifier>);
     byKey.set(identifierKey(cleaned), cleaned);
   }
   return [...byKey.values()].sort((a, b) => identifierKey(a).localeCompare(identifierKey(b)));

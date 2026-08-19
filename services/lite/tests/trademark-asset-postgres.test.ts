@@ -1,10 +1,8 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
-import {
-  PostgresLiteTrademarkAssetStore,
-  TrademarkAssetPersistenceError
-} from '../src/trademark-asset.js';
+import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
+import type { TrademarkAssetPersistenceError } from '../src/trademark-asset.js';
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
 const required = process.env.LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED === '1';
