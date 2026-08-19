@@ -60,7 +60,7 @@ const knowledgeSource = {
 } as const;
 
 describe('M10 WP03 Trademark Asset View composition', () => {
-  it('composes owner facts without promoting them to official truth', () => {
+  it('composes facts and contextual signals without conflating them', () => {
     const view = composeTrademarkAssetView({
       anchor,
       composedAt: '2026-08-19T02:15:00.000Z',
@@ -76,7 +76,9 @@ describe('M10 WP03 Trademark Asset View composition', () => {
           value: 'REGISTERED',
           source: dataEngineSource,
           consequential: true
-        },
+        }
+      ],
+      signals: [
         {
           kind: 'KNOWLEDGE_RELEVANCE',
           value: 'Section 8 maintenance guidance changed',
@@ -87,6 +89,14 @@ describe('M10 WP03 Trademark Asset View composition', () => {
 
     expect(view.trademarkAssetId).toBe(anchor.trademarkAssetId);
     expect(view.anchor).toBe(anchor);
+    expect(view.observedFacts).toHaveLength(2);
+    expect(view.contextSignals).toEqual([
+      expect.objectContaining({
+        kind: 'KNOWLEDGE_RELEVANCE',
+        advisory: true,
+        executionAuthorized: false
+      })
+    ]);
     expect(view.conflicts).toEqual([]);
     expect(view.freshness).toBe('CURRENT');
     expect(view.officialTruthVerifiedByLite).toBe(false);
@@ -95,7 +105,7 @@ describe('M10 WP03 Trademark Asset View composition', () => {
     expect(view.sourceReferences).toHaveLength(4);
   });
 
-  it('preserves contradictory owner observations instead of selecting a winner', () => {
+  it('preserves contradictory factual observations instead of selecting a winner', () => {
     const view = composeTrademarkAssetView({
       anchor,
       composedAt: '2026-08-19T02:15:00.000Z',
@@ -125,7 +135,7 @@ describe('M10 WP03 Trademark Asset View composition', () => {
     expect(view.conflicts[0]?.evidence).toHaveLength(2);
   });
 
-  it('treats arrays with the same members as the same observation', () => {
+  it('treats arrays with the same members as the same factual observation', () => {
     const view = composeTrademarkAssetView({
       anchor,
       composedAt: '2026-08-19T02:15:00.000Z',
@@ -158,6 +168,22 @@ describe('M10 WP03 Trademark Asset View composition', () => {
     }
   });
 
+  it('rejects context signals from the wrong owner', () => {
+    expect(() =>
+      composeTrademarkAssetView({
+        anchor,
+        composedAt: '2026-08-19T02:15:00.000Z',
+        signals: [
+          {
+            kind: 'KNOWLEDGE_RELEVANCE',
+            value: 'Not a Data Engine responsibility',
+            source: dataEngineSource
+          }
+        ]
+      })
+    ).toThrowError(/cannot contribute context signal/);
+  });
+
   it('rejects mismatched source owner and source kind pairs', () => {
     expect(() =>
       composeTrademarkAssetView({
@@ -177,7 +203,7 @@ describe('M10 WP03 Trademark Asset View composition', () => {
     ).toThrowError(/cannot use source kind/);
   });
 
-  it('is UNKNOWN rather than authoritative when no owner facts are available', () => {
+  it('is UNKNOWN rather than authoritative when no owner input is available', () => {
     const view = composeTrademarkAssetView({
       anchor,
       composedAt: '2026-08-19T02:15:00.000Z'
@@ -185,5 +211,6 @@ describe('M10 WP03 Trademark Asset View composition', () => {
 
     expect(view.freshness).toBe('UNKNOWN');
     expect(view.observedFacts).toEqual([]);
+    expect(view.contextSignals).toEqual([]);
   });
 });
