@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
-import type { TrademarkAssetSourceReference } from '@markorbit/contracts/trademark-asset-workspace';
 import {
   PostgresLiteTrademarkAssetStore,
   TrademarkAssetPersistenceError
@@ -9,24 +8,42 @@ import {
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
 const required = process.env.LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED === '1';
-if (required && !url)
+if (required && !url) {
   throw new Error(
     'LITE_TRADEMARK_ASSET_TEST_DATABASE_URL is required when LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED=1.'
   );
+}
 const suite = url ? describe : describe.skip;
-const workspaceId = '74747474-7474-4747-8747-747474747474';
-const otherWorkspaceId = '75757575-7575-4757-8757-757575757575';
+const workspaceId = '94949494-9494-4949-8949-949494949494';
+const otherWorkspaceId = '95959595-9595-4959-8959-959595959595';
+const observedAt = '2026-08-19T01:00:00.000Z';
 
-const admissionSource = (version = '1'): TrademarkAssetSourceReference => ({
+const admissionSource = {
   owner: 'WORKSPACE_USER',
   kind: 'WORKSPACE_ADMISSION',
-  sourceId: 'user-admission-us-98123456',
-  sourceVersion: version,
-  observedAt: '2026-08-19T00:00:00.000Z',
+  sourceId: 'admission_m10-wp02',
+  sourceVersion: '1',
+  observedAt,
   freshness: 'CURRENT'
-});
+} as const;
+const dataSource = {
+  owner: 'DATA_ENGINE',
+  kind: 'DATA_ENGINE_TRADEMARK_RECORD',
+  sourceId: 'record_m10-wp02',
+  sourceVersion: '2026-08-19',
+  observedAt,
+  freshness: 'CURRENT'
+} as const;
+const marketplaceSource = {
+  owner: 'MARKETPLACE',
+  kind: 'MARKETPLACE_LISTING',
+  sourceId: 'listing_m10-wp02',
+  sourceVersion: '3',
+  observedAt,
+  freshness: 'CURRENT'
+} as const;
 
-suite('PostgreSQL Lite Trademark Assets', () => {
+suite('PostgreSQL M10-WP-02 Trademark Asset Anchor', () => {
   const database = new ManagedDatabase({
     connection: { url: url! },
     applicationName: 'lite-trademark-asset-test',
@@ -39,9 +56,12 @@ suite('PostgreSQL Lite Trademark Assets', () => {
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
-  let tick = 0;
-  const now = () => new Date(Date.UTC(2026, 7, 19, 0, 0, tick++)).toISOString();
-  const store = () => new PostgresLiteTrademarkAssetStore(database, database.getPool(), now);
+  const store = () =>
+    new PostgresLiteTrademarkAssetStore(
+      database,
+      database.getPool(),
+      () => '2026-08-19T01:05:00.000Z'
+    );
 
   beforeAll(async () => {
     await database.start();
@@ -66,131 +86,178 @@ suite('PostgreSQL Lite Trademark Assets', () => {
   });
 
   beforeEach(async () => {
-    tick = 0;
-    await database
-      .getPool()
-      .query('TRUNCATE lite_trademark_asset_commands,lite_trademark_assets CASCADE');
+    await database.getPool().query(
+      'TRUNCATE lite_trademark_asset_commands,lite_trademark_asset_identifiers,lite_trademark_assets CASCADE'
+    );
   });
 
   afterAll(() => database.close());
 
-  const admit = (service: PostgresLiteTrademarkAssetStore, key = 'admit-1') =>
-    service.admit({
+  it('keeps one stable Asset ID when a registration number is added later', async () => {
+    const writer = store();
+    const admitted = await writer.admit({
       workspaceId,
-      identity: {
-        jurisdiction: 'us',
-        applicationNumber: '98123456',
-        registrationNumber: '7654321',
-        markText: 'MARKORBIT'
+      identity: { jurisdiction: 'US', markText: 'MARKORBIT' },
+      externalIdentifiers: [
+        {
+          kind: 'APPLICATION_NUMBER',
+          jurisdiction: 'US',
+          value: '98123456',
+          sourceReference: dataSource,
+          officialTruthVerifiedByLite: false
+        }
+      ],
+      workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: false }],
+      sourceReferences: [admissionSource, dataSource],
+      workspaceTags: ['client-a'],
+      idempotencyKey: 'admit-markorbit'
+    });
+
+    const updated = await writer.addExternalIdentifier({
+      workspaceId,
+      trademarkAssetId: admitted.trademarkAssetId,
+      expectedVersion: admitted.version,
+      identifier: {
+        kind: 'REGISTRATION_NUMBER',
+        jurisdiction: 'US',
+        value: '7654321',
+        sourceReference: dataSource,
+        officialTruthVerifiedByLite: false
       },
-      niceClasses: ['42', '35', '42'],
-      ownerOrClientReference: 'client-private-001',
-      sourceObservedStatus: 'REGISTERED',
-      sourceReferences: [admissionSource()],
-      idempotencyKey: key
+      idempotencyKey: 'add-registration-number'
     });
 
-  it('persists a deterministic Workspace-private Asset with exact admission provenance', async () => {
-    const asset = await admit(store());
-    expect(asset.trademarkAssetId).toMatch(/^trademark-asset_[0-9a-f]{32}$/);
-    expect(asset.identity.jurisdiction).toBe('US');
-    expect(asset.niceClasses).toEqual(['35', '42']);
-    expect(asset.sourceReferences).toEqual([admissionSource()]);
-    expect(asset.officialTruthVerifiedByLite).toBe(false);
-    expect(asset.filingExecutedByLite).toBe(false);
-  });
-
-  it('replays the same command after store restart and rejects a changed idempotent request', async () => {
-    const first = await admit(store(), 'stable-admission');
-    const restarted = store();
-    expect(await admit(restarted, 'stable-admission')).toEqual(first);
-    await expect(
-      restarted.admit({
-        workspaceId,
-        identity: first.identity,
-        niceClasses: ['9'],
-        sourceReferences: [admissionSource()],
-        idempotencyKey: 'stable-admission'
-      })
-    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT', status: 409 });
-  });
-
-  it('deduplicates the same canonical identity under concurrency', async () => {
-    const service = store();
-    const results = await Promise.all(
-      Array.from({ length: 8 }, (_, index) => admit(service, `concurrent-${index}`))
-    );
-    expect(new Set(results.map((asset) => asset.trademarkAssetId)).size).toBe(1);
-    const rows = await database
-      .getPool()
-      .query('SELECT count(*)::int AS count FROM lite_trademark_assets WHERE workspace_id=$1', [
-        workspaceId
-      ]);
-    expect((rows.rows[0] as { count: number } | undefined)?.count).toBe(1);
-  });
-
-  it('isolates find and list by Workspace even when an Asset id is guessed directly', async () => {
-    const service = store();
-    const asset = await admit(service);
-    expect(await service.find(otherWorkspaceId, asset.trademarkAssetId)).toBeUndefined();
-    expect(await service.list(otherWorkspaceId)).toEqual([]);
-    expect((await service.list(workspaceId)).map((item) => item.trademarkAssetId)).toEqual([
-      asset.trademarkAssetId
-    ]);
-  });
-
-  it('updates only private Workspace metadata with optimistic concurrency and durable replay', async () => {
-    const service = store();
-    const asset = await admit(service);
-    const updated = await service.updateWorkspaceMetadata({
-      workspaceId,
-      trademarkAssetId: asset.trademarkAssetId,
-      expectedVersion: 1,
-      workspaceTags: ['priority', 'client-a', 'priority'],
-      workspaceNotes: ['Check renewal documents'],
-      idempotencyKey: 'metadata-1'
-    });
+    expect(updated.trademarkAssetId).toBe(admitted.trademarkAssetId);
     expect(updated.version).toBe(2);
-    expect(updated.workspaceTags).toEqual(['client-a', 'priority']);
-    expect(updated.workspaceNotes).toEqual(['Check renewal documents']);
-    expect(updated.identity).toEqual(asset.identity);
-    expect(updated.sourceReferences).toEqual(asset.sourceReferences);
-    expect(updated.officialTruthVerifiedByLite).toBe(false);
-    expect(updated.filingExecutedByLite).toBe(false);
+    expect(updated.externalIdentifiers.map((identifier) => identifier.kind)).toEqual([
+      'APPLICATION_NUMBER',
+      'REGISTRATION_NUMBER'
+    ]);
+    expect(updated).not.toHaveProperty('sourceObservedStatus');
+    expect(updated).not.toHaveProperty('registrationDate');
 
-    const restarted = store();
-    expect(
-      await restarted.updateWorkspaceMetadata({
-        workspaceId,
-        trademarkAssetId: asset.trademarkAssetId,
-        expectedVersion: 1,
-        workspaceTags: ['priority', 'client-a'],
-        workspaceNotes: ['Check renewal documents'],
-        idempotencyKey: 'metadata-1'
-      })
-    ).toEqual(updated);
-    expect(await restarted.find(workspaceId, asset.trademarkAssetId)).toEqual(updated);
-
-    await expect(
-      restarted.updateWorkspaceMetadata({
-        workspaceId,
-        trademarkAssetId: asset.trademarkAssetId,
-        expectedVersion: 1,
-        workspaceTags: ['stale-write'],
-        workspaceNotes: [],
-        idempotencyKey: 'metadata-stale'
-      })
-    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT', status: 409 });
+    const restartedReader = store();
+    const afterRestart = await restartedReader.get(workspaceId, admitted.trademarkAssetId);
+    expect(afterRestart).toEqual(updated);
   });
 
-  it('requires a registry-style identifier instead of treating mark text alone as canonical identity', async () => {
+  it('allows pre-registration assets without application or registration numbers', async () => {
+    const admitted = await store().admit({
+      workspaceId,
+      identity: { jurisdiction: 'EU', markText: 'EARLY BRAND' },
+      workspaceRelationships: [{ kind: 'OWNED', sourceAssetEditableByWorkspace: false }],
+      sourceReferences: [admissionSource],
+      idempotencyKey: 'admit-pre-filing'
+    });
+
+    expect(admitted.externalIdentifiers).toEqual([]);
+    expect(admitted.trademarkAssetId).toMatch(/^trademark-asset_/);
+  });
+
+  it('persists Marketplace references without granting mutation of the source asset', async () => {
+    const admitted = await store().admit({
+      workspaceId,
+      identity: { jurisdiction: 'US', markText: 'SALEMARK' },
+      externalIdentifiers: [
+        {
+          kind: 'REGISTRATION_NUMBER',
+          jurisdiction: 'US',
+          value: '7000001',
+          sourceReference: marketplaceSource,
+          officialTruthVerifiedByLite: false
+        }
+      ],
+      workspaceRelationships: [
+        {
+          kind: 'MARKETPLACE_ADDED',
+          sourceAssetId: 'marketplace-asset_sale-001',
+          sourceReference: marketplaceSource,
+          sourceAssetEditableByWorkspace: false
+        }
+      ],
+      sourceReferences: [marketplaceSource],
+      workspaceTags: ['sale-source'],
+      idempotencyKey: 'admit-marketplace-reference'
+    });
+
+    expect(admitted.workspaceRelationships[0]).toMatchObject({
+      kind: 'MARKETPLACE_ADDED',
+      sourceAssetId: 'marketplace-asset_sale-001',
+      sourceAssetEditableByWorkspace: false
+    });
+  });
+
+  it('rejects any attempt to make a Marketplace source asset editable', async () => {
     await expect(
       store().admit({
         workspaceId,
-        identity: { jurisdiction: 'US', markText: 'MARKORBIT' },
-        sourceReferences: [admissionSource()],
-        idempotencyKey: 'mark-only'
+        identity: { jurisdiction: 'US', markText: 'READONLY' },
+        workspaceRelationships: [
+          {
+            kind: 'MARKETPLACE_ADDED',
+            sourceAssetId: 'marketplace-asset_readonly',
+            sourceReference: marketplaceSource,
+            sourceAssetEditableByWorkspace: true
+          }
+        ],
+        sourceReferences: [marketplaceSource],
+        idempotencyKey: 'invalid-marketplace-mutation'
       })
-    ).rejects.toBeInstanceOf(TrademarkAssetPersistenceError);
+    ).rejects.toMatchObject<Partial<TrademarkAssetPersistenceError>>({ code: 'READ_ONLY_SOURCE' });
+  });
+
+  it('isolates Asset Anchors by workspace', async () => {
+    const admitted = await store().admit({
+      workspaceId,
+      identity: { jurisdiction: 'CN', markText: 'PRIVATE MARK' },
+      workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: false }],
+      sourceReferences: [admissionSource],
+      idempotencyKey: 'workspace-one'
+    });
+
+    await expect(store().get(otherWorkspaceId, admitted.trademarkAssetId)).rejects.toMatchObject<
+      Partial<TrademarkAssetPersistenceError>
+    >({ code: 'NOT_FOUND' });
+  });
+
+  it('enforces workspace-scoped external identifier uniqueness', async () => {
+    const first = await store().admit({
+      workspaceId,
+      identity: { jurisdiction: 'US', markText: 'FIRST' },
+      externalIdentifiers: [
+        {
+          kind: 'APPLICATION_NUMBER',
+          jurisdiction: 'US',
+          value: '99000001',
+          sourceReference: dataSource,
+          officialTruthVerifiedByLite: false
+        }
+      ],
+      workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: false }],
+      sourceReferences: [admissionSource, dataSource],
+      idempotencyKey: 'identifier-first'
+    });
+    expect(first.externalIdentifiers).toHaveLength(1);
+
+    await expect(
+      store().admit({
+        workspaceId,
+        identity: { jurisdiction: 'US', markText: 'SECOND' },
+        externalIdentifiers: [
+          {
+            kind: 'APPLICATION_NUMBER',
+            jurisdiction: 'US',
+            value: '99000001',
+            sourceReference: dataSource,
+            officialTruthVerifiedByLite: false
+          }
+        ],
+        workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: false }],
+        sourceReferences: [admissionSource, dataSource],
+        idempotencyKey: 'identifier-second'
+      })
+    ).rejects.toMatchObject<Partial<TrademarkAssetPersistenceError>>({
+      code: 'IDENTIFIER_CONFLICT'
+    });
   });
 });
