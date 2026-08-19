@@ -9,24 +9,86 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./order": { "types": "./dist/order.d.ts", "import": "./dist/order.js" },
-    "./commercial": { "types": "./dist/commercial.d.ts", "import": "./dist/commercial.js" },
-    "./payment": { "types": "./dist/payment.d.ts", "import": "./dist/payment.js" },
-    "./provider-execution": { "types": "./dist/provider-execution.d.ts", "import": "./dist/provider-execution.js" },
-    "./evidence-lifecycle": { "types": "./dist/evidence-lifecycle.d.ts", "import": "./dist/evidence-lifecycle.js" },
-    "./knowledge-content-export": { "types": "./dist/knowledge-content-export.d.ts", "import": "./dist/knowledge-content-export.js" },
-    "./knowledge-ready-package-v2": { "types": "./dist/knowledge-ready-package-v2.d.ts", "import": "./dist/knowledge-ready-package-v2.js" },
-    "./product-loop": { "types": "./dist/product-loop.d.ts", "import": "./dist/product-loop.js", "default": "./dist/product-loop.js" },
-    "./daily-workspace": { "types": "./dist/daily-workspace.d.ts", "import": "./dist/daily-workspace.js", "default": "./dist/daily-workspace.js" },
-    "./trademark-asset-workspace": { "types": "./dist/trademark-asset-workspace.d.ts", "import": "./dist/trademark-asset-workspace.js", "default": "./dist/trademark-asset-workspace.js" },
-    "./trademark-asset-composition": { "types": "./dist/trademark-asset-composition.d.ts", "import": "./dist/trademark-asset-composition.js", "default": "./dist/trademark-asset-composition.js" },
-    "./trademark-asset-portfolio": { "types": "./dist/trademark-asset-portfolio.d.ts", "import": "./dist/trademark-asset-portfolio.js", "default": "./dist/trademark-asset-portfolio.js" },
-    "./trademark-asset-commerce": { "types": "./dist/trademark-asset-commerce.d.ts", "import": "./dist/trademark-asset-commerce.js", "default": "./dist/trademark-asset-commerce.js" },
-    "./trademark-asset-marketplace-reference": { "types": "./dist/trademark-asset-marketplace-reference.d.ts", "import": "./dist/trademark-asset-marketplace-reference.js", "default": "./dist/trademark-asset-marketplace-reference.js" },
-    "./daily-source": { "types": "./dist/daily-source.d.ts", "import": "./dist/daily-source.js" },
-    "./data-engine": { "types": "./dist/data-engine.d.ts", "import": "./dist/data-engine.js" },
-    "./capability-learning": { "types": "./dist/capability-learning.d.ts", "import": "./dist/capability-learning.js" },
-    "./beta-readiness": { "types": "./dist/beta-readiness.d.ts", "import": "./dist/beta-readiness.js", "default": "./dist/beta-readiness.js" }
+    "./order": {
+      "types": "./dist/order.d.ts",
+      "import": "./dist/order.js"
+    },
+    "./commercial": {
+      "types": "./dist/commercial.d.ts",
+      "import": "./dist/commercial.js"
+    },
+    "./payment": {
+      "types": "./dist/payment.d.ts",
+      "import": "./dist/payment.js"
+    },
+    "./provider-execution": {
+      "types": "./dist/provider-execution.d.ts",
+      "import": "./dist/provider-execution.js"
+    },
+    "./evidence-lifecycle": {
+      "types": "./dist/evidence-lifecycle.d.ts",
+      "import": "./dist/evidence-lifecycle.js"
+    },
+    "./knowledge-content-export": {
+      "types": "./dist/knowledge-content-export.d.ts",
+      "import": "./dist/knowledge-content-export.js"
+    },
+    "./knowledge-ready-package-v2": {
+      "types": "./dist/knowledge-ready-package-v2.d.ts",
+      "import": "./dist/knowledge-ready-package-v2.js"
+    },
+    "./product-loop": {
+      "types": "./dist/product-loop.d.ts",
+      "import": "./dist/product-loop.js",
+      "default": "./dist/product-loop.js"
+    },
+    "./daily-workspace": {
+      "types": "./dist/daily-workspace.d.ts",
+      "import": "./dist/daily-workspace.js",
+      "default": "./dist/daily-workspace.js"
+    },
+    "./trademark-asset-workspace": {
+      "types": "./dist/trademark-asset-workspace.d.ts",
+      "import": "./dist/trademark-asset-workspace.js",
+      "default": "./dist/trademark-asset-workspace.js"
+    },
+    "./trademark-asset-composition": {
+      "types": "./dist/trademark-asset-composition.d.ts",
+      "import": "./dist/trademark-asset-composition.js",
+      "default": "./dist/trademark-asset-composition.js"
+    },
+    "./trademark-asset-portfolio": {
+      "types": "./dist/trademark-asset-portfolio.d.ts",
+      "import": "./dist/trademark-asset-portfolio.js",
+      "default": "./dist/trademark-asset-portfolio.js"
+    },
+    "./trademark-asset-commerce": {
+      "types": "./dist/trademark-asset-commerce.d.ts",
+      "import": "./dist/trademark-asset-commerce.js",
+      "default": "./dist/trademark-asset-commerce.js"
+    },
+    "./trademark-asset-marketplace-reference": {
+      "types": "./dist/trademark-asset-marketplace-reference.d.ts",
+      "import": "./dist/trademark-asset-marketplace-reference.js",
+      "default": "./dist/trademark-asset-marketplace-reference.js"
+    },
+    "./daily-source": {
+      "types": "./dist/daily-source.d.ts",
+      "import": "./dist/daily-source.js"
+    },
+    "./data-engine": {
+      "types": "./dist/data-engine.d.ts",
+      "import": "./dist/data-engine.js"
+    },
+    "./capability-learning": {
+      "types": "./dist/capability-learning.d.ts",
+      "import": "./dist/capability-learning.js"
+    },
+    "./beta-readiness": {
+      "types": "./dist/beta-readiness.d.ts",
+      "import": "./dist/beta-readiness.js",
+      "default": "./dist/beta-readiness.js"
+    }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -37,5 +99,7 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }
