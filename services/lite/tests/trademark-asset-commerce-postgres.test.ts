@@ -2,10 +2,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
-import {
-  PostgresTrademarkAssetCommerceStore,
-  TrademarkAssetCommerceError
-} from '../src/trademark-asset-commerce.js';
+import { PostgresTrademarkAssetCommerceStore } from '../src/trademark-asset-commerce.js';
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
 const required = process.env.LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED === '1';
@@ -194,7 +191,7 @@ suite('PostgreSQL M10-WP-05 Trademark Asset Commerce Profile', () => {
         sellerRole: 'AUTHORIZED_REPRESENTATIVE',
         idempotencyKey: 'marketplace-commerce-blocked'
       })
-    ).rejects.toMatchObject<Partial<TrademarkAssetCommerceError>>({
+    ).rejects.toMatchObject({
       code: 'READ_ONLY_SOURCE',
       status: 403
     });
