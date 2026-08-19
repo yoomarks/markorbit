@@ -5,7 +5,7 @@ import {
 } from '../src/trademark-asset-ai-guide.js';
 
 describe('Trademark Asset AI Guide contract', () => {
-  it('keeps AI preparation assistive and non-authoritative', () => {
+  it('keeps AI preparation assistive, source-derived and non-authoritative', () => {
     expect(trademarkAssetAiGuideContextKinds).toEqual([
       'ASSET_COMPOSITION',
       'COMMERCE_PROFILE',
@@ -13,6 +13,10 @@ describe('Trademark Asset AI Guide contract', () => {
       'WORKSPACE_CONTEXT'
     ]);
     expect(trademarkAssetAiGuidePreparationAuthority).toMatchObject({
+      pureAdvisoryProjection: true,
+      callerSuppliedProvenanceTrusted: false,
+      durableGuideHistoryCreated: false,
+      commandIdempotencyClaimed: false,
       mayConsumeComposedAssetFacts: true,
       mayConsumeAdvisoryContextSignals: true,
       mayConsumeWorkspacePrivateCommerceContext: true,
