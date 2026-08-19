@@ -309,9 +309,11 @@ function cleanRelationships(
       400
     );
   }
-  return values.map(cleanRelationship).sort((a, b) =>
-    `${a.kind}:${a.sourceAssetId ?? ''}`.localeCompare(`${b.kind}:${b.sourceAssetId ?? ''}`)
-  );
+  return values
+    .map(cleanRelationship)
+    .sort((a, b) =>
+      `${a.kind}:${a.sourceAssetId ?? ''}`.localeCompare(`${b.kind}:${b.sourceAssetId ?? ''}`)
+    );
 }
 
 function rowAsset(row: Row | undefined): TrademarkAsset | undefined {
@@ -679,7 +681,8 @@ export class PostgresLiteTrademarkAssetStore {
         };
         if (!ownerOrClientReference)
           delete (updated as { ownerOrClientReference?: string }).ownerOrClientReference;
-        if (!workspacePriority) delete (updated as { workspacePriority?: string }).workspacePriority;
+        if (!workspacePriority)
+          delete (updated as { workspacePriority?: string }).workspacePriority;
         if (!workspaceAlias) delete (updated as { workspaceAlias?: string }).workspaceAlias;
         await this.persistUpdatedAsset(client, updated);
         await client.query(
