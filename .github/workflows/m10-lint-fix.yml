@@ -1,0 +1,47 @@
+name: M10 One Shot Lint Fix
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m10-lint-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply lint fixes and self-clean
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/lite/src/trademark-asset.ts')
+          s = p.read_text()
+          old = 'const cleaned = cleanIdentifier(value);'
+          new = 'const cleaned = cleanIdentifier(value as Readonly<TrademarkAssetExternalIdentifier>);'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one lint target, found {s.count(old)}')
+          p.write_text(s.replace(old, new))
+          PY
+          pnpm exec eslint --fix services/lite/tests/trademark-asset-postgres.test.ts
+          pnpm exec prettier --write services/lite/src/trademark-asset.ts services/lite/tests/trademark-asset-postgres.test.ts
+          pnpm exec eslint services/lite/src/trademark-asset.ts services/lite/tests/trademark-asset-postgres.test.ts
+          git rm .github/workflows/m10-lint-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/lite/src/trademark-asset.ts services/lite/tests/trademark-asset-postgres.test.ts
+          git commit -m 'fix(m10): satisfy Lite asset lint boundaries'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
