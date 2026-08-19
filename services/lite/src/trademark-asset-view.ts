@@ -91,7 +91,10 @@ function assertSourceReference(source: Readonly<TrademarkAssetSourceReference>):
   assertIsoTimestamp(source.observedAt, 'source.observedAt');
 }
 
-function assertFactOwner(kind: TrademarkAssetObservedFactKind, owner: TrademarkAssetSourceOwner): void {
+function assertFactOwner(
+  kind: TrademarkAssetObservedFactKind,
+  owner: TrademarkAssetSourceOwner
+): void {
   if (owner === 'DATA_ENGINE' && dataEngineFactKinds.has(kind)) return;
   if (owner === 'MARKREG' && markRegFactKinds.has(kind)) return;
   if (owner === 'KNOWLEDGE' && kind === 'KNOWLEDGE_RELEVANCE') return;
