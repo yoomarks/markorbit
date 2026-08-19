@@ -108,9 +108,10 @@ function assertFactOwner(
 
 function canonicalValue(value: TrademarkAssetObservedFactValue): string {
   if (Array.isArray(value)) {
-    return JSON.stringify([...value].map((item) => String(item)).sort());
+    const items = value as readonly string[];
+    return JSON.stringify([...items].sort());
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? String(value);
 }
 
 function sourceKey(source: Readonly<TrademarkAssetSourceReference>): string {
