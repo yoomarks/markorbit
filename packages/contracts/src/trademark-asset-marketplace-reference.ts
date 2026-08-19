@@ -3,8 +3,7 @@ import type {
   TrademarkAssetSourceReference
 } from './trademark-asset-workspace.js';
 
-export type TrademarkAssetMarketplaceOverlayId =
-  `trademark-asset-marketplace-overlay_${string}`;
+export type TrademarkAssetMarketplaceOverlayId = `trademark-asset-marketplace-overlay_${string}`;
 
 export interface TrademarkAssetMarketplaceSourceSnapshot {
   sourceAssetId: string;

@@ -11,8 +11,7 @@ import type {
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
 type Row = Record<string, unknown>;
 
@@ -40,14 +39,10 @@ export class TrademarkAssetMarketplaceReferenceError extends Error {
 }
 
 export interface TrademarkAssetMarketplaceReferenceAssetReader {
-  get(
-    workspaceId: string,
-    trademarkAssetId: TrademarkAssetId
-  ): Promise<Readonly<TrademarkAsset>>;
+  get(workspaceId: string, trademarkAssetId: TrademarkAssetId): Promise<Readonly<TrademarkAsset>>;
 }
 
-const hash = (value: string): string =>
-  createHash('sha256').update(value).digest('hex');
+const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
 const fingerprint = (value: unknown): string => hash(JSON.stringify(value));
 const clone = <T>(value: T): T => structuredClone(value);
 
@@ -66,19 +61,11 @@ function text(value: unknown, field: string, max = 500): string {
   return value.trim();
 }
 
-function optionalText(
-  value: unknown,
-  field: string,
-  max = 500
-): string | undefined {
+function optionalText(value: unknown, field: string, max = 500): string | undefined {
   return value === undefined ? undefined : text(value, field, max);
 }
 
-function list(
-  values: readonly string[] | undefined,
-  field: string,
-  maxItems = 100
-): string[] {
+function list(values: readonly string[] | undefined, field: string, maxItems = 100): string[] {
   if (!values) return [];
   if (!Array.isArray(values) || values.length > maxItems) {
     throw new TrademarkAssetMarketplaceReferenceError(
@@ -117,8 +104,7 @@ function normalize(input: Readonly<UpsertTrademarkAssetMarketplaceOverlayInput>)
   }
   if (
     input.expectedOverlayVersion !== undefined &&
-    (!Number.isInteger(input.expectedOverlayVersion) ||
-      input.expectedOverlayVersion < 1)
+    (!Number.isInteger(input.expectedOverlayVersion) || input.expectedOverlayVersion < 1)
   ) {
     throw new TrademarkAssetMarketplaceReferenceError(
       'INVALID_INPUT',
@@ -127,22 +113,15 @@ function normalize(input: Readonly<UpsertTrademarkAssetMarketplaceOverlayInput>)
     );
   }
   const sourceReference = input.source.sourceReference;
-  if (
-    sourceReference.owner !== 'MARKETPLACE' ||
-    sourceReference.kind !== 'MARKETPLACE_LISTING'
-  ) {
+  if (sourceReference.owner !== 'MARKETPLACE' || sourceReference.kind !== 'MARKETPLACE_LISTING') {
     throw new TrademarkAssetMarketplaceReferenceError(
       'INVALID_INPUT',
       'Marketplace overlay sourceReference must be a MARKETPLACE / MARKETPLACE_LISTING reference.',
       400
     );
   }
-  const sourceListingFingerprintSha256 =
-    input.source.sourceListingFingerprintSha256;
-  if (
-    sourceListingFingerprintSha256 &&
-    !SHA256.test(sourceListingFingerprintSha256)
-  ) {
+  const sourceListingFingerprintSha256 = input.source.sourceListingFingerprintSha256;
+  if (sourceListingFingerprintSha256 && !SHA256.test(sourceListingFingerprintSha256)) {
     throw new TrademarkAssetMarketplaceReferenceError(
       'INVALID_INPUT',
       'sourceListingFingerprintSha256 must be lowercase SHA-256 when provided.',
@@ -169,21 +148,11 @@ function normalize(input: Readonly<UpsertTrademarkAssetMarketplaceOverlayInput>)
       : {}),
     source: {
       sourceAssetId: text(input.source.sourceAssetId, 'source.sourceAssetId'),
-      sourceListingId: text(
-        input.source.sourceListingId,
-        'source.sourceListingId'
-      ),
-      sourceListingVersion: text(
-        input.source.sourceListingVersion,
-        'source.sourceListingVersion'
-      ),
-      ...(sourceListingFingerprintSha256
-        ? { sourceListingFingerprintSha256 }
-        : {}),
+      sourceListingId: text(input.source.sourceListingId, 'source.sourceListingId'),
+      sourceListingVersion: text(input.source.sourceListingVersion, 'source.sourceListingVersion'),
+      ...(sourceListingFingerprintSha256 ? { sourceListingFingerprintSha256 } : {}),
       sourceReference: clone(sourceReference),
-      observedAt: new Date(
-        text(input.source.observedAt, 'source.observedAt')
-      ).toISOString()
+      observedAt: new Date(text(input.source.observedAt, 'source.observedAt')).toISOString()
     },
     privateTags: list(input.privateTags, 'privateTags', 100),
     privateNotes: list(input.privateNotes, 'privateNotes', 100),
@@ -192,11 +161,7 @@ function normalize(input: Readonly<UpsertTrademarkAssetMarketplaceOverlayInput>)
     sellingPoints: list(input.sellingPoints, 'sellingPoints', 20),
     aiTags: list(input.aiTags, 'aiTags', 50),
     ...(showcaseTemplateReference ? { showcaseTemplateReference } : {}),
-    mediaAssetReferences: list(
-      input.mediaAssetReferences,
-      'mediaAssetReferences',
-      50
-    ),
+    mediaAssetReferences: list(input.mediaAssetReferences, 'mediaAssetReferences', 50),
     customerRecommendationReferences: list(
       input.customerRecommendationReferences,
       'customerRecommendationReferences',
@@ -246,10 +211,7 @@ export class PostgresTrademarkAssetMarketplaceReferenceStore {
   ): Promise<Readonly<TrademarkAssetMarketplaceOverlay>> {
     const command = normalize(input);
     const requestFingerprint = fingerprint(command);
-    const asset = await this.assetReader.get(
-      command.workspaceId,
-      command.trademarkAssetId
-    );
+    const asset = await this.assetReader.get(command.workspaceId, command.trademarkAssetId);
     if (asset.version !== command.expectedTrademarkAssetVersion) {
       throw new TrademarkAssetMarketplaceReferenceError(
         'ASSET_VERSION_CONFLICT',
@@ -259,10 +221,7 @@ export class PostgresTrademarkAssetMarketplaceReferenceStore {
     const marketplaceRelationship = asset.workspaceRelationships.find(
       (relationship) => relationship.kind === 'MARKETPLACE_ADDED'
     );
-    if (
-      !marketplaceRelationship ||
-      marketplaceRelationship.sourceAssetEditableByWorkspace
-    ) {
+    if (!marketplaceRelationship || marketplaceRelationship.sourceAssetEditableByWorkspace) {
       throw new TrademarkAssetMarketplaceReferenceError(
         'RELATIONSHIP_CONFLICT',
         'Marketplace overlay requires a read-only MARKETPLACE_ADDED relationship.',
@@ -280,13 +239,10 @@ export class PostgresTrademarkAssetMarketplaceReferenceStore {
     }
 
     return this.transactionHost.transact(async (client) => {
-      await client.query(
-        'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))',
-        [
-          command.workspaceId,
-          `marketplace-overlay:${command.trademarkAssetId}`
-        ]
-      );
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
+        command.workspaceId,
+        `marketplace-overlay:${command.trademarkAssetId}`
+      ]);
       const replay = await client.query(
         `SELECT request_fingerprint_sha256,result_json
          FROM lite_trademark_asset_marketplace_commands
@@ -335,19 +291,13 @@ export class PostgresTrademarkAssetMarketplaceReferenceStore {
       );
       const currentRow = (currentResult.rows as Row[])[0];
       const currentVersion = currentRow ? Number(currentRow.version) : undefined;
-      if (
-        currentVersion === undefined &&
-        command.expectedOverlayVersion !== undefined
-      ) {
+      if (currentVersion === undefined && command.expectedOverlayVersion !== undefined) {
         throw new TrademarkAssetMarketplaceReferenceError(
           'VERSION_CONFLICT',
           'Marketplace overlay does not exist yet.'
         );
       }
-      if (
-        currentVersion !== undefined &&
-        command.expectedOverlayVersion !== currentVersion
-      ) {
+      if (currentVersion !== undefined && command.expectedOverlayVersion !== currentVersion) {
         throw new TrademarkAssetMarketplaceReferenceError(
           'VERSION_CONFLICT',
           'Marketplace overlay changed; refresh before saving.'
@@ -376,8 +326,7 @@ export class PostgresTrademarkAssetMarketplaceReferenceStore {
           ? { showcaseTemplateReference: command.showcaseTemplateReference }
           : {}),
         mediaAssetReferences: command.mediaAssetReferences,
-        customerRecommendationReferences:
-          command.customerRecommendationReferences,
+        customerRecommendationReferences: command.customerRecommendationReferences,
         ...(command.sharePreparationReference
           ? { sharePreparationReference: command.sharePreparationReference }
           : {}),
@@ -387,9 +336,7 @@ export class PostgresTrademarkAssetMarketplaceReferenceStore {
         ownershipClaimCreatedByLite: false,
         marketplacePublicationCreatedByLite: false,
         transactionAuthorizedByLite: false,
-        createdAt: currentRow
-          ? new Date(String(currentRow.created_at)).toISOString()
-          : timestamp,
+        createdAt: currentRow ? new Date(String(currentRow.created_at)).toISOString() : timestamp,
         updatedAt: timestamp
       };
       await client.query(
