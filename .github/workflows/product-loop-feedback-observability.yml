@@ -15,9 +15,39 @@ on:
       - 'scripts/product-loop-today-runtime.integration.test.ts'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  format-self-clean:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP04 files and restore workflow
+        run: |
+          pnpm exec prettier --write services/lite/src/trademark-asset-portfolio.ts services/lite/tests/trademark-asset-portfolio.test.ts
+          git checkout origin/main -- .github/workflows/product-loop-feedback-observability.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/lite/src/trademark-asset-portfolio.ts services/lite/tests/trademark-asset-portfolio.test.ts .github/workflows/product-loop-feedback-observability.yml
+          if git diff --cached --quiet; then
+            echo "No formatting changes needed."
+          else
+            git commit -m "M10 WP04: apply repository Prettier"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+
   feedback-postgres:
     runs-on: ubuntu-latest
     services:
