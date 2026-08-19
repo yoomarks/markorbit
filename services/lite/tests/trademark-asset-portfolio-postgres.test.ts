@@ -41,7 +41,7 @@ suite('PostgreSQL M10-WP-04 Trademark Asset Portfolio', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'lite_trademark_asset_portfolio_test'
+    migrationNamespace: 'lite_trademark_asset_test'
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
@@ -65,7 +65,7 @@ suite('PostgreSQL M10-WP-04 Trademark Asset Portfolio', () => {
       migrationOwners,
       '@markorbit/lite-service'
     );
-    await migrate(database.getPool(), 'lite_trademark_asset_portfolio_test', liteMigrations);
+    await migrate(database.getPool(), 'lite_trademark_asset_test', liteMigrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug)
        VALUES ($1,'Trademark Asset Portfolio Test','trademark-asset-portfolio-test')
