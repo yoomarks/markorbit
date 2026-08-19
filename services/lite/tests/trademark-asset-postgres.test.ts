@@ -2,7 +2,6 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
-import type { TrademarkAssetPersistenceError } from '../src/trademark-asset.js';
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
 const required = process.env.LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED === '1';
@@ -203,7 +202,7 @@ suite('PostgreSQL M10-WP-02 Trademark Asset Anchor', () => {
         sourceReferences: [marketplaceSource],
         idempotencyKey: 'invalid-marketplace-mutation'
       })
-    ).rejects.toMatchObject<Partial<TrademarkAssetPersistenceError>>({
+    ).rejects.toMatchObject({
       code: 'READ_ONLY_SOURCE'
     });
   });
@@ -217,9 +216,9 @@ suite('PostgreSQL M10-WP-02 Trademark Asset Anchor', () => {
       idempotencyKey: 'workspace-one'
     });
 
-    await expect(store().get(otherWorkspaceId, admitted.trademarkAssetId)).rejects.toMatchObject<
-      Partial<TrademarkAssetPersistenceError>
-    >({ code: 'NOT_FOUND' });
+    await expect(store().get(otherWorkspaceId, admitted.trademarkAssetId)).rejects.toMatchObject({
+      code: 'NOT_FOUND'
+    });
   });
 
   it('enforces workspace-scoped external identifier uniqueness', async () => {
@@ -258,7 +257,7 @@ suite('PostgreSQL M10-WP-02 Trademark Asset Anchor', () => {
         sourceReferences: [admissionSource, dataSource],
         idempotencyKey: 'identifier-second'
       })
-    ).rejects.toMatchObject<Partial<TrademarkAssetPersistenceError>>({
+    ).rejects.toMatchObject({
       code: 'IDENTIFIER_CONFLICT'
     });
   });
