@@ -15,10 +15,7 @@ import type {
 } from '@markorbit/contracts/trademark-asset-workspace';
 
 export type TrademarkAssetCompositionErrorCode =
-  | 'INVALID_INPUT'
-  | 'SOURCE_OWNER_KIND_MISMATCH'
-  | 'FACT_OWNER_MISMATCH'
-  | 'SIGNAL_OWNER_MISMATCH';
+  'INVALID_INPUT' | 'SOURCE_OWNER_KIND_MISMATCH' | 'FACT_OWNER_MISMATCH' | 'SIGNAL_OWNER_MISMATCH';
 
 export class TrademarkAssetCompositionError extends Error {
   constructor(
