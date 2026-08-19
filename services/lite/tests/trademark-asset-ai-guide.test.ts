@@ -113,4 +113,86 @@ describe('TrademarkAssetAiGuidePreparer', () => {
     expect(result.suggestions[0]?.staleOrConflictingEvidencePresent).toBe(true);
     expect(result.suggestions[0]?.explanation).toContain('unresolved conflicting observations');
   });
+
+  it('consumes bounded Commerce and Marketplace context without mutating source truth', () => {
+    const preparer = new TrademarkAssetAiGuidePreparer(
+      () => '2026-08-19T01:00:00.000Z',
+      () => '00000000-0000-4000-8000-000000000003'
+    );
+    const marketplaceSource = {
+      owner: 'MARKETPLACE',
+      kind: 'MARKETPLACE_LISTING',
+      sourceId: 'listing_1',
+      sourceVersion: '9',
+      observedAt: '2026-08-19T00:30:00.000Z',
+      freshness: 'CURRENT'
+    } as const;
+    const result = preparer.prepare({
+      workspaceId: view.workspaceId,
+      subjectUserId: 'user_1',
+      view,
+      commerceProfile: {
+        schemaVersion: 1,
+        commerceProfileId: 'trademark-asset-commerce_test',
+        workspaceId: view.workspaceId,
+        trademarkAssetId: view.trademarkAssetId,
+        trademarkAssetVersion: view.anchorVersion,
+        version: 2,
+        saleIntent: 'FOR_SALE',
+        negotiable: true,
+        saleTerritories: ['US'],
+        sellerRole: 'AUTHORIZED_REPRESENTATIVE',
+        headline: 'A compact commerce angle',
+        sellingPoints: ['Strong category fit'],
+        aiTags: [],
+        mediaAssetReferences: [],
+        marketplaceListingCreatedByLite: false,
+        sourceTrademarkFactsMutatedByLite: false,
+        createdAt: '2026-08-19T00:20:00.000Z',
+        updatedAt: '2026-08-19T00:20:00.000Z'
+      },
+      marketplaceOverlay: {
+        schemaVersion: 1,
+        marketplaceOverlayId: 'trademark-asset-marketplace-overlay_test',
+        workspaceId: view.workspaceId,
+        trademarkAssetId: view.trademarkAssetId,
+        trademarkAssetVersion: view.anchorVersion,
+        version: 4,
+        source: {
+          sourceAssetId: 'market_asset_1',
+          sourceListingId: 'listing_1',
+          sourceListingVersion: '9',
+          sourceReference: marketplaceSource,
+          observedAt: '2026-08-19T00:30:00.000Z'
+        },
+        privateTags: [],
+        privateNotes: [],
+        favorite: true,
+        headline: 'Private reseller angle',
+        sellingPoints: ['Prepared for a customer shortlist'],
+        aiTags: [],
+        mediaAssetReferences: [],
+        customerRecommendationReferences: [],
+        localPriceOverrideAllowed: false,
+        sourceListingMutableByWorkspace: false,
+        sourceTrademarkFactsMutableByWorkspace: false,
+        ownershipClaimCreatedByLite: false,
+        marketplacePublicationCreatedByLite: false,
+        transactionAuthorizedByLite: false,
+        createdAt: '2026-08-19T00:30:00.000Z',
+        updatedAt: '2026-08-19T00:30:00.000Z'
+      },
+      requestedKinds: ['PREPARE_CONTENT_CANDIDATE']
+    });
+
+    expect(result.contextReferences.map((item) => item.kind)).toEqual([
+      'ASSET_COMPOSITION',
+      'COMMERCE_PROFILE',
+      'MARKETPLACE_OVERLAY'
+    ]);
+    expect(result.evidence).toContainEqual(marketplaceSource);
+    expect(result.suggestions[0]?.explanation).toContain('A compact commerce angle');
+    expect(result.suggestions[0]?.externalActionAuthorized).toBe(false);
+    expect(result.officialTruthCreatedByGuide).toBe(false);
+  });
 });
