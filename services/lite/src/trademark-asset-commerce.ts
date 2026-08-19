@@ -3,6 +3,7 @@ import {
   trademarkAssetSaleIntents,
   trademarkAssetSellerRoles,
   type TrademarkAssetCommerceProfile,
+  type TrademarkAssetCommerceProfileId,
   type UpsertTrademarkAssetCommerceProfileInput
 } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAsset, TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
@@ -43,6 +44,10 @@ export interface TrademarkAssetCommerceAssetReader {
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
 const fingerprint = (value: unknown): string => hash(JSON.stringify(value));
 const clone = <T>(value: T): T => structuredClone(value);
+
+function createCommerceProfileId(value: string): TrademarkAssetCommerceProfileId {
+  return `trademark-asset-commerce_${value}`;
+}
 
 function text(value: unknown, field: string, max = 500): string {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) {
@@ -238,6 +243,24 @@ export class PostgresTrademarkAssetCommerceStore {
         return parseProfile(replayRow.result_json);
       }
 
+      const assetVersionResult = await client.query(
+        `SELECT version FROM lite_trademark_assets
+         WHERE workspace_id=$1 AND trademark_asset_id=$2
+         FOR SHARE`,
+        [command.workspaceId, command.trademarkAssetId]
+      );
+      const assetVersionRow = (assetVersionResult.rows as Row[])[0];
+      if (!assetVersionRow) {
+        throw new TrademarkAssetCommerceError('NOT_FOUND', 'Trademark Asset was not found.', 404);
+      }
+      const exactAssetVersion = Number(assetVersionRow.version);
+      if (exactAssetVersion !== command.expectedTrademarkAssetVersion) {
+        throw new TrademarkAssetCommerceError(
+          'ASSET_VERSION_CONFLICT',
+          'Trademark Asset changed while saving its Commerce Profile; refresh and retry.'
+        );
+      }
+
       const currentResult = await client.query(
         `SELECT version,document_json,created_at
          FROM lite_trademark_asset_commerce_profiles
@@ -263,13 +286,13 @@ export class PostgresTrademarkAssetCommerceStore {
       const timestamp = new Date(this.now()).toISOString();
       const commerceProfileId = currentRow
         ? parseProfile(currentRow.document_json).commerceProfileId
-        : `trademark-asset-commerce_${this.newId()}`;
+        : createCommerceProfileId(this.newId());
       const profile: TrademarkAssetCommerceProfile = {
         schemaVersion: 1,
         commerceProfileId,
         workspaceId: command.workspaceId,
         trademarkAssetId: command.trademarkAssetId,
-        trademarkAssetVersion: asset.version,
+        trademarkAssetVersion: exactAssetVersion,
         version: (currentVersion ?? 0) + 1,
         saleIntent: command.saleIntent,
         ...(command.askingPrice ? { askingPrice: command.askingPrice } : {}),
