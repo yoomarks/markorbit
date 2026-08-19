@@ -22,11 +22,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Print exact formatted file
+      - name: Print exact Prettier patch
         shell: bash
         run: |
+          cp services/lite/src/trademark-asset.ts /tmp/trademark-asset.before.ts
           pnpm exec prettier --write services/lite/src/trademark-asset.ts
-          echo 'M10_PRETTIER_BASE64_BEGIN'
-          base64 -w 0 services/lite/src/trademark-asset.ts
-          echo
-          echo 'M10_PRETTIER_BASE64_END'
+          diff -u /tmp/trademark-asset.before.ts services/lite/src/trademark-asset.ts || true
