@@ -98,11 +98,7 @@ function optionalText(value: unknown, field: string, max = 500): string | undefi
 
 function cleanWorkspaceId(value: string): string {
   if (!UUID.test(value)) {
-    throw new TrademarkAssetPersistenceError(
-      'INVALID_INPUT',
-      'workspaceId must be a UUID.',
-      400
-    );
+    throw new TrademarkAssetPersistenceError('INVALID_INPUT', 'workspaceId must be a UUID.', 400);
   }
   return value.toLowerCase();
 }
@@ -132,11 +128,7 @@ function cleanStringList(values: readonly string[] | undefined, field: string): 
 }
 
 function cleanIdentity(identity: Readonly<TrademarkAssetIdentity>): TrademarkAssetIdentity {
-  const jurisdiction = cleanText(
-    identity.jurisdiction,
-    'identity.jurisdiction',
-    40
-  ).toUpperCase();
+  const jurisdiction = cleanText(identity.jurisdiction, 'identity.jurisdiction', 40).toUpperCase();
   const markText = optionalText(identity.markText, 'identity.markText', 500);
   const markImageReference = optionalText(
     identity.markImageReference,
@@ -168,11 +160,7 @@ function cleanSourceReference(
     );
   }
   if (!trademarkAssetSourceKinds.includes(source.kind)) {
-    throw new TrademarkAssetPersistenceError(
-      'INVALID_INPUT',
-      'Unknown sourceReference.kind.',
-      400
-    );
+    throw new TrademarkAssetPersistenceError('INVALID_INPUT', 'Unknown sourceReference.kind.', 400);
   }
   if (!trademarkAssetFreshnessStates.includes(source.freshness)) {
     throw new TrademarkAssetPersistenceError(
@@ -233,17 +221,9 @@ function cleanIdentifier(
   input: Readonly<TrademarkAssetExternalIdentifier>
 ): TrademarkAssetExternalIdentifier {
   if (!trademarkAssetIdentifierKinds.includes(input.kind)) {
-    throw new TrademarkAssetPersistenceError(
-      'INVALID_INPUT',
-      'Unknown identifier kind.',
-      400
-    );
+    throw new TrademarkAssetPersistenceError('INVALID_INPUT', 'Unknown identifier kind.', 400);
   }
-  const jurisdiction = cleanText(
-    input.jurisdiction,
-    'identifier.jurisdiction',
-    40
-  ).toUpperCase();
+  const jurisdiction = cleanText(input.jurisdiction, 'identifier.jurisdiction', 40).toUpperCase();
   const value = cleanText(input.value, 'identifier.value', 160);
   const sourceReference = input.sourceReference
     ? cleanSourceReference(input.sourceReference)
@@ -541,11 +521,7 @@ export class PostgresLiteTrademarkAssetStore {
         );
         const current = rowAsset(result.rows[0] as Row | undefined);
         if (!current) {
-          throw new TrademarkAssetPersistenceError(
-            'NOT_FOUND',
-            'Trademark Asset not found.',
-            404
-          );
+          throw new TrademarkAssetPersistenceError('NOT_FOUND', 'Trademark Asset not found.', 404);
         }
         if (current.version !== command.expectedVersion) {
           throw new TrademarkAssetPersistenceError(
@@ -678,11 +654,7 @@ export class PostgresLiteTrademarkAssetStore {
         );
         const current = rowAsset(result.rows[0] as Row | undefined);
         if (!current) {
-          throw new TrademarkAssetPersistenceError(
-            'NOT_FOUND',
-            'Trademark Asset not found.',
-            404
-          );
+          throw new TrademarkAssetPersistenceError('NOT_FOUND', 'Trademark Asset not found.', 404);
         }
         if (current.version !== command.expectedVersion) {
           throw new TrademarkAssetPersistenceError(
@@ -705,15 +677,10 @@ export class PostgresLiteTrademarkAssetStore {
           filingExecutedByLite: false,
           updatedAt: timestamp
         };
-        if (!ownerOrClientReference) {
+        if (!ownerOrClientReference)
           delete (updated as { ownerOrClientReference?: string }).ownerOrClientReference;
-        }
-        if (!workspacePriority) {
-          delete (updated as { workspacePriority?: string }).workspacePriority;
-        }
-        if (!workspaceAlias) {
-          delete (updated as { workspaceAlias?: string }).workspaceAlias;
-        }
+        if (!workspacePriority) delete (updated as { workspacePriority?: string }).workspacePriority;
+        if (!workspaceAlias) delete (updated as { workspaceAlias?: string }).workspaceAlias;
         await this.persistUpdatedAsset(client, updated);
         await client.query(
           `INSERT INTO lite_trademark_asset_commands(
@@ -750,11 +717,7 @@ export class PostgresLiteTrademarkAssetStore {
       );
       const asset = rowAsset(result.rows[0] as Row | undefined);
       if (!asset) {
-        throw new TrademarkAssetPersistenceError(
-          'NOT_FOUND',
-          'Trademark Asset not found.',
-          404
-        );
+        throw new TrademarkAssetPersistenceError('NOT_FOUND', 'Trademark Asset not found.', 404);
       }
       return asset;
     } catch (error) {
