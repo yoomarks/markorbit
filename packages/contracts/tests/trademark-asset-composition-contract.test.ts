@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   trademarkAssetCompositionAuthority,
+  trademarkAssetContextSignalKinds,
   trademarkAssetObservedFactKinds
 } from '../src/trademark-asset-composition.js';
 
@@ -12,6 +13,7 @@ describe('M10 WP03 Trademark Asset composition contract', () => {
       mayReadDataEngineFacts: true,
       mayReadKnowledgeRelevance: true,
       mayPreserveConflictingObservations: true,
+      factsAndSignalsRemainDistinct: true,
       maySelectOfficialWinnerAcrossConflicts: false,
       mayWriteBackToSourceOwner: false,
       mayUseCrossServiceSql: false,
@@ -21,7 +23,7 @@ describe('M10 WP03 Trademark Asset composition contract', () => {
     });
   });
 
-  it('keeps facts separate from later attention and AI judgment', () => {
+  it('keeps factual observations separate from advisory context signals', () => {
     expect(trademarkAssetObservedFactKinds).toEqual([
       'APPLICATION_STATUS',
       'APPLICATION_DATE',
@@ -29,7 +31,9 @@ describe('M10 WP03 Trademark Asset composition contract', () => {
       'RENEWAL_DATE',
       'OWNER_NAME',
       'NICE_CLASSES',
-      'LIFECYCLE_STAGE',
+      'LIFECYCLE_STAGE'
+    ]);
+    expect(trademarkAssetContextSignalKinds).toEqual([
       'RECOMMENDED_ACTION',
       'KNOWLEDGE_RELEVANCE'
     ]);
