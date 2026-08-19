@@ -20,14 +20,17 @@ export interface TrademarkAssetAiGuideContextReference {
   fingerprintSha256?: string;
 }
 
+/**
+ * Pure advisory preparation request. Context references are derived from validated source objects
+ * by the Lite preparer rather than accepted from the caller as trusted provenance. Persistence and
+ * command idempotency are intentionally out of scope until a durable AI Guide history is introduced.
+ */
 export interface PrepareTrademarkAssetAiGuideInput {
   workspaceId: string;
   subjectUserId: string;
   trademarkAssetId: TrademarkAssetId;
   expectedTrademarkAssetVersion: number;
   requestedKinds: readonly AiGuideSuggestionKind[];
-  contextReferences: readonly TrademarkAssetAiGuideContextReference[];
-  idempotencyKey: string;
 }
 
 export interface TrademarkAssetAiGuidePreparedResult {
@@ -50,6 +53,10 @@ export interface TrademarkAssetAiGuidePreparedResult {
 }
 
 export const trademarkAssetAiGuidePreparationAuthority = {
+  pureAdvisoryProjection: true,
+  callerSuppliedProvenanceTrusted: false,
+  durableGuideHistoryCreated: false,
+  commandIdempotencyClaimed: false,
   mayConsumeComposedAssetFacts: true,
   mayConsumeAdvisoryContextSignals: true,
   mayConsumeWorkspacePrivateCommerceContext: true,
