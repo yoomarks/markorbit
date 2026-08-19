@@ -134,11 +134,13 @@ suite('PostgreSQL M10-WP-04 Trademark Asset Portfolio', () => {
     const first = await portfolio().search({ workspaceId, limit: 1 });
     expect(first.assets).toHaveLength(1);
     expect(first.hasMore).toBe(true);
-    expect(first.nextCursor).toBeTruthy();
+    const nextCursor = first.nextCursor;
+    expect(nextCursor).toBeTruthy();
+    if (!nextCursor) throw new Error('Expected next Trademark Asset Portfolio cursor.');
     const second = await portfolio().search({
       workspaceId,
       limit: 1,
-      cursor: first.nextCursor
+      cursor: nextCursor
     });
     expect(second.assets).toHaveLength(1);
     expect(second.assets[0]?.trademarkAssetId).not.toBe(first.assets[0]?.trademarkAssetId);
