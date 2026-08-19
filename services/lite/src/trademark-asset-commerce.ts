@@ -6,7 +6,10 @@ import {
   type TrademarkAssetCommerceProfileId,
   type UpsertTrademarkAssetCommerceProfileInput
 } from '@markorbit/contracts/trademark-asset-commerce';
-import type { TrademarkAsset, TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
+import type {
+  TrademarkAsset,
+  TrademarkAssetId
+} from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
 
@@ -64,7 +67,11 @@ function optionalText(value: unknown, field: string, max = 500): string | undefi
   return value === undefined ? undefined : text(value, field, max);
 }
 
-function stringList(values: readonly string[] | undefined, field: string, maxItems = 100): string[] {
+function stringList(
+  values: readonly string[] | undefined,
+  field: string,
+  maxItems = 100
+): string[] {
   if (!values) return [];
   if (!Array.isArray(values) || values.length > maxItems) {
     throw new TrademarkAssetCommerceError(
@@ -83,7 +90,10 @@ function normalize(input: Readonly<UpsertTrademarkAssetCommerceProfileInput>) {
   if (!input.trademarkAssetId.startsWith('trademark-asset_')) {
     throw new TrademarkAssetCommerceError('INVALID_INPUT', 'Invalid trademarkAssetId.', 400);
   }
-  if (!Number.isInteger(input.expectedTrademarkAssetVersion) || input.expectedTrademarkAssetVersion < 1) {
+  if (
+    !Number.isInteger(input.expectedTrademarkAssetVersion) ||
+    input.expectedTrademarkAssetVersion < 1
+  ) {
     throw new TrademarkAssetCommerceError(
       'INVALID_INPUT',
       'expectedTrademarkAssetVersion must be a positive integer.',
@@ -92,7 +102,8 @@ function normalize(input: Readonly<UpsertTrademarkAssetCommerceProfileInput>) {
   }
   if (
     input.expectedCommerceProfileVersion !== undefined &&
-    (!Number.isInteger(input.expectedCommerceProfileVersion) || input.expectedCommerceProfileVersion < 1)
+    (!Number.isInteger(input.expectedCommerceProfileVersion) ||
+      input.expectedCommerceProfileVersion < 1)
   ) {
     throw new TrademarkAssetCommerceError(
       'INVALID_INPUT',
@@ -271,7 +282,10 @@ export class PostgresTrademarkAssetCommerceStore {
       const currentRow = (currentResult.rows as Row[])[0];
       const currentVersion = currentRow ? Number(currentRow.version) : undefined;
       if (currentVersion === undefined && command.expectedCommerceProfileVersion !== undefined) {
-        throw new TrademarkAssetCommerceError('VERSION_CONFLICT', 'Commerce Profile does not exist yet.');
+        throw new TrademarkAssetCommerceError(
+          'VERSION_CONFLICT',
+          'Commerce Profile does not exist yet.'
+        );
       }
       if (
         currentVersion !== undefined &&
