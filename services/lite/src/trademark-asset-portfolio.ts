@@ -11,9 +11,9 @@ import type {
 } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import {
-  PostgresLiteTrademarkAssetStore,
   TrademarkAssetPersistenceError,
-  type AdmitTrademarkAssetCommand
+  type AdmitTrademarkAssetCommand,
+  type UpdateTrademarkAssetWorkspaceMetadataCommand
 } from './trademark-asset.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -44,6 +44,14 @@ export interface BulkTagTrademarkAssetsInput {
   removeTags?: readonly string[];
 }
 
+export interface TrademarkAssetPortfolioAssetStore {
+  admit(command: Readonly<AdmitTrademarkAssetCommand>): Promise<TrademarkAsset>;
+  get(workspaceId: string, trademarkAssetId: TrademarkAssetId): Promise<TrademarkAsset>;
+  updateWorkspaceMetadata(
+    command: Readonly<UpdateTrademarkAssetWorkspaceMetadataCommand>
+  ): Promise<TrademarkAsset>;
+}
+
 type Row = Record<string, unknown>;
 
 function cleanWorkspaceId(value: string): string {
@@ -68,7 +76,7 @@ function cleanText(value: string | undefined, field: string, max: number): strin
 
 function cleanList(values: readonly string[] | undefined, field: string, maxItems = 100): string[] {
   if (!values) return [];
-  if (!Array.isArray(values) || values.length > maxItems) {
+  if (values.length > maxItems) {
     throw new TrademarkAssetPersistenceError(
       'INVALID_INPUT',
       `${field} must contain at most ${maxItems} values.`,
@@ -86,18 +94,22 @@ function encodeCursor(cursor: PortfolioCursorPayload): string {
 function decodeCursor(value: string | undefined): PortfolioCursorPayload | undefined {
   if (!value) return undefined;
   try {
-    const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Partial<PortfolioCursorPayload>;
+    const parsed: unknown = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    if (typeof parsed !== 'object' || parsed === null) throw new Error('invalid cursor');
+    const record = parsed as Record<string, unknown>;
+    const updatedAt = record.updatedAt;
+    const trademarkAssetId = record.trademarkAssetId;
     if (
-      typeof parsed.updatedAt !== 'string' ||
-      Number.isNaN(Date.parse(parsed.updatedAt)) ||
-      typeof parsed.trademarkAssetId !== 'string' ||
-      !parsed.trademarkAssetId.startsWith('trademark-asset_')
+      typeof updatedAt !== 'string' ||
+      Number.isNaN(Date.parse(updatedAt)) ||
+      typeof trademarkAssetId !== 'string' ||
+      !trademarkAssetId.startsWith('trademark-asset_')
     ) {
       throw new Error('invalid cursor');
     }
     return {
-      updatedAt: new Date(parsed.updatedAt).toISOString(),
-      trademarkAssetId: parsed.trademarkAssetId as TrademarkAssetId
+      updatedAt: new Date(updatedAt).toISOString(),
+      trademarkAssetId: trademarkAssetId as TrademarkAssetId
     };
   } catch {
     throw new TrademarkAssetPersistenceError('INVALID_INPUT', 'cursor is invalid.', 400);
@@ -136,7 +148,7 @@ function sameTags(left: readonly string[], right: readonly string[]): boolean {
 export class TrademarkAssetPortfolioService {
   constructor(
     private readonly query: QueryClient,
-    private readonly assets: PostgresLiteTrademarkAssetStore
+    private readonly assets: TrademarkAssetPortfolioAssetStore
   ) {}
 
   async search(
@@ -257,7 +269,7 @@ export class TrademarkAssetPortfolioService {
     if (!batchKey) {
       throw new TrademarkAssetPersistenceError('INVALID_INPUT', 'batchKey is required.', 400);
     }
-    if (!Array.isArray(input.items) || input.items.length < 1 || input.items.length > 100) {
+    if (input.items.length < 1 || input.items.length > 100) {
       throw new TrademarkAssetPersistenceError(
         'INVALID_INPUT',
         'bulk import requires between 1 and 100 assets.',
@@ -328,7 +340,9 @@ export class TrademarkAssetPortfolioService {
     for (const trademarkAssetId of assetIds) {
       try {
         const current = await this.assets.get(workspaceId, trademarkAssetId);
-        const nextTags = [...new Set([...current.workspaceTags.filter((tag) => !removeTags.has(tag)), ...addTags])].sort();
+        const nextTags = [
+          ...new Set([...current.workspaceTags.filter((tag) => !removeTags.has(tag)), ...addTags])
+        ].sort();
         if (sameTags(current.workspaceTags, nextTags)) {
           items.push({ trademarkAssetId, status: 'UPDATED', version: current.version });
           continue;
