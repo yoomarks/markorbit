@@ -86,9 +86,11 @@ suite('PostgreSQL M10-WP-02 Trademark Asset Anchor', () => {
   });
 
   beforeEach(async () => {
-    await database.getPool().query(
-      'TRUNCATE lite_trademark_asset_commands,lite_trademark_asset_identifiers,lite_trademark_assets CASCADE'
-    );
+    await database
+      .getPool()
+      .query(
+        'TRUNCATE lite_trademark_asset_commands,lite_trademark_asset_identifiers,lite_trademark_assets CASCADE'
+      );
   });
 
   afterAll(() => database.close());
@@ -203,7 +205,9 @@ suite('PostgreSQL M10-WP-02 Trademark Asset Anchor', () => {
         sourceReferences: [marketplaceSource],
         idempotencyKey: 'invalid-marketplace-mutation'
       })
-    ).rejects.toMatchObject<Partial<TrademarkAssetPersistenceError>>({ code: 'READ_ONLY_SOURCE' });
+    ).rejects.toMatchObject<Partial<TrademarkAssetPersistenceError>>({
+      code: 'READ_ONLY_SOURCE'
+    });
   });
 
   it('isolates Asset Anchors by workspace', async () => {
