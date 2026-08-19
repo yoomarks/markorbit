@@ -79,6 +79,8 @@ describe('TrademarkAssetAiGuidePreparer', () => {
 
     expect(result.suggestions).toHaveLength(3);
     expect(result.evidence).toEqual([source]);
+    expect(result.staleOrConflictingEvidencePresent).toBe(false);
+    expect(result.suggestions.every((item) => item.staleOrConflictingEvidencePresent === false)).toBe(true);
     expect(result.suggestions.every((item) => item.officialTruthVerified === false)).toBe(true);
     expect(result.suggestions.every((item) => item.externalActionAuthorized === false)).toBe(true);
     expect(result.officialTruthCreatedByGuide).toBe(false);
