@@ -12,18 +12,13 @@ export const trademarkAssetObservedFactKinds = [
   'RENEWAL_DATE',
   'OWNER_NAME',
   'NICE_CLASSES',
-  'LIFECYCLE_STAGE',
-  'RECOMMENDED_ACTION',
-  'KNOWLEDGE_RELEVANCE'
+  'LIFECYCLE_STAGE'
 ] as const;
 export type TrademarkAssetObservedFactKind = (typeof trademarkAssetObservedFactKinds)[number];
 
 export type TrademarkAssetObservedFactValue = string | number | boolean | readonly string[];
 
-/**
- * Source-owned observation included in a Lite Asset View. Lite may render and compare the
- * observation but does not promote it into official truth or overwrite its source owner.
- */
+/** Source-owned factual observation. Lite never promotes it into official truth. */
 export interface TrademarkAssetObservedFact {
   kind: TrademarkAssetObservedFactKind;
   value: TrademarkAssetObservedFactValue;
@@ -40,9 +35,28 @@ export interface TrademarkAssetFactConflict {
   unresolved: true;
 }
 
+export const trademarkAssetContextSignalKinds = [
+  'RECOMMENDED_ACTION',
+  'KNOWLEDGE_RELEVANCE'
+] as const;
+export type TrademarkAssetContextSignalKind = (typeof trademarkAssetContextSignalKinds)[number];
+
 /**
- * Current read model assembled from a durable Lite Asset Anchor and source-owned facts.
- * Conflicting owner observations remain visible; composition never silently chooses a winner.
+ * Source-owned contextual signal, deliberately separate from factual observations.
+ * Signals may inform later Attention or AI Guide reasoning but are not facts or execution authority.
+ */
+export interface TrademarkAssetContextSignal {
+  kind: TrademarkAssetContextSignalKind;
+  value: string;
+  source: Readonly<TrademarkAssetSourceReference>;
+  freshness: TrademarkAssetFreshnessState;
+  advisory: true;
+  executionAuthorized: false;
+}
+
+/**
+ * Current read model assembled from a durable Lite Asset Anchor plus source-owned facts and signals.
+ * Conflicting facts remain visible; contextual signals remain distinct from factual claims.
  */
 export interface TrademarkAssetView {
   schemaVersion: 1;
@@ -51,6 +65,7 @@ export interface TrademarkAssetView {
   anchorVersion: number;
   anchor: Readonly<TrademarkAsset>;
   observedFacts: ReadonlyArray<Readonly<TrademarkAssetObservedFact>>;
+  contextSignals: ReadonlyArray<Readonly<TrademarkAssetContextSignal>>;
   conflicts: ReadonlyArray<Readonly<TrademarkAssetFactConflict>>;
   sourceReferences: ReadonlyArray<Readonly<TrademarkAssetSourceReference>>;
   freshness: TrademarkAssetFreshnessState;
@@ -66,6 +81,7 @@ export const trademarkAssetCompositionAuthority = {
   mayReadDataEngineFacts: true,
   mayReadKnowledgeRelevance: true,
   mayPreserveConflictingObservations: true,
+  factsAndSignalsRemainDistinct: true,
   maySelectOfficialWinnerAcrossConflicts: false,
   mayWriteBackToSourceOwner: false,
   mayUseCrossServiceSql: false,
