@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { QueryClient } from '@markorbit/persistence';
-import type { TrademarkAsset, TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
+import type {
+  TrademarkAsset,
+  TrademarkAssetId
+} from '@markorbit/contracts/trademark-asset-workspace';
 import { TrademarkAssetPersistenceError } from '../src/trademark-asset.js';
 import {
   TrademarkAssetPortfolioService,
@@ -9,10 +12,7 @@ import {
 
 const workspaceId = '85858585-8585-4858-8858-858585858585';
 
-function asset(
-  id: TrademarkAssetId,
-  overrides: Partial<TrademarkAsset> = {}
-): TrademarkAsset {
+function asset(id: TrademarkAssetId, overrides: Partial<TrademarkAsset> = {}): TrademarkAsset {
   return {
     schemaVersion: 1,
     trademarkAssetId: id,

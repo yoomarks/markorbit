@@ -195,7 +195,9 @@ export class TrademarkAssetPortfolioService {
     }
     if (jurisdictions.length > 0) {
       const parameter = addParam(jurisdictions);
-      conditions.push(`upper(document_json->'identity'->>'jurisdiction') = ANY(${parameter}::text[])`);
+      conditions.push(
+        `upper(document_json->'identity'->>'jurisdiction') = ANY(${parameter}::text[])`
+      );
     }
     if (relationshipKinds.length > 0) {
       const parameter = addParam(relationshipKinds);
@@ -207,11 +209,15 @@ export class TrademarkAssetPortfolioService {
     }
     if (workspaceTags.length > 0) {
       const parameter = addParam(workspaceTags);
-      conditions.push(`coalesce(document_json->'workspaceTags','[]'::jsonb) ?| ${parameter}::text[]`);
+      conditions.push(
+        `coalesce(document_json->'workspaceTags','[]'::jsonb) ?| ${parameter}::text[]`
+      );
     }
     if (ownerOrClientReference) {
       const parameter = addParam(ownerOrClientReference.toLowerCase());
-      conditions.push(`lower(coalesce(document_json->>'ownerOrClientReference','')) = ${parameter}`);
+      conditions.push(
+        `lower(coalesce(document_json->>'ownerOrClientReference','')) = ${parameter}`
+      );
     }
     if (cursor) {
       const updatedAt = addParam(cursor.updatedAt);
@@ -285,9 +291,16 @@ export class TrademarkAssetPortfolioService {
           workspaceId,
           idempotencyKey: `${batchKey}:import:${index}`
         });
-        items.push({ importIndex: index, status: 'CREATED', trademarkAssetId: asset.trademarkAssetId });
+        items.push({
+          importIndex: index,
+          status: 'CREATED',
+          trademarkAssetId: asset.trademarkAssetId
+        });
       } catch (error) {
-        if (error instanceof TrademarkAssetPersistenceError && error.code === 'IDENTIFIER_CONFLICT') {
+        if (
+          error instanceof TrademarkAssetPersistenceError &&
+          error.code === 'IDENTIFIER_CONFLICT'
+        ) {
           items.push({ importIndex: index, status: 'DUPLICATE', reason: error.message });
           continue;
         }
@@ -312,7 +325,9 @@ export class TrademarkAssetPortfolioService {
     };
   }
 
-  async bulkTag(input: Readonly<BulkTagTrademarkAssetsInput>): Promise<TrademarkAssetBulkTagResult> {
+  async bulkTag(
+    input: Readonly<BulkTagTrademarkAssetsInput>
+  ): Promise<TrademarkAssetBulkTagResult> {
     const workspaceId = cleanWorkspaceId(input.workspaceId);
     const batchKey = cleanText(input.batchKey, 'batchKey', 300);
     if (!batchKey) {
