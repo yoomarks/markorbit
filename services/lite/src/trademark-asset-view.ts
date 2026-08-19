@@ -1,4 +1,6 @@
 import type {
+  TrademarkAssetContextSignal,
+  TrademarkAssetContextSignalKind,
   TrademarkAssetFactConflict,
   TrademarkAssetObservedFact,
   TrademarkAssetObservedFactKind,
@@ -15,7 +17,8 @@ import type {
 export type TrademarkAssetCompositionErrorCode =
   | 'INVALID_INPUT'
   | 'SOURCE_OWNER_KIND_MISMATCH'
-  | 'FACT_OWNER_MISMATCH';
+  | 'FACT_OWNER_MISMATCH'
+  | 'SIGNAL_OWNER_MISMATCH';
 
 export class TrademarkAssetCompositionError extends Error {
   constructor(
@@ -34,9 +37,16 @@ export interface TrademarkAssetFactContribution {
   consequential?: boolean;
 }
 
+export interface TrademarkAssetContextSignalContribution {
+  kind: TrademarkAssetContextSignalKind;
+  value: string;
+  source: Readonly<TrademarkAssetSourceReference>;
+}
+
 export interface ComposeTrademarkAssetViewInput {
   anchor: Readonly<TrademarkAsset>;
   facts?: ReadonlyArray<Readonly<TrademarkAssetFactContribution>>;
+  signals?: ReadonlyArray<Readonly<TrademarkAssetContextSignalContribution>>;
   composedAt: string;
 }
 
@@ -64,8 +74,7 @@ const markRegFactKinds = new Set<TrademarkAssetObservedFactKind>([
   'RENEWAL_DATE',
   'OWNER_NAME',
   'NICE_CLASSES',
-  'LIFECYCLE_STAGE',
-  'RECOMMENDED_ACTION'
+  'LIFECYCLE_STAGE'
 ]);
 
 function assertIsoTimestamp(value: string, label: string): void {
@@ -97,12 +106,23 @@ function assertFactOwner(
 ): void {
   if (owner === 'DATA_ENGINE' && dataEngineFactKinds.has(kind)) return;
   if (owner === 'MARKREG' && markRegFactKinds.has(kind)) return;
-  if (owner === 'KNOWLEDGE' && kind === 'KNOWLEDGE_RELEVANCE') return;
-  if (owner === 'EXECUTION' && kind === 'RECOMMENDED_ACTION') return;
 
   throw new TrademarkAssetCompositionError(
     'FACT_OWNER_MISMATCH',
     `Source owner ${owner} cannot contribute fact ${kind}.`
+  );
+}
+
+function assertSignalOwner(
+  kind: TrademarkAssetContextSignalKind,
+  owner: TrademarkAssetSourceOwner
+): void {
+  if (owner === 'KNOWLEDGE' && kind === 'KNOWLEDGE_RELEVANCE') return;
+  if ((owner === 'MARKREG' || owner === 'EXECUTION') && kind === 'RECOMMENDED_ACTION') return;
+
+  throw new TrademarkAssetCompositionError(
+    'SIGNAL_OWNER_MISMATCH',
+    `Source owner ${owner} cannot contribute context signal ${kind}.`
   );
 }
 
@@ -156,11 +176,17 @@ function composeConflicts(
 
 function composeFreshness(
   facts: ReadonlyArray<Readonly<TrademarkAssetObservedFact>>,
+  signals: ReadonlyArray<Readonly<TrademarkAssetContextSignal>>,
   conflicts: ReadonlyArray<Readonly<TrademarkAssetFactConflict>>
 ): TrademarkAssetFreshnessState {
   if (conflicts.length > 0) return 'CONFLICTING';
-  if (facts.some((fact) => fact.freshness === 'STALE')) return 'STALE';
-  if (facts.length === 0 || facts.some((fact) => fact.freshness === 'UNKNOWN')) return 'UNKNOWN';
+  if ([...facts, ...signals].some((item) => item.freshness === 'STALE')) return 'STALE';
+  if (
+    (facts.length === 0 && signals.length === 0) ||
+    [...facts, ...signals].some((item) => item.freshness === 'UNKNOWN')
+  ) {
+    return 'UNKNOWN';
+  }
   return 'CURRENT';
 }
 
@@ -188,10 +214,30 @@ export function composeTrademarkAssetView(
     };
   });
 
+  const signals = (input.signals ?? []).map<TrademarkAssetContextSignal>((contribution) => {
+    assertSourceReference(contribution.source);
+    assertSignalOwner(contribution.kind, contribution.source.owner);
+    if (!contribution.value.trim()) {
+      throw new TrademarkAssetCompositionError(
+        'INVALID_INPUT',
+        'Context signal value must be non-empty.'
+      );
+    }
+    return {
+      kind: contribution.kind,
+      value: contribution.value,
+      source: contribution.source,
+      freshness: contribution.source.freshness,
+      advisory: true,
+      executionAuthorized: false
+    };
+  });
+
   const conflicts = composeConflicts(facts);
   const sources = new Map<string, Readonly<TrademarkAssetSourceReference>>();
   for (const source of input.anchor.sourceReferences) sources.set(sourceKey(source), source);
   for (const fact of facts) sources.set(sourceKey(fact.source), fact.source);
+  for (const signal of signals) sources.set(sourceKey(signal.source), signal.source);
 
   return {
     schemaVersion: 1,
@@ -200,9 +246,10 @@ export function composeTrademarkAssetView(
     anchorVersion: input.anchor.version,
     anchor: input.anchor,
     observedFacts: facts,
+    contextSignals: signals,
     conflicts,
     sourceReferences: [...sources.values()],
-    freshness: composeFreshness(facts, conflicts),
+    freshness: composeFreshness(facts, signals, conflicts),
     composedAt: input.composedAt,
     officialTruthVerifiedByLite: false,
     legalDeadlineCertified: false,
