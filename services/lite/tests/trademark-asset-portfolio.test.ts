@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { QueryClient } from '@markorbit/persistence';
 import type { TrademarkAsset, TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
+import { TrademarkAssetPersistenceError } from '../src/trademark-asset.js';
 import {
-  PostgresLiteTrademarkAssetStore,
-  TrademarkAssetPersistenceError
-} from '../src/trademark-asset.js';
-import { TrademarkAssetPortfolioService } from '../src/trademark-asset-portfolio.js';
+  TrademarkAssetPortfolioService,
+  type TrademarkAssetPortfolioAssetStore
+} from '../src/trademark-asset-portfolio.js';
 
 const workspaceId = '85858585-8585-4858-8858-858585858585';
 
@@ -42,27 +42,41 @@ function asset(
   };
 }
 
+function assetStore(
+  overrides: Partial<TrademarkAssetPortfolioAssetStore> = {}
+): TrademarkAssetPortfolioAssetStore {
+  const unavailable = () => Promise.reject(new Error('test store method not configured'));
+  return {
+    admit: unavailable,
+    get: unavailable,
+    updateWorkspaceMetadata: unavailable,
+    ...overrides
+  };
+}
+
 describe('M10 WP04 Trademark Asset Portfolio', () => {
   it('uses workspace-scoped cursor search with relationship and private tag filters', async () => {
     const first = asset('trademark-asset_first');
     const second = asset('trademark-asset_second');
-    const query = vi.fn(async () => ({
-      rows: [
-        {
-          document_json: first,
-          updated_at: '2026-08-19T04:10:00.000Z',
-          trademark_asset_id: first.trademarkAssetId
-        },
-        {
-          document_json: second,
-          updated_at: '2026-08-19T04:09:00.000Z',
-          trademark_asset_id: second.trademarkAssetId
-        }
-      ]
-    }));
+    const query = vi.fn(() =>
+      Promise.resolve({
+        rows: [
+          {
+            document_json: first,
+            updated_at: '2026-08-19T04:10:00.000Z',
+            trademark_asset_id: first.trademarkAssetId
+          },
+          {
+            document_json: second,
+            updated_at: '2026-08-19T04:09:00.000Z',
+            trademark_asset_id: second.trademarkAssetId
+          }
+        ]
+      })
+    );
     const service = new TrademarkAssetPortfolioService(
       { query } as unknown as QueryClient,
-      {} as PostgresLiteTrademarkAssetStore
+      assetStore()
     );
 
     const page = await service.search({
@@ -100,7 +114,7 @@ describe('M10 WP04 Trademark Asset Portfolio', () => {
       );
     const service = new TrademarkAssetPortfolioService(
       { query: vi.fn() } as unknown as QueryClient,
-      { admit } as unknown as PostgresLiteTrademarkAssetStore
+      assetStore({ admit })
     );
 
     const result = await service.bulkImport({
@@ -180,7 +194,7 @@ describe('M10 WP04 Trademark Asset Portfolio', () => {
     });
     const service = new TrademarkAssetPortfolioService(
       { query: vi.fn() } as unknown as QueryClient,
-      { get, updateWorkspaceMetadata } as unknown as PostgresLiteTrademarkAssetStore
+      assetStore({ get, updateWorkspaceMetadata })
     );
 
     const result = await service.bulkTag({
