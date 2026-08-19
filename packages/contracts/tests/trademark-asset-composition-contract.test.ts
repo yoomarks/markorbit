@@ -33,9 +33,6 @@ describe('M10 WP03 Trademark Asset composition contract', () => {
       'NICE_CLASSES',
       'LIFECYCLE_STAGE'
     ]);
-    expect(trademarkAssetContextSignalKinds).toEqual([
-      'RECOMMENDED_ACTION',
-      'KNOWLEDGE_RELEVANCE'
-    ]);
+    expect(trademarkAssetContextSignalKinds).toEqual(['RECOMMENDED_ACTION', 'KNOWLEDGE_RELEVANCE']);
   });
 });
