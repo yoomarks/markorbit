@@ -1,0 +1,32 @@
+name: M10 Prettier Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m10-prettier-diagnostic.yml'
+      - 'services/lite/src/trademark-asset.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact formatted file
+        shell: bash
+        run: |
+          pnpm exec prettier --write services/lite/src/trademark-asset.ts
+          echo 'M10_PRETTIER_BASE64_BEGIN'
+          base64 -w 0 services/lite/src/trademark-asset.ts
+          echo
+          echo 'M10_PRETTIER_BASE64_END'
