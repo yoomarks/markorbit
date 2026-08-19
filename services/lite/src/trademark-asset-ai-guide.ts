@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/trademark-asset-ai-guide';
+import type { TrademarkAssetCommerceProfile } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
+import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trademark-asset-marketplace-reference';
 import type {
   AiGuideSuggestion,
   AiGuideSuggestionId,
@@ -12,6 +14,8 @@ export interface TrademarkAssetAiGuidePrepareRequest {
   workspaceId: string;
   subjectUserId: string;
   view: Readonly<TrademarkAssetView>;
+  commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
+  marketplaceOverlay?: Readonly<TrademarkAssetMarketplaceOverlay>;
   requestedKinds: readonly AiGuideSuggestionKind[];
 }
 
@@ -52,12 +56,22 @@ export class TrademarkAssetAiGuidePreparer {
   ) {}
 
   prepare(request: Readonly<TrademarkAssetAiGuidePrepareRequest>): TrademarkAssetAiGuidePreparedResult {
-    const { view } = request;
+    const { view, commerceProfile, marketplaceOverlay } = request;
     if (request.workspaceId !== view.workspaceId) {
       throw new Error('AI Guide workspace must match the composed Trademark Asset view.');
     }
     if (!request.subjectUserId.trim()) {
       throw new Error('subjectUserId is required.');
+    }
+
+    for (const context of [commerceProfile, marketplaceOverlay]) {
+      if (!context) continue;
+      if (context.workspaceId !== view.workspaceId || context.trademarkAssetId !== view.trademarkAssetId) {
+        throw new Error('AI Guide context must belong to the same workspace and Trademark Asset.');
+      }
+      if (context.trademarkAssetVersion !== view.anchorVersion) {
+        throw new Error('AI Guide context must match the composed Trademark Asset version.');
+      }
     }
 
     const requestedKinds = [...new Set(request.requestedKinds)];
@@ -66,10 +80,16 @@ export class TrademarkAssetAiGuidePreparer {
     }
 
     const generatedAt = new Date(this.now()).toISOString();
-    const evidence = uniqueEvidence(view.sourceReferences);
+    const marketplaceSource = marketplaceOverlay?.source.sourceReference;
+    const evidence = uniqueEvidence([
+      ...view.sourceReferences,
+      ...(marketplaceSource ? [marketplaceSource] : [])
+    ]);
     const staleOrConflictingEvidencePresent =
-      view.freshness !== 'CURRENT' || view.conflicts.length > 0 ||
-      view.sourceReferences.some((reference) => reference.freshness !== 'CURRENT');
+      view.freshness !== 'CURRENT' ||
+      view.conflicts.length > 0 ||
+      view.sourceReferences.some((reference) => reference.freshness !== 'CURRENT') ||
+      marketplaceSource?.freshness !== 'CURRENT';
 
     const factMap = new Map(view.observedFacts.map((fact) => [fact.kind, fact]));
     const recommendedActions = view.contextSignals
@@ -78,6 +98,12 @@ export class TrademarkAssetAiGuidePreparer {
     const knowledgeChanges = view.contextSignals
       .filter((signal) => signal.kind === 'KNOWLEDGE_RELEVANCE')
       .map((signal) => signal.value);
+    const commercialAngles = [
+      commerceProfile?.headline,
+      ...(commerceProfile?.sellingPoints ?? []),
+      marketplaceOverlay?.headline,
+      ...(marketplaceOverlay?.sellingPoints ?? [])
+    ].filter((value): value is string => Boolean(value?.trim()));
 
     const suggestion = (
       kind: AiGuideSuggestionKind,
@@ -160,7 +186,10 @@ export class TrademarkAssetAiGuidePreparer {
             ...(factMap.has('APPLICATION_STATUS') ? [] : ['confirm current application status from an owner source']),
             ...(factMap.has('OWNER_NAME') ? [] : ['confirm current owner context from an owner source']),
             ...(factMap.has('NICE_CLASSES') ? [] : ['confirm Nice classes from an owner source']),
-            ...(view.conflicts.length > 0 ? ['review unresolved conflicting observations before consequential use'] : [])
+            ...(view.conflicts.length > 0 ? ['review unresolved conflicting observations before consequential use'] : []),
+            ...(marketplaceSource && marketplaceSource.freshness !== 'CURRENT'
+              ? ['refresh the Marketplace source listing before customer-facing use']
+              : [])
           ];
           return suggestion(
             kind,
@@ -176,14 +205,16 @@ export class TrademarkAssetAiGuidePreparer {
               ? `Candidate attention item based on advisory source signals: ${recommendedActions.join('; ')}.`
               : 'No owner-domain recommended action is currently available to prepare as a Today candidate.'
           );
-        case 'PREPARE_CONTENT_CANDIDATE':
+        case 'PREPARE_CONTENT_CANDIDATE': {
+          const angles = knowledgeChanges.length > 0 ? knowledgeChanges : commercialAngles;
           return suggestion(
             kind,
             'Content candidate',
-            knowledgeChanges.length > 0
-              ? `Potential content angle from relevant source changes: ${knowledgeChanges.join('; ')}. Review source evidence before publishing.`
-              : 'No source change is currently available for a grounded content candidate.'
+            angles.length > 0
+              ? `Potential content angle from bounded workspace/source context: ${angles.join('; ')}. Review source evidence and permissions before publishing.`
+              : 'No grounded Knowledge change or workspace-private commercial angle is currently available.'
           );
+        }
         case 'PREPARE_OWNER_ACTION_CANDIDATE':
           return suggestion(
             kind,
@@ -206,7 +237,25 @@ export class TrademarkAssetAiGuidePreparer {
           kind: 'ASSET_COMPOSITION',
           referenceId: view.trademarkAssetId,
           referenceVersion: String(view.anchorVersion)
-        }
+        },
+        ...(commerceProfile
+          ? [
+              {
+                kind: 'COMMERCE_PROFILE' as const,
+                referenceId: commerceProfile.commerceProfileId,
+                referenceVersion: String(commerceProfile.version)
+              }
+            ]
+          : []),
+        ...(marketplaceOverlay
+          ? [
+              {
+                kind: 'MARKETPLACE_OVERLAY' as const,
+                referenceId: marketplaceOverlay.marketplaceOverlayId,
+                referenceVersion: String(marketplaceOverlay.version)
+              }
+            ]
+          : [])
       ],
       evidence,
       suggestions,
