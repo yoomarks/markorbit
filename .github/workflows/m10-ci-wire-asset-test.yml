@@ -1,0 +1,58 @@
+name: M10 Wire Asset PostgreSQL Gate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/m10-ci-wire-asset-test.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Add Asset persistence gate and self-clean
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/ci.yml')
+          s = p.read_text()
+
+          old = """      LITE_CONVERSION_ANALYTICS_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_conversion_test
+      LITE_CONVERSION_ANALYTICS_POSTGRES_TEST_REQUIRED: '1'
+"""
+          new = old + """      LITE_TRADEMARK_ASSET_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_trademark_asset_test
+      LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED: '1'
+"""
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one Lite env anchor, found {s.count(old)}')
+          s = s.replace(old, new)
+
+          old = """            create_db markorbit_lite_conversion_test
+"""
+          new = old + """            create_db markorbit_lite_trademark_asset_test
+"""
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one Lite db anchor, found {s.count(old)}')
+          s = s.replace(old, new)
+
+          old = """          pnpm --filter @markorbit/lite-service exec vitest run tests/conversion-analytics-postgres.test.ts
+"""
+          new = old + """          pnpm --filter @markorbit/lite-service exec vitest run tests/trademark-asset-postgres.test.ts
+"""
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one Lite test anchor, found {s.count(old)}')
+          s = s.replace(old, new)
+          p.write_text(s)
+          PY
+          git rm .github/workflows/m10-ci-wire-asset-test.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/ci.yml
+          git commit -m 'ci(m10): require Trademark Asset PostgreSQL tests'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
