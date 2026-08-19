@@ -3,7 +3,6 @@ import {
   trademarkAssetSaleIntents,
   trademarkAssetSellerRoles,
   type TrademarkAssetCommerceProfile,
-  type TrademarkAssetCommerceProfileId,
   type UpsertTrademarkAssetCommerceProfileInput
 } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAsset, TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
@@ -131,6 +130,12 @@ function normalize(input: Readonly<UpsertTrademarkAssetCommerceProfileInput>) {
       400
     );
   }
+  const headline = optionalText(input.headline, 'headline', 300);
+  const showcaseTemplateReference = optionalText(
+    input.showcaseTemplateReference,
+    'showcaseTemplateReference',
+    500
+  );
   return {
     workspaceId: input.workspaceId.toLowerCase(),
     trademarkAssetId: input.trademarkAssetId,
@@ -145,20 +150,10 @@ function normalize(input: Readonly<UpsertTrademarkAssetCommerceProfileInput>) {
       value.toUpperCase()
     ),
     sellerRole: input.sellerRole,
-    ...(optionalText(input.headline, 'headline', 300)
-      ? { headline: optionalText(input.headline, 'headline', 300) }
-      : {}),
+    ...(headline ? { headline } : {}),
     sellingPoints: stringList(input.sellingPoints, 'sellingPoints', 20),
     aiTags: stringList(input.aiTags, 'aiTags', 50),
-    ...(optionalText(input.showcaseTemplateReference, 'showcaseTemplateReference', 500)
-      ? {
-          showcaseTemplateReference: optionalText(
-            input.showcaseTemplateReference,
-            'showcaseTemplateReference',
-            500
-          )
-        }
-      : {}),
+    ...(showcaseTemplateReference ? { showcaseTemplateReference } : {}),
     mediaAssetReferences: stringList(input.mediaAssetReferences, 'mediaAssetReferences', 50),
     idempotencyKey: text(input.idempotencyKey, 'idempotencyKey', 300)
   } as const;
@@ -268,7 +263,7 @@ export class PostgresTrademarkAssetCommerceStore {
       const timestamp = new Date(this.now()).toISOString();
       const commerceProfileId = currentRow
         ? parseProfile(currentRow.document_json).commerceProfileId
-        : (`trademark-asset-commerce_${this.newId()}` as TrademarkAssetCommerceProfileId);
+        : `trademark-asset-commerce_${this.newId()}`;
       const profile: TrademarkAssetCommerceProfile = {
         schemaVersion: 1,
         commerceProfileId,
