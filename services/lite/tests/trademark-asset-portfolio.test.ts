@@ -112,10 +112,7 @@ describe('M10 WP04 Trademark Asset Portfolio', () => {
           409
         )
       );
-    const service = new TrademarkAssetPortfolioService(
-      { query: vi.fn() } as unknown as QueryClient,
-      assetStore({ admit })
-    );
+    const service = new TrademarkAssetPortfolioService({ query: vi.fn() }, assetStore({ admit }));
 
     const result = await service.bulkImport({
       workspaceId,
@@ -193,7 +190,7 @@ describe('M10 WP04 Trademark Asset Portfolio', () => {
       workspaceTags: ['priority']
     });
     const service = new TrademarkAssetPortfolioService(
-      { query: vi.fn() } as unknown as QueryClient,
+      { query: vi.fn() },
       assetStore({ get, updateWorkspaceMetadata })
     );
 
