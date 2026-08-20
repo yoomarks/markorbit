@@ -20,13 +20,9 @@ type Row = Record<string, unknown>;
 
 export type TrademarkAssetManagementRecoveryJobId = `trademark-asset-management-recovery_${string}`;
 export type TrademarkAssetManagementRecoveryKind =
-  | 'REFRESH_PORTFOLIO_PROJECTION'
-  | 'REBUILD_MANAGEMENT_SIGNAL';
+  'REFRESH_PORTFOLIO_PROJECTION' | 'REBUILD_MANAGEMENT_SIGNAL';
 export type TrademarkAssetManagementRecoveryStatus =
-  | 'PENDING'
-  | 'LEASED'
-  | 'SUCCEEDED'
-  | 'DEAD_LETTER';
+  'PENDING' | 'LEASED' | 'SUCCEEDED' | 'DEAD_LETTER';
 
 export interface RecordTrademarkAssetManagementDispositionCommand {
   workspaceId: string;
@@ -214,7 +210,11 @@ export class PostgresTrademarkAssetManagementDispositionStore {
       300
     ) as TrademarkAssetManagementSignalId;
     const recommendationId = command.recommendationId
-      ? (cleanText(command.recommendationId, 'recommendationId', 300) as TrademarkAssetManagementRecommendationId)
+      ? (cleanText(
+          command.recommendationId,
+          'recommendationId',
+          300
+        ) as TrademarkAssetManagementRecommendationId)
       : undefined;
     if (!trademarkAssetManagementDispositionKinds.includes(command.kind)) {
       throw new TrademarkAssetManagementDispositionError(
@@ -285,7 +285,9 @@ export class PostgresTrademarkAssetManagementDispositionStore {
           kind: command.kind,
           subjectUserId,
           ...(note ? { note } : {}),
-          ...(command.workflowReference ? { workflowReference: clone(command.workflowReference) } : {}),
+          ...(command.workflowReference
+            ? { workflowReference: clone(command.workflowReference) }
+            : {}),
           recordedAt,
           officialTruthCreated: false,
           legalConclusionVerified: false,
@@ -313,7 +315,13 @@ export class PostgresTrademarkAssetManagementDispositionStore {
           `INSERT INTO lite_trademark_asset_management_disposition_commands(
              workspace_id,idempotency_key,request_fingerprint_sha256,result_json,created_at
            ) VALUES($1,$2,$3,$4::jsonb,$5)`,
-          [workspaceId, idempotencyKey, requestFingerprintSha256, JSON.stringify(disposition), recordedAt]
+          [
+            workspaceId,
+            idempotencyKey,
+            requestFingerprintSha256,
+            JSON.stringify(disposition),
+            recordedAt
+          ]
         );
 
         const recoveryKinds: TrademarkAssetManagementRecoveryKind[] = [
@@ -361,7 +369,10 @@ export class PostgresTrademarkAssetManagementDispositionStore {
     }
   }
 
-  async listWatchState(workspaceIdValue: string, limit = 100): Promise<TrademarkAssetManagementDisposition[]> {
+  async listWatchState(
+    workspaceIdValue: string,
+    limit = 100
+  ): Promise<TrademarkAssetManagementDisposition[]> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
       throw new TrademarkAssetManagementDispositionError(
@@ -385,7 +396,9 @@ export class PostgresTrademarkAssetManagementDispositionStore {
           LIMIT $2`,
         [workspaceId, limit]
       );
-      return result.rows.map((row) => clone((row as Row).document_json as TrademarkAssetManagementDisposition));
+      return result.rows.map((row) =>
+        clone((row as Row).document_json as TrademarkAssetManagementDisposition)
+      );
     } catch (error) {
       throw new TrademarkAssetManagementDispositionError(
         'PERSISTENCE_UNAVAILABLE',
@@ -397,12 +410,23 @@ export class PostgresTrademarkAssetManagementDispositionStore {
     }
   }
 
-  async leaseRecoveryJobs(limit = 20, leaseSeconds = 60): Promise<TrademarkAssetManagementRecoveryJob[]> {
+  async leaseRecoveryJobs(
+    limit = 20,
+    leaseSeconds = 60
+  ): Promise<TrademarkAssetManagementRecoveryJob[]> {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-      throw new TrademarkAssetManagementDispositionError('INVALID_INPUT', 'limit must be between 1 and 100.', 400);
+      throw new TrademarkAssetManagementDispositionError(
+        'INVALID_INPUT',
+        'limit must be between 1 and 100.',
+        400
+      );
     }
     if (!Number.isInteger(leaseSeconds) || leaseSeconds < 10 || leaseSeconds > 900) {
-      throw new TrademarkAssetManagementDispositionError('INVALID_INPUT', 'leaseSeconds must be between 10 and 900.', 400);
+      throw new TrademarkAssetManagementDispositionError(
+        'INVALID_INPUT',
+        'leaseSeconds must be between 10 and 900.',
+        400
+      );
     }
     const now = timestamp(this.now(), 'now');
     const leaseUntil = new Date(new Date(now).valueOf() + leaseSeconds * 1000).toISOString();
@@ -442,7 +466,10 @@ export class PostgresTrademarkAssetManagementDispositionStore {
     }
   }
 
-  async completeRecoveryJob(workspaceIdValue: string, recoveryJobIdValue: TrademarkAssetManagementRecoveryJobId): Promise<void> {
+  async completeRecoveryJob(
+    workspaceIdValue: string,
+    recoveryJobIdValue: TrademarkAssetManagementRecoveryJobId
+  ): Promise<void> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const recoveryJobId = cleanText(recoveryJobIdValue, 'recoveryJobId', 300);
     const now = timestamp(this.now(), 'now');
@@ -536,10 +563,17 @@ export class PostgresTrademarkAssetManagementDispositionStore {
     return this.recoveryDocument(row);
   }
 
-  async listDeadLetters(workspaceIdValue: string, limit = 50): Promise<TrademarkAssetManagementRecoveryJob[]> {
+  async listDeadLetters(
+    workspaceIdValue: string,
+    limit = 50
+  ): Promise<TrademarkAssetManagementRecoveryJob[]> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
-      throw new TrademarkAssetManagementDispositionError('INVALID_INPUT', 'limit must be between 1 and 200.', 400);
+      throw new TrademarkAssetManagementDispositionError(
+        'INVALID_INPUT',
+        'limit must be between 1 and 200.',
+        400
+      );
     }
     const result = await this.query.query(
       `SELECT * FROM lite_trademark_asset_management_recovery_jobs
@@ -552,11 +586,12 @@ export class PostgresTrademarkAssetManagementDispositionStore {
   }
 
   private recoveryDocument(row: Row): TrademarkAssetManagementRecoveryJob {
-    const leaseUntil = typeof row.lease_until === 'string'
-      ? row.lease_until
-      : row.lease_until instanceof Date
-        ? row.lease_until.toISOString()
-        : undefined;
+    const leaseUntil =
+      typeof row.lease_until === 'string'
+        ? row.lease_until
+        : row.lease_until instanceof Date
+          ? row.lease_until.toISOString()
+          : undefined;
     const lastFailure = typeof row.last_failure === 'string' ? row.last_failure : undefined;
     return {
       schemaVersion: 1,
@@ -568,9 +603,10 @@ export class PostgresTrademarkAssetManagementDispositionStore {
       status: String(row.status) as TrademarkAssetManagementRecoveryStatus,
       attemptCount: Number(row.attempt_count),
       maxAttempts: Number(row.max_attempts),
-      availableAt: row.available_at instanceof Date
-        ? row.available_at.toISOString()
-        : String(row.available_at),
+      availableAt:
+        row.available_at instanceof Date
+          ? row.available_at.toISOString()
+          : String(row.available_at),
       ...(leaseUntil ? { leaseUntil } : {}),
       ...(lastFailure ? { lastFailure } : {}),
       protectedActionAuthorized: false,

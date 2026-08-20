@@ -6,23 +6,17 @@ import {
 
 describe('M11-WP07 management disposition recovery policy', () => {
   it('backs off internal recovery and dead-letters at the configured ceiling', () => {
-    expect(
-      nextTrademarkAssetManagementRecoveryAttempt('2026-08-21T01:00:00.000Z', 0, 5)
-    ).toEqual({
+    expect(nextTrademarkAssetManagementRecoveryAttempt('2026-08-21T01:00:00.000Z', 0, 5)).toEqual({
       status: 'PENDING',
       attemptCount: 1,
       availableAt: '2026-08-21T01:00:15.000Z'
     });
-    expect(
-      nextTrademarkAssetManagementRecoveryAttempt('2026-08-21T01:00:00.000Z', 1, 5)
-    ).toEqual({
+    expect(nextTrademarkAssetManagementRecoveryAttempt('2026-08-21T01:00:00.000Z', 1, 5)).toEqual({
       status: 'PENDING',
       attemptCount: 2,
       availableAt: '2026-08-21T01:00:30.000Z'
     });
-    expect(
-      nextTrademarkAssetManagementRecoveryAttempt('2026-08-21T01:00:00.000Z', 4, 5)
-    ).toEqual({
+    expect(nextTrademarkAssetManagementRecoveryAttempt('2026-08-21T01:00:00.000Z', 4, 5)).toEqual({
       status: 'DEAD_LETTER',
       attemptCount: 5,
       availableAt: '2026-08-21T01:00:00.000Z'

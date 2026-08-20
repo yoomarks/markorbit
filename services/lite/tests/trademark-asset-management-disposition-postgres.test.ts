@@ -145,9 +145,9 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
       idempotencyKey: 'same-key'
     };
     await dispositions().record(base);
-    await expect(
-      dispositions().record({ ...base, kind: 'DISMISSED' })
-    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    await expect(dispositions().record({ ...base, kind: 'DISMISSED' })).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT'
+    });
   });
 
   it('keeps workspace boundaries when a direct Asset ID is guessed', async () => {
