@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
-import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
+import type {
+  TrademarkAssetObservedFactValue,
+  TrademarkAssetView
+} from '@markorbit/contracts/trademark-asset-composition';
 import type {
   TrademarkAssetAttentionDimension,
   TrademarkAssetAttentionSeverity,
   TrademarkAssetAttentionSignal,
   TrademarkAssetAttentionSignalId,
-  TrademarkAssetObservedFactValue,
   TrademarkAssetSourceReference
 } from '@markorbit/contracts/trademark-asset-workspace';
 
