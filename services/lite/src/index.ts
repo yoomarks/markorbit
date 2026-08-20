@@ -16,6 +16,7 @@ export * from './trademark-asset-management-signal.js';
 export * from './trademark-asset-management-recommendation.js';
 export * from './trademark-asset-management-handoff.js';
 export * from './trademark-asset-management-disposition.js';
+export * from './trademark-service-work-package.js';
 export * from './preference-feedback.js';
 export {
   DailyWorkspacePreferenceTargetResolver,
