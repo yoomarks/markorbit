@@ -10,6 +10,7 @@ export * from './daily-orbit.js';
 export * from './trademark-asset.js';
 export * from './trademark-asset-view.js';
 export * from './trademark-asset-portfolio.js';
+export * from './trademark-asset-attention.js';
 export * from './preference-feedback.js';
 export {
   DailyWorkspacePreferenceTargetResolver,
