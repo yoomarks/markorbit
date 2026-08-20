@@ -225,7 +225,7 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
       workspaceId,
       workPackageId: created.workPackageId,
       expectedVersion: 1,
-      asset: created.asset,
+      asset: { id: asset.trademarkAssetId, version: asset.version },
       matterReference: 'formal-matter_markreg-owned-2@1',
       managementRecommendationReference: 'recommendation_reviewed-2@2',
       intent: renewalIntent,
@@ -242,7 +242,7 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
         workspaceId,
         workPackageId: created.workPackageId,
         expectedVersion: 1,
-        asset: created.asset,
+        asset: { id: asset.trademarkAssetId, version: asset.version },
         matterReference: 'formal-matter_stale@1',
         intent: renewalIntent,
         idempotencyKey: 'stale-update'
