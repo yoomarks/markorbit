@@ -109,9 +109,9 @@ function dedupeSources(
     seen.set(key, reference);
   }
   return [...seen.values()].sort((left, right) =>
-    [left.owner, left.kind, left.sourceId, left.sourceVersion].join('|').localeCompare(
-      [right.owner, right.kind, right.sourceId, right.sourceVersion].join('|')
-    )
+    [left.owner, left.kind, left.sourceId, left.sourceVersion]
+      .join('|')
+      .localeCompare([right.owner, right.kind, right.sourceId, right.sourceVersion].join('|'))
   );
 }
 
@@ -148,7 +148,9 @@ function professionalReviewRequired(
   kind: TrademarkServiceRequirementKind,
   status: TrademarkServiceRequirementStatus
 ): boolean {
-  return kind === 'TIMING_OR_DEADLINE_REVIEW' || status === 'REVIEW_REQUIRED' || status === 'UNKNOWN';
+  return (
+    kind === 'TIMING_OR_DEADLINE_REVIEW' || status === 'REVIEW_REQUIRED' || status === 'UNKNOWN'
+  );
 }
 
 export function composeTrademarkServiceRequirementCandidates(
@@ -209,10 +211,7 @@ export function composeTrademarkServiceRequirementCandidates(
       const first = group[0]!;
       const references = dedupeSources(group.flatMap((item) => item.sourceReferences));
       const freshness = worstFreshness(references);
-      const status = normalizeStatus(
-        worstStatus(group.map((item) => item.status)),
-        freshness
-      );
+      const status = normalizeStatus(worstStatus(group.map((item) => item.status)), freshness);
       const explanation = [...new Set(group.map((item) => item.explanation))].join(' ');
       return {
         schemaVersion: 1,
@@ -241,9 +240,9 @@ export function composeTrademarkServiceRequirementCandidates(
       };
     })
     .sort((left, right) =>
-      [left.kind, left.title, left.requirementId].join('|').localeCompare(
-        [right.kind, right.title, right.requirementId].join('|')
-      )
+      [left.kind, left.title, left.requirementId]
+        .join('|')
+        .localeCompare([right.kind, right.title, right.requirementId].join('|'))
     );
 
   const missingInputs: TrademarkServiceMissingInput[] = [];

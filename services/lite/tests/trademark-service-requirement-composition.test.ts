@@ -13,7 +13,9 @@ const currentKnowledge = {
   freshness: 'CURRENT'
 } as const;
 
-function compose(observations: Parameters<typeof composeTrademarkServiceRequirementCandidates>[0]['observations']) {
+function compose(
+  observations: Parameters<typeof composeTrademarkServiceRequirementCandidates>[0]['observations']
+) {
   return composeTrademarkServiceRequirementCandidates({
     workspaceId,
     workPackageId,
@@ -33,7 +35,8 @@ describe('M12-WP03 source-backed jurisdiction requirement composition', () => {
         kind: 'DOCUMENT',
         status: 'CANDIDATE',
         title: 'Review supporting document requirement',
-        explanation: 'The linked Knowledge source identifies a document-related requirement for review.',
+        explanation:
+          'The linked Knowledge source identifies a document-related requirement for review.',
         sourceReferences: [currentKnowledge]
       }
     ]);
@@ -121,7 +124,8 @@ describe('M12-WP03 source-backed jurisdiction requirement composition', () => {
         kind: 'TIMING_OR_DEADLINE_REVIEW',
         status: 'PRESENT',
         title: 'Review observed timing context',
-        explanation: 'A source contains timing context that must be professionally verified before action.',
+        explanation:
+          'A source contains timing context that must be professionally verified before action.',
         sourceReferences: [currentKnowledge]
       }
     ]);
@@ -168,7 +172,9 @@ describe('M12-WP03 source-backed jurisdiction requirement composition', () => {
 
     expect(result.requirementCandidates).toEqual([]);
     expect(result.discardedObservationCount).toBe(2);
-    expect(result.missingInputs.map((input) => input.reason)).toContain('SOURCE_CONFLICT_OR_STALENESS');
+    expect(result.missingInputs.map((input) => input.reason)).toContain(
+      'SOURCE_CONFLICT_OR_STALENESS'
+    );
   });
 
   it('uses deterministic requirement IDs for the same exact Work Package context', () => {
