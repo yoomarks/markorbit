@@ -2,38 +2,330 @@ name: validation
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: validation-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  format-wp07:
-    name: format-wp07
+  detect:
+    name: Detect changed scope
     runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.scope.outputs.core }}
+      lite: ${{ steps.scope.outputs.lite }}
+      capability: ${{ steps.scope.outputs.capability }}
+      markreg: ${{ steps.scope.outputs.markreg }}
+      execution: ${{ steps.scope.outputs.execution }}
+      mgsn: ${{ steps.scope.outputs.mgsn }}
+      payment: ${{ steps.scope.outputs.payment }}
+      web: ${{ steps.scope.outputs.web }}
+      gateway: ${{ steps.scope.outputs.gateway }}
+      persistence: ${{ steps.scope.outputs.persistence }}
+      shared: ${{ steps.scope.outputs.shared }}
+      integration: ${{ steps.scope.outputs.integration }}
+      browser: ${{ steps.scope.outputs.browser }}
+      full_workspace: ${{ steps.scope.outputs.full_workspace }}
+      full_typecheck: ${{ steps.scope.outputs.full_typecheck }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Detect affected CI domains
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            node scripts/ci-detect-scope.mjs --full
+          else
+            node scripts/ci-detect-scope.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
+          fi
+
+  validate:
+    name: validate
+    needs: detect
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Format WP07 with repository Prettier
-        run: pnpm exec prettier --write services/lite/src/trademark-asset-ai-guide.ts services/lite/tests/trademark-asset-ai-guide.test.ts
-      - name: Commit exact formatter output
+      - name: Validate CI scope detector
+        run: node --test scripts/ci-detect-scope.test.mjs
+      - run: pnpm validate:workspace
+      - run: pnpm validate:persistence-boundaries
+      - run: pnpm test:gateway-inventory
+      - run: pnpm format:check
+      - name: Full workspace regression on main or workspace topology changes
+        if: github.event_name == 'push' || needs.detect.outputs.full_workspace == 'true'
+        run: pnpm lint && pnpm typecheck && pnpm test && pnpm build
+      - name: Affected workspace validation on PR
+        if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if git diff --quiet; then
-            echo "No formatter changes needed"
-            exit 0
+          pnpm exec turbo run build --filter="...[$BASE_SHA]"
+          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]"
+      - name: Full typecheck for shared compiler configuration
+        if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true' && needs.detect.outputs.full_typecheck == 'true'
+        run: pnpm typecheck
+      - name: Story matrix for product UI or full-workspace changes
+        if: github.event_name == 'push' || needs.detect.outputs.web == 'true' || needs.detect.outputs.full_workspace == 'true'
+        run: pnpm test:story-matrix
+
+  persistence:
+    name: persistence
+    needs: detect
+    if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      PERSISTENCE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_persistence_test
+      DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_persistence_test
+      DB_MIGRATION_NAMESPACE: persistence_foundation
+      DB_TEST_DATABASE: markorbit_persistence_test
+      PERSISTENCE_TEST_REQUIRED: '1'
+      IDENTITY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_identity_test
+      IDENTITY_POSTGRES_TEST_REQUIRED: '1'
+      AUTH_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_auth_test
+      AUTH_POSTGRES_TEST_REQUIRED: '1'
+      KNOWLEDGE_INTAKE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_knowledge_intake_test
+      KNOWLEDGE_INTAKE_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_AUDIT_POSTGRES_REQUIRED: '1'
+      MARKREG_AUDIT_HTTP_REQUIRED: '1'
+      MARKREG_ORDER_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_HTTP_REQUIRED: '1'
+      PAYMENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_payment_test
+      PAYMENT_POSTGRES_REQUIRED: '1'
+      EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
+      EXECUTION_POSTGRES_TEST_REQUIRED: '1'
+      EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'
+      EXECUTION_EVIDENCE_REVIEW_POSTGRES_REQUIRED: '1'
+      M5_REVIEWED_SOURCE_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_execution_test
+      M5_REVIEWED_SOURCE_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_wp05_markreg_test
+      M5_REVIEWED_SOURCE_HANDOFF_POSTGRES_REQUIRED: '1'
+      MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+      MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED: '1'
+      MGSN_SERVICE_PACKAGE_POSTGRES_REQUIRED: '1'
+      MGSN_ALLOCATION_POSTGRES_REQUIRED: '1'
+      MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED: '1'
+      LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_test
+      LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CANDIDATE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_candidate_test
+      LITE_CANDIDATE_POSTGRES_TEST_REQUIRED: '1'
+      LITE_FEEDBACK_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_feedback_test
+      LITE_FEEDBACK_POSTGRES_TEST_REQUIRED: '1'
+      LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_prepared_test
+      LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CONVERSION_ANALYTICS_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_conversion_test
+      LITE_CONVERSION_ANALYTICS_POSTGRES_TEST_REQUIRED: '1'
+      CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED: '1'
+      MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
+      MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
+      WEB_ORIGINS: https://test.markorbit.local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create affected suite databases
+        env:
+          PGPASSWORD: markorbit-test-only
+          PERSISTENCE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.persistence == 'true' }}
+          CORE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.core == 'true' }}
+          LITE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.lite == 'true' }}
+          CAPABILITY_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.capability == 'true' }}
+          MARKREG_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.markreg == 'true' }}
+          PAYMENT_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.payment == 'true' }}
+          EXECUTION_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.execution == 'true' }}
+          MGSN_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.mgsn == 'true' }}
+        run: |
+          create_db() { psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $1;"; }
+          if [ "$PERSISTENCE_SCOPE" = "true" ]; then
+            create_db markorbit_persistence_test
           fi
-          git config user.name "markorbit-ci"
-          git config user.email "markorbit-ci@users.noreply.github.com"
-          git add services/lite/src/trademark-asset-ai-guide.ts services/lite/tests/trademark-asset-ai-guide.test.ts
-          git commit -m "M10 WP07: apply exact repository formatting"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          if [ "$CORE_SCOPE" = "true" ]; then
+            create_db markorbit_identity_test
+            create_db markorbit_auth_test
+            create_db markorbit_knowledge_intake_test
+          fi
+          if [ "$LITE_SCOPE" = "true" ]; then
+            create_db markorbit_lite_content_test
+            create_db markorbit_lite_candidate_test
+            create_db markorbit_lite_feedback_test
+            create_db markorbit_lite_prepared_test
+            create_db markorbit_lite_conversion_test
+          fi
+          if [ "$CAPABILITY_SCOPE" = "true" ]; then
+            create_db markorbit_capability_registry_test
+            create_db markorbit_capability_observation_test
+            create_db markorbit_capability_reflection_test
+            create_db markorbit_capability_profile_test
+          fi
+          if [ "$MARKREG_SCOPE" = "true" ]; then
+            create_db markorbit_markreg_test
+          fi
+          if [ "$PAYMENT_SCOPE" = "true" ]; then
+            create_db markorbit_payment_test
+          fi
+          if [ "$EXECUTION_SCOPE" = "true" ]; then
+            create_db markorbit_execution_test
+          fi
+          if [ "$MGSN_SCOPE" = "true" ]; then
+            create_db markorbit_mgsn_test
+          fi
+          if [ "$EXECUTION_SCOPE" = "true" ] && [ "$MARKREG_SCOPE" = "true" ]; then
+            create_db markorbit_wp05_execution_test
+            create_db markorbit_wp05_markreg_test
+          fi
+      - name: Persistence foundation
+        if: github.event_name == 'push' || needs.detect.outputs.persistence == 'true'
+        run: |
+          pnpm db:test:bootstrap
+          pnpm db:migrate
+          pnpm db:migrate:status
+          pnpm db:migrate:verify
+          pnpm test:persistence
+      - name: Core integration
+        if: github.event_name == 'push' || needs.detect.outputs.core == 'true'
+        run: |
+          pnpm test:identity:postgres
+          pnpm test:auth:postgres
+          pnpm test:knowledge-intake:postgres
+          pnpm test:auth
+          pnpm test:auth:http
+      - name: Lite integration
+        if: github.event_name == 'push' || needs.detect.outputs.lite == 'true'
+        run: |
+          pnpm exec turbo run build --filter=@markorbit/lite-service...
+          pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/candidate-qualification-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/product-loop-feedback-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/conversion-analytics-postgres.test.ts
+      - name: Capability integration
+        if: github.event_name == 'push' || needs.detect.outputs.capability == 'true'
+        run: |
+          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_registry_test pnpm --filter @markorbit/capability-engine test:runtime-registry:postgres
+          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_observation_test pnpm --filter @markorbit/capability-engine test:observation-ledger:postgres
+          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_reflection_test pnpm --filter @markorbit/capability-engine test:reflection-candidates:postgres
+          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_profile_test pnpm --filter @markorbit/capability-engine test:reflection-disposition-profile:postgres
+      - name: MarkReg integration
+        if: github.event_name == 'push' || needs.detect.outputs.markreg == 'true'
+        run: |
+          pnpm test:customer-confirmation
+          pnpm test:customer-confirmation:postgres
+          pnpm test:customer-confirmation:http
+          pnpm test:lite-matter:postgres
+          pnpm test:lite-matter:http
+          pnpm test:document-package:postgres
+          pnpm test:document-package:http
+          pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts
+          pnpm test:order:http
+          pnpm test:order:client
+          pnpm test:order:journey
+          pnpm test:audit-idempotency:postgres
+          pnpm test:audit-idempotency:http
+          pnpm test:audit-idempotency:restart
+      - name: Execution integration
+        if: github.event_name == 'push' || needs.detect.outputs.execution == 'true'
+        run: |
+          pnpm test:professional-review:postgres
+          pnpm test:professional-review:http
+          pnpm test:filing-governance:auth
+          pnpm test:filing-governance:postgres
+          pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
+          pnpm test:evidence-review:postgres
+      - name: MGSN integration
+        if: github.event_name == 'push' || needs.detect.outputs.mgsn == 'true'
+        run: |
+          pnpm test:mgsn-provider-registry:postgres
+          pnpm --filter @markorbit/mgsn-service exec vitest run tests/service-package-eligibility-postgres.test.ts tests/allocation-provider-acceptance-postgres.test.ts tests/provider-return-postgres.test.ts
+      - name: Payment integration
+        if: github.event_name == 'push' || needs.detect.outputs.payment == 'true'
+        run: |
+          if [ -f services/payment/package.json ]; then
+            pnpm exec turbo run build --filter=@markorbit/payment-service...
+            pnpm --filter @markorbit/payment-service exec vitest run tests/payment-http.test.ts tests/payment-lifecycle-http.test.ts tests/payment-postgres.test.ts tests/payment-lifecycle-postgres.test.ts
+            if [ -f apps/gateway/tests/payment-http.test.ts ]; then
+              pnpm --filter @markorbit/gateway exec vitest run tests/payment-http.test.ts tests/payment-runtime-wiring.test.ts
+            fi
+          else
+            echo 'Payment package is not present on this revision; skipping Payment lane.'
+          fi
+      - name: Cross-domain Execution to MarkReg handoff
+        if: github.event_name == 'push' || (needs.detect.outputs.execution == 'true' && needs.detect.outputs.markreg == 'true')
+        run: pnpm exec vitest run scripts/milestone5-reviewed-source-handoff.integration.test.ts
+      - run: pnpm test:gateway-inventory
+
+  professional-review-browser:
+    name: professional-review-browser
+    needs: detect
+    if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_review_browser
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_review_browser"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_review_browser
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED: '1'
+      EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_review_browser
+      EXECUTION_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create Execution browser database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_review_browser;'
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:professional-review:browser
+      - run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop --reporter=line
+      - name: Run durable Order journey real runtime
+        run: pnpm test:order:journey:browser
