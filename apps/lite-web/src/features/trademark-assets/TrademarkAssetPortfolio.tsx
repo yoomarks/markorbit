@@ -80,7 +80,7 @@ export function TrademarkAssetPortfolio({
       });
       setAssets(page.assets);
       setManagement(page.management);
-      setManagementByAsset(page.managementByAsset);
+      setManagementByAsset(page.managementByAsset ?? []);
       setLoadState('ready');
     } catch {
       setLoadState('error');
