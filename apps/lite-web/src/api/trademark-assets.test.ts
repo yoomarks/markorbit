@@ -17,18 +17,20 @@ describe('Trademark Asset client', () => {
   it('sends authenticated workspace context on portfolio reads', async () => {
     let capturedUrl = '';
     let capturedInit: RequestInit | undefined;
-    const fetchMock: typeof fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock: typeof fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       capturedUrl = requestUrl(input);
       capturedInit = init;
-      return new Response(
-        JSON.stringify({
-          schemaVersion: 1,
-          workspaceId,
-          assets: [],
-          hasMore: false,
-          officialTruthVerifiedByLite: false
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            schemaVersion: 1,
+            workspaceId,
+            assets: [],
+            hasMore: false,
+            officialTruthVerifiedByLite: false
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
       );
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -51,12 +53,14 @@ describe('Trademark Asset client', () => {
 
   it('encodes the asset id for detail reads', async () => {
     let capturedUrl = '';
-    const fetchMock: typeof fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock: typeof fetch = vi.fn((input: RequestInfo | URL) => {
       capturedUrl = requestUrl(input);
-      return new Response(JSON.stringify({ view: {} }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      });
+      return Promise.resolve(
+        new Response(JSON.stringify({ view: {} }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
     });
     vi.stubGlobal('fetch', fetchMock);
 
