@@ -95,11 +95,7 @@ function cleanAssetId(value: TrademarkAssetId): TrademarkAssetId {
 }
 
 function cleanScope(values: readonly TrademarkAssetSourceOwner[]): TrademarkAssetSourceOwner[] {
-  if (
-    !Array.isArray(values) ||
-    values.length === 0 ||
-    values.length > trademarkAssetSourceOwners.length
-  ) {
+  if (values.length === 0 || values.length > trademarkAssetSourceOwners.length) {
     throw new TrademarkAssetRefreshError(
       'INVALID_INPUT',
       'sourceOwnerScope must contain at least one recognised source owner.',
@@ -180,7 +176,7 @@ function cleanObservations(
   values: ReadonlyArray<Readonly<TrademarkAssetSourceReference>>,
   scope: readonly TrademarkAssetSourceOwner[]
 ): TrademarkAssetSourceReference[] {
-  if (!Array.isArray(values) || values.length > 200) {
+  if (values.length > 200) {
     throw new TrademarkAssetRefreshError(
       'INVALID_INPUT',
       'observations must contain at most 200 exact source references.',
@@ -341,7 +337,9 @@ export class PostgresTrademarkAssetRefreshLedger {
             LIMIT 1`,
           [workspaceId, trademarkAssetId, JSON.stringify(sourceOwnerScope)]
         );
-        const previousRunId = priorRun.rows[0]?.refresh_run_id as string | undefined;
+        const priorRunRow = priorRun.rows[0] as Row | undefined;
+        const previousRunId =
+          typeof priorRunRow?.refresh_run_id === 'string' ? priorRunRow.refresh_run_id : undefined;
         const previousRows = previousRunId
           ? await client.query(
               `SELECT source_reference_json

@@ -2,12 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { PostgresTrademarkAssetRefreshLedger } from '../src/trademark-asset-refresh.js';
 
 const noopDatabase = {
-  transact: async () => {
-    throw new Error('database should not be reached');
-  }
+  transact: () => Promise.reject(new Error('database should not be reached'))
 };
 const noopQuery = {
-  query: async () => ({ rows: [] })
+  query: () => Promise.resolve({ rows: [] })
 };
 
 const ledger = new PostgresTrademarkAssetRefreshLedger(noopDatabase, noopQuery as never);

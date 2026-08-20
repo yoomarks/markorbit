@@ -3,11 +3,9 @@ import { PostgresTrademarkAssetRefreshLedger } from '../src/trademark-asset-refr
 
 const ledger = new PostgresTrademarkAssetRefreshLedger(
   {
-    transact: async () => {
-      throw new Error('unused');
-    }
+    transact: () => Promise.reject(new Error('unused'))
   },
-  { query: async () => ({ rows: [] }) } as never
+  { query: () => Promise.resolve({ rows: [] }) } as never
 );
 
 describe('M11-WP02 refresh ledger reads', () => {
