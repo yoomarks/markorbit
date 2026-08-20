@@ -34,6 +34,7 @@
     "lite_trademark_assets": "@markorbit/lite-service",
     "lite_trademark_asset_commerce": "@markorbit/lite-service",
     "lite_trademark_asset_marketplace_reference": "@markorbit/lite-service",
+    "lite_trademark_asset_refresh_ledger": "@markorbit/lite-service",
     "capability_engine_runtime_registry": "@markorbit/capability-engine",
     "capability_engine_observation_ledger": "@markorbit/capability-engine",
     "capability_engine_reflection_candidates": "@markorbit/capability-engine",
@@ -79,6 +80,7 @@
     "0054_lite_product_preferences": "@markorbit/lite-service",
     "0055_lite_trademark_assets": "@markorbit/lite-service",
     "0056_lite_trademark_asset_commerce": "@markorbit/lite-service",
-    "0057_lite_trademark_asset_marketplace_reference": "@markorbit/lite-service"
+    "0057_lite_trademark_asset_marketplace_reference": "@markorbit/lite-service",
+    "0058_lite_trademark_asset_refresh_ledger": "@markorbit/lite-service"
   }
 }
