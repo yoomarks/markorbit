@@ -9,7 +9,7 @@ afterEach(() => {
 
 describe('Trademark Asset client', () => {
   it('sends authenticated workspace context on portfolio reads', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
           schemaVersion: 1,
@@ -30,22 +30,25 @@ describe('Trademark Asset client', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toContain('/api/lite/trademark-assets?');
-    expect(String(url)).toContain('q=orbit');
-    expect(String(url)).toContain('relationship=REPRESENTED');
-    expect(String(url)).toContain('limit=25');
-    expect(init).toMatchObject({
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'x-markorbit-workspace-id': workspaceId
-      }
-    });
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain('/api/lite/trademark-assets?');
+    expect(requestedUrl).toContain('q=orbit');
+    expect(requestedUrl).toContain('relationship=REPRESENTED');
+    expect(requestedUrl).toContain('limit=25');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        method: 'GET',
+        credentials: 'include',
+        headers: expect.objectContaining({
+          'x-markorbit-workspace-id': workspaceId
+        })
+      })
+    );
   });
 
   it('encodes the asset id for detail reads', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ view: {} }), {
         status: 200,
         headers: { 'content-type': 'application/json' }
@@ -53,7 +56,7 @@ describe('Trademark Asset client', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await createTrademarkAssetClient(workspaceId).load('trademark-asset_test' as never);
+    await createTrademarkAssetClient(workspaceId).load('trademark-asset_test');
 
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
       '/api/lite/trademark-assets/trademark-asset_test'
