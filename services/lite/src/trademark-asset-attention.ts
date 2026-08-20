@@ -55,7 +55,10 @@ function textValue(value: TrademarkAssetObservedFactValue): string {
   return Array.isArray(value) ? value.join(', ') : String(value);
 }
 
-function daysUntil(value: TrademarkAssetObservedFactValue, generatedAt: string): number | undefined {
+function daysUntil(
+  value: TrademarkAssetObservedFactValue,
+  generatedAt: string
+): number | undefined {
   if (typeof value !== 'string') return undefined;
   const target = Date.parse(value);
   const now = Date.parse(generatedAt);

@@ -77,9 +77,7 @@ describe('deriveTrademarkAssetAttention', () => {
     expect(result.map((item) => item.dimension)).toEqual(
       expect.arrayContaining(['TIME_SENSITIVITY', 'LIFECYCLE_RECOMMENDATION', 'USER_PRIORITY'])
     );
-    expect(result.find((item) => item.dimension === 'TIME_SENSITIVITY')?.severity).toBe(
-      'URGENT'
-    );
+    expect(result.find((item) => item.dimension === 'TIME_SENSITIVITY')?.severity).toBe('URGENT');
     expect(result.every((item) => item.legalDeadlineCertified === false)).toBe(true);
     expect(result.every((item) => item.officialStatusVerifiedByLite === false)).toBe(true);
     expect(result.every((item) => item.executionAuthorized === false)).toBe(true);
