@@ -144,9 +144,7 @@ export interface TrademarkAssetManagementDisposition {
   version: number;
   asset: Readonly<ProductLoopExactReference<TrademarkAssetId>>;
   signal: Readonly<ProductLoopExactReference<TrademarkAssetManagementSignalId>>;
-  recommendation?: Readonly<
-    ProductLoopExactReference<TrademarkAssetManagementRecommendationId>
-  >;
+  recommendation?: Readonly<ProductLoopExactReference<TrademarkAssetManagementRecommendationId>>;
   kind: TrademarkAssetManagementDispositionKind;
   subjectUserId: string;
   note?: string;
@@ -178,9 +176,7 @@ export interface TrademarkAssetManagementHandoff {
   version: number;
   asset: Readonly<ProductLoopExactReference<TrademarkAssetId>>;
   signal: Readonly<ProductLoopExactReference<TrademarkAssetManagementSignalId>>;
-  recommendation: Readonly<
-    ProductLoopExactReference<TrademarkAssetManagementRecommendationId>
-  >;
+  recommendation: Readonly<ProductLoopExactReference<TrademarkAssetManagementRecommendationId>>;
   destination: TrademarkAssetManagementHandoffDestination;
   evidenceSnapshot: ReadonlyArray<Readonly<TrademarkAssetSourceReference>>;
   requestedByUserId: string;
