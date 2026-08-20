@@ -3,14 +3,24 @@ import { createTrademarkAssetClient } from './trademark-assets.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('Trademark Asset client', () => {
   it('sends authenticated workspace context on portfolio reads', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(
+    let capturedUrl = '';
+    let capturedInit: RequestInit | undefined;
+    const fetchMock: typeof fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = requestUrl(input);
+      capturedInit = init;
+      return new Response(
         JSON.stringify({
           schemaVersion: 1,
           workspaceId,
@@ -19,8 +29,8 @@ describe('Trademark Asset client', () => {
           officialTruthVerifiedByLite: false
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
-      )
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     await createTrademarkAssetClient(workspaceId).search({
@@ -30,36 +40,28 @@ describe('Trademark Asset client', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
-    expect(requestedUrl).toContain('/api/lite/trademark-assets?');
-    expect(requestedUrl).toContain('q=orbit');
-    expect(requestedUrl).toContain('relationship=REPRESENTED');
-    expect(requestedUrl).toContain('limit=25');
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        method: 'GET',
-        credentials: 'include',
-        headers: expect.objectContaining({
-          'x-markorbit-workspace-id': workspaceId
-        })
-      })
-    );
+    expect(capturedUrl).toContain('/api/lite/trademark-assets?');
+    expect(capturedUrl).toContain('q=orbit');
+    expect(capturedUrl).toContain('relationship=REPRESENTED');
+    expect(capturedUrl).toContain('limit=25');
+    expect(capturedInit?.method).toBe('GET');
+    expect(capturedInit?.credentials).toBe('include');
+    expect(new Headers(capturedInit?.headers).get('x-markorbit-workspace-id')).toBe(workspaceId);
   });
 
   it('encodes the asset id for detail reads', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ view: {} }), {
+    let capturedUrl = '';
+    const fetchMock: typeof fetch = vi.fn(async (input: RequestInfo | URL) => {
+      capturedUrl = requestUrl(input);
+      return new Response(JSON.stringify({ view: {} }), {
         status: 200,
         headers: { 'content-type': 'application/json' }
-      })
-    );
+      });
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     await createTrademarkAssetClient(workspaceId).load('trademark-asset_test');
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
-      '/api/lite/trademark-assets/trademark-asset_test'
-    );
+    expect(capturedUrl).toContain('/api/lite/trademark-assets/trademark-asset_test');
   });
 });
