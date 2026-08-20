@@ -68,12 +68,17 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
       .query(
         'CREATE TABLE IF NOT EXISTS workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)'
       );
-    const liteMigrations = await loadMigrationsForOwner(
-      migrationsDirectory,
-      migrationOwners,
-      '@markorbit/lite-service'
-    );
-    await migrate(database.getPool(), 'lite_trademark_service_work_package_test', liteMigrations);
+    const existingWorkPackageTable = await database
+      .getPool()
+      .query("SELECT to_regclass('public.lite_trademark_service_work_packages') AS table_name");
+    if (!existingWorkPackageTable.rows[0]?.table_name) {
+      const liteMigrations = await loadMigrationsForOwner(
+        migrationsDirectory,
+        migrationOwners,
+        '@markorbit/lite-service'
+      );
+      await migrate(database.getPool(), 'lite_trademark_service_work_package_test', liteMigrations);
+    }
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug) VALUES
        ($1,'Service Workbench Test','service-workbench-test'),
