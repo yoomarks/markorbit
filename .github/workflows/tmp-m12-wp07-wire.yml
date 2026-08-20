@@ -1,12 +1,12 @@
 name: tmp-m12-wp07-wire
 on:
-  push:
-    branches: [agent/m12-wp07-professional-service-workbench]
-    paths: [.github/workflows/tmp-m12-wp07-wire.yml]
+  pull_request:
+    branches: [main]
 permissions:
   contents: write
 jobs:
   wire:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,16 +20,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Wire runtime, gateway, client and workspace
+      - name: Wire remaining runtime and format WP07
         run: |
           python - <<'PY'
           from pathlib import Path
-
           def replace(path, old, new):
               p=Path(path); s=p.read_text()
               if old not in s: raise SystemExit(f'missing anchor in {path}: {old[:80]!r}')
               p.write_text(s.replace(old,new,1))
-
           replace('services/lite/src/main.ts',
             "import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';",
             "import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';\nimport { PostgresTrademarkServiceWorkPackageStore } from './trademark-service-work-package.js';\nimport { createTrademarkServiceWorkbenchRoutes } from './trademark-service-workbench-http.js';")
@@ -39,62 +37,15 @@ jobs:
           replace('services/lite/src/main.ts',
             "    ...createContentKitRoutes({ internalServiceSecret, contentKitService }),",
             "    ...createTrademarkServiceWorkbenchRoutes({\n      internalServiceSecret,\n      workPackages: trademarkServiceWorkPackages,\n      query: pool\n    }),\n    ...createContentKitRoutes({ internalServiceSecret, contentKitService }),")
-
-          replace('apps/gateway/src/product-loop-http.ts',
-            "    route('GET', '/api/lite/trademark-assets/:trademarkAssetId', ['workspace:read'], false),",
-            "    route('GET', '/api/lite/trademark-assets/:trademarkAssetId', ['workspace:read'], false),\n    route('GET', '/api/lite/trademark-assets/:trademarkAssetId/service-work-package', ['workspace:read'], false),\n    route('POST', '/api/lite/trademark-assets/:trademarkAssetId/service-work-packages', ['matter:create']),")
-
-          replace('apps/lite-web/src/api/trademark-assets.ts',
-            "import type { TrademarkAssetPortfolioPage } from '@markorbit/contracts/trademark-asset-portfolio';",
-            "import type { TrademarkAssetPortfolioPage } from '@markorbit/contracts/trademark-asset-portfolio';\nimport type { TrademarkServiceIntent, TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';")
-          replace('apps/lite-web/src/api/trademark-assets.ts',
-            "  load(trademarkAssetId: TrademarkAssetId): Promise<TrademarkAssetDetailResponse>;\n}",
-            "  load(trademarkAssetId: TrademarkAssetId): Promise<TrademarkAssetDetailResponse>;\n  loadServiceWorkPackage(trademarkAssetId: TrademarkAssetId): Promise<TrademarkServiceWorkPackage | undefined>;\n  prepareServiceWorkPackage(trademarkAssetId: TrademarkAssetId, input: Readonly<{ assetVersion: number | string; managementRecommendationReference?: string; intent: TrademarkServiceIntent }>): Promise<TrademarkServiceWorkPackage>;\n}")
-          replace('apps/lite-web/src/api/trademark-assets.ts',
-            "async function request<T>(path: string, workspaceId: string): Promise<T> {",
-            "async function request<T>(path: string, workspaceId: string, init?: Readonly<{ method?: 'GET' | 'POST'; body?: unknown; idempotencyKey?: string }>): Promise<T> {")
-          replace('apps/lite-web/src/api/trademark-assets.ts',
-            "      method: 'GET',\n      credentials: 'include',\n      headers: {\n        'content-type': 'application/json',\n        'x-markorbit-workspace-id': workspaceId\n      }",
-            "      method: init?.method ?? 'GET',\n      credentials: 'include',\n      headers: {\n        'content-type': 'application/json',\n        'x-markorbit-workspace-id': workspaceId,\n        ...(init?.idempotencyKey ? { 'idempotency-key': init.idempotencyKey } : {})\n      },\n      ...(init?.body === undefined ? {} : { body: JSON.stringify(init.body) })")
-          replace('apps/lite-web/src/api/trademark-assets.ts',
-            "    load: (trademarkAssetId) =>\n      request<TrademarkAssetDetailResponse>(\n        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}`,\n        workspaceId\n      )\n  };",
-            "    load: (trademarkAssetId) =>\n      request<TrademarkAssetDetailResponse>(\n        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}`,\n        workspaceId\n      ),\n    loadServiceWorkPackage: async (trademarkAssetId) => {\n      const response = await request<{ workPackage: TrademarkServiceWorkPackage | null }>(\n        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/service-work-package`,\n        workspaceId\n      );\n      return response.workPackage ?? undefined;\n    },\n    prepareServiceWorkPackage: async (trademarkAssetId, input) => {\n      const response = await request<{ workPackage: TrademarkServiceWorkPackage }>(\n        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/service-work-packages`,\n        workspaceId,\n        { method: 'POST', body: input, idempotencyKey: `service-work-package-${trademarkAssetId}-${Date.now()}` }\n      );\n      return response.workPackage;\n    }\n  };")
-
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx',
-            "import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';",
-            "import type { TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';\nimport { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';")
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx',
-            "  const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();\n  const [detailState, setDetailState] = useState<LoadState>('ready');",
-            "  const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();\n  const [serviceWorkPackage, setServiceWorkPackage] = useState<TrademarkServiceWorkPackage>();\n  const [detailState, setDetailState] = useState<LoadState>('ready');")
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx',
-            "      setDetail(await client.load(trademarkAssetId));\n      setDetailState('ready');",
-            "      const [loadedDetail, loadedWorkPackage] = await Promise.all([\n        client.load(trademarkAssetId),\n        client.loadServiceWorkPackage(trademarkAssetId)\n      ]);\n      setDetail(loadedDetail);\n      setServiceWorkPackage(loadedWorkPackage);\n      setDetailState('ready');")
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx',
-            "            recommendations={detail.recommendations ?? []}\n          />",
-            "            recommendations={detail.recommendations ?? []}\n            {...(serviceWorkPackage ? { serviceWorkPackage } : {})}\n            onPrepareServiceWorkPackage={async (input) => {\n              const prepared = await client.prepareServiceWorkPackage(selectedId, input);\n              setServiceWorkPackage(prepared);\n            }}\n          />")
-
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx',
-            "import { Button } from '@markorbit/ui';",
-            "import type { TrademarkServiceIntent, TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';\nimport { Button } from '@markorbit/ui';\nimport { TrademarkServiceWorkbench } from './TrademarkServiceWorkbench.js';")
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx',
-            "  aiGuide?: Readonly<TrademarkAssetAiGuidePreparedResult>;\n}",
-            "  aiGuide?: Readonly<TrademarkAssetAiGuidePreparedResult>;\n  serviceWorkPackage?: Readonly<TrademarkServiceWorkPackage>;\n  onPrepareServiceWorkPackage?: (input: Readonly<{ assetVersion: number | string; managementRecommendationReference?: string; intent: TrademarkServiceIntent }>) => Promise<void>;\n}")
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx',
-            "  marketplaceOverlay,\n  aiGuide\n}: TrademarkAssetWorkspaceProps)",
-            "  marketplaceOverlay,\n  aiGuide,\n  serviceWorkPackage,\n  onPrepareServiceWorkPackage\n}: TrademarkAssetWorkspaceProps)")
-          replace('apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx',
-            "      <section aria-labelledby=\"asset-change-heading\">",
-            "      {onPrepareServiceWorkPackage ? (\n        <TrademarkServiceWorkbench\n          jurisdiction={view.anchor.identity.jurisdiction}\n          assetVersion={view.anchor.version}\n          {...(serviceWorkPackage ? { latest: serviceWorkPackage } : {})}\n          {...(recommendations[0] ? { recommendationReference: `${recommendations[0].recommendationId}@${recommendations[0].version}` } : {})}\n          onPrepare={onPrepareServiceWorkPackage}\n        />\n      ) : null}\n\n      <section aria-labelledby=\"asset-change-heading\">")
-
           p=Path('apps/lite-web/src/features/trademark-assets/trademark-asset-workspace.css')
-          p.write_text(p.read_text()+'''\n\n.trademark-service-workbench {\n  border: 1px solid var(--mo-border, #d9dde5);\n  border-radius: 16px;\n  padding: 20px;\n  background: var(--mo-surface, #fff);\n}\n.trademark-service-workbench__summary,\n.trademark-service-workbench__detail-grid {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n  gap: 12px;\n  margin: 16px 0;\n}\n.trademark-service-workbench__summary > div,\n.trademark-service-workbench__detail-grid > article {\n  border: 1px solid var(--mo-border, #d9dde5);\n  border-radius: 12px;\n  padding: 14px;\n}\n.trademark-service-workbench__summary span,\n.trademark-service-workbench__summary strong { display: block; }\n.trademark-service-workbench__prepare {\n  display: flex;\n  gap: 12px;\n  align-items: end;\n  flex-wrap: wrap;\n}\n.trademark-service-workbench__boundary { margin-top: 14px; font-size: 0.9rem; }\n''')
+          p.write_text(p.read_text()+'''\n\n.trademark-service-workbench { border: 1px solid var(--mo-border, #d9dde5); border-radius: 16px; padding: 20px; background: var(--mo-surface, #fff); margin-top: 20px; }\n.trademark-service-workbench__summary, .trademark-service-workbench__detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }\n.trademark-service-workbench__summary > div, .trademark-service-workbench__detail-grid > article { border: 1px solid var(--mo-border, #d9dde5); border-radius: 12px; padding: 14px; }\n.trademark-service-workbench__summary span, .trademark-service-workbench__summary strong { display: block; }\n.trademark-service-workbench__prepare { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }\n.trademark-service-workbench__boundary { margin-top: 14px; font-size: 0.9rem; }\n''')
           PY
-      - run: pnpm exec prettier --write services/lite/src/trademark-service-workbench-http.ts services/lite/src/main.ts apps/gateway/src/product-loop-http.ts apps/lite-web/src/api/trademark-assets.ts apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.tsx apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.test.tsx apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx apps/lite-web/src/features/trademark-assets/trademark-asset-workspace.css
-      - run: pnpm --filter @markorbit/lite build && pnpm --filter @markorbit/lite lint && pnpm --filter @markorbit/lite test && pnpm --filter @markorbit/gateway build && pnpm --filter @markorbit/gateway lint && pnpm --filter @markorbit/lite-web build && pnpm --filter @markorbit/lite-web lint && pnpm --filter @markorbit/lite-web test
+      - run: pnpm exec prettier --write services/lite/src/trademark-service-workbench-http.ts services/lite/src/main.ts apps/gateway/src/product-loop-http.ts apps/lite-web/src/api/trademark-assets.ts apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.tsx apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.test.tsx apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx apps/lite-web/src/features/trademark-assets/trademark-asset-workspace.css
+      - run: pnpm --filter @markorbit/lite build && pnpm --filter @markorbit/lite lint && pnpm --filter @markorbit/gateway build && pnpm --filter @markorbit/gateway lint && pnpm --filter @markorbit/lite-web build && pnpm --filter @markorbit/lite-web lint && pnpm --filter @markorbit/lite-web test
       - name: Commit wired WP07
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add services/lite/src/main.ts apps/gateway/src/product-loop-http.ts apps/lite-web/src/api/trademark-assets.ts apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx apps/lite-web/src/features/trademark-assets/trademark-asset-workspace.css services/lite/src/trademark-service-workbench-http.ts apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.tsx apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.test.tsx
+          git add services/lite/src/main.ts apps/gateway/src/product-loop-http.ts apps/lite-web/src/api/trademark-assets.ts apps/lite-web/src/features/trademark-assets/TrademarkAssetPortfolio.tsx apps/lite-web/src/features/trademark-assets/trademark-asset-workspace.css services/lite/src/trademark-service-workbench-http.ts apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.tsx apps/lite-web/src/features/trademark-assets/TrademarkServiceWorkbench.test.tsx
           git commit -m 'M12 WP07 wire professional service workbench' || exit 0
           git push origin HEAD:agent/m12-wp07-professional-service-workbench
