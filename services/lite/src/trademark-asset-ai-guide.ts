@@ -5,7 +5,6 @@ import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-co
 import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trademark-asset-marketplace-reference';
 import type {
   AiGuideSuggestion,
-  AiGuideSuggestionId,
   AiGuideSuggestionKind,
   TrademarkAssetSourceReference
 } from '@markorbit/contracts/trademark-asset-workspace';
@@ -120,7 +119,7 @@ export class TrademarkAssetAiGuidePreparer {
       suggestionEvidence: readonly TrademarkAssetSourceReference[] = evidence
     ): AiGuideSuggestion => ({
       schemaVersion: 1,
-      aiGuideSuggestionId: `ai-guide-suggestion_${this.newId()}` as AiGuideSuggestionId,
+      aiGuideSuggestionId: `ai-guide-suggestion_${this.newId()}`,
       workspaceId: view.workspaceId,
       version: 1,
       asset: {
