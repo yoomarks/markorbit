@@ -52,6 +52,7 @@ const view: TrademarkAssetView = {
 
 describe('TrademarkAssetPortfolio', () => {
   it('loads the workspace portfolio and opens a read-only composed view', async () => {
+    const load = vi.fn().mockResolvedValue({ view });
     const client: TrademarkAssetClient = {
       search: vi.fn().mockResolvedValue({
         schemaVersion: 1,
@@ -60,7 +61,7 @@ describe('TrademarkAssetPortfolio', () => {
         hasMore: false,
         officialTruthVerifiedByLite: false
       }),
-      load: vi.fn().mockResolvedValue({ view })
+      load
     };
     const user = userEvent.setup();
 
@@ -71,7 +72,7 @@ describe('TrademarkAssetPortfolio', () => {
 
     await user.click(screen.getByRole('button', { name: 'View asset details' }));
 
-    await waitFor(() => expect(client.load).toHaveBeenCalledWith('trademark-asset_test'));
+    await waitFor(() => expect(load).toHaveBeenCalledWith('trademark-asset_test'));
     expect(await screen.findByText(/Source facts are read-only/i)).toBeInTheDocument();
     expect(screen.getByText(/AI output is advisory/i)).toBeInTheDocument();
   });
