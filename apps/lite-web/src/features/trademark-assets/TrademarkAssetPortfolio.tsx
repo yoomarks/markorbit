@@ -24,6 +24,7 @@ import {
   type TrademarkAssetPortfolioManagementSummary
 } from '../../api/trademark-assets.js';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
+import { TrademarkServiceWorkbench } from './TrademarkServiceWorkbench.js';
 import './trademark-asset-workspace.css';
 
 export interface TrademarkAssetPortfolioProps {
@@ -136,8 +137,17 @@ export function TrademarkAssetPortfolio({
             {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
-            {...(serviceWorkPackage ? { serviceWorkPackage } : {})}
-            onPrepareServiceWorkPackage={async (input) => {
+          />
+          <TrademarkServiceWorkbench
+            jurisdiction={detail.view.anchor.identity.jurisdiction}
+            assetVersion={detail.view.anchor.version}
+            {...(serviceWorkPackage ? { latest: serviceWorkPackage } : {})}
+            {...(detail.recommendations?.[0]
+              ? {
+                  recommendationReference: `${detail.recommendations[0].recommendationId}@${detail.recommendations[0].version}`
+                }
+              : {})}
+            onPrepare={async (input) => {
               const prepared = await client.prepareServiceWorkPackage(selectedId, input);
               setServiceWorkPackage(prepared);
             }}
