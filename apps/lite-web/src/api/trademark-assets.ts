@@ -1,6 +1,9 @@
 import type { TrademarkAssetPortfolioPage } from '@markorbit/contracts/trademark-asset-portfolio';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
-import type { TrademarkServiceIntent, TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';
+import type {
+  TrademarkServiceIntent,
+  TrademarkServiceWorkPackage
+} from '@markorbit/contracts/trademark-service-workbench';
 import type {
   TrademarkAssetManagementChangeReference,
   TrademarkAssetManagementRecommendation,
@@ -103,7 +106,12 @@ export class TrademarkAssetHttpError extends Error {
 async function request<T>(
   path: string,
   workspaceId: string,
-  init?: Readonly<{ method?: 'GET' | 'POST'; body?: unknown; idempotencyKey?: string }>
+  init?: Readonly<{
+    method?: 'GET' | 'POST';
+    body?: unknown;
+    idempotencyKey?: string;
+    csrfToken?: string;
+  }>
 ): Promise<T> {
   let response: Response;
   try {
@@ -113,7 +121,8 @@ async function request<T>(
       headers: {
         'content-type': 'application/json',
         'x-markorbit-workspace-id': workspaceId,
-        ...(init?.idempotencyKey ? { 'idempotency-key': init.idempotencyKey } : {})
+        ...(init?.idempotencyKey ? { 'idempotency-key': init.idempotencyKey } : {}),
+        ...(init?.csrfToken ? { 'x-markorbit-csrf-token': init.csrfToken } : {})
       },
       ...(init?.body === undefined ? {} : { body: JSON.stringify(init.body) })
     });
@@ -138,6 +147,19 @@ async function request<T>(
       parsed.retryable ?? response.status >= 500
     );
   return parsed;
+}
+
+async function currentCsrfToken(): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
+  const payload = (await response.json().catch(() => ({}))) as { csrfToken?: string };
+  if (!response.ok || !payload.csrfToken)
+    throw new TrademarkAssetHttpError(
+      response.status || 401,
+      'AUTHENTICATION_REQUIRED',
+      'Authenticated session is required to prepare service work.',
+      false
+    );
+  return payload.csrfToken;
 }
 
 function searchPath(input: Readonly<TrademarkAssetSearchInput> | undefined): string {
@@ -171,13 +193,15 @@ export function createTrademarkAssetClient(workspaceId: string): TrademarkAssetC
       return response.workPackage ?? undefined;
     },
     prepareServiceWorkPackage: async (trademarkAssetId, input) => {
+      const csrfToken = await currentCsrfToken();
       const response = await request<{ workPackage: TrademarkServiceWorkPackage }>(
         `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/service-work-packages`,
         workspaceId,
         {
           method: 'POST',
           body: input,
-          idempotencyKey: `service-work-package-${trademarkAssetId}-${Date.now()}`
+          idempotencyKey: `service-work-package-${trademarkAssetId}-${crypto.randomUUID()}`,
+          csrfToken
         }
       );
       return response.workPackage;
