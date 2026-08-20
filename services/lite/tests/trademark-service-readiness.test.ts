@@ -84,6 +84,30 @@ function workPackage(
   };
 }
 
+function unanchoredWorkPackage(): TrademarkServiceWorkPackage {
+  const base = workPackage();
+  return {
+    schemaVersion: base.schemaVersion,
+    workPackageId: base.workPackageId,
+    workspaceId: base.workspaceId,
+    version: base.version,
+    intent: { ...base.intent, jurisdiction: '' },
+    requirementCandidates: base.requirementCandidates,
+    missingInputs: base.missingInputs,
+    readiness: base.readiness,
+    capabilityCandidates: base.capabilityCandidates,
+    providerCandidates: base.providerCandidates,
+    servicePackageCandidates: base.servicePackageCandidates,
+    communicationDrafts: base.communicationDrafts,
+    createdByUserId: base.createdByUserId,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+    parallelMatterLifecycleCreated: false,
+    officialTruthCreated: false,
+    protectedActionAuthorized: false
+  };
+}
+
 function assess(packageOverrides: Partial<TrademarkServiceWorkPackage> = {}) {
   return assessTrademarkServiceReadiness({
     workPackage: workPackage(packageOverrides),
@@ -105,13 +129,9 @@ describe('M12-WP04 readiness and missing information engine', () => {
   });
 
   it('marks missing Asset/Matter or jurisdiction context as CONTEXT_INCOMPLETE', () => {
-    const result = assess({
-      asset: undefined,
-      matterReference: undefined,
-      intent: {
-        ...workPackage().intent,
-        jurisdiction: ''
-      }
+    const result = assessTrademarkServiceReadiness({
+      workPackage: unanchoredWorkPackage(),
+      evaluatedAt: '2026-08-21T04:10:00.000Z'
     });
     expect(result.readiness.state).toBe('CONTEXT_INCOMPLETE');
     expect(result.missingInputs.map((input) => input.reason)).toEqual(
