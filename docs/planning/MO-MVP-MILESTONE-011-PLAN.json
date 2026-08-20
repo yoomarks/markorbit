@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M11",
+  "name": "Proactive Trademark Asset Management",
+  "status": "APPROVED_FOR_IMPLEMENTATION_AFTER_SCOPE_MERGE",
+  "direction": "PROACTIVE_TRADEMARK_ASSET_MANAGEMENT_AND_GOVERNED_ACTION_LOOP",
+  "primaryProduct": "MO Lite",
+  "workPackages": [
+    { "id": "M11-WP-01", "name": "Management Signal and authority contracts" },
+    { "id": "M11-WP-02", "name": "Portfolio change detection and refresh ledger" },
+    { "id": "M11-WP-03", "name": "Time-sensitive and risk/opportunity management signals" },
+    { "id": "M11-WP-04", "name": "Management recommendation preparer" },
+    { "id": "M11-WP-05", "name": "Governed Asset action handoff" },
+    { "id": "M11-WP-06", "name": "Proactive Portfolio Workspace UX" },
+    { "id": "M11-WP-07", "name": "Feedback, watch state and recovery/dead-letter reliability" },
+    { "id": "M11-WP-08", "name": "Real runtime reliability and independent authority audit" }
+  ],
+  "completionLoop": [
+    "asset observations",
+    "management signal",
+    "explainable risk or opportunity",
+    "user-reviewed recommendation",
+    "governed next-step preparation",
+    "Today/Work/Matter handoff",
+    "feedback",
+    "refreshed Asset context"
+  ],
+  "permanentLocks": [
+    "management signal != official status",
+    "observed date != certified legal deadline",
+    "recommendation != filing instruction or authorization",
+    "user disposition != verified legal conclusion",
+    "Product feedback != verified Capability",
+    "Data Engine consumption is read-only and contract-bound",
+    "Knowledge remains acquisition/provenance rather than user-specific legal judgment",
+    "no cross-service SQL",
+    "merge != production deployment or GA"
+  ],
+  "externalActionAuthority": {
+    "productionDeploymentAuthorized": false,
+    "gaAuthorized": false,
+    "filingAuthorized": false,
+    "externalPublicationAuthorized": false,
+    "customerOutreachAuthorized": false,
+    "providerExecutionAuthorized": false,
+    "paidExecutionAuthorized": false,
+    "officialTruthCreated": false,
+    "legalDeadlineCertified": false
+  }
+}
