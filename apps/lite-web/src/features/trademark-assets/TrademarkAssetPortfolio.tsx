@@ -248,7 +248,7 @@ export function TrademarkAssetPortfolio({
                 </small>
                 <div className="trademark-asset-portfolio__actions">
                   <Button onClick={() => void openAsset(asset.trademarkAssetId)}>
-                    Review management context
+                    View asset details
                   </Button>
                 </div>
               </Card>
