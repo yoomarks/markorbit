@@ -54,7 +54,7 @@ suite('PostgreSQL M11-WP02 Trademark Asset refresh ledger', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'lite_trademark_asset_refresh_test'
+    migrationNamespace: 'lite_trademark_asset_test'
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
@@ -74,7 +74,7 @@ suite('PostgreSQL M11-WP02 Trademark Asset refresh ledger', () => {
       migrationOwners,
       '@markorbit/lite-service'
     );
-    await migrate(database.getPool(), 'lite_trademark_asset_refresh_test', liteMigrations);
+    await migrate(database.getPool(), 'lite_trademark_asset_test', liteMigrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug) VALUES
        ($1,'Trademark Asset Refresh Test','trademark-asset-refresh-test'),
