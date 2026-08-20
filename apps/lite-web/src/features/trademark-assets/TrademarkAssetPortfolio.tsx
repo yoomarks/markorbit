@@ -18,7 +18,9 @@ import {
 import {
   createTrademarkAssetClient,
   type TrademarkAssetClient,
-  type TrademarkAssetDetailResponse
+  type TrademarkAssetDetailResponse,
+  type TrademarkAssetPortfolioManagementEntry,
+  type TrademarkAssetPortfolioManagementSummary
 } from '../../api/trademark-assets.js';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 import './trademark-asset-workspace.css';
@@ -56,6 +58,10 @@ export function TrademarkAssetPortfolio({
   );
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [assets, setAssets] = useState<readonly TrademarkAsset[]>([]);
+  const [management, setManagement] = useState<TrademarkAssetPortfolioManagementSummary>();
+  const [managementByAsset, setManagementByAsset] = useState<
+    readonly TrademarkAssetPortfolioManagementEntry[]
+  >([]);
   const [query, setQuery] = useState('');
   const [relationship, setRelationship] = useState<TrademarkAssetWorkspaceRelationshipKind | 'ALL'>(
     'ALL'
@@ -73,6 +79,8 @@ export function TrademarkAssetPortfolio({
         limit: 100
       });
       setAssets(page.assets);
+      setManagement(page.management);
+      setManagementByAsset(page.managementByAsset);
       setLoadState('ready');
     } catch {
       setLoadState('error');
@@ -95,6 +103,9 @@ export function TrademarkAssetPortfolio({
     }
   };
 
+  const managementEntry = (trademarkAssetId: TrademarkAssetId) =>
+    managementByAsset.find((entry) => entry.trademarkAssetId === trademarkAssetId);
+
   if (selectedId) {
     if (detailState === 'loading') return <LoadingState label="Loading Trademark Asset" />;
     if (detailState === 'error')
@@ -111,7 +122,13 @@ export function TrademarkAssetPortfolio({
           <Button variant="secondary" onClick={() => setSelectedId(undefined)}>
             ← Back to trademarks
           </Button>
-          <TrademarkAssetWorkspace view={detail.view} attention={detail.attention ?? []} />
+          <TrademarkAssetWorkspace
+            view={detail.view}
+            attention={detail.attention ?? []}
+            latestRefresh={detail.latestRefresh}
+            managementSignals={detail.managementSignals ?? []}
+            recommendations={detail.recommendations ?? []}
+          />
         </div>
       );
   }
@@ -123,6 +140,38 @@ export function TrademarkAssetPortfolio({
         description="Your durable workspace portfolio of owned, managed, represented and Marketplace-added trademark assets."
         actions={<Badge>Workspace-scoped · source-aware</Badge>}
       />
+
+      {management ? (
+        <section
+          className="trademark-asset-portfolio__management-summary"
+          aria-labelledby="portfolio-management-heading"
+        >
+          <div>
+            <p className="trademark-asset-workspace__eyebrow">Proactive management</p>
+            <h2 id="portfolio-management-heading">Portfolio attention summary</h2>
+            <small>Product signals only · no certified deadlines or verified official status</small>
+          </div>
+          <dl className="trademark-asset-workspace__fact-grid">
+            <div>
+              <dt>Urgent signals</dt>
+              <dd>{management.urgentSignals}</dd>
+            </div>
+            <div>
+              <dt>Important signals</dt>
+              <dd>{management.importantSignals}</dd>
+            </div>
+            <div>
+              <dt>All signals</dt>
+              <dd>{management.totalSignals}</dd>
+            </div>
+            <div>
+              <dt>Assets changed</dt>
+              <dd>{management.changedAssets}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
       <div className="trademark-asset-portfolio__filters" role="search">
         <TextInput
           label="Search trademark assets"
@@ -163,6 +212,7 @@ export function TrademarkAssetPortfolio({
             const marketplace = asset.workspaceRelationships.some(
               (item) => item.kind === 'MARKETPLACE_ADDED'
             );
+            const proactive = managementEntry(asset.trademarkAssetId);
             return (
               <Card key={asset.trademarkAssetId}>
                 <div className="trademark-asset-portfolio__row">
@@ -176,6 +226,13 @@ export function TrademarkAssetPortfolio({
                   <div className="trademark-asset-workspace__badges">
                     {marketplace ? <span>Marketplace source · read-only</span> : null}
                     {asset.workspacePriority ? <span>{asset.workspacePriority}</span> : null}
+                    {proactive?.signalCount ? (
+                      <span>
+                        {proactive.highestSeverity} · {proactive.signalCount} management signal
+                        {proactive.signalCount === 1 ? '' : 's'}
+                      </span>
+                    ) : null}
+                    {proactive?.changeCount ? <span>{proactive.changeCount} recent change(s)</span> : null}
                   </div>
                 </div>
                 {asset.workspaceTags.length ? (
@@ -189,7 +246,7 @@ export function TrademarkAssetPortfolio({
                 </small>
                 <div className="trademark-asset-portfolio__actions">
                   <Button onClick={() => void openAsset(asset.trademarkAssetId)}>
-                    View asset details
+                    Review management context
                   </Button>
                 </div>
               </Card>
