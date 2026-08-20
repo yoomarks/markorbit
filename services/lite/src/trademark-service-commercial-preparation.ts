@@ -81,11 +81,13 @@ function prepareQuote(
   const currency = clean(snapshot.currency).toUpperCase();
   const sourceReference = clean(snapshot.sourceReference);
   const sourceVersion = clean(snapshot.sourceVersion);
-  if (!currency || !sourceReference || !sourceVersion || snapshot.lines.length === 0) return undefined;
+  if (!currency || !sourceReference || !sourceVersion || snapshot.lines.length === 0)
+    return undefined;
 
   const lines = snapshot.lines.map((line) => {
     const lineCurrency = clean(line.amount.currency).toUpperCase();
-    if (lineCurrency !== currency) throw new Error('Pricing line currency must match quote currency.');
+    if (lineCurrency !== currency)
+      throw new Error('Pricing line currency must match quote currency.');
     if (!Number.isSafeInteger(line.amount.amountMinor) || line.amount.amountMinor < 0) {
       throw new Error('Pricing line amountMinor must be a non-negative safe integer.');
     }
@@ -141,9 +143,7 @@ function clientDraft(input: {
     kind: 'CLIENT_INFORMATION_REQUEST',
     subject: 'Information needed to continue trademark service preparation',
     body: `Please provide or confirm the following preparation items: ${titles.join('; ')}. This request concerns preparation completeness only and does not state a legal conclusion or certified deadline.`,
-    ...(input.recipientReference
-      ? { recipientReference: clean(input.recipientReference) }
-      : {}),
+    ...(input.recipientReference ? { recipientReference: clean(input.recipientReference) } : {}),
     sent: false,
     externalContactAuthorized: false
   };

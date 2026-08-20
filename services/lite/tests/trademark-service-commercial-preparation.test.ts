@@ -136,8 +136,9 @@ describe('M12-WP06 quote and client/provider preparation', () => {
         externalContactAuthorized: false
       })
     );
-    expect(result.communicationDrafts.find((draft) => draft.kind === 'CLIENT_INFORMATION_REQUEST')?.body)
-      .toContain('Signed power of attorney');
+    expect(
+      result.communicationDrafts.find((draft) => draft.kind === 'CLIENT_INFORMATION_REQUEST')?.body
+    ).toContain('Signed power of attorney');
   });
 
   it('prepares Provider enquiry but not Provider instruction without explicit user request', () => {
