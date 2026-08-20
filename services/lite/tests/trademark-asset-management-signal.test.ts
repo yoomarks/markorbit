@@ -207,7 +207,7 @@ describe('M11-WP03 proactive Trademark Asset management signals', () => {
         anchor: {
           ...view().anchor,
           trademarkAssetId: 'trademark-asset_missing',
-          workspacePriority: undefined
+          workspacePriority: ''
         }
       }),
       undefined,
