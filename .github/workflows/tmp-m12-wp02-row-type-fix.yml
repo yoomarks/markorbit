@@ -1,0 +1,37 @@
+name: tmp M12 WP02 row type fix
+on:
+  push:
+    branches: [agent/m12-wp02-durable-service-work-package-v2]
+    paths: [.github/workflows/tmp-m12-wp02-row-type-fix.yml]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m12-wp02-durable-service-work-package-v2
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('services/lite/tests/trademark-service-work-package-postgres.test.ts')
+          s=p.read_text()
+          old="""    if (!existingWorkPackageTable.rows[0]?.table_name) {\n"""
+          new="""    const existingWorkPackageTableName = (\n      existingWorkPackageTable.rows[0] as { table_name?: string | null } | undefined\n    )?.table_name;\n    if (!existingWorkPackageTableName) {\n"""
+          if old not in s: raise SystemExit('target not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write services/lite/tests/trademark-service-work-package-postgres.test.ts
+      - run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/lite/tests/trademark-service-work-package-postgres.test.ts
+          git commit -m "M12 WP02 type PostgreSQL schema probe"
+          git push origin HEAD:agent/m12-wp02-durable-service-work-package-v2
