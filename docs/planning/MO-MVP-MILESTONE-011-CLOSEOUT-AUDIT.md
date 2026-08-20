@@ -17,16 +17,16 @@ The implementation remains a Product management system over source-owned evidenc
 
 ## 2. Work-package reconciliation
 
-| Work package | Final evidence | Audit result |
-| --- | --- | --- |
-| WP01 — Management Signal & Authority Contracts | #144 | PASS |
-| WP02 — Portfolio Change Detection & Refresh Ledger | #145 | PASS |
-| WP03 — Time-Sensitive & Risk/Opportunity Management Signals | #146 | PASS |
-| WP04 — Management Recommendation Preparer | #147 | PASS |
-| WP05 — Governed Asset Action Handoff | #148 | PASS |
-| WP06 — Proactive Portfolio Workspace UX | #149 | PASS |
-| WP07 — Feedback, Watch State & Recovery / Dead-Letter Reliability | #150 | PASS |
-| WP08 — Real Runtime Reliability & Independent Authority Audit | this audit | PASS subject to exact-head CI |
+| Work package                                                      | Final evidence | Audit result                  |
+| ----------------------------------------------------------------- | -------------- | ----------------------------- |
+| WP01 — Management Signal & Authority Contracts                    | #144           | PASS                          |
+| WP02 — Portfolio Change Detection & Refresh Ledger                | #145           | PASS                          |
+| WP03 — Time-Sensitive & Risk/Opportunity Management Signals       | #146           | PASS                          |
+| WP04 — Management Recommendation Preparer                         | #147           | PASS                          |
+| WP05 — Governed Asset Action Handoff                              | #148           | PASS                          |
+| WP06 — Proactive Portfolio Workspace UX                           | #149           | PASS                          |
+| WP07 — Feedback, Watch State & Recovery / Dead-Letter Reliability | #150           | PASS                          |
+| WP08 — Real Runtime Reliability & Independent Authority Audit     | this audit     | PASS subject to exact-head CI |
 
 ## 3. Minimum audit matrix
 
