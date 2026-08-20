@@ -1,0 +1,33 @@
+name: Temporary M11 WP03 final fixture fixer
+
+on:
+  push:
+    branches:
+      - agent/m11-wp03-management-signals
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m11-wp03-management-signals
+      - name: Replace remaining undefined priority fixture
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/lite/tests/trademark-asset-management-signal.test.ts')
+          text = path.read_text().replace("workspacePriority: undefined", "workspacePriority: ''")
+          path.write_text(text)
+          PY
+      - name: Commit fixture fix
+        run: |
+          git config user.name "markorbit-ci"
+          git config user.email "markorbit-ci@users.noreply.github.com"
+          git add -- services/lite/tests/trademark-asset-management-signal.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(lite): normalize absent WP03 priority fixture"
+          git push origin HEAD:agent/m11-wp03-management-signals
