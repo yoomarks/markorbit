@@ -8,7 +8,7 @@ const source = {
   sourceId: 'matter_1',
   sourceVersion: '7',
   observedAt: '2026-08-19T00:00:00.000Z',
-  freshness: 'CURRENT',
+  freshness: 'CURRENT'
 } as const;
 
 const view: TrademarkAssetView = {
@@ -23,9 +23,7 @@ const view: TrademarkAssetView = {
     version: 3,
     identity: { jurisdiction: 'US', markText: 'MARK ORBIT' },
     externalIdentifiers: [],
-    workspaceRelationships: [
-      { kind: 'REPRESENTED', sourceAssetEditableByWorkspace: true },
-    ],
+    workspaceRelationships: [{ kind: 'REPRESENTED', sourceAssetEditableByWorkspace: true }],
     sourceReferences: [source],
     relations: [],
     workspaceTags: [],
@@ -33,7 +31,7 @@ const view: TrademarkAssetView = {
     officialTruthVerifiedByLite: false,
     filingExecutedByLite: false,
     createdAt: '2026-08-19T00:00:00.000Z',
-    updatedAt: '2026-08-19T00:00:00.000Z',
+    updatedAt: '2026-08-19T00:00:00.000Z'
   },
   observedFacts: [
     {
@@ -42,8 +40,8 @@ const view: TrademarkAssetView = {
       source,
       freshness: 'CURRENT',
       consequential: true,
-      officialTruthVerifiedByLite: false,
-    },
+      officialTruthVerifiedByLite: false
+    }
   ],
   contextSignals: [
     {
@@ -52,8 +50,8 @@ const view: TrademarkAssetView = {
       source,
       freshness: 'CURRENT',
       advisory: true,
-      executionAuthorized: false,
-    },
+      executionAuthorized: false
+    }
   ],
   conflicts: [],
   sourceReferences: [source],
@@ -61,14 +59,14 @@ const view: TrademarkAssetView = {
   composedAt: '2026-08-19T00:00:00.000Z',
   officialTruthVerifiedByLite: false,
   legalDeadlineCertified: false,
-  protectedActionAuthorized: false,
+  protectedActionAuthorized: false
 };
 
 describe('TrademarkAssetAiGuidePreparer', () => {
   it('prepares evidence-grounded suggestions without creating authority', () => {
     const preparer = new TrademarkAssetAiGuidePreparer(
       () => '2026-08-19T01:00:00.000Z',
-      () => '00000000-0000-4000-8000-000000000001',
+      () => '00000000-0000-4000-8000-000000000001'
     );
     const result = preparer.prepare({
       workspaceId: view.workspaceId,
@@ -77,17 +75,15 @@ describe('TrademarkAssetAiGuidePreparer', () => {
       requestedKinds: [
         'EXPLAIN_ASSET',
         'IDENTIFY_MISSING_INFORMATION',
-        'PREPARE_OWNER_ACTION_CANDIDATE',
-      ],
+        'PREPARE_OWNER_ACTION_CANDIDATE'
+      ]
     });
 
     expect(result.suggestions).toHaveLength(3);
     expect(result.evidence).toEqual([source]);
     expect(result.staleOrConflictingEvidencePresent).toBe(false);
     expect(
-      result.suggestions.every(
-        (item) => item.staleOrConflictingEvidencePresent === false,
-      ),
+      result.suggestions.every((item) => item.staleOrConflictingEvidencePresent === false)
     ).toBe(true);
     expect(result.suggestions.every((item) => item.officialTruthVerified === false)).toBe(true);
     expect(result.suggestions.every((item) => item.externalActionAuthorized === false)).toBe(true);
@@ -99,7 +95,7 @@ describe('TrademarkAssetAiGuidePreparer', () => {
   it('surfaces stale or conflicting evidence instead of hiding it', () => {
     const preparer = new TrademarkAssetAiGuidePreparer(
       () => '2026-08-19T01:00:00.000Z',
-      () => '00000000-0000-4000-8000-000000000002',
+      () => '00000000-0000-4000-8000-000000000002'
     );
     const result = preparer.prepare({
       workspaceId: view.workspaceId,
@@ -112,24 +108,22 @@ describe('TrademarkAssetAiGuidePreparer', () => {
             kind: 'OWNER_NAME',
             values: ['Example Owner', 'Another Owner'],
             evidence: [source],
-            unresolved: true,
-          },
-        ],
+            unresolved: true
+          }
+        ]
       },
-      requestedKinds: ['PREPARE_CHECKLIST'],
+      requestedKinds: ['PREPARE_CHECKLIST']
     });
 
     expect(result.staleOrConflictingEvidencePresent).toBe(true);
     expect(result.suggestions[0]?.staleOrConflictingEvidencePresent).toBe(true);
-    expect(result.suggestions[0]?.explanation).toContain(
-      'unresolved conflicting observations',
-    );
+    expect(result.suggestions[0]?.explanation).toContain('unresolved conflicting observations');
   });
 
   it('consumes bounded Commerce and Marketplace context without mutating source truth', () => {
     const preparer = new TrademarkAssetAiGuidePreparer(
       () => '2026-08-19T01:00:00.000Z',
-      () => '00000000-0000-4000-8000-000000000003',
+      () => '00000000-0000-4000-8000-000000000003'
     );
     const marketplaceSource = {
       owner: 'MARKETPLACE',
@@ -137,7 +131,7 @@ describe('TrademarkAssetAiGuidePreparer', () => {
       sourceId: 'listing_1',
       sourceVersion: '9',
       observedAt: '2026-08-19T00:30:00.000Z',
-      freshness: 'CURRENT',
+      freshness: 'CURRENT'
     } as const;
     const result = preparer.prepare({
       workspaceId: view.workspaceId,
@@ -161,7 +155,7 @@ describe('TrademarkAssetAiGuidePreparer', () => {
         marketplaceListingCreatedByLite: false,
         sourceTrademarkFactsMutatedByLite: false,
         createdAt: '2026-08-19T00:20:00.000Z',
-        updatedAt: '2026-08-19T00:20:00.000Z',
+        updatedAt: '2026-08-19T00:20:00.000Z'
       },
       marketplaceOverlay: {
         schemaVersion: 1,
@@ -175,7 +169,7 @@ describe('TrademarkAssetAiGuidePreparer', () => {
           sourceListingId: 'listing_1',
           sourceListingVersion: '9',
           sourceReference: marketplaceSource,
-          observedAt: '2026-08-19T00:30:00.000Z',
+          observedAt: '2026-08-19T00:30:00.000Z'
         },
         privateTags: [],
         privateNotes: [],
@@ -192,15 +186,15 @@ describe('TrademarkAssetAiGuidePreparer', () => {
         marketplacePublicationCreatedByLite: false,
         transactionAuthorizedByLite: false,
         createdAt: '2026-08-19T00:30:00.000Z',
-        updatedAt: '2026-08-19T00:30:00.000Z',
+        updatedAt: '2026-08-19T00:30:00.000Z'
       },
-      requestedKinds: ['PREPARE_CONTENT_CANDIDATE'],
+      requestedKinds: ['PREPARE_CONTENT_CANDIDATE']
     });
 
     expect(result.contextReferences.map((item) => item.kind)).toEqual([
       'ASSET_COMPOSITION',
       'COMMERCE_PROFILE',
-      'MARKETPLACE_OVERLAY',
+      'MARKETPLACE_OVERLAY'
     ]);
     expect(result.evidence).toContainEqual(marketplaceSource);
     expect(result.suggestions[0]?.explanation).toContain('A compact commerce angle');
