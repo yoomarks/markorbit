@@ -28,6 +28,7 @@ import { ExecutionReleaseView } from './features/execution-release/ExecutionRele
 import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 import { TodayWorkspace } from './features/today/TodayWorkspace.js';
 import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
+import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAssetPortfolio.js';
 
 const nav = [
   'Today',
@@ -42,6 +43,7 @@ const nav = [
 type Surface =
   | 'today'
   | 'matters'
+  | 'trademarks'
   | 'capability'
   | 'customers'
   | 'opportunities'
@@ -520,6 +522,7 @@ export function LiteApp({
       else if (window.location.hash === '#opportunities') setSurface('opportunities');
       else if (window.location.hash === '#today') setSurface('today');
       else if (window.location.hash === '#matters') setSurface('matters');
+      else if (window.location.hash === '#trademarks') setSurface('trademarks');
       else if (window.location.hash === '#capability') setSurface('capability');
     };
     followHash();
@@ -547,22 +550,30 @@ export function LiteApp({
                   ? label === 'Opportunities'
                   : surface === 'matters'
                     ? label === 'Matters'
-                    : surface === 'capability'
-                      ? label === 'Capability'
-                      : label === 'Today'
+                    : surface === 'trademarks'
+                      ? label === 'Trademarks'
+                      : surface === 'capability'
+                        ? label === 'Capability'
+                        : label === 'Today'
           }))}
         />
       }
       topBar={
         <TopBar
           context={
-            surface === 'matters' || surface === 'today' || surface === 'capability'
+            surface === 'matters' ||
+            surface === 'today' ||
+            surface === 'trademarks' ||
+            surface === 'capability'
               ? `Workspace · ${activeWorkspaceId || 'not selected'}`
               : 'Northstar IP · Fixture workspace'
           }
           actions={
             <Badge>
-              {surface === 'matters' || surface === 'today' || surface === 'capability'
+              {surface === 'matters' ||
+              surface === 'today' ||
+              surface === 'trademarks' ||
+              surface === 'capability'
                 ? 'Authenticated'
                 : 'Not live data'}
             </Badge>
@@ -571,9 +582,10 @@ export function LiteApp({
       }
     >
       <div className="lite-workspace">
-        {surface !== 'matters' && surface !== 'today' && surface !== 'capability' && (
-          <FixtureBanner />
-        )}
+        {surface !== 'matters' &&
+          surface !== 'today' &&
+          surface !== 'trademarks' &&
+          surface !== 'capability' && <FixtureBanner />}
         {(surface === 'customers' ||
           surface === 'professional-review' ||
           surface === 'execution-release') && (
@@ -614,6 +626,15 @@ export function LiteApp({
             <ErrorState
               title="Select a Workspace"
               description="A valid Workspace context is required to load durable Today Recommendations."
+            />
+          )
+        ) : surface === 'trademarks' ? (
+          activeWorkspaceId ? (
+            <TrademarkAssetPortfolio workspaceId={activeWorkspaceId} />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load durable Trademark Assets."
             />
           )
         ) : surface === 'capability' ? (

@@ -34,6 +34,9 @@ import {
   DailyWorkspacePreferenceTargetResolver,
   ProductPreferenceService
 } from './preference-target.js';
+import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';
+import { TrademarkAssetPortfolioService } from './trademark-asset-portfolio.js';
+import { PostgresLiteTrademarkAssetStore } from './trademark-asset.js';
 import {
   PostgresVisualBridgeStore,
   UnavailableVisualEngineConsumer,
@@ -74,6 +77,8 @@ const dailySignalStore = new PostgresLiteDailySignalStore(
   pool,
   new HttpCoreDailyKnowledgeSourceAuthority(coreUrl, internalServiceSecret)
 );
+const trademarkAssetStore = new PostgresLiteTrademarkAssetStore(database, pool);
+const trademarkAssetPortfolio = new TrademarkAssetPortfolioService(pool, trademarkAssetStore);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   async resolve(workspaceId, locator) {
@@ -260,6 +265,11 @@ const runtime = createServiceRuntime(serviceManifest, {
       dailySignalStore,
       dailyOrbitService,
       useFeedbackPreferenceRecorder: preferenceService
+    }),
+    ...createTrademarkAssetReadRoutes({
+      internalServiceSecret,
+      assets: trademarkAssetStore,
+      portfolio: trademarkAssetPortfolio
     }),
     ...createContentKitRoutes({ internalServiceSecret, contentKitService }),
     ...createProductPreferenceRoutes({ internalServiceSecret, service: preferenceService }),
