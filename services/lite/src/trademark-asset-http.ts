@@ -11,12 +11,19 @@ import {
 } from './trademark-asset.js';
 import type { TrademarkAssetPortfolioService } from './trademark-asset-portfolio.js';
 import { deriveTrademarkAssetAttention } from './trademark-asset-attention.js';
+import { deriveTrademarkAssetManagementSignals } from './trademark-asset-management-signal.js';
+import { prepareTrademarkAssetManagementRecommendations } from './trademark-asset-management-recommendation.js';
+import {
+  TrademarkAssetRefreshError,
+  type PostgresTrademarkAssetRefreshLedger
+} from './trademark-asset-refresh.js';
 import { composeTrademarkAssetView } from './trademark-asset-view.js';
 
 export interface TrademarkAssetReadRouteOptions {
   internalServiceSecret: string;
   assets: PostgresLiteTrademarkAssetStore;
   portfolio: TrademarkAssetPortfolioService;
+  refreshLedger: PostgresTrademarkAssetRefreshLedger;
   now?: () => string;
 }
 
@@ -72,7 +79,7 @@ function positiveLimit(value: string | undefined): number | undefined {
 }
 
 function mapError(error: unknown): never {
-  if (error instanceof TrademarkAssetPersistenceError)
+  if (error instanceof TrademarkAssetPersistenceError || error instanceof TrademarkAssetRefreshError)
     throw new HttpError(error.status, error.code, error.message, error.retryable);
   throw error;
 }
@@ -93,23 +100,66 @@ export function createTrademarkAssetReadRoutes(
           const jurisdictions = csv(request.query.jurisdiction);
           const workspaceTags = csv(request.query.tag);
           const limit = positiveLimit(request.query.limit);
-          return json(
-            200,
-            await options.portfolio.search({
-              workspaceId: principal.workspaceId,
-              ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
-              ...(limit !== undefined ? { limit } : {}),
-              filter: {
-                ...(request.query.q ? { query: request.query.q } : {}),
-                ...(jurisdictions ? { jurisdictions } : {}),
-                ...(relationships ? { relationshipKinds: relationships } : {}),
-                ...(workspaceTags ? { workspaceTags } : {}),
-                ...(request.query.ownerOrClientReference
-                  ? { ownerOrClientReference: request.query.ownerOrClientReference }
-                  : {})
-              }
+          const page = await options.portfolio.search({
+            workspaceId: principal.workspaceId,
+            ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
+            ...(limit !== undefined ? { limit } : {}),
+            filter: {
+              ...(request.query.q ? { query: request.query.q } : {}),
+              ...(jurisdictions ? { jurisdictions } : {}),
+              ...(relationships ? { relationshipKinds: relationships } : {}),
+              ...(workspaceTags ? { workspaceTags } : {}),
+              ...(request.query.ownerOrClientReference
+                ? { ownerOrClientReference: request.query.ownerOrClientReference }
+                : {})
+            }
+          });
+          const generatedAt = now();
+          const managementEntries = await Promise.all(
+            page.assets.map(async (anchor) => {
+              const latestRefresh = (
+                await options.refreshLedger.listRecent(
+                  principal.workspaceId,
+                  anchor.trademarkAssetId,
+                  1
+                )
+              )[0];
+              const view = composeTrademarkAssetView({ anchor, composedAt: generatedAt });
+              const signals = deriveTrademarkAssetManagementSignals(view, latestRefresh, generatedAt);
+              return {
+                trademarkAssetId: anchor.trademarkAssetId,
+                signals,
+                latestRefresh
+              };
             })
           );
+          return json(200, {
+            ...page,
+            management: {
+              totalSignals: managementEntries.reduce((sum, entry) => sum + entry.signals.length, 0),
+              urgentSignals: managementEntries.reduce(
+                (sum, entry) =>
+                  sum + entry.signals.filter((signal) => signal.severity === 'URGENT').length,
+                0
+              ),
+              importantSignals: managementEntries.reduce(
+                (sum, entry) =>
+                  sum + entry.signals.filter((signal) => signal.severity === 'IMPORTANT').length,
+                0
+              ),
+              changedAssets: managementEntries.filter(
+                (entry) => (entry.latestRefresh?.changes.length ?? 0) > 0
+              ).length,
+              generatedAt
+            },
+            managementByAsset: managementEntries.map((entry) => ({
+              trademarkAssetId: entry.trademarkAssetId,
+              highestSeverity: entry.signals[0]?.severity ?? 'INFO',
+              signalCount: entry.signals.length,
+              changeCount: entry.latestRefresh?.changes.length ?? 0,
+              lastRefreshedAt: entry.latestRefresh?.refreshedAt
+            }))
+          });
         } catch (error) {
           return mapError(error);
         }
@@ -121,15 +171,29 @@ export function createTrademarkAssetReadRoutes(
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret);
         try {
-          const anchor = await options.assets.get(
-            principal.workspaceId,
-            request.params.trademarkAssetId! as TrademarkAssetId
-          );
+          const trademarkAssetId = request.params.trademarkAssetId! as TrademarkAssetId;
+          const anchor = await options.assets.get(principal.workspaceId, trademarkAssetId);
           const composedAt = now();
           const view = composeTrademarkAssetView({ anchor, composedAt });
+          const latestRefresh = (
+            await options.refreshLedger.listRecent(principal.workspaceId, trademarkAssetId, 1)
+          )[0];
+          const managementSignals = deriveTrademarkAssetManagementSignals(
+            view,
+            latestRefresh,
+            composedAt
+          );
+          const recommendations = prepareTrademarkAssetManagementRecommendations({
+            signals: managementSignals,
+            relatedOwnerReferences: view.anchor.relations,
+            createdAt: composedAt
+          });
           return json(200, {
             view,
-            attention: deriveTrademarkAssetAttention(view, composedAt)
+            attention: deriveTrademarkAssetAttention(view, composedAt),
+            latestRefresh,
+            managementSignals,
+            recommendations
           });
         } catch (error) {
           return mapError(error);
