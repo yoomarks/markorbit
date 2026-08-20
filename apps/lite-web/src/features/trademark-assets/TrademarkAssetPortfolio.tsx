@@ -57,9 +57,9 @@ export function TrademarkAssetPortfolio({
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [assets, setAssets] = useState<readonly TrademarkAsset[]>([]);
   const [query, setQuery] = useState('');
-  const [relationship, setRelationship] = useState<
-    TrademarkAssetWorkspaceRelationshipKind | 'ALL'
-  >('ALL');
+  const [relationship, setRelationship] = useState<TrademarkAssetWorkspaceRelationshipKind | 'ALL'>(
+    'ALL'
+  );
   const [selectedId, setSelectedId] = useState<TrademarkAssetId>();
   const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();
   const [detailState, setDetailState] = useState<LoadState>('ready');
@@ -167,7 +167,9 @@ export function TrademarkAssetPortfolio({
               <Card key={asset.trademarkAssetId}>
                 <div className="trademark-asset-portfolio__row">
                   <div>
-                    <p className="trademark-asset-workspace__eyebrow">{asset.identity.jurisdiction}</p>
+                    <p className="trademark-asset-workspace__eyebrow">
+                      {asset.identity.jurisdiction}
+                    </p>
                     <h2>{assetTitle(asset)}</h2>
                     <p>{relationshipLabel(asset)}</p>
                   </div>

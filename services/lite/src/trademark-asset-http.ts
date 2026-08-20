@@ -1,8 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import {
-  parseInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   TrademarkAssetId,
   TrademarkAssetWorkspaceRelationshipKind
@@ -91,8 +88,7 @@ export function createTrademarkAssetReadRoutes(
         const principal = principalOf(request, options.internalServiceSecret);
         try {
           const relationships = csv(request.query.relationship) as
-            | TrademarkAssetWorkspaceRelationshipKind[]
-            | undefined;
+            TrademarkAssetWorkspaceRelationshipKind[] | undefined;
           const jurisdictions = csv(request.query.jurisdiction);
           const workspaceTags = csv(request.query.tag);
           return json(
@@ -100,7 +96,9 @@ export function createTrademarkAssetReadRoutes(
             await options.portfolio.search({
               workspaceId: principal.workspaceId,
               ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
-              ...(positiveLimit(request.query.limit) ? { limit: positiveLimit(request.query.limit) } : {}),
+              ...(positiveLimit(request.query.limit)
+                ? { limit: positiveLimit(request.query.limit) }
+                : {}),
               filter: {
                 ...(request.query.q ? { query: request.query.q } : {}),
                 ...(jurisdictions ? { jurisdictions } : {}),

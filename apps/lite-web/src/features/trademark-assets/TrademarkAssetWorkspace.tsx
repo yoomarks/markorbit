@@ -164,8 +164,7 @@ export function TrademarkAssetWorkspace({
         <span>Source facts are read-only in this workspace.</span>
         <span>AI output is advisory and never becomes an official fact.</span>
         <span>
-          Filing, provider contact, Marketplace publication, transfer and payment stay outside
-          Lite.
+          Filing, provider contact, Marketplace publication, transfer and payment stay outside Lite.
         </span>
       </aside>
     </main>
