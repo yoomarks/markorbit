@@ -71,7 +71,10 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
     const existingWorkPackageTable = await database
       .getPool()
       .query("SELECT to_regclass('public.lite_trademark_service_work_packages') AS table_name");
-    if (!existingWorkPackageTable.rows[0]?.table_name) {
+    const existingWorkPackageTableName = (
+      existingWorkPackageTable.rows[0] as { table_name?: string | null } | undefined
+    )?.table_name;
+    if (!existingWorkPackageTableName) {
       const liteMigrations = await loadMigrationsForOwner(
         migrationsDirectory,
         migrationOwners,
