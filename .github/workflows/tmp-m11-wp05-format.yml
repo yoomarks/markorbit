@@ -1,0 +1,34 @@
+name: Temporary M11 WP05 formatter
+
+on:
+  push:
+    branches:
+      - agent/m11-wp05-governed-asset-handoff
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m11-wp05-governed-asset-handoff
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write services/lite/src/trademark-asset-management-handoff.ts services/lite/tests/trademark-asset-management-handoff.test.ts services/lite/package.json
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "markorbit-ci"
+          git config user.email "markorbit-ci@users.noreply.github.com"
+          git add -- services/lite/src/trademark-asset-management-handoff.ts services/lite/tests/trademark-asset-management-handoff.test.ts services/lite/package.json
+          git commit -m "style: apply exact M11 WP05 formatting"
+          git push origin HEAD:agent/m11-wp05-governed-asset-handoff
