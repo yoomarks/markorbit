@@ -81,7 +81,9 @@ function assertExactLink(
       reference.id === signal.managementSignalId && reference.version === signal.version
   );
   if (!linked) {
-    throw new Error('Recommendation must carry an exact reference to the selected Management Signal.');
+    throw new Error(
+      'Recommendation must carry an exact reference to the selected Management Signal.'
+    );
   }
 }
 
@@ -137,10 +139,7 @@ export function prepareTrademarkAssetManagementHandoff(input: {
       version: input.recommendation.version
     },
     destination,
-    evidenceSnapshot: uniqueEvidence([
-      ...input.signal.evidence,
-      ...input.recommendation.evidence
-    ]),
+    evidenceSnapshot: uniqueEvidence([...input.signal.evidence, ...input.recommendation.evidence]),
     requestedByUserId,
     requestedAt,
     userConfirmed: true,
