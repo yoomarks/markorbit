@@ -55,7 +55,9 @@ export class TrademarkAssetAiGuidePreparer {
     private readonly newId: () => string = randomUUID
   ) {}
 
-  prepare(request: Readonly<TrademarkAssetAiGuidePrepareRequest>): TrademarkAssetAiGuidePreparedResult {
+  prepare(
+    request: Readonly<TrademarkAssetAiGuidePrepareRequest>
+  ): TrademarkAssetAiGuidePreparedResult {
     const { view, commerceProfile, marketplaceOverlay } = request;
     if (request.workspaceId !== view.workspaceId) {
       throw new Error('AI Guide workspace must match the composed Trademark Asset view.');
@@ -66,7 +68,10 @@ export class TrademarkAssetAiGuidePreparer {
 
     for (const context of [commerceProfile, marketplaceOverlay]) {
       if (!context) continue;
-      if (context.workspaceId !== view.workspaceId || context.trademarkAssetId !== view.trademarkAssetId) {
+      if (
+        context.workspaceId !== view.workspaceId ||
+        context.trademarkAssetId !== view.trademarkAssetId
+      ) {
         throw new Error('AI Guide context must belong to the same workspace and Trademark Asset.');
       }
       if (context.trademarkAssetVersion !== view.anchorVersion) {
@@ -75,7 +80,10 @@ export class TrademarkAssetAiGuidePreparer {
     }
 
     const requestedKinds = [...new Set(request.requestedKinds)];
-    if (requestedKinds.length === 0 || requestedKinds.some((kind) => !supportedKinds.includes(kind))) {
+    if (
+      requestedKinds.length === 0 ||
+      requestedKinds.some((kind) => !supportedKinds.includes(kind))
+    ) {
       throw new Error('At least one supported AI Guide suggestion kind is required.');
     }
 
@@ -137,7 +145,9 @@ export class TrademarkAssetAiGuidePreparer {
     const suggestions = requestedKinds.map((kind): AiGuideSuggestion => {
       switch (kind) {
         case 'EXPLAIN_ASSET': {
-          const facts = view.observedFacts.map((fact) => `${fact.kind}: ${valueText(fact.value)}`);
+          const facts = view.observedFacts.map(
+            (fact) => `${fact.kind}: ${valueText(fact.value)}`
+          );
           return suggestion(
             kind,
             'Asset context summary',
@@ -183,10 +193,18 @@ export class TrademarkAssetAiGuidePreparer {
           );
         case 'PREPARE_CHECKLIST': {
           const items = [
-            ...(factMap.has('APPLICATION_STATUS') ? [] : ['confirm current application status from an owner source']),
-            ...(factMap.has('OWNER_NAME') ? [] : ['confirm current owner context from an owner source']),
-            ...(factMap.has('NICE_CLASSES') ? [] : ['confirm Nice classes from an owner source']),
-            ...(view.conflicts.length > 0 ? ['review unresolved conflicting observations before consequential use'] : []),
+            ...(factMap.has('APPLICATION_STATUS')
+              ? []
+              : ['confirm current application status from an owner source']),
+            ...(factMap.has('OWNER_NAME')
+              ? []
+              : ['confirm current owner context from an owner source']),
+            ...(factMap.has('NICE_CLASSES')
+              ? []
+              : ['confirm Nice classes from an owner source']),
+            ...(view.conflicts.length > 0
+              ? ['review unresolved conflicting observations before consequential use']
+              : []),
             ...(marketplaceSource && marketplaceSource.freshness !== 'CURRENT'
               ? ['refresh the Marketplace source listing before customer-facing use']
               : [])
@@ -194,7 +212,9 @@ export class TrademarkAssetAiGuidePreparer {
           return suggestion(
             kind,
             'Review checklist',
-            items.length > 0 ? items.join('; ') : 'Review the current source references before taking any consequential action.'
+            items.length > 0
+              ? items.join('; ')
+              : 'Review the current source references before taking any consequential action.'
           );
         }
         case 'PREPARE_TODAY_CANDIDATE':
