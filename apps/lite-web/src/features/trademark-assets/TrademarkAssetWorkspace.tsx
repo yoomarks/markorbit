@@ -1,41 +1,70 @@
+import { useState } from 'react';
 import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/trademark-asset-ai-guide';
 import type { TrademarkAssetCommerceProfile } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
+import type {
+  TrademarkAssetManagementRecommendation,
+  TrademarkAssetManagementSignal
+} from '@markorbit/contracts/trademark-asset-management';
 import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trademark-asset-marketplace-reference';
 import type { TrademarkAssetAttentionSignal } from '@markorbit/contracts/trademark-asset-workspace';
 import { Button } from '@markorbit/ui';
+import type { TrademarkAssetRefreshSummary } from '../../api/trademark-assets.js';
 import './trademark-asset-workspace.css';
 
 export interface TrademarkAssetWorkspaceProps {
   view: Readonly<TrademarkAssetView>;
   attention?: readonly Readonly<TrademarkAssetAttentionSignal>[];
+  latestRefresh?: Readonly<TrademarkAssetRefreshSummary>;
+  managementSignals?: readonly Readonly<TrademarkAssetManagementSignal>[];
+  recommendations?: readonly Readonly<TrademarkAssetManagementRecommendation>[];
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   marketplaceOverlay?: Readonly<TrademarkAssetMarketplaceOverlay>;
   aiGuide?: Readonly<TrademarkAssetAiGuidePreparedResult>;
 }
 
+type PendingDisposition = 'WATCH' | 'DEFER' | 'DISMISS';
+
 const textValue = (value: string | number | boolean | readonly string[]) =>
   Array.isArray(value) ? value.join(', ') : String(value);
 
-function handoffForAttention(attention: Readonly<TrademarkAssetAttentionSignal>): {
-  label: string;
-  hash: '#today' | '#matters';
-} {
-  if (attention.dimension === 'LIFECYCLE_RECOMMENDATION') {
-    return { label: 'Open related work', hash: '#matters' };
+function destinationForRecommendation(
+  recommendation: Readonly<TrademarkAssetManagementRecommendation>
+): '#today' | '#matters' {
+  if (
+    recommendation.kind === 'PREPARE_OWNER_WORK_CANDIDATE' ||
+    recommendation.kind === 'REVIEW_LIFECYCLE_RECOMMENDATION'
+  ) {
+    return '#matters';
   }
-  return { label: 'Continue in Today', hash: '#today' };
+  return '#today';
 }
 
 export function TrademarkAssetWorkspace({
   view,
   attention = [],
+  latestRefresh,
+  managementSignals = [],
+  recommendations = [],
   commerceProfile,
   marketplaceOverlay,
   aiGuide
 }: TrademarkAssetWorkspaceProps) {
   const relationships = view.anchor.workspaceRelationships.map((relationship) => relationship.kind);
   const isMarketplaceReference = relationships.includes('MARKETPLACE_ADDED');
+  const [pendingDisposition, setPendingDisposition] = useState<{
+    recommendationId: string;
+    disposition: PendingDisposition;
+  }>();
+  const [confirmingRecommendationId, setConfirmingRecommendationId] = useState<string>();
+
+  const recommendationForSignal = (signal: Readonly<TrademarkAssetManagementSignal>) =>
+    recommendations.find((recommendation) =>
+      recommendation.signalReferences.some(
+        (reference) =>
+          reference.id === signal.managementSignalId && reference.version === signal.version
+      )
+    );
 
   return (
     <main className="trademark-asset-workspace" data-testid="trademark-asset-workspace">
@@ -57,43 +86,162 @@ export function TrademarkAssetWorkspace({
         </div>
       </header>
 
-      <section aria-labelledby="asset-attention-heading">
+      <section aria-labelledby="asset-management-heading">
         <div className="trademark-asset-workspace__section-heading">
           <div>
-            <p>Explainable product attention</p>
-            <h2 id="asset-attention-heading">Why this Asset needs attention</h2>
+            <p>Product-derived management layer</p>
+            <h2 id="asset-management-heading">What needs attention now</h2>
           </div>
-          <span>No deadline or official-status certification</span>
+          <span>Observed fact ≠ Product signal ≠ recommendation ≠ governed work</span>
         </div>
-        {attention.length ? (
+        {managementSignals.length ? (
           <div className="trademark-asset-workspace__guide-grid">
-            {attention.map((item) => {
-              const handoff = handoffForAttention(item);
+            {managementSignals.map((signal) => {
+              const recommendation = recommendationForSignal(signal);
+              const pending =
+                recommendation && pendingDisposition?.recommendationId === recommendation.recommendationId
+                  ? pendingDisposition.disposition
+                  : undefined;
+              const confirming =
+                recommendation?.recommendationId === confirmingRecommendationId;
               return (
-                <article key={item.attentionSignalId}>
+                <article key={signal.managementSignalId}>
+                  <p className="trademark-asset-workspace__eyebrow">Product signal</p>
                   <h3>
-                    {item.severity} · {item.dimension}
+                    {signal.severity} · {signal.dimension}
                   </h3>
-                  <p>{item.reason}</p>
+                  <p>{signal.reason}</p>
                   <small>
-                    {item.evidence.length} source reference{item.evidence.length === 1 ? '' : 's'} ·
-                    explicit user choice required
+                    Freshness: {signal.freshness} · {signal.evidence.length} evidence reference
+                    {signal.evidence.length === 1 ? '' : 's'} · no legal-deadline certification
                   </small>
-                  <div className="trademark-asset-portfolio__actions">
-                    <Button
-                      onClick={() => {
-                        window.location.hash = handoff.hash;
-                      }}
-                    >
-                      {handoff.label}
-                    </Button>
-                  </div>
+                  {recommendation ? (
+                    <div className="trademark-asset-workspace__recommendation">
+                      <p className="trademark-asset-workspace__eyebrow">Reviewable recommendation</p>
+                      <strong>{recommendation.title}</strong>
+                      <p>{recommendation.explanation}</p>
+                      <small>
+                        User confirmation required · filing, contact, payment and publication remain
+                        unauthorized
+                      </small>
+                      <div className="trademark-asset-portfolio__actions">
+                        {(['WATCH', 'DEFER', 'DISMISS'] as const).map((disposition) => (
+                          <Button
+                            key={disposition}
+                            variant="secondary"
+                            onClick={() =>
+                              setPendingDisposition({
+                                recommendationId: recommendation.recommendationId,
+                                disposition
+                              })
+                            }
+                          >
+                            {disposition === 'WATCH'
+                              ? 'Watch'
+                              : disposition === 'DEFER'
+                                ? 'Defer'
+                                : 'Dismiss'}
+                          </Button>
+                        ))}
+                        {confirming ? (
+                          <Button
+                            onClick={() => {
+                              window.location.hash = destinationForRecommendation(recommendation);
+                            }}
+                          >
+                            Confirm & continue
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() =>
+                              setConfirmingRecommendationId(recommendation.recommendationId)
+                            }
+                          >
+                            Continue
+                          </Button>
+                        )}
+                      </div>
+                      {pending ? (
+                        <p role="status">
+                          {pending} selected for this private Product recommendation. Durable watch /
+                          disposition history is added in M11 WP07; no source truth changed.
+                        </p>
+                      ) : null}
+                      {confirming ? (
+                        <p role="status">
+                          Confirming only opens the existing governed surface. It does not authorize a
+                          filing or other protected action.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
           </div>
         ) : (
-          <p>No current explainable attention signal.</p>
+          <p>No current M11 management signal.</p>
+        )}
+      </section>
+
+      <section aria-labelledby="asset-change-heading">
+        <div className="trademark-asset-workspace__section-heading">
+          <div>
+            <p>Refresh ledger</p>
+            <h2 id="asset-change-heading">What changed since the last comparable refresh</h2>
+          </div>
+          <span>{latestRefresh ? `Observed ${latestRefresh.refreshedAt}` : 'No refresh recorded'}</span>
+        </div>
+        {latestRefresh?.changes.length ? (
+          <ul className="trademark-asset-workspace__change-list">
+            {latestRefresh.changes.map((change, index) => (
+              <li key={`${change.kind}-${change.observedAt}-${index}`}>
+                <strong>{change.kind}</strong>
+                <span>
+                  {change.previousSourceVersion ? `from ${change.previousSourceVersion} ` : ''}
+                  {change.currentSourceVersion ? `to ${change.currentSourceVersion}` : ''}
+                </span>
+                <small>
+                  {change.sourceReferences.map((source) => `${source.owner}:${source.kind}`).join(' · ')}
+                  {' · '}
+                  {change.freshness}
+                </small>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>
+            {latestRefresh
+              ? 'The latest comparable refresh recorded no material or freshness change.'
+              : 'No durable refresh comparison is available yet.'}
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="asset-attention-heading">
+        <div className="trademark-asset-workspace__section-heading">
+          <div>
+            <p>Legacy explainable attention</p>
+            <h2 id="asset-attention-heading">M10 attention context</h2>
+          </div>
+          <span>No deadline or official-status certification</span>
+        </div>
+        {attention.length ? (
+          <div className="trademark-asset-workspace__guide-grid">
+            {attention.map((item) => (
+              <article key={item.attentionSignalId}>
+                <h3>
+                  {item.severity} · {item.dimension}
+                </h3>
+                <p>{item.reason}</p>
+                <small>
+                  {item.evidence.length} source reference{item.evidence.length === 1 ? '' : 's'}
+                </small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>No current M10 attention signal.</p>
         )}
       </section>
 
@@ -216,6 +364,7 @@ export function TrademarkAssetWorkspace({
       <aside className="trademark-asset-workspace__authority" aria-label="Lite authority boundary">
         <strong>Authority boundary</strong>
         <span>Source facts are read-only in this workspace.</span>
+        <span>Management Signals and recommendations are Product inference, not official truth.</span>
         <span>AI output is advisory and never becomes an official fact.</span>
         <span>
           Filing, provider contact, Marketplace publication, transfer and payment stay outside Lite.
