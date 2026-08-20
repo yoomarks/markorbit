@@ -80,9 +80,9 @@ function dedupeMissingInputs(
     if (!current || (!current.blocking && input.blocking)) seen.set(key, input);
   }
   return [...seen.values()].sort((left, right) =>
-    [left.reason, left.relatedRequirementId ?? '', left.title].join('|').localeCompare(
-      [right.reason, right.relatedRequirementId ?? '', right.title].join('|')
-    )
+    [left.reason, left.relatedRequirementId ?? '', left.title]
+      .join('|')
+      .localeCompare([right.reason, right.relatedRequirementId ?? '', right.title].join('|'))
   );
 }
 
@@ -143,7 +143,8 @@ function readinessState(input: {
   if (blocking.some((item) => clientMissingReasons.has(item.reason))) return 'MISSING_CLIENT_INPUT';
   if (
     blocking.some(
-      (item) => item.reason === 'OWNER_DOMAIN_REVIEW_MISSING' || providerMissingReasons.has(item.reason)
+      (item) =>
+        item.reason === 'OWNER_DOMAIN_REVIEW_MISSING' || providerMissingReasons.has(item.reason)
     )
   ) {
     return 'PROVIDER_INPUT_REQUIRED';
