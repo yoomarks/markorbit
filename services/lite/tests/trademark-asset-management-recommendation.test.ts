@@ -58,9 +58,7 @@ function aiSuggestion(kind: AiGuideSuggestion['kind']): AiGuideSuggestion {
     filingAuthorized: false,
     customerOrProviderContactAuthorized: false,
     paidExecutionAuthorized: false,
-    externalPublicationAuthorized: false,
     capabilityVerified: false,
-    legalDeadlineCertified: false,
     officialTruthVerified: false,
     createdAt: '2026-08-20T00:00:00.000Z'
   };
