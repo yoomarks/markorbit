@@ -1,7 +1,44 @@
+.trademark-asset-portfolio,
+.trademark-asset-portfolio__detail,
 .trademark-asset-workspace {
   display: grid;
   gap: 20px;
+}
+
+.trademark-asset-workspace {
   padding: 24px;
+}
+
+.trademark-asset-portfolio__filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(220px, 320px);
+  gap: 12px;
+  align-items: end;
+}
+
+.trademark-asset-portfolio__list {
+  display: grid;
+  gap: 14px;
+}
+
+.trademark-asset-portfolio__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.trademark-asset-portfolio__row h2 {
+  margin: 0 0 6px;
+}
+
+.trademark-asset-portfolio__row p,
+.trademark-asset-portfolio__tags {
+  margin: 6px 0;
+}
+
+.trademark-asset-portfolio__actions {
+  margin-top: 14px;
 }
 
 .trademark-asset-workspace section,
@@ -88,6 +125,11 @@
 }
 
 @media (max-width: 720px) {
+  .trademark-asset-portfolio__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .trademark-asset-portfolio__row,
   .trademark-asset-workspace__header,
   .trademark-asset-workspace__section-heading {
     flex-direction: column;
