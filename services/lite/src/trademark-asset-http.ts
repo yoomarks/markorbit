@@ -79,7 +79,10 @@ function positiveLimit(value: string | undefined): number | undefined {
 }
 
 function mapError(error: unknown): never {
-  if (error instanceof TrademarkAssetPersistenceError || error instanceof TrademarkAssetRefreshError)
+  if (
+    error instanceof TrademarkAssetPersistenceError ||
+    error instanceof TrademarkAssetRefreshError
+  )
     throw new HttpError(error.status, error.code, error.message, error.retryable);
   throw error;
 }
@@ -125,7 +128,11 @@ export function createTrademarkAssetReadRoutes(
                 )
               )[0];
               const view = composeTrademarkAssetView({ anchor, composedAt: generatedAt });
-              const signals = deriveTrademarkAssetManagementSignals(view, latestRefresh, generatedAt);
+              const signals = deriveTrademarkAssetManagementSignals(
+                view,
+                latestRefresh,
+                generatedAt
+              );
               return {
                 trademarkAssetId: anchor.trademarkAssetId,
                 signals,

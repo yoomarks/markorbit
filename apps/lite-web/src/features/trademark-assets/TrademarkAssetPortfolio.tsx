@@ -232,7 +232,9 @@ export function TrademarkAssetPortfolio({
                         {proactive.signalCount === 1 ? '' : 's'}
                       </span>
                     ) : null}
-                    {proactive?.changeCount ? <span>{proactive.changeCount} recent change(s)</span> : null}
+                    {proactive?.changeCount ? (
+                      <span>{proactive.changeCount} recent change(s)</span>
+                    ) : null}
                   </div>
                 </div>
                 {asset.workspaceTags.length ? (

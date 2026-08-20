@@ -99,11 +99,11 @@ export function TrademarkAssetWorkspace({
             {managementSignals.map((signal) => {
               const recommendation = recommendationForSignal(signal);
               const pending =
-                recommendation && pendingDisposition?.recommendationId === recommendation.recommendationId
+                recommendation &&
+                pendingDisposition?.recommendationId === recommendation.recommendationId
                   ? pendingDisposition.disposition
                   : undefined;
-              const confirming =
-                recommendation?.recommendationId === confirmingRecommendationId;
+              const confirming = recommendation?.recommendationId === confirmingRecommendationId;
               return (
                 <article key={signal.managementSignalId}>
                   <p className="trademark-asset-workspace__eyebrow">Product signal</p>
@@ -117,7 +117,9 @@ export function TrademarkAssetWorkspace({
                   </small>
                   {recommendation ? (
                     <div className="trademark-asset-workspace__recommendation">
-                      <p className="trademark-asset-workspace__eyebrow">Reviewable recommendation</p>
+                      <p className="trademark-asset-workspace__eyebrow">
+                        Reviewable recommendation
+                      </p>
                       <strong>{recommendation.title}</strong>
                       <p>{recommendation.explanation}</p>
                       <small>
@@ -163,14 +165,14 @@ export function TrademarkAssetWorkspace({
                       </div>
                       {pending ? (
                         <p role="status">
-                          {pending} selected for this private Product recommendation. Durable watch /
-                          disposition history is added in M11 WP07; no source truth changed.
+                          {pending} selected for this private Product recommendation. Durable watch
+                          / disposition history is added in M11 WP07; no source truth changed.
                         </p>
                       ) : null}
                       {confirming ? (
                         <p role="status">
-                          Confirming only opens the existing governed surface. It does not authorize a
-                          filing or other protected action.
+                          Confirming only opens the existing governed surface. It does not authorize
+                          a filing or other protected action.
                         </p>
                       ) : null}
                     </div>
@@ -190,7 +192,9 @@ export function TrademarkAssetWorkspace({
             <p>Refresh ledger</p>
             <h2 id="asset-change-heading">What changed since the last comparable refresh</h2>
           </div>
-          <span>{latestRefresh ? `Observed ${latestRefresh.refreshedAt}` : 'No refresh recorded'}</span>
+          <span>
+            {latestRefresh ? `Observed ${latestRefresh.refreshedAt}` : 'No refresh recorded'}
+          </span>
         </div>
         {latestRefresh?.changes.length ? (
           <ul className="trademark-asset-workspace__change-list">
@@ -202,7 +206,9 @@ export function TrademarkAssetWorkspace({
                   {change.currentSourceVersion ? `to ${change.currentSourceVersion}` : ''}
                 </span>
                 <small>
-                  {change.sourceReferences.map((source) => `${source.owner}:${source.kind}`).join(' · ')}
+                  {change.sourceReferences
+                    .map((source) => `${source.owner}:${source.kind}`)
+                    .join(' · ')}
                   {' · '}
                   {change.freshness}
                 </small>
@@ -364,7 +370,9 @@ export function TrademarkAssetWorkspace({
       <aside className="trademark-asset-workspace__authority" aria-label="Lite authority boundary">
         <strong>Authority boundary</strong>
         <span>Source facts are read-only in this workspace.</span>
-        <span>Management Signals and recommendations are Product inference, not official truth.</span>
+        <span>
+          Management Signals and recommendations are Product inference, not official truth.
+        </span>
         <span>AI output is advisory and never becomes an official fact.</span>
         <span>
           Filing, provider contact, Marketplace publication, transfer and payment stay outside Lite.
