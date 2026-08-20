@@ -1,0 +1,99 @@
+.trademark-asset-workspace {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+}
+
+.trademark-asset-workspace section,
+.trademark-asset-workspace__authority {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  padding: 18px;
+  background: #fff;
+}
+
+.trademark-asset-workspace__header,
+.trademark-asset-workspace__section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.trademark-asset-workspace__eyebrow,
+.trademark-asset-workspace__section-heading p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trademark-asset-workspace h1,
+.trademark-asset-workspace h2,
+.trademark-asset-workspace h3 {
+  margin-top: 0;
+}
+
+.trademark-asset-workspace__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.trademark-asset-workspace__badges span,
+.trademark-asset-workspace__section-heading > span {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trademark-asset-workspace__fact-grid,
+.trademark-asset-workspace__guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.trademark-asset-workspace__fact-grid > div,
+.trademark-asset-workspace__guide-grid article {
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.trademark-asset-workspace__fact-grid dt {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trademark-asset-workspace__fact-grid dd {
+  margin: 6px 0;
+  font-size: 15px;
+}
+
+.trademark-asset-workspace__sources {
+  margin-bottom: 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.trademark-asset-workspace__authority {
+  display: grid;
+  gap: 6px;
+  border-style: dashed;
+}
+
+@media (max-width: 720px) {
+  .trademark-asset-workspace__header,
+  .trademark-asset-workspace__section-heading {
+    flex-direction: column;
+  }
+
+  .trademark-asset-workspace__badges {
+    justify-content: flex-start;
+  }
+}
