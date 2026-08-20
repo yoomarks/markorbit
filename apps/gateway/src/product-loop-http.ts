@@ -190,6 +190,8 @@ export function createGatewayProductLoopRoutes(
   return [
     route('GET', '/api/lite/today', ['workspace:read'], false),
     route('GET', '/api/lite/daily-orbit', ['workspace:read'], false),
+    route('GET', '/api/lite/trademark-assets', ['workspace:read'], false),
+    route('GET', '/api/lite/trademark-assets/:trademarkAssetId', ['workspace:read'], false),
     route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], false),
     route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], false),
     route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], false),
