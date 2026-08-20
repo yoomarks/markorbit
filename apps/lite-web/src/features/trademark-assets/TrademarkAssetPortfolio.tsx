@@ -125,7 +125,7 @@ export function TrademarkAssetPortfolio({
           <TrademarkAssetWorkspace
             view={detail.view}
             attention={detail.attention ?? []}
-            latestRefresh={detail.latestRefresh}
+            {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
           />
