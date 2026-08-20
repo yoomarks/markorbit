@@ -68,7 +68,9 @@ function stable(value: unknown): unknown {
 }
 
 const fingerprint = (value: unknown): string =>
-  createHash('sha256').update(JSON.stringify(stable(value))).digest('hex');
+  createHash('sha256')
+    .update(JSON.stringify(stable(value)))
+    .digest('hex');
 
 function cleanText(value: unknown, field: string, maximum: number): string {
   if (typeof value !== 'string') {
@@ -124,7 +126,11 @@ function cleanAsset(
   if (!value) return undefined;
   const id = cleanText(value.id, 'asset.id', 300);
   if (!id.startsWith('trademark-asset_')) {
-    throw new TrademarkServiceWorkPackagePersistenceError('INVALID_INPUT', 'asset.id is invalid.', 400);
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'INVALID_INPUT',
+      'asset.id is invalid.',
+      400
+    );
   }
   const version =
     typeof value.version === 'number'
@@ -406,7 +412,10 @@ export class PostgresTrademarkServiceWorkPackageStore {
     }
   }
 
-  async get(workspaceIdInput: string, workPackageIdInput: string): Promise<TrademarkServiceWorkPackage> {
+  async get(
+    workspaceIdInput: string,
+    workPackageIdInput: string
+  ): Promise<TrademarkServiceWorkPackage> {
     return this.read(workspaceIdInput, workPackageIdInput);
   }
 
@@ -462,7 +471,11 @@ export class PostgresTrademarkServiceWorkPackageStore {
     return clone(row.result_json as TrademarkServiceWorkPackage);
   }
 
-  private async assertAssetVisible(client: QueryClient, workspaceId: string, assetId: TrademarkAssetId) {
+  private async assertAssetVisible(
+    client: QueryClient,
+    workspaceId: string,
+    assetId: TrademarkAssetId
+  ) {
     const result = await client.query(
       'SELECT 1 FROM lite_trademark_assets WHERE workspace_id=$1 AND trademark_asset_id=$2',
       [workspaceId, assetId]
