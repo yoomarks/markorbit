@@ -1,0 +1,27 @@
+name: tmp M12 WP03 prettier
+on:
+  push:
+    branches: [agent/m12-wp03-jurisdiction-requirement-composition]
+    paths: [.github/workflows/tmp-m12-wp03-prettier.yml]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m12-wp03-jurisdiction-requirement-composition
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write services/lite/src/trademark-service-requirement-composition.ts services/lite/tests/trademark-service-requirement-composition.test.ts
+      - run: pnpm exec prettier --check services/lite/src/trademark-service-requirement-composition.ts services/lite/tests/trademark-service-requirement-composition.test.ts
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/lite/src/trademark-service-requirement-composition.ts services/lite/tests/trademark-service-requirement-composition.test.ts
+          git commit -m "M12 WP03 format requirement composition"
+          git push origin HEAD:agent/m12-wp03-jurisdiction-requirement-composition
