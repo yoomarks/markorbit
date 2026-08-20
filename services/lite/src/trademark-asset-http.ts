@@ -91,14 +91,13 @@ export function createTrademarkAssetReadRoutes(
             TrademarkAssetWorkspaceRelationshipKind[] | undefined;
           const jurisdictions = csv(request.query.jurisdiction);
           const workspaceTags = csv(request.query.tag);
+          const limit = positiveLimit(request.query.limit);
           return json(
             200,
             await options.portfolio.search({
               workspaceId: principal.workspaceId,
               ...(request.query.cursor ? { cursor: request.query.cursor } : {}),
-              ...(positiveLimit(request.query.limit)
-                ? { limit: positiveLimit(request.query.limit) }
-                : {}),
+              ...(limit !== undefined ? { limit } : {}),
               filter: {
                 ...(request.query.q ? { query: request.query.q } : {}),
                 ...(jurisdictions ? { jurisdictions } : {}),
