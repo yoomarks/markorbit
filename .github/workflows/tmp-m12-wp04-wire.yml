@@ -1,0 +1,53 @@
+name: tmp M12 WP04 wire
+on:
+  push:
+    branches: [agent/m12-wp04-readiness-missing-information]
+    paths: [.github/workflows/tmp-m12-wp04-wire.yml]
+permissions:
+  contents: write
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m12-wp04-readiness-missing-information
+      - run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          index = Path('services/lite/src/index.ts')
+          text = index.read_text()
+          marker = "export * from './trademark-service-requirement-composition.js';\n"
+          addition = marker + "export * from './trademark-service-readiness.js';\n"
+          if "trademark-service-readiness.js" not in text:
+              if marker not in text: raise SystemExit('index marker missing')
+              index.write_text(text.replace(marker, addition, 1))
+
+          package = Path('services/lite/package.json')
+          data = json.loads(package.read_text())
+          build = data['scripts']['build']
+          marker_build = 'src/trademark-service-requirement-composition.ts'
+          if 'src/trademark-service-readiness.ts' not in build:
+              if marker_build not in build: raise SystemExit('build marker missing')
+              data['scripts']['build'] = build.replace(marker_build, marker_build + ' src/trademark-service-readiness.ts', 1)
+          data['exports']['./trademark-service-readiness'] = {
+              'types': './dist/trademark-service-readiness.d.ts',
+              'import': './dist/trademark-service-readiness.js'
+          }
+          package.write_text(json.dumps(data, indent=2) + '\n')
+          PY
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write services/lite/src/index.ts services/lite/package.json services/lite/src/trademark-service-readiness.ts services/lite/tests/trademark-service-readiness.test.ts
+      - run: pnpm --filter @markorbit/lite-service lint && pnpm --filter @markorbit/lite-service typecheck
+      - run: pnpm --filter @markorbit/lite-service exec vitest run tests/trademark-service-readiness.test.ts
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/lite/src/index.ts services/lite/package.json services/lite/src/trademark-service-readiness.ts services/lite/tests/trademark-service-readiness.test.ts
+          git commit -m "M12 WP04 wire readiness engine"
+          git push origin HEAD:agent/m12-wp04-readiness-missing-information
