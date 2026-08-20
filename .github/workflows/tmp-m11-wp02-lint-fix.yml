@@ -1,0 +1,80 @@
+name: Temporary M11 WP02 lint fixer
+
+on:
+  push:
+    branches:
+      - agent/m11-wp02-asset-refresh-ledger
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m11-wp02-asset-refresh-ledger
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Tighten typed boundaries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('services/lite/src/trademark-asset-refresh.ts')
+          text = source.read_text()
+          text = text.replace(
+              "    !Array.isArray(values) ||\n    values.length === 0 ||",
+              "    values.length === 0 ||",
+              1,
+          )
+          text = text.replace(
+              "  if (!Array.isArray(values) || values.length > 200) {",
+              "  if (values.length > 200) {",
+              1,
+          )
+          text = text.replace(
+              "        const previousRunId = priorRun.rows[0]?.refresh_run_id as string | undefined;",
+              "        const priorRunRow = priorRun.rows[0] as Row | undefined;\n        const previousRunId =\n          typeof priorRunRow?.refresh_run_id === 'string'\n            ? priorRunRow.refresh_run_id\n            : undefined;",
+              1,
+          )
+          source.write_text(text)
+
+          for name in [
+              'services/lite/tests/trademark-asset-refresh.test.ts',
+              'services/lite/tests/trademark-asset-refresh-ledger-read.test.ts',
+          ]:
+              path = Path(name)
+              text = path.read_text()
+              text = text.replace(
+                  "async () => {\n    throw new Error('database should not be reached');\n  }",
+                  "() => Promise.reject(new Error('database should not be reached'))",
+              )
+              text = text.replace(
+                  "async () => ({ rows: [] })",
+                  "() => Promise.resolve({ rows: [] })",
+              )
+              text = text.replace(
+                  "async () => {\n      throw new Error('unused');\n    }",
+                  "() => Promise.reject(new Error('unused'))",
+              )
+              path.write_text(text)
+          PY
+      - run: pnpm exec prettier --write services/lite/src/trademark-asset-refresh.ts services/lite/tests/trademark-asset-refresh.test.ts services/lite/tests/trademark-asset-refresh-ledger-read.test.ts
+      - name: Commit fixes
+        run: |
+          git config user.name "markorbit-ci"
+          git config user.email "markorbit-ci@users.noreply.github.com"
+          git add -- services/lite/src/trademark-asset-refresh.ts services/lite/tests/trademark-asset-refresh.test.ts services/lite/tests/trademark-asset-refresh-ledger-read.test.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "fix(lite): tighten M11 refresh type boundaries"
+          git push origin HEAD:agent/m11-wp02-asset-refresh-ledger
