@@ -111,7 +111,7 @@ export function TrademarkAssetPortfolio({
           <Button variant="secondary" onClick={() => setSelectedId(undefined)}>
             ← Back to trademarks
           </Button>
-          <TrademarkAssetWorkspace view={detail.view} />
+          <TrademarkAssetWorkspace view={detail.view} attention={detail.attention ?? []} />
         </div>
       );
   }

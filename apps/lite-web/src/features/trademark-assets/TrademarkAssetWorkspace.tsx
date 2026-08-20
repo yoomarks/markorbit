@@ -2,10 +2,13 @@ import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/t
 import type { TrademarkAssetCommerceProfile } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
 import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trademark-asset-marketplace-reference';
+import type { TrademarkAssetAttentionSignal } from '@markorbit/contracts/trademark-asset-workspace';
+import { Button } from '@markorbit/ui';
 import './trademark-asset-workspace.css';
 
 export interface TrademarkAssetWorkspaceProps {
   view: Readonly<TrademarkAssetView>;
+  attention?: readonly Readonly<TrademarkAssetAttentionSignal>[];
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   marketplaceOverlay?: Readonly<TrademarkAssetMarketplaceOverlay>;
   aiGuide?: Readonly<TrademarkAssetAiGuidePreparedResult>;
@@ -14,8 +17,19 @@ export interface TrademarkAssetWorkspaceProps {
 const textValue = (value: string | number | boolean | readonly string[]) =>
   Array.isArray(value) ? value.join(', ') : String(value);
 
+function handoffForAttention(attention: Readonly<TrademarkAssetAttentionSignal>): {
+  label: string;
+  hash: '#today' | '#matters';
+} {
+  if (attention.dimension === 'LIFECYCLE_RECOMMENDATION') {
+    return { label: 'Open related work', hash: '#matters' };
+  }
+  return { label: 'Continue in Today', hash: '#today' };
+}
+
 export function TrademarkAssetWorkspace({
   view,
+  attention = [],
   commerceProfile,
   marketplaceOverlay,
   aiGuide
@@ -42,6 +56,46 @@ export function TrademarkAssetWorkspace({
           {isMarketplaceReference ? <span>Marketplace source · read-only</span> : null}
         </div>
       </header>
+
+      <section aria-labelledby="asset-attention-heading">
+        <div className="trademark-asset-workspace__section-heading">
+          <div>
+            <p>Explainable product attention</p>
+            <h2 id="asset-attention-heading">Why this Asset needs attention</h2>
+          </div>
+          <span>No deadline or official-status certification</span>
+        </div>
+        {attention.length ? (
+          <div className="trademark-asset-workspace__guide-grid">
+            {attention.map((item) => {
+              const handoff = handoffForAttention(item);
+              return (
+                <article key={item.attentionSignalId}>
+                  <h3>
+                    {item.severity} · {item.dimension}
+                  </h3>
+                  <p>{item.reason}</p>
+                  <small>
+                    {item.evidence.length} source reference{item.evidence.length === 1 ? '' : 's'} ·
+                    explicit user choice required
+                  </small>
+                  <div className="trademark-asset-portfolio__actions">
+                    <Button
+                      onClick={() => {
+                        window.location.hash = handoff.hash;
+                      }}
+                    >
+                      {handoff.label}
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p>No current explainable attention signal.</p>
+        )}
+      </section>
 
       <section aria-labelledby="asset-facts-heading">
         <div className="trademark-asset-workspace__section-heading">

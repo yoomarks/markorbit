@@ -1,6 +1,7 @@
 import type { TrademarkAssetPortfolioPage } from '@markorbit/contracts/trademark-asset-portfolio';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
 import type {
+  TrademarkAssetAttentionSignal,
   TrademarkAssetId,
   TrademarkAssetWorkspaceRelationshipKind
 } from '@markorbit/contracts/trademark-asset-workspace';
@@ -19,6 +20,7 @@ export interface TrademarkAssetSearchInput {
 
 export interface TrademarkAssetDetailResponse {
   readonly view: Readonly<TrademarkAssetView>;
+  readonly attention?: readonly Readonly<TrademarkAssetAttentionSignal>[];
 }
 
 export interface TrademarkAssetClient {
