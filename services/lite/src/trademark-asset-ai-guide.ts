@@ -6,7 +6,7 @@ import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trad
 import type {
   AiGuideSuggestion,
   AiGuideSuggestionKind,
-  TrademarkAssetSourceReference
+  TrademarkAssetSourceReference,
 } from '@markorbit/contracts/trademark-asset-workspace';
 
 export interface TrademarkAssetAiGuidePrepareRequest {
@@ -27,11 +27,11 @@ const supportedKinds: readonly AiGuideSuggestionKind[] = [
   'PREPARE_CHECKLIST',
   'PREPARE_TODAY_CANDIDATE',
   'PREPARE_CONTENT_CANDIDATE',
-  'PREPARE_OWNER_ACTION_CANDIDATE'
+  'PREPARE_OWNER_ACTION_CANDIDATE',
 ];
 
 const uniqueEvidence = (
-  references: readonly Readonly<TrademarkAssetSourceReference>[]
+  references: readonly Readonly<TrademarkAssetSourceReference>[],
 ): TrademarkAssetSourceReference[] => {
   const seen = new Set<string>();
   const result: TrademarkAssetSourceReference[] = [];
@@ -51,11 +51,11 @@ const valueText = (value: string | number | boolean | readonly string[]): string
 export class TrademarkAssetAiGuidePreparer {
   constructor(
     private readonly now: () => string = () => new Date().toISOString(),
-    private readonly newId: () => string = randomUUID
+    private readonly newId: () => string = randomUUID,
   ) {}
 
   prepare(
-    request: Readonly<TrademarkAssetAiGuidePrepareRequest>
+    request: Readonly<TrademarkAssetAiGuidePrepareRequest>,
   ): TrademarkAssetAiGuidePreparedResult {
     const { view, commerceProfile, marketplaceOverlay } = request;
     if (request.workspaceId !== view.workspaceId) {
@@ -90,7 +90,7 @@ export class TrademarkAssetAiGuidePreparer {
     const marketplaceSource = marketplaceOverlay?.source.sourceReference;
     const evidence = uniqueEvidence([
       ...view.sourceReferences,
-      ...(marketplaceSource ? [marketplaceSource] : [])
+      ...(marketplaceSource ? [marketplaceSource] : []),
     ]);
     const staleOrConflictingEvidencePresent =
       view.freshness !== 'CURRENT' ||
@@ -109,14 +109,14 @@ export class TrademarkAssetAiGuidePreparer {
       commerceProfile?.headline,
       ...(commerceProfile?.sellingPoints ?? []),
       marketplaceOverlay?.headline,
-      ...(marketplaceOverlay?.sellingPoints ?? [])
+      ...(marketplaceOverlay?.sellingPoints ?? []),
     ].filter((value): value is string => Boolean(value?.trim()));
 
     const suggestion = (
       kind: AiGuideSuggestionKind,
       title: string,
       explanation: string,
-      suggestionEvidence: readonly TrademarkAssetSourceReference[] = evidence
+      suggestionEvidence: readonly TrademarkAssetSourceReference[] = evidence,
     ): AiGuideSuggestion => ({
       schemaVersion: 1,
       aiGuideSuggestionId: `ai-guide-suggestion_${this.newId()}`,
@@ -124,7 +124,7 @@ export class TrademarkAssetAiGuidePreparer {
       version: 1,
       asset: {
         id: view.trademarkAssetId,
-        version: view.anchorVersion
+        version: view.anchorVersion,
       },
       kind,
       title,
@@ -138,21 +138,21 @@ export class TrademarkAssetAiGuidePreparer {
       paidExecutionAuthorized: false,
       officialTruthVerified: false,
       capabilityVerified: false,
-      createdAt: generatedAt
+      createdAt: generatedAt,
     });
 
     const suggestions = requestedKinds.map((kind): AiGuideSuggestion => {
       switch (kind) {
         case 'EXPLAIN_ASSET': {
           const facts = view.observedFacts.map(
-            (fact) => `${fact.kind}: ${valueText(fact.value)}`
+            (fact) => `${fact.kind}: ${valueText(fact.value)}`,
           );
           return suggestion(
             kind,
             'Asset context summary',
             facts.length > 0
               ? `Observed source-owned facts: ${facts.join('; ')}. These observations are not official verification.`
-              : 'No source-owned factual observations are currently available for this asset.'
+              : 'No source-owned factual observations are currently available for this asset.',
           );
         }
         case 'SUMMARIZE_OWNER_CONTEXT': {
@@ -162,7 +162,7 @@ export class TrademarkAssetAiGuidePreparer {
             'Owner context',
             owner
               ? `Observed owner context: ${valueText(owner.value)}. This is a source observation, not ownership verification by Lite.`
-              : 'Owner context is missing from the currently composed source observations.'
+              : 'Owner context is missing from the currently composed source observations.',
           );
         }
         case 'IDENTIFY_MISSING_INFORMATION': {
@@ -173,7 +173,7 @@ export class TrademarkAssetAiGuidePreparer {
             'Missing asset information',
             missing.length > 0
               ? `Missing or unavailable context: ${missing.join(', ')}.`
-              : 'No baseline information gaps were detected in the currently composed view.'
+              : 'No baseline information gaps were detected in the currently composed view.',
           );
         }
         case 'EXPLAIN_SOURCE_CHANGE':
@@ -182,13 +182,13 @@ export class TrademarkAssetAiGuidePreparer {
             'Relevant source changes',
             knowledgeChanges.length > 0
               ? `Relevant Knowledge signals: ${knowledgeChanges.join('; ')}. These are relevance signals, not trademark facts.`
-              : 'No Knowledge relevance signal is currently attached to this asset.'
+              : 'No Knowledge relevance signal is currently attached to this asset.',
           );
         case 'COMPARE_ASSETS':
           return suggestion(
             kind,
             'Comparison preparation',
-            'This asset is prepared for comparison using source-owned facts and workspace context. Cross-asset comparison requires another accessible Trademark Asset view and must preserve conflicts.'
+            'This asset is prepared for comparison using source-owned facts and workspace context. Cross-asset comparison requires another accessible Trademark Asset view and must preserve conflicts.',
           );
         case 'PREPARE_CHECKLIST': {
           const items = [
@@ -206,14 +206,14 @@ export class TrademarkAssetAiGuidePreparer {
               : []),
             ...(marketplaceSource && marketplaceSource.freshness !== 'CURRENT'
               ? ['refresh the Marketplace source listing before customer-facing use']
-              : [])
+              : []),
           ];
           return suggestion(
             kind,
             'Review checklist',
             items.length > 0
               ? items.join('; ')
-              : 'Review the current source references before taking any consequential action.'
+              : 'Review the current source references before taking any consequential action.',
           );
         }
         case 'PREPARE_TODAY_CANDIDATE':
@@ -222,7 +222,7 @@ export class TrademarkAssetAiGuidePreparer {
             'Today candidate',
             recommendedActions.length > 0
               ? `Candidate attention item based on advisory source signals: ${recommendedActions.join('; ')}.`
-              : 'No owner-domain recommended action is currently available to prepare as a Today candidate.'
+              : 'No owner-domain recommended action is currently available to prepare as a Today candidate.',
           );
         case 'PREPARE_CONTENT_CANDIDATE': {
           const angles = knowledgeChanges.length > 0 ? knowledgeChanges : commercialAngles;
@@ -231,7 +231,7 @@ export class TrademarkAssetAiGuidePreparer {
             'Content candidate',
             angles.length > 0
               ? `Potential content angle from bounded workspace/source context: ${angles.join('; ')}. Review source evidence and permissions before publishing.`
-              : 'No grounded Knowledge change or workspace-private commercial angle is currently available.'
+              : 'No grounded Knowledge change or workspace-private commercial angle is currently available.',
           );
         }
         case 'PREPARE_OWNER_ACTION_CANDIDATE':
@@ -240,7 +240,7 @@ export class TrademarkAssetAiGuidePreparer {
             'Owner action candidate',
             recommendedActions.length > 0
               ? `Prepared from advisory owner-domain signals: ${recommendedActions.join('; ')}. User confirmation and owner-domain validation remain required.`
-              : 'No owner-domain recommended action is currently available.'
+              : 'No owner-domain recommended action is currently available.',
           );
       }
     });
@@ -255,15 +255,15 @@ export class TrademarkAssetAiGuidePreparer {
         {
           kind: 'ASSET_COMPOSITION',
           referenceId: view.trademarkAssetId,
-          referenceVersion: String(view.anchorVersion)
+          referenceVersion: String(view.anchorVersion),
         },
         ...(commerceProfile
           ? [
               {
                 kind: 'COMMERCE_PROFILE' as const,
                 referenceId: commerceProfile.commerceProfileId,
-                referenceVersion: String(commerceProfile.version)
-              }
+                referenceVersion: String(commerceProfile.version),
+              },
             ]
           : []),
         ...(marketplaceOverlay
@@ -271,10 +271,10 @@ export class TrademarkAssetAiGuidePreparer {
               {
                 kind: 'MARKETPLACE_OVERLAY' as const,
                 referenceId: marketplaceOverlay.marketplaceOverlayId,
-                referenceVersion: String(marketplaceOverlay.version)
-              }
+                referenceVersion: String(marketplaceOverlay.version),
+              },
             ]
-          : [])
+          : []),
       ],
       evidence,
       suggestions,
@@ -285,7 +285,7 @@ export class TrademarkAssetAiGuidePreparer {
       externalActionAuthorizedByGuide: false,
       customerOrProviderContactAuthorizedByGuide: false,
       paidExecutionAuthorizedByGuide: false,
-      generatedAt
+      generatedAt,
     };
   }
 }
