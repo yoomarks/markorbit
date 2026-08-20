@@ -4,14 +4,38 @@
   "baseline": "c5f708a9f0c58fcf102f4e062b7216936410d597",
   "direction": "TRADEMARK_SERVICE_WORKBENCH_AND_GOVERNED_SERVICE_PREPARATION",
   "workPackages": [
-    { "id": "M12-WP01", "name": "Service Intent, Requirement & Authority Contracts" },
-    { "id": "M12-WP02", "name": "Durable Service Work Package" },
-    { "id": "M12-WP03", "name": "Jurisdiction Requirement Composition" },
-    { "id": "M12-WP04", "name": "Readiness & Missing Information Engine" },
-    { "id": "M12-WP05", "name": "Capability / Provider / Service Package Matching" },
-    { "id": "M12-WP06", "name": "Quote & Client/Provider Preparation" },
-    { "id": "M12-WP07", "name": "Professional Service Workbench UX" },
-    { "id": "M12-WP08", "name": "Execution Readiness & Independent Authority Audit" }
+    {
+      "id": "M12-WP01",
+      "name": "Service Intent, Requirement & Authority Contracts"
+    },
+    {
+      "id": "M12-WP02",
+      "name": "Durable Service Work Package"
+    },
+    {
+      "id": "M12-WP03",
+      "name": "Jurisdiction Requirement Composition"
+    },
+    {
+      "id": "M12-WP04",
+      "name": "Readiness & Missing Information Engine"
+    },
+    {
+      "id": "M12-WP05",
+      "name": "Capability / Provider / Service Package Matching"
+    },
+    {
+      "id": "M12-WP06",
+      "name": "Quote & Client/Provider Preparation"
+    },
+    {
+      "id": "M12-WP07",
+      "name": "Professional Service Workbench UX"
+    },
+    {
+      "id": "M12-WP08",
+      "name": "Execution Readiness & Independent Authority Audit"
+    }
   ],
   "permanentLocks": [
     "ServiceIntent != legal conclusion",
