@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
-import { deriveTrademarkAssetAttention, trademarkAssetAttentionAuthority } from '../src/trademark-asset-attention.js';
+import { describe, expect, it } from 'vitest';
+import {
+  deriveTrademarkAssetAttention,
+  trademarkAssetAttentionAuthority
+} from '../src/trademark-asset-attention.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const source = {
@@ -74,7 +77,9 @@ describe('deriveTrademarkAssetAttention', () => {
     expect(result.map((item) => item.dimension)).toEqual(
       expect.arrayContaining(['TIME_SENSITIVITY', 'LIFECYCLE_RECOMMENDATION', 'USER_PRIORITY'])
     );
-    expect(result.find((item) => item.dimension === 'TIME_SENSITIVITY')?.severity).toBe('URGENT');
+    expect(result.find((item) => item.dimension === 'TIME_SENSITIVITY')?.severity).toBe(
+      'URGENT'
+    );
     expect(result.every((item) => item.legalDeadlineCertified === false)).toBe(true);
     expect(result.every((item) => item.officialStatusVerifiedByLite === false)).toBe(true);
     expect(result.every((item) => item.executionAuthorized === false)).toBe(true);
@@ -87,7 +92,7 @@ describe('deriveTrademarkAssetAttention', () => {
         contextSignals: [],
         sourceReferences: [],
         freshness: 'STALE',
-        anchor: { ...view().anchor, sourceReferences: [], workspacePriority: undefined }
+        anchor: { ...view().anchor, sourceReferences: [] }
       }),
       '2026-08-20T00:00:00.000Z'
     );
