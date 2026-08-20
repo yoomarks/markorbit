@@ -74,13 +74,19 @@ describe('TrademarkAssetAiGuidePreparer', () => {
       workspaceId: view.workspaceId,
       subjectUserId: 'user_1',
       view,
-      requestedKinds: ['EXPLAIN_ASSET', 'IDENTIFY_MISSING_INFORMATION', 'PREPARE_OWNER_ACTION_CANDIDATE']
+      requestedKinds: [
+        'EXPLAIN_ASSET',
+        'IDENTIFY_MISSING_INFORMATION',
+        'PREPARE_OWNER_ACTION_CANDIDATE'
+      ]
     });
 
     expect(result.suggestions).toHaveLength(3);
     expect(result.evidence).toEqual([source]);
     expect(result.staleOrConflictingEvidencePresent).toBe(false);
-    expect(result.suggestions.every((item) => item.staleOrConflictingEvidencePresent === false)).toBe(true);
+    expect(
+      result.suggestions.every((item) => item.staleOrConflictingEvidencePresent === false)
+    ).toBe(true);
     expect(result.suggestions.every((item) => item.officialTruthVerified === false)).toBe(true);
     expect(result.suggestions.every((item) => item.externalActionAuthorized === false)).toBe(true);
     expect(result.officialTruthCreatedByGuide).toBe(false);
@@ -113,7 +119,9 @@ describe('TrademarkAssetAiGuidePreparer', () => {
 
     expect(result.staleOrConflictingEvidencePresent).toBe(true);
     expect(result.suggestions[0]?.staleOrConflictingEvidencePresent).toBe(true);
-    expect(result.suggestions[0]?.explanation).toContain('unresolved conflicting observations');
+    expect(result.suggestions[0]?.explanation).toContain(
+      'unresolved conflicting observations'
+    );
   });
 
   it('consumes bounded Commerce and Marketplace context without mutating source truth', () => {
