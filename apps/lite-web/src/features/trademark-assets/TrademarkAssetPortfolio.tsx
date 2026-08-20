@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';
 import type {
   TrademarkAsset,
   TrademarkAssetId,
@@ -68,6 +69,7 @@ export function TrademarkAssetPortfolio({
   );
   const [selectedId, setSelectedId] = useState<TrademarkAssetId>();
   const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();
+  const [serviceWorkPackage, setServiceWorkPackage] = useState<TrademarkServiceWorkPackage>();
   const [detailState, setDetailState] = useState<LoadState>('ready');
 
   const loadPortfolio = useCallback(async () => {
@@ -94,9 +96,15 @@ export function TrademarkAssetPortfolio({
   const openAsset = async (trademarkAssetId: TrademarkAssetId) => {
     setSelectedId(trademarkAssetId);
     setDetail(undefined);
+    setServiceWorkPackage(undefined);
     setDetailState('loading');
     try {
-      setDetail(await client.load(trademarkAssetId));
+      const [loadedDetail, loadedWorkPackage] = await Promise.all([
+        client.load(trademarkAssetId),
+        client.loadServiceWorkPackage(trademarkAssetId)
+      ]);
+      setDetail(loadedDetail);
+      setServiceWorkPackage(loadedWorkPackage);
       setDetailState('ready');
     } catch {
       setDetailState('error');
@@ -128,6 +136,11 @@ export function TrademarkAssetPortfolio({
             {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
+            {...(serviceWorkPackage ? { serviceWorkPackage } : {})}
+            onPrepareServiceWorkPackage={async (input) => {
+              const prepared = await client.prepareServiceWorkPackage(selectedId, input);
+              setServiceWorkPackage(prepared);
+            }}
           />
         </div>
       );
