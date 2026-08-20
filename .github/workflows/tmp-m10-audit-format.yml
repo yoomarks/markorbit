@@ -1,0 +1,36 @@
+name: Temporary M10 audit formatter
+
+on:
+  push:
+    branches:
+      - agent/m10-independent-closeout-audit
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m10-independent-closeout-audit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write docs/planning/MO-MVP-MILESTONE-010-CLOSEOUT-AUDIT.md
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet -- docs/planning/MO-MVP-MILESTONE-010-CLOSEOUT-AUDIT.md; then
+            exit 0
+          fi
+          git config user.name "markorbit-ci"
+          git config user.email "markorbit-ci@users.noreply.github.com"
+          git add -- docs/planning/MO-MVP-MILESTONE-010-CLOSEOUT-AUDIT.md
+          git commit -m "style: apply exact M10 audit formatting"
+          git push origin HEAD:agent/m10-independent-closeout-audit
