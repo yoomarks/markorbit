@@ -10,6 +10,7 @@ import {
   type PostgresLiteTrademarkAssetStore
 } from './trademark-asset.js';
 import type { TrademarkAssetPortfolioService } from './trademark-asset-portfolio.js';
+import { deriveTrademarkAssetAttention } from './trademark-asset-attention.js';
 import { composeTrademarkAssetView } from './trademark-asset-view.js';
 
 export interface TrademarkAssetReadRouteOptions {
@@ -124,11 +125,11 @@ export function createTrademarkAssetReadRoutes(
             principal.workspaceId,
             request.params.trademarkAssetId! as TrademarkAssetId
           );
+          const composedAt = now();
+          const view = composeTrademarkAssetView({ anchor, composedAt });
           return json(200, {
-            view: composeTrademarkAssetView({
-              anchor,
-              composedAt: now()
-            })
+            view,
+            attention: deriveTrademarkAssetAttention(view, composedAt)
           });
         } catch (error) {
           return mapError(error);
