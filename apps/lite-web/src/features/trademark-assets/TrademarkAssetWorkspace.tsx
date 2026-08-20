@@ -80,7 +80,11 @@ export function TrademarkAssetWorkspace({
                     explicit user choice required
                   </small>
                   <div className="trademark-asset-portfolio__actions">
-                    <Button onClick={() => (window.location.hash = handoff.hash)}>
+                    <Button
+                      onClick={() => {
+                        window.location.hash = handoff.hash;
+                      }}
+                    >
                       {handoff.label}
                     </Button>
                   </div>
