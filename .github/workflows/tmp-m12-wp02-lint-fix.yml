@@ -1,0 +1,48 @@
+name: tmp M12 WP02 lint fix
+
+on:
+  push:
+    branches:
+      - agent/m12-wp02-durable-service-work-package-v2
+    paths:
+      - .github/workflows/tmp-m12-wp02-lint-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m12-wp02-durable-service-work-package-v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Remove unused omission variables
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/lite/src/trademark-service-work-package.ts')
+          text = path.read_text()
+          old = """        const {\n          asset: _previousAsset,\n          matterReference: _previousMatter,\n          managementRecommendationReference: _previousRecommendation,\n          ...unchanged\n        } = current;\n        const updated: TrademarkServiceWorkPackage = {\n          ...unchanged,\n          version: current.version + 1,\n          ...(asset ? { asset } : {}),\n          ...(matterReference ? { matterReference } : {}),\n          ...(managementRecommendationReference ? { managementRecommendationReference } : {}),\n          intent,\n          updatedAt: timestamp,\n          parallelMatterLifecycleCreated: false,\n          officialTruthCreated: false,\n          protectedActionAuthorized: false\n        };\n"""
+          new = """        const updated: TrademarkServiceWorkPackage = {\n          schemaVersion: current.schemaVersion,\n          workPackageId: current.workPackageId,\n          workspaceId: current.workspaceId,\n          version: current.version + 1,\n          ...(asset ? { asset } : {}),\n          ...(matterReference ? { matterReference } : {}),\n          ...(managementRecommendationReference ? { managementRecommendationReference } : {}),\n          intent,\n          requirementCandidates: current.requirementCandidates,\n          missingInputs: current.missingInputs,\n          readiness: current.readiness,\n          capabilityCandidates: current.capabilityCandidates,\n          providerCandidates: current.providerCandidates,\n          servicePackageCandidates: current.servicePackageCandidates,\n          ...(current.quoteCandidate ? { quoteCandidate: current.quoteCandidate } : {}),\n          communicationDrafts: current.communicationDrafts,\n          createdByUserId: current.createdByUserId,\n          createdAt: current.createdAt,\n          updatedAt: timestamp,\n          parallelMatterLifecycleCreated: false,\n          officialTruthCreated: false,\n          protectedActionAuthorized: false\n        };\n"""
+          if old not in text:
+              raise SystemExit('target block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: pnpm exec prettier --write services/lite/src/trademark-service-work-package.ts
+      - run: pnpm --filter @markorbit/lite-service lint
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/lite/src/trademark-service-work-package.ts
+          git commit -m "M12 WP02 fix Service Work Package lint"
+          git push origin HEAD:agent/m12-wp02-durable-service-work-package-v2
