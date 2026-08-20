@@ -105,7 +105,9 @@ function dateSeverity(days: number): TrademarkAssetManagementSignalSeverity | un
   return 'NOTICE';
 }
 
-function consequentialEvidence(view: Readonly<TrademarkAssetView>): TrademarkAssetSourceReference[] {
+function consequentialEvidence(
+  view: Readonly<TrademarkAssetView>
+): TrademarkAssetSourceReference[] {
   return uniqueEvidence(
     view.observedFacts.filter((fact) => fact.consequential).map((fact) => fact.source)
   );
@@ -114,9 +116,7 @@ function consequentialEvidence(view: Readonly<TrademarkAssetView>): TrademarkAss
 function staleConsequentialFacts(
   view: Readonly<TrademarkAssetView>
 ): ReadonlyArray<Readonly<TrademarkAssetObservedFact>> {
-  return view.observedFacts.filter(
-    (fact) => fact.consequential && fact.freshness !== 'CURRENT'
-  );
+  return view.observedFacts.filter((fact) => fact.consequential && fact.freshness !== 'CURRENT');
 }
 
 /**
@@ -129,7 +129,10 @@ export function deriveTrademarkAssetManagementSignals(
   refresh?: Readonly<TrademarkAssetRefreshRun>,
   generatedAt = new Date().toISOString()
 ): readonly TrademarkAssetManagementSignal[] {
-  if (refresh && (refresh.workspaceId !== view.workspaceId || refresh.trademarkAssetId !== view.trademarkAssetId)) {
+  if (
+    refresh &&
+    (refresh.workspaceId !== view.workspaceId || refresh.trademarkAssetId !== view.trademarkAssetId)
+  ) {
     throw new Error('Refresh run must belong to the same Workspace Trademark Asset view.');
   }
   if (!Number.isFinite(Date.parse(generatedAt))) {
@@ -156,7 +159,8 @@ export function deriveTrademarkAssetManagementSignals(
   }
 
   if (view.freshness !== 'CURRENT' || staleFacts.length > 0) {
-    const staleEvidence = staleFacts.length > 0 ? staleFacts.map((fact) => fact.source) : consequential;
+    const staleEvidence =
+      staleFacts.length > 0 ? staleFacts.map((fact) => fact.source) : consequential;
     result.push(
       signal(
         view,
@@ -166,7 +170,10 @@ export function deriveTrademarkAssetManagementSignals(
         staleEvidence.length > 0 ? staleEvidence : view.sourceReferences,
         refresh,
         generatedAt,
-        `freshness:${view.freshness}:${staleFacts.map((fact) => fact.kind).sort().join(',')}`
+        `freshness:${view.freshness}:${staleFacts
+          .map((fact) => fact.kind)
+          .sort()
+          .join(',')}`
       )
     );
   }
@@ -265,7 +272,10 @@ export function deriveTrademarkAssetManagementSignals(
       NOTICE: 2,
       INFO: 1
     };
-    return rank[b.severity] - rank[a.severity] || a.managementSignalId.localeCompare(b.managementSignalId);
+    return (
+      rank[b.severity] - rank[a.severity] ||
+      a.managementSignalId.localeCompare(b.managementSignalId)
+    );
   });
 }
 
@@ -283,7 +293,9 @@ export function deriveRepeatedPortfolioConditionSignals(
   dimension: Exclude<TrademarkAssetManagementSignalDimension, 'PORTFOLIO_PATTERN'>,
   generatedAt = new Date().toISOString()
 ): readonly TrademarkAssetManagementSignal[] {
-  const matching = entries.filter((entry) => entry.signals.some((item) => item.dimension === dimension));
+  const matching = entries.filter((entry) =>
+    entry.signals.some((item) => item.dimension === dimension)
+  );
   if (matching.length < 3) return [];
 
   return matching.map((entry) => {
@@ -297,7 +309,10 @@ export function deriveRepeatedPortfolioConditionSignals(
       evidence,
       undefined,
       generatedAt,
-      `portfolio:${dimension}:${matching.map((item) => item.view.trademarkAssetId).sort().join(',')}`
+      `portfolio:${dimension}:${matching
+        .map((item) => item.view.trademarkAssetId)
+        .sort()
+        .join(',')}`
     );
   });
 }

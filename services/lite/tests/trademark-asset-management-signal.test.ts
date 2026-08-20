@@ -144,8 +144,12 @@ describe('M11-WP03 proactive Trademark Asset management signals', () => {
     expect(result.find((item) => item.dimension === 'OBSERVED_DATE_PROXIMITY')?.severity).toBe(
       'URGENT'
     );
-    expect(result.find((item) => item.dimension === 'LIFECYCLE_RELEVANCE')?.changes).toHaveLength(1);
-    expect(result.find((item) => item.dimension === 'KNOWLEDGE_CHANGE_RELEVANCE')?.changes).toHaveLength(1);
+    expect(result.find((item) => item.dimension === 'LIFECYCLE_RELEVANCE')?.changes).toHaveLength(
+      1
+    );
+    expect(
+      result.find((item) => item.dimension === 'KNOWLEDGE_CHANGE_RELEVANCE')?.changes
+    ).toHaveLength(1);
     expect(result.every((item) => item.legalDeadlineCertified === false)).toBe(true);
     expect(result.every((item) => item.officialStatusVerifiedByLite === false)).toBe(true);
     expect(result.every((item) => item.legalConclusionVerified === false)).toBe(true);
