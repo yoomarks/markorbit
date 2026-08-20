@@ -107,7 +107,9 @@ describe('prepareTrademarkAssetManagementRecommendations', () => {
     ]);
     expect(recommendations[0]?.relatedOwnerReferences[0]?.referenceId).toBe('matter_1');
     expect(recommendations.every((item) => item.paidExecutionAuthorized === false)).toBe(true);
-    expect(recommendations.every((item) => item.externalPublicationAuthorized === false)).toBe(true);
+    expect(recommendations.every((item) => item.externalPublicationAuthorized === false)).toBe(
+      true
+    );
   });
 
   it('rejects mixed Workspace or Asset signal input', () => {

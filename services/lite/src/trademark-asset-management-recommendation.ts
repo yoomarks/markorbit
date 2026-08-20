@@ -70,7 +70,9 @@ function selectKind(
         ? 'PREPARE_OWNER_WORK_CANDIDATE'
         : 'REVIEW_LIFECYCLE_RECOMMENDATION';
     case 'KNOWLEDGE_CHANGE_RELEVANCE':
-      return aiGuideSuggestions.some((suggestion) => suggestion.kind === 'PREPARE_CONTENT_CANDIDATE')
+      return aiGuideSuggestions.some(
+        (suggestion) => suggestion.kind === 'PREPARE_CONTENT_CANDIDATE'
+      )
         ? 'PREPARE_CONTENT_CANDIDATE'
         : 'PREPARE_TODAY_CANDIDATE';
     case 'USER_PRIORITY':
@@ -144,14 +146,17 @@ export function prepareTrademarkAssetManagementRecommendations(input: {
   createdAt?: string;
 }): readonly TrademarkAssetManagementRecommendation[] {
   const createdAt = input.createdAt ?? new Date().toISOString();
-  if (!Number.isFinite(Date.parse(createdAt))) throw new Error('createdAt must be a valid timestamp.');
+  if (!Number.isFinite(Date.parse(createdAt)))
+    throw new Error('createdAt must be a valid timestamp.');
   if (input.signals.length === 0) return [];
 
   const first = input.signals[0];
   if (!first) return [];
   for (const signal of input.signals) {
     if (signal.workspaceId !== first.workspaceId || signal.asset.id !== first.asset.id) {
-      throw new Error('Management recommendation input must belong to one Workspace Trademark Asset.');
+      throw new Error(
+        'Management recommendation input must belong to one Workspace Trademark Asset.'
+      );
     }
   }
 
