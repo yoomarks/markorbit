@@ -19,6 +19,7 @@ export * from './trademark-asset-management-disposition.js';
 export * from './trademark-service-work-package.js';
 export * from './trademark-service-requirement-composition.js';
 export * from './trademark-service-readiness.js';
+export * from './trademark-service-candidate-matching.js';
 export * from './preference-feedback.js';
 export {
   DailyWorkspacePreferenceTargetResolver,

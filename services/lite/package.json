@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Lite Product-owned durable state and governed Product-loop preparation.",
   "scripts": {
-    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/preference-feedback.ts src/trademark-asset.ts src/trademark-asset-view.ts src/trademark-asset-portfolio.ts src/trademark-asset-attention.ts src/trademark-asset-management-signal.ts src/trademark-asset-management-recommendation.ts src/trademark-asset-management-handoff.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-refresh.ts src/trademark-service-work-package.ts src/trademark-service-requirement-composition.ts src/trademark-service-readiness.ts src/trademark-asset-http.ts src/http.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/preference-feedback.ts src/trademark-asset.ts src/trademark-asset-view.ts src/trademark-asset-portfolio.ts src/trademark-asset-attention.ts src/trademark-asset-management-signal.ts src/trademark-asset-management-recommendation.ts src/trademark-asset-management-handoff.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-refresh.ts src/trademark-service-work-package.ts src/trademark-service-requirement-composition.ts src/trademark-service-readiness.ts src/trademark-service-candidate-matching.ts src/trademark-asset-http.ts src/http.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:conversion-analytics:postgres": "vitest run tests/conversion-analytics-postgres.test.ts",
     "test:preference-feedback:postgres": "vitest run tests/preference-feedback-postgres.test.ts",
@@ -104,6 +104,10 @@
     "./trademark-service-readiness": {
       "types": "./dist/trademark-service-readiness.d.ts",
       "import": "./dist/trademark-service-readiness.js"
+    },
+    "./trademark-service-candidate-matching": {
+      "types": "./dist/trademark-service-candidate-matching.d.ts",
+      "import": "./dist/trademark-service-candidate-matching.js"
     },
     "./trademark-asset-http": {
       "types": "./dist/trademark-asset-http.d.ts",
