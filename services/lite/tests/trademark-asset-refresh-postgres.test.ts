@@ -23,15 +23,16 @@ const admissionSource = {
   freshness: 'CURRENT'
 } as const;
 
-const dataObservation = (version: string, freshness: 'CURRENT' | 'STALE' = 'CURRENT') => ({
-  owner: 'DATA_ENGINE',
-  kind: 'DATA_ENGINE_TRADEMARK_RECORD',
-  sourceId: 'record_m11-wp02',
-  sourceVersion: version,
-  sourceFingerprintSha256: version === '1' ? 'a'.repeat(64) : 'b'.repeat(64),
-  observedAt: '2026-08-20T15:01:00.000Z',
-  freshness
-}) as const;
+const dataObservation = (version: string, freshness: 'CURRENT' | 'STALE' = 'CURRENT') =>
+  ({
+    owner: 'DATA_ENGINE',
+    kind: 'DATA_ENGINE_TRADEMARK_RECORD',
+    sourceId: 'record_m11-wp02',
+    sourceVersion: version,
+    sourceFingerprintSha256: version === '1' ? 'a'.repeat(64) : 'b'.repeat(64),
+    observedAt: '2026-08-20T15:01:00.000Z',
+    freshness
+  }) as const;
 
 const lifecycleObservation = {
   owner: 'MARKREG',

@@ -43,10 +43,7 @@ export interface TrademarkAssetRefreshRun {
 }
 
 export type TrademarkAssetRefreshErrorCode =
-  | 'INVALID_INPUT'
-  | 'IDEMPOTENCY_CONFLICT'
-  | 'NOT_FOUND'
-  | 'PERSISTENCE_UNAVAILABLE';
+  'INVALID_INPUT' | 'IDEMPOTENCY_CONFLICT' | 'NOT_FOUND' | 'PERSISTENCE_UNAVAILABLE';
 
 export class TrademarkAssetRefreshError extends Error {
   constructor(
@@ -98,7 +95,11 @@ function cleanAssetId(value: TrademarkAssetId): TrademarkAssetId {
 }
 
 function cleanScope(values: readonly TrademarkAssetSourceOwner[]): TrademarkAssetSourceOwner[] {
-  if (!Array.isArray(values) || values.length === 0 || values.length > trademarkAssetSourceOwners.length) {
+  if (
+    !Array.isArray(values) ||
+    values.length === 0 ||
+    values.length > trademarkAssetSourceOwners.length
+  ) {
     throw new TrademarkAssetRefreshError(
       'INVALID_INPUT',
       'sourceOwnerScope must contain at least one recognised source owner.',
@@ -108,7 +109,11 @@ function cleanScope(values: readonly TrademarkAssetSourceOwner[]): TrademarkAsse
   const unique = [...new Set(values)];
   for (const owner of unique) {
     if (!trademarkAssetSourceOwners.includes(owner)) {
-      throw new TrademarkAssetRefreshError('INVALID_INPUT', 'Unknown source owner in refresh scope.', 400);
+      throw new TrademarkAssetRefreshError(
+        'INVALID_INPUT',
+        'Unknown source owner in refresh scope.',
+        400
+      );
     }
   }
   return unique.sort();
@@ -278,7 +283,9 @@ export class PostgresTrademarkAssetRefreshLedger {
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
 
-  async refresh(command: Readonly<RefreshTrademarkAssetCommand>): Promise<TrademarkAssetRefreshRun> {
+  async refresh(
+    command: Readonly<RefreshTrademarkAssetCommand>
+  ): Promise<TrademarkAssetRefreshRun> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const trademarkAssetId = cleanAssetId(command.trademarkAssetId);
     const sourceOwnerScope = cleanScope(command.sourceOwnerScope);
@@ -354,7 +361,8 @@ export class PostgresTrademarkAssetRefreshLedger {
         const current = new Map(observations.map((source) => [sourceKey(source), source] as const));
         const refreshedAt = new Date(this.now()).toISOString();
         const changes = detectChanges(previous, current, refreshedAt);
-        const refreshRunId = `trademark-asset-refresh_${randomUUID()}` as TrademarkAssetRefreshRunId;
+        const refreshRunId =
+          `trademark-asset-refresh_${randomUUID()}` as TrademarkAssetRefreshRunId;
         const result: TrademarkAssetRefreshRun = {
           schemaVersion: 1,
           refreshRunId,
@@ -419,7 +427,11 @@ export class PostgresTrademarkAssetRefreshLedger {
         for (let index = 0; index < changes.length; index += 1) {
           const change = changes[index]!;
           if (!trademarkAssetManagementChangeKinds.includes(change.kind)) {
-            throw new TrademarkAssetRefreshError('INVALID_INPUT', 'Unknown detected change kind.', 400);
+            throw new TrademarkAssetRefreshError(
+              'INVALID_INPUT',
+              'Unknown detected change kind.',
+              400
+            );
           }
           const key = sourceKey(change.sourceReferences[change.sourceReferences.length - 1]!);
           const changeId = `trademark-asset-change_${hash(`${refreshRunId}:${index}:${key}:${change.kind}`).slice(0, 32)}`;
@@ -463,7 +475,11 @@ export class PostgresTrademarkAssetRefreshLedger {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const trademarkAssetId = cleanAssetId(trademarkAssetIdValue);
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-      throw new TrademarkAssetRefreshError('INVALID_INPUT', 'limit must be between 1 and 100.', 400);
+      throw new TrademarkAssetRefreshError(
+        'INVALID_INPUT',
+        'limit must be between 1 and 100.',
+        400
+      );
     }
     try {
       const rows = await this.query.query(
