@@ -9,6 +9,15 @@
   padding: 24px;
 }
 
+.trademark-asset-portfolio__management-summary {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  padding: 18px;
+  background: #fff;
+}
+
 .trademark-asset-portfolio__filters {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) minmax(220px, 320px);
@@ -38,6 +47,9 @@
 }
 
 .trademark-asset-portfolio__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 14px;
 }
 
@@ -99,6 +111,28 @@
 .trademark-asset-workspace__guide-grid article {
   border-radius: 12px;
   padding: 14px;
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.trademark-asset-workspace__recommendation {
+  margin-top: 14px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  padding-top: 14px;
+}
+
+.trademark-asset-workspace__change-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trademark-asset-workspace__change-list li {
+  display: grid;
+  gap: 4px;
+  border-radius: 12px;
+  padding: 12px 14px;
   background: rgba(15, 23, 42, 0.035);
 }
 

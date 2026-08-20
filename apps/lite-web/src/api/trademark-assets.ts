@@ -1,8 +1,16 @@
 import type { TrademarkAssetPortfolioPage } from '@markorbit/contracts/trademark-asset-portfolio';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
 import type {
+  TrademarkAssetManagementChangeReference,
+  TrademarkAssetManagementRecommendation,
+  TrademarkAssetManagementSignal,
+  TrademarkAssetManagementSignalSeverity
+} from '@markorbit/contracts/trademark-asset-management';
+import type {
   TrademarkAssetAttentionSignal,
   TrademarkAssetId,
+  TrademarkAssetSourceOwner,
+  TrademarkAssetSourceReference,
   TrademarkAssetWorkspaceRelationshipKind
 } from '@markorbit/contracts/trademark-asset-workspace';
 
@@ -18,13 +26,51 @@ export interface TrademarkAssetSearchInput {
   limit?: number;
 }
 
+export interface TrademarkAssetRefreshSummary {
+  readonly refreshRunId: `trademark-asset-refresh_${string}`;
+  readonly workspaceId: string;
+  readonly trademarkAssetId: TrademarkAssetId;
+  readonly sourceOwnerScope: readonly TrademarkAssetSourceOwner[];
+  readonly observations: readonly Readonly<TrademarkAssetSourceReference>[];
+  readonly changes: readonly Readonly<TrademarkAssetManagementChangeReference>[];
+  readonly refreshedAt: string;
+  readonly officialTruthVerifiedByLite: false;
+  readonly legalDeadlineCertified: false;
+  readonly conflictResolvedByLite: false;
+  readonly executionAuthorized: false;
+}
+
+export interface TrademarkAssetPortfolioManagementSummary {
+  readonly totalSignals: number;
+  readonly urgentSignals: number;
+  readonly importantSignals: number;
+  readonly changedAssets: number;
+  readonly generatedAt: string;
+}
+
+export interface TrademarkAssetPortfolioManagementEntry {
+  readonly trademarkAssetId: TrademarkAssetId;
+  readonly highestSeverity: TrademarkAssetManagementSignalSeverity;
+  readonly signalCount: number;
+  readonly changeCount: number;
+  readonly lastRefreshedAt?: string;
+}
+
+export type TrademarkAssetPortfolioResponse = TrademarkAssetPortfolioPage & {
+  readonly management: Readonly<TrademarkAssetPortfolioManagementSummary>;
+  readonly managementByAsset: readonly Readonly<TrademarkAssetPortfolioManagementEntry>[];
+};
+
 export interface TrademarkAssetDetailResponse {
   readonly view: Readonly<TrademarkAssetView>;
   readonly attention?: readonly Readonly<TrademarkAssetAttentionSignal>[];
+  readonly latestRefresh?: Readonly<TrademarkAssetRefreshSummary>;
+  readonly managementSignals?: readonly Readonly<TrademarkAssetManagementSignal>[];
+  readonly recommendations?: readonly Readonly<TrademarkAssetManagementRecommendation>[];
 }
 
 export interface TrademarkAssetClient {
-  search(input?: Readonly<TrademarkAssetSearchInput>): Promise<TrademarkAssetPortfolioPage>;
+  search(input?: Readonly<TrademarkAssetSearchInput>): Promise<TrademarkAssetPortfolioResponse>;
   load(trademarkAssetId: TrademarkAssetId): Promise<TrademarkAssetDetailResponse>;
 }
 
@@ -91,7 +137,7 @@ function searchPath(input: Readonly<TrademarkAssetSearchInput> | undefined): str
 
 export function createTrademarkAssetClient(workspaceId: string): TrademarkAssetClient {
   return {
-    search: (input) => request<TrademarkAssetPortfolioPage>(searchPath(input), workspaceId),
+    search: (input) => request<TrademarkAssetPortfolioResponse>(searchPath(input), workspaceId),
     load: (trademarkAssetId) =>
       request<TrademarkAssetDetailResponse>(
         `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}`,
