@@ -1,0 +1,126 @@
+import { timingSafeEqual } from 'node:crypto';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import type { TrademarkServiceIntent, TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';
+import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
+import type { QueryClient } from '@markorbit/persistence';
+import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  PostgresTrademarkServiceWorkPackageStore,
+  TrademarkServiceWorkPackagePersistenceError
+} from './trademark-service-work-package.js';
+
+export interface TrademarkServiceWorkbenchRouteOptions {
+  internalServiceSecret: string;
+  workPackages: PostgresTrademarkServiceWorkPackageStore;
+  query: QueryClient;
+}
+
+function trusted(configured: string, supplied: string | undefined): boolean {
+  if (Buffer.byteLength(configured) < 32)
+    throw new Error('MO_INTERNAL_SERVICE_SECRET must contain at least 32 bytes.');
+  if (!supplied) return false;
+  const left = Buffer.from(configured);
+  const right = Buffer.from(supplied);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function principalOf(
+  request: JsonRequest,
+  secret: string,
+  permission: 'workspace:read' | 'matter:create'
+): WorkspacePrincipal {
+  if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
+    throw new HttpError(401, 'UNTRUSTED_INTERNAL_CALLER', 'Trusted internal authorization is required.');
+  let principal: WorkspacePrincipal;
+  try {
+    principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
+  } catch {
+    throw new HttpError(401, 'INVALID_INTERNAL_PRINCIPAL', 'A trusted Workspace Principal is required.');
+  }
+  const workspaceId = request.headers['x-markorbit-workspace-id'];
+  if (!workspaceId || workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase())
+    throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped record was not found.');
+  if (!principal.permissions.includes(permission))
+    throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
+  return principal;
+}
+
+function bodyRecord(request: JsonRequest): Record<string, unknown> {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  return request.body as Record<string, unknown>;
+}
+
+function mapError(error: unknown): never {
+  if (error instanceof TrademarkServiceWorkPackagePersistenceError)
+    throw new HttpError(error.status, error.code, error.message, error.retryable);
+  throw error;
+}
+
+export async function latestTrademarkServiceWorkPackageForAsset(
+  query: QueryClient,
+  workspaceId: string,
+  trademarkAssetId: TrademarkAssetId
+): Promise<TrademarkServiceWorkPackage | undefined> {
+  const result = await query.query(
+    `SELECT document_json
+       FROM lite_trademark_service_work_packages
+      WHERE workspace_id=$1 AND trademark_asset_id=$2
+      ORDER BY updated_at DESC, version DESC
+      LIMIT 1`,
+    [workspaceId, trademarkAssetId]
+  );
+  const row = result.rows[0] as { document_json?: unknown } | undefined;
+  return row?.document_json ? structuredClone(row.document_json as TrademarkServiceWorkPackage) : undefined;
+}
+
+export function createTrademarkServiceWorkbenchRoutes(
+  options: TrademarkServiceWorkbenchRouteOptions
+): readonly JsonRoute[] {
+  return [
+    {
+      method: 'GET',
+      path: '/v1/trademark-assets/:trademarkAssetId/service-work-package',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        const trademarkAssetId = request.params.trademarkAssetId! as TrademarkAssetId;
+        const workPackage = await latestTrademarkServiceWorkPackageForAsset(
+          options.query,
+          principal.workspaceId,
+          trademarkAssetId
+        );
+        return json(200, { workPackage: workPackage ?? null });
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trademark-assets/:trademarkAssetId/service-work-packages',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:create');
+        const body = bodyRecord(request);
+        const key = request.headers['idempotency-key'];
+        if (!key?.trim()) throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+        if (body.createdByUserId !== undefined || body.userId !== undefined)
+          throw new HttpError(400, 'ACTOR_SPOOF_REJECTED', 'Actor identity comes from the authenticated Principal.');
+        try {
+          const workPackage = await options.workPackages.create({
+            workspaceId: principal.workspaceId,
+            asset: {
+              id: request.params.trademarkAssetId! as TrademarkAssetId,
+              version: body.assetVersion as number | string
+            },
+            ...(typeof body.managementRecommendationReference === 'string'
+              ? { managementRecommendationReference: body.managementRecommendationReference }
+              : {}),
+            intent: body.intent as TrademarkServiceIntent,
+            createdByUserId: principal.userId,
+            idempotencyKey: key
+          });
+          return json(201, { workPackage });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    }
+  ];
+}
