@@ -1,11 +1,15 @@
 import type { Money } from './index.js';
 import type { ProductLoopExactReference } from './product-loop.js';
-import type { TrademarkAssetId, TrademarkAssetSourceReference } from './trademark-asset-workspace.js';
+import type {
+  TrademarkAssetId,
+  TrademarkAssetSourceReference
+} from './trademark-asset-workspace.js';
 
 export type TrademarkServiceWorkPackageId = `trademark-service-work-package_${string}`;
 export type TrademarkServiceRequirementId = `trademark-service-requirement_${string}`;
 export type TrademarkServicePreparationId = `trademark-service-preparation_${string}`;
-export type TrademarkServiceExecutionReadinessId = `trademark-service-execution-readiness_${string}`;
+export type TrademarkServiceExecutionReadinessId =
+  `trademark-service-execution-readiness_${string}`;
 
 export const trademarkServiceIntentKinds = [
   'NEW_APPLICATION',
