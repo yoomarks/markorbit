@@ -367,6 +367,9 @@ export class PostgresTrademarkServiceWorkPackageStore {
           managementRecommendationReference: _previousRecommendation,
           ...unchanged
         } = current;
+        void _previousAsset;
+        void _previousMatter;
+        void _previousRecommendation;
         const updated: TrademarkServiceWorkPackage = {
           ...unchanged,
           version: current.version + 1,
