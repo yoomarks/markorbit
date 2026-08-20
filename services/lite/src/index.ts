@@ -11,6 +11,7 @@ export * from './trademark-asset.js';
 export * from './trademark-asset-view.js';
 export * from './trademark-asset-portfolio.js';
 export * from './trademark-asset-attention.js';
+export * from './trademark-asset-refresh.js';
 export * from './preference-feedback.js';
 export {
   DailyWorkspacePreferenceTargetResolver,
