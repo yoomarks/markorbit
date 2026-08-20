@@ -130,16 +130,14 @@ export function matchTrademarkServiceCandidates(
         matchesIntent(snapshot.supportedIntentKinds, command.intent) &&
         matchesJurisdiction(snapshot.supportedJurisdictions, jurisdiction)
     )
-    .map(
-      (snapshot): TrademarkServiceCapabilityCandidate => ({
-        capabilityReference: clean(snapshot.capabilityReference),
-        ...(snapshot.capabilityVersion
-          ? { capabilityVersion: clean(snapshot.capabilityVersion) }
-          : {}),
-        reason: `Capability Engine owner snapshot matches ${command.intent.kind} preparation in ${jurisdiction}.`,
-        verifiedCapability: false
-      })
-    )
+    .map((snapshot): TrademarkServiceCapabilityCandidate => ({
+      capabilityReference: clean(snapshot.capabilityReference),
+      ...(snapshot.capabilityVersion
+        ? { capabilityVersion: clean(snapshot.capabilityVersion) }
+        : {}),
+      reason: `Capability Engine owner snapshot matches ${command.intent.kind} preparation in ${jurisdiction}.`,
+      verifiedCapability: false
+    }))
     .sort((left, right) => left.capabilityReference.localeCompare(right.capabilityReference));
 
   const matchedCapabilityReferences = new Set(
@@ -205,20 +203,18 @@ export function matchTrademarkServiceCandidates(
       }
       return Boolean(clean(snapshot.servicePackageReference) && clean(snapshot.description));
     })
-    .map(
-      (snapshot): TrademarkServicePackageCandidate => ({
-        servicePackageReference: clean(snapshot.servicePackageReference),
-        ...(snapshot.capabilityReference
-          ? { capabilityReference: clean(snapshot.capabilityReference) }
-          : {}),
-        ...(snapshot.providerReference
-          ? { providerReference: clean(snapshot.providerReference) }
-          : {}),
-        description: clean(snapshot.description),
-        ...(snapshot.sourceVersion ? { sourceVersion: clean(snapshot.sourceVersion) } : {}),
-        selected: false
-      })
-    )
+    .map((snapshot): TrademarkServicePackageCandidate => ({
+      servicePackageReference: clean(snapshot.servicePackageReference),
+      ...(snapshot.capabilityReference
+        ? { capabilityReference: clean(snapshot.capabilityReference) }
+        : {}),
+      ...(snapshot.providerReference
+        ? { providerReference: clean(snapshot.providerReference) }
+        : {}),
+      description: clean(snapshot.description),
+      ...(snapshot.sourceVersion ? { sourceVersion: clean(snapshot.sourceVersion) } : {}),
+      selected: false
+    }))
     .sort((left, right) =>
       left.servicePackageReference.localeCompare(right.servicePackageReference)
     );

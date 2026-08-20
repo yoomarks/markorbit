@@ -13,9 +13,7 @@ const intent = {
   legalDeadlineCertified: false
 } as const;
 
-function match(
-  overrides: Partial<Parameters<typeof matchTrademarkServiceCandidates>[0]> = {}
-) {
+function match(overrides: Partial<Parameters<typeof matchTrademarkServiceCandidates>[0]> = {}) {
   return matchTrademarkServiceCandidates({
     workspaceId: '94949494-9494-4949-8949-949494949494',
     workPackageId: 'trademark-service-work-package_matching-test',
