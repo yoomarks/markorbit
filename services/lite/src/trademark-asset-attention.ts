@@ -17,7 +17,9 @@ function attentionId(
   discriminator: string
 ): TrademarkAssetAttentionSignalId {
   const digest = createHash('sha256')
-    .update(`${view.workspaceId}:${view.trademarkAssetId}:${view.anchorVersion}:${dimension}:${discriminator}`)
+    .update(
+      `${view.workspaceId}:${view.trademarkAssetId}:${view.anchorVersion}:${dimension}:${discriminator}`
+    )
     .digest('hex')
     .slice(0, 24);
   return `trademark-asset-attention_${digest}`;
@@ -148,7 +150,10 @@ export function deriveTrademarkAssetAttention(
     if (days === undefined || days > 90) continue;
     const severity: TrademarkAssetAttentionSeverity =
       days <= 30 ? 'URGENT' : days <= 60 ? 'IMPORTANT' : 'NOTICE';
-    const timing = days < 0 ? `${Math.abs(days)} days past the observed date` : `${days} days from the observed date`;
+    const timing =
+      days < 0
+        ? `${Math.abs(days)} days past the observed date`
+        : `${days} days from the observed date`;
     result.push(
       signal(
         view,
@@ -169,7 +174,11 @@ export function deriveTrademarkAssetAttention(
       signal(
         view,
         'USER_PRIORITY',
-        normalized.includes('urgent') ? 'URGENT' : normalized.includes('high') ? 'IMPORTANT' : 'NOTICE',
+        normalized.includes('urgent')
+          ? 'URGENT'
+          : normalized.includes('high')
+            ? 'IMPORTANT'
+            : 'NOTICE',
         `Workspace priority: ${priority}`,
         view.anchor.sourceReferences,
         generatedAt,
