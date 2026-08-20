@@ -1,0 +1,36 @@
+name: Temporary M11 WP02 formatter
+
+on:
+  push:
+    branches:
+      - agent/m11-wp02-asset-refresh-ledger
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m11-wp02-asset-refresh-ledger
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write services/lite/src/trademark-asset-refresh.ts services/lite/tests/trademark-asset-refresh-ledger-read.test.ts services/lite/tests/trademark-asset-refresh-postgres.test.ts
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet -- services/lite/src/trademark-asset-refresh.ts services/lite/tests/trademark-asset-refresh-ledger-read.test.ts services/lite/tests/trademark-asset-refresh-postgres.test.ts; then
+            exit 0
+          fi
+          git config user.name "markorbit-ci"
+          git config user.email "markorbit-ci@users.noreply.github.com"
+          git add -- services/lite/src/trademark-asset-refresh.ts services/lite/tests/trademark-asset-refresh-ledger-read.test.ts services/lite/tests/trademark-asset-refresh-postgres.test.ts
+          git commit -m "style: apply exact M11 WP02 formatting"
+          git push origin HEAD:agent/m11-wp02-asset-refresh-ledger
