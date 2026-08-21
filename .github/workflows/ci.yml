@@ -148,7 +148,7 @@ jobs:
       LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_prepared_test
       LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
       LITE_CONVERSION_ANALYTICS_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_conversion_test
-      LITE_CONVERSION_ANALYTICS_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CONVERSION_ANALYTICS_POSTGRES_REQUIRED: '1'
       CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
       MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
@@ -266,6 +266,7 @@ jobs:
           pnpm test:professional-review:http
           pnpm test:filing-governance:auth
           pnpm test:filing-governance:postgres
+          pnpm --filter @markorbit/execution-service exec vitest run tests/trademark-service-execution-sandbox-postgres.test.ts
           pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
           pnpm test:evidence-review:postgres
       - name: MGSN integration
