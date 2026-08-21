@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
 import {
+  TrademarkServiceExecutionError,
   authorizeTrademarkServiceExecution,
   createTrademarkServiceExecutionPlan
 } from '../src/trademark-service-execution.js';
@@ -105,49 +106,65 @@ const releaseWith = (
   });
 };
 
+const executionError = (run: () => unknown): TrademarkServiceExecutionError => {
+  try {
+    run();
+  } catch (error) {
+    if (error instanceof TrademarkServiceExecutionError) return error;
+    throw error;
+  }
+  throw new Error('Expected TrademarkServiceExecutionError.');
+};
+
 describe('M15-WP-02 sandbox execution replay policy', () => {
   it('rejects credentialed or externally targeted simulated execution', () => {
     const auth = authorization();
-    expect(() =>
-      createTrademarkServiceExecutionEnvironmentPolicy({
-        workspaceId,
-        authorization: auth,
-        environment: 'CI',
-        mode: 'SIMULATED',
-        connectorClass: 'AUTHORITY_TEST',
-        endpointClass: 'INTERNAL_TEST',
-        credentialClass: 'TEST_ONLY',
-        createdAt: '2026-08-22T00:07:00.000Z'
-      })
-    ).toThrowError(expect.objectContaining({ code: 'AUTHORITY_BOUNDARY_VIOLATION' }));
+    expect(
+      executionError(() =>
+        createTrademarkServiceExecutionEnvironmentPolicy({
+          workspaceId,
+          authorization: auth,
+          environment: 'CI',
+          mode: 'SIMULATED',
+          connectorClass: 'AUTHORITY_TEST',
+          endpointClass: 'INTERNAL_TEST',
+          credentialClass: 'TEST_ONLY',
+          createdAt: '2026-08-22T00:07:00.000Z'
+        })
+      ).code
+    ).toBe('AUTHORITY_BOUNDARY_VIOLATION');
 
-    expect(() =>
-      createTrademarkServiceExecutionEnvironmentPolicy({
-        workspaceId,
-        authorization: auth,
-        environment: 'CI',
-        mode: 'SIMULATED',
-        connectorClass: 'SIMULATOR',
-        endpointClass: 'ALLOWLISTED_SANDBOX',
-        credentialClass: 'NONE',
-        createdAt: '2026-08-22T00:07:00.000Z'
-      })
-    ).toThrowError(expect.objectContaining({ code: 'AUTHORITY_BOUNDARY_VIOLATION' }));
+    expect(
+      executionError(() =>
+        createTrademarkServiceExecutionEnvironmentPolicy({
+          workspaceId,
+          authorization: auth,
+          environment: 'CI',
+          mode: 'SIMULATED',
+          connectorClass: 'SIMULATOR',
+          endpointClass: 'ALLOWLISTED_SANDBOX',
+          credentialClass: 'NONE',
+          createdAt: '2026-08-22T00:07:00.000Z'
+        })
+      ).code
+    ).toBe('AUTHORITY_BOUNDARY_VIOLATION');
   });
 
   it('rejects TEST_CONNECTOR mode when no explicit test connector exists', () => {
-    expect(() =>
-      createTrademarkServiceExecutionEnvironmentPolicy({
-        workspaceId,
-        authorization: authorization(),
-        environment: 'SANDBOX',
-        mode: 'TEST_CONNECTOR',
-        connectorClass: 'SIMULATOR',
-        endpointClass: 'INTERNAL_TEST',
-        credentialClass: 'NONE',
-        createdAt: '2026-08-22T00:07:00.000Z'
-      })
-    ).toThrowError(expect.objectContaining({ code: 'AUTHORITY_BOUNDARY_VIOLATION' }));
+    expect(
+      executionError(() =>
+        createTrademarkServiceExecutionEnvironmentPolicy({
+          workspaceId,
+          authorization: authorization(),
+          environment: 'SANDBOX',
+          mode: 'TEST_CONNECTOR',
+          connectorClass: 'SIMULATOR',
+          endpointClass: 'INTERNAL_TEST',
+          credentialClass: 'NONE',
+          createdAt: '2026-08-22T00:07:00.000Z'
+        })
+      ).code
+    ).toBe('AUTHORITY_BOUNDARY_VIOLATION');
   });
 
   it('replays an identical protected action only inside the same environment identity', () => {
@@ -167,8 +184,8 @@ describe('M15-WP-02 sandbox execution replay policy', () => {
     const gate = new TrademarkServiceSandboxProtectedActionGate();
     releaseWith(gate, simulatedPolicy());
 
-    expect(() => releaseWith(gate, sandboxPolicy())).toThrowError(
-      expect.objectContaining({ code: 'IDEMPOTENCY_CONFLICT' })
+    expect(executionError(() => releaseWith(gate, sandboxPolicy())).code).toBe(
+      'IDEMPOTENCY_CONFLICT'
     );
   });
 
