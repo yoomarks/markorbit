@@ -13,7 +13,10 @@ import { TrademarkServiceExecutionError } from './trademark-service-execution.js
 
 type Row = Record<string, unknown>;
 const recoveryId = (authorizationId: string, recovery: TrademarkServiceRecoveryState) =>
-  `recovery_${createHash('sha256').update(JSON.stringify({ authorizationId, recovery })).digest('hex').slice(0, 32)}`;
+  `recovery_${createHash('sha256')
+    .update(JSON.stringify({ authorizationId, recovery }))
+    .digest('hex')
+    .slice(0, 32)}`;
 
 export interface TrademarkServiceExecutionSessionSnapshot {
   authorization: TrademarkServiceExecutionAuthorization;
@@ -37,38 +40,78 @@ export class PostgresTrademarkServiceExecutionRepository {
 
   async createAuthorization(authorization: TrademarkServiceExecutionAuthorization) {
     try {
-      await this.query.query(
-        `INSERT INTO execution_trademark_service_sessions
-          (workspace_id,execution_authorization_id,work_package_id,work_package_version,
-           execution_readiness_id,authorization_record,created_by_user_id,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$8)
-         ON CONFLICT (workspace_id,execution_authorization_id) DO NOTHING`,
-        [
-          authorization.workspaceId,
-          authorization.executionAuthorizationId,
-          authorization.workPackage.id,
-          authorization.workPackage.version,
-          authorization.executionReadinessId,
-          JSON.stringify(authorization),
-          authorization.authorizedByUserId,
-          authorization.authorizedAt
-        ]
-      );
-      return authorization;
+      return await this.database.transact(async (client) => {
+        const existing = await client.query(
+          `SELECT authorization_record = $3::jsonb AS same_record
+             FROM execution_trademark_service_sessions
+            WHERE workspace_id=$1 AND execution_authorization_id=$2
+            FOR UPDATE`,
+          [
+            authorization.workspaceId,
+            authorization.executionAuthorizationId,
+            JSON.stringify(authorization)
+          ]
+        );
+        if (existing.rowCount) {
+          if ((existing.rows[0] as Row).same_record !== true) {
+            throw this.idempotencyConflict(
+              'Execution authorization ID was already used for different authorization content.'
+            );
+          }
+          return authorization;
+        }
+        await client.query(
+          `INSERT INTO execution_trademark_service_sessions
+            (workspace_id,execution_authorization_id,work_package_id,work_package_version,
+             execution_readiness_id,authorization_record,created_by_user_id,created_at,updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$8)`,
+          [
+            authorization.workspaceId,
+            authorization.executionAuthorizationId,
+            authorization.workPackage.id,
+            authorization.workPackage.version,
+            authorization.executionReadinessId,
+            JSON.stringify(authorization),
+            authorization.authorizedByUserId,
+            authorization.authorizedAt
+          ]
+        );
+        return authorization;
+      });
     } catch (cause) {
+      if (cause instanceof TrademarkServiceExecutionError) throw cause;
       throw this.unavailable(cause);
     }
   }
 
   async savePlan(workspaceId: string, plan: TrademarkServiceExecutionPlan) {
     this.ensureWorkspace(workspaceId, plan.workspaceId);
-    const result = await this.query.query(
-      `UPDATE execution_trademark_service_sessions SET plan_record=$3::jsonb,updated_at=clock_timestamp()
-        WHERE workspace_id=$1 AND execution_authorization_id=$2`,
-      [workspaceId, plan.authorizationId, JSON.stringify(plan)]
-    );
-    if (!result.rowCount) throw this.notFound();
-    return plan;
+    return this.database.transact(async (client) => {
+      const existing = await client.query(
+        `SELECT plan_record, plan_record = $3::jsonb AS same_record
+           FROM execution_trademark_service_sessions
+          WHERE workspace_id=$1 AND execution_authorization_id=$2
+          FOR UPDATE`,
+        [workspaceId, plan.authorizationId, JSON.stringify(plan)]
+      );
+      if (!existing.rowCount) throw this.notFound();
+      const row = existing.rows[0] as Row;
+      if (row.plan_record) {
+        if (row.same_record !== true) {
+          throw this.idempotencyConflict(
+            'Execution plan is immutable after creation; conflicting replacement was rejected.'
+          );
+        }
+        return plan;
+      }
+      await client.query(
+        `UPDATE execution_trademark_service_sessions
+            SET plan_record=$3::jsonb,updated_at=clock_timestamp()
+          WHERE workspace_id=$1 AND execution_authorization_id=$2`,
+        [workspaceId, plan.authorizationId, JSON.stringify(plan)]
+      );
+      return plan;
+    });
   }
 
   async saveProtectedActionRelease(release: TrademarkServiceProtectedActionRelease) {
@@ -81,8 +124,7 @@ export class PostgresTrademarkServiceExecutionRepository {
       if (existing.rowCount) {
         const row = existing.rows[0] as Row;
         if (String(row.request_fingerprint_sha256) !== release.requestFingerprintSha256)
-          throw new TrademarkServiceExecutionError(
-            'IDEMPOTENCY_CONFLICT',
+          throw this.idempotencyConflict(
             'Idempotency key was already used for a different protected action.'
           );
         return row.release_record as TrademarkServiceProtectedActionRelease;
@@ -132,6 +174,7 @@ export class PostgresTrademarkServiceExecutionRepository {
       handoff
     );
   }
+
   async appendLifecycleHandoff(
     authorizationId: string,
     handoff: TrademarkServiceLifecycleHandoffRequest
@@ -144,6 +187,7 @@ export class PostgresTrademarkServiceExecutionRepository {
       handoff
     );
   }
+
   async appendEvidence(authorizationId: string, evidence: TrademarkServiceExecutionEvidence) {
     return this.appendArtifact(
       evidence.workspaceId,
@@ -222,13 +266,43 @@ export class PostgresTrademarkServiceExecutionRepository {
     kind: 'PROVIDER_HANDOFF' | 'LIFECYCLE_HANDOFF' | 'EVIDENCE' | 'RECOVERY',
     record: unknown
   ) {
-    await this.query.query(
-      `INSERT INTO execution_trademark_service_artifacts
-        (workspace_id,artifact_id,execution_authorization_id,artifact_kind,artifact_record,official_truth_created,created_at)
-       VALUES ($1,$2,$3,$4,$5::jsonb,false,clock_timestamp()) ON CONFLICT (workspace_id,artifact_id) DO NOTHING`,
-      [workspaceId, artifactId, authorizationId, kind, JSON.stringify(record)]
-    );
-    return record;
+    return this.database.transact(async (client) => {
+      const existing = await client.query(
+        `SELECT execution_authorization_id,artifact_kind,artifact_record = $3::jsonb AS same_record,
+                official_truth_created
+           FROM execution_trademark_service_artifacts
+          WHERE workspace_id=$1 AND artifact_id=$2
+          FOR UPDATE`,
+        [workspaceId, artifactId, JSON.stringify(record)]
+      );
+      if (existing.rowCount) {
+        const row = existing.rows[0] as Row;
+        if (
+          String(row.execution_authorization_id) !== authorizationId ||
+          String(row.artifact_kind) !== kind ||
+          row.same_record !== true ||
+          row.official_truth_created !== false
+        ) {
+          throw this.idempotencyConflict(
+            'Execution artifact ID was already used for different artifact content or authority.'
+          );
+        }
+        return record;
+      }
+      const owner = await client.query(
+        `SELECT 1 FROM execution_trademark_service_sessions
+          WHERE workspace_id=$1 AND execution_authorization_id=$2 FOR UPDATE`,
+        [workspaceId, authorizationId]
+      );
+      if (!owner.rowCount) throw this.notFound();
+      await client.query(
+        `INSERT INTO execution_trademark_service_artifacts
+          (workspace_id,artifact_id,execution_authorization_id,artifact_kind,artifact_record,official_truth_created,created_at)
+         VALUES ($1,$2,$3,$4,$5::jsonb,false,clock_timestamp())`,
+        [workspaceId, artifactId, authorizationId, kind, JSON.stringify(record)]
+      );
+      return record;
+    });
   }
 
   private ensureWorkspace(expected: string, actual: string) {
@@ -239,6 +313,11 @@ export class PostgresTrademarkServiceExecutionRepository {
         404
       );
   }
+
+  private idempotencyConflict(message: string) {
+    return new TrademarkServiceExecutionError('IDEMPOTENCY_CONFLICT', message);
+  }
+
   private notFound() {
     return new TrademarkServiceExecutionError(
       'OWNER_MISMATCH',
@@ -246,6 +325,7 @@ export class PostgresTrademarkServiceExecutionRepository {
       404
     );
   }
+
   private unavailable(cause: unknown) {
     return new TrademarkServiceExecutionError(
       'OWNER_MISMATCH',
