@@ -39,16 +39,20 @@ export const trademarkServiceSandboxCredentialClasses = ['NONE', 'TEST_ONLY'] as
 export type TrademarkServiceSandboxCredentialClass =
   (typeof trademarkServiceSandboxCredentialClasses)[number];
 
-export interface TrademarkServiceExecutionEnvironmentPolicy {
-  schemaVersion: 1;
+export interface TrademarkServiceProtectedActionReplayContext {
   environmentPolicyId: TrademarkServiceExecutionEnvironmentPolicyId;
-  workspaceId: string;
-  executionAuthorizationId: TrademarkServiceExecutionAuthorizationId;
   environment: TrademarkServiceExecutionEnvironment;
   mode: TrademarkServiceExecutionMode;
   connectorClass: TrademarkServiceSandboxConnectorClass;
   endpointClass: TrademarkServiceSandboxEndpointClass;
   credentialClass: TrademarkServiceSandboxCredentialClass;
+}
+
+export interface TrademarkServiceExecutionEnvironmentPolicy
+  extends TrademarkServiceProtectedActionReplayContext {
+  schemaVersion: 1;
+  workspaceId: string;
+  executionAuthorizationId: TrademarkServiceExecutionAuthorizationId;
   createdAt: string;
   immutable: true;
   nonProduction: true;
@@ -59,15 +63,10 @@ export interface TrademarkServiceExecutionEnvironmentPolicy {
   officialTruthCreated: false;
 }
 
-export interface TrademarkServiceProtectedActionEnvironmentBinding {
+export interface TrademarkServiceProtectedActionEnvironmentBinding
+  extends TrademarkServiceProtectedActionReplayContext {
   schemaVersion: 1;
   protectedActionReleaseId: TrademarkServiceProtectedActionReleaseId;
-  environmentPolicyId: TrademarkServiceExecutionEnvironmentPolicyId;
-  environment: TrademarkServiceExecutionEnvironment;
-  mode: TrademarkServiceExecutionMode;
-  connectorClass: TrademarkServiceSandboxConnectorClass;
-  endpointClass: TrademarkServiceSandboxEndpointClass;
-  credentialClass: TrademarkServiceSandboxCredentialClass;
   immutable: true;
   environmentAndModeIncludedInReplayIdentity: true;
   crossEnvironmentReplayAllowed: false;
