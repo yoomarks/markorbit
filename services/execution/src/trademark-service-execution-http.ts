@@ -1,18 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
-import {
-  parseInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
-import type {
-  TrademarkServiceProtectedActionKind
-} from '@markorbit/contracts/trademark-service-execution';
-import type {
-  TrademarkServiceExecutionReadiness
-} from '@markorbit/contracts/trademark-service-workbench';
+import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import type { TrademarkServiceProtectedActionKind } from '@markorbit/contracts/trademark-service-execution';
+import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
-import type {
-  PostgresTrademarkServiceExecutionRepository
-} from './trademark-service-execution-postgres.js';
+import type { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
 import {
   TrademarkServiceExecutionError,
   TrademarkServiceProtectedActionGate,
@@ -121,11 +112,7 @@ function strings(value: unknown, field: string, required = false): string[] {
 
 function readinessOf(value: unknown, workspaceId: string): TrademarkServiceExecutionReadiness {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new HttpError(
-      400,
-      'INVALID_REQUEST',
-      'A Lite-produced Execution Readiness is required.'
-    );
+    throw new HttpError(400, 'INVALID_REQUEST', 'A Lite-produced Execution Readiness is required.');
   const readiness = value as Partial<TrademarkServiceExecutionReadiness>;
   if (typeof readiness.workspaceId !== 'string' || readiness.workspaceId !== workspaceId)
     throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Execution Readiness was not found.');
@@ -144,11 +131,7 @@ function actionKinds(value: unknown): TrademarkServiceProtectedActionKind[] {
     'PUBLICATION'
   ]);
   if (values.some((item) => !allowed.has(item as TrademarkServiceProtectedActionKind)))
-    throw new HttpError(
-      400,
-      'INVALID_REQUEST',
-      'allowedActions contains an unsupported action.'
-    );
+    throw new HttpError(400, 'INVALID_REQUEST', 'allowedActions contains an unsupported action.');
   return values as TrademarkServiceProtectedActionKind[];
 }
 
