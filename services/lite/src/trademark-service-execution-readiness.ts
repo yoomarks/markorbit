@@ -46,7 +46,9 @@ function cleanedReferences(values: readonly string[], field: string): string[] {
   const cleaned = [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort();
   if (!cleaned.length) {
     throw new TrademarkServiceExecutionReadinessError(
-      field === 'ownerDomainValidationReferences' ? 'OWNER_VALIDATION_REQUIRED' : 'EVIDENCE_REQUIRED',
+      field === 'ownerDomainValidationReferences'
+        ? 'OWNER_VALIDATION_REQUIRED'
+        : 'EVIDENCE_REQUIRED',
       `${field} must contain at least one explicit reference.`
     );
   }
@@ -122,7 +124,9 @@ export function auditTrademarkServiceAuthorityBoundaries(
     },
     {
       code: 'NO_SERVICE_PACKAGE_SELECTION',
-      passed: workPackage.servicePackageCandidates.every((candidate) => candidate.selected === false),
+      passed: workPackage.servicePackageCandidates.every(
+        (candidate) => candidate.selected === false
+      ),
       explanation: 'Service Package candidates remain candidates.'
     },
     {

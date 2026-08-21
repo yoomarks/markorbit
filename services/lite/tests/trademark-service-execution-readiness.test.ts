@@ -89,7 +89,9 @@ const readyWorkPackage = (): TrademarkServiceWorkPackage => ({
   protectedActionAuthorized: false
 });
 
-function prepare(overrides: Partial<Parameters<typeof prepareTrademarkServiceExecutionReadiness>[0]> = {}) {
+function prepare(
+  overrides: Partial<Parameters<typeof prepareTrademarkServiceExecutionReadiness>[0]> = {}
+) {
   return prepareTrademarkServiceExecutionReadiness({
     workspaceId: '11111111-1111-4111-8111-111111111111',
     workPackage: readyWorkPackage(),
