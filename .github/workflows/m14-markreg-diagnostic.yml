@@ -91,3 +91,5 @@ jobs:
           name: m14-markreg-diagnostic-logs
           path: m14-markreg-logs
           if-no-files-found: error
+
+# Temporary diagnostic only; remove after the first failing MarkReg command is identified.
