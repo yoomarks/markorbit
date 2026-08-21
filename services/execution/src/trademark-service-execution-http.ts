@@ -3,9 +3,7 @@ import {
   parseInternalWorkspacePrincipal,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import type {
-  TrademarkServiceProtectedActionKind
-} from '@markorbit/contracts/trademark-service-execution';
+import type { TrademarkServiceProtectedActionKind } from '@markorbit/contracts/trademark-service-execution';
 import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import type { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
@@ -117,7 +115,11 @@ function strings(value: unknown, field: string, required = false): string[] {
 
 function readinessOf(value: unknown, workspaceId: string): TrademarkServiceExecutionReadiness {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new HttpError(400, 'INVALID_REQUEST', 'A Lite-produced Execution Readiness is required.');
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'A Lite-produced Execution Readiness is required.'
+    );
   const readiness = value as Partial<TrademarkServiceExecutionReadiness>;
   if (typeof readiness.workspaceId !== 'string' || readiness.workspaceId !== workspaceId)
     throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Execution Readiness was not found.');
@@ -136,7 +138,11 @@ function actionKinds(value: unknown): TrademarkServiceProtectedActionKind[] {
     'PUBLICATION'
   ]);
   if (values.some((item) => !allowed.has(item as TrademarkServiceProtectedActionKind)))
-    throw new HttpError(400, 'INVALID_REQUEST', 'allowedActions contains an unsupported action.');
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'allowedActions contains an unsupported action.'
+    );
   return values as TrademarkServiceProtectedActionKind[];
 }
 
@@ -171,7 +177,10 @@ export function createTrademarkServiceExecutionRoutes(
             readiness,
             workPackageVersion: positiveVersion(body.workPackageVersion, 'workPackageVersion'),
             authorizedByUserId: principal.userId,
-            authorizationCapacity: requiredString(body.authorizationCapacity, 'authorizationCapacity'),
+            authorizationCapacity: requiredString(
+              body.authorizationCapacity,
+              'authorizationCapacity'
+            ),
             authorizedAt: now(),
             ...(typeof body.expiresAt === 'string' ? { expiresAt: body.expiresAt } : {}),
             allowedActions: actionKinds(body.allowedActions),
@@ -209,7 +218,11 @@ export function createTrademarkServiceExecutionRoutes(
           request.params.executionAuthorizationId!
         );
         if (!snapshot)
-          throw new HttpError(404, 'EXECUTION_AUTHORIZATION_NOT_FOUND', 'Execution authorization was not found.');
+          throw new HttpError(
+            404,
+            'EXECUTION_AUTHORIZATION_NOT_FOUND',
+            'Execution authorization was not found.'
+          );
         return json(200, { snapshot });
       }
     },
@@ -225,7 +238,11 @@ export function createTrademarkServiceExecutionRoutes(
           request.params.executionAuthorizationId!
         );
         if (!snapshot)
-          throw new HttpError(404, 'EXECUTION_AUTHORIZATION_NOT_FOUND', 'Execution authorization was not found.');
+          throw new HttpError(
+            404,
+            'EXECUTION_AUTHORIZATION_NOT_FOUND',
+            'Execution authorization was not found.'
+          );
         if (!Array.isArray(body.steps))
           throw new HttpError(400, 'INVALID_REQUEST', 'steps must be an array.');
         try {
@@ -251,13 +268,21 @@ export function createTrademarkServiceExecutionRoutes(
         rejectActorSpoof(body);
         const key = request.headers['idempotency-key'];
         if (!key?.trim())
-          throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key header is required.');
+          throw new HttpError(
+            400,
+            'IDEMPOTENCY_KEY_REQUIRED',
+            'Idempotency-Key header is required.'
+          );
         const snapshot = await options.repository.getSnapshot(
           principal.workspaceId,
           request.params.executionAuthorizationId!
         );
         if (!snapshot?.plan)
-          throw new HttpError(409, 'EXECUTION_PLAN_REQUIRED', 'A durable Execution Plan is required.');
+          throw new HttpError(
+            409,
+            'EXECUTION_PLAN_REQUIRED',
+            'A durable Execution Plan is required.'
+          );
         try {
           const release = new TrademarkServiceProtectedActionGate().release({
             workspaceId: principal.workspaceId,
