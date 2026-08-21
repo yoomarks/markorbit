@@ -6,9 +6,13 @@ import {
 import type {
   TrademarkServiceProtectedActionKind
 } from '@markorbit/contracts/trademark-service-execution';
-import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
+import type {
+  TrademarkServiceExecutionReadiness
+} from '@markorbit/contracts/trademark-service-workbench';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
-import type { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
+import type {
+  PostgresTrademarkServiceExecutionRepository
+} from './trademark-service-execution-postgres.js';
 import {
   TrademarkServiceExecutionError,
   TrademarkServiceProtectedActionGate,
