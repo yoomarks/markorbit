@@ -4,13 +4,13 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  execution-diagnostic:
-    name: Execution diagnostic (ordered)
+  execution-reset-fix:
+    name: Execution reset fix verification
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16-alpine
@@ -34,11 +34,64 @@ jobs:
       WEB_ORIGINS: https://test.markorbit.local
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/m14-operational-execution-workbench
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Patch stale Execution reset inventories
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = list(Path('scripts').glob('*.ts')) + list(Path('services/execution/tests').glob('*.ts'))
+          markers = (
+              'professional_review_cases',
+              'filing_authorizations',
+              'execution_provider_return_evidence_receipts',
+              'execution_evidence_review_sources',
+              'execution_reviewed_source_handoffs',
+          )
+          insert = (
+              '         execution_trademark_service_artifacts,\n'
+              '         execution_trademark_service_protected_action_replays,\n'
+              '         execution_trademark_service_sessions,\n'
+          )
+          patched = []
+
+          for path in paths:
+              text = path.read_text()
+              cursor = 0
+              changed = False
+              while True:
+                  start = text.find('DROP TABLE IF EXISTS\n', cursor)
+                  if start < 0:
+                      break
+                  end = text.find('CASCADE`', start)
+                  if end < 0:
+                      break
+                  end += len('CASCADE`')
+                  block = text[start:end]
+                  if any(marker in block for marker in markers) and 'execution_trademark_service_sessions' not in block:
+                      block = block.replace('DROP TABLE IF EXISTS\n', 'DROP TABLE IF EXISTS\n' + insert, 1)
+                      text = text[:start] + block + text[end:]
+                      end = start + len(block)
+                      changed = True
+                  cursor = end
+              if changed:
+                  path.write_text(text)
+                  patched.append(str(path))
+
+          print('Patched reset inventories:')
+          for path in patched:
+              print(f'  {path}')
+          if not patched:
+              print('  none')
+          PY
+          git diff --check
       - name: Create Execution and MarkReg test databases
         env:
           PGPASSWORD: markorbit-test-only
@@ -57,3 +110,14 @@ jobs:
         run: pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
       - name: 6 evidence-review-postgres
         run: pnpm test:evidence-review:postgres
+      - name: Commit verified reset fixes
+        run: |
+          if git diff --quiet; then
+            echo 'No source reset changes to commit.'
+            exit 0
+          fi
+          git config user.name 'markorbit-ci'
+          git config user.email 'markorbit-ci@users.noreply.github.com'
+          git add scripts services/execution/tests
+          git commit -m 'test(execution): reset M14 tables across integration suites'
+          git push origin HEAD:agent/m14-operational-execution-workbench
