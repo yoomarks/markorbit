@@ -147,7 +147,9 @@ export function authorizeTrademarkServiceExecution(
   const authorizedByUserId = clean(command.authorizedByUserId, 'authorizedByUserId');
   const authorizationCapacity = clean(command.authorizationCapacity, 'authorizationCapacity');
   const providerRestriction = command.providerRestriction?.trim() || undefined;
-  const conditions = [...new Set((command.conditions ?? []).map((value) => value.trim()).filter(Boolean))].sort();
+  const conditions = [
+    ...new Set((command.conditions ?? []).map((value) => value.trim()).filter(Boolean))
+  ].sort();
   const stable = hash({
     workspaceId: command.workspaceId,
     readinessId: command.readiness.executionReadinessId,
@@ -202,10 +204,17 @@ export function createTrademarkServiceExecutionPlan(
   command: Readonly<CreateTrademarkServiceExecutionPlanCommand>
 ): TrademarkServiceExecutionPlan {
   if (!sameWorkspace(command.workspaceId, command.authorization.workspaceId)) {
-    throw new TrademarkServiceExecutionError('WORKSPACE_MISMATCH', 'Authorization belongs to another Workspace.', 404);
+    throw new TrademarkServiceExecutionError(
+      'WORKSPACE_MISMATCH',
+      'Authorization belongs to another Workspace.',
+      404
+    );
   }
   if (!command.steps.length) {
-    throw new TrademarkServiceExecutionError('ACTION_NOT_AUTHORIZED', 'Execution Plan requires at least one step.');
+    throw new TrademarkServiceExecutionError(
+      'ACTION_NOT_AUTHORIZED',
+      'Execution Plan requires at least one step.'
+    );
   }
   const createdAt = iso(command.createdAt, 'createdAt');
   const steps = command.steps.map((step, index) => {
@@ -237,7 +246,10 @@ export function createTrademarkServiceExecutionPlan(
       status: 'PLANNED'
     } satisfies TrademarkServiceExecutionPlanStep;
   });
-  const stable = hash({ authorizationId: command.authorization.executionAuthorizationId, steps }).slice(0, 32);
+  const stable = hash({
+    authorizationId: command.authorization.executionAuthorizationId,
+    steps
+  }).slice(0, 32);
   return {
     schemaVersion: 1,
     executionPlanId: `trademark-service-execution-plan_${stable}`,
@@ -275,27 +287,47 @@ export class TrademarkServiceProtectedActionGate {
       !sameWorkspace(command.workspaceId, command.authorization.workspaceId) ||
       !sameWorkspace(command.workspaceId, command.plan.workspaceId)
     ) {
-      throw new TrademarkServiceExecutionError('WORKSPACE_MISMATCH', 'Protected action crossed Workspace boundaries.', 404);
+      throw new TrademarkServiceExecutionError(
+        'WORKSPACE_MISMATCH',
+        'Protected action crossed Workspace boundaries.',
+        404
+      );
     }
     if (command.authorization.executionAuthorizationId !== command.plan.authorizationId) {
-      throw new TrademarkServiceExecutionError('OWNER_MISMATCH', 'Execution Plan is not owned by this authorization.');
+      throw new TrademarkServiceExecutionError(
+        'OWNER_MISMATCH',
+        'Execution Plan is not owned by this authorization.'
+      );
     }
     if (command.currentWorkPackageVersion !== command.authorization.workPackage.version) {
-      throw new TrademarkServiceExecutionError('READINESS_REQUIRED', 'Work Package changed after authorization.');
+      throw new TrademarkServiceExecutionError(
+        'READINESS_REQUIRED',
+        'Work Package changed after authorization.'
+      );
     }
     const releasedAt = iso(command.releasedAt, 'releasedAt');
     if (
       command.authorization.expiresAt &&
       new Date(releasedAt) > new Date(command.authorization.expiresAt)
     ) {
-      throw new TrademarkServiceExecutionError('AUTHORIZATION_EXPIRED', 'Execution authorization has expired.');
+      throw new TrademarkServiceExecutionError(
+        'AUTHORIZATION_EXPIRED',
+        'Execution authorization has expired.'
+      );
     }
     const step = command.plan.steps.find((candidate) => candidate.stepId === command.stepId);
     if (!step) {
-      throw new TrademarkServiceExecutionError('PLAN_STEP_NOT_FOUND', 'Execution Plan step was not found.', 404);
+      throw new TrademarkServiceExecutionError(
+        'PLAN_STEP_NOT_FOUND',
+        'Execution Plan step was not found.',
+        404
+      );
     }
     if (!command.authorization.allowedActions.includes(step.action)) {
-      throw new TrademarkServiceExecutionError('ACTION_NOT_AUTHORIZED', 'Protected action is outside authorization scope.');
+      throw new TrademarkServiceExecutionError(
+        'ACTION_NOT_AUTHORIZED',
+        'Protected action is outside authorization scope.'
+      );
     }
     const evidenceReferences = refs(command.evidenceReferences, 'evidenceReferences');
     const releasedByUserId = clean(command.releasedByUserId, 'releasedByUserId');
@@ -336,7 +368,10 @@ export class TrademarkServiceProtectedActionGate {
       externalSuccessConfirmed: false,
       officialAcceptanceConfirmed: false
     };
-    this.replay.set(idempotencyKey, { fingerprint: requestFingerprintSha256, release: structuredClone(release) });
+    this.replay.set(idempotencyKey, {
+      fingerprint: requestFingerprintSha256,
+      release: structuredClone(release)
+    });
     return release;
   }
 
@@ -355,22 +390,39 @@ export function createTrademarkServiceProviderHandoff(command: {
   createdAt: string;
 }): TrademarkServiceProviderHandoffRequest {
   if (!sameWorkspace(command.workspaceId, command.release.workspaceId)) {
-    throw new TrademarkServiceExecutionError('WORKSPACE_MISMATCH', 'Release belongs to another Workspace.', 404);
+    throw new TrademarkServiceExecutionError(
+      'WORKSPACE_MISMATCH',
+      'Release belongs to another Workspace.',
+      404
+    );
   }
   if (command.release.action !== 'PROVIDER_INSTRUCTION') {
-    throw new TrademarkServiceExecutionError('OWNER_MISMATCH', 'Only a provider-instruction release may enter MGSN handoff.');
+    throw new TrademarkServiceExecutionError(
+      'OWNER_MISMATCH',
+      'Only a provider-instruction release may enter MGSN handoff.'
+    );
   }
   const step = command.plan.steps.find((candidate) => candidate.stepId === command.release.stepId);
   if (!step || step.owner !== 'MGSN') {
-    throw new TrademarkServiceExecutionError('OWNER_MISMATCH', 'Provider handoff requires an MGSN-owned plan step.');
+    throw new TrademarkServiceExecutionError(
+      'OWNER_MISMATCH',
+      'Provider handoff requires an MGSN-owned plan step.'
+    );
   }
   const providerReference = clean(command.providerReference, 'providerReference');
   if (step.providerReference && step.providerReference !== providerReference) {
-    throw new TrademarkServiceExecutionError('PROVIDER_RESTRICTION_MISMATCH', 'Provider handoff does not match the plan.');
+    throw new TrademarkServiceExecutionError(
+      'PROVIDER_RESTRICTION_MISMATCH',
+      'Provider handoff does not match the plan.'
+    );
   }
   const instructionReferences = refs(command.instructionReferences, 'evidenceReferences');
   const evidenceReferences = refs(command.evidenceReferences, 'evidenceReferences');
-  const stable = hash({ releaseId: command.release.protectedActionReleaseId, providerReference, instructionReferences }).slice(0, 32);
+  const stable = hash({
+    releaseId: command.release.protectedActionReleaseId,
+    providerReference,
+    instructionReferences
+  }).slice(0, 32);
   return {
     schemaVersion: 1,
     providerHandoffId: `trademark-service-provider-handoff_${stable}`,
@@ -397,7 +449,11 @@ export function recordTrademarkServiceExecutionEvidence(command: {
   recordedAt: string;
 }): TrademarkServiceExecutionEvidence {
   if (!sameWorkspace(command.workspaceId, command.release.workspaceId)) {
-    throw new TrademarkServiceExecutionError('WORKSPACE_MISMATCH', 'Release belongs to another Workspace.', 404);
+    throw new TrademarkServiceExecutionError(
+      'WORKSPACE_MISMATCH',
+      'Release belongs to another Workspace.',
+      404
+    );
   }
   const normalizeOptional = (values: readonly string[] | undefined) =>
     [...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))].sort();
@@ -411,7 +467,10 @@ export function recordTrademarkServiceExecutionEvidence(command: {
     !providerReturnReferences.length &&
     !ownerValidationReferences.length
   ) {
-    throw new TrademarkServiceExecutionError('EVIDENCE_REQUIRED', 'Execution evidence requires at least one reference.');
+    throw new TrademarkServiceExecutionError(
+      'EVIDENCE_REQUIRED',
+      'Execution evidence requires at least one reference.'
+    );
   }
   const stable = hash({
     releaseId: command.release.protectedActionReleaseId,
@@ -447,13 +506,23 @@ export function createTrademarkServiceLifecycleHandoff(command: {
   createdAt: string;
 }): TrademarkServiceLifecycleHandoffRequest {
   if (!sameWorkspace(command.workspaceId, command.evidence.workspaceId)) {
-    throw new TrademarkServiceExecutionError('WORKSPACE_MISMATCH', 'Execution evidence belongs to another Workspace.', 404);
+    throw new TrademarkServiceExecutionError(
+      'WORKSPACE_MISMATCH',
+      'Execution evidence belongs to another Workspace.',
+      404
+    );
   }
   const matterReference = command.matterReference.trim();
   if (!matterReference) {
-    throw new TrademarkServiceExecutionError('MATTER_REFERENCE_REQUIRED', 'matterReference is required.');
+    throw new TrademarkServiceExecutionError(
+      'MATTER_REFERENCE_REQUIRED',
+      'matterReference is required.'
+    );
   }
-  const ownerValidationReferences = refs(command.ownerValidationReferences, 'ownerValidationReferences');
+  const ownerValidationReferences = refs(
+    command.ownerValidationReferences,
+    'ownerValidationReferences'
+  );
   const stable = hash({
     evidenceId: command.evidence.executionEvidenceId,
     matterReference,
@@ -495,7 +564,8 @@ export function classifyTrademarkServiceRecovery(input: {
       state: 'RETRY_ALLOWED',
       reasonCode,
       retryable: true,
-      nextAction: 'Human reviews evidence and explicitly retries with the same governed action identity.',
+      nextAction:
+        'Human reviews evidence and explicitly retries with the same governed action identity.',
       duplicateProtectedActionPrevented: true,
       automaticExternalRetryPerformed: false
     };
@@ -514,7 +584,8 @@ export function classifyTrademarkServiceRecovery(input: {
     state: 'TERMINAL_FAILURE',
     reasonCode,
     retryable: false,
-    nextAction: 'Return to professional review and prepare a new authorized execution path if needed.',
+    nextAction:
+      'Return to professional review and prepare a new authorized execution path if needed.',
     duplicateProtectedActionPrevented: true,
     automaticExternalRetryPerformed: false
   };

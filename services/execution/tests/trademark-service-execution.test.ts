@@ -256,7 +256,9 @@ describe('M13 controlled trademark service execution', () => {
   });
 
   it('WP07 never automatically retries ambiguous external outcomes', () => {
-    expect(classifyTrademarkServiceRecovery({ outcome: 'TRANSIENT_FAILURE', reasonCode: 'HTTP_503' })).toMatchObject({
+    expect(
+      classifyTrademarkServiceRecovery({ outcome: 'TRANSIENT_FAILURE', reasonCode: 'HTTP_503' })
+    ).toMatchObject({
       state: 'RETRY_ALLOWED',
       retryable: true,
       duplicateProtectedActionPrevented: true,
@@ -300,7 +302,10 @@ describe('M13 controlled trademark service execution', () => {
       ownerValidationReferences: ['markreg-owner-validation_1'],
       createdAt: '2026-08-21T03:25:00.000Z'
     });
-    const recovery = classifyTrademarkServiceRecovery({ outcome: 'SUCCESS', reasonCode: 'OWNER_ACCEPTED' });
+    const recovery = classifyTrademarkServiceRecovery({
+      outcome: 'SUCCESS',
+      reasonCode: 'OWNER_ACCEPTED'
+    });
     const snapshot = createTrademarkServiceExecutionWorkbenchSnapshot({
       workspaceId,
       authorization: auth,
