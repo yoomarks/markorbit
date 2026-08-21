@@ -8,25 +8,9 @@ permissions:
 
 jobs:
   execution-diagnostic:
-    name: Execution diagnostic (${{ matrix.name }})
+    name: Execution diagnostic (ordered)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: professional-review-postgres
-            command: pnpm test:professional-review:postgres
-          - name: professional-review-http
-            command: pnpm test:professional-review:http
-          - name: filing-governance-auth
-            command: pnpm test:filing-governance:auth
-          - name: filing-governance-postgres
-            command: pnpm test:filing-governance:postgres
-          - name: provider-return-evidence-postgres
-            command: pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
-          - name: evidence-review-postgres
-            command: pnpm test:evidence-review:postgres
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -39,6 +23,8 @@ jobs:
           --health-cmd "pg_isready -U markorbit_test -d postgres"
           --health-interval 2s --health-timeout 3s --health-retries 20
     env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'
@@ -53,9 +39,21 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Create Execution test database
+      - name: Create Execution and MarkReg test databases
         env:
           PGPASSWORD: markorbit-test-only
-        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_test;'
-      - name: ${{ matrix.name }}
-        run: ${{ matrix.command }}
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_test;'
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_markreg_test;'
+      - name: 1 professional-review-postgres
+        run: pnpm test:professional-review:postgres
+      - name: 2 professional-review-http
+        run: pnpm test:professional-review:http
+      - name: 3 filing-governance-auth
+        run: pnpm test:filing-governance:auth
+      - name: 4 filing-governance-postgres
+        run: pnpm test:filing-governance:postgres
+      - name: 5 provider-return-evidence-postgres
+        run: pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
+      - name: 6 evidence-review-postgres
+        run: pnpm test:evidence-review:postgres
