@@ -8,8 +8,8 @@ import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-work
 import type { QueryClient } from '@markorbit/persistence';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
-  PostgresTrademarkServiceWorkPackageStore,
-  TrademarkServiceWorkPackagePersistenceError
+  TrademarkServiceWorkPackagePersistenceError,
+  type PostgresTrademarkServiceWorkPackageStore
 } from './trademark-service-work-package.js';
 
 export interface TrademarkServiceWorkbenchRouteOptions {
