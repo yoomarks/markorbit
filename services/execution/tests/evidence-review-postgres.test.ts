@@ -169,6 +169,9 @@ suite('M5-WP-02 durable Execution Evidence Review Decision', () => {
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         execution_trademark_service_artifacts,
+         execution_trademark_service_protected_action_replays,
+         execution_trademark_service_sessions,
          execution_reviewed_source_handoff_audit,
          execution_reviewed_source_handoffs,
          execution_reviewed_source_admission_commands,

@@ -42,6 +42,16 @@ test('owned migration plus owner map remains owner-scoped', () => {
   assert.equal(scope.execution, false);
 });
 
+test('execution changes include the MarkReg dependency required by execution integration', () => {
+  const scope = classifyChangedFiles([
+    'services/execution/src/trademark-service-execution-postgres.ts'
+  ]);
+  assert.equal(scope.execution, true);
+  assert.equal(scope.markreg, true);
+  assert.equal(scope.shared, false);
+  assert.equal(scope.integration, true);
+});
+
 test('owner map without an owned migration is conservatively shared', () => {
   const scope = classifyChangedFiles(['infrastructure/persistence/migration-owners.json'], {
     paymentAvailable: true

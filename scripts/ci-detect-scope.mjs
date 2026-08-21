@@ -153,6 +153,9 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     if (paymentAvailable) payment = true;
   }
 
+  // Execution's authenticated Professional Review lane validates MarkReg-owned matter state.
+  // Keep that owner-domain dependency explicit so selective CI provisions the required database.
+  if (execution) markreg = true;
   if (payment) gateway = true;
 
   const fullTypecheck = workspaceTopology || files.some((path) => path === 'tsconfig.base.json');
