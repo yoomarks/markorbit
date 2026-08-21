@@ -19,6 +19,8 @@ import {
   createExecutionReviewedSourceInternalRoutes,
   HttpMarkRegLifecycleProjectionClient
 } from './reviewed-source-handoff-http.js';
+import { createTrademarkServiceExecutionRoutes } from './trademark-service-execution-http.js';
+import { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -77,6 +79,14 @@ if (fixtureRuntime) {
     internalServiceSecret,
     evidenceReviewReader: evidenceReviewRepository
   });
+  const trademarkServiceExecutionRepository = new PostgresTrademarkServiceExecutionRepository(
+    database,
+    pool
+  );
+  const trademarkServiceExecutionRoutes = createTrademarkServiceExecutionRoutes({
+    internalServiceSecret,
+    repository: trademarkServiceExecutionRepository
+  });
 
   runtime = createRuntime({
     reviewRepositoryFactory: (workspaceId) =>
@@ -90,7 +100,8 @@ if (fixtureRuntime) {
       }),
       ...reviewedSourceRoutes,
       ...evidenceProvenanceRoutes,
-      ...capabilityObservationSourceRoutes
+      ...capabilityObservationSourceRoutes,
+      ...trademarkServiceExecutionRoutes
     ],
     internalServiceSecret,
     markRegUrl
