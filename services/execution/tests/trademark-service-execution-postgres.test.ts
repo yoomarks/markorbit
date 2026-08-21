@@ -242,7 +242,7 @@ suite('M14 PostgreSQL trademark service execution repository', () => {
     ).resolves.toBeUndefined();
     const snapshot = await repo.getSnapshot(workspaceId, auth.executionAuthorizationId);
     expect(snapshot?.evidence).toEqual([evidence]);
-    const stored = await database.getPool().query(
+    const stored = await database.getPool().query<{ official_truth_created: boolean }>(
       `SELECT official_truth_created FROM execution_trademark_service_artifacts
         WHERE workspace_id=$1 AND artifact_id=$2`,
       [workspaceId, evidence.executionEvidenceId]
