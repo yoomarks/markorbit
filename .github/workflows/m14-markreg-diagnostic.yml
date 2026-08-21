@@ -1,16 +1,13 @@
-name: M14 MarkReg Diagnostic
+name: M14 MarkReg Reset Fix
 
 on:
   pull_request:
-  push:
-    branches:
-      - agent/m14-operational-execution-workbench
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  markreg-diagnostic:
+  verify-reset-fix:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -30,10 +27,6 @@ jobs:
       MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED: '1'
       MARKREG_AUDIT_POSTGRES_REQUIRED: '1'
       MARKREG_AUDIT_HTTP_REQUIRED: '1'
-      MARKREG_ORDER_POSTGRES_REQUIRED: '1'
-      MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED: '1'
-      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'
-      MARKREG_ORDER_HTTP_REQUIRED: '1'
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
@@ -41,6 +34,9 @@ jobs:
       WEB_ORIGINS: https://test.markorbit.local
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/m14-operational-execution-workbench
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
@@ -52,49 +48,37 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_markreg_test;'
           psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_test;'
-      - name: Run MarkReg commands and capture first failure
-        shell: bash
+      - name: Patch Execution reset inventory
         run: |
-          mkdir -p m14-markreg-logs
-          commands=(
-            'pnpm test:customer-confirmation'
-            'pnpm test:customer-confirmation:postgres'
-            'pnpm test:customer-confirmation:http'
-            'pnpm test:lite-matter:postgres'
-            'pnpm test:lite-matter:http'
-            'pnpm test:document-package:postgres'
-            'pnpm test:document-package:http'
-            'pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts'
-            'pnpm test:order:http'
-            'pnpm test:order:client'
-            'pnpm test:order:journey'
-            'pnpm test:audit-idempotency:postgres'
-            'pnpm test:audit-idempotency:http'
-            'pnpm test:audit-idempotency:restart'
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/document-package-http.integration.test.ts')
+          text = path.read_text()
+          needle = '         execution_reviewed_source_handoff_audit,\n'
+          additions = (
+              '         execution_trademark_service_artifacts,\n'
+              '         execution_trademark_service_protected_action_replays,\n'
+              '         execution_trademark_service_sessions,\n'
           )
-          for i in "${!commands[@]}"; do
-            n=$((i + 1))
-            cmd="${commands[$i]}"
-            log="m14-markreg-logs/$(printf '%02d' "$n").log"
-            echo "::group::[$n/${#commands[@]}] $cmd"
-            set +e
-            bash -lc "$cmd" >"$log" 2>&1
-            rc=$?
-            set -e
-            tail -n 120 "$log"
-            echo "::endgroup::"
-            if [ "$rc" -ne 0 ]; then
-              printf 'FAILED_COMMAND=%s\nEXIT_CODE=%s\n' "$cmd" "$rc" | tee m14-markreg-logs/failure.txt
-              exit "$rc"
-            fi
-          done
-          echo 'ALL_MARKREG_COMMANDS_PASSED=true' | tee m14-markreg-logs/result.txt
-      - name: Upload MarkReg diagnostic logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: m14-markreg-diagnostic-logs
-          path: m14-markreg-logs
-          if-no-files-found: error
+          if additions in text:
+              raise SystemExit('reset inventory is already patched')
+          if text.count(needle) != 1:
+              raise SystemExit(f'expected exactly one reset anchor, found {text.count(needle)}')
+          path.write_text(text.replace(needle, additions + needle, 1))
+          PY
+          git diff --check -- scripts/document-package-http.integration.test.ts
+          git diff -- scripts/document-package-http.integration.test.ts
+      - name: Reproduce Document Package then audit-idempotency HTTP chain
+        run: |
+          pnpm test:document-package:http
+          pnpm test:audit-idempotency:http
+      - name: Commit verified reset fix
+        run: |
+          git config user.name 'markorbit-ci'
+          git config user.email 'markorbit-ci@users.noreply.github.com'
+          git add -- scripts/document-package-http.integration.test.ts
+          git diff --cached --check
+          git commit -m 'test(markreg): reset M14 execution tables in HTTP suite'
+          git push origin HEAD:agent/m14-operational-execution-workbench
 
-# Temporary diagnostic only; remove after the first failing MarkReg command is identified.
+# Temporary verification workflow. Remove after the verified source commit lands.
