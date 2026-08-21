@@ -208,9 +208,9 @@ suite('M15 PostgreSQL durable sandbox execution policy', () => {
 
     await expect(sandbox.saveEnvironmentPolicy(policy)).resolves.toEqual(policy);
     await expect(sandbox.saveEnvironmentPolicy(structuredClone(policy))).resolves.toEqual(policy);
-    await expect(sandbox.getEnvironmentPolicy(workspaceId, auth.executionAuthorizationId)).resolves.toEqual(
-      policy
-    );
+    await expect(
+      sandbox.getEnvironmentPolicy(workspaceId, auth.executionAuthorizationId)
+    ).resolves.toEqual(policy);
 
     await expect(
       sandbox.saveEnvironmentPolicy({ ...policy, environment: 'SANDBOX' })
@@ -256,10 +256,7 @@ suite('M15 PostgreSQL durable sandbox execution policy', () => {
       original.release.requestFingerprintSha256
     );
     await expect(
-      sandbox.saveProtectedActionRelease(
-        differentEnvironment.release,
-        differentEnvironment.binding
-      )
+      sandbox.saveProtectedActionRelease(differentEnvironment.release, differentEnvironment.binding)
     ).rejects.toMatchObject({ code: 'AUTHORITY_BOUNDARY_VIOLATION' });
   });
 
@@ -291,10 +288,12 @@ suite('M15 PostgreSQL durable sandbox execution policy', () => {
       code: 'OWNER_MISMATCH',
       status: 503
     });
-    const persisted = await database.getPool().query(
-      'SELECT 1 FROM execution_trademark_service_protected_action_replays WHERE workspace_id=$1',
-      [workspaceId]
-    );
+    const persisted = await database
+      .getPool()
+      .query(
+        'SELECT 1 FROM execution_trademark_service_protected_action_replays WHERE workspace_id=$1',
+        [workspaceId]
+      );
     expect(persisted.rowCount).toBe(0);
   });
 });

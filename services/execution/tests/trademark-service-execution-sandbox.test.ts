@@ -173,7 +173,10 @@ describe('M15-WP-02 sandbox execution replay policy', () => {
   });
 
   it('produces different durable fingerprints for identical action content in different environments', () => {
-    const simulated = releaseWith(new TrademarkServiceSandboxProtectedActionGate(), simulatedPolicy());
+    const simulated = releaseWith(
+      new TrademarkServiceSandboxProtectedActionGate(),
+      simulatedPolicy()
+    );
     const sandbox = releaseWith(new TrademarkServiceSandboxProtectedActionGate(), sandboxPolicy());
 
     expect(simulated.release.idempotencyKey).toBe(sandbox.release.idempotencyKey);

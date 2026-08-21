@@ -48,8 +48,7 @@ export interface TrademarkServiceProtectedActionReplayContext {
   credentialClass: TrademarkServiceSandboxCredentialClass;
 }
 
-export interface TrademarkServiceExecutionEnvironmentPolicy
-  extends TrademarkServiceProtectedActionReplayContext {
+export interface TrademarkServiceExecutionEnvironmentPolicy extends TrademarkServiceProtectedActionReplayContext {
   schemaVersion: 1;
   workspaceId: string;
   executionAuthorizationId: TrademarkServiceExecutionAuthorizationId;
@@ -63,8 +62,7 @@ export interface TrademarkServiceExecutionEnvironmentPolicy
   officialTruthCreated: false;
 }
 
-export interface TrademarkServiceProtectedActionEnvironmentBinding
-  extends TrademarkServiceProtectedActionReplayContext {
+export interface TrademarkServiceProtectedActionEnvironmentBinding extends TrademarkServiceProtectedActionReplayContext {
   schemaVersion: 1;
   protectedActionReleaseId: TrademarkServiceProtectedActionReleaseId;
   immutable: true;

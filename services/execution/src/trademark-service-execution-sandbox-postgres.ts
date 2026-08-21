@@ -228,7 +228,8 @@ export class PostgresTrademarkServiceSandboxPolicyRepository {
       [workspaceId, authorizationId]
     );
     return result.rows.map(
-      (row) => (row as Row).environment_binding_record as TrademarkServiceProtectedActionEnvironmentBinding
+      (row) =>
+        (row as Row).environment_binding_record as TrademarkServiceProtectedActionEnvironmentBinding
     );
   }
 }
