@@ -13,27 +13,35 @@ M14 exists because M13 froze and tested the execution semantics, while professio
 ## Work packages
 
 ### WP01 — Durable execution session
+
 Persist authorization, plan, release, handoff, evidence, recovery, and audit references in the Execution owner domain. No Lite-owned execution persistence and no cross-service SQL.
 
 ### WP02 — Authenticated authorization API
+
 Expose explicit authorization through Gateway -> Execution. Actor identity comes from the authenticated principal, never request-body spoofing. Require CSRF/idempotency on mutations.
 
 ### WP03 — Durable protected-action gate
+
 Replace process-local replay state for operational requests with durable idempotency/fingerprint state. Stale Work Package versions, expired authorization, missing evidence, wrong Workspace, and conflicting replay fail closed.
 
 ### WP04 — Owner-domain handoff adapters
+
 Create explicit request boundaries for MGSN/provider and MarkReg lifecycle handoff. A request does not manufacture provider acceptance, filing success, official acceptance, or lifecycle truth.
 
 ### WP05 — Evidence and receipt ledger
+
 Persist execution attempt evidence separately from provider claims and owner-verified official evidence. `attempted != submitted`; `provider claim != Official Truth`.
 
 ### WP06 — Recovery and manual review queue
+
 Persist retry classification and next required human action. Never silently repeat an external consequence and never auto-promote a failed/ambiguous action to success.
 
 ### WP07 — Professional execution workbench UX
+
 Expose authorization, plan, gate state, handoffs, evidence, recovery, and next human action in the professional workbench. Destructive/protected actions require explicit review and confirmation.
 
 ### WP08 — End-to-end authority and reliability audit
+
 Exercise authentication, workspace isolation, actor-spoof rejection, stale-version rejection, idempotency replay/conflict, owner handoff boundaries, evidence separation, and recovery. Exact-head CI must be green before merge.
 
 ## Permanent authority locks
