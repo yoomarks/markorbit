@@ -199,9 +199,9 @@ suite('M14 PostgreSQL trademark service execution repository', () => {
     await expect(repo.saveProtectedActionRelease(protectedRelease)).resolves.toEqual(
       protectedRelease
     );
-    await expect(repo.saveProtectedActionRelease(structuredClone(protectedRelease))).resolves.toEqual(
-      protectedRelease
-    );
+    await expect(
+      repo.saveProtectedActionRelease(structuredClone(protectedRelease))
+    ).resolves.toEqual(protectedRelease);
     await expect(
       repo.saveProtectedActionRelease({
         ...protectedRelease,
@@ -237,7 +237,9 @@ suite('M14 PostgreSQL trademark service execution repository', () => {
     await repo.createAuthorization(auth);
     await repo.appendEvidence(auth.executionAuthorizationId, evidence);
 
-    await expect(repo.getSnapshot(otherWorkspaceId, auth.executionAuthorizationId)).resolves.toBeUndefined();
+    await expect(
+      repo.getSnapshot(otherWorkspaceId, auth.executionAuthorizationId)
+    ).resolves.toBeUndefined();
     const snapshot = await repo.getSnapshot(workspaceId, auth.executionAuthorizationId);
     expect(snapshot?.evidence).toEqual([evidence]);
     const stored = await database.getPool().query(
