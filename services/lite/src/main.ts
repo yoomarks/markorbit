@@ -35,6 +35,8 @@ import {
   ProductPreferenceService
 } from './preference-target.js';
 import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';
+import { PostgresTrademarkServiceWorkPackageStore } from './trademark-service-work-package.js';
+import { createTrademarkServiceWorkbenchRoutes } from './trademark-service-workbench-http.js';
 import { TrademarkAssetPortfolioService } from './trademark-asset-portfolio.js';
 import { PostgresTrademarkAssetRefreshLedger } from './trademark-asset-refresh.js';
 import { PostgresLiteTrademarkAssetStore } from './trademark-asset.js';
@@ -81,6 +83,7 @@ const dailySignalStore = new PostgresLiteDailySignalStore(
 const trademarkAssetStore = new PostgresLiteTrademarkAssetStore(database, pool);
 const trademarkAssetPortfolio = new TrademarkAssetPortfolioService(pool, trademarkAssetStore);
 const trademarkAssetRefreshLedger = new PostgresTrademarkAssetRefreshLedger(database, pool);
+const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStore(database, pool);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   async resolve(workspaceId, locator) {
@@ -273,6 +276,11 @@ const runtime = createServiceRuntime(serviceManifest, {
       assets: trademarkAssetStore,
       portfolio: trademarkAssetPortfolio,
       refreshLedger: trademarkAssetRefreshLedger
+    }),
+    ...createTrademarkServiceWorkbenchRoutes({
+      internalServiceSecret,
+      workPackages: trademarkServiceWorkPackages,
+      query: pool
     }),
     ...createContentKitRoutes({ internalServiceSecret, contentKitService }),
     ...createProductPreferenceRoutes({ internalServiceSecret, service: preferenceService }),

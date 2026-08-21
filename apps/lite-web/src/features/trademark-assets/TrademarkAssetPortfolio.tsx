@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';
 import type {
   TrademarkAsset,
   TrademarkAssetId,
@@ -23,6 +24,7 @@ import {
   type TrademarkAssetPortfolioManagementSummary
 } from '../../api/trademark-assets.js';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
+import { TrademarkServiceWorkbench } from './TrademarkServiceWorkbench.js';
 import './trademark-asset-workspace.css';
 
 export interface TrademarkAssetPortfolioProps {
@@ -68,6 +70,7 @@ export function TrademarkAssetPortfolio({
   );
   const [selectedId, setSelectedId] = useState<TrademarkAssetId>();
   const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();
+  const [serviceWorkPackage, setServiceWorkPackage] = useState<TrademarkServiceWorkPackage>();
   const [detailState, setDetailState] = useState<LoadState>('ready');
 
   const loadPortfolio = useCallback(async () => {
@@ -94,9 +97,15 @@ export function TrademarkAssetPortfolio({
   const openAsset = async (trademarkAssetId: TrademarkAssetId) => {
     setSelectedId(trademarkAssetId);
     setDetail(undefined);
+    setServiceWorkPackage(undefined);
     setDetailState('loading');
     try {
-      setDetail(await client.load(trademarkAssetId));
+      const [loadedDetail, loadedWorkPackage] = await Promise.all([
+        client.load(trademarkAssetId),
+        client.loadServiceWorkPackage(trademarkAssetId)
+      ]);
+      setDetail(loadedDetail);
+      setServiceWorkPackage(loadedWorkPackage);
       setDetailState('ready');
     } catch {
       setDetailState('error');
@@ -128,6 +137,20 @@ export function TrademarkAssetPortfolio({
             {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
+          />
+          <TrademarkServiceWorkbench
+            jurisdiction={detail.view.anchor.identity.jurisdiction}
+            assetVersion={detail.view.anchor.version}
+            {...(serviceWorkPackage ? { latest: serviceWorkPackage } : {})}
+            {...(detail.recommendations?.[0]
+              ? {
+                  recommendationReference: `${detail.recommendations[0].recommendationId}@${detail.recommendations[0].version}`
+                }
+              : {})}
+            onPrepare={async (input) => {
+              const prepared = await client.prepareServiceWorkPackage(selectedId, input);
+              setServiceWorkPackage(prepared);
+            }}
           />
         </div>
       );
