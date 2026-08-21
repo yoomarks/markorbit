@@ -1,0 +1,93 @@
+name: M14 MarkReg Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/m14-operational-execution-workbench
+
+permissions:
+  contents: read
+
+jobs:
+  markreg-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED: '1'
+      MARKREG_AUDIT_POSTGRES_REQUIRED: '1'
+      MARKREG_AUDIT_HTTP_REQUIRED: '1'
+      MARKREG_ORDER_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_HTTP_REQUIRED: '1'
+      MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
+      MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
+      WEB_ORIGINS: https://test.markorbit.local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create MarkReg database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_markreg_test;'
+      - name: Run MarkReg commands and capture first failure
+        shell: bash
+        run: |
+          mkdir -p m14-markreg-logs
+          commands=(
+            'pnpm test:customer-confirmation'
+            'pnpm test:customer-confirmation:postgres'
+            'pnpm test:customer-confirmation:http'
+            'pnpm test:lite-matter:postgres'
+            'pnpm test:lite-matter:http'
+            'pnpm test:document-package:postgres'
+            'pnpm test:document-package:http'
+            'pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts'
+            'pnpm test:order:http'
+            'pnpm test:order:client'
+            'pnpm test:order:journey'
+            'pnpm test:audit-idempotency:postgres'
+            'pnpm test:audit-idempotency:http'
+            'pnpm test:audit-idempotency:restart'
+          )
+          for i in "${!commands[@]}"; do
+            n=$((i + 1))
+            cmd="${commands[$i]}"
+            log="m14-markreg-logs/$(printf '%02d' "$n").log"
+            echo "::group::[$n/${#commands[@]}] $cmd"
+            set +e
+            bash -lc "$cmd" >"$log" 2>&1
+            rc=$?
+            set -e
+            tail -n 120 "$log"
+            echo "::endgroup::"
+            if [ "$rc" -ne 0 ]; then
+              printf 'FAILED_COMMAND=%s\nEXIT_CODE=%s\n' "$cmd" "$rc" | tee m14-markreg-logs/failure.txt
+              exit "$rc"
+            fi
+          done
+          echo 'ALL_MARKREG_COMMANDS_PASSED=true' | tee m14-markreg-logs/result.txt
+      - name: Upload MarkReg diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m14-markreg-diagnostic-logs
+          path: m14-markreg-logs
+          if-no-files-found: error
