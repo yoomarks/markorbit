@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';
 import { TrademarkServiceWorkbench } from './TrademarkServiceWorkbench.js';
+
+afterEach(() => cleanup());
 
 const latest: TrademarkServiceWorkPackage = {
   schemaVersion: 1,
