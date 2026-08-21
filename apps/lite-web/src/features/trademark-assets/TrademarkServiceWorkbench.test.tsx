@@ -21,12 +21,14 @@ const latest: TrademarkServiceWorkPackage = {
     legalDeadlineCertified: false
   },
   requirementCandidates: [],
-  missingInputs: [{
-    reason: 'DOCUMENT_MISSING',
-    title: 'Owner document',
-    explanation: 'Collect the current owner document.',
-    blocking: true
-  }],
+  missingInputs: [
+    {
+      reason: 'DOCUMENT_MISSING',
+      title: 'Owner document',
+      explanation: 'Collect the current owner document.',
+      blocking: true
+    }
+  ],
   readiness: {
     state: 'MISSING_CLIENT_INPUT',
     presentRequirementCount: 0,
@@ -68,9 +70,7 @@ describe('TrademarkServiceWorkbench', () => {
 
   it('requires an explicit user-selected service intent and prepares only a work package', async () => {
     const onPrepare = vi.fn().mockResolvedValue(undefined);
-    render(
-      <TrademarkServiceWorkbench jurisdiction="CA" assetVersion={7} onPrepare={onPrepare} />
-    );
+    render(<TrademarkServiceWorkbench jurisdiction="CA" assetVersion={7} onPrepare={onPrepare} />);
     fireEvent.change(screen.getByLabelText('Service intent'), { target: { value: 'RENEWAL' } });
     fireEvent.click(screen.getByRole('button', { name: 'Prepare service package' }));
     await waitFor(() => expect(onPrepare).toHaveBeenCalledTimes(1));
@@ -85,6 +85,8 @@ describe('TrademarkServiceWorkbench', () => {
         legalDeadlineCertified: false
       }
     });
-    expect(screen.getByRole('status').textContent).toContain('No filing, provider contact, payment or publication');
+    expect(screen.getByRole('status').textContent).toContain(
+      'No filing, provider contact, payment or publication'
+    );
   });
 });

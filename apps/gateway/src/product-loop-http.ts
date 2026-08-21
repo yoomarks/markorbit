@@ -198,11 +198,9 @@ export function createGatewayProductLoopRoutes(
       ['workspace:read'],
       false
     ),
-    route(
-      'POST',
-      '/api/lite/trademark-assets/:trademarkAssetId/service-work-packages',
-      ['matter:create']
-    ),
+    route('POST', '/api/lite/trademark-assets/:trademarkAssetId/service-work-packages', [
+      'matter:create'
+    ]),
     route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], false),
     route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], false),
     route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], false),

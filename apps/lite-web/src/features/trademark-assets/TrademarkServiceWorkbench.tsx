@@ -27,21 +27,23 @@ export interface TrademarkServiceWorkbenchProps {
   assetVersion: number | string;
   latest?: Readonly<TrademarkServiceWorkPackage>;
   recommendationReference?: string;
-  onPrepare: (input: Readonly<{
-    assetVersion: number | string;
-    managementRecommendationReference?: string;
-    intent: {
-      kind: TrademarkServiceIntentKind;
-      jurisdiction: string;
-      title: string;
-      rationale: string;
-      inferredFromProductContext: false;
-      reviewedByUser: true;
-      legalConclusionCreated: false;
-      serviceAvailabilityVerified: false;
-      legalDeadlineCertified: false;
-    };
-  }>) => Promise<void>;
+  onPrepare: (
+    input: Readonly<{
+      assetVersion: number | string;
+      managementRecommendationReference?: string;
+      intent: {
+        kind: TrademarkServiceIntentKind;
+        jurisdiction: string;
+        title: string;
+        rationale: string;
+        inferredFromProductContext: false;
+        reviewedByUser: true;
+        legalConclusionCreated: false;
+        serviceAvailabilityVerified: false;
+        legalDeadlineCertified: false;
+      };
+    }>
+  ) => Promise<void>;
 }
 
 export function TrademarkServiceWorkbench({
@@ -62,12 +64,15 @@ export function TrademarkServiceWorkbench({
     try {
       await onPrepare({
         assetVersion,
-        ...(recommendationReference ? { managementRecommendationReference: recommendationReference } : {}),
+        ...(recommendationReference
+          ? { managementRecommendationReference: recommendationReference }
+          : {}),
         intent: {
           kind: intentKind,
           jurisdiction,
           title: selected.label,
-          rationale: 'Prepared by the user from the Trademark Asset professional service workbench.',
+          rationale:
+            'Prepared by the user from the Trademark Asset professional service workbench.',
           inferredFromProductContext: false,
           reviewedByUser: true,
           legalConclusionCreated: false,
@@ -75,7 +80,9 @@ export function TrademarkServiceWorkbench({
           legalDeadlineCertified: false
         }
       });
-      setStatus('Service Work Package prepared. No filing, provider contact, payment or publication occurred.');
+      setStatus(
+        'Service Work Package prepared. No filing, provider contact, payment or publication occurred.'
+      );
     } catch {
       setStatus('Service Work Package could not be prepared. No protected action occurred.');
     } finally {
@@ -135,16 +142,25 @@ export function TrademarkServiceWorkbench({
           <article>
             <h3>Owner-backed candidates</h3>
             <p>
-              {latest.capabilityCandidates.length} capability · {latest.providerCandidates.length} provider ·{' '}
-              {latest.servicePackageCandidates.length} service package candidate(s)
+              {latest.capabilityCandidates.length} capability · {latest.providerCandidates.length}{' '}
+              provider · {latest.servicePackageCandidates.length} service package candidate(s)
             </p>
-            <small>Candidate does not mean verified capability, provider engagement or selection.</small>
+            <small>
+              Candidate does not mean verified capability, provider engagement or selection.
+            </small>
           </article>
           <article>
             <h3>Commercial & communication preparation</h3>
-            <p>{latest.quoteCandidate ? 'Non-binding quote candidate prepared' : 'No quote candidate prepared'}</p>
+            <p>
+              {latest.quoteCandidate
+                ? 'Non-binding quote candidate prepared'
+                : 'No quote candidate prepared'}
+            </p>
             <p>{latest.communicationDrafts.length} unsent communication draft(s)</p>
-            <small>Nothing here sends a message, binds a quote, authorizes payment or contacts a provider.</small>
+            <small>
+              Nothing here sends a message, binds a quote, authorizes payment or contacts a
+              provider.
+            </small>
           </article>
         </div>
       ) : null}
@@ -162,12 +178,17 @@ export function TrademarkServiceWorkbench({
           ))}
         </Select>
         <Button disabled={preparing} onClick={() => void prepare()}>
-          {preparing ? 'Preparing…' : latest ? 'Prepare another package' : 'Prepare service package'}
+          {preparing
+            ? 'Preparing…'
+            : latest
+              ? 'Prepare another package'
+              : 'Prepare service package'}
         </Button>
       </div>
       <p className="trademark-service-workbench__boundary">
-        This creates only a workspace preparation record. Legal requirements, official deadlines, capability,
-        provider engagement, quote acceptance, payment and filing remain owner-governed or protected actions.
+        This creates only a workspace preparation record. Legal requirements, official deadlines,
+        capability, provider engagement, quote acceptance, payment and filing remain owner-governed
+        or protected actions.
       </p>
       {status ? <p role="status">{status}</p> : null}
     </section>

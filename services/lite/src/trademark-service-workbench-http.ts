@@ -1,6 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
-import type { TrademarkServiceIntent, TrademarkServiceWorkPackage } from '@markorbit/contracts/trademark-service-workbench';
+import type {
+  TrademarkServiceIntent,
+  TrademarkServiceWorkPackage
+} from '@markorbit/contracts/trademark-service-workbench';
 import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
@@ -30,12 +33,20 @@ function principalOf(
   permission: 'workspace:read' | 'matter:create'
 ): WorkspacePrincipal {
   if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
-    throw new HttpError(401, 'UNTRUSTED_INTERNAL_CALLER', 'Trusted internal authorization is required.');
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
   let principal: WorkspacePrincipal;
   try {
     principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
   } catch {
-    throw new HttpError(401, 'INVALID_INTERNAL_PRINCIPAL', 'A trusted Workspace Principal is required.');
+    throw new HttpError(
+      401,
+      'INVALID_INTERNAL_PRINCIPAL',
+      'A trusted Workspace Principal is required.'
+    );
   }
   const workspaceId = request.headers['x-markorbit-workspace-id'];
   if (!workspaceId || workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase())
@@ -71,7 +82,9 @@ export async function latestTrademarkServiceWorkPackageForAsset(
     [workspaceId, trademarkAssetId]
   );
   const row = result.rows[0] as { document_json?: unknown } | undefined;
-  return row?.document_json ? structuredClone(row.document_json as TrademarkServiceWorkPackage) : undefined;
+  return row?.document_json
+    ? structuredClone(row.document_json as TrademarkServiceWorkPackage)
+    : undefined;
 }
 
 export function createTrademarkServiceWorkbenchRoutes(
@@ -99,9 +112,14 @@ export function createTrademarkServiceWorkbenchRoutes(
         const principal = principalOf(request, options.internalServiceSecret, 'matter:create');
         const body = bodyRecord(request);
         const key = request.headers['idempotency-key'];
-        if (!key?.trim()) throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+        if (!key?.trim())
+          throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
         if (body.createdByUserId !== undefined || body.userId !== undefined)
-          throw new HttpError(400, 'ACTOR_SPOOF_REJECTED', 'Actor identity comes from the authenticated Principal.');
+          throw new HttpError(
+            400,
+            'ACTOR_SPOOF_REJECTED',
+            'Actor identity comes from the authenticated Principal.'
+          );
         try {
           const workPackage = await options.workPackages.create({
             workspaceId: principal.workspaceId,
