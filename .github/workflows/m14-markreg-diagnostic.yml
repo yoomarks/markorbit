@@ -1,6 +1,7 @@
 name: M14 MarkReg Diagnostic
 
 on:
+  pull_request:
   push:
     branches:
       - agent/m14-operational-execution-workbench
