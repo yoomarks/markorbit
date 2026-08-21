@@ -1,0 +1,82 @@
+{
+  "milestone": "M13",
+  "title": "Controlled Trademark Service Execution & Matter Lifecycle",
+  "status": "COMPLETE_ON_MAIN",
+  "implementationBaseline": "161b9c7b2549c0670696524781ca6b21538dab59",
+  "primaryImplementationPr": 162,
+  "finalPrHead": "43639961b76ddf1fa1386e0675254a0d0d9cf704",
+  "deploymentAuthorized": false,
+  "generalAvailabilityAuthorized": false,
+  "liveFilingAuthorized": false,
+  "livePaymentAuthorized": false,
+  "liveProviderContactAuthorized": false,
+  "externalPublicationAuthorized": false,
+  "productionMigrationAuthorized": false,
+  "workPackages": [
+    {
+      "id": "WP01",
+      "name": "Execution Authorization Contract",
+      "implemented": true
+    },
+    {
+      "id": "WP02",
+      "name": "Execution Plan",
+      "implemented": true
+    },
+    {
+      "id": "WP03",
+      "name": "Protected Action Gate",
+      "implemented": true
+    },
+    {
+      "id": "WP04",
+      "name": "Provider Engagement Handoff",
+      "implemented": true
+    },
+    {
+      "id": "WP05",
+      "name": "Matter Lifecycle Handoff",
+      "implemented": true
+    },
+    {
+      "id": "WP06",
+      "name": "Evidence & Receipt",
+      "implemented": true
+    },
+    {
+      "id": "WP07",
+      "name": "Recovery & Idempotency",
+      "implemented": true
+    },
+    {
+      "id": "WP08",
+      "name": "Execution Workbench & Authority Audit",
+      "implemented": true
+    }
+  ],
+  "ownerDomains": {
+    "liteOwnsProtectedActionAuthority": false,
+    "executionOwnsProtectedActionGovernance": true,
+    "executionMayMutateMarkRegLifecycleDirectly": false,
+    "executionMayCreateProviderAcceptance": false,
+    "executionMayCreatePaymentTruth": false,
+    "executionMayCreateOfficialTruth": false,
+    "knowledgeMayCreateLegalConclusions": false,
+    "crossServiceSqlAllowed": false
+  },
+  "authorityLocks": {
+    "authorizationImpliesFiling": false,
+    "executionPlanImpliesExecution": false,
+    "releaseImpliesExternalSuccess": false,
+    "providerHandoffImpliesProviderAcceptance": false,
+    "providerReturnImpliesOfficialTruth": false,
+    "receiptImpliesOfficialAcceptanceWithoutOwnerVerification": false,
+    "automaticExternalRetryAllowed": false,
+    "aiMayGrantExecutionAuthority": false
+  },
+  "formalWorkflowEvidence": [
+    "validation",
+    "M6 WP-06 Authenticated Capability Center",
+    "M8 WP-06 Commercial Runtime Reliability"
+  ]
+}
