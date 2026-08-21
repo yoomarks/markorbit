@@ -1,9 +1,9 @@
 name: M14 Prettier Diagnostic
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/m14-operational-execution-workbench
+      - main
 
 jobs:
   format-diagnostic:
