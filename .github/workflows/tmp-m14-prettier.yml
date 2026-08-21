@@ -1,0 +1,30 @@
+name: tmp-m14-prettier
+on:
+  push:
+    branches: [agent/m14-operational-execution-workbench]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m14-operational-execution-workbench
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write docs/planning/MO-MVP-MILESTONE-014-SCOPE-LOCK.md services/execution/src/trademark-service-execution-postgres.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- docs/planning/MO-MVP-MILESTONE-014-SCOPE-LOCK.md services/execution/src/trademark-service-execution-postgres.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "M14: format operational execution files"
+          git push origin HEAD:agent/m14-operational-execution-workbench
