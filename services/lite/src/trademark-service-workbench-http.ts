@@ -2,8 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   TrademarkServiceIntent,
-  TrademarkServiceWorkPackage,
-  TrademarkServiceWorkPackageId
+  TrademarkServiceWorkPackage
 } from '@markorbit/contracts/trademark-service-workbench';
 import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
@@ -190,7 +189,7 @@ export function createTrademarkServiceWorkbenchRoutes(
         try {
           const workPackage = await options.workPackages.get(
             principal.workspaceId,
-            request.params.workPackageId! as TrademarkServiceWorkPackageId
+            request.params.workPackageId!
           );
           const readiness = prepareTrademarkServiceExecutionReadiness({
             workspaceId: principal.workspaceId,
