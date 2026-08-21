@@ -62,6 +62,19 @@ function bodyRecord(request: JsonRequest): Record<string, unknown> {
   return request.body as Record<string, unknown>;
 }
 
+function reviewedIntent(value: unknown): TrademarkServiceIntent {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Service Intent is required.');
+  const intent = value as Partial<TrademarkServiceIntent>;
+  if (intent.reviewedByUser !== true)
+    throw new HttpError(
+      409,
+      'SERVICE_INTENT_REVIEW_REQUIRED',
+      'Service Intent must be explicitly reviewed by the user before a Work Package is created.'
+    );
+  return value as TrademarkServiceIntent;
+}
+
 function mapError(error: unknown): never {
   if (error instanceof TrademarkServiceWorkPackagePersistenceError)
     throw new HttpError(error.status, error.code, error.message, error.retryable);
@@ -120,6 +133,7 @@ export function createTrademarkServiceWorkbenchRoutes(
             'ACTOR_SPOOF_REJECTED',
             'Actor identity comes from the authenticated Principal.'
           );
+        const intent = reviewedIntent(body.intent);
         try {
           const workPackage = await options.workPackages.create({
             workspaceId: principal.workspaceId,
@@ -130,7 +144,7 @@ export function createTrademarkServiceWorkbenchRoutes(
             ...(typeof body.managementRecommendationReference === 'string'
               ? { managementRecommendationReference: body.managementRecommendationReference }
               : {}),
-            intent: body.intent as TrademarkServiceIntent,
+            intent,
             createdByUserId: principal.userId,
             idempotencyKey: key
           });
