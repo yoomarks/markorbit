@@ -1,0 +1,89 @@
+{
+  "milestone": "M12",
+  "title": "Trademark Service Workbench & Governed Service Preparation",
+  "direction": "TRADEMARK_SERVICE_WORKBENCH_AND_GOVERNED_SERVICE_PREPARATION",
+  "primaryProduct": "MO Lite",
+  "implementationStatus": "COMPLETE_ON_MAIN",
+  "closeoutBaseline": "2f7dd0b0b5153f0b31a6355f9dd0bc2deee83e6e",
+  "deploymentAuthorized": false,
+  "generalAvailabilityAuthorized": false,
+  "workPackages": [
+    {
+      "id": "WP01",
+      "pr": 153,
+      "status": "MERGED",
+      "result": "Service Intent, requirement/evidence and authority contracts frozen"
+    },
+    {
+      "id": "WP02",
+      "pr": 154,
+      "status": "MERGED",
+      "result": "Durable workspace-scoped Service Work Package"
+    },
+    {
+      "id": "WP03",
+      "pr": 155,
+      "status": "MERGED",
+      "result": "Jurisdiction requirement candidate composition"
+    },
+    {
+      "id": "WP04",
+      "pr": 156,
+      "status": "MERGED",
+      "result": "Preparation readiness and missing-input assessment"
+    },
+    {
+      "id": "WP05",
+      "pr": 157,
+      "status": "MERGED",
+      "result": "Capability/provider/service-package candidate matching"
+    },
+    {
+      "id": "WP06",
+      "pr": 158,
+      "status": "MERGED",
+      "result": "Non-binding quote and unsent client/provider preparation"
+    },
+    {
+      "id": "WP07",
+      "pr": 159,
+      "status": "MERGED",
+      "result": "Authenticated professional Trademark Service Workbench"
+    },
+    {
+      "id": "WP08",
+      "pr": 160,
+      "status": "MERGED",
+      "result": "Execution Readiness gate and independent authority audit"
+    }
+  ],
+  "finalWp08Head": "a2e4d6eb60e097db707dc5c1a8346b2a9c72e351",
+  "finalWp08Merge": "2f7dd0b0b5153f0b31a6355f9dd0bc2deee83e6e",
+  "finalWp08Workflows": [
+    "validation",
+    "Product Loop Candidate Qualification",
+    "Product Loop Content Preparation",
+    "Product Loop Feedback Observability",
+    "Product Loop Today Prepared Action",
+    "M7 WP-02 Conversion Analytics",
+    "M8 WP-06 Commercial Runtime Reliability"
+  ],
+  "authorityLocks": {
+    "serviceIntentIsLegalConclusion": false,
+    "requirementCandidateIsCertifiedLegalRequirement": false,
+    "readinessIsSuccessProbability": false,
+    "missingInputIsLegalInsufficiencyFinding": false,
+    "capabilityCandidateIsVerifiedCapability": false,
+    "providerCandidateIsProviderEngagement": false,
+    "quoteCandidateIsBindingQuote": false,
+    "clientRequestDraftIsSentCommunication": false,
+    "providerInstructionDraftIsSentInstruction": false,
+    "executionReadinessIsExecutionAuthorization": false,
+    "automaticFiling": false,
+    "automaticExternalContact": false,
+    "automaticPublication": false,
+    "automaticPayment": false,
+    "automaticProviderEngagement": false,
+    "crossServiceSql": false
+  }
+}
