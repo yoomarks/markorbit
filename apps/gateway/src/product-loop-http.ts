@@ -27,6 +27,7 @@ const actorSpoofFields = [
   'confirmedByPrincipalId',
   'decidedByPrincipalId',
   'reviewerPrincipalId',
+  'reviewedByUserId',
   'recordedByPrincipalId',
   'membershipId'
 ] as const;
@@ -200,6 +201,9 @@ export function createGatewayProductLoopRoutes(
     ),
     route('POST', '/api/lite/trademark-assets/:trademarkAssetId/service-work-packages', [
       'matter:create'
+    ]),
+    route('POST', '/api/lite/trademark-service-work-packages/:workPackageId/execution-readiness', [
+      'review:perform'
     ]),
     route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], false),
     route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], false),
