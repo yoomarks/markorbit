@@ -2,11 +2,16 @@ import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   TrademarkServiceIntent,
-  TrademarkServiceWorkPackage
+  TrademarkServiceWorkPackage,
+  TrademarkServiceWorkPackageId
 } from '@markorbit/contracts/trademark-service-workbench';
 import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  prepareTrademarkServiceExecutionReadiness,
+  TrademarkServiceExecutionReadinessError
+} from './trademark-service-execution-readiness.js';
 import {
   TrademarkServiceWorkPackagePersistenceError,
   type PostgresTrademarkServiceWorkPackageStore
@@ -16,6 +21,7 @@ export interface TrademarkServiceWorkbenchRouteOptions {
   internalServiceSecret: string;
   workPackages: PostgresTrademarkServiceWorkPackageStore;
   query: QueryClient;
+  now?: () => string;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -30,7 +36,7 @@ function trusted(configured: string, supplied: string | undefined): boolean {
 function principalOf(
   request: JsonRequest,
   secret: string,
-  permission: 'workspace:read' | 'matter:create'
+  permission: 'workspace:read' | 'matter:create' | 'review:perform'
 ): WorkspacePrincipal {
   if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
     throw new HttpError(
@@ -62,6 +68,18 @@ function bodyRecord(request: JsonRequest): Record<string, unknown> {
   return request.body as Record<string, unknown>;
 }
 
+function stringReferences(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string'))
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a string array.`);
+  return value as string[];
+}
+
+function positiveVersion(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1)
+    throw new HttpError(400, 'INVALID_REQUEST', 'expectedWorkPackageVersion must be positive.');
+  return Number(value);
+}
+
 function reviewedIntent(value: unknown): TrademarkServiceIntent {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new HttpError(400, 'INVALID_REQUEST', 'Service Intent is required.');
@@ -78,6 +96,8 @@ function reviewedIntent(value: unknown): TrademarkServiceIntent {
 function mapError(error: unknown): never {
   if (error instanceof TrademarkServiceWorkPackagePersistenceError)
     throw new HttpError(error.status, error.code, error.message, error.retryable);
+  if (error instanceof TrademarkServiceExecutionReadinessError)
+    throw new HttpError(error.status, error.code, error.message);
   throw error;
 }
 
@@ -103,6 +123,7 @@ export async function latestTrademarkServiceWorkPackageForAsset(
 export function createTrademarkServiceWorkbenchRoutes(
   options: TrademarkServiceWorkbenchRouteOptions
 ): readonly JsonRoute[] {
+  const now = options.now ?? (() => new Date().toISOString());
   return [
     {
       method: 'GET',
@@ -149,6 +170,44 @@ export function createTrademarkServiceWorkbenchRoutes(
             idempotencyKey: key
           });
           return json(201, { workPackage });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trademark-service-work-packages/:workPackageId/execution-readiness',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'review:perform');
+        const body = bodyRecord(request);
+        if (body.reviewedByUserId !== undefined || body.userId !== undefined)
+          throw new HttpError(
+            400,
+            'ACTOR_SPOOF_REJECTED',
+            'Reviewer identity comes from the authenticated Principal.'
+          );
+        try {
+          const workPackage = await options.workPackages.get(
+            principal.workspaceId,
+            request.params.workPackageId! as TrademarkServiceWorkPackageId
+          );
+          const readiness = prepareTrademarkServiceExecutionReadiness({
+            workspaceId: principal.workspaceId,
+            workPackage,
+            expectedWorkPackageVersion: positiveVersion(body.expectedWorkPackageVersion),
+            reviewedByUserId: principal.userId,
+            reviewedAt: now(),
+            ownerDomainValidationReferences: stringReferences(
+              body.ownerDomainValidationReferences,
+              'ownerDomainValidationReferences'
+            ),
+            evidenceReferences: stringReferences(body.evidenceReferences, 'evidenceReferences'),
+            ...(typeof body.executionPreparationReference === 'string'
+              ? { executionPreparationReference: body.executionPreparationReference }
+              : {})
+          });
+          return json(201, { readiness });
         } catch (error) {
           return mapError(error);
         }
