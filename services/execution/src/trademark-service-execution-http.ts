@@ -3,7 +3,9 @@ import {
   parseInternalWorkspacePrincipal,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import type { TrademarkServiceProtectedActionKind } from '@markorbit/contracts/trademark-service-execution';
+import type {
+  TrademarkServiceProtectedActionKind
+} from '@markorbit/contracts/trademark-service-execution';
 import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import type { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
@@ -152,6 +154,15 @@ function requiredString(value: unknown, field: string): string {
   return value.trim();
 }
 
+function requiredTrue(value: unknown, field: string): true {
+  if (value !== true)
+    throw new TrademarkServiceExecutionError(
+      'USER_AUTHORIZATION_REQUIRED',
+      `${field} must be explicitly acknowledged.`
+    );
+  return true;
+}
+
 function mapError(error: unknown): never {
   if (error instanceof TrademarkServiceExecutionError)
     throw new HttpError(error.status, error.code, error.message, error.status >= 500);
@@ -195,11 +206,18 @@ export function createTrademarkServiceExecutionRoutes(
               ? { providerRestriction: body.providerRestriction }
               : {}),
             conditions: strings(body.conditions, 'conditions'),
-            explicitUserAuthorization: body.explicitUserAuthorization === true,
-            acknowledgementAuthorizationIsNotSubmission:
-              body.acknowledgementAuthorizationIsNotSubmission === true,
-            acknowledgementOfficialAcceptanceNotGuaranteed:
-              body.acknowledgementOfficialAcceptanceNotGuaranteed === true
+            explicitUserAuthorization: requiredTrue(
+              body.explicitUserAuthorization,
+              'explicitUserAuthorization'
+            ),
+            acknowledgementAuthorizationIsNotSubmission: requiredTrue(
+              body.acknowledgementAuthorizationIsNotSubmission,
+              'acknowledgementAuthorizationIsNotSubmission'
+            ),
+            acknowledgementOfficialAcceptanceNotGuaranteed: requiredTrue(
+              body.acknowledgementOfficialAcceptanceNotGuaranteed,
+              'acknowledgementOfficialAcceptanceNotGuaranteed'
+            )
           });
           await options.repository.createAuthorization(authorization);
           return json(201, { authorization });
