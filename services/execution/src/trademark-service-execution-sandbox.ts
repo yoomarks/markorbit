@@ -11,9 +11,13 @@ import type {
 } from '@markorbit/contracts/trademark-service-execution-sandbox';
 import type {
   TrademarkServiceExecutionAuthorization,
+  TrademarkServiceExecutionPlan,
   TrademarkServiceProtectedActionRelease
 } from '@markorbit/contracts/trademark-service-execution';
-import { TrademarkServiceExecutionError } from './trademark-service-execution.js';
+import {
+  TrademarkServiceExecutionError,
+  TrademarkServiceProtectedActionGate
+} from './trademark-service-execution.js';
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const sameWorkspace = (left: string, right: string) => left.toLowerCase() === right.toLowerCase();
@@ -142,4 +146,95 @@ export function bindTrademarkServiceProtectedActionToEnvironment(command: {
     crossEnvironmentReplayAllowed: false,
     crossModeReplayAllowed: false
   };
+}
+
+type SandboxReplayEntry = {
+  fingerprint: string;
+  release: TrademarkServiceProtectedActionRelease;
+  binding: TrademarkServiceProtectedActionEnvironmentBinding;
+};
+
+export class TrademarkServiceSandboxProtectedActionGate {
+  private readonly replay = new Map<string, SandboxReplayEntry>();
+
+  release(command: {
+    workspaceId: string;
+    authorization: Readonly<TrademarkServiceExecutionAuthorization>;
+    plan: Readonly<TrademarkServiceExecutionPlan>;
+    policy: Readonly<TrademarkServiceExecutionEnvironmentPolicy>;
+    stepId: string;
+    idempotencyKey: string;
+    evidenceReferences: readonly string[];
+    releasedByUserId: string;
+    releasedAt: string;
+    currentWorkPackageVersion: number;
+  }): {
+    release: TrademarkServiceProtectedActionRelease;
+    binding: TrademarkServiceProtectedActionEnvironmentBinding;
+  } {
+    if (
+      !sameWorkspace(command.workspaceId, command.policy.workspaceId) ||
+      command.authorization.executionAuthorizationId !== command.policy.executionAuthorizationId
+    )
+      throw new TrademarkServiceExecutionError(
+        'AUTHORITY_BOUNDARY_VIOLATION',
+        'Sandbox environment policy does not belong to this execution authorization.'
+      );
+
+    const validated = new TrademarkServiceProtectedActionGate().release({
+      workspaceId: command.workspaceId,
+      authorization: command.authorization,
+      plan: command.plan,
+      stepId: command.stepId,
+      idempotencyKey: command.idempotencyKey,
+      evidenceReferences: command.evidenceReferences,
+      releasedByUserId: command.releasedByUserId,
+      releasedAt: command.releasedAt,
+      currentWorkPackageVersion: command.currentWorkPackageVersion
+    });
+    const replayIdentity = replayContextFromEnvironmentPolicy(command.policy);
+    const requestFingerprintSha256 = hash({
+      workspaceId: validated.workspaceId,
+      authorizationId: validated.executionAuthorizationId,
+      planId: validated.executionPlanId,
+      stepId: validated.stepId,
+      action: validated.action,
+      evidenceReferences: validated.evidenceReferences,
+      workPackage: validated.workPackage,
+      replayIdentity
+    });
+    const existing = this.replay.get(validated.idempotencyKey);
+    if (existing) {
+      if (existing.fingerprint !== requestFingerprintSha256)
+        throw new TrademarkServiceExecutionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was already used for a different environment or protected action.'
+        );
+      return {
+        release: structuredClone(existing.release),
+        binding: structuredClone(existing.binding)
+      };
+    }
+
+    const release: TrademarkServiceProtectedActionRelease = {
+      ...validated,
+      protectedActionReleaseId: `trademark-service-protected-action-release_${requestFingerprintSha256.slice(0, 32)}`,
+      requestFingerprintSha256
+    };
+    const binding = bindTrademarkServiceProtectedActionToEnvironment({
+      workspaceId: command.workspaceId,
+      release,
+      policy: command.policy
+    });
+    this.replay.set(validated.idempotencyKey, {
+      fingerprint: requestFingerprintSha256,
+      release: structuredClone(release),
+      binding: structuredClone(binding)
+    });
+    return { release, binding };
+  }
+
+  get replayCount() {
+    return this.replay.size;
+  }
 }
