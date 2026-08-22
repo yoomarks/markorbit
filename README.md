@@ -4,7 +4,7 @@ MarkOrbit is the new product monorepo for:
 
 - **MarkOrbit Lite** — the professional growth and work product for trademark practitioners;
 - **markreg.com** — the direct-customer international trademark filing and lifecycle product;
-- independent **Core**, **Knowledge**, **Capability Engine**, **Execution**, **MarkReg**, and **MGSN** services.
+- independent **Core**, **Lite**, **Knowledge**, **Capability Engine**, **Execution**, **MarkReg**, **MGSN**, and **Payment** services.
 
 This repository is intentionally new. Previous repositories are reference material only and are not runtime dependencies unless a later migration task explicitly admits selected code.
 
@@ -26,11 +26,13 @@ apps/
   operations-console/    Internal operations product
 services/
   core/                   Shared semantic and identity service
+  lite/                   Professional Product state and governed projections
   knowledge/              Knowledge query and ready-package consumption
   capability-engine/      Capability registry, composition and invocation
   execution/              Plans, work, review, approval, evidence and receipts
   markreg/                International trademark service domain
   mgsn/                   Governed provider network domain
+  payment/                Payment lifecycle, provider and reconciliation owner
 packages/
   contracts/              Cross-service contracts and event envelopes
   service-kit/            Minimal service runtime shared by service skeletons
@@ -39,6 +41,7 @@ packages/
   ui/                     Shared UI foundations; not product-owned screens
   config/                 Shared configuration contracts
   test-kit/               Fixtures and integration-test helpers
+  persistence/            Owner-scoped PostgreSQL persistence foundation
 infrastructure/
   docker-compose.yml      Local integration dependencies
 ```
@@ -62,7 +65,16 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Milestone 9 — MO Lite Daily Workspace & Content Production is complete with a final engineering GO recommendation. M9-WP-01 through M9-WP-07 merged in PRs #117–#123; M9-WP-08 completed its bounded remediation and post-merge independent audit in PR #129. Completion main is `b5b05c439284376e0afb2f275ca1ca51229305b7`. No production deployment, GA, external publication, provider execution, paid execution, filing or Official Truth is authorized by this engineering completion.**
+**Current engineering baseline: Milestone 15 — Execution Sandbox & Release Readiness is complete on `main` at `00993123795254bef8fd84e4cdcb2bf535924660`. The next milestone is intentionally not frozen pending a concentrated product, cross-repository integration and production-readiness audit.**
+
+Current sequencing facts:
+
+- M8 Commercial Foundation is engineering-complete except for real Stripe test-mode provider acceptance, which remains `DEFERRED_BY_OWNER_NO_ACCOUNT`; MarkOrbit is not represented as Stripe-ready.
+- M9 Daily Workspace, M10 Trademark Asset Workspace, M11 Proactive Asset Management and M12 Trademark Service Workbench are engineering-complete.
+- M13 established controlled service execution semantics and owner-domain handoffs.
+- M14 made those semantics durable and authenticated in the Execution owner domain.
+- M15 added non-production environment policy, connector isolation, deterministic simulation, operator readiness evidence, recovery drills and an independent release-readiness audit.
+- No production deployment, GA, production credentials, live filing, live payment, provider contact, external publication or Official Truth is authorized by these engineering milestones.
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -193,6 +205,26 @@ real governed Knowledge source
 
 The parallel MOVE path retains explicit confirmation and owner handoff. The final M9 WP08 post-merge audit run `32164841629` returned `GO` with no blockers and retained real-source, exact-provenance, Workspace-isolation, stale-source, replay/restart/concurrency and desktop/mobile browser evidence. The MOKI production visual runtime transport remains an explicitly deferred external gate and is fail-closed rather than represented as verified.
 
+### Milestone 15 — Execution Sandbox & Release Readiness — complete
+
+M15 proves the bounded non-production execution loop:
+
+```text
+durable M14 execution session
+-> immutable environment / mode policy
+-> protected-action environment binding
+-> fail-closed connector and egress isolation
+-> deterministic simulation or bounded test connector
+-> evidence classification
+-> operator readiness bundle
+-> correlated recovery / manual review
+-> independent authority audit
+```
+
+PRs #165–#173 delivered and audited M15. Final WP08 head `acd3918f2440acdce628a91c6f9653cea122705d` passed validation run `32605815199` and Authenticated Capability Center run `32605815191`; its eight-case sandbox authority audit passed in full. The completion baseline is `00993123795254bef8fd84e4cdcb2bf535924660`.
+
+M15 completion means the existing controlled execution path is rehearsable and auditable in non-production. It does not admit a production environment, production credentials, unrestricted egress, live external actions, automatic external-consequence retry, deployment or GA.
+
 See:
 
 - `docs/audits/MO-MVP-PRODUCT-LOOP-CONFORMANCE-AUDIT.md`;
@@ -213,5 +245,11 @@ See:
 - `docs/planning/MO-MVP-MILESTONE-009-SCOPE-LOCK.md`;
 - `docs/planning/MO-MVP-MILESTONE-009-DELIVERY-PLAN.md`;
 - `docs/planning/MO-MVP-MILESTONE-009-IMPLEMENTATION-TRACEABILITY.{md,json}`;
+- `docs/planning/MO-MVP-MILESTONE-010-CLOSEOUT-AUDIT.md`;
+- `docs/planning/MO-MVP-MILESTONE-011-CLOSEOUT-AUDIT.md`;
+- `docs/planning/MO-MVP-MILESTONE-012-IMPLEMENTATION-TRACEABILITY.{md,json}`;
+- `docs/planning/MO-MVP-MILESTONE-013-IMPLEMENTATION-TRACEABILITY.{md,json}`;
+- `docs/planning/MO-MVP-MILESTONE-014-IMPLEMENTATION-TRACEABILITY.{md,json}`;
+- `docs/planning/MO-MVP-MILESTONE-015-IMPLEMENTATION-TRACEABILITY.{md,json}`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.

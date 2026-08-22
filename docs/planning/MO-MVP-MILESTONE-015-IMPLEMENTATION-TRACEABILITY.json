@@ -1,0 +1,84 @@
+{
+  "milestone": "M15",
+  "title": "Execution Sandbox & Release Readiness",
+  "status": "COMPLETE_ON_MAIN",
+  "completionBaseline": "00993123795254bef8fd84e4cdcb2bf535924660",
+  "scopePr": 165,
+  "workPackages": [
+    {
+      "id": "WP01",
+      "pr": 166,
+      "status": "MERGED",
+      "result": "Environment and execution-mode contracts"
+    },
+    {
+      "id": "WP02",
+      "pr": 167,
+      "status": "MERGED",
+      "result": "Durable sandbox execution policy"
+    },
+    {
+      "id": "WP03",
+      "pr": 168,
+      "status": "MERGED",
+      "result": "Non-production connector boundary"
+    },
+    {
+      "id": "WP04",
+      "pr": 169,
+      "status": "MERGED",
+      "result": "Egress and credential isolation"
+    },
+    {
+      "id": "WP05",
+      "pr": 170,
+      "status": "MERGED",
+      "result": "Deterministic simulation fixtures"
+    },
+    {
+      "id": "WP06",
+      "pr": 171,
+      "status": "MERGED",
+      "result": "Operator readiness bundle"
+    },
+    {
+      "id": "WP07",
+      "pr": 172,
+      "status": "MERGED",
+      "result": "Observability and recovery drill"
+    },
+    {
+      "id": "WP08",
+      "pr": 173,
+      "status": "MERGED",
+      "result": "Independent release-readiness audit"
+    }
+  ],
+  "finalAudit": {
+    "pr": 173,
+    "head": "acd3918f2440acdce628a91c6f9653cea122705d",
+    "validationRun": 32605815199,
+    "capabilityCenterRun": 32605815191,
+    "auditTestsPassed": 8,
+    "auditTestsFailed": 0
+  },
+  "authority": {
+    "productionEnvironmentAuthorized": false,
+    "productionCredentialsAuthorized": false,
+    "unrestrictedEgressAuthorized": false,
+    "liveExternalActionAuthorized": false,
+    "automaticExternalRetryAuthorized": false,
+    "deploymentAuthorized": false,
+    "productionMigrationAuthorized": false,
+    "generalAvailabilityAuthorized": false,
+    "officialTruthCreated": false,
+    "crossServiceSqlAllowed": false
+  },
+  "knownLimits": [
+    "NON_PRODUCTION_CONNECTORS_ONLY",
+    "LIVE_EXTERNAL_INTEGRATIONS_NOT_PROVED",
+    "M8_STRIPE_REAL_PROVIDER_ACCEPTANCE_DEFERRED_BY_OWNER_NO_ACCOUNT",
+    "NO_PRODUCTION_DEPLOYMENT_OR_TRAFFIC_CUTOVER",
+    "NEXT_MILESTONE_NOT_FROZEN"
+  ]
+}
