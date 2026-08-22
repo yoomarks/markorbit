@@ -1,5 +1,10 @@
 # M15 — Execution Sandbox & Release Readiness
 
+- **Status:** ENGINEERING_COMPLETE_ON_MAIN
+- **Completion baseline:** `00993123795254bef8fd84e4cdcb2bf535924660`
+- **Final audit:** PR #173, exact head `acd3918f2440acdce628a91c6f9653cea122705d`
+- **Production enablement:** not authorized
+
 ## Scope lock
 
 M15 takes the durable, authenticated M14 operational execution workbench and makes it safe to exercise end to end in non-production environments while producing auditable release-readiness evidence.

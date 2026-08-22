@@ -1,0 +1,87 @@
+{
+  "milestone": "M14",
+  "title": "Operational Trademark Execution Workbench",
+  "status": "COMPLETE_ON_MAIN",
+  "implementationBaseline": "a5996106e4a7e2204daf6b6cddf11a4ba304cfc9",
+  "primaryImplementationPr": 164,
+  "finalPrHead": "29a31e36af7095270b01f73ba38a09e58793bcef",
+  "deploymentAuthorized": false,
+  "generalAvailabilityAuthorized": false,
+  "productionCredentialsAuthorized": false,
+  "liveFilingAuthorized": false,
+  "livePaymentAuthorized": false,
+  "liveProviderContactAuthorized": false,
+  "productionMigrationAuthorized": false,
+  "workPackages": [
+    {
+      "id": "WP01",
+      "name": "Durable execution session",
+      "implemented": true
+    },
+    {
+      "id": "WP02",
+      "name": "Authenticated authorization API",
+      "implemented": true
+    },
+    {
+      "id": "WP03",
+      "name": "Durable protected-action gate",
+      "implemented": true
+    },
+    {
+      "id": "WP04",
+      "name": "Owner-domain handoff adapters",
+      "implemented": true
+    },
+    {
+      "id": "WP05",
+      "name": "Evidence and receipt ledger",
+      "implemented": true
+    },
+    {
+      "id": "WP06",
+      "name": "Recovery and manual review queue",
+      "implemented": true
+    },
+    {
+      "id": "WP07",
+      "name": "Professional execution workbench runtime",
+      "implemented": true
+    },
+    {
+      "id": "WP08",
+      "name": "Authority and reliability audit",
+      "implemented": true
+    }
+  ],
+  "formalWorkflowEvidence": [
+    {
+      "name": "validation",
+      "runId": 32506307134
+    },
+    {
+      "name": "Product Loop Content Preparation",
+      "runId": 32506307086
+    },
+    {
+      "name": "M6 WP-03 Capability Observation Ledger",
+      "runId": 32506307119
+    },
+    {
+      "name": "M6 WP-06 Authenticated Capability Center",
+      "runId": 32506307159
+    },
+    {
+      "name": "M8 WP-06 Commercial Runtime Reliability",
+      "runId": 32506307097
+    }
+  ],
+  "authorityLocks": {
+    "readinessImpliesExecutionAuthorization": false,
+    "releaseImpliesExternalSuccess": false,
+    "handoffImpliesProviderAcceptance": false,
+    "providerReturnImpliesOfficialTruth": false,
+    "automaticExternalRetryAllowed": false,
+    "crossServiceSqlAllowed": false
+  }
+}
