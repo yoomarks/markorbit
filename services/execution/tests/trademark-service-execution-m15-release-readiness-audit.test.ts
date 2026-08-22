@@ -1,17 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
-import type {
-  TrademarkServiceNonProductionConnectorRequest
-} from '@markorbit/contracts/trademark-service-execution-connector';
-import type {
-  TrademarkServiceTrustedConnectorRuntimePolicy
-} from '@markorbit/contracts/trademark-service-execution-isolation';
-import type {
-  TrademarkServiceExecutionReadiness
-} from '@markorbit/contracts/trademark-service-workbench';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import type { TrademarkServiceNonProductionConnectorRequest } from '@markorbit/contracts/trademark-service-execution-connector';
+import type { TrademarkServiceTrustedConnectorRuntimePolicy } from '@markorbit/contracts/trademark-service-execution-isolation';
+import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
 import type { JsonRequest } from '@markorbit/service-kit';
 import {
   TrademarkServiceSimulationConnector,
@@ -19,26 +10,18 @@ import {
   type TrademarkServiceNonProductionConnector
 } from '../src/trademark-service-execution-connectors.js';
 import { createTrademarkServiceExecutionRoutes } from '../src/trademark-service-execution-http.js';
-import {
-  TrademarkServiceSandboxConnectorExecutionGate
-} from '../src/trademark-service-execution-isolation.js';
+import { TrademarkServiceSandboxConnectorExecutionGate } from '../src/trademark-service-execution-isolation.js';
 import {
   classifyTrademarkServiceRecoveryDrill,
   createTrademarkServiceExecutionCorrelationId
 } from '../src/trademark-service-execution-observability.js';
-import type {
-  PostgresTrademarkServiceExecutionRepository
-} from '../src/trademark-service-execution-postgres.js';
-import {
-  createTrademarkServiceOperatorReadinessBundle
-} from '../src/trademark-service-execution-readiness-bundle.js';
+import type { PostgresTrademarkServiceExecutionRepository } from '../src/trademark-service-execution-postgres.js';
+import { createTrademarkServiceOperatorReadinessBundle } from '../src/trademark-service-execution-readiness-bundle.js';
 import {
   TrademarkServiceSandboxProtectedActionGate,
   createTrademarkServiceExecutionEnvironmentPolicy
 } from '../src/trademark-service-execution-sandbox.js';
-import {
-  TrademarkServiceDeterministicSimulationRunner
-} from '../src/trademark-service-execution-simulation.js';
+import { TrademarkServiceDeterministicSimulationRunner } from '../src/trademark-service-execution-simulation.js';
 import {
   authorizeTrademarkServiceExecution,
   classifyTrademarkServiceRecovery,
@@ -217,38 +200,35 @@ describe('M15 WP08 independent execution sandbox release-readiness audit', () =>
     );
   });
 
-  it(
-    'rejects actor spoof fields and takes actor identity only from the trusted Workspace Principal',
-    async () => {
-      const secret = 'm15-wp08-internal-service-secret-000000000000000000';
-      const routes = createTrademarkServiceExecutionRoutes({
-        internalServiceSecret: secret,
-        repository: {} as PostgresTrademarkServiceExecutionRepository,
-        now: () => '2026-08-23T00:01:00.000Z'
-      });
-      const route = routes[0];
-      if (!route) throw new Error('Execution authorization route is missing.');
-      const request: JsonRequest = {
-        body: {
-          authorizedByUserId: 'user_spoofed_actor'
-        },
-        headers: {
-          'x-markorbit-internal-authorization': secret,
-          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
-          'x-markorbit-workspace-id': workspaceId
-        },
-        method: 'POST',
-        path: route.path,
-        params: {},
-        query: {}
-      };
+  it('rejects actor spoof fields and takes actor identity only from the trusted Workspace Principal', async () => {
+    const secret = 'm15-wp08-internal-service-secret-000000000000000000';
+    const routes = createTrademarkServiceExecutionRoutes({
+      internalServiceSecret: secret,
+      repository: {} as PostgresTrademarkServiceExecutionRepository,
+      now: () => '2026-08-23T00:01:00.000Z'
+    });
+    const route = routes[0];
+    if (!route) throw new Error('Execution authorization route is missing.');
+    const request: JsonRequest = {
+      body: {
+        authorizedByUserId: 'user_spoofed_actor'
+      },
+      headers: {
+        'x-markorbit-internal-authorization': secret,
+        'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+        'x-markorbit-workspace-id': workspaceId
+      },
+      method: 'POST',
+      path: route.path,
+      params: {},
+      query: {}
+    };
 
-      await expect(route.handle(request)).rejects.toMatchObject({
-        status: 400,
-        code: 'ACTOR_SPOOF_REJECTED'
-      });
-    }
-  );
+    await expect(route.handle(request)).rejects.toMatchObject({
+      status: 400,
+      code: 'ACTOR_SPOOF_REJECTED'
+    });
+  });
 
   it('rejects stale Work Package versions before any sandbox release exists', () => {
     const { auth, plan } = executionPlan();
@@ -280,57 +260,54 @@ describe('M15 WP08 independent execution sandbox release-readiness audit', () =>
     );
   });
 
-  it(
-    'rejects cross-environment replay and conflicting idempotency on the same protected-action identity',
-    () => {
-      const gate = new TrademarkServiceSandboxProtectedActionGate();
-      const first = simulatedPrepared(gate);
-      const localPolicy = createTrademarkServiceExecutionEnvironmentPolicy({
-        workspaceId,
-        authorization: first.auth,
-        environment: 'LOCAL',
-        mode: 'SIMULATED',
-        connectorClass: 'SIMULATOR',
-        endpointClass: 'INTERNAL_TEST',
-        credentialClass: 'NONE',
-        createdAt: '2026-08-23T00:03:30.000Z'
-      });
+  it('rejects cross-environment replay and conflicting idempotency on the same protected-action identity', () => {
+    const gate = new TrademarkServiceSandboxProtectedActionGate();
+    const first = simulatedPrepared(gate);
+    const localPolicy = createTrademarkServiceExecutionEnvironmentPolicy({
+      workspaceId,
+      authorization: first.auth,
+      environment: 'LOCAL',
+      mode: 'SIMULATED',
+      connectorClass: 'SIMULATOR',
+      endpointClass: 'INTERNAL_TEST',
+      credentialClass: 'NONE',
+      createdAt: '2026-08-23T00:03:30.000Z'
+    });
 
-      expectExecutionError(
-        () =>
-          gate.release({
-            workspaceId,
-            authorization: first.auth,
-            plan: first.plan,
-            policy: localPolicy,
-            stepId: first.plan.steps[0]!.stepId,
-            idempotencyKey: 'm15-wp08-release',
-            evidenceReferences: ['professional-review_m15_wp08'],
-            releasedByUserId: 'user_releaser',
-            releasedAt: '2026-08-23T00:06:00.000Z',
-            currentWorkPackageVersion: workPackageVersion
-          }),
-        'IDEMPOTENCY_CONFLICT'
-      );
+    expectExecutionError(
+      () =>
+        gate.release({
+          workspaceId,
+          authorization: first.auth,
+          plan: first.plan,
+          policy: localPolicy,
+          stepId: first.plan.steps[0]!.stepId,
+          idempotencyKey: 'm15-wp08-release',
+          evidenceReferences: ['professional-review_m15_wp08'],
+          releasedByUserId: 'user_releaser',
+          releasedAt: '2026-08-23T00:06:00.000Z',
+          currentWorkPackageVersion: workPackageVersion
+        }),
+      'IDEMPOTENCY_CONFLICT'
+    );
 
-      expectExecutionError(
-        () =>
-          gate.release({
-            workspaceId,
-            authorization: first.auth,
-            plan: first.plan,
-            policy: first.policy,
-            stepId: first.plan.steps[0]!.stepId,
-            idempotencyKey: 'm15-wp08-release',
-            evidenceReferences: ['different-evidence_m15_wp08'],
-            releasedByUserId: 'user_releaser',
-            releasedAt: '2026-08-23T00:07:00.000Z',
-            currentWorkPackageVersion: workPackageVersion
-          }),
-        'IDEMPOTENCY_CONFLICT'
-      );
-    }
-  );
+    expectExecutionError(
+      () =>
+        gate.release({
+          workspaceId,
+          authorization: first.auth,
+          plan: first.plan,
+          policy: first.policy,
+          stepId: first.plan.steps[0]!.stepId,
+          idempotencyKey: 'm15-wp08-release',
+          evidenceReferences: ['different-evidence_m15_wp08'],
+          releasedByUserId: 'user_releaser',
+          releasedAt: '2026-08-23T00:07:00.000Z',
+          currentWorkPackageVersion: workPackageVersion
+        }),
+      'IDEMPOTENCY_CONFLICT'
+    );
+  });
 
   it('fails closed on sandbox credential or endpoint policy mismatch', () => {
     const prepared = sandboxConnectorPrepared();
@@ -381,91 +358,85 @@ describe('M15 WP08 independent execution sandbox release-readiness audit', () =>
     ).toThrow('M15_WP08_SYNTHETIC_CONNECTOR_FAILURE');
   });
 
-  it(
-    'classifies ambiguous simulator response as human-review evidence, never as provider or Official Truth',
-    () => {
-      const prepared = simulatedPrepared();
-      const isolation = new TrademarkServiceSandboxConnectorExecutionGate().execute({
-        request: prepared.request,
-        runtimePolicy: prepared.runtimePolicy,
-        connector: prepared.connector
-      });
-      const simulation = new TrademarkServiceDeterministicSimulationRunner().run({
-        scenario: 'AMBIGUOUS_RETURN',
-        request: prepared.request,
-        connector: prepared.connector
-      });
-      const recovery = classifyTrademarkServiceRecovery({
-        outcome: 'AMBIGUOUS_EXTERNAL_OUTCOME',
-        reasonCode: 'M15_WP08_AMBIGUOUS_RETURN'
-      });
-      const bundle = createTrademarkServiceOperatorReadinessBundle({
-        workspaceId,
-        authorization: prepared.auth,
-        plan: prepared.plan,
-        environmentPolicy: prepared.policy,
-        release: prepared.protectedAction.release,
-        environmentBinding: prepared.protectedAction.binding,
-        isolationDecision: isolation.isolation,
-        simulationEvidence: simulation.evidence,
-        recovery,
-        createdAt: '2026-08-23T00:08:00.000Z'
-      });
+  it('classifies ambiguous simulator response as human-review evidence, never as provider or Official Truth', () => {
+    const prepared = simulatedPrepared();
+    const isolation = new TrademarkServiceSandboxConnectorExecutionGate().execute({
+      request: prepared.request,
+      runtimePolicy: prepared.runtimePolicy,
+      connector: prepared.connector
+    });
+    const simulation = new TrademarkServiceDeterministicSimulationRunner().run({
+      scenario: 'AMBIGUOUS_RETURN',
+      request: prepared.request,
+      connector: prepared.connector
+    });
+    const recovery = classifyTrademarkServiceRecovery({
+      outcome: 'AMBIGUOUS_EXTERNAL_OUTCOME',
+      reasonCode: 'M15_WP08_AMBIGUOUS_RETURN'
+    });
+    const bundle = createTrademarkServiceOperatorReadinessBundle({
+      workspaceId,
+      authorization: prepared.auth,
+      plan: prepared.plan,
+      environmentPolicy: prepared.policy,
+      release: prepared.protectedAction.release,
+      environmentBinding: prepared.protectedAction.binding,
+      isolationDecision: isolation.isolation,
+      simulationEvidence: simulation.evidence,
+      recovery,
+      createdAt: '2026-08-23T00:08:00.000Z'
+    });
 
-      expect(simulation.evidence).toMatchObject({
-        classification: 'SIMULATED_AMBIGUOUS_RETURN',
-        evidenceClass: 'SIMULATION_EVIDENCE',
-        requiresHumanReview: true,
-        retryClassification: 'MANUAL_REVIEW_REQUIRED',
-        providerClaim: false,
-        providerAcceptanceCreated: false,
-        officialFilingSuccessCreated: false,
-        paymentTruthCreated: false,
-        markRegLifecycleTruthCreated: false,
-        officialTruthCreated: false,
-        liveExternalActionPerformed: false,
-        automaticRetryAuthorized: false
-      });
-      expect(bundle).toMatchObject({
-        reviewState: 'HUMAN_ACTION_REQUIRED',
-        authorityAuditPassed: true,
-        environmentBindingVerified: true,
-        evidenceSeparatedFromOfficialTruth: true,
-        productionEnvironmentAuthorized: false,
-        productionCredentialsAuthorized: false,
-        liveExternalActionAuthorized: false,
-        deploymentApproved: false,
-        productionEnablementAuthorized: false,
-        officialTruthCreated: false
-      });
-    }
-  );
+    expect(simulation.evidence).toMatchObject({
+      classification: 'SIMULATED_AMBIGUOUS_RETURN',
+      evidenceClass: 'SIMULATION_EVIDENCE',
+      requiresHumanReview: true,
+      retryClassification: 'MANUAL_REVIEW_REQUIRED',
+      providerClaim: false,
+      providerAcceptanceCreated: false,
+      officialFilingSuccessCreated: false,
+      paymentTruthCreated: false,
+      markRegLifecycleTruthCreated: false,
+      officialTruthCreated: false,
+      liveExternalActionPerformed: false,
+      automaticRetryAuthorized: false
+    });
+    expect(bundle).toMatchObject({
+      reviewState: 'HUMAN_ACTION_REQUIRED',
+      authorityAuditPassed: true,
+      environmentBindingVerified: true,
+      evidenceSeparatedFromOfficialTruth: true,
+      productionEnvironmentAuthorized: false,
+      productionCredentialsAuthorized: false,
+      liveExternalActionAuthorized: false,
+      deploymentApproved: false,
+      productionEnablementAuthorized: false,
+      officialTruthCreated: false
+    });
+  });
 
-  it(
-    'keeps recovery correlated to the exact environment identity and blocks automatic external replay',
-    () => {
-      const prepared = simulatedPrepared();
-      const correlationId = createTrademarkServiceExecutionCorrelationId(
-        prepared.protectedAction.release,
-        prepared.protectedAction.binding
-      );
-      const recovery = classifyTrademarkServiceRecoveryDrill(
-        'AMBIGUOUS_EXTERNAL_OUTCOME',
-        'M15_WP08_TIMEOUT_AFTER_SEND'
-      );
+  it('keeps recovery correlated to the exact environment identity and blocks automatic external replay', () => {
+    const prepared = simulatedPrepared();
+    const correlationId = createTrademarkServiceExecutionCorrelationId(
+      prepared.protectedAction.release,
+      prepared.protectedAction.binding
+    );
+    const recovery = classifyTrademarkServiceRecoveryDrill(
+      'AMBIGUOUS_EXTERNAL_OUTCOME',
+      'M15_WP08_TIMEOUT_AFTER_SEND'
+    );
 
-      expect(correlationId).toMatch(/^trademark-service-execution-correlation_/);
-      expect(recovery).toMatchObject({
-        deadLetterState: 'HELD_FOR_HUMAN_REVIEW',
-        replayRule: 'VERIFY_EXTERNAL_OUTCOME_BEFORE_REPLAY',
-        humanApprovalRequiredForRetry: true,
-        recovery: {
-          state: 'MANUAL_REVIEW_REQUIRED',
-          retryable: false,
-          duplicateProtectedActionPrevented: true,
-          automaticExternalRetryPerformed: false
-        }
-      });
-    }
-  );
+    expect(correlationId).toMatch(/^trademark-service-execution-correlation_/);
+    expect(recovery).toMatchObject({
+      deadLetterState: 'HELD_FOR_HUMAN_REVIEW',
+      replayRule: 'VERIFY_EXTERNAL_OUTCOME_BEFORE_REPLAY',
+      humanApprovalRequiredForRetry: true,
+      recovery: {
+        state: 'MANUAL_REVIEW_REQUIRED',
+        retryable: false,
+        duplicateProtectedActionPrevented: true,
+        automaticExternalRetryPerformed: false
+      }
+    });
+  });
 });
