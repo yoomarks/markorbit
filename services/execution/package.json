@@ -6,7 +6,7 @@
   "description": "Execution plans, work, review, approval, evidence and receipt boundary.",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/index.ts src/main.ts src/reviewed-source-handoff.ts src/reviewed-source-handoff-http.ts src/evidence-provenance-http.ts src/trademark-service-execution.ts src/trademark-service-execution-postgres.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-sandbox-postgres.ts src/trademark-service-execution-connectors.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/reviewed-source-handoff.ts src/reviewed-source-handoff-http.ts src/evidence-provenance-http.ts src/trademark-service-execution.ts src/trademark-service-execution-postgres.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-sandbox-postgres.ts src/trademark-service-execution-connectors.ts src/trademark-service-execution-isolation.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -56,6 +56,10 @@
     "./trademark-service-execution-connectors": {
       "types": "./dist/trademark-service-execution-connectors.d.ts",
       "import": "./dist/trademark-service-execution-connectors.js"
+    },
+    "./trademark-service-execution-isolation": {
+      "types": "./dist/trademark-service-execution-isolation.d.ts",
+      "import": "./dist/trademark-service-execution-isolation.js"
     }
   }
 }
