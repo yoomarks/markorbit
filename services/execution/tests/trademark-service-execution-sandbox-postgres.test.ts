@@ -151,7 +151,7 @@ suite('M15 PostgreSQL durable sandbox execution policy', () => {
       path.resolve('../../infrastructure/persistence/migrations'),
       path.resolve('../../infrastructure/persistence/migration-owners.json'),
       '@markorbit/execution-service'
-    );
+    ).then((owned) => owned.filter((migration) => Number(migration.version) >= 61));
   const baseRepository = () =>
     new PostgresTrademarkServiceExecutionRepository(database, database.getPool());
   const sandboxRepository = () =>
