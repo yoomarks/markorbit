@@ -82,9 +82,8 @@ function parseEndpoint(
     fail('Credential references are forbidden when credential class is NONE.');
   }
 
-  const endpointUrl = policy.endpointUrl;
-  if (!endpointUrl) fail('TEST_CONNECTOR mode requires an explicit trusted test endpoint.');
-
+  const endpointUrl =
+    policy.endpointUrl ?? fail('TEST_CONNECTOR mode requires an explicit trusted test endpoint.');
   const endpoint = (() => {
     try {
       return new URL(endpointUrl);
