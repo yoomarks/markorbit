@@ -6,7 +6,7 @@
   "description": "Execution plans, work, review, approval, evidence and receipt boundary.",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/index.ts src/main.ts src/reviewed-source-handoff.ts src/reviewed-source-handoff-http.ts src/evidence-provenance-http.ts src/trademark-service-execution.ts src/trademark-service-execution-postgres.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-sandbox-postgres.ts src/trademark-service-execution-connectors.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/reviewed-source-handoff.ts src/reviewed-source-handoff-http.ts src/evidence-provenance-http.ts src/trademark-service-execution.ts src/trademark-service-execution-postgres.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-sandbox-postgres.ts src/trademark-service-execution-connectors.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/trademark-service-execution-observability.ts src/trademark-service-execution-observability-postgres.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -68,6 +68,14 @@
     "./trademark-service-execution-readiness-bundle": {
       "types": "./dist/trademark-service-execution-readiness-bundle.d.ts",
       "import": "./dist/trademark-service-execution-readiness-bundle.js"
+    },
+    "./trademark-service-execution-observability": {
+      "types": "./dist/trademark-service-execution-observability.d.ts",
+      "import": "./dist/trademark-service-execution-observability.js"
+    },
+    "./trademark-service-execution-observability-postgres": {
+      "types": "./dist/trademark-service-execution-observability-postgres.d.ts",
+      "import": "./dist/trademark-service-execution-observability-postgres.js"
     }
   }
 }
