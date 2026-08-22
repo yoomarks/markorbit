@@ -1,0 +1,43 @@
+name: Temporary M15 WP07 Prettier
+
+on:
+  push:
+    branches:
+      - agent/m15-wp07-observability-recovery-drill
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m15-wp07-observability-recovery-drill
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format WP07 stack and self-clean
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/src/trademark-service-execution-simulation.ts \
+            packages/contracts/src/trademark-service-execution-readiness-bundle.ts \
+            packages/contracts/src/trademark-service-execution-observability.ts \
+            packages/contracts/tests/trademark-service-execution-readiness-bundle.test.ts \
+            services/execution/src/trademark-service-execution-readiness-bundle.ts \
+            services/execution/src/trademark-service-execution-observability.ts \
+            services/execution/src/trademark-service-execution-observability-postgres.ts \
+            services/execution/tests/trademark-service-execution-observability-postgres.test.ts
+          git rm .github/workflows/tmp-m15-wp07-prettier.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/contracts/src/trademark-service-execution-simulation.ts packages/contracts/src/trademark-service-execution-readiness-bundle.ts packages/contracts/src/trademark-service-execution-observability.ts packages/contracts/tests/trademark-service-execution-readiness-bundle.test.ts services/execution/src/trademark-service-execution-readiness-bundle.ts services/execution/src/trademark-service-execution-observability.ts services/execution/src/trademark-service-execution-observability-postgres.ts services/execution/tests/trademark-service-execution-observability-postgres.test.ts
+          git commit -m "style(m15): apply repository Prettier to WP07 stack"
+          git push origin HEAD:agent/m15-wp07-observability-recovery-drill
