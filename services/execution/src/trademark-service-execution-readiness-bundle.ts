@@ -70,7 +70,8 @@ export function createTrademarkServiceOperatorReadinessBundle(
   if (
     command.environmentBinding.protectedActionReleaseId !==
       command.release.protectedActionReleaseId ||
-    command.environmentBinding.environmentPolicyId !== command.environmentPolicy.environmentPolicyId ||
+    command.environmentBinding.environmentPolicyId !==
+      command.environmentPolicy.environmentPolicyId ||
     command.environmentBinding.environment !== command.environmentPolicy.environment ||
     command.environmentBinding.mode !== command.environmentPolicy.mode ||
     command.environmentBinding.connectorClass !== command.environmentPolicy.connectorClass ||
