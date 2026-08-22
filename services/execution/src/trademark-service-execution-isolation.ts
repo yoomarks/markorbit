@@ -5,7 +5,6 @@ import type {
 } from '@markorbit/contracts/trademark-service-execution-connector';
 import type {
   TrademarkServiceIsolationDecision,
-  TrademarkServiceSandboxEgressMode,
   TrademarkServiceTrustedConnectorRuntimePolicy
 } from '@markorbit/contracts/trademark-service-execution-isolation';
 import {
@@ -208,7 +207,7 @@ export class TrademarkServiceSandboxConnectorExecutionGate {
       connectorClass: binding.connectorClass,
       endpointClass: binding.endpointClass,
       credentialClass: binding.credentialClass,
-      egressMode: command.runtimePolicy.egressMode as TrademarkServiceSandboxEgressMode,
+      egressMode: command.runtimePolicy.egressMode,
       ...(endpointHost ? { endpointHost } : {}),
       ...(command.runtimePolicy.testCredentialReference
         ? { testCredentialReference: command.runtimePolicy.testCredentialReference }
