@@ -38,8 +38,11 @@ const transportStateFor: Readonly<
   MALFORMED_RESPONSE: 'COMPLETED'
 };
 
-function responseId(base: unknown, scenario: TrademarkServiceSimulationScenario) {
-  return `trademark-service-simulation-response_${hash({ base, scenario }).slice(0, 32)}` as TrademarkServiceSimulationResponseId;
+function responseId(
+  base: unknown,
+  scenario: TrademarkServiceSimulationScenario
+): TrademarkServiceSimulationResponseId {
+  return `trademark-service-simulation-response_${hash({ base, scenario }).slice(0, 32)}`;
 }
 
 export interface TrademarkServiceDeterministicSimulationCommand {
