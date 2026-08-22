@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - agent/m15-wp08-independent-release-readiness-audit
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   audit:
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +36,7 @@ jobs:
           pnpm --filter @markorbit/execution-service typecheck
       - name: Persist formatting and self-clean
         run: |
-          git rm .github/workflows/tmp-m15-wp08-audit-check.yml
+          git rm .github/workflows/tmp-m15-wp08-audit-check.yml .m15-wp08-audit-trigger
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add services/execution/tests/trademark-service-execution-m15-release-readiness-audit.test.ts
