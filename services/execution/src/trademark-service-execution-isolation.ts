@@ -82,14 +82,16 @@ function parseEndpoint(
     fail('Credential references are forbidden when credential class is NONE.');
   }
 
-  if (!policy.endpointUrl) fail('TEST_CONNECTOR mode requires an explicit trusted test endpoint.');
+  const endpointUrl = policy.endpointUrl;
+  if (!endpointUrl) fail('TEST_CONNECTOR mode requires an explicit trusted test endpoint.');
 
-  let endpoint: URL;
-  try {
-    endpoint = new URL(policy.endpointUrl);
-  } catch {
-    fail('Trusted test endpoint must be a valid absolute URL.');
-  }
+  const endpoint = (() => {
+    try {
+      return new URL(endpointUrl);
+    } catch {
+      return fail('Trusted test endpoint must be a valid absolute URL.');
+    }
+  })();
   if (endpoint.username || endpoint.password)
     fail('Credentials must never be embedded in sandbox endpoint URLs.');
 
