@@ -112,6 +112,11 @@
       "import": "./dist/trademark-service-execution-simulation.js",
       "default": "./dist/trademark-service-execution-simulation.js"
     },
+    "./trademark-service-execution-readiness-bundle": {
+      "types": "./dist/trademark-service-execution-readiness-bundle.d.ts",
+      "import": "./dist/trademark-service-execution-readiness-bundle.js",
+      "default": "./dist/trademark-service-execution-readiness-bundle.js"
+    },
     "./daily-source": {
       "types": "./dist/daily-source.d.ts",
       "import": "./dist/daily-source.js"
@@ -132,7 +137,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/trademark-asset-composition.ts src/trademark-asset-portfolio.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-management.ts src/trademark-service-workbench.ts src/trademark-service-execution.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-connector.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/daily-source.ts src/data-engine.ts src/capability-learning.ts src/beta-readiness.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/trademark-asset-composition.ts src/trademark-asset-portfolio.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-management.ts src/trademark-service-workbench.ts src/trademark-service-execution.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-connector.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/daily-source.ts src/data-engine.ts src/capability-learning.ts src/beta-readiness.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
