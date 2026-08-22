@@ -8,8 +8,7 @@ import type {
   TrademarkServiceSandboxEndpointClass
 } from './trademark-service-execution-sandbox.js';
 
-export type TrademarkServiceIsolationDecisionId =
-  `trademark-service-isolation-decision_${string}`;
+export type TrademarkServiceIsolationDecisionId = `trademark-service-isolation-decision_${string}`;
 export type TrademarkServiceTestCredentialReference = `test-credential_${string}`;
 
 export const trademarkServiceSandboxEgressModes = [
@@ -18,8 +17,7 @@ export const trademarkServiceSandboxEgressModes = [
   'INTERNAL_TEST_ONLY',
   'ALLOWLIST_ONLY'
 ] as const;
-export type TrademarkServiceSandboxEgressMode =
-  (typeof trademarkServiceSandboxEgressModes)[number];
+export type TrademarkServiceSandboxEgressMode = (typeof trademarkServiceSandboxEgressModes)[number];
 
 export interface TrademarkServiceTrustedConnectorRuntimePolicy {
   schemaVersion: 1;

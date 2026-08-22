@@ -25,7 +25,11 @@ const fail = (message: string): never => {
   throw new TrademarkServiceExecutionError('AUTHORITY_BOUNDARY_VIOLATION', message);
 };
 
-function assertKnown<T extends string>(value: unknown, values: readonly T[], label: string): asserts value is T {
+function assertKnown<T extends string>(
+  value: unknown,
+  values: readonly T[],
+  label: string
+): asserts value is T {
   if (typeof value !== 'string' || !values.includes(value as T))
     fail(`Trusted connector runtime policy contains an unsupported ${label}.`);
 }
@@ -109,15 +113,16 @@ function parseEndpoint(
       fail('INTERNAL_TEST endpoint class requires INTERNAL_TEST_ONLY egress.');
     if (!['http:', 'https:'].includes(endpoint.protocol))
       fail('INTERNAL_TEST execution requires HTTP or HTTPS.');
-    if (!allowlist.includes(host)) fail('Internal test endpoint is not present in the exact host allowlist.');
+    if (!allowlist.includes(host))
+      fail('Internal test endpoint is not present in the exact host allowlist.');
     return host;
   }
 
   if (policy.egressMode !== 'ALLOWLIST_ONLY')
     fail('ALLOWLISTED_SANDBOX endpoint class requires ALLOWLIST_ONLY egress.');
-  if (endpoint.protocol !== 'https:')
-    fail('External sandbox endpoints require HTTPS.');
-  if (!allowlist.includes(host)) fail('Sandbox endpoint is not present in the exact host allowlist.');
+  if (endpoint.protocol !== 'https:') fail('External sandbox endpoints require HTTPS.');
+  if (!allowlist.includes(host))
+    fail('Sandbox endpoint is not present in the exact host allowlist.');
   return host;
 }
 
@@ -133,7 +138,9 @@ function assertTrustedPolicyMatchesBinding(
     policy.unrestrictedEgressAllowed !== false ||
     policy.clientSuppliedEndpointTrusted !== false
   )
-    fail('Production credentials, unrestricted egress, and client-trusted endpoints are forbidden.');
+    fail(
+      'Production credentials, unrestricted egress, and client-trusted endpoints are forbidden.'
+    );
 
   assertKnown(policy.environment, trademarkServiceExecutionEnvironments, 'environment');
   assertKnown(policy.mode, trademarkServiceExecutionModes, 'execution mode');
