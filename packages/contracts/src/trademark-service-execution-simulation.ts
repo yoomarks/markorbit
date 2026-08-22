@@ -31,8 +31,7 @@ export const trademarkServiceSimulationClassifications = [
 export type TrademarkServiceSimulationClassification =
   (typeof trademarkServiceSimulationClassifications)[number];
 
-export type TrademarkServiceSimulationFixtureId =
-  `trademark-service-simulation-fixture_${string}`;
+export type TrademarkServiceSimulationFixtureId = `trademark-service-simulation-fixture_${string}`;
 export type TrademarkServiceSimulationResponseId =
   `trademark-service-simulation-response_${string}`;
 
