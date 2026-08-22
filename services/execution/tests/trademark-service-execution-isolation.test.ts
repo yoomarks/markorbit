@@ -218,7 +218,7 @@ describe('M15-WP-04 egress and credential isolation', () => {
         executionError(() =>
           new TrademarkServiceSandboxConnectorExecutionGate().execute({
             request: released.request,
-            runtimePolicy: runtimePolicyFor(released, overrides) as never,
+            runtimePolicy: runtimePolicyFor(released, overrides),
             connector: new TrademarkServiceProviderSandboxConnector()
           })
         ).code
@@ -238,7 +238,7 @@ describe('M15-WP-04 egress and credential isolation', () => {
         executionError(() =>
           new TrademarkServiceSandboxConnectorExecutionGate().execute({
             request: released.request,
-            runtimePolicy: runtimePolicyFor(released, overrides) as never,
+            runtimePolicy: runtimePolicyFor(released, overrides),
             connector: new TrademarkServiceProviderSandboxConnector()
           })
         ).code
@@ -258,7 +258,7 @@ describe('M15-WP-04 egress and credential isolation', () => {
         executionError(() =>
           new TrademarkServiceSandboxConnectorExecutionGate().execute({
             request: released.request,
-            runtimePolicy: runtimePolicyFor(released, overrides) as never,
+            runtimePolicy: runtimePolicyFor(released, overrides),
             connector: new TrademarkServiceProviderSandboxConnector()
           })
         ).code
