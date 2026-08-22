@@ -266,6 +266,7 @@ jobs:
           pnpm test:professional-review:http
           pnpm test:filing-governance:auth
           pnpm test:filing-governance:postgres
+          pnpm --filter @markorbit/execution-service exec vitest run tests/trademark-service-execution-sandbox-postgres.test.ts
           pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
           pnpm test:evidence-review:postgres
       - name: MGSN integration

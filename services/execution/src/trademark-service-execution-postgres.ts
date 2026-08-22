@@ -144,20 +144,34 @@ export class PostgresTrademarkServiceExecutionRepository {
           'READINESS_REQUIRED',
           'Protected action release does not match the frozen Work Package version.'
         );
-      await client.query(
-        `INSERT INTO execution_trademark_service_protected_action_replays
-          (workspace_id,idempotency_key,request_fingerprint_sha256,execution_authorization_id,
-           protected_action_release_id,release_record,created_at) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
-        [
-          release.workspaceId,
-          release.idempotencyKey,
-          release.requestFingerprintSha256,
-          release.executionAuthorizationId,
-          release.protectedActionReleaseId,
-          JSON.stringify(release),
-          release.releasedAt
-        ]
-      );
+      try {
+        await client.query(
+          `INSERT INTO execution_trademark_service_protected_action_replays
+            (workspace_id,idempotency_key,request_fingerprint_sha256,execution_authorization_id,
+             protected_action_release_id,release_record,created_at) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
+          [
+            release.workspaceId,
+            release.idempotencyKey,
+            release.requestFingerprintSha256,
+            release.executionAuthorizationId,
+            release.protectedActionReleaseId,
+            JSON.stringify(release),
+            release.releasedAt
+          ]
+        );
+      } catch (error) {
+        const databaseError = error as { code?: unknown; constraint?: unknown };
+        if (
+          databaseError.code === '23514' &&
+          databaseError.constraint === 'execution_trademark_service_sandbox_binding_guard'
+        )
+          throw new TrademarkServiceExecutionError(
+            'OWNER_MISMATCH',
+            'Protected action release must use the sandbox policy repository after environment policy activation.',
+            503
+          );
+        throw error;
+      }
       return release;
     });
   }
