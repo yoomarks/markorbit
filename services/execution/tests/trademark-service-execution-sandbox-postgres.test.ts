@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import './trademark-service-execution-observability-postgres.integration.js';
 import type { TrademarkServiceExecutionReadiness } from '@markorbit/contracts/trademark-service-workbench';
 import {
   ManagedDatabase,
