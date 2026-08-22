@@ -92,7 +92,8 @@ BEGIN
   IF session_policy_id IS NULL THEN
     IF NEW.environment_policy_id IS NOT NULL OR NEW.environment_binding_record IS NOT NULL THEN
       RAISE EXCEPTION 'Protected action cannot introduce an environment policy that is absent from its session'
-        USING ERRCODE = '23514';
+        USING ERRCODE = '23514',
+              CONSTRAINT = 'execution_trademark_service_sandbox_binding_guard';
     END IF;
   ELSE
     IF NEW.environment_binding_record IS NULL
@@ -103,7 +104,8 @@ BEGIN
        OR NEW.sandbox_endpoint_class IS DISTINCT FROM session_endpoint_class
        OR NEW.sandbox_credential_class IS DISTINCT FROM session_credential_class THEN
       RAISE EXCEPTION 'Protected action sandbox binding must exactly match the durable execution environment policy'
-        USING ERRCODE = '23514';
+        USING ERRCODE = '23514',
+              CONSTRAINT = 'execution_trademark_service_sandbox_binding_guard';
     END IF;
   END IF;
 
