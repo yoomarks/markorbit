@@ -153,9 +153,9 @@ export class PostgresTrademarkServiceRecoveryDrillRepository {
           command.release.protectedActionReleaseId
         ]
       );
-      const durableBinding = (protectedAction.rows[0] as Row | undefined)?.environment_binding_record as
-        | TrademarkServiceProtectedActionEnvironmentBinding
-        | undefined;
+      const durableBinding = (protectedAction.rows[0] as Row | undefined)
+        ?.environment_binding_record as
+        TrademarkServiceProtectedActionEnvironmentBinding | undefined;
       if (!durableBinding || !sameBinding(durableBinding, command.binding))
         throw new TrademarkServiceExecutionError(
           'AUTHORITY_BOUNDARY_VIOLATION',
@@ -172,7 +172,8 @@ export class PostgresTrademarkServiceRecoveryDrillRepository {
         [command.workspaceId, idempotencyKey]
       );
       if (existing.rowCount) {
-        const record = (existing.rows[0] as Row).artifact_record as TrademarkServiceRecoveryDrillRecord;
+        const record = (existing.rows[0] as Row)
+          .artifact_record as TrademarkServiceRecoveryDrillRecord;
         if (record.requestFingerprintSha256 !== requestFingerprintSha256)
           throw new TrademarkServiceExecutionError(
             'IDEMPOTENCY_CONFLICT',
@@ -192,18 +193,14 @@ export class PostgresTrademarkServiceRecoveryDrillRepository {
         [command.workspaceId, command.executionAuthorizationId, command.correlationId]
       );
       const previous = (prior.rows[0] as Row | undefined)?.artifact_record as
-        | TrademarkServiceRecoveryDrillRecord
-        | undefined;
+        TrademarkServiceRecoveryDrillRecord | undefined;
       if (previous && !sha256Pattern.test(previous.auditFingerprintSha256))
         throw new TrademarkServiceExecutionError(
           'AUTHORITY_BOUNDARY_VIOLATION',
           'Recovery audit chain contains an invalid prior fingerprint.'
         );
       const auditSequence = (previous?.auditSequence ?? 0) + 1;
-      const classification = classifyTrademarkServiceRecoveryDrill(
-        command.outcome,
-        reasonCode
-      );
+      const classification = classifyTrademarkServiceRecoveryDrill(command.outcome, reasonCode);
       const recoveryDrillId = `trademark-service-recovery-drill_${hash({
         correlationId: command.correlationId,
         idempotencyKey,
@@ -237,9 +234,7 @@ export class PostgresTrademarkServiceRecoveryDrillRepository {
         replayRule: classification.replayRule,
         auditSequence,
         ...(previous ? { previousRecoveryDrillId: previous.recoveryDrillId } : {}),
-        ...(previous
-          ? { previousAuditFingerprintSha256: previous.auditFingerprintSha256 }
-          : {}),
+        ...(previous ? { previousAuditFingerprintSha256: previous.auditFingerprintSha256 } : {}),
         auditFingerprintSha256,
         reasonCode,
         recordedAt: recordedAt.toISOString(),

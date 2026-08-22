@@ -21,10 +21,7 @@ export const trademarkServiceRecoveryDrillOutcomes = [
 export type TrademarkServiceRecoveryDrillOutcome =
   (typeof trademarkServiceRecoveryDrillOutcomes)[number];
 
-export type TrademarkServiceDeadLetterState =
-  | 'NOT_REQUIRED'
-  | 'HELD_FOR_HUMAN_REVIEW'
-  | 'TERMINAL';
+export type TrademarkServiceDeadLetterState = 'NOT_REQUIRED' | 'HELD_FOR_HUMAN_REVIEW' | 'TERMINAL';
 export type TrademarkServiceReplayRule =
   | 'NO_REPLAY_REQUIRED'
   | 'HUMAN_APPROVAL_SAME_IDENTITY_ONLY'

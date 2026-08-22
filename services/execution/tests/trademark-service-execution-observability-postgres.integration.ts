@@ -285,10 +285,7 @@ suite('M15-WP-07 durable sandbox recovery observability', () => {
       )
     ).resolves.toEqual([first, second]);
     await expect(
-      recoveryRepository().getPendingHumanReview(
-        workspaceId,
-        source.auth.executionAuthorizationId
-      )
+      recoveryRepository().getPendingHumanReview(workspaceId, source.auth.executionAuthorizationId)
     ).resolves.toEqual([second]);
   });
 
@@ -298,12 +295,7 @@ suite('M15-WP-07 durable sandbox recovery observability', () => {
       commandFor(source, 'AMBIGUOUS_EXTERNAL_OUTCOME', 'wp07-recovery-ambiguous')
     );
     const terminal = await recoveryRepository().record(
-      commandFor(
-        source,
-        'PERMANENT_FAILURE',
-        'wp07-recovery-terminal',
-        '2026-08-22T15:46:00.000Z'
-      )
+      commandFor(source, 'PERMANENT_FAILURE', 'wp07-recovery-terminal', '2026-08-22T15:46:00.000Z')
     );
 
     expect(ambiguous.recovery.state).toBe('MANUAL_REVIEW_REQUIRED');
