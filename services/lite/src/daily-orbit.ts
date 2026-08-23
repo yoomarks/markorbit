@@ -71,18 +71,12 @@ export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilit
     const subjectUserId = cleanUserId(subjectUserIdValue);
     try {
       const result = await this.query.query(
-        `WITH latest AS (
-           SELECT DISTINCT ON (target_id) target_id,kind
-             FROM lite_product_preference_events
-            WHERE workspace_id=$1
-              AND subject_user_id=$2
-              AND target_type='DAILY_ORBIT_ITEM'
-              AND kind IN ('SAVED','DISMISSED')
-            ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC
-         )
-         SELECT target_id
-           FROM latest
-          WHERE kind='DISMISSED'
+        `SELECT DISTINCT target_id
+           FROM lite_product_preference_events
+          WHERE workspace_id=$1
+            AND subject_user_id=$2
+            AND target_type='DAILY_ORBIT_ITEM'
+            AND kind='DISMISSED'
           ORDER BY target_id`,
         [workspaceId, subjectUserId]
       );
