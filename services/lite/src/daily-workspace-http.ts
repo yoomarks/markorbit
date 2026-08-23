@@ -54,18 +54,10 @@ export function createDailyWorkspaceRoutes(options: {
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret);
         try {
-          return json(
-            200,
-            await options.service.snapshot(principal.workspaceId, principal.userId)
-          );
+          return json(200, await options.service.snapshot(principal.workspaceId, principal.userId));
         } catch (error) {
           if (error instanceof DailyWorkspaceSnapshotError) {
-            throw new HttpError(
-              error.status,
-              error.code,
-              error.message,
-              error.retryable
-            );
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
           }
           throw error;
         }

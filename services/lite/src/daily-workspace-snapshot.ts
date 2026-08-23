@@ -4,7 +4,8 @@ import { DailyOrbitError, type DailyOrbitService, type DailyOrbitSnapshot } from
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export type DailyWorkspaceSnapshotErrorCode = 'INVALID_INPUT' | 'WORKSPACE_MISMATCH' | 'DEPENDENCY_UNAVAILABLE';
+export type DailyWorkspaceSnapshotErrorCode =
+  'INVALID_INPUT' | 'WORKSPACE_MISMATCH' | 'DEPENDENCY_UNAVAILABLE';
 
 export class DailyWorkspaceSnapshotError extends Error {
   constructor(
@@ -87,7 +88,10 @@ export class DailyWorkspaceSnapshotService {
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
 
-  async snapshot(workspaceIdValue: string, subjectUserIdValue: string): Promise<DailyWorkspaceSnapshot> {
+  async snapshot(
+    workspaceIdValue: string,
+    subjectUserIdValue: string
+  ): Promise<DailyWorkspaceSnapshot> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const subjectUserId = cleanUserId(subjectUserIdValue);
     const generatedAt = new Date(this.now()).toISOString();

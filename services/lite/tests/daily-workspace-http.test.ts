@@ -64,7 +64,10 @@ function request(overrides: Record<string, string> = {}) {
 }
 
 function route() {
-  const found = createDailyWorkspaceRoutes({ internalServiceSecret: secret, service: service() })[0];
+  const found = createDailyWorkspaceRoutes({
+    internalServiceSecret: secret,
+    service: service()
+  })[0];
   if (!found) throw new Error('Daily Workspace route missing.');
   return found;
 }
@@ -84,7 +87,9 @@ describe('Lite Daily Workspace HTTP boundary', () => {
 
   it('rejects a mismatched Workspace header before composition', async () => {
     await expect(
-      route().handle(request({ 'x-markorbit-workspace-id': '74747474-7474-4747-8747-747474747474' }))
+      route().handle(
+        request({ 'x-markorbit-workspace-id': '74747474-7474-4747-8747-747474747474' })
+      )
     ).rejects.toMatchObject({ status: 404, code: 'WORKSPACE_MISMATCH' });
   });
 

@@ -45,14 +45,10 @@ function service(input: {
 }) {
   return new DailyWorkspaceSnapshotService(
     {
-      snapshot: vi.fn(
-        input.orbit ?? (() => Promise.resolve(orbit()))
-      )
+      snapshot: vi.fn(input.orbit ?? (() => Promise.resolve(orbit())))
     },
     {
-      listToday: vi.fn(
-        input.today ?? (() => Promise.resolve(today()))
-      )
+      listToday: vi.fn(input.today ?? (() => Promise.resolve(today())))
     },
     () => generatedAt
   );
@@ -116,8 +112,7 @@ describe('Lite Daily Workspace snapshot', () => {
   it('fails closed on cross-workspace dependency data', async () => {
     await expect(
       service({
-        today: () =>
-          Promise.resolve(today({ workspaceId: '72727272-7272-4727-8727-727272727272' }))
+        today: () => Promise.resolve(today({ workspaceId: '72727272-7272-4727-8727-727272727272' }))
       }).snapshot(workspaceId, userId)
     ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH', status: 503 });
   });
