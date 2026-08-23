@@ -1,4 +1,10 @@
-import { HttpError, createServiceRuntime, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  HttpError,
+  createServiceRuntime,
+  json,
+  type JsonRequest,
+  type JsonRoute
+} from '@markorbit/service-kit';
 import {
   DataEngineClientError,
   createDataEngineClient,
@@ -28,9 +34,7 @@ function mapDataEngineError(error: unknown): never {
         ? {}
         : { retryAfterSeconds: error.retryAfterSeconds }),
       ...(error.options.requestId ? { providerRequestId: error.options.requestId } : {}),
-      ...(error.options.correlationId
-        ? { correlationId: error.options.correlationId }
-        : {})
+      ...(error.options.correlationId ? { correlationId: error.options.correlationId } : {})
     }
   );
 }
@@ -44,7 +48,9 @@ function context(request: JsonRequest) {
   };
 }
 
-function traceHeaders(trace: DataEngineTrace | undefined): Readonly<Record<string, string>> | undefined {
+function traceHeaders(
+  trace: DataEngineTrace | undefined
+): Readonly<Record<string, string>> | undefined {
   if (!trace) return undefined;
   return {
     'x-correlation-id': trace.correlationId,
