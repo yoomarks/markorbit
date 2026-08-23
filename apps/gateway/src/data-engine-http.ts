@@ -134,14 +134,13 @@ function mapProviderError(
     );
   }
 
+  const retryAfter = retryAfterSeconds(response);
   const shared = {
     providerCode: parsed.code,
     retryable: parsed.retryable,
     ...(parsed.fact_state ? { factState: parsed.fact_state } : {}),
     ...(parsed.fact_state === 'not_found' ? { coverageState: 'unknown' as const } : {}),
-    ...(retryAfterSeconds(response) === undefined
-      ? {}
-      : { retryAfterSeconds: retryAfterSeconds(response) }),
+    ...(retryAfter === undefined ? {} : { retryAfterSeconds: retryAfter }),
     requestId,
     correlationId
   };
