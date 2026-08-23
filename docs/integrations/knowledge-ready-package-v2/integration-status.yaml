@@ -15,8 +15,8 @@ baselines:
     current_main_sha_at_task_issue: 5e68862f3e9b7a6522ab0e22aeccd1a426b9cebc
     frozen_protocol_sha: 3932b7cd5ee0235d3bb0f9e23ceab7cc71e45f7d
     provider_governance_pr: 397
-    delivery_protocol_version: "1.0"
-    content_export_contract_version: "2.0"
+    delivery_protocol_version: '1.0'
+    content_export_contract_version: '2.0'
   core:
     repository: yoomarks/markorbit
     role: consumer-authority
@@ -45,7 +45,7 @@ transport_contract:
     idempotency_key: ready-package-v2-delivery:<deliveryId>
     internal_authorization: x-markorbit-internal-authorization
     protocol_header: x-markorbit-ready-package-v2-delivery-protocol
-    protocol_value: "1.0"
+    protocol_value: '1.0'
   request_sha_source: exact_received_raw_utf8_bytes
   v2_to_v1_fallback_allowed: false
   second_v2_endpoint_allowed: false
