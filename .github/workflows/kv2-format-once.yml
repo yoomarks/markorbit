@@ -1,0 +1,42 @@
+name: KV2 Format Once
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format KV2 acceptance files
+        run: |
+          pnpm exec prettier --write \
+            docs/integrations/knowledge-ready-package-v2/acceptance-receipt.md \
+            scripts/run-knowledge-core-kv2-real-e2e.mjs
+      - name: Commit exact Prettier output
+        run: |
+          if git diff --quiet -- \
+            docs/integrations/knowledge-ready-package-v2/acceptance-receipt.md \
+            scripts/run-knowledge-core-kv2-real-e2e.mjs; then
+            echo "KV2 acceptance files already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/integrations/knowledge-ready-package-v2/acceptance-receipt.md \
+            scripts/run-knowledge-core-kv2-real-e2e.mjs
+          git commit -m "style: format KV2 acceptance files"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
