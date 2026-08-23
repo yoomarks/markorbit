@@ -2,9 +2,6 @@ ALTER TABLE knowledge_v2_deliveries
   ADD COLUMN accepted_at timestamptz,
   ADD COLUMN acceptance_evidence jsonb;
 
-CREATE UNIQUE INDEX knowledge_v2_deliveries_idempotency_key_uidx
-  ON knowledge_v2_deliveries(idempotency_key);
-
 ALTER TABLE knowledge_v2_deliveries
   ADD CONSTRAINT knowledge_v2_deliveries_acceptance_evidence_check
   CHECK (
