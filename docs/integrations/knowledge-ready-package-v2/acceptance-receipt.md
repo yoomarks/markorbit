@@ -11,7 +11,6 @@
 ## Acceptance rule
 
 This receipt is valid only when generated from exact pinned commits and real integration evidence.
-
 No provider implementation changes are made in this repository.
 
 ## Evidence matrix
