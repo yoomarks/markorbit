@@ -26,19 +26,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Execute staged patch
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          from textwrap import dedent
-
-          workflow = Path('.github/workflows/lite-daily-workspace-durable-save-state-once.yml').read_text()
-          start_marker = "          from pathlib import Path\n\n          def replace_once"
-          end_marker = "          PY\n      - name: Format changed files"
-          start = workflow.index(start_marker)
-          end = workflow.index(end_marker)
-          code = dedent(workflow[start:end])
-          exec(compile(code, '<durable-save-state-patch>', 'exec'))
-          PY
+        run: python .ci/lite-durable-save-state-patch.py
       - name: Format changed files
         run: |
           pnpm exec prettier --write \
@@ -60,6 +48,7 @@ jobs:
       - name: Commit implementation and remove one-shot scaffolding
         run: |
           rm -f .ci/lite-durable-save-trigger
+          rm .ci/lite-durable-save-state-patch.py
           rm .github/workflows/lite-daily-workspace-durable-save-state-once.yml
           rm .github/workflows/lite-durable-save-state-pr-once.yml
           git config user.name "github-actions[bot]"
