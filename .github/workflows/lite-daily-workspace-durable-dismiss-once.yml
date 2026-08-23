@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/lite-daily-workspace-durable-dismiss
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
