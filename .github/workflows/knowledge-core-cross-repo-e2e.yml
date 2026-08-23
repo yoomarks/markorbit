@@ -136,11 +136,24 @@ jobs:
       - name: Preserve MarkOrbit-owned structural KV2 checks
         run: pnpm exec vitest run tests/integration/knowledge/kv2-cross-repo-acceptance.test.ts
 
+      - name: Stage Core-owned acceptance runner in frozen provider workspace
+        run: |
+          mkdir -p knowledge-provider/.core-kv2-e2e
+          cp scripts/run-knowledge-core-kv2-real-e2e.mjs knowledge-provider/.core-kv2-e2e/runner.mjs
+
       - name: Run real V2 cross-repo E2E phase 1
-        run: pnpm exec tsx scripts/run-knowledge-core-kv2-real-e2e.mjs phase1
+        working-directory: knowledge-provider
+        env:
+          KNOWLEDGE_PROVIDER_DIR: .
+          KNOWLEDGE_CORE_KV2_ARTIFACT_DIR: ../.artifacts/knowledge-core-kv2
+        run: npx --yes tsx@4.23.1 .core-kv2-e2e/runner.mjs phase1
 
       - name: Restart Knowledge acceptance process and recover E2E-03
-        run: pnpm exec tsx scripts/run-knowledge-core-kv2-real-e2e.mjs recover
+        working-directory: knowledge-provider
+        env:
+          KNOWLEDGE_PROVIDER_DIR: .
+          KNOWLEDGE_CORE_KV2_ARTIFACT_DIR: ../.artifacts/knowledge-core-kv2
+        run: npx --yes tsx@4.23.1 .core-kv2-e2e/runner.mjs recover
 
       - name: Run frozen provider V1 regression against real Core
         working-directory: knowledge-provider
