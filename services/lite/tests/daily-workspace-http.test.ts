@@ -50,6 +50,7 @@ function service() {
 
 function request(overrides: Record<string, string> = {}) {
   return {
+    body: undefined,
     method: 'GET' as const,
     path: '/v1/daily-workspace',
     params: {},
