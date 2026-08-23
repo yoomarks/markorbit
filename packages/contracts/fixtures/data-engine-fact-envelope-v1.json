@@ -6,6 +6,7 @@
   "resource_kind": "TRADEMARK_CASE",
   "authority": "DATA_ENGINE_FACT_READ_MODEL",
   "legal_conclusion": false,
+  "fact_state": "observed",
   "payload": {
     "model_version": "US_M1",
     "status_semantics": "OFFICIAL_RAW_NOT_LEGAL_INTERPRETATION",
