@@ -28,6 +28,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           main_path = Path('services/lite/src/main.ts')
           main = main_path.read_text()
@@ -63,33 +64,6 @@ jobs:
               raise SystemExit('TodayWorkspace import anchor not found')
           ui = ui.replace(import_anchor, import_replacement, 1)
 
-          old_reload = """  const reload = async () => {
-            setTodayError(undefined);
-            setDailyError(undefined);
-            const [todayResult, orbitResult] = await Promise.allSettled([
-              todayClient.loadToday(),
-              dailyClient.loadOrbit()
-            ]);
-            if (todayResult.status === 'fulfilled') setToday(todayResult.value);
-            else
-              setTodayError(
-                todayResult.reason instanceof TodayHttpError
-                  ? todayResult.reason
-                  : new TodayHttpError(503, 'TODAY_REQUEST_FAILED', 'Lite Today is unavailable.')
-              );
-            if (orbitResult.status === 'fulfilled') setOrbit(orbitResult.value);
-            else
-              setDailyError(
-                orbitResult.reason instanceof DailyWorkspaceHttpError
-                  ? orbitResult.reason
-                  : new DailyWorkspaceHttpError(
-                      503,
-                      'DAILY_ORBIT_UNAVAILABLE',
-                      'Daily Orbit is unavailable.',
-                      true
-                    )
-              );
-          };"""
           new_reload = """  const reload = async () => {
             setTodayError(undefined);
             setDailyError(undefined);
@@ -140,9 +114,19 @@ jobs:
               setTodayError(new TodayHttpError(error.status, error.code, error.message));
             }
           };"""
-          if old_reload not in ui:
-              raise SystemExit('TodayWorkspace reload anchor not found')
-          ui_path.write_text(ui.replace(old_reload, new_reload, 1))
+          pattern = re.compile(
+              r"  const reload = async \(\) => \{\n.*?\n  \};\n\n  useEffect\(\(\) => \{\n    void reload\(\);\n  \}, \[todayClient, dailyClient\]\);",
+              re.S,
+          )
+          match = pattern.search(ui)
+          if not match:
+              raise SystemExit('TodayWorkspace reload region not found')
+          replacement = new_reload + """
+
+          useEffect(() => {
+            void reload();
+          }, [todayClient, dailyClient]);"""
+          ui_path.write_text(pattern.sub(replacement, ui, count=1))
           PY
       - name: Format patched Daily Workspace files
         run: |
