@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { DailyOrbitSnapshot } from '../src/daily-orbit.js';
 import { createDailyWorkspaceRoutes } from '../src/daily-workspace-http.js';
-import { DailyWorkspaceSnapshotService } from '../src/daily-workspace-snapshot.js';
-import type { LiteTodaySnapshot } from '@markorbit/contracts/product-loop';
+import {
+  DailyWorkspaceSnapshotService,
+  type DailyWorkspaceTodaySnapshot
+} from '../src/daily-workspace-snapshot.js';
 
 const secret = 'lite-daily-workspace-http-secret-0123456789';
 const workspaceId = '73737373-7373-4737-8737-737373737373';
@@ -31,13 +33,15 @@ const orbit: DailyOrbitSnapshot = {
   executionAuthorized: false,
   legalTruthVerified: false
 };
-const today: LiteTodaySnapshot = {
+const today: DailyWorkspaceTodaySnapshot = {
   schemaVersion: 1,
   workspaceId,
   generatedAt: '2026-08-24T00:00:00.000Z',
   items: [],
   partial: false,
-  warnings: []
+  warnings: [],
+  recentFeedback: [],
+  feedbackPendingPackages: []
 };
 
 function service() {
@@ -80,6 +84,8 @@ describe('Lite Daily Workspace HTTP boundary', () => {
     expect(result.body).toMatchObject({
       workspaceId,
       subjectUserId: principal.userId,
+      see: { preferenceSource: 'NONE', orbitItems: [] },
+      move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
       executionAuthorized: false,
       externalPublishExecuted: false,
       officialTruthCreated: false

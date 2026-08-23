@@ -1,5 +1,9 @@
 import type { ContentPick, DailyOrbitItem } from '@markorbit/contracts/daily-workspace';
-import type { LiteTodaySnapshot } from '@markorbit/contracts/product-loop';
+import type {
+  LiteTodaySnapshot,
+  ProductLoopUseFeedback,
+  PublishPackage
+} from '@markorbit/contracts/product-loop';
 import { DailyOrbitError, type DailyOrbitService, type DailyOrbitSnapshot } from './daily-orbit.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -20,8 +24,13 @@ export class DailyWorkspaceSnapshotError extends Error {
   }
 }
 
+export interface DailyWorkspaceTodaySnapshot extends LiteTodaySnapshot {
+  recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+  feedbackPendingPackages: ReadonlyArray<Readonly<PublishPackage>>;
+}
+
 export interface DailyWorkspaceTodayReader {
-  listToday(workspaceId: string): Promise<LiteTodaySnapshot>;
+  listToday(workspaceId: string): Promise<DailyWorkspaceTodaySnapshot>;
 }
 
 export interface DailyWorkspaceSnapshot {
@@ -30,6 +39,7 @@ export interface DailyWorkspaceSnapshot {
   subjectUserId: string;
   generatedAt: string;
   see: {
+    preferenceSource: DailyOrbitSnapshot['preferenceSource'] | null;
     orbitItems: ReadonlyArray<Readonly<DailyOrbitItem>>;
   };
   create: {
@@ -37,6 +47,8 @@ export interface DailyWorkspaceSnapshot {
   };
   move: {
     todayItems: LiteTodaySnapshot['items'];
+    recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+    feedbackPendingPackages: ReadonlyArray<Readonly<PublishPackage>>;
   };
   partial: boolean;
   warnings: readonly string[];
@@ -98,7 +110,7 @@ export class DailyWorkspaceSnapshotService {
     const warnings: string[] = [];
 
     let orbit: DailyOrbitSnapshot | undefined;
-    let today: LiteTodaySnapshot | undefined;
+    let today: DailyWorkspaceTodaySnapshot | undefined;
 
     const [orbitResult, todayResult] = await Promise.allSettled([
       this.orbit.snapshot(workspaceId, subjectUserId),
@@ -142,9 +154,16 @@ export class DailyWorkspaceSnapshotService {
       workspaceId,
       subjectUserId,
       generatedAt,
-      see: { orbitItems: orbit?.items ?? [] },
+      see: {
+        preferenceSource: orbit?.preferenceSource ?? null,
+        orbitItems: orbit?.items ?? []
+      },
       create: { contentPicks: orbit?.contentPicks ?? [] },
-      move: { todayItems: today?.items ?? [] },
+      move: {
+        todayItems: today?.items ?? [],
+        recentFeedback: today?.recentFeedback ?? [],
+        feedbackPendingPackages: today?.feedbackPendingPackages ?? []
+      },
       partial: warnings.length > 0,
       warnings,
       executionAuthorized: false,

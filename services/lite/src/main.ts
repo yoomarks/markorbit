@@ -239,10 +239,16 @@ const dailyOrbitService = new DailyOrbitService(
   journeyService,
   creatorPreferences
 );
-const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
-  dailyOrbitService,
-  journeyService
-);
+const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(dailyOrbitService, {
+  async listToday(workspaceId) {
+    const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
+      journeyService.listToday(workspaceId),
+      feedbackStore.listRecent(workspaceId),
+      feedbackStore.listPendingPackages(workspaceId)
+    ]);
+    return { ...snapshot, recentFeedback, feedbackPendingPackages };
+  }
+});
 const visualBridgeStore = new PostgresVisualBridgeStore(database, pool);
 const contentKitService = new ContentKitService(
   dailyOrbitService,

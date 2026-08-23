@@ -12,7 +12,9 @@ import type {
 } from '@markorbit/contracts/daily-workspace';
 import type {
   LiteTodaySnapshot,
-  ProductLoopExactReference
+  ProductLoopExactReference,
+  ProductLoopUseFeedback,
+  PublishPackage
 } from '@markorbit/contracts/product-loop';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
@@ -37,6 +39,7 @@ export interface DailyWorkspaceSnapshot {
   readonly subjectUserId: string;
   readonly generatedAt: string;
   readonly see: {
+    readonly preferenceSource: DailyOrbitSnapshot['preferenceSource'] | null;
     readonly orbitItems: ReadonlyArray<Readonly<DailyOrbitItem>>;
   };
   readonly create: {
@@ -44,6 +47,8 @@ export interface DailyWorkspaceSnapshot {
   };
   readonly move: {
     readonly todayItems: LiteTodaySnapshot['items'];
+    readonly recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
+    readonly feedbackPendingPackages: ReadonlyArray<Readonly<PublishPackage>>;
   };
   readonly partial: boolean;
   readonly warnings: readonly string[];

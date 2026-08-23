@@ -10,9 +10,10 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
   test('runs SEE → personalize → CREATE → MOVE through authenticated real runtime without interception', async ({
     page
   }) => {
-    const productLoopRequests: string[] = [];
+    const productLoopRequests: Array<{ url: string; method: string }> = [];
     page.on('request', (request) => {
-      if (request.url().includes('/api/lite/')) productLoopRequests.push(request.url());
+      if (request.url().includes('/api/lite/'))
+        productLoopRequests.push({ url: request.url(), method: request.method() });
     });
 
     const workspaceId = test.info().project.name.includes('mobile')
@@ -31,30 +32,28 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       .context()
       .addCookies([{ name: 'mo_session', value: sessionCookie!, domain: '127.0.0.1', path: '/' }]);
 
-    const todayResponse = page.waitForResponse(
+    const workspaceResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lite/today') && response.request().method() === 'GET'
-    );
-    const orbitResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/lite/daily-orbit') && response.request().method() === 'GET'
+        response.url().includes('/api/lite/daily-workspace') &&
+        response.request().method() === 'GET'
     );
     await page.goto(`${lite}/?workspaceId=${workspaceId}#today`);
-    expect((await todayResponse).status()).toBe(200);
-    const initialOrbitResponse = await orbitResponse;
-    expect(initialOrbitResponse.status()).toBe(200);
-    const initialOrbit = (await initialOrbitResponse.json()) as {
-      preferenceSource: string;
-      items: Array<{
-        dailyOrbitItemId: string;
-        version: number;
-        signal: { id: string; version: number };
-        score: { personalRelevance: { score: number } };
-      }>;
+    const initialWorkspaceResponse = await workspaceResponse;
+    expect(initialWorkspaceResponse.status()).toBe(200);
+    const initialWorkspace = (await initialWorkspaceResponse.json()) as {
+      see: {
+        preferenceSource: string | null;
+        orbitItems: Array<{
+          dailyOrbitItemId: string;
+          version: number;
+          signal: { id: string; version: number };
+          score: { personalRelevance: { score: number } };
+        }>;
+      };
     };
-    expect(initialOrbit.preferenceSource).toBe('NONE');
-    expect(initialOrbit.items).toHaveLength(1);
-    const initialItem = initialOrbit.items[0]!;
+    expect(initialWorkspace.see.preferenceSource).toBe('NONE');
+    expect(initialWorkspace.see.orbitItems).toHaveLength(1);
+    const initialItem = initialWorkspace.see.orbitItems[0]!;
 
     await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: "Today's Orbit", exact: true })).toBeVisible();
@@ -102,20 +101,23 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       capabilityVerified: false
     });
 
-    const personalizedOrbitResponse = page.waitForResponse(
+    const personalizedWorkspaceResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lite/daily-orbit') && response.request().method() === 'GET'
+        response.url().includes('/api/lite/daily-workspace') &&
+        response.request().method() === 'GET'
     );
     await page.reload();
-    const personalizedOrbit = (await (await personalizedOrbitResponse).json()) as {
-      preferenceSource: string;
-      items: Array<{
-        signal: { id: string; version: number };
-        score: { personalRelevance: { score: number; reason: string } };
-      }>;
+    const personalizedWorkspace = (await (await personalizedWorkspaceResponse).json()) as {
+      see: {
+        preferenceSource: string | null;
+        orbitItems: Array<{
+          signal: { id: string; version: number };
+          score: { personalRelevance: { score: number; reason: string } };
+        }>;
+      };
     };
-    expect(personalizedOrbit.preferenceSource).toBe('PRODUCT_FEEDBACK');
-    const personalizedItem = personalizedOrbit.items.find(
+    expect(personalizedWorkspace.see.preferenceSource).toBe('PRODUCT_FEEDBACK');
+    const personalizedItem = personalizedWorkspace.see.orbitItems.find(
       (candidate) =>
         candidate.signal.id === initialItem.signal.id &&
         candidate.signal.version === initialItem.signal.version
@@ -272,10 +274,25 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     expect(dismissBody.event.kind).toBe('DISMISSED');
     await expect(dismissCard).toHaveCount(0);
 
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/today'))).toBe(true);
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/daily-orbit'))).toBe(true);
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/content-kits/'))).toBe(true);
-    expect(productLoopRequests.some((url) => url.includes('/prepared-actions'))).toBe(true);
+    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(
+      true
+    );
+    expect(
+      productLoopRequests.some(({ url, method }) => {
+        const requestUrl = new URL(url);
+        return method === 'GET' && requestUrl.pathname === '/api/lite/today';
+      })
+    ).toBe(false);
+    expect(
+      productLoopRequests.some(({ url, method }) => {
+        const requestUrl = new URL(url);
+        return method === 'GET' && requestUrl.pathname === '/api/lite/daily-orbit';
+      })
+    ).toBe(false);
+    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/content-kits/'))).toBe(
+      true
+    );
+    expect(productLoopRequests.some(({ url }) => url.includes('/prepared-actions'))).toBe(true);
 
     if (test.info().project.name.includes('mobile')) {
       const dimensions = await page.evaluate(() => ({

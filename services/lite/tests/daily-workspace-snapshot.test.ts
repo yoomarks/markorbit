@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DailyOrbitSnapshot } from '../src/daily-orbit.js';
 import {
   DailyWorkspaceSnapshotService,
-  type DailyWorkspaceSnapshotError
+  type DailyWorkspaceSnapshotError,
+  type DailyWorkspaceTodaySnapshot
 } from '../src/daily-workspace-snapshot.js';
-import type { LiteTodaySnapshot } from '@markorbit/contracts/product-loop';
 
 const workspaceId = '71717171-7171-4717-8717-717171717171';
 const userId = 'user_daily_workspace';
@@ -27,7 +27,7 @@ function orbit(overrides: Partial<DailyOrbitSnapshot> = {}): DailyOrbitSnapshot 
   };
 }
 
-function today(overrides: Partial<LiteTodaySnapshot> = {}): LiteTodaySnapshot {
+function today(overrides: Partial<DailyWorkspaceTodaySnapshot> = {}): DailyWorkspaceTodaySnapshot {
   return {
     schemaVersion: 1,
     workspaceId,
@@ -35,13 +35,15 @@ function today(overrides: Partial<LiteTodaySnapshot> = {}): LiteTodaySnapshot {
     items: [],
     partial: false,
     warnings: [],
+    recentFeedback: [],
+    feedbackPendingPackages: [],
     ...overrides
   };
 }
 
 function service(input: {
   orbit?: () => Promise<DailyOrbitSnapshot>;
-  today?: () => Promise<LiteTodaySnapshot>;
+  today?: () => Promise<DailyWorkspaceTodaySnapshot>;
 }) {
   return new DailyWorkspaceSnapshotService(
     {
@@ -63,9 +65,9 @@ describe('Lite Daily Workspace snapshot', () => {
       workspaceId,
       subjectUserId: userId,
       generatedAt,
-      see: { orbitItems: [] },
+      see: { preferenceSource: 'NONE', orbitItems: [] },
       create: { contentPicks: [] },
-      move: { todayItems: [] },
+      move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
       partial: false,
       warnings: [],
       executionAuthorized: false,
@@ -74,14 +76,16 @@ describe('Lite Daily Workspace snapshot', () => {
     });
   });
 
-  it('keeps MOVE usable when SEE/CREATE is temporarily unavailable', async () => {
+  it('keeps MOVE usable when SEE/CREATE is temporarily unavailable without inventing preference provenance', async () => {
     const result = await service({
       orbit: () => Promise.reject(new Error('orbit unavailable'))
     }).snapshot(workspaceId, userId);
 
     expect(result.partial).toBe(true);
     expect(result.warnings).toEqual(['SEE_CREATE_UNAVAILABLE']);
+    expect(result.see.preferenceSource).toBeNull();
     expect(result.move.todayItems).toEqual([]);
+    expect(result.move.recentFeedback).toEqual([]);
     expect(result.executionAuthorized).toBe(false);
   });
 
@@ -94,6 +98,8 @@ describe('Lite Daily Workspace snapshot', () => {
     expect(result.warnings).toEqual(['MOVE_UNAVAILABLE']);
     expect(result.see.orbitItems).toEqual([]);
     expect(result.create.contentPicks).toEqual([]);
+    expect(result.move.recentFeedback).toEqual([]);
+    expect(result.move.feedbackPendingPackages).toEqual([]);
   });
 
   it('fails rather than manufacturing an empty workspace when both dependencies fail', async () => {
