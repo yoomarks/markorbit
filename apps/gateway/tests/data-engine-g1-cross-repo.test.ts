@@ -167,7 +167,8 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
         stalledServer!.listen(0, '127.0.0.1', resolve);
       });
       const address = stalledServer.address();
-      if (!address || typeof address === 'string') throw new Error('Stalled transport did not bind.');
+      if (!address || typeof address === 'string')
+        throw new Error('Stalled transport did not bind.');
       const client = createDataEngineClient({
         dataEngineUrl: `http://127.0.0.1:${address.port}`,
         apiKey,
@@ -175,7 +176,10 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
       });
 
       await expect(
-        client.contract({ requestId: 'mo-de-006-timeout-1', correlationId: 'mo-de-006-timeout-corr' })
+        client.contract({
+          requestId: 'mo-de-006-timeout-1',
+          correlationId: 'mo-de-006-timeout-corr'
+        })
       ).rejects.toMatchObject({
         code: 'DATA_ENGINE_UNAVAILABLE',
         retryable: true,

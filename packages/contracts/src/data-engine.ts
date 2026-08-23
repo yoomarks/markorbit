@@ -249,7 +249,8 @@ export function parseDataEngineG0ContractDescriptor(
   if (compatibility.breaking_change_policy !== 'cross_repo_migration_or_new_version') return null;
   if (compatibility.deprecation_policy !== 'no_v1_removal_without_cross_repo_review') return null;
   if (!exactStringArray(queryContract.methods, ['GET'])) return null;
-  if (queryContract.storage_independent !== true || !Array.isArray(queryContract.resources)) return null;
+  if (queryContract.storage_independent !== true || !Array.isArray(queryContract.resources))
+    return null;
   if (
     !queryContract.resources.every((resource) => {
       const entry = record(resource);
@@ -266,7 +267,8 @@ export function parseDataEngineG0ContractDescriptor(
   if (!factStateArray(factSemantics.reserved_not_yet_emitted)) return null;
   if (security.scheme !== 'BEARER_API_KEY') return null;
   if (security.authorization_header !== 'Authorization: Bearer <key>') return null;
-  if (security.g1_target_mode !== 'required' || security.environment_isolation !== true) return null;
+  if (security.g1_target_mode !== 'required' || security.environment_isolation !== true)
+    return null;
   if (security.minimum_key_length !== 32 || security.multi_key_rotation !== true) return null;
   if (security.unauthenticated_status !== 401 || security.forbidden_status !== 403) return null;
   if (typeof security.forbidden_current_behavior !== 'string') return null;
@@ -278,7 +280,10 @@ export function parseDataEngineG0ContractDescriptor(
   if (!runtimeSchema.required.includes('code')) return null;
   if (!runtimeSchema.required.includes('message')) return null;
   if (!runtimeSchema.required.includes('retryable')) return null;
-  if (typeof runtimeErrors.timeout !== 'string' || typeof runtimeErrors.schema_mismatch !== 'string')
+  if (
+    typeof runtimeErrors.timeout !== 'string' ||
+    typeof runtimeErrors.schema_mismatch !== 'string'
+  )
     return null;
   if (rateLimit.server_enforcement_default !== false) return null;
   if (rateLimit.throttled_status !== 429 || rateLimit.retry_after_header !== 'Retry-After')
@@ -300,7 +305,16 @@ export function parseDataEngineIntegrationDescriptor(
   const admin = record(planes?.admin);
   const g0Contract = parseDataEngineG0ContractDescriptor(candidate?.g0_contract);
 
-  if (!candidate || !policy || !security || !transport || !planes || !query || !changeFeed || !admin)
+  if (
+    !candidate ||
+    !policy ||
+    !security ||
+    !transport ||
+    !planes ||
+    !query ||
+    !changeFeed ||
+    !admin
+  )
     return null;
   if (!g0Contract) return null;
   if (candidate.contract_version !== DATA_ENGINE_INTEGRATION_CONTRACT_VERSION) return null;
@@ -316,7 +330,8 @@ export function parseDataEngineIntegrationDescriptor(
   if (security.authorization_header !== 'Authorization: Bearer <key>') return null;
   if (typeof security.auth_mode !== 'string') return null;
   if (security.required_mode !== 'required' || security.minimum_key_length !== 32) return null;
-  if (security.multi_key_rotation !== true || security.fail_closed_when_required !== true) return null;
+  if (security.multi_key_rotation !== true || security.fail_closed_when_required !== true)
+    return null;
   if (transport.request_id_header !== 'X-Request-ID') return null;
   if (transport.correlation_id_header !== 'x-correlation-id') return null;
   if (transport.request_id_echoed !== true || transport.correlation_id_echoed !== true) return null;

@@ -159,7 +159,12 @@ function mapProviderError(
       ...shared,
       factState: parsed.fact_state ?? 'service_unavailable'
     });
-  return new DataEngineClientError('DATA_ENGINE_PROVIDER_ERROR', parsed.message, response.status, shared);
+  return new DataEngineClientError(
+    'DATA_ENGINE_PROVIDER_ERROR',
+    parsed.message,
+    response.status,
+    shared
+  );
 }
 
 export function createDataEngineClient(options: GatewayDataEngineClientOptions) {
@@ -269,7 +274,9 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
 
   return {
     async contract(context?: DataEngineRequestContext): Promise<DataEngineIntegrationDescriptor> {
-      const parsed = parseDataEngineIntegrationDescriptor(await getJson('/api/v1/contract', context));
+      const parsed = parseDataEngineIntegrationDescriptor(
+        await getJson('/api/v1/contract', context)
+      );
       if (!parsed) {
         throw new DataEngineClientError(
           'DATA_ENGINE_CONTRACT_MISMATCH',
@@ -297,7 +304,10 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
       );
     },
 
-    usCase(serialNumber: string, context?: DataEngineRequestContext): Promise<DataEngineFactEnvelope> {
+    usCase(
+      serialNumber: string,
+      context?: DataEngineRequestContext
+    ): Promise<DataEngineFactEnvelope> {
       return fact(
         `/api/v1/us/cases/${encodeURIComponent(serialNumber)}`,
         'US',

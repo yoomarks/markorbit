@@ -130,7 +130,11 @@ function descriptor(authMode = 'required') {
   };
 }
 
-function providerHeaders(requestId: string, correlationId: string, extra: HeadersInit = {}): Headers {
+function providerHeaders(
+  requestId: string,
+  correlationId: string,
+  extra: HeadersInit = {}
+): Headers {
   return new Headers({
     'content-type': 'application/json',
     'X-Request-ID': requestId,
