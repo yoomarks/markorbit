@@ -311,10 +311,10 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     await expect(
       database
         .getPool()
-        .query(
-          "UPDATE knowledge_v2_deliveries SET ready_package_digest=$2 WHERE delivery_id=$1",
-          [request().deliveryId, '7'.repeat(64)]
-        )
+        .query('UPDATE knowledge_v2_deliveries SET ready_package_digest=$2 WHERE delivery_id=$1', [
+          request().deliveryId,
+          '7'.repeat(64)
+        ])
     ).rejects.toThrow(/frozen input is immutable/u);
     await expect(
       database

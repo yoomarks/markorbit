@@ -54,7 +54,8 @@ export function buildKnowledgeV2AcceptanceEvidence(
 ): KnowledgeV2AcceptanceEvidence {
   const request = input.request;
   if (!isReadyPackageV2DeliveryRequestV1(request)) fail('stored request is not frozen V1.');
-  if (input.deliveryId !== request.deliveryId) fail('delivery identity differs from stored request.');
+  if (input.deliveryId !== request.deliveryId)
+    fail('delivery identity differs from stored request.');
   if (input.idempotencyKey !== `ready-package-v2-delivery:${request.deliveryId}`)
     fail('idempotency identity differs from frozen request.');
   if (input.targetWorkspaceId.toLowerCase() !== request.target.workspaceId.toLowerCase())

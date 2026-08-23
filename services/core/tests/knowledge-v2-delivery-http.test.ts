@@ -266,11 +266,15 @@ describe('ReadyPackage V2 delivery HTTP boundary', () => {
     {
       label: 'CAS reference',
       mutate: (raw: string) =>
-        raw.replace(/"contentAddressedRef":"cas:sha256:[a-f0-9]{64}"/u, '"contentAddressedRef":"cas:sha256:invalid"')
+        raw.replace(
+          /"contentAddressedRef":"cas:sha256:[a-f0-9]{64}"/u,
+          '"contentAddressedRef":"cas:sha256:invalid"'
+        )
     },
     {
       label: 'legal truth boundary',
-      mutate: (raw: string) => raw.replace('"legalTruthVerified":false', '"legalTruthVerified":true')
+      mutate: (raw: string) =>
+        raw.replace('"legalTruthVerified":false', '"legalTruthVerified":true')
     }
   ])('rejects invalid frozen $label provenance/content semantics', async ({ mutate }) => {
     const { runtime, repository } = await start();

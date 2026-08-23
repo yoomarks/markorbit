@@ -35,9 +35,14 @@ export interface KnowledgeV2DeliveryRepository {
 
 const clone = <T>(value: T): T => structuredClone(value);
 
-function accepted(candidate: KnowledgeV2Delivery, acceptedAt = new Date().toISOString()): KnowledgeV2Delivery {
+function accepted(
+  candidate: KnowledgeV2Delivery,
+  acceptedAt = new Date().toISOString()
+): KnowledgeV2Delivery {
   if (candidate.status !== 'RECEIVED')
-    throw new Error('New Knowledge V2 consumer delivery must enter through durable RECEIVED semantics.');
+    throw new Error(
+      'New Knowledge V2 consumer delivery must enter through durable RECEIVED semantics.'
+    );
   return {
     ...clone(candidate),
     status: 'ACCEPTED',
