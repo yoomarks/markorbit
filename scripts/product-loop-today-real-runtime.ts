@@ -46,6 +46,8 @@ import {
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
 import { PostgresProductConversionAnalyticsStore } from '../services/lite/src/conversion-analytics.js';
 import { DailyOrbitService, PostgresDailySignalReader } from '../services/lite/src/daily-orbit.js';
+import { createDailyWorkspaceRoutes } from '../services/lite/src/daily-workspace-http.js';
+import { DailyWorkspaceSnapshotService } from '../services/lite/src/daily-workspace-snapshot.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
   PostgresLiteDailySignalStore
@@ -372,6 +374,20 @@ async function main() {
     preferences,
     () => at
   );
+  const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
+    dailyOrbitService,
+    {
+      async listToday(workspaceId) {
+        const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
+          journeyService.listToday(workspaceId),
+          feedbackStore.listRecent(workspaceId),
+          feedbackStore.listPendingPackages(workspaceId)
+        ]);
+        return { ...snapshot, recentFeedback, feedbackPendingPackages };
+      }
+    },
+    () => at
+  );
   const visualStore = new PostgresVisualBridgeStore(database, pool, () => at);
   const contentKitService = new ContentKitService(
     dailyOrbitService,
@@ -420,6 +436,10 @@ async function main() {
     { name: 'wp06-lite', port: 4417, version: '0.1.0' },
     {
       routes: [
+        ...createDailyWorkspaceRoutes({
+          internalServiceSecret: secret,
+          service: dailyWorkspaceSnapshotService
+        }),
         ...createLiteProductLoopRoutes({
           internalServiceSecret: secret,
           journeyService,
