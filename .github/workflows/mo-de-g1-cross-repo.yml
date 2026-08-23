@@ -154,4 +154,4 @@ jobs:
         if: always()
         run: |
           cd .cross-repo/markorbit-data-engine
-          docker compose down -v --remove-orphans
+          docker compose down --remove-orphans
