@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DailyOrbitSnapshot } from '../src/daily-orbit.js';
-import {
-  DailyWorkspaceSnapshotError,
-  DailyWorkspaceSnapshotService
-} from '../src/daily-workspace-snapshot.js';
+import { DailyWorkspaceSnapshotService } from '../src/daily-workspace-snapshot.js';
+import type { DailyWorkspaceSnapshotError } from '../src/daily-workspace-snapshot.js';
 import type { LiteTodaySnapshot } from '@markorbit/contracts/product-loop';
 
 const workspaceId = '71717171-7171-4717-8717-717171717171';
