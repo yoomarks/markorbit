@@ -6,6 +6,7 @@ import {
   rankDailyOrbitItem,
   type DailyOrbitPreferenceProvider,
   type DailyOrbitTodayReader,
+  type DailyOrbitVisibilityProvider,
   type DailySignalReader
 } from '../src/daily-orbit.js';
 
@@ -128,6 +129,19 @@ class Preferences implements DailyOrbitPreferenceProvider {
   }
 }
 
+class Visibility implements DailyOrbitVisibilityProvider {
+  constructor(private readonly value: ReadonlySet<string> | Error) {}
+  dismissedOrbitItemIds(
+    requestWorkspaceId: string,
+    requestUserId: string
+  ): Promise<ReadonlySet<string>> {
+    expect(requestWorkspaceId).toBe(workspaceId);
+    expect(requestUserId).toBe(userId);
+    if (this.value instanceof Error) return Promise.reject(this.value);
+    return Promise.resolve(this.value);
+  }
+}
+
 describe('M9-WP-03 Personal Daily Orbit', () => {
   it('uses an explicit Creator Preference and keeps every score explainable', () => {
     const item = rankDailyOrbitItem(
@@ -185,6 +199,45 @@ describe('M9-WP-03 Personal Daily Orbit', () => {
     expect(personalized.contentPicks[0]?.contentPickId).toBe(
       baseline.contentPicks[0]?.contentPickId
     );
+  });
+
+  it('removes an exact dismissed Orbit item and its Content Pick from the durable projection', async () => {
+    const ranked = rankDailyOrbitItem(
+      signal(),
+      userId,
+      preference(),
+      recommendation(),
+      '2026-08-18T03:00:00.000Z'
+    );
+    const service = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(preference()),
+      () => '2026-08-18T03:00:00.000Z',
+      new Visibility(new Set([ranked.dailyOrbitItemId]))
+    );
+
+    const snapshot = await service.snapshot(workspaceId, userId);
+
+    expect(snapshot.items).toEqual([]);
+    expect(snapshot.contentPicks).toEqual([]);
+    expect(snapshot.partial).toBe(false);
+  });
+
+  it('fails open with an explicit warning when durable Orbit visibility cannot be read', async () => {
+    const service = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(preference()),
+      () => '2026-08-18T03:00:00.000Z',
+      new Visibility(new Error('visibility store unavailable'))
+    );
+
+    const snapshot = await service.snapshot(workspaceId, userId);
+
+    expect(snapshot.items).toHaveLength(1);
+    expect(snapshot.partial).toBe(true);
+    expect(snapshot.warnings).toContain('ORBIT_VISIBILITY_UNAVAILABLE');
   });
 
   it('uses RISK only when the source-derived signal carries explicit risk evidence', () => {

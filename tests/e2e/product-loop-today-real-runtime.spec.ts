@@ -274,6 +274,22 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     expect(dismissBody.event.kind).toBe('DISMISSED');
     await expect(dismissCard).toHaveCount(0);
 
+    const dismissedWorkspaceResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/daily-workspace') &&
+        response.request().method() === 'GET'
+    );
+    await page.reload();
+    const dismissedWorkspace = (await (await dismissedWorkspaceResponse).json()) as {
+      see: { orbitItems: Array<{ dailyOrbitItemId: string }> };
+    };
+    expect(
+      dismissedWorkspace.see.orbitItems.some(
+        (item) => item.dailyOrbitItemId === initialItem.dailyOrbitItemId
+      )
+    ).toBe(false);
+    await expect(dismissCard).toHaveCount(0);
+
     expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(
       true
     );

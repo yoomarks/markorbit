@@ -50,6 +50,55 @@ export class NoCreatorPreferenceProvider implements DailyOrbitPreferenceProvider
   }
 }
 
+export interface DailyOrbitVisibilityProvider {
+  dismissedOrbitItemIds(workspaceId: string, subjectUserId: string): Promise<ReadonlySet<string>>;
+}
+
+export class NoDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
+  dismissedOrbitItemIds(): Promise<ReadonlySet<string>> {
+    return Promise.resolve(new Set());
+  }
+}
+
+export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
+  constructor(private readonly query: QueryClient) {}
+
+  async dismissedOrbitItemIds(
+    workspaceIdValue: string,
+    subjectUserIdValue: string
+  ): Promise<ReadonlySet<string>> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const subjectUserId = cleanUserId(subjectUserIdValue);
+    try {
+      const result = await this.query.query(
+        `WITH latest AS (
+           SELECT DISTINCT ON (target_id) target_id,kind
+             FROM lite_product_preference_events
+            WHERE workspace_id=$1
+              AND subject_user_id=$2
+              AND target_type='DAILY_ORBIT_ITEM'
+              AND kind IN ('SAVED','DISMISSED')
+            ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC
+         )
+         SELECT target_id
+           FROM latest
+          WHERE kind='DISMISSED'
+          ORDER BY target_id`,
+        [workspaceId, subjectUserId]
+      );
+      return new Set(result.rows.map((row) => String((row as { target_id: unknown }).target_id)));
+    } catch (error) {
+      throw new DailyOrbitError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Lite Daily Orbit visibility persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+}
+
 export interface DailyOrbitSnapshot {
   schemaVersion: 1;
   workspaceId: string;
@@ -376,7 +425,8 @@ export class DailyOrbitService {
     private readonly signals: DailySignalReader,
     private readonly today: DailyOrbitTodayReader,
     private readonly preferences: DailyOrbitPreferenceProvider = new NoCreatorPreferenceProvider(),
-    private readonly now: () => string = () => new Date().toISOString()
+    private readonly now: () => string = () => new Date().toISOString(),
+    private readonly visibility: DailyOrbitVisibilityProvider = new NoDailyOrbitVisibilityProvider()
   ) {}
 
   async snapshot(
@@ -410,6 +460,16 @@ export class DailyOrbitService {
         );
     }
 
+    let dismissedOrbitItemIds: ReadonlySet<string> = new Set();
+    try {
+      dismissedOrbitItemIds = await this.visibility.dismissedOrbitItemIds(
+        workspaceId,
+        subjectUserId
+      );
+    } catch {
+      warnings.push('ORBIT_VISIBILITY_UNAVAILABLE');
+    }
+
     let recommendations: readonly Readonly<TodayRecommendation>[] = [];
     try {
       const today = await this.today.listToday(workspaceId);
@@ -428,6 +488,7 @@ export class DailyOrbitService {
           item: rankDailyOrbitItem(signal, subjectUserId, preference, recommendation, generatedAt)
         };
       })
+      .filter((entry) => !dismissedOrbitItemIds.has(entry.item.dailyOrbitItemId))
       .sort(
         (left, right) =>
           right.item.score.total - left.item.score.total ||

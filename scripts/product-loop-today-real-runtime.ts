@@ -45,7 +45,11 @@ import {
 } from '../services/lite/src/content-preparation.js';
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
 import { PostgresProductConversionAnalyticsStore } from '../services/lite/src/conversion-analytics.js';
-import { DailyOrbitService, PostgresDailySignalReader } from '../services/lite/src/daily-orbit.js';
+import {
+  DailyOrbitService,
+  PostgresDailyOrbitVisibilityProvider,
+  PostgresDailySignalReader
+} from '../services/lite/src/daily-orbit.js';
 import { createDailyWorkspaceRoutes } from '../services/lite/src/daily-workspace-http.js';
 import { DailyWorkspaceSnapshotService } from '../services/lite/src/daily-workspace-snapshot.js';
 import {
@@ -372,7 +376,8 @@ async function main() {
     dailySignalReader,
     journeyService,
     preferences,
-    () => at
+    () => at,
+    new PostgresDailyOrbitVisibilityProvider(pool)
   );
   const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
     dailyOrbitService,
