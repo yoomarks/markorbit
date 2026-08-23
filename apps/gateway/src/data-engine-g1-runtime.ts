@@ -65,7 +65,7 @@ export function createDataEngineProtectedQueryRuntime(
     const client = createDataEngineClient({
       dataEngineUrl: options.dataEngineUrl,
       apiKey: options.dataEngineApiKey,
-      timeoutMs: options.timeoutMs,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       onTrace: (value) => {
         trace = value;
