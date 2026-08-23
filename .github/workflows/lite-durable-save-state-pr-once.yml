@@ -1,0 +1,69 @@
+name: Lite Durable Save State PR Once
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'agent/lite-daily-workspace-durable-save-state'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/lite-daily-workspace-durable-save-state
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Execute staged patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          workflow = Path('.github/workflows/lite-daily-workspace-durable-save-state-once.yml').read_text()
+          start_marker = "          from pathlib import Path\n\n          def replace_once"
+          end_marker = "          PY\n      - name: Format changed files"
+          start = workflow.index(start_marker)
+          end = workflow.index(end_marker)
+          code = dedent(workflow[start:end])
+          exec(compile(code, '<durable-save-state-patch>', 'exec'))
+          PY
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            services/lite/src/daily-orbit.ts \
+            services/lite/tests/daily-orbit.test.ts \
+            services/lite/src/daily-workspace-snapshot.ts \
+            apps/lite-web/src/api/daily-workspace.ts \
+            apps/lite-web/src/features/today/daily-workspace-primary.ts \
+            apps/lite-web/src/features/today/daily-workspace-primary.test.ts \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+      - name: Focused durable saved-state tests
+        run: |
+          pnpm exec vitest run \
+            services/lite/tests/daily-orbit.test.ts \
+            apps/lite-web/src/features/today/daily-workspace-primary.test.ts
+      - name: Build affected dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/lite-web...
+      - name: Commit implementation and remove one-shot scaffolding
+        run: |
+          rm -f .ci/lite-durable-save-trigger
+          rm .github/workflows/lite-daily-workspace-durable-save-state-once.yml
+          rm .github/workflows/lite-durable-save-state-pr-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(lite): restore saved Orbit state across reloads"
+          git push origin HEAD:agent/lite-daily-workspace-durable-save-state
