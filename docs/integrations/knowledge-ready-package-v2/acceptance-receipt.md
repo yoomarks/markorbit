@@ -15,16 +15,16 @@ No provider implementation changes are made in this repository.
 
 ## Evidence matrix
 
-| Check | Status |
-| --- | --- |
-| E2E-01 Normal V2 delivery | pending |
-| E2E-02 Restart recovery | pending |
-| E2E-03 Response loss replay | pending |
-| E2E-04 Frozen submission corruption | pending |
+| Check                                   | Status  |
+| --------------------------------------- | ------- |
+| E2E-01 Normal V2 delivery               | pending |
+| E2E-02 Restart recovery                 | pending |
+| E2E-03 Response loss replay             | pending |
+| E2E-04 Frozen submission corruption     | pending |
 | E2E-05 Deterministic consumer rejection | pending |
-| E2E-06 Idempotency conflict | pending |
-| E2E-07 Concurrent duplicate delivery | pending |
-| E2E-08 V1 regression | pending |
+| E2E-06 Idempotency conflict             | pending |
+| E2E-07 Concurrent duplicate delivery    | pending |
+| E2E-08 V1 regression                    | pending |
 
 ## Activation boundary
 
