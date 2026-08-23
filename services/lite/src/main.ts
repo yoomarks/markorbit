@@ -14,7 +14,11 @@ import {
   type ProductLoopSourceAuthority
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
-import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';
+import {
+  DailyOrbitService,
+  PostgresDailyOrbitVisibilityProvider,
+  PostgresDailySignalReader
+} from './daily-orbit.js';
 import { createDailyWorkspaceRoutes } from './daily-workspace-http.js';
 import { DailyWorkspaceSnapshotService } from './daily-workspace-snapshot.js';
 import {
@@ -234,10 +238,13 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
 const dailySignalReader = new PostgresDailySignalReader(pool);
+
 const dailyOrbitService = new DailyOrbitService(
   dailySignalReader,
   journeyService,
-  creatorPreferences
+  creatorPreferences,
+  undefined,
+  new PostgresDailyOrbitVisibilityProvider(pool)
 );
 const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(dailyOrbitService, {
   async listToday(workspaceId) {
