@@ -32,6 +32,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           def replace_once(path: str, old: str, new: str) -> None:
               file = Path(path)
@@ -40,275 +41,235 @@ jobs:
                   raise SystemExit(f'anchor not found in {path}: {old[:120]!r}')
               file.write_text(text.replace(old, new, 1))
 
-          path = 'services/lite/src/daily-orbit.ts'
-          anchor = '''export class NoCreatorPreferenceProvider implements DailyOrbitPreferenceProvider {
-            resolve(): Promise<undefined> {
-              return Promise.resolve(undefined);
-            }
-          }
-          '''
-          insertion = anchor + '''
-          export interface DailyOrbitVisibilityProvider {
-            dismissedOrbitItemIds(
-              workspaceId: string,
-              subjectUserId: string
-            ): Promise<ReadonlySet<string>>;
-          }
+          def sub_once(path: str, pattern: str, replacement: str, flags: int = 0) -> None:
+              file = Path(path)
+              text = file.read_text()
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f'pattern count {count} in {path}: {pattern[:120]!r}')
+              file.write_text(updated)
 
-          export class NoDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
-            dismissedOrbitItemIds(): Promise<ReadonlySet<string>> {
-              return Promise.resolve(new Set());
-            }
-          }
+          orbit = 'services/lite/src/daily-orbit.ts'
+          visibility_block = r'''
 
-          export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
-            constructor(private readonly query: QueryClient) {}
+export interface DailyOrbitVisibilityProvider {
+  dismissedOrbitItemIds(
+    workspaceId: string,
+    subjectUserId: string
+  ): Promise<ReadonlySet<string>>;
+}
 
-            async dismissedOrbitItemIds(
-              workspaceIdValue: string,
-              subjectUserIdValue: string
-            ): Promise<ReadonlySet<string>> {
-              const workspaceId = cleanWorkspaceId(workspaceIdValue);
-              const subjectUserId = cleanUserId(subjectUserIdValue);
-              try {
-                const result = await this.query.query(
-                  `WITH latest AS (
-                     SELECT DISTINCT ON (target_id) target_id,kind
-                       FROM lite_product_preference_events
-                      WHERE workspace_id=$1
-                        AND subject_user_id=$2
-                        AND target_type='DAILY_ORBIT_ITEM'
-                        AND kind IN ('SAVED','DISMISSED')
-                      ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC
-                   )
-                   SELECT target_id
-                     FROM latest
-                    WHERE kind='DISMISSED'
-                    ORDER BY target_id`,
-                  [workspaceId, subjectUserId]
-                );
-                return new Set(
-                  result.rows.map((row) => String((row as { target_id: unknown }).target_id))
-                );
-              } catch (error) {
-                throw new DailyOrbitError(
-                  'PERSISTENCE_UNAVAILABLE',
-                  'Lite Daily Orbit visibility persistence is unavailable.',
-                  503,
-                  true,
-                  { cause: error instanceof Error ? error : undefined }
-                );
-              }
-            }
-          }
-          '''
-          replace_once(path, anchor, insertion)
+export class NoDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
+  dismissedOrbitItemIds(): Promise<ReadonlySet<string>> {
+    return Promise.resolve(new Set());
+  }
+}
 
-          replace_once(
-              path,
-              '''  constructor(
-            private readonly signals: DailySignalReader,
-            private readonly today: DailyOrbitTodayReader,
-            private readonly preferences: DailyOrbitPreferenceProvider = new NoCreatorPreferenceProvider(),
-            private readonly now: () => string = () => new Date().toISOString()
-          ) {}
-          ''',
-              '''  constructor(
-            private readonly signals: DailySignalReader,
-            private readonly today: DailyOrbitTodayReader,
-            private readonly preferences: DailyOrbitPreferenceProvider = new NoCreatorPreferenceProvider(),
-            private readonly now: () => string = () => new Date().toISOString(),
-            private readonly visibility: DailyOrbitVisibilityProvider = new NoDailyOrbitVisibilityProvider()
-          ) {}
-          '''
+export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
+  constructor(private readonly query: QueryClient) {}
+
+  async dismissedOrbitItemIds(
+    workspaceIdValue: string,
+    subjectUserIdValue: string
+  ): Promise<ReadonlySet<string>> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const subjectUserId = cleanUserId(subjectUserIdValue);
+    try {
+      const result = await this.query.query(
+        `WITH latest AS (
+           SELECT DISTINCT ON (target_id) target_id,kind
+             FROM lite_product_preference_events
+            WHERE workspace_id=$1
+              AND subject_user_id=$2
+              AND target_type='DAILY_ORBIT_ITEM'
+              AND kind IN ('SAVED','DISMISSED')
+            ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC
+         )
+         SELECT target_id
+           FROM latest
+          WHERE kind='DISMISSED'
+          ORDER BY target_id`,
+        [workspaceId, subjectUserId]
+      );
+      return new Set(
+        result.rows.map((row) => String((row as { target_id: unknown }).target_id))
+      );
+    } catch (error) {
+      throw new DailyOrbitError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Lite Daily Orbit visibility persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+}
+'''
+          sub_once(
+              orbit,
+              r'(export class NoCreatorPreferenceProvider implements DailyOrbitPreferenceProvider \{.*?\n\})',
+              lambda match: match.group(1) + visibility_block,
+              re.S,
           )
-
+          sub_once(
+              orbit,
+              r'(private readonly preferences: DailyOrbitPreferenceProvider = new NoCreatorPreferenceProvider\(\),\n\s*private readonly now: \(\) => string = \(\) => new Date\(\)\.toISOString\(\))\n(\s*\) \{\})',
+              r'\1,\n    private readonly visibility: DailyOrbitVisibilityProvider = new NoDailyOrbitVisibilityProvider()\n\2',
+          )
           replace_once(
-              path,
+              orbit,
+              '\n    let recommendations: readonly Readonly<TodayRecommendation>[] = [];',
               '''
-            let recommendations: readonly Readonly<TodayRecommendation>[] = [];
-          ''',
-              '''
-            let dismissedOrbitItemIds: ReadonlySet<string> = new Set();
-            try {
-              dismissedOrbitItemIds = await this.visibility.dismissedOrbitItemIds(workspaceId, subjectUserId);
-            } catch {
-              warnings.push('ORBIT_VISIBILITY_UNAVAILABLE');
-            }
+    let dismissedOrbitItemIds: ReadonlySet<string> = new Set();
+    try {
+      dismissedOrbitItemIds = await this.visibility.dismissedOrbitItemIds(workspaceId, subjectUserId);
+    } catch {
+      warnings.push('ORBIT_VISIBILITY_UNAVAILABLE');
+    }
 
-            let recommendations: readonly Readonly<TodayRecommendation>[] = [];
-          '''
+    let recommendations: readonly Readonly<TodayRecommendation>[] = [];''',
+          )
+          replace_once(
+              orbit,
+              '      })\n      .sort(\n        (left, right) =>',
+              '      })\n      .filter((entry) => !dismissedOrbitItemIds.has(entry.item.dailyOrbitItemId))\n      .sort(\n        (left, right) =>',
           )
 
+          main = 'services/lite/src/main.ts'
           replace_once(
-              path,
-              '''      })
-              .sort(
-                (left, right) =>
-          ''',
-              '''      })
-              .filter((entry) => !dismissedOrbitItemIds.has(entry.item.dailyOrbitItemId))
-              .sort(
-                (left, right) =>
-          '''
-          )
-
-          replace_once(
-              'services/lite/src/main.ts',
+              main,
               "import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';",
-              "import {\n  DailyOrbitService,\n  PostgresDailyOrbitVisibilityProvider,\n  PostgresDailySignalReader\n} from './daily-orbit.js';"
+              "import {\n  DailyOrbitService,\n  PostgresDailyOrbitVisibilityProvider,\n  PostgresDailySignalReader\n} from './daily-orbit.js';",
           )
-          replace_once(
-              'services/lite/src/main.ts',
+          sub_once(
+              main,
+              r'const dailyOrbitService = new DailyOrbitService\(\s*dailySignalReader,\s*journeyService,\s*creatorPreferences\s*\);',
               '''const dailyOrbitService = new DailyOrbitService(
-            dailySignalReader,
-            journeyService,
-            creatorPreferences
-          );''',
-              '''const dailyOrbitService = new DailyOrbitService(
-            dailySignalReader,
-            journeyService,
-            creatorPreferences,
-            undefined,
-            new PostgresDailyOrbitVisibilityProvider(pool)
-          );'''
+  dailySignalReader,
+  journeyService,
+  creatorPreferences,
+  undefined,
+  new PostgresDailyOrbitVisibilityProvider(pool)
+);''',
+              re.S,
           )
 
+          runtime = 'scripts/product-loop-today-real-runtime.ts'
           replace_once(
-              'scripts/product-loop-today-real-runtime.ts',
+              runtime,
               "import { DailyOrbitService, PostgresDailySignalReader } from '../services/lite/src/daily-orbit.js';",
-              "import {\n  DailyOrbitService,\n  PostgresDailyOrbitVisibilityProvider,\n  PostgresDailySignalReader\n} from '../services/lite/src/daily-orbit.js';"
+              "import {\n  DailyOrbitService,\n  PostgresDailyOrbitVisibilityProvider,\n  PostgresDailySignalReader\n} from '../services/lite/src/daily-orbit.js';",
           )
+          sub_once(
+              runtime,
+              r'const dailyOrbitService = new DailyOrbitService\(\s*dailySignalReader,\s*journeyService,\s*preferences,\s*\(\) => at\s*\);',
+              '''const dailyOrbitService = new DailyOrbitService(
+    dailySignalReader,
+    journeyService,
+    preferences,
+    () => at,
+    new PostgresDailyOrbitVisibilityProvider(pool)
+  );''',
+              re.S,
+          )
+
+          unit = 'services/lite/tests/daily-orbit.test.ts'
           replace_once(
-              'scripts/product-loop-today-real-runtime.ts',
-              '''  const dailyOrbitService = new DailyOrbitService(
-              dailySignalReader,
-              journeyService,
-              preferences,
-              () => at
-            );''',
-              '''  const dailyOrbitService = new DailyOrbitService(
-              dailySignalReader,
-              journeyService,
-              preferences,
-              () => at,
-              new PostgresDailyOrbitVisibilityProvider(pool)
-            );'''
+              unit,
+              '  type DailyOrbitPreferenceProvider,\n  type DailyOrbitTodayReader,\n  type DailySignalReader',
+              '  type DailyOrbitPreferenceProvider,\n  type DailyOrbitTodayReader,\n  type DailyOrbitVisibilityProvider,\n  type DailySignalReader',
           )
+          visibility_fake = r'''
 
+class Visibility implements DailyOrbitVisibilityProvider {
+  constructor(private readonly value: ReadonlySet<string> | Error) {}
+  dismissedOrbitItemIds(
+    requestWorkspaceId: string,
+    requestUserId: string
+  ): Promise<ReadonlySet<string>> {
+    expect(requestWorkspaceId).toBe(workspaceId);
+    expect(requestUserId).toBe(userId);
+    if (this.value instanceof Error) return Promise.reject(this.value);
+    return Promise.resolve(this.value);
+  }
+}
+'''
+          sub_once(
+              unit,
+              r'(class Preferences implements DailyOrbitPreferenceProvider \{.*?\n\})',
+              lambda match: match.group(1) + visibility_fake,
+              re.S,
+          )
+          durable_tests = r'''  it('removes an exact dismissed Orbit item and its Content Pick from the durable projection', async () => {
+    const ranked = rankDailyOrbitItem(
+      signal(),
+      userId,
+      preference(),
+      recommendation(),
+      '2026-08-18T03:00:00.000Z'
+    );
+    const service = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(preference()),
+      () => '2026-08-18T03:00:00.000Z',
+      new Visibility(new Set([ranked.dailyOrbitItemId]))
+    );
+
+    const snapshot = await service.snapshot(workspaceId, userId);
+
+    expect(snapshot.items).toEqual([]);
+    expect(snapshot.contentPicks).toEqual([]);
+    expect(snapshot.partial).toBe(false);
+  });
+
+  it('fails open with an explicit warning when durable Orbit visibility cannot be read', async () => {
+    const service = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(preference()),
+      () => '2026-08-18T03:00:00.000Z',
+      new Visibility(new Error('visibility store unavailable'))
+    );
+
+    const snapshot = await service.snapshot(workspaceId, userId);
+
+    expect(snapshot.items).toHaveLength(1);
+    expect(snapshot.partial).toBe(true);
+    expect(snapshot.warnings).toContain('ORBIT_VISIBILITY_UNAVAILABLE');
+  });
+
+'''
           replace_once(
-              'services/lite/tests/daily-orbit.test.ts',
-              '''  type DailyOrbitPreferenceProvider,
-            type DailyOrbitTodayReader,
-            type DailySignalReader
-          } from '../src/daily-orbit.js';''',
-              '''  type DailyOrbitPreferenceProvider,
-            type DailyOrbitTodayReader,
-            type DailyOrbitVisibilityProvider,
-            type DailySignalReader
-          } from '../src/daily-orbit.js';'''
+              unit,
+              "  it('uses RISK only when the source-derived signal carries explicit risk evidence', () => {",
+              durable_tests + "  it('uses RISK only when the source-derived signal carries explicit risk evidence', () => {",
           )
 
-          test_path = 'services/lite/tests/daily-orbit.test.ts'
-          visibility_anchor = '''class Preferences implements DailyOrbitPreferenceProvider {
-            constructor(private readonly value: CreatorPreference | Error | undefined) {}
-            resolve(
-              requestWorkspaceId: string,
-              requestUserId: string
-            ): Promise<CreatorPreference | undefined> {
-              expect(requestWorkspaceId).toBe(workspaceId);
-              expect(requestUserId).toBe(userId);
-              if (this.value instanceof Error) return Promise.reject(this.value);
-              return Promise.resolve(this.value);
-            }
-          }
-          '''
-          visibility_class = visibility_anchor + '''
-          class Visibility implements DailyOrbitVisibilityProvider {
-            constructor(private readonly value: ReadonlySet<string> | Error) {}
-            dismissedOrbitItemIds(
-              requestWorkspaceId: string,
-              requestUserId: string
-            ): Promise<ReadonlySet<string>> {
-              expect(requestWorkspaceId).toBe(workspaceId);
-              expect(requestUserId).toBe(userId);
-              if (this.value instanceof Error) return Promise.reject(this.value);
-              return Promise.resolve(this.value);
-            }
-          }
-          '''
-          replace_once(test_path, visibility_anchor, visibility_class)
+          e2e = 'tests/e2e/product-loop-today-real-runtime.spec.ts'
+          reload_assertion = r'''    const dismissedWorkspaceResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/daily-workspace') &&
+        response.request().method() === 'GET'
+    );
+    await page.reload();
+    const dismissedWorkspace = (await (await dismissedWorkspaceResponse).json()) as {
+      see: { orbitItems: Array<{ dailyOrbitItemId: string }> };
+    };
+    expect(
+      dismissedWorkspace.see.orbitItems.some(
+        (item) => item.dailyOrbitItemId === initialItem.dailyOrbitItemId
+      )
+    ).toBe(false);
+    await expect(dismissCard).toHaveCount(0);
 
-          test_anchor = '''  it('uses RISK only when the source-derived signal carries explicit risk evidence', () => {
-          '''
-          tests = '''  it('removes an exact dismissed Orbit item and its Content Pick from the durable projection', async () => {
-            const ranked = rankDailyOrbitItem(
-              signal(),
-              userId,
-              preference(),
-              recommendation(),
-              '2026-08-18T03:00:00.000Z'
-            );
-            const service = new DailyOrbitService(
-              new Signals([signal()]),
-              new Today(today(recommendation(true))),
-              new Preferences(preference()),
-              () => '2026-08-18T03:00:00.000Z',
-              new Visibility(new Set([ranked.dailyOrbitItemId]))
-            );
-
-            const snapshot = await service.snapshot(workspaceId, userId);
-
-            expect(snapshot.items).toEqual([]);
-            expect(snapshot.contentPicks).toEqual([]);
-            expect(snapshot.partial).toBe(false);
-          });
-
-          it('fails open with an explicit warning when durable Orbit visibility cannot be read', async () => {
-            const service = new DailyOrbitService(
-              new Signals([signal()]),
-              new Today(today(recommendation(true))),
-              new Preferences(preference()),
-              () => '2026-08-18T03:00:00.000Z',
-              new Visibility(new Error('visibility store unavailable'))
-            );
-
-            const snapshot = await service.snapshot(workspaceId, userId);
-
-            expect(snapshot.items).toHaveLength(1);
-            expect(snapshot.partial).toBe(true);
-            expect(snapshot.warnings).toContain('ORBIT_VISIBILITY_UNAVAILABLE');
-          });
-
-          ''' + test_anchor
-          replace_once(test_path, test_anchor, tests)
-
-          e2e_path = 'tests/e2e/product-loop-today-real-runtime.spec.ts'
-          e2e_anchor = '''    await expect(dismissCard).toHaveCount(0);
-
-            expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(
-          '''
-          e2e_replacement = '''    await expect(dismissCard).toHaveCount(0);
-
-            const dismissedWorkspaceResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/lite/daily-workspace') &&
-                response.request().method() === 'GET'
-            );
-            await page.reload();
-            const dismissedWorkspace = (await (await dismissedWorkspaceResponse).json()) as {
-              see: { orbitItems: Array<{ dailyOrbitItemId: string }> };
-            };
-            expect(
-              dismissedWorkspace.see.orbitItems.some(
-                (item) => item.dailyOrbitItemId === initialItem.dailyOrbitItemId
-              )
-            ).toBe(false);
-            await expect(dismissCard).toHaveCount(0);
-
-            expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(
-          '''
-          replace_once(e2e_path, e2e_anchor, e2e_replacement)
+'''
+          replace_once(
+              e2e,
+              "    await expect(dismissCard).toHaveCount(0);\n\n    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(",
+              "    await expect(dismissCard).toHaveCount(0);\n\n" + reload_assertion + "    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(",
+          )
           PY
       - name: Format changed files
         run: |
