@@ -18,10 +18,7 @@ async function factFixture() {
 async function descriptorFixture() {
   return JSON.parse(
     await readFile(
-      new URL(
-        '../fixtures/data-engine-integration-descriptor-v1.fixture',
-        import.meta.url
-      ),
+      new URL('../fixtures/data-engine-integration-descriptor-v1.fixture', import.meta.url),
       'utf8'
     )
   ) as unknown;
