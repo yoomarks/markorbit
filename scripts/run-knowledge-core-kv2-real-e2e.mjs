@@ -286,7 +286,10 @@ async function e2e02() {
         fixture.readyPackage.id
       )
     );
-    const uncertain = fixture.deliveries.getByReadyPackage(DEFAULT_WORKSPACE.id, fixture.readyPackage.id);
+    const uncertain = fixture.deliveries.getByReadyPackage(
+      DEFAULT_WORKSPACE.id,
+      fixture.readyPackage.id
+    );
     assert.ok(uncertain);
     assert.equal(uncertain.state, 'PENDING');
     assert.equal(uncertain.transportAttempts, 1);
@@ -328,10 +331,16 @@ async function e2e03PrepareCrash() {
   });
   try {
     await assert.rejects(
-      service(crashRepository, httpTransport(calls)).submit(DEFAULT_WORKSPACE.id, fixture.readyPackage.id),
+      service(crashRepository, httpTransport(calls)).submit(
+        DEFAULT_WORKSPACE.id,
+        fixture.readyPackage.id
+      ),
       /E2E_SIMULATED_KNOWLEDGE_PROCESS_CRASH_BEFORE_FINALIZATION/u
     );
-    const pending = fixture.deliveries.getByReadyPackage(DEFAULT_WORKSPACE.id, fixture.readyPackage.id);
+    const pending = fixture.deliveries.getByReadyPackage(
+      DEFAULT_WORKSPACE.id,
+      fixture.readyPackage.id
+    );
     assert.ok(pending);
     assert.equal(pending.state, 'PENDING');
     assert.equal(pending.transportResult?.status, 'ACCEPTED');
@@ -385,7 +394,10 @@ async function e2e04() {
     .get(DEFAULT_WORKSPACE.id, fixture.readyPackage.id);
   assert.ok(row);
   const corrupted = JSON.parse(row.document_json);
-  corrupted.requestJson = corrupted.requestJson.replace('Frozen provider bytes.', 'CORRUPTED bytes.');
+  corrupted.requestJson = corrupted.requestJson.replace(
+    'Frozen provider bytes.',
+    'CORRUPTED bytes.'
+  );
   fixture.db
     .prepare(
       `UPDATE ready_package_v2_delivery_submissions
@@ -399,7 +411,10 @@ async function e2e04() {
     const deliveries = new SqliteReadyPackageV2DeliverySubmissionRepository(reopened);
     assert.throws(
       () => deliveries.getByReadyPackage(DEFAULT_WORKSPACE.id, fixture.readyPackage.id),
-      (error) => error && typeof error === 'object' && 'code' in error &&
+      (error) =>
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
         error.code === 'READY_PACKAGE_V2_DELIVERY_PERSISTED_STATE_INVALID'
     );
   } finally {
@@ -455,7 +470,10 @@ async function e2e07() {
     assert.ok(results.every((result) => result.requestSha256 === frozen.requestSha256));
     const statuses = calls.map((call) => call.status).sort((left, right) => left - right);
     assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 200, 201]);
-    const attempted = fixture.deliveries.markTransportAttempt(DEFAULT_WORKSPACE.id, frozen.submissionId);
+    const attempted = fixture.deliveries.markTransportAttempt(
+      DEFAULT_WORKSPACE.id,
+      frozen.submissionId
+    );
     assert.equal(attempted.transportAttempts, 1);
     const transportRecorded = fixture.deliveries.recordTransportResult(
       DEFAULT_WORKSPACE.id,
@@ -507,7 +525,9 @@ if (phase === 'phase1') {
     processRestart: 'phase-2-required',
     productionActivation: false
   });
-  process.stdout.write('Knowledge/Core KV2 real E2E phase 1 PASS (E2E-01,02,04-07; E2E-03 crash point durable).\n');
+  process.stdout.write(
+    'Knowledge/Core KV2 real E2E phase 1 PASS (E2E-01,02,04-07; E2E-03 crash point durable).\n'
+  );
 } else if (phase === 'recover') {
   await e2e03RecoverAfterRestart();
   await writeEvidence('v2-restart-recovery.json', {

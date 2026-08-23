@@ -37,7 +37,7 @@ jobs:
     env:
       KNOWLEDGE_PROTOCOL: ReadyPackage-V2
       KNOWLEDGE_PROVIDER_REPO: yoomarks/markorbit-knowledge
-      KNOWLEDGE_PROVIDER_SHA: c2d691a0e3654ffc9d40fae2bdc8481745d7f46e
+      KNOWLEDGE_PROVIDER_SHA: 24d2f4811512e42d357845bb61114c1b6287f8d4
       CORE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       PRODUCTION_ACTIVATION: 'false'
       PGPASSWORD: markorbit-test-only
@@ -78,7 +78,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: yoomarks/markorbit-knowledge
-          ref: c2d691a0e3654ffc9d40fae2bdc8481745d7f46e
+          ref: 24d2f4811512e42d357845bb61114c1b6287f8d4
           path: knowledge-provider
           fetch-depth: 1
 
