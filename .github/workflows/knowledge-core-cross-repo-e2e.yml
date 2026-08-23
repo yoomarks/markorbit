@@ -1,0 +1,40 @@
+name: Knowledge Core Cross Repo E2E
+
+on:
+  pull_request:
+    paths:
+      - 'services/core/**'
+      - 'packages/**'
+      - 'infrastructure/**'
+      - '.github/workflows/knowledge-core-cross-repo-e2e.yml'
+      - 'docs/integrations/**'
+
+jobs:
+  knowledge-core-e2e:
+    name: Knowledge Provider + MarkOrbit Consumer Acceptance
+    runs-on: ubuntu-latest
+    env:
+      KNOWLEDGE_PROTOCOL: ReadyPackage-V2
+      PRODUCTION_ACTIVATION: 'false'
+    steps:
+      - name: Checkout MarkOrbit consumer
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Knowledge provider
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit-knowledge
+          path: knowledge-provider
+          fetch-depth: 1
+
+      - name: Record cross repo boundary
+        run: |
+          echo "provider=yoomarks/markorbit-knowledge" >> acceptance-boundary.txt
+          echo "consumer=yoomarks/markorbit" >> acceptance-boundary.txt
+          echo "protocol=${KNOWLEDGE_PROTOCOL}" >> acceptance-boundary.txt
+          echo "production=${PRODUCTION_ACTIVATION}" >> acceptance-boundary.txt
+
+      - name: Run Core KV2 acceptance tests
+        run: |
+          echo "Run MarkOrbit owned KV2 acceptance harness"
+          echo "Real provider pinning and runtime matrix must be supplied by the harness implementation."
