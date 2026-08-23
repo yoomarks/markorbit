@@ -86,6 +86,64 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     });
   });
 
+  it('forwards the authenticated Daily Workspace aggregate without mutation authority', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/daily-workspace');
+      expect(init.method).toBe('GET');
+      expect(init.body).toBeUndefined();
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            schemaVersion: 1,
+            workspaceId,
+            subjectUserId: principal.userId,
+            generatedAt: '2026-08-24T00:00:00.000Z',
+            see: { orbitItems: [] },
+            create: { contentPicks: [] },
+            move: { todayItems: [] },
+            partial: false,
+            warnings: [],
+            executionAuthorized: false,
+            externalPublishExecuted: false,
+            officialTruthCreated: false
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('GET', '/api/lite/daily-workspace').handle({
+      method: 'GET',
+      path: '/api/lite/daily-workspace',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        'x-markorbit-workspace-id': workspaceId
+      },
+      body: undefined
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      workspaceId,
+      subjectUserId: principal.userId,
+      executionAuthorized: false,
+      externalPublishExecuted: false,
+      officialTruthCreated: false
+    });
+    expect(resolveWorkspace).toHaveBeenCalledWith('token', workspaceId, undefined);
+    const headers = downstream.mock.calls[0]?.[1].headers as Record<string, string>;
+    const envelope = JSON.parse(
+      Buffer.from(headers['x-markorbit-principal']!, 'base64url').toString('utf8')
+    ) as { principal: WorkspacePrincipal };
+    expect(envelope.principal).toMatchObject({
+      userId: principal.userId,
+      workspaceId: principal.workspaceId
+    });
+  });
+
   it('forwards feedback mutation with trusted principal and never accepts client actor identity', async () => {
     const downstream = vi.fn((url: string, init: RequestInit) => {
       expect(url).toBe('http://lite.test/v1/publish-packages/publish-package_1/use-feedback');

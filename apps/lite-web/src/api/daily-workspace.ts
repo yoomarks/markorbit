@@ -10,7 +10,10 @@ import type {
   VisualOutputKind,
   VisualOutputReference
 } from '@markorbit/contracts/daily-workspace';
-import type { ProductLoopExactReference } from '@markorbit/contracts/product-loop';
+import type {
+  LiteTodaySnapshot,
+  ProductLoopExactReference
+} from '@markorbit/contracts/product-loop';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
 
@@ -26,6 +29,27 @@ export interface DailyOrbitSnapshot {
   readonly warnings: readonly string[];
   readonly executionAuthorized: false;
   readonly legalTruthVerified: false;
+}
+
+export interface DailyWorkspaceSnapshot {
+  readonly schemaVersion: 1;
+  readonly workspaceId: string;
+  readonly subjectUserId: string;
+  readonly generatedAt: string;
+  readonly see: {
+    readonly orbitItems: ReadonlyArray<Readonly<DailyOrbitItem>>;
+  };
+  readonly create: {
+    readonly contentPicks: ReadonlyArray<Readonly<ContentPick>>;
+  };
+  readonly move: {
+    readonly todayItems: LiteTodaySnapshot['items'];
+  };
+  readonly partial: boolean;
+  readonly warnings: readonly string[];
+  readonly executionAuthorized: false;
+  readonly externalPublishExecuted: false;
+  readonly officialTruthCreated: false;
 }
 
 export interface VisualBriefRecordResponse {
@@ -63,6 +87,7 @@ export class DailyWorkspaceHttpError extends Error {
 }
 
 export interface DailyWorkspaceClient {
+  loadWorkspace(): Promise<DailyWorkspaceSnapshot>;
   loadOrbit(): Promise<DailyOrbitSnapshot>;
   loadContentKit(contentPickId: string): Promise<ContentKit>;
   loadVisualBrief(
@@ -181,6 +206,7 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
   };
 
   return {
+    loadWorkspace: () => request<DailyWorkspaceSnapshot>('/api/lite/daily-workspace', workspaceId),
     loadOrbit: () => request<DailyOrbitSnapshot>('/api/lite/daily-orbit', workspaceId),
     loadContentKit: (contentPickId) =>
       request<ContentKit>(
