@@ -15,6 +15,66 @@ async function factFixture() {
   ) as unknown;
 }
 
+const g0Contract = {
+  contract_id: DATA_ENGINE_INTEGRATION_CONTRACT_VERSION,
+  source_owner: 'MARKORBIT_DATA_ENGINE',
+  compatibility: {
+    v1_default: 'additive',
+    breaking_change_policy: 'cross_repo_migration_or_new_version',
+    deprecation_policy: 'no_v1_removal_without_cross_repo_review'
+  },
+  query_contract: {
+    methods: ['GET'],
+    storage_independent: true,
+    resources: [{ path: '/api/v1/contract', query: {}, pagination: 'none' }]
+  },
+  fact_semantics: {
+    current_explicit_states: ['observed', 'not_found', 'service_unavailable'],
+    reserved_not_yet_emitted: ['not_covered', 'no_observation', 'tombstone']
+  },
+  security: {
+    scheme: 'BEARER_API_KEY',
+    authorization_header: 'Authorization: Bearer <key>',
+    g1_target_mode: 'required',
+    environment_isolation: true,
+    minimum_key_length: 32,
+    multi_key_rotation: true,
+    unauthenticated_status: 401,
+    forbidden_status: 403,
+    forbidden_current_behavior: 'reserved; V1 has no scope/role authorization layer'
+  },
+  tracing: {
+    request_id_header: 'X-Request-ID',
+    correlation_id_header: 'x-correlation-id',
+    response_echo: [
+      'X-Request-ID',
+      'x-correlation-id',
+      'X-MarkOrbit-Contract-Version',
+      'X-MarkOrbit-Source-Owner'
+    ],
+    provider_trace_identifier: 'X-Request-ID'
+  },
+  runtime_errors: {
+    schema: {
+      required: ['code', 'message', 'retryable'],
+      optional: ['detail', 'fact_state']
+    },
+    status_codes: {
+      '401': { retryable: false, meaning: 'missing or invalid service credential' },
+      '429': { retryable: true, meaning: 'provider backpressure; obey Retry-After' },
+      '503': { retryable: true, meaning: 'provider/dependency unavailable' }
+    },
+    timeout: 'consumer/network timeout is retryable and must never be converted to a factual negative',
+    schema_mismatch: 'consumer fails closed when contract_version differs from the supported contract'
+  },
+  rate_limit: {
+    server_enforcement_default: false,
+    enabled_config: 'INTEGRATION_RATE_LIMIT_ENABLED',
+    throttled_status: 429,
+    retry_after_header: 'Retry-After'
+  }
+};
+
 const descriptor = {
   contract_version: DATA_ENGINE_INTEGRATION_CONTRACT_VERSION,
   engine_version: 'M1.6',
@@ -26,6 +86,23 @@ const descriptor = {
     cross_service_database_access: false,
     consumer_writeback_to_source_facts: false,
     business_state_owned_outside_data_engine: true
+  },
+  security: {
+    scheme: 'BEARER_API_KEY',
+    authorization_header: 'Authorization: Bearer <key>',
+    auth_mode: 'required',
+    required_mode: 'required',
+    minimum_key_length: 32,
+    multi_key_rotation: true,
+    fail_closed_when_required: true
+  },
+  transport: {
+    request_id_header: 'X-Request-ID',
+    correlation_id_header: 'x-correlation-id',
+    request_id_echoed: true,
+    correlation_id_echoed: true,
+    contract_version_header: 'X-MarkOrbit-Contract-Version',
+    source_owner_header: 'X-MarkOrbit-Source-Owner'
   },
   planes: {
     query: { prefix: '/api/v1', methods: ['GET'] },
@@ -39,7 +116,8 @@ const descriptor = {
       part_of_consumer_contract: false
     }
   },
-  stable_resources: ['/api/v1/us/cases/{serial_number}', '/api/v1/us/changes']
+  stable_resources: ['/api/v1/us/cases/{serial_number}', '/api/v1/us/changes'],
+  g0_contract: g0Contract
 };
 
 describe('Data Engine Integration Contract V1', () => {
