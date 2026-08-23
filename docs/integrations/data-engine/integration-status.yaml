@@ -1,0 +1,90 @@
+schema_version: 1
+integration:
+  name: markorbit-data-engine
+  stage: G0
+  stage_name: Contract Freeze
+  status: active
+  initiated_at: 2026-08-23
+baselines:
+  markorbit:
+    repository: yoomarks/markorbit
+    role: consumer-authority
+    baseline_sha: 149b0de8568fe3e82b81e6eb006030426cc0f5aa
+  data_engine:
+    repository: yoomarks/markorbit-data-engine
+    role: provider-authority
+    baseline_sha: e1776dcceaef571e7e4ffc9cbb22688c04bc5015
+authority:
+  markorbit:
+    owns:
+      - product-use-cases
+      - consumer-requirements
+      - gateway-exposure
+      - product-degradation
+      - business-event-semantics
+      - consumer-acceptance
+  data_engine:
+    owns:
+      - acquisition
+      - observations
+      - normalized-facts
+      - coverage-and-freshness
+      - query-runtime
+      - provider-authentication
+      - provider-pagination-and-cursors
+      - factual-change-detection
+requirements:
+  - id: MO-DE-001
+    title: Query Contract V1 Freeze
+    stage: G0
+    priority: P0
+    status: pending_provider_freeze
+  - id: MO-DE-002
+    title: Missing Coverage Tombstone Semantics
+    stage: G0
+    priority: P0
+    status: pending_joint_freeze
+  - id: MO-DE-003
+    title: Service Authentication Security Contract
+    stage: G0
+    priority: P0
+    status: pending_provider_freeze
+  - id: MO-DE-004
+    title: Request Correlation Tracing
+    stage: G0
+    priority: P0
+    status: pending_joint_freeze
+  - id: MO-DE-005
+    title: Runtime Error Timeout Retry Semantics
+    stage: G0
+    priority: P0
+    status: pending_provider_freeze
+  - id: MO-DE-006
+    title: Authenticated Cross Repository Acceptance
+    stage: G1
+    priority: P1
+    status: blocked
+    blocked_by:
+      - MO-DE-001
+      - MO-DE-002
+      - MO-DE-003
+      - MO-DE-004
+      - MO-DE-005
+  - id: MO-DE-007
+    title: US Trademark Change Feed Ownership
+    stage: G2
+    priority: P2-decision
+    status: deferred_no_implementation
+  - id: MO-DE-008
+    title: Cursor Consumer Checkpoint Ownership
+    stage: G2
+    priority: P2-decision
+    status: deferred_no_implementation
+rules:
+  g1_requires_g0_closed: true
+  cross_repo_ids_required_in_prs_and_tests: true
+  copy_requirements_between_repos: false
+  breaking_change_requires_rfc: true
+  repository_local_green_ci_is_sufficient: false
+  final_g1_auth_mode: required
+  production_authorization: false
