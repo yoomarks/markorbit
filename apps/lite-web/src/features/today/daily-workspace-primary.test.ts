@@ -29,6 +29,7 @@ describe('Daily Workspace primary projection', () => {
     expect(result.orbit).toMatchObject({
       workspaceId,
       subjectUserId: 'user_primary_workspace',
+      generatedAt: '2026-08-24T00:00:00.000Z',
       preferenceSource: 'PRODUCT_FEEDBACK',
       partial: false,
       executionAuthorized: false,
@@ -38,6 +39,7 @@ describe('Daily Workspace primary projection', () => {
     expect(result.orbit.contentPicks).toEqual([]);
     expect(result.today).toMatchObject({
       workspaceId,
+      generatedAt: '2026-08-24T00:00:00.000Z',
       partial: false,
       recentFeedback: [],
       feedbackPendingPackages: []
