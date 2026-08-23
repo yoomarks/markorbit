@@ -60,6 +60,11 @@ jobs:
       - name: Install MarkOrbit workspace
         run: pnpm install --frozen-lockfile
 
+      - name: Build G1 runtime workspace dependencies
+        run: |
+          pnpm --filter @markorbit/contracts build
+          pnpm --filter @markorbit/service-kit build
+
       - name: Install exact Data Engine provider
         run: python -m pip install -e .cross-repo/markorbit-data-engine
 
@@ -129,7 +134,7 @@ jobs:
       - name: Run consumer contract and cross-repository acceptance
         run: |
           pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/gateway test -- tests/data-engine-http.test.ts tests/data-engine-g1-cross-repo.test.ts
+          pnpm --filter @markorbit/gateway exec vitest run tests/data-engine-http.test.ts tests/data-engine-g1-cross-repo.test.ts
 
       - name: Show provider diagnostics on failure
         if: failure()
