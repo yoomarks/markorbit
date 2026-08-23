@@ -1,7 +1,4 @@
-import type {
-  DailyOrbitSnapshot,
-  DailyWorkspaceSnapshot
-} from '../../api/daily-workspace.js';
+import type { DailyOrbitSnapshot, DailyWorkspaceSnapshot } from '../../api/daily-workspace.js';
 import type { TodayProductLoopSnapshot } from '../../api/product-loop.js';
 
 const SEE_PREFIX = 'SEE_CREATE:';

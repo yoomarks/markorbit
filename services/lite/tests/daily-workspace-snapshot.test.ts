@@ -27,9 +27,7 @@ function orbit(overrides: Partial<DailyOrbitSnapshot> = {}): DailyOrbitSnapshot 
   };
 }
 
-function today(
-  overrides: Partial<DailyWorkspaceTodaySnapshot> = {}
-): DailyWorkspaceTodaySnapshot {
+function today(overrides: Partial<DailyWorkspaceTodaySnapshot> = {}): DailyWorkspaceTodaySnapshot {
   return {
     schemaVersion: 1,
     workspaceId,

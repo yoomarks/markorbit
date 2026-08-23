@@ -38,6 +38,7 @@ import {
   type TodayClient,
   type TodayProductLoopSnapshot
 } from '../../api/product-loop.js';
+import { projectDailyWorkspacePrimary } from './daily-workspace-primary.js';
 import './today.css';
 
 export interface TodayWorkspaceProps {
@@ -659,29 +660,52 @@ export function TodayWorkspace({
   const reload = async () => {
     setTodayError(undefined);
     setDailyError(undefined);
-    const [todayResult, orbitResult] = await Promise.allSettled([
-      todayClient.loadToday(),
-      dailyClient.loadOrbit()
-    ]);
-    if (todayResult.status === 'fulfilled') setToday(todayResult.value);
-    else
-      setTodayError(
-        todayResult.reason instanceof TodayHttpError
-          ? todayResult.reason
-          : new TodayHttpError(503, 'TODAY_REQUEST_FAILED', 'Lite Today is unavailable.')
-      );
-    if (orbitResult.status === 'fulfilled') setOrbit(orbitResult.value);
-    else
-      setDailyError(
-        orbitResult.reason instanceof DailyWorkspaceHttpError
-          ? orbitResult.reason
+
+    if (suppliedTodayClient && !suppliedDailyClient) {
+      const [todayResult, orbitResult] = await Promise.allSettled([
+        todayClient.loadToday(),
+        dailyClient.loadOrbit()
+      ]);
+      if (todayResult.status === 'fulfilled') setToday(todayResult.value);
+      else
+        setTodayError(
+          todayResult.reason instanceof TodayHttpError
+            ? todayResult.reason
+            : new TodayHttpError(503, 'TODAY_REQUEST_FAILED', 'Lite Today is unavailable.')
+        );
+      if (orbitResult.status === 'fulfilled') setOrbit(orbitResult.value);
+      else
+        setDailyError(
+          orbitResult.reason instanceof DailyWorkspaceHttpError
+            ? orbitResult.reason
+            : new DailyWorkspaceHttpError(
+                503,
+                'DAILY_ORBIT_UNAVAILABLE',
+                'Daily Orbit is unavailable.',
+                true
+              )
+        );
+      return;
+    }
+
+    try {
+      const workspace = await dailyClient.loadWorkspace();
+      const projection = projectDailyWorkspacePrimary(workspace);
+      setToday(projection.today);
+      setOrbit(projection.orbit);
+    } catch (cause) {
+      const error =
+        cause instanceof DailyWorkspaceHttpError
+          ? cause
           : new DailyWorkspaceHttpError(
               503,
-              'DAILY_ORBIT_UNAVAILABLE',
-              'Daily Orbit is unavailable.',
+              'DAILY_WORKSPACE_UNAVAILABLE',
+              'Daily Workspace is unavailable.',
               true
-            )
-      );
+            );
+      setDailyError(error);
+      setTodayError(new TodayHttpError(error.status, error.code, error.message));
+    }
   };
 
   useEffect(() => {

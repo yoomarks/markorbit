@@ -46,10 +46,7 @@ describe('Daily Workspace primary projection', () => {
     const result = projectDailyWorkspacePrimary(
       snapshot({
         partial: true,
-        warnings: [
-          'SEE_CREATE:Knowledge refresh is stale.',
-          'MOVE_UNAVAILABLE'
-        ]
+        warnings: ['SEE_CREATE:Knowledge refresh is stale.', 'MOVE_UNAVAILABLE']
       })
     );
 
