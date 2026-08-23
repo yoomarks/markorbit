@@ -91,7 +91,7 @@ function canonicalDocument(scenario) {
     objectType: 'CANONICAL_DOWNSTREAM_DOCUMENT',
     id: scenarioIds.canonicalDocumentId,
     workspaceId: DEFAULT_WORKSPACE.id,
-    status: 'PROMOTED',
+    status: 'READY',
     origin: {
       kind: 'VAULT_IMPORT',
       inspectionRunId: scenarioIds.inspectionRunId,
@@ -130,16 +130,16 @@ function databasePath(scenario) {
   return path.join(ARTIFACT_DIR, `knowledge-e2e-${scenario}.sqlite`);
 }
 
-async function createFixture(scenario, { preserve = false } = {}) {
+async function createFixture(scenario) {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   const file = databasePath(scenario);
-  if (!preserve) await rm(file, { force: true });
+  await rm(file, { force: true });
   const db = new DatabaseSync(file);
   initializeRegistry(db);
   ensureCanonicalDownstreamDocumentRegistry(db);
   const document = canonicalDocument(scenario);
   db.prepare(
-    `INSERT OR IGNORE INTO canonical_downstream_documents
+    `INSERT INTO canonical_downstream_documents
      (id, workspace_id, origin_kind, vault_staging_document_id, import_intent_id,
       verification_id, finalization_id, content_sha256, frozen_digest, status,
       document_json, promoted_at)
@@ -165,13 +165,10 @@ async function createFixture(scenario, { preserve = false } = {}) {
     () => new Date('2026-08-23T10:05:00.000Z'),
     () => scenarioIds.readyPackageId
   );
-  let readyPackage = readyPackages.getById(DEFAULT_WORKSPACE.id, scenarioIds.readyPackageId);
-  if (!readyPackage) {
-    readyPackage = readyPackages.createFromCanonical({
-      workspaceId: DEFAULT_WORKSPACE.id,
-      canonicalDocumentId: document.id
-    }).readyPackage;
-  }
+  const readyPackage = readyPackages.createFromCanonical({
+    workspaceId: DEFAULT_WORKSPACE.id,
+    canonicalDocumentId: document.id
+  }).readyPackage;
   const contentExport = {
     contractVersion: '2.0',
     objectType: 'READY_PACKAGE_CONTENT_EXPORT',
@@ -289,10 +286,7 @@ async function e2e02() {
         fixture.readyPackage.id
       )
     );
-    const uncertain = fixture.deliveries.getByReadyPackage(
-      DEFAULT_WORKSPACE.id,
-      fixture.readyPackage.id
-    );
+    const uncertain = fixture.deliveries.getByReadyPackage(DEFAULT_WORKSPACE.id, fixture.readyPackage.id);
     assert.ok(uncertain);
     assert.equal(uncertain.state, 'PENDING');
     assert.equal(uncertain.transportAttempts, 1);
@@ -334,16 +328,10 @@ async function e2e03PrepareCrash() {
   });
   try {
     await assert.rejects(
-      service(crashRepository, httpTransport(calls)).submit(
-        DEFAULT_WORKSPACE.id,
-        fixture.readyPackage.id
-      ),
+      service(crashRepository, httpTransport(calls)).submit(DEFAULT_WORKSPACE.id, fixture.readyPackage.id),
       /E2E_SIMULATED_KNOWLEDGE_PROCESS_CRASH_BEFORE_FINALIZATION/u
     );
-    const pending = fixture.deliveries.getByReadyPackage(
-      DEFAULT_WORKSPACE.id,
-      fixture.readyPackage.id
-    );
+    const pending = fixture.deliveries.getByReadyPackage(DEFAULT_WORKSPACE.id, fixture.readyPackage.id);
     assert.ok(pending);
     assert.equal(pending.state, 'PENDING');
     assert.equal(pending.transportResult?.status, 'ACCEPTED');
@@ -411,10 +399,7 @@ async function e2e04() {
     const deliveries = new SqliteReadyPackageV2DeliverySubmissionRepository(reopened);
     assert.throws(
       () => deliveries.getByReadyPackage(DEFAULT_WORKSPACE.id, fixture.readyPackage.id),
-      (error) =>
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
+      (error) => error && typeof error === 'object' && 'code' in error &&
         error.code === 'READY_PACKAGE_V2_DELIVERY_PERSISTED_STATE_INVALID'
     );
   } finally {
@@ -470,10 +455,7 @@ async function e2e07() {
     assert.ok(results.every((result) => result.requestSha256 === frozen.requestSha256));
     const statuses = calls.map((call) => call.status).sort((left, right) => left - right);
     assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 200, 201]);
-    const attempted = fixture.deliveries.markTransportAttempt(
-      DEFAULT_WORKSPACE.id,
-      frozen.submissionId
-    );
+    const attempted = fixture.deliveries.markTransportAttempt(DEFAULT_WORKSPACE.id, frozen.submissionId);
     assert.equal(attempted.transportAttempts, 1);
     const transportRecorded = fixture.deliveries.recordTransportResult(
       DEFAULT_WORKSPACE.id,
@@ -496,16 +478,7 @@ async function writeEvidence(name, value) {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await writeFile(
     path.join(ARTIFACT_DIR, name),
-    `${JSON.stringify(
-      {
-        integrationId: INTEGRATION_ID,
-        providerSha: PROVIDER_SHA,
-        coreHeadSha: CORE_HEAD_SHA,
-        ...value
-      },
-      null,
-      2
-    )}\n`,
+    `${JSON.stringify({ integrationId: INTEGRATION_ID, providerSha: PROVIDER_SHA, coreHeadSha: CORE_HEAD_SHA, ...value }, null, 2)}\n`,
     'utf8'
   );
 }
