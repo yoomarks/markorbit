@@ -1,8 +1,8 @@
 # Data Engine Provider Response Receipt — MO-DE G0
 
-Status: **RECEIVED — CONSUMER REVIEW PENDING**
+Status: **ACCEPTED — G0 CLOSED**
 
-This file records the formal provider response from `yoomarks/markorbit-data-engine` for the shared MarkOrbit × Data Engine requirements `MO-DE-001` through `MO-DE-005`.
+This file records the formal provider response from `yoomarks/markorbit-data-engine` for the shared MarkOrbit × Data Engine requirements `MO-DE-001` through `MO-DE-005` and MarkOrbit's consumer acceptance.
 
 ## Provider evidence
 
@@ -11,6 +11,8 @@ This file records the formal provider response from `yoomarks/markorbit-data-eng
 - Provider PR head: `cde643ea546a5ee7d885f94b56715c6907442df9`
 - Provider squash-merge SHA: `42637eec302b1e2feeb6825e4f7b5208f4d00b9e`
 - Provider CI for final PR head: `30/30 completed/success`
+- MarkOrbit acceptance PR: `#176`
+- MarkOrbit acceptance merge SHA: `a8035efff46a2e71a4613abd1927b18dadff086b`
 
 Canonical provider artifacts remain in the provider repository and are referenced rather than copied:
 
@@ -22,56 +24,51 @@ Canonical provider artifacts remain in the provider repository and are reference
 - formal provider response: `docs/integrations/markorbit/MO-DE-G0-RESPONSE-2026-08-23.md`
 - provider regression coverage: `tests/test_mo_de_g0_contract.py`
 
-## MO-DE-001 — Provider resolution received
+## Accepted provider freeze
 
-Data Engine froze the V1 query contract as an additive-compatible, machine-readable provider contract. The provider runtime descriptor now self-describes the stable resources and exact query bounds/pagination semantics. Breaking changes require an explicit cross-repository migration/RFC or a new integration version.
+### MO-DE-001 — Query Contract V1
 
-Consumer review required: validate MarkOrbit Gateway/contracts against the canonical provider contract without copying provider storage/schema ownership into MarkOrbit.
+Accepted. Data Engine owns the canonical additive-compatible machine-readable V1 provider contract and runtime self-description. MarkOrbit validates the consumer boundary against this contract and does not copy provider storage/schema ownership.
 
-## MO-DE-002 — Provider resolution received
+### MO-DE-002 — Missing / coverage / tombstone semantics
 
-Provider semantics distinguish `observed`, `not_found`, `not_covered`, `no_observation`, `tombstone`, and `service_unavailable`. Current V1 explicitly proves/emits only `observed`, `not_found`, and `service_unavailable`; the other factual-negative/coverage states remain reserved until Data Engine has evidence to emit them.
+Accepted. MarkOrbit preserves `unknown` unless Data Engine explicitly emits evidence-backed `not_covered`, `no_observation`, or `tombstone`. A provider `404/not_found` means the requested key is absent from the current provider read model; it does not prove provider coverage or legal/factual nonexistence. Timeout, 5xx, transport failure and runtime unavailability must never be converted into factual negatives.
 
-Cross-repo decision requested: MarkOrbit should preserve `unknown` when Data Engine cannot explicitly prove `not_covered`, `no_observation`, or `tombstone`, and must never derive factual absence from timeout, 5xx, transport failure or runtime unavailability.
+### MO-DE-003 — Service authentication
 
-## MO-DE-003 — Provider resolution received
+Accepted. G1 uses `Authorization: Bearer <key>` with `auth=required`, environment-scoped secrets, minimum 32-character keys, overlap rotation, `401` for missing/invalid caller credentials and fail-closed provider configuration behavior.
 
-The frozen provider authentication mechanism is `Authorization: Bearer <key>` with minimum 32-character service keys, multi-key overlap rotation, `disabled|required` modes, `401` for missing/invalid caller credentials and `503` for invalid required-mode provider configuration. G1 target remains `auth=required`; secrets stay environment-local and are not committed.
+### MO-DE-004 — Request / correlation tracing
 
-Consumer review required: MarkOrbit Gateway must inject the environment-specific Bearer credential and treat provider auth failures according to the frozen contract.
+Accepted. `x-correlation-id` is the end-to-end cross-service correlation identifier. `X-Request-ID` is the Data Engine provider hop/request identifier and current provider trace identifier. Gateway must forward/generate these according to the frozen contract and validate provider response echo metadata.
 
-## MO-DE-004 — Provider resolution received
+### MO-DE-005 — Runtime error / timeout / retry semantics
 
-Data Engine froze `x-correlation-id` as the end-to-end cross-service correlation identifier and `X-Request-ID` as the provider hop/request identifier and current provider trace identifier. Valid caller correlation/request identifiers are preserved according to the provider contract and integration responses echo the required identifiers.
+Accepted. Gateway behavior is driven by the provider status plus machine-readable `{ code, message, retryable }` error envelope and `Retry-After` where applicable. Schema/version mismatch fails closed. Provider/runtime failure is not converted into an empty or negative fact result.
 
-Cross-repo decision requested: MarkOrbit should accept and implement this exact relationship in Gateway propagation/logging.
+## Joint decisions accepted
 
-## MO-DE-005 — Provider resolution received
+1. Preserve `unknown` until Data Engine explicitly emits an evidence-backed `not_covered`, `no_observation`, or `tombstone` state.
+2. Use `x-correlation-id` end-to-end and `X-Request-ID` for the Data Engine provider hop/request and current provider trace identifier.
 
-Data Engine froze a stable `/api/v1` error envelope with machine-readable error code/message/retryability, validation as `400`, retryable `429` with `Retry-After`, and retryable runtime/network/5xx semantics that must never be converted into factual negatives. Provider backpressure is opt-in and remains disabled by default outside an explicit acceptance/runtime profile.
+## G0 completion
 
-Consumer review required: Gateway retry/degradation must be driven by contract metadata/status, not log-text/string matching or empty-data substitution.
+`MO-DE-001` through `MO-DE-005` are accepted and frozen for the V1 integration. G0 is closed.
 
-## MO-DE-006 — G1 implementation / acceptance plan
+## G1 — MO-DE-006 started
 
-`MO-DE-006` remains blocked until MarkOrbit explicitly accepts the G0 provider freeze above. After acceptance:
+The active stage is now **G1 — Protected Query Runtime**. The acceptance target is a real authenticated path:
 
-1. expose a non-production Data Engine runtime with `INTEGRATION_AUTH_MODE=required` and isolated acceptance credentials;
-2. configure MarkOrbit Gateway to call that runtime using the frozen Bearer contract;
-3. validate the provider machine-readable contract/schema in the consumer lane;
-4. run a real authenticated cross-repository acceptance path: `MarkOrbit Gateway -> Data Engine runtime -> validated response`;
-5. cover at minimum 200 success, 401, applicable 403 semantics, not-found, supported coverage/no-observation semantics, 429/Retry-After, timeout, provider 5xx, schema/version fail-closed behavior, and request/correlation propagation;
-6. record evidence in both repository ledgers before declaring G1 complete.
+```text
+MarkOrbit Gateway
+  -> Authorization: Bearer <environment-scoped service key>
+  -> Data Engine runtime with INTEGRATION_AUTH_MODE=required
+  -> V1 contract/fact validation
+  -> correlated response/error evidence
+```
+
+G1 must cover authenticated 200, unauthenticated 401, 403 only if a provider authorization scope layer exists, not-found without coverage inference, reserved coverage states preserving unknown, 429/Retry-After, timeout, provider 5xx, schema/version fail-closed behavior, and request/correlation propagation.
 
 Repository-local mocks/fixtures remain supporting evidence only and do not complete G1.
 
-## Compatibility / decision requests
-
-No provider incompatibility requires a breaking contract change at G0. Two joint consumer decisions remain explicit rather than silently inferred:
-
-1. preserve `unknown` until Data Engine explicitly emits an evidence-backed `not_covered`, `no_observation`, or `tombstone` state;
-2. accept `x-correlation-id` as end-to-end correlation and `X-Request-ID` as Data Engine provider hop/request plus current provider trace identifier.
-
-## Next MarkOrbit action
-
-Review and either accept or reject the two joint decisions and the provider-frozen `MO-DE-001..005` contract. Only after consumer acceptance should the MarkOrbit ledger close G0 and unblock `MO-DE-006` G1 implementation/acceptance work.
+`MO-DE-007` and `MO-DE-008` remain deferred and are not authorized for implementation in G1.
