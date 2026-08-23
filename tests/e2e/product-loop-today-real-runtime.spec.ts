@@ -289,7 +289,9 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
         return method === 'GET' && requestUrl.pathname === '/api/lite/daily-orbit';
       })
     ).toBe(false);
-    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/content-kits/'))).toBe(true);
+    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/content-kits/'))).toBe(
+      true
+    );
     expect(productLoopRequests.some(({ url }) => url.includes('/prepared-actions'))).toBe(true);
 
     if (test.info().project.name.includes('mobile')) {
