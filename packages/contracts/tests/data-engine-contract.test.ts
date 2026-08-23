@@ -41,7 +41,8 @@ const g0Contract = {
     multi_key_rotation: true,
     unauthenticated_status: 401,
     forbidden_status: 403,
-    forbidden_current_behavior: 'reserved; V1 has no scope/role authorization layer'
+    forbidden_current_behavior:
+      'reserved; V1 has no scope/role authorization layer'
   },
   tracing: {
     request_id_header: 'X-Request-ID',
@@ -60,12 +61,20 @@ const g0Contract = {
       optional: ['detail', 'fact_state']
     },
     status_codes: {
-      '401': { retryable: false, meaning: 'missing or invalid service credential' },
-      '429': { retryable: true, meaning: 'provider backpressure; obey Retry-After' },
+      '401': {
+        retryable: false,
+        meaning: 'missing or invalid service credential'
+      },
+      '429': {
+        retryable: true,
+        meaning: 'provider backpressure; obey Retry-After'
+      },
       '503': { retryable: true, meaning: 'provider/dependency unavailable' }
     },
-    timeout: 'consumer/network timeout is retryable and must never be converted to a factual negative',
-    schema_mismatch: 'consumer fails closed when contract_version differs from the supported contract'
+    timeout:
+      'consumer/network timeout is retryable and must never be converted to a factual negative',
+    schema_mismatch:
+      'consumer fails closed when contract_version differs from the supported contract'
   },
   rate_limit: {
     server_enforcement_default: false,
