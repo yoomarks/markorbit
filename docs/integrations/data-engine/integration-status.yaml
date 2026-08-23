@@ -1,17 +1,19 @@
 schema_version: 1
 integration:
   name: markorbit-data-engine
-  stage: G0
-  stage_name: Contract Freeze
-  status: provider_response_received
-  consumer_status: review_pending
+  stage: G1
+  stage_name: Protected Query Runtime
+  status: g0_closed_g1_ready
+  consumer_status: accepted
   initiated_at: 2026-08-23
   provider_response_received_at: 2026-08-23
+  g0_closed_at: 2026-08-23
+  g0_acceptance_commit: a8035efff46a2e71a4613abd1927b18dadff086b
 baselines:
   markorbit:
     repository: yoomarks/markorbit
     role: consumer-authority
-    baseline_sha: 356036671fcf6eb67494bcf05878faa3da5fc470
+    baseline_sha: a8035efff46a2e71a4613abd1927b18dadff086b
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
@@ -48,38 +50,32 @@ requirements:
     title: Query Contract V1 Freeze
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: frozen_accepted
   - id: MO-DE-002
     title: Missing Coverage Tombstone Semantics
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: frozen_accepted
   - id: MO-DE-003
     title: Service Authentication Security Contract
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: frozen_accepted
   - id: MO-DE-004
     title: Request Correlation Tracing
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: frozen_accepted
   - id: MO-DE-005
     title: Runtime Error Timeout Retry Semantics
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: frozen_accepted
   - id: MO-DE-006
     title: Authenticated Cross Repository Acceptance
     stage: G1
     priority: P1
-    status: blocked_by_g0_consumer_acceptance
-    blocked_by:
-      - MO-DE-001
-      - MO-DE-002
-      - MO-DE-003
-      - MO-DE-004
-      - MO-DE-005
+    status: ready
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -90,9 +86,11 @@ requirements:
     stage: G2
     priority: P2-decision
     status: deferred_no_implementation
-cross_repo_decisions_pending:
-  - preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
-  - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
+cross_repo_decisions_accepted:
+  - id: preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
+    accepted_by: a8035efff46a2e71a4613abd1927b18dadff086b
+  - id: accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
+    accepted_by: a8035efff46a2e71a4613abd1927b18dadff086b
 rules:
   g1_requires_g0_closed: true
   cross_repo_ids_required_in_prs_and_tests: true
