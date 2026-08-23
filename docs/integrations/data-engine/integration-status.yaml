@@ -1,17 +1,20 @@
 schema_version: 1
 integration:
   name: markorbit-data-engine
-  stage: G0
-  stage_name: Contract Freeze
-  status: provider_response_received
-  consumer_status: review_pending
+  stage: G1
+  stage_name: Protected Query Runtime
+  status: active
+  consumer_status: g0_accepted_g1_started
   initiated_at: 2026-08-23
   provider_response_received_at: 2026-08-23
+  g0_closed_at: 2026-08-23
+  g1_started_at: 2026-08-23
 baselines:
   markorbit:
     repository: yoomarks/markorbit
     role: consumer-authority
-    baseline_sha: 356036671fcf6eb67494bcf05878faa3da5fc470
+    baseline_sha: a8035efff46a2e71a4613abd1927b18dadff086b
+    g0_acceptance_pr: 176
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
@@ -48,38 +51,47 @@ requirements:
     title: Query Contract V1 Freeze
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-002
     title: Missing Coverage Tombstone Semantics
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-003
     title: Service Authentication Security Contract
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-004
     title: Request Correlation Tracing
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-005
     title: Runtime Error Timeout Retry Semantics
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-006
     title: Authenticated Cross Repository Acceptance
     stage: G1
     priority: P1
-    status: blocked_by_g0_consumer_acceptance
-    blocked_by:
-      - MO-DE-001
-      - MO-DE-002
-      - MO-DE-003
-      - MO-DE-004
-      - MO-DE-005
+    status: active
+    prerequisites:
+      - auth_required_runtime_profile
+      - real_cross_repo_runtime_lane
+      - consumer_contract_validation
+    acceptance_required:
+      - authenticated_200
+      - unauthenticated_401
+      - forbidden_403_if_provider_scope_layer_exists
+      - not_found_without_coverage_inference
+      - reserved_coverage_states_preserve_unknown
+      - rate_limit_429_retry_after
+      - timeout_retryable
+      - provider_5xx_service_unavailable
+      - schema_version_fail_closed
+      - correlation_and_request_id_propagation
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -90,14 +102,16 @@ requirements:
     stage: G2
     priority: P2-decision
     status: deferred_no_implementation
-cross_repo_decisions_pending:
+cross_repo_decisions_accepted:
   - preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
   - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
 rules:
   g1_requires_g0_closed: true
+  g0_closed: true
   cross_repo_ids_required_in_prs_and_tests: true
   copy_requirements_between_repos: false
   breaking_change_requires_rfc: true
   repository_local_green_ci_is_sufficient: false
   final_g1_auth_mode: required
   production_authorization: false
+  mo_de_007_008_implementation_authorized: false
