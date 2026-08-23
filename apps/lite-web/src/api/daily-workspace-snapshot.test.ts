@@ -70,7 +70,10 @@ describe('Daily Workspace aggregate client', () => {
       externalPublishExecuted: false as const,
       officialTruthCreated: false as const
     };
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(jsonResponse(partial))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(jsonResponse(partial)))
+    );
 
     const result = await createDailyWorkspaceClient(workspaceId).loadWorkspace();
     expect(result.partial).toBe(true);
