@@ -89,6 +89,7 @@
     "0059_lite_trademark_asset_management_disposition_recovery": "@markorbit/lite-service",
     "0060_lite_trademark_service_work_packages": "@markorbit/lite-service",
     "0061_execution_trademark_service_sessions": "@markorbit/execution-service",
-    "0062_execution_trademark_service_sandbox_policy": "@markorbit/execution-service"
+    "0062_execution_trademark_service_sandbox_policy": "@markorbit/execution-service",
+    "0063_core_knowledge_v2_delivery_acceptance": "@markorbit/core-service"
   }
 }
