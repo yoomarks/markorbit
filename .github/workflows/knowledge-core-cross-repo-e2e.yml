@@ -20,7 +20,7 @@ jobs:
       - name: Checkout MarkOrbit consumer
         uses: actions/checkout@v4
 
-      - name: Checkout pinned Knowledge provider
+      - name: Checkout Knowledge provider source
         uses: actions/checkout@v4
         with:
           repository: yoomarks/markorbit-knowledge
@@ -34,7 +34,10 @@ jobs:
           echo "protocol=${KNOWLEDGE_PROTOCOL}" >> acceptance-boundary.txt
           echo "production=${PRODUCTION_ACTIVATION}" >> acceptance-boundary.txt
 
-      - name: Run Core KV2 acceptance tests
+      - name: Verify acceptance harness exists
         run: |
-          echo "Run MarkOrbit owned KV2 acceptance harness"
-          echo "Real provider pinning and runtime matrix must be supplied by the harness implementation."
+          test -d tests/integration/knowledge || (echo 'Missing MarkOrbit-owned Knowledge acceptance harness' && exit 1)
+
+      - name: Run MarkOrbit owned KV2 acceptance harness
+        run: |
+          pnpm test --filter core -- tests/integration/knowledge
