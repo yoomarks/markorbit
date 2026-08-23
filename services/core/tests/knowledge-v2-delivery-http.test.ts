@@ -122,7 +122,7 @@ async function postRaw(
 afterEach(async () => Promise.all(runtimes.splice(0).map((runtime) => runtime.stop())));
 
 describe('ReadyPackage V2 delivery HTTP boundary', () => {
-  it('persists RECEIVED and echoes SHA-256 of the exact received bytes', async () => {
+  it('durably ACCEPTS a fully validated delivery and echoes the exact received-byte SHA-256', async () => {
     const { runtime, repository } = await start();
     const raw = JSON.stringify(delivery(), null, 2);
     const result = await postRaw(runtime, raw);
@@ -140,13 +140,33 @@ describe('ReadyPackage V2 delivery HTTP boundary', () => {
       objectType: 'READY_PACKAGE_V2_DELIVERY_RESULT',
       deliveryId: 'rvd_01H00000000000000000000022',
       readyPackageId: 'rdp_01H00000000000000000000022',
-      status: 'RECEIVED',
+      status: 'ACCEPTED',
       requestSha256: sha256(raw)
     });
     expect(repository.count()).toBe(1);
+    const stored = await repository.findByDeliveryId('rvd_01H00000000000000000000022');
+    expect(stored?.status).toBe('ACCEPTED');
+    expect(stored?.acceptedAt).toEqual(expect.any(String));
+    expect(stored?.acceptanceEvidence).toMatchObject({
+      evidenceVersion: 'CORE_KNOWLEDGE_V2_ACCEPTANCE_V1',
+      protocolVersion: '1.0',
+      contentExportContractVersion: '2.0',
+      requestSha256: sha256(raw),
+      targetWorkspaceId: workspaceId,
+      canonicalDocument: {
+        documentId: 'cdd_01H00000000000000000000022'
+      },
+      provenance: {
+        legalTruthVerified: false,
+        origin: {
+          kind: 'VAULT_IMPORT',
+          binding: { bindingId: 'vlt_01H00000000000000000000022', revision: 1 }
+        }
+      }
+    });
   });
 
-  it('replays the same exact request across a service restart without duplicate persistence', async () => {
+  it('replays the same exact ACCEPTED result across a service restart without duplicate persistence', async () => {
     const repository = new MemoryKnowledgeV2DeliveryRepository();
     const raw = JSON.stringify(delivery(), null, 2);
     const firstRuntime = (await start(repository)).runtime;
@@ -155,6 +175,7 @@ describe('ReadyPackage V2 delivery HTTP boundary', () => {
     const secondRuntime = (await start(repository)).runtime;
     const replay = await postRaw(secondRuntime, raw);
     expect(first.response.status).toBe(201);
+    expect(first.json.status).toBe('ACCEPTED');
     expect(replay.response.status).toBe(200);
     expect(replay.json).toEqual(first.json);
     expect(repository.count()).toBe(1);
@@ -223,6 +244,43 @@ describe('ReadyPackage V2 delivery HTTP boundary', () => {
     const result = await postRaw(runtime, JSON.stringify(value));
     expect(result.response.status).toBe(409);
     expect(result.json.code).toBe('KNOWLEDGE_V2_CONTENT_DIGEST_MISMATCH');
+    expect(repository.count()).toBe(0);
+  });
+
+  it('rejects Markdown byte-size evidence that is internally inconsistent', async () => {
+    const { runtime, repository } = await start();
+    const exported = contentExport();
+    exported.content.sizeBytes += 1;
+    const value = delivery(exported);
+    const result = await postRaw(runtime, JSON.stringify(value));
+    expect(result.response.status).toBe(409);
+    expect(result.json.code).toBe('KNOWLEDGE_V2_CONTENT_SIZE_MISMATCH');
+    expect(repository.count()).toBe(0);
+  });
+
+  it.each([
+    {
+      label: 'Vault binding revision',
+      mutate: (raw: string) => raw.replace('"revision":1', '"revision":0')
+    },
+    {
+      label: 'CAS reference',
+      mutate: (raw: string) =>
+        raw.replace(
+          /"contentAddressedRef":"cas:sha256:[a-f0-9]{64}"/u,
+          '"contentAddressedRef":"cas:sha256:invalid"'
+        )
+    },
+    {
+      label: 'legal truth boundary',
+      mutate: (raw: string) =>
+        raw.replace('"legalTruthVerified":false', '"legalTruthVerified":true')
+    }
+  ])('rejects invalid frozen $label provenance/content semantics', async ({ mutate }) => {
+    const { runtime, repository } = await start();
+    const result = await postRaw(runtime, mutate(JSON.stringify(delivery())));
+    expect(result.response.status).toBe(400);
+    expect(result.json.code).toBe('INVALID_REQUEST');
     expect(repository.count()).toBe(0);
   });
 

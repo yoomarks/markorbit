@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   serializeReadyPackageContentExportV2,
+  serializeReadyPackageV2DeliveryRequestV1,
   type ReadyPackageContentExportV2,
   type ReadyPackageV2DeliveryRequestV1
 } from '@markorbit/contracts';
@@ -132,7 +134,7 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP FUNCTION IF EXISTS protect_knowledge_v2_delivery_immutable_evidence() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_knowledge_v2_delivery', await migrations());
     await new PostgresWorkspaceRepository(database.getPool()).create({
@@ -143,9 +145,17 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
   });
   afterAll(async () => database.close());
 
-  it('owns and reapplies migration 0048 deterministically', async () => {
+  it('owns 0048 and additive 0063 without silently upgrading historical RECEIVED rows', async () => {
     const owned = await migrations();
     expect(owned.some((migration) => migration.name === 'core_knowledge_v2_deliveries')).toBe(true);
+    expect(
+      owned.some((migration) => migration.name === 'core_knowledge_v2_delivery_acceptance')
+    ).toBe(true);
+    const migrationSql = await readFile(
+      path.join(migrationsDirectory, '0063_core_knowledge_v2_delivery_acceptance.sql'),
+      'utf8'
+    );
+    expect(migrationSql).not.toMatch(/UPDATE\s+knowledge_v2_deliveries/iu);
     await migrate(database.getPool(), 'core_knowledge_v2_delivery', owned);
     expect(
       (await migrationStatus(database.getPool(), 'core_knowledge_v2_delivery', owned)).every(
@@ -155,12 +165,22 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     await verifyMigrations(database.getPool(), 'core_knowledge_v2_delivery', owned);
   });
 
-  it('persists one logical delivery and replays it after a database restart', async () => {
+  it('persists one durable ACCEPTED result with immutable evidence and replays it after restart', async () => {
+    await database.getPool().query('DELETE FROM knowledge_v2_deliveries');
     const original = candidate();
     const first = await new PostgresKnowledgeV2DeliveryRepository(database.getPool()).createOrFind(
       original
     );
     expect(first.created).toBe(true);
+    expect(first.delivery.status).toBe('ACCEPTED');
+    expect(first.delivery.acceptedAt).toEqual(expect.any(String));
+    expect(first.delivery.acceptanceEvidence).toMatchObject({
+      evidenceVersion: 'CORE_KNOWLEDGE_V2_ACCEPTANCE_V1',
+      contentExportContractVersion: '2.0',
+      requestSha256: original.requestSha256,
+      provenance: { legalTruthVerified: false }
+    });
+
     await database.close();
     database = new ManagedDatabase(config());
     await database.start();
@@ -180,7 +200,81 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     expect(count.rows[0]!.count).toBe(1);
   });
 
-  it('allows only one concurrent creation for the same frozen idempotency identity', async () => {
+  it('revalidates an exact retry before upgrading a durable historical RECEIVED row', async () => {
+    await database.getPool().query('DELETE FROM knowledge_v2_deliveries');
+    const legacy = candidate(sha256(JSON.stringify(request(), null, 2)));
+    await database.getPool().query(
+      `INSERT INTO knowledge_v2_deliveries(
+        delivery_id,idempotency_key,target_workspace_id,knowledge_workspace_id,ready_package_id,
+        ready_package_digest,content_export_sha256,request_sha256,request_json,submitted_at,
+        received_at,status
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,'RECEIVED')`,
+      [
+        legacy.deliveryId,
+        legacy.idempotencyKey,
+        legacy.targetWorkspaceId,
+        legacy.knowledgeWorkspaceId,
+        legacy.readyPackageId,
+        legacy.readyPackageDigest,
+        legacy.contentExportSha256,
+        legacy.requestSha256,
+        serializeReadyPackageV2DeliveryRequestV1(legacy.request),
+        legacy.submittedAt,
+        legacy.receivedAt
+      ]
+    );
+    const before = await database
+      .getPool()
+      .query<{ status: string; accepted_at: Date | null }>(
+        'SELECT status,accepted_at FROM knowledge_v2_deliveries WHERE delivery_id=$1',
+        [legacy.deliveryId]
+      );
+    expect(before.rows[0]).toMatchObject({ status: 'RECEIVED', accepted_at: null });
+
+    const reconciled = await new PostgresKnowledgeV2DeliveryRepository(
+      database.getPool()
+    ).createOrFind(legacy);
+    expect(reconciled.created).toBe(false);
+    expect(reconciled.delivery.status).toBe('ACCEPTED');
+    expect(reconciled.delivery.acceptanceEvidence).toMatchObject({
+      requestSha256: legacy.requestSha256,
+      canonicalDocument: { documentId: legacy.request.contentExport.canonicalDocument.documentId },
+      provenance: { legalTruthVerified: false }
+    });
+  });
+
+  it('does not upgrade historical RECEIVED when the retry exact-request SHA differs', async () => {
+    await database.getPool().query('DELETE FROM knowledge_v2_deliveries');
+    const legacy = candidate('4'.repeat(64));
+    await database.getPool().query(
+      `INSERT INTO knowledge_v2_deliveries(
+        delivery_id,idempotency_key,target_workspace_id,knowledge_workspace_id,ready_package_id,
+        ready_package_digest,content_export_sha256,request_sha256,request_json,submitted_at,
+        received_at,status
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,'RECEIVED')`,
+      [
+        legacy.deliveryId,
+        legacy.idempotencyKey,
+        legacy.targetWorkspaceId,
+        legacy.knowledgeWorkspaceId,
+        legacy.readyPackageId,
+        legacy.readyPackageDigest,
+        legacy.contentExportSha256,
+        legacy.requestSha256,
+        serializeReadyPackageV2DeliveryRequestV1(legacy.request),
+        legacy.submittedAt,
+        legacy.receivedAt
+      ]
+    );
+    const replay = await new PostgresKnowledgeV2DeliveryRepository(database.getPool()).createOrFind(
+      candidate('5'.repeat(64))
+    );
+    expect(replay.delivery.status).toBe('RECEIVED');
+    expect(replay.delivery.acceptedAt).toBeUndefined();
+    expect(replay.delivery.acceptanceEvidence).toBeUndefined();
+  });
+
+  it('allows only one concurrent durable acceptance for the same frozen identity', async () => {
     await database.getPool().query('DELETE FROM knowledge_v2_deliveries');
     const repository = new PostgresKnowledgeV2DeliveryRepository(database.getPool());
     const results = await Promise.all([
@@ -190,6 +284,8 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     expect(results.filter((result) => result.created)).toHaveLength(1);
     expect(new Set(results.map((result) => result.delivery.deliveryId)).size).toBe(1);
     expect(new Set(results.map((result) => result.delivery.requestSha256)).size).toBe(1);
+    expect(new Set(results.map((result) => result.delivery.status))).toEqual(new Set(['ACCEPTED']));
+    expect(new Set(results.map((result) => result.delivery.acceptedAt)).size).toBe(1);
   });
 
   it('preserves the first exact-request identity under a concurrent conflicting retry', async () => {
@@ -201,9 +297,39 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     ]);
     expect(results.filter((result) => result.created)).toHaveLength(1);
     expect(new Set(results.map((result) => result.delivery.requestSha256)).size).toBe(1);
+    expect(new Set(results.map((result) => result.delivery.status))).toEqual(new Set(['ACCEPTED']));
     const count = await database
       .getPool()
       .query<{ count: number }>('SELECT count(*)::int AS count FROM knowledge_v2_deliveries');
     expect(count.rows[0]!.count).toBe(1);
+  });
+
+  it('enforces frozen input and terminal ACCEPTED evidence immutability in PostgreSQL', async () => {
+    await database.getPool().query('DELETE FROM knowledge_v2_deliveries');
+    const repository = new PostgresKnowledgeV2DeliveryRepository(database.getPool());
+    await repository.createOrFind(candidate('6'.repeat(64)));
+    await expect(
+      database
+        .getPool()
+        .query('UPDATE knowledge_v2_deliveries SET ready_package_digest=$2 WHERE delivery_id=$1', [
+          request().deliveryId,
+          '7'.repeat(64)
+        ])
+    ).rejects.toThrow(/frozen input is immutable/u);
+    await expect(
+      database
+        .getPool()
+        .query("UPDATE knowledge_v2_deliveries SET status='RECEIVED' WHERE delivery_id=$1", [
+          request().deliveryId
+        ])
+    ).rejects.toThrow(/terminal status is immutable/u);
+    await expect(
+      database
+        .getPool()
+        .query(
+          "UPDATE knowledge_v2_deliveries SET acceptance_evidence=jsonb_set(acceptance_evidence,'{tampered}','true'::jsonb) WHERE delivery_id=$1",
+          [request().deliveryId]
+        )
+    ).rejects.toThrow(/acceptance evidence is immutable/u);
   });
 });

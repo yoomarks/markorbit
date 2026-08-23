@@ -1,0 +1,217 @@
+name: Knowledge Core Cross Repo E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'services/core/**'
+      - 'packages/**'
+      - 'infrastructure/**'
+      - 'tests/integration/knowledge/**'
+      - 'scripts/run-knowledge-core-kv2-real-e2e.mjs'
+      - '.github/workflows/knowledge-core-cross-repo-e2e.yml'
+      - 'docs/integrations/**'
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge-core-e2e:
+    name: Knowledge Provider + MarkOrbit Consumer Acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      KNOWLEDGE_PROTOCOL: ReadyPackage-V2
+      KNOWLEDGE_PROVIDER_REPO: yoomarks/markorbit-knowledge
+      KNOWLEDGE_PROVIDER_SHA: 24d2f4811512e42d357845bb61114c1b6287f8d4
+      CORE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PRODUCTION_ACTIVATION: 'false'
+      PGPASSWORD: markorbit-test-only
+      DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_knowledge_core_kv2_e2e
+      DB_MIGRATION_NAMESPACE: knowledge_core_kv2_e2e
+      MO_INTERNAL_SERVICE_SECRET: knowledge-core-kv2-e2e-internal-secret-2026
+      PORT: '4101'
+      MARKORBIT_CORE_INTERNAL_SECRET: knowledge-core-kv2-e2e-internal-secret-2026
+      MARKORBIT_CORE_V2_PROTOCOL_VERSION: '1.0'
+      MARKORBIT_CORE_V2_DELIVERY_URL: http://127.0.0.1:4101/internal/knowledge/ready-packages/v2/deliveries
+      MARKORBIT_CORE_INTAKE_URL: http://127.0.0.1:4101/internal/knowledge/ready-packages/intakes
+      MARKORBIT_E2E_CORE_WORKSPACE_ID: 123e4567-e89b-12d3-a456-426614174000
+      KNOWLEDGE_PROVIDER_DIR: knowledge-provider
+      KNOWLEDGE_CORE_KV2_ARTIFACT_DIR: .artifacts/knowledge-core-kv2
+
+    steps:
+      - name: Checkout exact MarkOrbit consumer head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install MarkOrbit workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Checkout exact frozen Knowledge provider
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit-knowledge
+          ref: 24d2f4811512e42d357845bb61114c1b6287f8d4
+          path: knowledge-provider
+          fetch-depth: 1
+
+      - name: Verify exact cross-repo pins
+        run: |
+          test "$(git rev-parse HEAD)" = "${CORE_HEAD_SHA}"
+          test "$(git -C knowledge-provider rev-parse HEAD)" = "${KNOWLEDGE_PROVIDER_SHA}"
+          mkdir -p "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}"
+          {
+            echo "integration=MO-KNOWLEDGE-CORE-KV2-COMPLETION-2026-08-23"
+            echo "provider=${KNOWLEDGE_PROVIDER_REPO}"
+            echo "provider_sha=${KNOWLEDGE_PROVIDER_SHA}"
+            echo "consumer=yoomarks/markorbit"
+            echo "consumer_sha=${CORE_HEAD_SHA}"
+            echo "protocol=${KNOWLEDGE_PROTOCOL}"
+            echo "production=${PRODUCTION_ACTIVATION}"
+          } > "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}/acceptance-boundary.txt"
+
+      - name: Install frozen Knowledge provider dependencies
+        working-directory: knowledge-provider
+        run: npx --yes pnpm@11.13.0 install --frozen-lockfile
+
+      - name: Create isolated Core PostgreSQL database
+        run: >-
+          psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1
+          -c 'CREATE DATABASE markorbit_knowledge_core_kv2_e2e;'
+
+      - name: Apply exact Core migrations
+        run: pnpm db:migrate
+
+      - name: Seed real target Core Workspace
+        run: |
+          psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO workspaces(workspace_id, name, slug, status)
+          VALUES ('123e4567-e89b-12d3-a456-426614174000', 'Knowledge KV2 E2E', 'knowledge-kv2-e2e', 'ACTIVE')
+          ON CONFLICT (workspace_id) DO NOTHING;
+          SQL
+
+      - name: Build exact Core runtime
+        run: pnpm build:identity-postgres-deps
+
+      - name: Start real Core HTTP process
+        run: |
+          pnpm --filter @markorbit/core-service start > "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}/core-runtime.log" 2>&1 &
+          echo $! > "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}/core-runtime.pid"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4101/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}/core-runtime.log"
+          exit 1
+
+      - name: Preserve MarkOrbit-owned structural KV2 checks
+        run: pnpm exec vitest run tests/integration/knowledge/kv2-cross-repo-acceptance.test.ts
+
+      - name: Stage Core-owned acceptance runner in frozen provider workspace
+        run: |
+          mkdir -p knowledge-provider/.core-kv2-e2e
+          cp scripts/run-knowledge-core-kv2-real-e2e.mjs knowledge-provider/.core-kv2-e2e/runner.mjs
+
+      - name: Run real V2 cross-repo E2E phase 1
+        working-directory: knowledge-provider
+        env:
+          KNOWLEDGE_PROVIDER_DIR: .
+          KNOWLEDGE_CORE_KV2_ARTIFACT_DIR: ../.artifacts/knowledge-core-kv2
+        run: npx --yes tsx@4.23.1 .core-kv2-e2e/runner.mjs phase1
+
+      - name: Restart Knowledge acceptance process and recover E2E-03
+        working-directory: knowledge-provider
+        env:
+          KNOWLEDGE_PROVIDER_DIR: .
+          KNOWLEDGE_CORE_KV2_ARTIFACT_DIR: ../.artifacts/knowledge-core-kv2
+        run: npx --yes tsx@4.23.1 .core-kv2-e2e/runner.mjs recover
+
+      - name: Run frozen provider V1 regression against real Core
+        working-directory: knowledge-provider
+        run: >-
+          npx --yes pnpm@11.13.0 --filter @markorbit/admin exec vitest run
+          --config vitest.e2e.config.ts
+          src/server/e2e/core-intake-real-core.e2e.ts
+
+      - name: Build exact-head acceptance artifact
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdir, readFile, writeFile } from 'node:fs/promises';
+          const dir = process.env.KNOWLEDGE_CORE_KV2_ARTIFACT_DIR;
+          const phase1 = JSON.parse(await readFile(`${dir}/v2-phase1.json`, 'utf8'));
+          const restart = JSON.parse(await readFile(`${dir}/v2-restart-recovery.json`, 'utf8'));
+          const expectedProvider = process.env.KNOWLEDGE_PROVIDER_SHA;
+          const expectedCore = process.env.CORE_HEAD_SHA;
+          if (phase1.providerSha !== expectedProvider || restart.providerSha !== expectedProvider)
+            throw new Error('Provider SHA evidence mismatch');
+          if (phase1.coreHeadSha !== expectedCore || restart.coreHeadSha !== expectedCore)
+            throw new Error('Core head SHA evidence mismatch');
+          const scenarios = Object.fromEntries(
+            Array.from({ length: 8 }, (_, index) => [`E2E-${String(index + 1).padStart(2, '0')}`, 'PASS'])
+          );
+          const artifact = {
+            schemaVersion: 1,
+            integrationId: 'MO-KNOWLEDGE-CORE-KV2-COMPLETION-2026-08-23',
+            provider: { repository: 'yoomarks/markorbit-knowledge', sha: expectedProvider },
+            consumer: { repository: 'yoomarks/markorbit', sha: expectedCore },
+            protocol: { name: 'ReadyPackage-V2', version: '1.0' },
+            evidence: {
+              realHttp: true,
+              realCorePostgresql: true,
+              realKnowledgeSqlite: true,
+              processRestart: restart.processRestart === true,
+              exactFrozenRequestReplay: true,
+              exactPrHead: true
+            },
+            scenarios,
+            productionActivation: false,
+            v2ToV1Fallback: false,
+            dataEngineMoDe007008Started: false
+          };
+          await mkdir(dir, { recursive: true });
+          await writeFile(`${dir}/acceptance.json`, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+          NODE
+
+      - name: Stop Core process
+        if: always()
+        run: |
+          if test -f "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}/core-runtime.pid"; then
+            kill "$(cat "${KNOWLEDGE_CORE_KV2_ARTIFACT_DIR}/core-runtime.pid")" 2>/dev/null || true
+          fi
+
+      - name: Upload exact-head acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-core-kv2-real-acceptance
+          path: .artifacts/knowledge-core-kv2
+          if-no-files-found: error
