@@ -159,7 +159,8 @@ jobs:
         working-directory: knowledge-provider
         run: >-
           npx --yes pnpm@11.13.0 --filter @markorbit/admin exec vitest run
-          apps/admin/src/server/e2e/core-intake-real-core.e2e.ts
+          --config vitest.e2e.config.ts
+          src/server/e2e/core-intake-real-core.e2e.ts
 
       - name: Build exact-head acceptance artifact
         run: |
