@@ -15,6 +15,7 @@ baselines:
     current_main_sha_at_task_issue: 5e68862f3e9b7a6522ab0e22aeccd1a426b9cebc
     frozen_protocol_sha: 3932b7cd5ee0235d3bb0f9e23ceab7cc71e45f7d
     provider_governance_pr: 397
+    provider_governance_merge_sha: 2b060eccb1eef63ab99bcc347478b51e68d99dbc
     delivery_protocol_version: '1.0'
     content_export_contract_version: '2.0'
   core:
@@ -107,6 +108,7 @@ parallel_boundaries:
 authoritative_provider_task:
   repository: yoomarks/markorbit-knowledge
   provider_governance_pr: 397
+  provider_governance_merge_sha: 2b060eccb1eef63ab99bcc347478b51e68d99dbc
   path: docs/tasks/MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md
   task_id: MO-KNOWLEDGE-CORE-KV2-COMPLETION-2026-08-23
 rules:
