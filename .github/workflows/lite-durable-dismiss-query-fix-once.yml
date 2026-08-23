@@ -1,0 +1,52 @@
+name: Lite Durable Dismiss Query Fix Once
+
+on:
+  push:
+    branches:
+      - agent/lite-daily-workspace-durable-dismiss
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/lite-daily-workspace-durable-dismiss
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Make dismissal durable without timestamp tie ordering
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('services/lite/src/daily-orbit.ts')
+          text = path.read_text()
+          old = """        `WITH latest AS (\n           SELECT DISTINCT ON (target_id) target_id,kind\n             FROM lite_product_preference_events\n            WHERE workspace_id=$1\n              AND subject_user_id=$2\n              AND target_type='DAILY_ORBIT_ITEM'\n              AND kind IN ('SAVED','DISMISSED')\n            ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC\n         )\n         SELECT target_id\n           FROM latest\n          WHERE kind='DISMISSED'\n          ORDER BY target_id`,"""
+          new = """        `SELECT DISTINCT target_id\n           FROM lite_product_preference_events\n          WHERE workspace_id=$1\n            AND subject_user_id=$2\n            AND target_type='DAILY_ORBIT_ITEM'\n            AND kind='DISMISSED'\n          ORDER BY target_id`,"""
+          if old not in text:
+              raise SystemExit('durable visibility query anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Format and focused acceptance
+        run: |
+          pnpm exec prettier --write services/lite/src/daily-orbit.ts
+          pnpm exec vitest run services/lite/tests/daily-orbit.test.ts
+      - name: Commit query fix and remove one-shot workflow
+        run: |
+          rm .github/workflows/lite-durable-dismiss-query-fix-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(lite): make dismissed Orbit items stay hidden"
+          git push origin HEAD:agent/lite-daily-workspace-durable-dismiss
