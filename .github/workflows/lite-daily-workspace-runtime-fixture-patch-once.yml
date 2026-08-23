@@ -28,6 +28,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('scripts/product-loop-today-real-runtime.ts')
           text = path.read_text()
@@ -39,51 +40,53 @@ jobs:
                   raise SystemExit('Daily Orbit import anchor not found')
               text = text.replace(orbit_import, orbit_replacement, 1)
 
-          service_anchor = """  const dailyOrbitService = new DailyOrbitService(
-            dailySignalReader,
-            journeyService,
-            preferences,
-            () => at
-          );
-          const visualStore = new PostgresVisualBridgeStore(database, pool, () => at);"""
-          service_replacement = """  const dailyOrbitService = new DailyOrbitService(
-            dailySignalReader,
-            journeyService,
-            preferences,
-            () => at
-          );
-          const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
-            dailyOrbitService,
-            {
-              async listToday(workspaceId) {
-                const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
-                  journeyService.listToday(workspaceId),
-                  feedbackStore.listRecent(workspaceId),
-                  feedbackStore.listPendingPackages(workspaceId)
-                ]);
-                return { ...snapshot, recentFeedback, feedbackPendingPackages };
-              }
-            },
-            () => at
-          );
-          const visualStore = new PostgresVisualBridgeStore(database, pool, () => at);"""
           if "const dailyWorkspaceSnapshotService" not in text:
-              if service_anchor not in text:
-                  raise SystemExit('Daily Workspace service anchor not found')
-              text = text.replace(service_anchor, service_replacement, 1)
+              service_pattern = re.compile(
+                  r"(?P<indent>\s*)const dailyOrbitService = new DailyOrbitService\(\n"
+                  r"(?P<body>.*?)"
+                  r"(?P=indent>\);\n"
+                  r"(?P=indent>)const visualStore = new PostgresVisualBridgeStore\(database, pool, \(\) => at\);",
+                  re.S,
+              )
+              match = service_pattern.search(text)
+              if not match:
+                  raise SystemExit('Daily Workspace service region not found')
+              indent = match.group('indent')
+              orbit_block = match.group(0).rsplit(f"{indent}const visualStore", 1)[0]
+              workspace_block = (
+                  f"{indent}const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(\n"
+                  f"{indent}  dailyOrbitService,\n"
+                  f"{indent}  {{\n"
+                  f"{indent}    async listToday(workspaceId) {{\n"
+                  f"{indent}      const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([\n"
+                  f"{indent}        journeyService.listToday(workspaceId),\n"
+                  f"{indent}        feedbackStore.listRecent(workspaceId),\n"
+                  f"{indent}        feedbackStore.listPendingPackages(workspaceId)\n"
+                  f"{indent}      ]);\n"
+                  f"{indent}      return {{ ...snapshot, recentFeedback, feedbackPendingPackages }};\n"
+                  f"{indent}    }}\n"
+                  f"{indent}  }},\n"
+                  f"{indent}  () => at\n"
+                  f"{indent});\n"
+              )
+              visual = f"{indent}const visualStore = new PostgresVisualBridgeStore(database, pool, () => at);"
+              text = text[:match.start()] + orbit_block + workspace_block + visual + text[match.end():]
 
-          routes_anchor = """      routes: [
-                ...createLiteProductLoopRoutes({"""
-          routes_replacement = """      routes: [
-                ...createDailyWorkspaceRoutes({
-                  internalServiceSecret: secret,
-                  service: dailyWorkspaceSnapshotService
-                }),
-                ...createLiteProductLoopRoutes({"""
           if "...createDailyWorkspaceRoutes({" not in text:
-              if routes_anchor not in text:
-                  raise SystemExit('Lite route anchor not found')
-              text = text.replace(routes_anchor, routes_replacement, 1)
+              routes_pattern = re.compile(r"(?P<indent>\s*)routes: \[\n(?P=indent>\s*)\.\.\.createLiteProductLoopRoutes\(\{")
+              match = routes_pattern.search(text)
+              if not match:
+                  raise SystemExit('Lite route region not found')
+              indent = match.group('indent')
+              replacement = (
+                  f"{indent}routes: [\n"
+                  f"{indent}  ...createDailyWorkspaceRoutes({{\n"
+                  f"{indent}    internalServiceSecret: secret,\n"
+                  f"{indent}    service: dailyWorkspaceSnapshotService\n"
+                  f"{indent}  }}),\n"
+                  f"{indent}  ...createLiteProductLoopRoutes({{"
+              )
+              text = text[:match.start()] + replacement + text[match.end():]
 
           path.write_text(text)
           PY
