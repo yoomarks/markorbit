@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:net';
+import { createServer, type Server, type Socket } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDataEngineClient } from '../src/data-engine-http.js';
 import { createDataEngineProtectedQueryRuntime } from '../src/data-engine-g1-runtime.js';
@@ -158,8 +158,11 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
 
   it('proves timeout handling with a real stalled TCP transport and no mocked fetch', async () => {
     let stalledServer: Server | undefined;
+    const stalledSockets = new Set<Socket>();
     try {
-      stalledServer = createServer(() => {
+      stalledServer = createServer((socket) => {
+        stalledSockets.add(socket);
+        socket.once('close', () => stalledSockets.delete(socket));
         // Intentionally accept the TCP connection and never write an HTTP response.
       });
       await new Promise<void>((resolve, reject) => {
@@ -186,6 +189,7 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
         factState: 'service_unavailable'
       });
     } finally {
+      for (const socket of stalledSockets) socket.destroy();
       if (stalledServer)
         await new Promise<void>((resolve) => stalledServer!.close(() => resolve()));
     }
