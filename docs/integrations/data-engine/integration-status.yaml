@@ -3,12 +3,13 @@ integration:
   name: markorbit-data-engine
   stage: G1
   stage_name: Protected Query Runtime
-  status: active
-  consumer_status: g0_accepted
+  status: completed
+  consumer_status: protected_query_runtime_accepted
   initiated_at: 2026-08-23
   provider_response_received_at: 2026-08-23
   g0_consumer_accepted_at: 2026-08-23
   g0_closed_at: 2026-08-23
+  g1_closed_at: 2026-08-23
 baselines:
   markorbit:
     repository: yoomarks/markorbit
@@ -16,6 +17,9 @@ baselines:
     baseline_sha: a8035efff46a2e71a4613abd1927b18dadff086b
     consumer_acceptance_pr: 176
     consumer_acceptance_merge_sha: a8035efff46a2e71a4613abd1927b18dadff086b
+    g1_pr: 177
+    g1_final_head_sha: 75cae91b88fc1b3587076f3e8b10cadd7e2e6d90
+    g1_merge_sha: 20bd9710e4af02e92fcfaa737ef67a9e58479145
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
@@ -62,12 +66,19 @@ consumer_acceptance:
 g1_execution:
   requirement: MO-DE-006
   consumer_pr: 177
-  consumer_head_sha: ef4e4b59d7d98e9239e8b7784aa95caf8b6bfe77
+  consumer_final_head_sha: 75cae91b88fc1b3587076f3e8b10cadd7e2e6d90
+  consumer_merge_sha: 20bd9710e4af02e92fcfaa737ef67a9e58479145
   provider_baseline_sha: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
   authenticated_cross_repo_acceptance:
-    workflow_run_id: 32610462289
+    workflow_run_id: 32617003421
     status: success
-  overall_merge_gate: pending_exact_head_required_checks
+  validation:
+    workflow_run_id: 32617003361
+    status: success
+  commercial_runtime_reliability:
+    workflow_run_id: 32617003386
+    status: success
+  overall_merge_gate: completed_success
 requirements:
   - id: MO-DE-001
     title: Query Contract V1 Freeze
@@ -98,7 +109,7 @@ requirements:
     title: Authenticated Cross Repository Acceptance
     stage: G1
     priority: P1
-    status: active
+    status: accepted_completed
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -114,9 +125,12 @@ cross_repo_decisions_accepted:
   - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
 rules:
   g1_requires_g0_closed: true
+  g0_closed: true
+  g1_completed: true
   cross_repo_ids_required_in_prs_and_tests: true
   copy_requirements_between_repos: false
   breaking_change_requires_rfc: true
   repository_local_green_ci_is_sufficient: false
   final_g1_auth_mode: required
   production_authorization: false
+  mo_de_007_008_implementation_authorized: false
