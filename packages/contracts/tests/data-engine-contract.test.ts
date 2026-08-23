@@ -15,32 +15,18 @@ async function factFixture() {
   ) as unknown;
 }
 
-const descriptor = {
-  contract_version: DATA_ENGINE_INTEGRATION_CONTRACT_VERSION,
-  engine_version: 'M1.6',
-  source_owner: 'MARKORBIT_DATA_ENGINE',
-  service_role: 'SOURCE_FACT_SERVICE',
-  consumer_policy: {
-    query_plane_read_only: true,
-    change_feed_read_only: true,
-    cross_service_database_access: false,
-    consumer_writeback_to_source_facts: false,
-    business_state_owned_outside_data_engine: true
-  },
-  planes: {
-    query: { prefix: '/api/v1', methods: ['GET'] },
-    change_feed: {
-      path: '/api/v1/us/changes',
-      methods: ['GET'],
-      cursor_semantics: 'LOSSLESS_OBSERVATION_CURSOR_NOT_LEGAL_CONCLUSION'
-    },
-    admin: {
-      prefixes: ['/api/admin', '/api/jobs'],
-      part_of_consumer_contract: false
-    }
-  },
-  stable_resources: ['/api/v1/us/cases/{serial_number}', '/api/v1/us/changes']
-};
+async function descriptorFixture() {
+  return JSON.parse(
+    await readFile(
+      new URL('../fixtures/data-engine-integration-descriptor-v1.fixture', import.meta.url),
+      'utf8'
+    )
+  ) as unknown;
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
 
 describe('Data Engine Integration Contract V1', () => {
   it('accepts the frozen fact envelope fixture', async () => {
@@ -65,27 +51,34 @@ describe('Data Engine Integration Contract V1', () => {
     ).toBe(null);
   });
 
-  it('accepts the read-only descriptor and rejects cross-service database access', () => {
+  it('accepts the read-only descriptor and rejects cross-service database access', async () => {
+    const descriptor = record(await descriptorFixture());
+    const consumerPolicy = record(descriptor.consumer_policy);
+
     expect(parseDataEngineIntegrationDescriptor(descriptor)).not.toBeNull();
     expect(
       parseDataEngineIntegrationDescriptor({
         ...descriptor,
         consumer_policy: {
-          ...descriptor.consumer_policy,
+          ...consumerPolicy,
           cross_service_database_access: true
         }
       })
     ).toBe(null);
   });
 
-  it('rejects descriptors that admit admin routes into the consumer contract', () => {
+  it('rejects descriptors that admit admin routes into the consumer contract', async () => {
+    const descriptor = record(await descriptorFixture());
+    const planes = record(descriptor.planes);
+    const admin = record(planes.admin);
+
     expect(
       parseDataEngineIntegrationDescriptor({
         ...descriptor,
         planes: {
-          ...descriptor.planes,
+          ...planes,
           admin: {
-            prefixes: ['/api/admin', '/api/jobs'],
+            ...admin,
             part_of_consumer_contract: true
           }
         }
