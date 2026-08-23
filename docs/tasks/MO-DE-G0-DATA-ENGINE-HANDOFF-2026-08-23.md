@@ -1,9 +1,9 @@
 # MarkOrbit → Data Engine G0 Integration Handoff
 
-Date: 2026-08-23  
-Sender authority: `yoomarks/markorbit`  
-Recipient provider: `yoomarks/markorbit-data-engine`  
-Integration stage: **G0 — Contract Freeze**
+- Date: 2026-08-23
+- Sender authority: `yoomarks/markorbit`
+- Recipient provider: `yoomarks/markorbit-data-engine`
+- Integration stage: **G0 — Contract Freeze**
 
 ## 1. Purpose
 
@@ -44,16 +44,14 @@ Neither side should copy and independently edit the other side's authority docum
 
 Data Engine must adopt these exact IDs in its provider-side issues/PRs/tests/docs:
 
-| ID | Priority | Required Data Engine action | Current gate |
-| --- | --- | --- | --- |
-| `MO-DE-001` | P0 | Freeze Query Contract V1 and canonical schema/version/compatibility policy | G0 |
-| `MO-DE-002` | P0 | Freeze provider meaning of not-covered, no-observation, not-found, tombstone/supersession and service-unavailable | G0 |
-| `MO-DE-003` | P0 | Freeze service authentication/security contract with `auth=required` as G1 target | G0 |
-| `MO-DE-004` | P0 | Freeze request/correlation/trace propagation contract | G0 |
-| `MO-DE-005` | P0 | Freeze runtime error envelope, timeout, rate-limit and retry semantics | G0 |
-| `MO-DE-006` | P1 | Provide stable authenticated runtime for real cross-repo acceptance | G1, blocked by 001-005 |
-| `MO-DE-007` | P2 decision | Jointly freeze US trademark change-feed ownership | Deferred; do not implement now |
-| `MO-DE-008` | P2 decision | Jointly freeze feed cursor/consumer checkpoint ownership | Deferred; do not implement now |
+- `MO-DE-001` — P0 — Freeze Query Contract V1 and canonical schema/version/compatibility policy. Gate: G0.
+- `MO-DE-002` — P0 — Freeze provider meaning of not-covered, no-observation, not-found, tombstone/supersession and service-unavailable. Gate: G0.
+- `MO-DE-003` — P0 — Freeze service authentication/security contract with `auth=required` as the G1 target. Gate: G0.
+- `MO-DE-004` — P0 — Freeze request/correlation/trace propagation contract. Gate: G0.
+- `MO-DE-005` — P0 — Freeze runtime error envelope, timeout, rate-limit and retry semantics. Gate: G0.
+- `MO-DE-006` — P1 — Provide stable authenticated runtime for real cross-repo acceptance. Gate: G1, blocked by 001-005.
+- `MO-DE-007` — P2 decision — Jointly freeze US trademark change-feed ownership. Deferred; do not implement now.
+- `MO-DE-008` — P2 decision — Jointly freeze feed cursor/consumer checkpoint ownership. Deferred; do not implement now.
 
 The authoritative detail is in `docs/integrations/data-engine/requirements.md` in MarkOrbit.
 
@@ -86,13 +84,13 @@ Please return one formal response/handoff that resolves or proposes a concrete r
 
 For each ID include:
 
-1. current provider behavior;
-2. canonical code/schema/doc path;
-3. proposed frozen V1 behavior;
-4. additive vs migration-required vs breaking classification;
-5. tests that prove the behavior;
-6. Data Engine issue/PR/commit references;
-7. any decision MarkOrbit must make before implementation.
+- current provider behavior;
+- canonical code/schema/doc path;
+- proposed frozen V1 behavior;
+- additive vs migration-required vs breaking classification;
+- tests that prove the behavior;
+- Data Engine issue/PR/commit references;
+- any decision MarkOrbit must make before implementation.
 
 If Data Engine cannot satisfy one requested semantic, do not silently substitute another behavior. Raise it explicitly under the same `MO-DE-*` ID as a cross-repo decision.
 
