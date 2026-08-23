@@ -15,6 +15,8 @@ import {
 } from './content-preparation.js';
 import { PostgresProductConversionAnalyticsStore } from './conversion-analytics.js';
 import { DailyOrbitService, PostgresDailySignalReader } from './daily-orbit.js';
+import { createDailyWorkspaceRoutes } from './daily-workspace-http.js';
+import { DailyWorkspaceSnapshotService } from './daily-workspace-snapshot.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
   PostgresLiteDailySignalStore
@@ -237,6 +239,10 @@ const dailyOrbitService = new DailyOrbitService(
   journeyService,
   creatorPreferences
 );
+const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
+  dailyOrbitService,
+  journeyService
+);
 const visualBridgeStore = new PostgresVisualBridgeStore(database, pool);
 const contentKitService = new ContentKitService(
   dailyOrbitService,
@@ -261,6 +267,10 @@ const visualBridgeService = new VisualBridgeService(
 );
 const runtime = createServiceRuntime(serviceManifest, {
   routes: [
+    ...createDailyWorkspaceRoutes({
+      internalServiceSecret,
+      service: dailyWorkspaceSnapshotService
+    }),
     ...createLiteProductLoopRoutes({
       internalServiceSecret,
       journeyService,
