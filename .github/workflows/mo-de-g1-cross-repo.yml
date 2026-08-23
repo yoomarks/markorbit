@@ -1,0 +1,131 @@
+name: MO-DE-006 Cross-Repo Acceptance
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mo-de-g1-cross-repo.yml'
+      - 'apps/gateway/src/data-engine-http.ts'
+      - 'apps/gateway/src/data-engine-g1-runtime.ts'
+      - 'apps/gateway/tests/data-engine-http.test.ts'
+      - 'apps/gateway/tests/data-engine-g1-cross-repo.test.ts'
+      - 'packages/contracts/src/data-engine.ts'
+      - 'docs/integrations/data-engine/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mo-de-006-cross-repo-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATA_ENGINE_G0_SHA: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
+  MO_DE_G1_PROVIDER_URL: http://127.0.0.1:8201
+  MO_DE_G1_RATE_LIMIT_PROVIDER_URL: http://127.0.0.1:8202
+  MO_DE_G1_INVALID_CONFIG_PROVIDER_URL: http://127.0.0.1:8203
+  MO_DE_G1_CROSS_REPO: '1'
+
+jobs:
+  authenticated-cross-repo:
+    name: Authenticated MarkOrbit -> Data Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout MarkOrbit consumer
+        uses: actions/checkout@v4
+
+      - name: Checkout frozen Data Engine provider
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit-data-engine
+          ref: ${{ env.DATA_ENGINE_G0_SHA }}
+          path: .cross-repo/markorbit-data-engine
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: .cross-repo/markorbit-data-engine/pyproject.toml
+
+      - name: Install MarkOrbit workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install exact Data Engine provider
+        run: python -m pip install -e .cross-repo/markorbit-data-engine
+
+      - name: Start isolated auth-required provider profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="mo-de-g1-$(openssl rand -hex 32)"
+          echo "MO_DE_G1_API_KEY=$KEY" >> "$GITHUB_ENV"
+
+          cd .cross-repo/markorbit-data-engine
+          env INTEGRATION_AUTH_MODE=required \
+              INTEGRATION_API_KEYS="$KEY" \
+              INTEGRATION_RATE_LIMIT_ENABLED=false \
+              nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8201 \
+              > /tmp/mo-de-006-provider.log 2>&1 &
+
+          env INTEGRATION_AUTH_MODE=required \
+              INTEGRATION_API_KEYS="$KEY" \
+              INTEGRATION_RATE_LIMIT_ENABLED=true \
+              INTEGRATION_RATE_LIMIT_MAX_REQUESTS=1 \
+              INTEGRATION_RATE_LIMIT_WINDOW_SECONDS=60 \
+              nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8202 \
+              > /tmp/mo-de-006-rate-limit.log 2>&1 &
+
+          env INTEGRATION_AUTH_MODE=required \
+              INTEGRATION_API_KEYS= \
+              INTEGRATION_RATE_LIMIT_ENABLED=false \
+              nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8203 \
+              > /tmp/mo-de-006-invalid-config.log 2>&1 &
+
+          wait_http() {
+            local url="$1"
+            local authorization="${2:-}"
+            for _ in $(seq 1 60); do
+              if [ -n "$authorization" ]; then
+                if curl --silent --output /dev/null \
+                  -H "Authorization: Bearer $authorization" "$url"; then
+                  return 0
+                fi
+              elif curl --silent --output /dev/null "$url"; then
+                return 0
+              fi
+              sleep 1
+            done
+            return 1
+          }
+
+          wait_http http://127.0.0.1:8201/api/v1/contract "$KEY"
+          # An unauthenticated readiness request proves the rate-limit process is alive
+          # without consuming its single authenticated acceptance request.
+          wait_http http://127.0.0.1:8202/api/v1/contract
+          # This profile intentionally answers 503 because required auth is misconfigured.
+          wait_http http://127.0.0.1:8203/api/v1/contract
+
+      - name: Run consumer contract and cross-repository acceptance
+        run: |
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway test -- tests/data-engine-http.test.ts tests/data-engine-g1-cross-repo.test.ts
+
+      - name: Show provider diagnostics on failure
+        if: failure()
+        run: |
+          echo '--- primary provider ---'
+          cat /tmp/mo-de-006-provider.log || true
+          echo '--- rate-limit provider ---'
+          cat /tmp/mo-de-006-rate-limit.log || true
+          echo '--- invalid-config provider ---'
+          cat /tmp/mo-de-006-invalid-config.log || true
