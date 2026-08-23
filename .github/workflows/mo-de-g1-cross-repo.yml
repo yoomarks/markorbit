@@ -60,6 +60,9 @@ jobs:
       - name: Install MarkOrbit workspace
         run: pnpm install --frozen-lockfile
 
+      - name: Print canonical contract-test formatting
+        run: pnpm exec prettier packages/contracts/tests/data-engine-contract.test.ts
+
       - name: Build G1 runtime workspace dependencies
         run: |
           pnpm --filter @markorbit/contracts build
