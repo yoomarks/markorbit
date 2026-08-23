@@ -34,12 +34,15 @@ describe('Daily Workspace primary projection', () => {
       executionAuthorized: false,
       legalTruthVerified: false
     });
+    expect(result.orbit.items).toEqual([]);
+    expect(result.orbit.contentPicks).toEqual([]);
     expect(result.today).toMatchObject({
       workspaceId,
       partial: false,
       recentFeedback: [],
       feedbackPendingPackages: []
     });
+    expect(result.today.items).toEqual([]);
   });
 
   it('keeps SEE/CREATE and MOVE degradation independent', () => {
