@@ -42,12 +42,16 @@ describe('Daily Workspace aggregate client', () => {
       expect(init?.method).toBe('GET');
       expect(init?.body).toBeUndefined();
       expect(init?.credentials).toBe('include');
-      expect(init?.headers).toMatchObject({ 'x-markorbit-workspace-id': workspaceId });
+      expect(init?.headers).toMatchObject({
+        'x-markorbit-workspace-id': workspaceId
+      });
       return Promise.resolve(jsonResponse(snapshot));
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(createDailyWorkspaceClient(workspaceId).loadWorkspace()).resolves.toEqual(snapshot);
+    await expect(createDailyWorkspaceClient(workspaceId).loadWorkspace()).resolves.toEqual(
+      snapshot
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
