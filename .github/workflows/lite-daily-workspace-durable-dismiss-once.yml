@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - agent/lite-daily-workspace-durable-dismiss
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -32,16 +29,17 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
           import re
 
-          def replace_once(path: str, old: str, new: str) -> None:
+          def replace_once(path, old, new):
               file = Path(path)
               text = file.read_text()
               if old not in text:
                   raise SystemExit(f'anchor not found in {path}: {old[:120]!r}')
               file.write_text(text.replace(old, new, 1))
 
-          def sub_once(path: str, pattern: str, replacement: str, flags: int = 0) -> None:
+          def sub_once(path, pattern, replacement, flags=0):
               file = Path(path)
               text = file.read_text()
               updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
@@ -50,62 +48,62 @@ jobs:
               file.write_text(updated)
 
           orbit = 'services/lite/src/daily-orbit.ts'
-          visibility_block = r'''
+          visibility_block = dedent('''
 
-export interface DailyOrbitVisibilityProvider {
-  dismissedOrbitItemIds(
-    workspaceId: string,
-    subjectUserId: string
-  ): Promise<ReadonlySet<string>>;
-}
+          export interface DailyOrbitVisibilityProvider {
+            dismissedOrbitItemIds(
+              workspaceId: string,
+              subjectUserId: string
+            ): Promise<ReadonlySet<string>>;
+          }
 
-export class NoDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
-  dismissedOrbitItemIds(): Promise<ReadonlySet<string>> {
-    return Promise.resolve(new Set());
-  }
-}
+          export class NoDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
+            dismissedOrbitItemIds(): Promise<ReadonlySet<string>> {
+              return Promise.resolve(new Set());
+            }
+          }
 
-export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
-  constructor(private readonly query: QueryClient) {}
+          export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
+            constructor(private readonly query: QueryClient) {}
 
-  async dismissedOrbitItemIds(
-    workspaceIdValue: string,
-    subjectUserIdValue: string
-  ): Promise<ReadonlySet<string>> {
-    const workspaceId = cleanWorkspaceId(workspaceIdValue);
-    const subjectUserId = cleanUserId(subjectUserIdValue);
-    try {
-      const result = await this.query.query(
-        `WITH latest AS (
-           SELECT DISTINCT ON (target_id) target_id,kind
-             FROM lite_product_preference_events
-            WHERE workspace_id=$1
-              AND subject_user_id=$2
-              AND target_type='DAILY_ORBIT_ITEM'
-              AND kind IN ('SAVED','DISMISSED')
-            ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC
-         )
-         SELECT target_id
-           FROM latest
-          WHERE kind='DISMISSED'
-          ORDER BY target_id`,
-        [workspaceId, subjectUserId]
-      );
-      return new Set(
-        result.rows.map((row) => String((row as { target_id: unknown }).target_id))
-      );
-    } catch (error) {
-      throw new DailyOrbitError(
-        'PERSISTENCE_UNAVAILABLE',
-        'Lite Daily Orbit visibility persistence is unavailable.',
-        503,
-        true,
-        { cause: error instanceof Error ? error : undefined }
-      );
-    }
-  }
-}
-'''
+            async dismissedOrbitItemIds(
+              workspaceIdValue: string,
+              subjectUserIdValue: string
+            ): Promise<ReadonlySet<string>> {
+              const workspaceId = cleanWorkspaceId(workspaceIdValue);
+              const subjectUserId = cleanUserId(subjectUserIdValue);
+              try {
+                const result = await this.query.query(
+                  `WITH latest AS (
+                     SELECT DISTINCT ON (target_id) target_id,kind
+                       FROM lite_product_preference_events
+                      WHERE workspace_id=$1
+                        AND subject_user_id=$2
+                        AND target_type='DAILY_ORBIT_ITEM'
+                        AND kind IN ('SAVED','DISMISSED')
+                      ORDER BY target_id,recorded_at DESC,product_preference_event_id DESC
+                   )
+                   SELECT target_id
+                     FROM latest
+                    WHERE kind='DISMISSED'
+                    ORDER BY target_id`,
+                  [workspaceId, subjectUserId]
+                );
+                return new Set(
+                  result.rows.map((row) => String((row as { target_id: unknown }).target_id))
+                );
+              } catch (error) {
+                throw new DailyOrbitError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Lite Daily Orbit visibility persistence is unavailable.',
+                  503,
+                  true,
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+          }
+          ''')
           sub_once(
               orbit,
               r'(export class NoCreatorPreferenceProvider implements DailyOrbitPreferenceProvider \{.*?\n\})',
@@ -120,15 +118,16 @@ export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilit
           replace_once(
               orbit,
               '\n    let recommendations: readonly Readonly<TodayRecommendation>[] = [];',
-              '''
-    let dismissedOrbitItemIds: ReadonlySet<string> = new Set();
-    try {
-      dismissedOrbitItemIds = await this.visibility.dismissedOrbitItemIds(workspaceId, subjectUserId);
-    } catch {
-      warnings.push('ORBIT_VISIBILITY_UNAVAILABLE');
-    }
+              dedent('''
+              
+                  let dismissedOrbitItemIds: ReadonlySet<string> = new Set();
+                  try {
+                    dismissedOrbitItemIds = await this.visibility.dismissedOrbitItemIds(workspaceId, subjectUserId);
+                  } catch {
+                    warnings.push('ORBIT_VISIBILITY_UNAVAILABLE');
+                  }
 
-    let recommendations: readonly Readonly<TodayRecommendation>[] = [];''',
+                  let recommendations: readonly Readonly<TodayRecommendation>[] = [];'''),
           )
           replace_once(
               orbit,
@@ -145,13 +144,14 @@ export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilit
           sub_once(
               main,
               r'const dailyOrbitService = new DailyOrbitService\(\s*dailySignalReader,\s*journeyService,\s*creatorPreferences\s*\);',
-              '''const dailyOrbitService = new DailyOrbitService(
-  dailySignalReader,
-  journeyService,
-  creatorPreferences,
-  undefined,
-  new PostgresDailyOrbitVisibilityProvider(pool)
-);''',
+              dedent('''
+              const dailyOrbitService = new DailyOrbitService(
+                dailySignalReader,
+                journeyService,
+                creatorPreferences,
+                undefined,
+                new PostgresDailyOrbitVisibilityProvider(pool)
+              );'''),
               re.S,
           )
 
@@ -164,13 +164,14 @@ export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilit
           sub_once(
               runtime,
               r'const dailyOrbitService = new DailyOrbitService\(\s*dailySignalReader,\s*journeyService,\s*preferences,\s*\(\) => at\s*\);',
-              '''const dailyOrbitService = new DailyOrbitService(
-    dailySignalReader,
-    journeyService,
-    preferences,
-    () => at,
-    new PostgresDailyOrbitVisibilityProvider(pool)
-  );''',
+              dedent('''
+                const dailyOrbitService = new DailyOrbitService(
+                  dailySignalReader,
+                  journeyService,
+                  preferences,
+                  () => at,
+                  new PostgresDailyOrbitVisibilityProvider(pool)
+                );''').strip(),
               re.S,
           )
 
@@ -180,67 +181,68 @@ export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilit
               '  type DailyOrbitPreferenceProvider,\n  type DailyOrbitTodayReader,\n  type DailySignalReader',
               '  type DailyOrbitPreferenceProvider,\n  type DailyOrbitTodayReader,\n  type DailyOrbitVisibilityProvider,\n  type DailySignalReader',
           )
-          visibility_fake = r'''
+          visibility_fake = dedent('''
 
-class Visibility implements DailyOrbitVisibilityProvider {
-  constructor(private readonly value: ReadonlySet<string> | Error) {}
-  dismissedOrbitItemIds(
-    requestWorkspaceId: string,
-    requestUserId: string
-  ): Promise<ReadonlySet<string>> {
-    expect(requestWorkspaceId).toBe(workspaceId);
-    expect(requestUserId).toBe(userId);
-    if (this.value instanceof Error) return Promise.reject(this.value);
-    return Promise.resolve(this.value);
-  }
-}
-'''
+          class Visibility implements DailyOrbitVisibilityProvider {
+            constructor(private readonly value: ReadonlySet<string> | Error) {}
+            dismissedOrbitItemIds(
+              requestWorkspaceId: string,
+              requestUserId: string
+            ): Promise<ReadonlySet<string>> {
+              expect(requestWorkspaceId).toBe(workspaceId);
+              expect(requestUserId).toBe(userId);
+              if (this.value instanceof Error) return Promise.reject(this.value);
+              return Promise.resolve(this.value);
+            }
+          }
+          ''')
           sub_once(
               unit,
               r'(class Preferences implements DailyOrbitPreferenceProvider \{.*?\n\})',
               lambda match: match.group(1) + visibility_fake,
               re.S,
           )
-          durable_tests = r'''  it('removes an exact dismissed Orbit item and its Content Pick from the durable projection', async () => {
-    const ranked = rankDailyOrbitItem(
-      signal(),
-      userId,
-      preference(),
-      recommendation(),
-      '2026-08-18T03:00:00.000Z'
-    );
-    const service = new DailyOrbitService(
-      new Signals([signal()]),
-      new Today(today(recommendation(true))),
-      new Preferences(preference()),
-      () => '2026-08-18T03:00:00.000Z',
-      new Visibility(new Set([ranked.dailyOrbitItemId]))
-    );
+          durable_tests = dedent('''
+            it('removes an exact dismissed Orbit item and its Content Pick from the durable projection', async () => {
+              const ranked = rankDailyOrbitItem(
+                signal(),
+                userId,
+                preference(),
+                recommendation(),
+                '2026-08-18T03:00:00.000Z'
+              );
+              const service = new DailyOrbitService(
+                new Signals([signal()]),
+                new Today(today(recommendation(true))),
+                new Preferences(preference()),
+                () => '2026-08-18T03:00:00.000Z',
+                new Visibility(new Set([ranked.dailyOrbitItemId]))
+              );
 
-    const snapshot = await service.snapshot(workspaceId, userId);
+              const snapshot = await service.snapshot(workspaceId, userId);
 
-    expect(snapshot.items).toEqual([]);
-    expect(snapshot.contentPicks).toEqual([]);
-    expect(snapshot.partial).toBe(false);
-  });
+              expect(snapshot.items).toEqual([]);
+              expect(snapshot.contentPicks).toEqual([]);
+              expect(snapshot.partial).toBe(false);
+            });
 
-  it('fails open with an explicit warning when durable Orbit visibility cannot be read', async () => {
-    const service = new DailyOrbitService(
-      new Signals([signal()]),
-      new Today(today(recommendation(true))),
-      new Preferences(preference()),
-      () => '2026-08-18T03:00:00.000Z',
-      new Visibility(new Error('visibility store unavailable'))
-    );
+            it('fails open with an explicit warning when durable Orbit visibility cannot be read', async () => {
+              const service = new DailyOrbitService(
+                new Signals([signal()]),
+                new Today(today(recommendation(true))),
+                new Preferences(preference()),
+                () => '2026-08-18T03:00:00.000Z',
+                new Visibility(new Error('visibility store unavailable'))
+              );
 
-    const snapshot = await service.snapshot(workspaceId, userId);
+              const snapshot = await service.snapshot(workspaceId, userId);
 
-    expect(snapshot.items).toHaveLength(1);
-    expect(snapshot.partial).toBe(true);
-    expect(snapshot.warnings).toContain('ORBIT_VISIBILITY_UNAVAILABLE');
-  });
+              expect(snapshot.items).toHaveLength(1);
+              expect(snapshot.partial).toBe(true);
+              expect(snapshot.warnings).toContain('ORBIT_VISIBILITY_UNAVAILABLE');
+            });
 
-'''
+          ''')
           replace_once(
               unit,
               "  it('uses RISK only when the source-derived signal carries explicit risk evidence', () => {",
@@ -248,23 +250,24 @@ class Visibility implements DailyOrbitVisibilityProvider {
           )
 
           e2e = 'tests/e2e/product-loop-today-real-runtime.spec.ts'
-          reload_assertion = r'''    const dismissedWorkspaceResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/lite/daily-workspace') &&
-        response.request().method() === 'GET'
-    );
-    await page.reload();
-    const dismissedWorkspace = (await (await dismissedWorkspaceResponse).json()) as {
-      see: { orbitItems: Array<{ dailyOrbitItemId: string }> };
-    };
-    expect(
-      dismissedWorkspace.see.orbitItems.some(
-        (item) => item.dailyOrbitItemId === initialItem.dailyOrbitItemId
-      )
-    ).toBe(false);
-    await expect(dismissCard).toHaveCount(0);
+          reload_assertion = dedent('''
+              const dismissedWorkspaceResponse = page.waitForResponse(
+                (response) =>
+                  response.url().includes('/api/lite/daily-workspace') &&
+                  response.request().method() === 'GET'
+              );
+              await page.reload();
+              const dismissedWorkspace = (await (await dismissedWorkspaceResponse).json()) as {
+                see: { orbitItems: Array<{ dailyOrbitItemId: string }> };
+              };
+              expect(
+                dismissedWorkspace.see.orbitItems.some(
+                  (item) => item.dailyOrbitItemId === initialItem.dailyOrbitItemId
+                )
+              ).toBe(false);
+              await expect(dismissCard).toHaveCount(0);
 
-'''
+          ''')
           replace_once(
               e2e,
               "    await expect(dismissCard).toHaveCount(0);\n\n    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(",
@@ -281,9 +284,10 @@ class Visibility implements DailyOrbitVisibilityProvider {
             tests/e2e/product-loop-today-real-runtime.spec.ts
       - name: Run focused unit acceptance
         run: pnpm exec vitest run services/lite/tests/daily-orbit.test.ts
-      - name: Commit implementation and remove one-shot workflow
+      - name: Commit implementation and remove one-shot files
         run: |
           rm .github/workflows/lite-daily-workspace-durable-dismiss-once.yml
+          rm -f .ci/lite-durable-dismiss-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
