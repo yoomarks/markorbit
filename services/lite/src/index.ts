@@ -7,6 +7,8 @@ export * from './feedback.js';
 export * from './conversion-analytics.js';
 export * from './daily-signal.js';
 export * from './daily-orbit.js';
+export * from './daily-workspace-snapshot.js';
+export * from './daily-workspace-http.js';
 export * from './trademark-asset.js';
 export * from './trademark-asset-view.js';
 export * from './trademark-asset-portfolio.js';
