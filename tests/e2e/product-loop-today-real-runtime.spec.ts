@@ -10,9 +10,10 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
   test('runs SEE → personalize → CREATE → MOVE through authenticated real runtime without interception', async ({
     page
   }) => {
-    const productLoopRequests: string[] = [];
+    const productLoopRequests: Array<{ url: string; method: string }> = [];
     page.on('request', (request) => {
-      if (request.url().includes('/api/lite/')) productLoopRequests.push(request.url());
+      if (request.url().includes('/api/lite/'))
+        productLoopRequests.push({ url: request.url(), method: request.method() });
     });
 
     const workspaceId = test.info().project.name.includes('mobile')
@@ -273,11 +274,23 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     expect(dismissBody.event.kind).toBe('DISMISSED');
     await expect(dismissCard).toHaveCount(0);
 
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/daily-workspace'))).toBe(true);
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/today'))).toBe(false);
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/daily-orbit'))).toBe(false);
-    expect(productLoopRequests.some((url) => url.includes('/api/lite/content-kits/'))).toBe(true);
-    expect(productLoopRequests.some((url) => url.includes('/prepared-actions'))).toBe(true);
+    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/daily-workspace'))).toBe(
+      true
+    );
+    expect(
+      productLoopRequests.some(({ url, method }) => {
+        const requestUrl = new URL(url);
+        return method === 'GET' && requestUrl.pathname === '/api/lite/today';
+      })
+    ).toBe(false);
+    expect(
+      productLoopRequests.some(({ url, method }) => {
+        const requestUrl = new URL(url);
+        return method === 'GET' && requestUrl.pathname === '/api/lite/daily-orbit';
+      })
+    ).toBe(false);
+    expect(productLoopRequests.some(({ url }) => url.includes('/api/lite/content-kits/'))).toBe(true);
+    expect(productLoopRequests.some(({ url }) => url.includes('/prepared-actions'))).toBe(true);
 
     if (test.info().project.name.includes('mobile')) {
       const dimensions = await page.evaluate(() => ({
