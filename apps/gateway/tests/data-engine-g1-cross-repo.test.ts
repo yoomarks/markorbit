@@ -1,6 +1,6 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createDataEngineClient } from '../src/data-engine-http.js';
+import { DataEngineClientError, createDataEngineClient } from '../src/data-engine-http.js';
 import { createDataEngineProtectedQueryRuntime } from '../src/data-engine-g1-runtime.js';
 
 const crossRepoDescribe = process.env.MO_DE_G1_CROSS_REPO === '1' ? describe : describe.skip;
@@ -104,14 +104,25 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
       requestId: 'mo-de-006-rate-first',
       correlationId: 'mo-de-006-rate-corr'
     });
-    await expect(
-      client.contract({ requestId: 'mo-de-006-rate-second', correlationId: 'mo-de-006-rate-corr' })
-    ).rejects.toMatchObject({
-      code: 'DATA_ENGINE_RATE_LIMITED',
-      status: 429,
-      retryable: true,
-      retryAfterSeconds: expect.any(Number)
-    });
+
+    let rateLimitError: unknown;
+    try {
+      await client.contract({
+        requestId: 'mo-de-006-rate-second',
+        correlationId: 'mo-de-006-rate-corr'
+      });
+    } catch (error: unknown) {
+      rateLimitError = error;
+    }
+
+    expect(rateLimitError).toBeInstanceOf(DataEngineClientError);
+    if (!(rateLimitError instanceof DataEngineClientError))
+      throw new Error('Expected a typed Data Engine rate-limit error.');
+    expect(rateLimitError.code).toBe('DATA_ENGINE_RATE_LIMITED');
+    expect(rateLimitError.status).toBe(429);
+    expect(rateLimitError.retryable).toBe(true);
+    expect(typeof rateLimitError.retryAfterSeconds).toBe('number');
+    expect(rateLimitError.retryAfterSeconds).toBeGreaterThan(0);
   });
 
   it('proves invalid required-mode provider configuration fails closed as service_unavailable', async () => {
