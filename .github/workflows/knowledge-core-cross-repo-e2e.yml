@@ -6,6 +6,7 @@ on:
       - 'services/core/**'
       - 'packages/**'
       - 'infrastructure/**'
+      - 'tests/integration/knowledge/**'
       - '.github/workflows/knowledge-core-cross-repo-e2e.yml'
       - 'docs/integrations/**'
 
@@ -15,7 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KNOWLEDGE_PROTOCOL: ReadyPackage-V2
+      KNOWLEDGE_PROVIDER_REPO: yoomarks/markorbit-knowledge
       PRODUCTION_ACTIVATION: 'false'
+
     steps:
       - name: Checkout MarkOrbit consumer
         uses: actions/checkout@v4
@@ -29,15 +32,21 @@ jobs:
 
       - name: Record cross repo boundary
         run: |
-          echo "provider=yoomarks/markorbit-knowledge" >> acceptance-boundary.txt
+          echo "provider=${KNOWLEDGE_PROVIDER_REPO}" >> acceptance-boundary.txt
           echo "consumer=yoomarks/markorbit" >> acceptance-boundary.txt
           echo "protocol=${KNOWLEDGE_PROTOCOL}" >> acceptance-boundary.txt
           echo "production=${PRODUCTION_ACTIVATION}" >> acceptance-boundary.txt
 
       - name: Verify acceptance harness exists
         run: |
-          test -d tests/integration/knowledge || (echo 'Missing MarkOrbit-owned Knowledge acceptance harness' && exit 1)
+          test -f tests/integration/knowledge/kv2-cross-repo-acceptance.test.ts
 
       - name: Run MarkOrbit owned KV2 acceptance harness
         run: |
-          pnpm test --filter core -- tests/integration/knowledge
+          pnpm exec vitest run tests/integration/knowledge/kv2-cross-repo-acceptance.test.ts
+
+      - name: Upload acceptance boundary
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-core-kv2-acceptance-boundary
+          path: acceptance-boundary.txt
