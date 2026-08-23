@@ -28,9 +28,9 @@ describe('Daily Workspace aggregate client', () => {
       workspaceId,
       subjectUserId: 'user_daily_workspace',
       generatedAt: '2026-08-24T00:00:00.000Z',
-      see: { orbitItems: [] },
+      see: { preferenceSource: 'NONE' as const, orbitItems: [] },
       create: { contentPicks: [] },
-      move: { todayItems: [] },
+      move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
       partial: false,
       warnings: [],
       executionAuthorized: false as const,
@@ -55,17 +55,17 @@ describe('Daily Workspace aggregate client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('preserves the aggregate partial-warning contract without manufacturing success', async () => {
+  it('preserves the aggregate partial-warning contract without manufacturing provenance or success', async () => {
     const partial = {
       schemaVersion: 1 as const,
       workspaceId,
       subjectUserId: 'user_daily_workspace',
       generatedAt: '2026-08-24T00:00:00.000Z',
-      see: { orbitItems: [] },
+      see: { preferenceSource: null, orbitItems: [] },
       create: { contentPicks: [] },
-      move: { todayItems: [] },
+      move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
       partial: true,
-      warnings: ['MOVE_UNAVAILABLE'],
+      warnings: ['SEE_CREATE_UNAVAILABLE'],
       executionAuthorized: false as const,
       externalPublishExecuted: false as const,
       officialTruthCreated: false as const
@@ -77,7 +77,9 @@ describe('Daily Workspace aggregate client', () => {
 
     const result = await createDailyWorkspaceClient(workspaceId).loadWorkspace();
     expect(result.partial).toBe(true);
-    expect(result.warnings).toEqual(['MOVE_UNAVAILABLE']);
+    expect(result.warnings).toEqual(['SEE_CREATE_UNAVAILABLE']);
+    expect(result.see.preferenceSource).toBeNull();
+    expect(result.move.recentFeedback).toEqual([]);
     expect(result.executionAuthorized).toBe(false);
     expect(result.externalPublishExecuted).toBe(false);
     expect(result.officialTruthCreated).toBe(false);
