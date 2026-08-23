@@ -197,7 +197,7 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
         },
         signal: controller.signal
       });
-    } catch (error) {
+    } catch {
       const timedOut = controller.signal.aborted;
       throw new DataEngineClientError(
         'DATA_ENGINE_UNAVAILABLE',
