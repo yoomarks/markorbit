@@ -3,17 +3,22 @@ integration:
   name: markorbit-data-engine
   stage: G0
   stage_name: Contract Freeze
-  status: active
+  status: provider_response_received
+  consumer_status: review_pending
   initiated_at: 2026-08-23
+  provider_response_received_at: 2026-08-23
 baselines:
   markorbit:
     repository: yoomarks/markorbit
     role: consumer-authority
-    baseline_sha: 149b0de8568fe3e82b81e6eb006030426cc0f5aa
+    baseline_sha: 356036671fcf6eb67494bcf05878faa3da5fc470
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
-    baseline_sha: e1776dcceaef571e7e4ffc9cbb22688c04bc5015
+    baseline_sha: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
+    provider_pr: 209
+    provider_head_sha: cde643ea546a5ee7d885f94b56715c6907442df9
+    provider_ci: 30/30_completed_success
 authority:
   markorbit:
     owns:
@@ -33,37 +38,42 @@ authority:
       - provider-authentication
       - provider-pagination-and-cursors
       - factual-change-detection
+provider_response:
+  receipt: docs/integrations/data-engine/MO-DE-G0-PROVIDER-RESPONSE-2026-08-23.md
+  provider_contract: docs/integrations/markorbit/MARKORBIT_DATA_ENGINE_INTEGRATION_V1.json
+  provider_ledger: docs/integrations/markorbit/integration-status.yaml
+  provider_formal_response: docs/integrations/markorbit/MO-DE-G0-RESPONSE-2026-08-23.md
 requirements:
   - id: MO-DE-001
     title: Query Contract V1 Freeze
     stage: G0
     priority: P0
-    status: pending_provider_freeze
+    status: provider_frozen_consumer_review_pending
   - id: MO-DE-002
     title: Missing Coverage Tombstone Semantics
     stage: G0
     priority: P0
-    status: pending_joint_freeze
+    status: provider_frozen_consumer_review_pending
   - id: MO-DE-003
     title: Service Authentication Security Contract
     stage: G0
     priority: P0
-    status: pending_provider_freeze
+    status: provider_frozen_consumer_review_pending
   - id: MO-DE-004
     title: Request Correlation Tracing
     stage: G0
     priority: P0
-    status: pending_joint_freeze
+    status: provider_frozen_consumer_review_pending
   - id: MO-DE-005
     title: Runtime Error Timeout Retry Semantics
     stage: G0
     priority: P0
-    status: pending_provider_freeze
+    status: provider_frozen_consumer_review_pending
   - id: MO-DE-006
     title: Authenticated Cross Repository Acceptance
     stage: G1
     priority: P1
-    status: blocked
+    status: blocked_by_g0_consumer_acceptance
     blocked_by:
       - MO-DE-001
       - MO-DE-002
@@ -80,6 +90,9 @@ requirements:
     stage: G2
     priority: P2-decision
     status: deferred_no_implementation
+cross_repo_decisions_pending:
+  - preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
+  - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
 rules:
   g1_requires_g0_closed: true
   cross_repo_ids_required_in_prs_and_tests: true
