@@ -18,15 +18,15 @@ No provider implementation changes are made in this repository. The provider is 
 
 ## Evidence matrix
 
-| Check                                   | Required result | Evidence path |
-| --------------------------------------- | --------------- | ------------- |
-| E2E-01 Normal V2 delivery               | PASS            | `v2-phase1.json` / `acceptance.json` |
-| E2E-02 Response-loss exact replay       | PASS            | `v2-phase1.json` / `acceptance.json` |
-| E2E-03 Process-restart local recovery   | PASS            | `v2-restart-recovery.json` / `acceptance.json` |
-| E2E-04 Frozen submission corruption     | PASS            | `v2-phase1.json` / `acceptance.json` |
-| E2E-05 Deterministic consumer rejection | PASS            | `v2-phase1.json` / `acceptance.json` |
-| E2E-06 Idempotency conflict             | PASS            | `v2-phase1.json` / `acceptance.json` |
-| E2E-07 Concurrent duplicate delivery    | PASS            | `v2-phase1.json` / `acceptance.json` |
+| Check                                   | Required result | Evidence path                                   |
+| --------------------------------------- | --------------- | ----------------------------------------------- |
+| E2E-01 Normal V2 delivery               | PASS            | `v2-phase1.json` / `acceptance.json`            |
+| E2E-02 Response-loss exact replay       | PASS            | `v2-phase1.json` / `acceptance.json`            |
+| E2E-03 Process-restart local recovery   | PASS            | `v2-restart-recovery.json` / `acceptance.json`  |
+| E2E-04 Frozen submission corruption     | PASS            | `v2-phase1.json` / `acceptance.json`            |
+| E2E-05 Deterministic consumer rejection | PASS            | `v2-phase1.json` / `acceptance.json`            |
+| E2E-06 Idempotency conflict             | PASS            | `v2-phase1.json` / `acceptance.json`            |
+| E2E-07 Concurrent duplicate delivery    | PASS            | `v2-phase1.json` / `acceptance.json`            |
 | E2E-08 V1 real-Core regression          | PASS            | workflow V1 regression step / `acceptance.json` |
 
 The receipt is complete only when the exact-head workflow finishes successfully and uploads `acceptance.json` with all eight scenarios equal to `PASS`, `realHttp=true`, `realCorePostgresql=true`, `realKnowledgeSqlite=true`, `processRestart=true`, `exactFrozenRequestReplay=true`, and `exactPrHead=true`.
