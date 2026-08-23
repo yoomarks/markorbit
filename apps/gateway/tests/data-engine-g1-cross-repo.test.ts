@@ -5,6 +5,21 @@ import { createDataEngineProtectedQueryRuntime } from '../src/data-engine-g1-run
 
 const crossRepoDescribe = process.env.MO_DE_G1_CROSS_REPO === '1' ? describe : describe.skip;
 
+type ContractBody = {
+  contract_version?: unknown;
+  security?: { auth_mode?: unknown };
+  g0_contract?: { security?: { g1_target_mode?: unknown } };
+};
+
+type GatewayErrorBody = {
+  code?: unknown;
+  retryable?: unknown;
+  details?: {
+    factState?: unknown;
+    coverageState?: unknown;
+  };
+};
+
 crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
   const providerUrl = process.env.MO_DE_G1_PROVIDER_URL!;
   const rateLimitProviderUrl = process.env.MO_DE_G1_RATE_LIMIT_PROVIDER_URL!;
@@ -38,7 +53,7 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
         'x-correlation-id': 'mo-de-006-correlation-1'
       }
     });
-    const body = (await response.json()) as Record<string, any>;
+    const body = (await response.json()) as ContractBody;
 
     expect(response.status).toBe(200);
     expect(body.contract_version).toBe('MARKORBIT_DATA_ENGINE_INTEGRATION_V1');
@@ -69,7 +84,7 @@ crossRepoDescribe('MO-DE-006 real authenticated cross-repo acceptance', () => {
         'x-correlation-id': 'mo-de-006-not-found-corr'
       }
     });
-    const body = (await response.json()) as Record<string, any>;
+    const body = (await response.json()) as GatewayErrorBody;
 
     expect(response.status).toBe(404);
     expect(body.code).toBe('DATA_ENGINE_INTEGRATION_NOT_FOUND');
