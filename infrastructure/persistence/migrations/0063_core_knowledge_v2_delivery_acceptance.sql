@@ -10,7 +10,7 @@ ALTER TABLE knowledge_v2_deliveries
     (status <> 'ACCEPTED' AND accepted_at IS NULL AND acceptance_evidence IS NULL)
   );
 
-CREATE FUNCTION protect_knowledge_v2_delivery_immutable_evidence()
+CREATE OR REPLACE FUNCTION protect_knowledge_v2_delivery_immutable_evidence()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
