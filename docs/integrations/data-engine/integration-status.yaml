@@ -1,17 +1,21 @@
 schema_version: 1
 integration:
   name: markorbit-data-engine
-  stage: G0
-  stage_name: Contract Freeze
-  status: provider_response_received
-  consumer_status: review_pending
+  stage: G1
+  stage_name: Protected Query Runtime
+  status: active
+  consumer_status: g0_accepted
   initiated_at: 2026-08-23
   provider_response_received_at: 2026-08-23
+  g0_consumer_accepted_at: 2026-08-23
+  g0_closed_at: 2026-08-23
 baselines:
   markorbit:
     repository: yoomarks/markorbit
     role: consumer-authority
-    baseline_sha: 356036671fcf6eb67494bcf05878faa3da5fc470
+    baseline_sha: a8035efff46a2e71a4613abd1927b18dadff086b
+    consumer_acceptance_pr: 176
+    consumer_acceptance_merge_sha: a8035efff46a2e71a4613abd1927b18dadff086b
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
@@ -43,43 +47,58 @@ provider_response:
   provider_contract: docs/integrations/markorbit/MARKORBIT_DATA_ENGINE_INTEGRATION_V1.json
   provider_ledger: docs/integrations/markorbit/integration-status.yaml
   provider_formal_response: docs/integrations/markorbit/MO-DE-G0-RESPONSE-2026-08-23.md
+consumer_acceptance:
+  pr: 176
+  merge_sha: a8035efff46a2e71a4613abd1927b18dadff086b
+  accepted_requirements:
+    - MO-DE-001
+    - MO-DE-002
+    - MO-DE-003
+    - MO-DE-004
+    - MO-DE-005
+  accepted_joint_decisions:
+    - preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
+    - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
+g1_execution:
+  requirement: MO-DE-006
+  consumer_pr: 177
+  consumer_head_sha: ef4e4b59d7d98e9239e8b7784aa95caf8b6bfe77
+  provider_baseline_sha: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
+  authenticated_cross_repo_acceptance:
+    workflow_run_id: 32610462289
+    status: success
+  overall_merge_gate: pending_exact_head_required_checks
 requirements:
   - id: MO-DE-001
     title: Query Contract V1 Freeze
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-002
     title: Missing Coverage Tombstone Semantics
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-003
     title: Service Authentication Security Contract
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-004
     title: Request Correlation Tracing
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-005
     title: Runtime Error Timeout Retry Semantics
     stage: G0
     priority: P0
-    status: provider_frozen_consumer_review_pending
+    status: accepted_frozen
   - id: MO-DE-006
     title: Authenticated Cross Repository Acceptance
     stage: G1
     priority: P1
-    status: blocked_by_g0_consumer_acceptance
-    blocked_by:
-      - MO-DE-001
-      - MO-DE-002
-      - MO-DE-003
-      - MO-DE-004
-      - MO-DE-005
+    status: active
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -90,7 +109,7 @@ requirements:
     stage: G2
     priority: P2-decision
     status: deferred_no_implementation
-cross_repo_decisions_pending:
+cross_repo_decisions_accepted:
   - preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
   - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
 rules:
