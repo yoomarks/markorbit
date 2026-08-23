@@ -1,0 +1,99 @@
+name: Lite Daily Workspace Runtime Fixture Patch Once
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch Daily Workspace real-runtime fixture
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/product-loop-today-real-runtime.ts')
+          text = path.read_text()
+
+          orbit_import = "import { DailyOrbitService, PostgresDailySignalReader } from '../services/lite/src/daily-orbit.js';"
+          orbit_replacement = orbit_import + "\nimport { createDailyWorkspaceRoutes } from '../services/lite/src/daily-workspace-http.js';\nimport { DailyWorkspaceSnapshotService } from '../services/lite/src/daily-workspace-snapshot.js';"
+          if "createDailyWorkspaceRoutes" not in text:
+              if orbit_import not in text:
+                  raise SystemExit('Daily Orbit import anchor not found')
+              text = text.replace(orbit_import, orbit_replacement, 1)
+
+          service_anchor = """  const dailyOrbitService = new DailyOrbitService(
+            dailySignalReader,
+            journeyService,
+            preferences,
+            () => at
+          );
+          const visualStore = new PostgresVisualBridgeStore(database, pool, () => at);"""
+          service_replacement = """  const dailyOrbitService = new DailyOrbitService(
+            dailySignalReader,
+            journeyService,
+            preferences,
+            () => at
+          );
+          const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
+            dailyOrbitService,
+            {
+              async listToday(workspaceId) {
+                const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
+                  journeyService.listToday(workspaceId),
+                  feedbackStore.listRecent(workspaceId),
+                  feedbackStore.listPendingPackages(workspaceId)
+                ]);
+                return { ...snapshot, recentFeedback, feedbackPendingPackages };
+              }
+            },
+            () => at
+          );
+          const visualStore = new PostgresVisualBridgeStore(database, pool, () => at);"""
+          if "const dailyWorkspaceSnapshotService" not in text:
+              if service_anchor not in text:
+                  raise SystemExit('Daily Workspace service anchor not found')
+              text = text.replace(service_anchor, service_replacement, 1)
+
+          routes_anchor = """      routes: [
+                ...createLiteProductLoopRoutes({"""
+          routes_replacement = """      routes: [
+                ...createDailyWorkspaceRoutes({
+                  internalServiceSecret: secret,
+                  service: dailyWorkspaceSnapshotService
+                }),
+                ...createLiteProductLoopRoutes({"""
+          if "...createDailyWorkspaceRoutes({" not in text:
+              if routes_anchor not in text:
+                  raise SystemExit('Lite route anchor not found')
+              text = text.replace(routes_anchor, routes_replacement, 1)
+
+          path.write_text(text)
+          PY
+      - name: Format runtime fixture
+        run: pnpm exec prettier --write scripts/product-loop-today-real-runtime.ts
+      - name: Commit fixture patch and remove one-shot workflow
+        run: |
+          rm .github/workflows/lite-daily-workspace-runtime-fixture-patch-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test(lite): expose Daily Workspace in real-runtime fixture"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
