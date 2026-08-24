@@ -1,0 +1,208 @@
+name: Lite Daily Workspace Visual Resume Once
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'agent/lite-daily-workspace-visual-resume'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/lite-daily-workspace-visual-resume
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch visual resume continuity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one anchor in {path}, found {count}: {old[:180]!r}')
+              file.write_text(text.replace(old, new, 1))
+
+          ui = 'apps/lite-web/src/features/today/TodayWorkspace.tsx'
+          replace_once(
+              ui,
+              '''  }, [dailyClient, selectedPick]);
+
+          const selectContentPick = (pick: Readonly<ContentPick>) => {''',
+              '''  }, [dailyClient, selectedPick]);
+
+          useEffect(() => {
+            if (!kit) {
+              setVisualRecord(undefined);
+              return;
+            }
+            const latestVisualBrief = kit.visualBriefReferences.at(-1);
+            if (!latestVisualBrief) {
+              setVisualRecord(undefined);
+              return;
+            }
+            let active = true;
+            setVisualError(undefined);
+            dailyClient
+              .loadVisualBrief(latestVisualBrief)
+              .then((record) => {
+                if (active) setVisualRecord(record);
+              })
+              .catch((cause: unknown) => {
+                if (!active) return;
+                setVisualRecord(undefined);
+                setVisualError(
+                  cause instanceof DailyWorkspaceHttpError
+                    ? cause
+                    : new DailyWorkspaceHttpError(
+                        503,
+                        'VISUAL_BRIEF_UNAVAILABLE',
+                        'Saved Visual Brief could not be restored.',
+                        true
+                      )
+                );
+              });
+            return () => {
+              active = false;
+            };
+          }, [dailyClient, kit]);
+
+          const selectContentPick = (pick: Readonly<ContentPick>) => {'''
+          )
+          replace_once(
+              ui,
+              '''              visualError.code === 'VISUAL_CONSUMER_UNAVAILABLE'
+                        ? 'Visual Engine connection not configured'
+                        : 'Visual request unavailable'
+                    }''',
+              '''              visualError.code === 'VISUAL_CONSUMER_UNAVAILABLE'
+                        ? 'Visual Engine connection not configured'
+                        : visualError.code === 'VISUAL_BRIEF_NOT_FOUND' ||
+                            visualError.code === 'VISUAL_BRIEF_UNAVAILABLE'
+                          ? 'Saved Visual Brief unavailable'
+                          : 'Visual request unavailable'
+                    }'''
+          )
+
+          e2e = 'tests/e2e/product-loop-today-real-runtime.spec.ts'
+          replace_once(
+              e2e,
+              '''    for (let index = 0; index < nativeVariantCount; index += 1) {
+              await expect(
+                nativeVariants
+                  .nth(index)
+                  .getByText('Human review required · external publish executed: No', { exact: true })
+              ).toBeVisible();
+            }
+
+            const firstAngle = contentKitCard.locator('.daily-angle-list > li').first();''',
+              '''    for (let index = 0; index < nativeVariantCount; index += 1) {
+              await expect(
+                nativeVariants
+                  .nth(index)
+                  .getByText('Human review required · external publish executed: No', { exact: true })
+              ).toBeVisible();
+            }
+
+            const createVisualBriefResponsePromise = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/lite/content-kits/') &&
+                response.url().endsWith('/visual-briefs') &&
+                response.request().method() === 'POST'
+            );
+            await page.getByLabel('Governed IP package', { exact: true }).fill('MOKI');
+            await page.getByRole('button', { name: 'Create Visual Brief', exact: true }).click();
+            const createVisualBriefResponse = await createVisualBriefResponsePromise;
+            expect(createVisualBriefResponse.status()).toBe(201);
+            const createdVisualBrief = (await createVisualBriefResponse.json()) as {
+              brief: { visualBriefId: string; version: number };
+            };
+            const visualBriefId = createdVisualBrief.brief.visualBriefId;
+            expect(visualBriefId).toMatch(/^visual-brief_/);
+            await expect(page.getByText(visualBriefId, { exact: true })).toBeVisible();
+            await expect(
+              page.getByRole('button', { name: 'Request reuse-first visual', exact: true })
+            ).toBeVisible();
+
+            const firstAngle = contentKitCard.locator('.daily-angle-list > li').first();'''
+          )
+          replace_once(
+              e2e,
+              '''    const durableUrl = page.url();
+            await page.reload();
+            await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
+            await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
+            await expect(page.getByText('CONTENT KIT', { exact: true })).toBeVisible();
+            await expect(page).toHaveURL(durableUrl);
+
+            const direct = await page.context().newPage();
+            await direct.goto(durableUrl);
+            await expect(direct.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
+            await expect(direct.getByText('Owner handoff completed', { exact: true })).toBeVisible();
+            await direct.close();''',
+              '''    const durableUrl = page.url();
+            const visualBriefReloadResponsePromise = page.waitForResponse(
+              (response) =>
+                response.url().includes(`/api/lite/visual-briefs/${visualBriefId}`) &&
+                response.request().method() === 'GET'
+            );
+            await page.reload();
+            expect((await visualBriefReloadResponsePromise).status()).toBe(200);
+            await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
+            await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
+            await expect(page.getByText('CONTENT KIT', { exact: true })).toBeVisible();
+            await expect(page.getByText(visualBriefId, { exact: true })).toBeVisible();
+            await expect(
+              page.getByRole('button', { name: 'Request reuse-first visual', exact: true })
+            ).toBeVisible();
+            await expect(page).toHaveURL(durableUrl);
+
+            const direct = await page.context().newPage();
+            const directVisualBriefResponsePromise = direct.waitForResponse(
+              (response) =>
+                response.url().includes(`/api/lite/visual-briefs/${visualBriefId}`) &&
+                response.request().method() === 'GET'
+            );
+            await direct.goto(durableUrl);
+            expect((await directVisualBriefResponsePromise).status()).toBe(200);
+            await expect(direct.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
+            await expect(direct.getByText('Owner handoff completed', { exact: true })).toBeVisible();
+            await expect(
+              direct.getByRole('button', { name: 'Request reuse-first visual', exact: true })
+            ).toBeVisible();
+            await direct.close();'''
+          )
+          PY
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            apps/lite-web/src/features/today/TodayWorkspace.tsx \
+            tests/e2e/product-loop-today-real-runtime.spec.ts
+      - name: Validate affected UI
+        run: |
+          pnpm --filter @markorbit/lite-web typecheck
+          pnpm --filter @markorbit/lite-web lint
+          pnpm exec turbo run build --filter=@markorbit/lite-web...
+      - name: Commit implementation and remove one-shot workflow
+        run: |
+          rm .github/workflows/lite-daily-workspace-visual-resume-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(lite): resume saved Visual Briefs after reload"
+          git push origin HEAD:agent/lite-daily-workspace-visual-resume
