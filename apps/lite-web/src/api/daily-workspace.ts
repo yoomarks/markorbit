@@ -182,6 +182,32 @@ function visualBriefKey(contentPickId: string, kit: Readonly<ContentKit>, sceneI
 }
 
 export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceClient {
+  const visualBriefReadYourWrites = new Map<
+    string,
+    Readonly<ProductLoopExactReference<VisualBriefId>>
+  >();
+
+  const loadContentKit = async (contentPickId: string): Promise<ContentKit> => {
+    const loaded = await request<ContentKit>(
+      `/api/lite/content-kits/${encodeURIComponent(contentPickId)}`,
+      workspaceId
+    );
+    const pendingVisualBrief = visualBriefReadYourWrites.get(contentPickId);
+    if (!pendingVisualBrief) return loaded;
+    const alreadyProjected = loaded.visualBriefReferences.some(
+      (reference) =>
+        reference.id === pendingVisualBrief.id && reference.version === pendingVisualBrief.version
+    );
+    if (alreadyProjected) {
+      visualBriefReadYourWrites.delete(contentPickId);
+      return loaded;
+    }
+    return {
+      ...loaded,
+      visualBriefReferences: [...loaded.visualBriefReferences, pendingVisualBrief]
+    };
+  };
+
   const recordPreferenceEvent = (
     kind: ProductPreferenceEventKind,
     target: ProductPreferenceTarget,
@@ -215,11 +241,7 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
   return {
     loadWorkspace: () => request<DailyWorkspaceSnapshot>('/api/lite/daily-workspace', workspaceId),
     loadOrbit: () => request<DailyOrbitSnapshot>('/api/lite/daily-orbit', workspaceId),
-    loadContentKit: (contentPickId) =>
-      request<ContentKit>(
-        `/api/lite/content-kits/${encodeURIComponent(contentPickId)}`,
-        workspaceId
-      ),
+    loadContentKit,
     loadVisualBrief: (reference) =>
       request<VisualBriefRecordResponse>(
         `/api/lite/visual-briefs/${encodeURIComponent(reference.id)}?version=${reference.version}`,
@@ -239,6 +261,10 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
         },
         visualBriefKey(contentPickId, kit, input.sceneIntent)
       );
+      visualBriefReadYourWrites.set(contentPickId, {
+        id: record.brief.visualBriefId,
+        version: record.brief.version
+      });
       await recordPreferenceBestEffort(
         'CONTENT_STARTED',
         {
