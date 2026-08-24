@@ -235,7 +235,7 @@ describe('MO-DE-010 Gateway Trademark Asset admission', () => {
     const base = baseDetail('EU');
     const liteFetch = vi.fn(() =>
       Promise.resolve(new Response(JSON.stringify(base), { status: 200 }))
-   ) as unknown as typeof fetch;
+    ) as unknown as typeof fetch;
     const dataEngineFetch = vi.fn() as unknown as typeof fetch;
 
     const result = await detailRoute({ liteFetch, dataEngineFetch }).handle(request());
