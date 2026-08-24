@@ -99,12 +99,18 @@ describe('Daily Workspace preference event wiring', () => {
       outputKind: 'XIAOHONGSHU_COVER',
       sceneIntent: 'MOKI explains the update.'
     });
+    const exactReference = { id: brief.visualBriefId, version: brief.version };
     const readAfterWrite = await client.loadContentKit('content-pick_wp07');
+    const exactRecordAfterWrite = await client.loadVisualBrief(exactReference);
 
     expect(result).toEqual(visualRecord);
-    expect(readAfterWrite.visualBriefReferences).toEqual([
-      { id: brief.visualBriefId, version: brief.version }
-    ]);
+    expect(readAfterWrite.visualBriefReferences).toEqual([exactReference]);
+    expect(exactRecordAfterWrite).toEqual(visualRecord);
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        requestUrl(input).includes('/api/lite/visual-briefs/visual-brief_wp07')
+      )
+    ).toBe(false);
     expect(preferenceBodies).toEqual([
       {
         workspaceId,
