@@ -181,11 +181,16 @@ function visualBriefKey(contentPickId: string, kit: Readonly<ContentKit>, sceneI
   return `visual-brief:${contentPickId}:${kit.contentKitId}:${kit.version}:${sceneIntent.trim()}`;
 }
 
+function visualBriefReferenceKey(reference: Readonly<ProductLoopExactReference<VisualBriefId>>) {
+  return `${reference.id}:${reference.version}`;
+}
+
 export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceClient {
   const visualBriefReadYourWrites = new Map<
     string,
     Readonly<ProductLoopExactReference<VisualBriefId>>
   >();
+  const visualBriefRecordReadYourWrites = new Map<string, Readonly<VisualBriefRecordResponse>>();
 
   const loadContentKit = async (contentPickId: string): Promise<ContentKit> => {
     const loaded = await request<ContentKit>(
@@ -206,6 +211,17 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
       ...loaded,
       visualBriefReferences: [...loaded.visualBriefReferences, pendingVisualBrief]
     };
+  };
+
+  const loadVisualBrief = (
+    reference: Readonly<ProductLoopExactReference<VisualBriefId>>
+  ): Promise<VisualBriefRecordResponse> => {
+    const readYourWrites = visualBriefRecordReadYourWrites.get(visualBriefReferenceKey(reference));
+    if (readYourWrites) return Promise.resolve(readYourWrites);
+    return request<VisualBriefRecordResponse>(
+      `/api/lite/visual-briefs/${encodeURIComponent(reference.id)}?version=${reference.version}`,
+      workspaceId
+    );
   };
 
   const recordPreferenceEvent = (
@@ -242,11 +258,7 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
     loadWorkspace: () => request<DailyWorkspaceSnapshot>('/api/lite/daily-workspace', workspaceId),
     loadOrbit: () => request<DailyOrbitSnapshot>('/api/lite/daily-orbit', workspaceId),
     loadContentKit,
-    loadVisualBrief: (reference) =>
-      request<VisualBriefRecordResponse>(
-        `/api/lite/visual-briefs/${encodeURIComponent(reference.id)}?version=${reference.version}`,
-        workspaceId
-      ),
+    loadVisualBrief,
     createVisualBrief: async (contentPickId, kit, input) => {
       const record = await request<VisualBriefRecordResponse>(
         `/api/lite/content-kits/${encodeURIComponent(contentPickId)}/visual-briefs`,
@@ -261,10 +273,12 @@ export function createDailyWorkspaceClient(workspaceId: string): DailyWorkspaceC
         },
         visualBriefKey(contentPickId, kit, input.sceneIntent)
       );
-      visualBriefReadYourWrites.set(contentPickId, {
+      const exactReference = {
         id: record.brief.visualBriefId,
         version: record.brief.version
-      });
+      } as const;
+      visualBriefReadYourWrites.set(contentPickId, exactReference);
+      visualBriefRecordReadYourWrites.set(visualBriefReferenceKey(exactReference), record);
       await recordPreferenceBestEffort(
         'CONTENT_STARTED',
         {
