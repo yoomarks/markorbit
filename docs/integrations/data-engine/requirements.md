@@ -152,7 +152,7 @@ Final exact-head workflow evidence:
 - M8 WP-06 Commercial Runtime Reliability: run `32707949344` — success;
 - MO-DE G1 Cross-Repo Acceptance: run `32707949408` — success.
 
-The final cross-repo workflow tested Data Engine SHA `57be59ab27e41ac99ae95922ce802aa189c48181`. During closeout, Data Engine `main` had advanced to `bdc43d12763a4db200b5363c8eda3060868d2d0b`, but the frozen V1 contract blob remained identical at `7567908e4d1c8d79eef27fb763fe63d58281f02a`; no contract drift was observed.
+The final cross-repo workflow tested Data Engine SHA `57be59ab27e41ac99ae95922ce802aa189c48181`. During G1 closeout, Data Engine `main` had advanced to `bdc43d12763a4db200b5363c8eda3060868d2d0b`, but the frozen V1 contract blob remained identical at `7567908e4d1c8d79eef27fb763fe63d58281f02a`; no contract drift was observed.
 
 Explicitly still out of scope after G1 completion:
 
@@ -166,44 +166,62 @@ Explicitly still out of scope after G1 completion:
 
 Overall G1 is complete with `MO-DE-006` + `MO-DE-009` accepted.
 
-## Post-G1 bounded product admission
+## Post-G1 bounded product admission — complete
 
 ### MO-DE-010 — Trademark Asset On-Demand Product Admission
 
 Priority: **P1**  
 Primary owner: **MarkOrbit Gateway + Lite Trademark Asset Workspace**  
 Provider owner: **Data Engine only if the frozen provider contract itself must change**  
-Status: **AUTHORIZED / IMPLEMENTATION PENDING**
+Status: **ACCEPTED / COMPLETE**
 
-`MO-DE-010` authorizes one bounded downstream use of the already-admitted G1 read plane: enrich an existing M10 Trademark Asset detail view on demand from its durable Asset Anchor. This is an explicit use-case authorization, not a general G4/Lite Data Engine productization unlock.
+`MO-DE-010` is the completed bounded downstream use of the already-admitted G1 read plane: enrich an existing M10 Trademark Asset detail view on demand from its durable Asset Anchor. This remains an explicit use-case authorization, not a general G4/Lite Data Engine productization unlock.
 
-Authorized behavior:
+Accepted behavior:
 
-- the existing Trademark Asset Anchor remains the product identity authority and must provide `jurisdiction` plus an `APPLICATION_NUMBER` identifier before a Data Engine lookup is attempted;
+- the existing Trademark Asset Anchor remains the product identity authority and provides `jurisdiction` plus an `APPLICATION_NUMBER` identifier before a Data Engine lookup is attempted;
 - Gateway remains the only holder of Data Engine service credentials and performs the protected provider read through the normal G1 client/runtime boundary;
-- `CN` anchors may use the frozen CN case read and `US` anchors may use the frozen US case read; unsupported jurisdictions do not create a provider query;
-- only schema-proven, source-owned factual values may be translated into existing `TrademarkAssetFactContribution` kinds;
-- the initial allowed fact kinds are `APPLICATION_STATUS`, `APPLICATION_DATE`, `REGISTRATION_DATE`, `OWNER_NAME` and `NICE_CLASSES` where the provider response explicitly supplies the corresponding value;
-- `RENEWAL_DATE` may be admitted only when an explicit provider field can be demonstrated; it must otherwise remain absent/unknown rather than derived;
+- `CN` anchors use the frozen CN case read and `US` anchors use the frozen US case read; unsupported jurisdictions do not create a provider query;
+- only schema-proven, source-owned factual values are translated into existing `TrademarkAssetFactContribution` kinds;
+- accepted fact kinds are `APPLICATION_STATUS`, `APPLICATION_DATE`, `REGISTRATION_DATE`, `OWNER_NAME` and `NICE_CLASSES` where the provider response explicitly supplies the corresponding value;
+- `RENEWAL_DATE` is admitted only when the provider response contains an explicit field; it is never derived;
+- provider "current" records are carried with `UNKNOWN` freshness and are not promoted into legal-current truth;
 - Lite remains the single owner of Trademark Asset composition, conflict detection, attention computation, confidence handling and recommendations;
-- provider `not_found`, unavailable, timeout, rate-limit, auth or incompatible-response states may degrade to the original M10 detail view but must never manufacture a negative factual observation;
-- source provenance must remain visible through the existing `DATA_ENGINE_TRADEMARK_RECORD` owner and contribution metadata;
+- provider `not_found`, unavailable, timeout, rate-limit, auth or incompatible-response states degrade to the original M10 detail view and never manufacture a negative factual observation;
+- source provenance remains visible through the existing `DATA_ENGINE_TRADEMARK_RECORD` owner and contribution metadata;
 - request/correlation tracing remains preserved across Gateway -> Data Engine and Gateway -> Lite hops.
 
-Acceptance:
+Acceptance evidence:
 
-- a real normal Gateway Trademark Asset detail request can obtain an existing durable Lite anchor, perform the eligible Data Engine read, and return a Lite-composed detail containing validated Data Engine contributions;
-- unauthenticated / unauthorized MarkOrbit requests are rejected before provider access;
-- Data Engine credentials never reach the browser or Lite runtime configuration;
-- Data Engine failure/not-found has a tested non-fabricating degradation path;
-- unsupported jurisdiction or missing `APPLICATION_NUMBER` has a tested no-provider path;
-- contribution mapping has tests against representative CN and US V1 payload shapes and ignores unproven/unknown fields;
+- governance authorization PR #193: final head `3c561fb32180a8409dccf020c88f4e8c97d81c96`, merge `51fe5f48869d4a650fd302281c18c74a6ba6f93f`;
+- runtime PR #194: final head `67ec70907df7ee1a8e9efd1620aad941802bf6ed`, squash merge `9600daa6b3ddc8d75cfbfcd443341ee755a30129`;
+- the normal Gateway Trademark Asset detail request obtains a durable Lite anchor, performs the eligible Data Engine read and returns a Lite-composed detail containing validated Data Engine contributions;
+- unauthenticated MarkOrbit requests are rejected before Lite or provider access;
+- Data Engine credentials remain server-side at Gateway and do not reach the browser or Lite runtime configuration;
+- Data Engine failure has a tested non-fabricating degradation path;
+- unsupported jurisdiction has a tested no-provider path;
+- CN/US mapping is covered by representative provider payload tests;
 - `officialTruthVerifiedByLite` remains `false`;
 - `legalDeadlineCertified` remains `false`;
 - `protectedActionAuthorized` remains `false`;
 - existing M10 conflict-preserving semantics remain unchanged.
 
-Explicitly out of scope for `MO-DE-010`:
+Final exact-head workflow evidence for PR #194:
+
+- validation: run `32722585033` — success;
+- M8 WP-06 Commercial Runtime Reliability: run `32722585200` — success;
+- MO-DE G1 Cross-Repo Acceptance: run `32722585121` — success;
+- Product Loop Candidate Qualification: run `32722585024` — success;
+- Product Loop Today Prepared Action: run `32722585061` — success;
+- Product Loop Content Preparation: run `32722585054` — success;
+- M7 WP-02 Conversion Analytics: run `32722585110` — success;
+- Product Loop Feedback Observability: run `32722585052` — success.
+
+The exact-head cross-repository run used Data Engine SHA `57be59ab27e41ac99ae95922ce802aa189c48181`, seeded an isolated provider-owned US case/current-owner/classification fixture, started auth-required provider profiles and proved `primary Gateway -> real auth-required Data Engine -> Lite fact recomposition`. The Gateway Data Engine acceptance set passed 8 test files / 42 tests, including the MO-DE-010 real provider Trademark Asset path.
+
+During MO-DE-010 closeout, Data Engine `main` was `5e4888a001de866ca5b811151cf0afe13d5eef71`; the frozen V1 contract blob remained `7567908e4d1c8d79eef27fb763fe63d58281f02a`. No V1 contract drift was observed.
+
+Explicitly still out of scope after `MO-DE-010` completion:
 
 - `/api/v1/us/changes`, cursors, checkpoints or any `MO-DE-007/008` implementation;
 - scheduled/background synchronization or proactive ingestion;
@@ -219,14 +237,14 @@ Explicitly out of scope for `MO-DE-010`:
 ### MO-DE-007 — US Trademark Change Feed Ownership
 
 Priority: **P2 DECISION**  
-Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION OR MO-DE-010**
+Status: **DEFERRED — NOT AUTHORIZED BY G1 OR MO-DE-010 COMPLETION**
 
 Proposed direction for later joint review: Data Engine owns factual change detection and durable provider-side change feed; MarkOrbit Core owns business/product event interpretation. Brain/Lite consumption is downstream and must not redefine source facts.
 
 ### MO-DE-008 — Cursor / Consumer Checkpoint Ownership
 
 Priority: **P2 DECISION**  
-Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION OR MO-DE-010**
+Status: **DEFERRED — NOT AUTHORIZED BY G1 OR MO-DE-010 COMPLETION**
 
 Freeze later whether the provider exposes durable feed cursors and which consumer checkpoints are owned by MarkOrbit. Dedupe/idempotency and replay semantics must be explicit before implementation.
 
@@ -235,7 +253,7 @@ Freeze later whether the provider exposes durable feed cursors and which consume
 1. `MO-DE-001..005` — accepted and frozen.
 2. `MO-DE-006` — real transport/auth cross-repository acceptance complete.
 3. `MO-DE-009` — primary Gateway protected query admission complete; overall G1 is closed.
-4. `MO-DE-010` — bounded Trademark Asset on-demand product admission authorized; implementation and acceptance pending.
+4. `MO-DE-010` — bounded Trademark Asset on-demand product admission complete and accepted.
 5. `MO-DE-007/008` — remain deferred; no implementation authorization.
 6. Brain integration and global Lite Data Engine productization remain deferred.
-7. Any broader G2/G3/G4 work requires a new explicit authorization/decision rather than being inferred from G1 or `MO-DE-010`.
+7. Any broader G2/G3/G4 work requires a new explicit authorization/decision rather than being inferred from G1 or `MO-DE-010` completion.
