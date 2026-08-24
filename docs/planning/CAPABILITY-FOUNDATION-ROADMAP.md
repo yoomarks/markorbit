@@ -46,15 +46,15 @@ Capabilities are prioritized by five factors:
 
 This produces the following sequence:
 
-| Sequence | Work | Priority | Admission target |
-| --- | --- | --- | --- |
-| 1 | `MO-CAP-001` Capability Runtime Execution & Admission Plane | P0 | first |
-| 2A | `MO-CAP-002` Managed AI Execution | P0 | after minimum MO-CAP-001 invocation contract |
-| 2B | `MO-CAP-003` Managed Communication / Email | P0 | after minimum MO-CAP-001 invocation contract |
-| 3A | `MO-CAP-004` Governed Document Understanding | P1 | after AI/communication runtime patterns are proven |
-| 3B | `MO-CAP-005` Governed Retrieval | P1 | after runtime patterns are proven |
-| 3C | `MO-CAP-006` Capability Conformance & Evaluation Harness | P1 | grows alongside 002–005 |
-| 4 | Domain Capability Wave 1 | P2 staged | only after foundation reuse is proven |
+| Sequence | Work                                                        | Priority  | Admission target                                   |
+| -------- | ----------------------------------------------------------- | --------- | -------------------------------------------------- |
+| 1        | `MO-CAP-001` Capability Runtime Execution & Admission Plane | P0        | first                                              |
+| 2A       | `MO-CAP-002` Managed AI Execution                           | P0        | after minimum MO-CAP-001 invocation contract       |
+| 2B       | `MO-CAP-003` Managed Communication / Email                  | P0        | after minimum MO-CAP-001 invocation contract       |
+| 3A       | `MO-CAP-004` Governed Document Understanding                | P1        | after AI/communication runtime patterns are proven |
+| 3B       | `MO-CAP-005` Governed Retrieval                             | P1        | after runtime patterns are proven                  |
+| 3C       | `MO-CAP-006` Capability Conformance & Evaluation Harness    | P1        | grows alongside 002–005                            |
+| 4        | Domain Capability Wave 1                                    | P2 staged | only after foundation reuse is proven              |
 
 `MO-CAP-002` and `MO-CAP-003` may proceed in parallel once `MO-CAP-001` has frozen and merged the common invocation/binding contract they both consume.
 

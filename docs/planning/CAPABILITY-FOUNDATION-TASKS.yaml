@@ -7,7 +7,7 @@ program:
   architecture: docs/architecture/CAPABILITY-FOUNDATION-ARCHITECTURE.md
   audit: docs/audits/CAPABILITY-FOUNDATION-AUDIT-2026-08-25.md
   roadmap: docs/planning/CAPABILITY-FOUNDATION-ROADMAP.md
-  canon_rule: "Capability = Stable Outcome Contract + Governed Implementation + Evidence Base + Version Lineage + Controlled Evolution"
+  canon_rule: 'Capability = Stable Outcome Contract + Governed Implementation + Evidence Base + Version Lineage + Controlled Evolution'
   historical_reconciliation:
     - MO-MVP-TASK-010
     - MO-MVP-TASK-011
