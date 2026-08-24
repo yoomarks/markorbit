@@ -26,7 +26,27 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Execute staged patch
-        run: python .ci/lite-durable-save-state-patch.py
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.ci/lite-durable-save-state-patch.py')
+          text = path.read_text()
+          old = '''replace_once(
+              e2e,
+              "      see: {\\n        preferenceSource: string | null;\\n        orbitItems: Array<{",
+              "      see: {\\n        preferenceSource: string | null;\\n        savedOrbitItemIds: string[];\\n        orbitItems: Array<{",
+          )'''
+          new = '''replace_n(
+              e2e,
+              "      see: {\\n        preferenceSource: string | null;\\n        orbitItems: Array<{",
+              "      see: {\\n        preferenceSource: string | null;\\n        savedOrbitItemIds: string[];\\n        orbitItems: Array<{",
+              2,
+          )'''
+          if old not in text:
+              raise SystemExit('e2e workspace-shape patch anchor missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          python .ci/lite-durable-save-state-patch.py
       - name: Format changed files
         run: |
           pnpm exec prettier --write \
