@@ -21,10 +21,12 @@ function authenticationClient(): CoreAuthenticationClient {
   return {
     issue: () => Promise.reject(new Error('not used')),
     resolve: () => Promise.reject(new Error('not used')),
-    resolveWorkspace: async (token, requestedWorkspaceId) => {
-      if (token !== 'token_mo_de_009_cross_repo') throw new Error('Unexpected test session token.');
-      if (requestedWorkspaceId !== workspaceId) throw new Error('Unexpected test Workspace.');
-      return principal;
+    resolveWorkspace: (token, requestedWorkspaceId) => {
+      if (token !== 'token_mo_de_009_cross_repo')
+        return Promise.reject(new Error('Unexpected test session token.'));
+      if (requestedWorkspaceId !== workspaceId)
+        return Promise.reject(new Error('Unexpected test Workspace.'));
+      return Promise.resolve(principal);
     },
     revoke: () => Promise.resolve()
   };
