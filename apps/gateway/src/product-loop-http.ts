@@ -108,9 +108,20 @@ function hasPermissions(principal: WorkspacePrincipal, required: readonly Permis
   return required.every((permission) => principal.permissions.includes(permission));
 }
 
+function environmentTimeout(): number | undefined {
+  const raw = process.env.DATA_ENGINE_TIMEOUT_MS;
+  if (!raw) return undefined;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
 export function createGatewayProductLoopRoutes(
   options: GatewayProductLoopOptions
 ): readonly JsonRoute[] {
+  const dataEngineUrl = options.dataEngineUrl ?? process.env.DATA_ENGINE_URL;
+  const dataEngineApiKey = options.dataEngineApiKey ?? process.env.DATA_ENGINE_API_KEY;
+  const dataEngineTimeoutMs = options.dataEngineTimeoutMs ?? environmentTimeout();
+
   const authenticate = async (
     request: JsonRequest,
     mutation: boolean,
@@ -199,15 +210,13 @@ export function createGatewayProductLoopRoutes(
     if (base.status !== 200) return json(base.status, base.body);
 
     const lookup = resolveTrademarkAssetDataEngineLookup(base.body);
-    if (!lookup || !options.dataEngineUrl || !options.dataEngineApiKey) return json(200, base.body);
+    if (!lookup || !dataEngineUrl || !dataEngineApiKey) return json(200, base.body);
 
     try {
       const client = createDataEngineClient({
-        dataEngineUrl: options.dataEngineUrl,
-        apiKey: options.dataEngineApiKey,
-        ...(options.dataEngineTimeoutMs === undefined
-          ? {}
-          : { timeoutMs: options.dataEngineTimeoutMs }),
+        dataEngineUrl,
+        apiKey: dataEngineApiKey,
+        ...(dataEngineTimeoutMs === undefined ? {} : { timeoutMs: dataEngineTimeoutMs }),
         ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
       });
       const context = {
