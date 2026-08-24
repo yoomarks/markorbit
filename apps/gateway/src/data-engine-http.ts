@@ -38,6 +38,13 @@ export interface DataEngineTrace {
   sourceOwner: string;
 }
 
+export interface DataEngineCase360Query {
+  asOf?: string;
+  historyLimit?: number;
+  assignmentLimit?: number;
+  ttabLimit?: number;
+}
+
 export interface DataEngineChangeQuery {
   afterSourceRank?: number;
   afterSerial?: string;
@@ -317,10 +324,16 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
 
     usCase360(
       serialNumber: string,
+      query: DataEngineCase360Query = {},
       context?: DataEngineRequestContext
     ): Promise<DataEngineFactEnvelope> {
       return fact(
-        `/api/v1/us/cases/${encodeURIComponent(serialNumber)}/360`,
+        `/api/v1/us/cases/${encodeURIComponent(serialNumber)}/360${queryString({
+          as_of: query.asOf,
+          history_limit: query.historyLimit,
+          assignment_limit: query.assignmentLimit,
+          ttab_limit: query.ttabLimit
+        })}`,
         'US',
         'TRADEMARK_CASE_360',
         context
