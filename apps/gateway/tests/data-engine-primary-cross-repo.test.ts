@@ -58,7 +58,7 @@ type GatewayErrorBody = {
 
 crossRepoDescribe('MO-DE-009 primary Gateway real cross-repo acceptance', () => {
   const providerUrl = process.env.MO_DE_G1_PROVIDER_URL!;
-  const rateLimitProviderUrl = process.env.MO_DE_G1_RATE_LIMIT_PROVIDER_URL!;
+  const rateLimitProviderUrl = process.env.MO_DE_G1_PRIMARY_RATE_LIMIT_PROVIDER_URL!;
   const invalidConfigProviderUrl = process.env.MO_DE_G1_INVALID_CONFIG_PROVIDER_URL!;
   const apiKey = process.env.MO_DE_G1_API_KEY!;
   const runtime = createRuntime({
