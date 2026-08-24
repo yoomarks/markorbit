@@ -10,7 +10,11 @@ function snapshot(overrides: Partial<DailyWorkspaceSnapshot> = {}): DailyWorkspa
     workspaceId,
     subjectUserId: 'user_primary_workspace',
     generatedAt: '2026-08-24T00:00:00.000Z',
-    see: { preferenceSource: 'PRODUCT_FEEDBACK', orbitItems: [] },
+    see: {
+      preferenceSource: 'PRODUCT_FEEDBACK',
+      savedOrbitItemIds: ['daily-orbit-item_saved'],
+      orbitItems: []
+    },
     create: { contentPicks: [] },
     move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
     partial: false,
@@ -35,6 +39,7 @@ describe('Daily Workspace primary projection', () => {
       executionAuthorized: false,
       legalTruthVerified: false
     });
+    expect(result.orbit.savedOrbitItemIds).toEqual(['daily-orbit-item_saved']);
     expect(result.orbit.items).toEqual([]);
     expect(result.orbit.contentPicks).toEqual([]);
     expect(result.today).toMatchObject({
@@ -64,7 +69,7 @@ describe('Daily Workspace primary projection', () => {
   it('uses NONE only as a compatibility view when SEE provenance is unavailable', () => {
     const result = projectDailyWorkspacePrimary(
       snapshot({
-        see: { preferenceSource: null, orbitItems: [] },
+        see: { preferenceSource: null, savedOrbitItemIds: [], orbitItems: [] },
         partial: true,
         warnings: ['SEE_CREATE_UNAVAILABLE']
       })

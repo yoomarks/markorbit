@@ -50,37 +50,52 @@ export class NoCreatorPreferenceProvider implements DailyOrbitPreferenceProvider
   }
 }
 
+export interface DailyOrbitVisibilityState {
+  savedOrbitItemIds: ReadonlySet<string>;
+  dismissedOrbitItemIds: ReadonlySet<string>;
+}
+
 export interface DailyOrbitVisibilityProvider {
-  dismissedOrbitItemIds(workspaceId: string, subjectUserId: string): Promise<ReadonlySet<string>>;
+  orbitItemState(
+    workspaceId: string,
+    subjectUserId: string
+  ): Promise<Readonly<DailyOrbitVisibilityState>>;
 }
 
 export class NoDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
-  dismissedOrbitItemIds(): Promise<ReadonlySet<string>> {
-    return Promise.resolve(new Set());
+  orbitItemState(): Promise<Readonly<DailyOrbitVisibilityState>> {
+    return Promise.resolve({ savedOrbitItemIds: new Set(), dismissedOrbitItemIds: new Set() });
   }
 }
 
 export class PostgresDailyOrbitVisibilityProvider implements DailyOrbitVisibilityProvider {
   constructor(private readonly query: QueryClient) {}
 
-  async dismissedOrbitItemIds(
+  async orbitItemState(
     workspaceIdValue: string,
     subjectUserIdValue: string
-  ): Promise<ReadonlySet<string>> {
+  ): Promise<Readonly<DailyOrbitVisibilityState>> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
     const subjectUserId = cleanUserId(subjectUserIdValue);
     try {
       const result = await this.query.query(
-        `SELECT DISTINCT target_id
+        `SELECT DISTINCT target_id,kind
            FROM lite_product_preference_events
           WHERE workspace_id=$1
             AND subject_user_id=$2
             AND target_type='DAILY_ORBIT_ITEM'
-            AND kind='DISMISSED'
-          ORDER BY target_id`,
+            AND kind IN ('SAVED','DISMISSED')
+          ORDER BY target_id,kind`,
         [workspaceId, subjectUserId]
       );
-      return new Set(result.rows.map((row) => String((row as { target_id: unknown }).target_id)));
+      const savedOrbitItemIds = new Set<string>();
+      const dismissedOrbitItemIds = new Set<string>();
+      for (const row of result.rows) {
+        const targetId = String((row as { target_id: unknown }).target_id);
+        if ((row as { kind: unknown }).kind === 'SAVED') savedOrbitItemIds.add(targetId);
+        if ((row as { kind: unknown }).kind === 'DISMISSED') dismissedOrbitItemIds.add(targetId);
+      }
+      return { savedOrbitItemIds, dismissedOrbitItemIds };
     } catch (error) {
       throw new DailyOrbitError(
         'PERSISTENCE_UNAVAILABLE',
@@ -99,6 +114,7 @@ export interface DailyOrbitSnapshot {
   subjectUserId: string;
   generatedAt: string;
   preferenceSource: CreatorPreference['source'] | 'NONE';
+  savedOrbitItemIds: readonly string[];
   items: ReadonlyArray<Readonly<DailyOrbitItem>>;
   contentPicks: ReadonlyArray<Readonly<ContentPick>>;
   partial: boolean;
@@ -454,12 +470,12 @@ export class DailyOrbitService {
         );
     }
 
-    let dismissedOrbitItemIds: ReadonlySet<string> = new Set();
+    let orbitItemState: Readonly<DailyOrbitVisibilityState> = {
+      savedOrbitItemIds: new Set(),
+      dismissedOrbitItemIds: new Set()
+    };
     try {
-      dismissedOrbitItemIds = await this.visibility.dismissedOrbitItemIds(
-        workspaceId,
-        subjectUserId
-      );
+      orbitItemState = await this.visibility.orbitItemState(workspaceId, subjectUserId);
     } catch {
       warnings.push('ORBIT_VISIBILITY_UNAVAILABLE');
     }
@@ -482,7 +498,7 @@ export class DailyOrbitService {
           item: rankDailyOrbitItem(signal, subjectUserId, preference, recommendation, generatedAt)
         };
       })
-      .filter((entry) => !dismissedOrbitItemIds.has(entry.item.dailyOrbitItemId))
+      .filter((entry) => !orbitItemState.dismissedOrbitItemIds.has(entry.item.dailyOrbitItemId))
       .sort(
         (left, right) =>
           right.item.score.total - left.item.score.total ||
@@ -491,6 +507,9 @@ export class DailyOrbitService {
       );
 
     const items = ranked.map((entry) => entry.item);
+    const savedOrbitItemIds = items
+      .filter((item) => orbitItemState.savedOrbitItemIds.has(item.dailyOrbitItemId))
+      .map((item) => item.dailyOrbitItemId);
     const contentPicks = ranked
       .map((entry) => contentPickFor(entry.item, entry.signal, entry.recommendation, preference))
       .filter((value): value is ContentPick => Boolean(value));
@@ -501,6 +520,7 @@ export class DailyOrbitService {
       subjectUserId,
       generatedAt,
       preferenceSource: preference?.source ?? 'NONE',
+      savedOrbitItemIds,
       items,
       contentPicks,
       partial: warnings.length > 0,

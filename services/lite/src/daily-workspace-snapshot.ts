@@ -40,6 +40,7 @@ export interface DailyWorkspaceSnapshot {
   generatedAt: string;
   see: {
     preferenceSource: DailyOrbitSnapshot['preferenceSource'] | null;
+    savedOrbitItemIds: readonly string[];
     orbitItems: ReadonlyArray<Readonly<DailyOrbitItem>>;
   };
   create: {
@@ -156,6 +157,7 @@ export class DailyWorkspaceSnapshotService {
       generatedAt,
       see: {
         preferenceSource: orbit?.preferenceSource ?? null,
+        savedOrbitItemIds: orbit?.savedOrbitItemIds ?? [],
         orbitItems: orbit?.items ?? []
       },
       create: { contentPicks: orbit?.contentPicks ?? [] },

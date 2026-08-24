@@ -43,6 +43,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     const initialWorkspace = (await initialWorkspaceResponse.json()) as {
       see: {
         preferenceSource: string | null;
+        savedOrbitItemIds: string[];
         orbitItems: Array<{
           dailyOrbitItemId: string;
           version: number;
@@ -110,6 +111,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     const personalizedWorkspace = (await (await personalizedWorkspaceResponse).json()) as {
       see: {
         preferenceSource: string | null;
+        savedOrbitItemIds: string[];
         orbitItems: Array<{
           signal: { id: string; version: number };
           score: { personalRelevance: { score: number; reason: string } };
@@ -117,6 +119,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       };
     };
     expect(personalizedWorkspace.see.preferenceSource).toBe('PRODUCT_FEEDBACK');
+    expect(personalizedWorkspace.see.savedOrbitItemIds).toContain(initialItem.dailyOrbitItemId);
     const personalizedItem = personalizedWorkspace.see.orbitItems.find(
       (candidate) =>
         candidate.signal.id === initialItem.signal.id &&
@@ -132,6 +135,7 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
         exact: true
       })
     ).toBeVisible();
+    await expect(orbitCard.getByRole('button', { name: 'Saved', exact: true })).toBeDisabled();
 
     await expect(page.getByText('Prepare the content line first', { exact: true })).toBeVisible();
     await expect(page.getByText(/Content Pick is editorial guidance only/)).toBeVisible();

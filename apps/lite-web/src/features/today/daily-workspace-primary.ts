@@ -30,6 +30,7 @@ export function projectDailyWorkspacePrimary(
       subjectUserId: snapshot.subjectUserId,
       generatedAt: snapshot.generatedAt,
       preferenceSource: snapshot.see.preferenceSource ?? 'NONE',
+      savedOrbitItemIds: snapshot.see.savedOrbitItemIds,
       items: snapshot.see.orbitItems,
       contentPicks: snapshot.create.contentPicks,
       partial: seeWarnings.length > 0,
