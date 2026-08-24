@@ -46,47 +46,73 @@ function requireWorkspaceRead(principal: WorkspacePrincipal) {
     throw new AuthenticationError('PERMISSION_DENIED', 'workspace:read permission is required.');
 }
 
-function queryLimit(request: JsonRequest): number | undefined {
-  const raw = request.query.limit;
+function assertOnlyQueryKeys(request: JsonRequest, allowed: readonly string[]) {
+  const unexpected = Object.keys(request.query).filter((key) => !allowed.includes(key));
+  if (unexpected.length > 0)
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      `Unsupported Data Engine query parameter: ${unexpected[0]}.`
+    );
+}
+
+function queryPositiveInteger(
+  request: JsonRequest,
+  key: string,
+  maximum: number
+): number | undefined {
+  const raw = request.query[key];
   if (raw === undefined || raw === '') return undefined;
   if (!/^[1-9]\d*$/u.test(raw))
-    throw new HttpError(400, 'INVALID_REQUEST', 'limit must be a positive integer.');
+    throw new HttpError(400, 'INVALID_REQUEST', `${key} must be a positive integer.`);
   const parsed = Number(raw);
-  if (!Number.isSafeInteger(parsed))
-    throw new HttpError(400, 'INVALID_REQUEST', 'limit must be a safe positive integer.');
+  if (!Number.isSafeInteger(parsed) || parsed > maximum)
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      `${key} must be a positive integer no greater than ${maximum}.`
+    );
   return parsed;
 }
 
-function configurationUnavailable(): never {
-  throw new HttpError(
-    503,
-    'DATA_ENGINE_CONFIGURATION_UNAVAILABLE',
-    'Data Engine protected query configuration is unavailable.',
-    true
-  );
+function queryAsOf(request: JsonRequest): string | undefined {
+  const raw = request.query.as_of;
+  if (raw === undefined || raw === '') return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(raw);
+  if (!match)
+    throw new HttpError(400, 'INVALID_REQUEST', 'as_of must use YYYY-MM-DD format.');
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth() !== month - 1 ||
+    candidate.getUTCDate() !== day
+  )
+    throw new HttpError(400, 'INVALID_REQUEST', 'as_of must be a valid calendar date.');
+  return raw;
 }
 
 function configuredRuntime(options: GatewayDataEngineRouteOptions): DataEngineQueryRuntimeOptions {
   const dataEngineUrl = options.dataEngineUrl?.trim() ?? '';
   const dataEngineApiKey = options.dataEngineApiKey?.trim() ?? '';
-  if (!dataEngineUrl || dataEngineApiKey.length < 32) return configurationUnavailable();
-  try {
-    const parsed = new URL(dataEngineUrl);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return configurationUnavailable();
-  } catch {
-    return configurationUnavailable();
-  }
+  const timeout = options.dataEngineTimeoutMs;
   if (
-    options.dataEngineTimeoutMs !== undefined &&
-    (!Number.isSafeInteger(options.dataEngineTimeoutMs) || options.dataEngineTimeoutMs < 1)
+    !dataEngineUrl ||
+    dataEngineApiKey.length < 32 ||
+    (timeout !== undefined && (!Number.isSafeInteger(timeout) || timeout < 1))
   )
-    return configurationUnavailable();
+    throw new HttpError(
+      503,
+      'DATA_ENGINE_CONFIGURATION_UNAVAILABLE',
+      'Data Engine protected query configuration is unavailable.',
+      true
+    );
   return {
     dataEngineUrl,
     dataEngineApiKey,
-    ...(options.dataEngineTimeoutMs === undefined
-      ? {}
-      : { timeoutMs: options.dataEngineTimeoutMs }),
+    ...(timeout === undefined ? {} : { timeoutMs: timeout }),
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {})
   };
 }
@@ -131,71 +157,106 @@ export function createGatewayDataEngineRoutes(options: GatewayDataEngineRouteOpt
     {
       method: 'GET',
       path: '/api/data-engine/contract',
-      handle: (request) =>
-        handle(request, (client) => client.contract(dataEngineRequestContext(request)))
+      handle: (request) => {
+        assertOnlyQueryKeys(request, []);
+        return handle(request, (client) => client.contract(dataEngineRequestContext(request)));
+      }
     },
     {
       method: 'GET',
       path: '/api/data-engine/cn/cases/:applicationNumber',
-      handle: (request) =>
-        handle(request, (client) =>
+      handle: (request) => {
+        assertOnlyQueryKeys(request, []);
+        return handle(request, (client) =>
           client.cnCase(
             request.params.applicationNumber ?? '',
             dataEngineRequestContext(request)
           )
-        )
+        );
+      }
     },
     {
       method: 'GET',
       path: '/api/data-engine/us/cases/:serialNumber',
-      handle: (request) =>
-        handle(request, (client) =>
+      handle: (request) => {
+        assertOnlyQueryKeys(request, []);
+        return handle(request, (client) =>
           client.usCase(request.params.serialNumber ?? '', dataEngineRequestContext(request))
-        )
+        );
+      }
     },
     {
       method: 'GET',
       path: '/api/data-engine/us/cases/:serialNumber/360',
-      handle: (request) =>
-        handle(request, (client) =>
-          client.usCase360(request.params.serialNumber ?? '', dataEngineRequestContext(request))
-        )
+      handle: (request) => {
+        assertOnlyQueryKeys(request, [
+          'as_of',
+          'history_limit',
+          'assignment_limit',
+          'ttab_limit'
+        ]);
+        const query = {
+          ...(queryAsOf(request) ? { asOf: queryAsOf(request) } : {}),
+          ...(queryPositiveInteger(request, 'history_limit', 5000) === undefined
+            ? {}
+            : { historyLimit: queryPositiveInteger(request, 'history_limit', 5000) }),
+          ...(queryPositiveInteger(request, 'assignment_limit', 500) === undefined
+            ? {}
+            : { assignmentLimit: queryPositiveInteger(request, 'assignment_limit', 500) }),
+          ...(queryPositiveInteger(request, 'ttab_limit', 500) === undefined
+            ? {}
+            : { ttabLimit: queryPositiveInteger(request, 'ttab_limit', 500) })
+        };
+        return handle(request, (client) =>
+          client.usCase360(
+            request.params.serialNumber ?? '',
+            query,
+            dataEngineRequestContext(request)
+          )
+        );
+      }
     },
     {
       method: 'GET',
       path: '/api/data-engine/us/cases/:serialNumber/history',
-      handle: (request) =>
-        handle(request, (client) =>
+      handle: (request) => {
+        assertOnlyQueryKeys(request, ['limit']);
+        return handle(request, (client) =>
           client.usCaseHistory(
             request.params.serialNumber ?? '',
-            queryLimit(request),
+            queryPositiveInteger(request, 'limit', 5000),
             dataEngineRequestContext(request)
           )
-        )
+        );
+      }
     },
     {
       method: 'GET',
       path: '/api/data-engine/us/cases/:serialNumber/assignments',
-      handle: (request) =>
-        handle(request, (client) =>
+      handle: (request) => {
+        assertOnlyQueryKeys(request, ['limit']);
+        return handle(request, (client) =>
           client.usAssignments(
             request.params.serialNumber ?? '',
-            queryLimit(request),
+            queryPositiveInteger(request, 'limit', 500),
             dataEngineRequestContext(request)
           )
-        )
+        );
+      }
     },
     {
       method: 'GET',
       path: '/api/data-engine/us/cases/:serialNumber/ttab',
-      handle: (request) =>
-        handle(request, (client) =>
+      handle: (request) => {
+        assertOnlyQueryKeys(request, ['limit']);
+        return handle(request, (client) =>
           client.usTtab(
             request.params.serialNumber ?? '',
-            queryLimit(request),
+            queryPositiveInteger(request, 'limit', 500),
             dataEngineRequestContext(request)
           )
-        )
+        );
+      }
     }
   ];
 }
