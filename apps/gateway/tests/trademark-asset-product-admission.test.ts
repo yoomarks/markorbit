@@ -188,7 +188,8 @@ describe('MO-DE-010 Gateway Trademark Asset admission', () => {
       expect(url).toBe(
         `http://lite.test/internal/v1/workspaces/${workspaceId}/trademark-assets/${assetId}/compose`
       );
-      const body = JSON.parse(String(init.body)) as { facts: Array<Record<string, unknown>> };
+      if (typeof init.body !== 'string') throw new Error('Expected JSON string request body.');
+      const body = JSON.parse(init.body) as { facts: Array<Record<string, unknown>> };
       expect(body.facts.map((fact) => fact.kind)).toEqual([
         'APPLICATION_STATUS',
         'APPLICATION_DATE',
