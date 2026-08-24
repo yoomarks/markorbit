@@ -773,6 +773,42 @@ export function TodayWorkspace({
     };
   }, [dailyClient, selectedPick]);
 
+  useEffect(() => {
+    if (!kit) {
+      setVisualRecord(undefined);
+      return;
+    }
+    const latestVisualBrief = kit.visualBriefReferences.at(-1);
+    if (!latestVisualBrief) {
+      setVisualRecord(undefined);
+      return;
+    }
+    let active = true;
+    setVisualError(undefined);
+    dailyClient
+      .loadVisualBrief(latestVisualBrief)
+      .then((record) => {
+        if (active) setVisualRecord(record);
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setVisualRecord(undefined);
+        setVisualError(
+          cause instanceof DailyWorkspaceHttpError
+            ? cause
+            : new DailyWorkspaceHttpError(
+                503,
+                'VISUAL_BRIEF_UNAVAILABLE',
+                'Saved Visual Brief could not be restored.',
+                true
+              )
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [dailyClient, kit]);
+
   const selectContentPick = (pick: Readonly<ContentPick>) => {
     void dailyClient
       .recordPreferenceEvent(
