@@ -57,16 +57,30 @@ function queryLimit(request: JsonRequest): number | undefined {
   return parsed;
 }
 
+function configurationUnavailable(): never {
+  throw new HttpError(
+    503,
+    'DATA_ENGINE_CONFIGURATION_UNAVAILABLE',
+    'Data Engine protected query configuration is unavailable.',
+    true
+  );
+}
+
 function configuredRuntime(options: GatewayDataEngineRouteOptions): DataEngineQueryRuntimeOptions {
   const dataEngineUrl = options.dataEngineUrl?.trim() ?? '';
   const dataEngineApiKey = options.dataEngineApiKey?.trim() ?? '';
-  if (!dataEngineUrl || dataEngineApiKey.length < 32)
-    throw new HttpError(
-      503,
-      'DATA_ENGINE_CONFIGURATION_UNAVAILABLE',
-      'Data Engine protected query configuration is unavailable.',
-      true
-    );
+  if (!dataEngineUrl || dataEngineApiKey.length < 32) return configurationUnavailable();
+  try {
+    const parsed = new URL(dataEngineUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return configurationUnavailable();
+  } catch {
+    return configurationUnavailable();
+  }
+  if (
+    options.dataEngineTimeoutMs !== undefined &&
+    (!Number.isSafeInteger(options.dataEngineTimeoutMs) || options.dataEngineTimeoutMs < 1)
+  )
+    return configurationUnavailable();
   return {
     dataEngineUrl,
     dataEngineApiKey,
