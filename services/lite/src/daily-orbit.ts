@@ -114,7 +114,7 @@ export interface DailyOrbitSnapshot {
   subjectUserId: string;
   generatedAt: string;
   preferenceSource: CreatorPreference['source'] | 'NONE';
-  savedOrbitItemIds: readonly string[];
+  savedOrbitItemIds?: readonly string[];
   items: ReadonlyArray<Readonly<DailyOrbitItem>>;
   contentPicks: ReadonlyArray<Readonly<ContentPick>>;
   partial: boolean;
