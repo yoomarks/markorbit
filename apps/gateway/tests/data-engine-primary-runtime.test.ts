@@ -21,13 +21,15 @@ const principal: WorkspacePrincipal = {
   permissions: ['workspace:read']
 };
 
-function authFor(resolved: WorkspacePrincipal = principal): CoreAuthenticationClient {
-  return {
+function authFor(resolved: WorkspacePrincipal = principal) {
+  const resolveWorkspace = vi.fn(() => Promise.resolve(resolved));
+  const client: CoreAuthenticationClient = {
     issue: () => Promise.reject(new Error('not used')),
     resolve: () => Promise.reject(new Error('not used')),
-    resolveWorkspace: vi.fn((_token, _workspaceId, _correlationId) => Promise.resolve(resolved)),
+    resolveWorkspace,
     revoke: () => Promise.resolve()
   };
+  return { client, resolveWorkspace };
 }
 
 function factEnvelope() {
@@ -93,7 +95,7 @@ afterEach(() => {
 
 describe('MO-DE-009 primary Gateway protected query admission', () => {
   it('routes an authenticated Workspace read through the normal createRuntime() with service auth and tracing', async () => {
-    const authenticationClient = authFor();
+    const authentication = authFor();
     const provider = vi.fn((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -109,7 +111,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
 
     await withRuntime(
       {
-        authenticationClient,
+        authenticationClient: authentication.client,
         dataEngineUrl: 'http://data-engine.test',
         dataEngineApiKey: apiKey,
         dataEngineFetchImpl: provider
@@ -132,7 +134,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
       }
     );
 
-    expect(authenticationClient.resolveWorkspace).toHaveBeenCalledWith(
+    expect(authentication.resolveWorkspace).toHaveBeenCalledWith(
       'token_mo_de_009',
       workspaceId,
       'mo-de-009-correlation-1'
@@ -144,7 +146,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
     const provider = vi.fn();
     await withRuntime(
       {
-        authenticationClient: authFor(),
+        authenticationClient: authFor().client,
         dataEngineUrl: 'http://data-engine.test',
         dataEngineApiKey: apiKey,
         dataEngineFetchImpl: provider
@@ -164,7 +166,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
     const provider = vi.fn();
     await withRuntime(
       {
-        authenticationClient: authFor({ ...principal, permissions: [] }),
+        authenticationClient: authFor({ ...principal, permissions: [] }).client,
         dataEngineUrl: 'http://data-engine.test',
         dataEngineApiKey: apiKey,
         dataEngineFetchImpl: provider
@@ -183,7 +185,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
   it('fails closed when the primary Gateway has no valid Data Engine service configuration', async () => {
     const provider = vi.fn();
     await withRuntime(
-      { authenticationClient: authFor(), dataEngineFetchImpl: provider },
+      { authenticationClient: authFor().client, dataEngineFetchImpl: provider },
       async (baseUrl) => {
         const response = await fetch(`${baseUrl}/api/data-engine/cn/cases/12345678`, {
           headers: gatewayHeaders()
@@ -202,7 +204,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
     const provider = vi.fn();
     await withRuntime(
       {
-        authenticationClient: authFor(),
+        authenticationClient: authFor().client,
         dataEngineUrl: 'http://data-engine.test',
         dataEngineApiKey: apiKey,
         dataEngineFetchImpl: provider
@@ -237,7 +239,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
     );
     await withRuntime(
       {
-        authenticationClient: authFor(),
+        authenticationClient: authFor().client,
         dataEngineUrl: 'http://data-engine.test',
         dataEngineApiKey: apiKey,
         dataEngineFetchImpl: provider
@@ -263,7 +265,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
     const provider = vi.fn();
     await withRuntime(
       {
-        authenticationClient: authFor(),
+        authenticationClient: authFor().client,
         dataEngineUrl: 'http://data-engine.test',
         dataEngineApiKey: apiKey,
         dataEngineFetchImpl: provider
