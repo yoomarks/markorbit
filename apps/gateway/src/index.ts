@@ -34,6 +34,7 @@ export * from './commercial-admin-markreg-http.js';
 export * from './commercial-admin-mgsn-http.js';
 export * from './mgsn-http.js';
 export * from './product-loop-http.js';
+export * from './data-engine-product-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -53,6 +54,7 @@ import { createGatewayCommercialAdminMarkRegRoutes } from './commercial-admin-ma
 import { createGatewayCommercialAdminMgsnRoutes } from './commercial-admin-mgsn-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
+import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -66,6 +68,10 @@ export interface GatewayOptions {
   mgsnUrl?: string;
   liteUrl?: string;
   capabilityEngineUrl?: string;
+  dataEngineUrl?: string;
+  dataEngineApiKey?: string;
+  dataEngineTimeoutMs?: number;
+  dataEngineFetchImpl?: typeof fetch;
   milestoneTestRuntime?: boolean;
   authenticationClient?: CoreAuthenticationClient;
   internalServiceSecret?: string;
@@ -88,6 +94,11 @@ export function createRuntime(options: GatewayOptions = {}) {
   const liteUrl = options.liteUrl ?? process.env.LITE_URL ?? 'http://127.0.0.1:4107';
   const capabilityEngineUrl =
     options.capabilityEngineUrl ?? process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
+  const dataEngineUrl = options.dataEngineUrl ?? process.env.DATA_ENGINE_URL;
+  const dataEngineApiKey = options.dataEngineApiKey ?? process.env.DATA_ENGINE_API_KEY;
+  const dataEngineTimeoutMs =
+    options.dataEngineTimeoutMs ??
+    (process.env.DATA_ENGINE_TIMEOUT_MS ? Number(process.env.DATA_ENGINE_TIMEOUT_MS) : undefined);
   const milestoneTestRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
   const allowedOrigins =
@@ -381,6 +392,13 @@ export function createRuntime(options: GatewayOptions = {}) {
           csrfSecret,
           allowedOrigins,
           secureCookies: options.secureCookies ?? process.env.NODE_ENV === 'production'
+        }),
+        ...createGatewayDataEngineRoutes({
+          ...(dataEngineUrl ? { dataEngineUrl } : {}),
+          ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
+          ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
         }),
         ...createGatewayCapabilityRoutes({
           capabilityEngineUrl,
