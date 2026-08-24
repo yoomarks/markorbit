@@ -30,6 +30,7 @@ env:
   MO_DE_G1_PROVIDER_URL: http://127.0.0.1:8201
   MO_DE_G1_RATE_LIMIT_PROVIDER_URL: http://127.0.0.1:8202
   MO_DE_G1_INVALID_CONFIG_PROVIDER_URL: http://127.0.0.1:8203
+  MO_DE_G1_PRIMARY_RATE_LIMIT_PROVIDER_URL: http://127.0.0.1:8204
   MO_DE_G1_CROSS_REPO: '1'
 
 jobs:
@@ -113,6 +114,14 @@ jobs:
               nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8203 \
               > /tmp/mo-de-g1-invalid-config.log 2>&1 &
 
+          env INTEGRATION_AUTH_MODE=required \
+              INTEGRATION_API_KEYS="$KEY" \
+              INTEGRATION_RATE_LIMIT_ENABLED=true \
+              INTEGRATION_RATE_LIMIT_MAX_REQUESTS=1 \
+              INTEGRATION_RATE_LIMIT_WINDOW_SECONDS=60 \
+              nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8204 \
+              > /tmp/mo-de-g1-primary-rate-limit.log 2>&1 &
+
           wait_http() {
             local url="$1"
             local authorization="${2:-}"
@@ -131,9 +140,10 @@ jobs:
           }
 
           wait_http http://127.0.0.1:8201/api/v1/contract "$KEY"
-          # An unauthenticated readiness request proves the rate-limit process is alive
-          # without consuming its single authenticated acceptance request.
+          # Unauthenticated readiness probes prove the rate-limit processes are alive
+          # without consuming either single authenticated acceptance request.
           wait_http http://127.0.0.1:8202/api/v1/contract
+          wait_http http://127.0.0.1:8204/api/v1/contract
           # This profile intentionally answers 503 because required auth is misconfigured.
           wait_http http://127.0.0.1:8203/api/v1/contract
 
@@ -152,8 +162,10 @@ jobs:
         run: |
           echo '--- primary provider ---'
           cat /tmp/mo-de-g1-provider.log || true
-          echo '--- rate-limit provider ---'
+          echo '--- MO-DE-006 rate-limit provider ---'
           cat /tmp/mo-de-g1-rate-limit.log || true
+          echo '--- MO-DE-009 rate-limit provider ---'
+          cat /tmp/mo-de-g1-primary-rate-limit.log || true
           echo '--- invalid-config provider ---'
           cat /tmp/mo-de-g1-invalid-config.log || true
           echo '--- provider databases ---'
