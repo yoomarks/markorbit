@@ -18,6 +18,7 @@ import {
   type PostgresTrademarkAssetRefreshLedger
 } from './trademark-asset-refresh.js';
 import { composeTrademarkAssetView } from './trademark-asset-view.js';
+import { createTrademarkAssetCompositionRoutes } from './trademark-asset-composition-http.js';
 
 export interface TrademarkAssetReadRouteOptions {
   internalServiceSecret: string;
@@ -206,6 +207,12 @@ export function createTrademarkAssetReadRoutes(
           return mapError(error);
         }
       }
-    }
+    },
+    ...createTrademarkAssetCompositionRoutes({
+      internalServiceSecret: options.internalServiceSecret,
+      assets: options.assets,
+      refreshLedger: options.refreshLedger,
+      ...(options.now ? { now: options.now } : {})
+    })
   ];
 }
