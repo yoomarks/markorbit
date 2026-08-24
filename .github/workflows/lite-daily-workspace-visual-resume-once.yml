@@ -184,9 +184,9 @@ jobs:
             tests/e2e/product-loop-today-real-runtime.spec.ts
       - name: Validate affected UI
         run: |
+          pnpm exec turbo run build --filter=@markorbit/lite-web...
           pnpm --filter @markorbit/lite-web typecheck
           pnpm --filter @markorbit/lite-web lint
-          pnpm exec turbo run build --filter=@markorbit/lite-web...
       - name: Commit implementation and remove one-shot workflow
         run: |
           rm .github/workflows/lite-daily-workspace-visual-resume-once.yml
