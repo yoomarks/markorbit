@@ -95,18 +95,15 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
   it('routes an authenticated Workspace read through the normal createRuntime() with service auth and tracing', async () => {
     const authenticationClient = authFor();
     const provider = vi.fn((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       expect(url).toBe('http://data-engine.test/api/v1/cn/cases/12345678');
       const headers = new Headers(init?.headers);
       expect(headers.get('authorization')).toBe(`Bearer ${apiKey}`);
       expect(headers.get('x-request-id')).toBe('mo-de-009-provider-hop-1');
       expect(headers.get('x-correlation-id')).toBe('mo-de-009-correlation-1');
       return Promise.resolve(
-        providerResponse(
-          factEnvelope(),
-          'mo-de-009-provider-hop-1',
-          'mo-de-009-correlation-1'
-        )
+        providerResponse(factEnvelope(), 'mo-de-009-provider-hop-1', 'mo-de-009-correlation-1')
       );
     });
 
@@ -128,9 +125,7 @@ describe('MO-DE-009 primary Gateway protected query admission', () => {
           fact_state: 'observed'
         });
         expect(response.headers.get('x-correlation-id')).toBe('mo-de-009-correlation-1');
-        expect(response.headers.get('x-data-engine-request-id')).toBe(
-          'mo-de-009-provider-hop-1'
-        );
+        expect(response.headers.get('x-data-engine-request-id')).toBe('mo-de-009-provider-hop-1');
         expect(response.headers.get('x-data-engine-contract-version')).toBe(
           DATA_ENGINE_INTEGRATION_CONTRACT_VERSION
         );
