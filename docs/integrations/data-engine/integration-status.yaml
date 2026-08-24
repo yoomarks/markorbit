@@ -12,11 +12,13 @@ integration:
   g1_transport_acceptance_at: 2026-08-23
   g1_primary_gateway_admission_at: 2026-08-24
   g1_closed_at: 2026-08-24
+  mo_de_010_authorized_at: 2026-08-24
+  mo_de_010_closed_at: 2026-08-24
 baselines:
   markorbit:
     repository: yoomarks/markorbit
     role: consumer-authority
-    baseline_sha: eebbba5248a3f6ccc8e514700c1dcf555f6fbc06
+    baseline_sha: 9600daa6b3ddc8d75cfbfcd443341ee755a30129
     consumer_acceptance_pr: 176
     consumer_acceptance_merge_sha: a8035efff46a2e71a4613abd1927b18dadff086b
     g1_transport_pr: 177
@@ -25,10 +27,17 @@ baselines:
     g1_primary_gateway_pr: 190
     g1_primary_gateway_final_head_sha: ea0a49c2817a92249dadca138790f2288e756652
     g1_primary_gateway_merge_sha: eebbba5248a3f6ccc8e514700c1dcf555f6fbc06
+    mo_de_010_authorization_pr: 193
+    mo_de_010_authorization_final_head_sha: 3c561fb32180a8409dccf020c88f4e8c97d81c96
+    mo_de_010_authorization_merge_sha: 51fe5f48869d4a650fd302281c18c74a6ba6f93f
+    mo_de_010_runtime_pr: 194
+    mo_de_010_runtime_final_head_sha: 67ec70907df7ee1a8e9efd1620aad941802bf6ed
+    mo_de_010_runtime_merge_sha: 9600daa6b3ddc8d75cfbfcd443341ee755a30129
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
-    current_main_sha_at_closeout: bdc43d12763a4db200b5363c8eda3060868d2d0b
+    current_main_sha_at_g1_closeout: bdc43d12763a4db200b5363c8eda3060868d2d0b
+    current_main_sha_at_mo_de_010_closeout: 5e4888a001de866ca5b811151cf0afe13d5eef71
     accepted_runtime_test_sha: 57be59ab27e41ac99ae95922ce802aa189c48181
     frozen_contract_blob_sha: 7567908e4d1c8d79eef27fb763fe63d58281f02a
     g0_provider_pr: 209
@@ -125,20 +134,65 @@ post_g1_product_admission:
   requirement: MO-DE-010
   title: Trademark Asset On-Demand Product Admission
   priority: P1
-  status: authorized_implementation_pending
+  status: accepted_completed
   owner: markorbit_gateway_and_lite_trademark_asset_workspace
+  authorized_at: 2026-08-24
+  closed_at: 2026-08-24
+  authorization_pr: 193
+  authorization_final_head_sha: 3c561fb32180a8409dccf020c88f4e8c97d81c96
+  authorization_merge_sha: 51fe5f48869d4a650fd302281c18c74a6ba6f93f
+  runtime_pr: 194
+  runtime_final_head_sha: 67ec70907df7ee1a8e9efd1620aad941802bf6ed
+  runtime_merge_sha: 9600daa6b3ddc8d75cfbfcd443341ee755a30129
+  provider_acceptance_sha: 57be59ab27e41ac99ae95922ce802aa189c48181
+  provider_current_main_sha_at_closeout: 5e4888a001de866ca5b811151cf0afe13d5eef71
+  provider_frozen_contract_blob_sha: 7567908e4d1c8d79eef27fb763fe63d58281f02a
+  provider_contract_drift_after_acceptance_sha: false
   trademark_asset_detail_on_demand_authorized: true
+  trademark_asset_detail_on_demand_admitted: true
   allowed_jurisdictions:
     - CN
     - US
-  allowed_fact_kinds:
+  admitted_fact_kinds:
     - APPLICATION_STATUS
     - APPLICATION_DATE
     - REGISTRATION_DATE
+    - RENEWAL_DATE
     - OWNER_NAME
     - NICE_CLASSES
   renewal_date_requires_explicit_provider_field: true
+  provider_current_records_freshness: UNKNOWN
   degradation_to_existing_m10_detail_authorized: true
+  lite_composition_authority_preserved: true
+  official_truth_verified_by_lite: false
+  legal_deadline_certified: false
+  protected_action_authorized: false
+  exact_head_ci:
+    validation:
+      workflow_run_id: 32722585033
+      status: success
+    commercial_runtime_reliability:
+      workflow_run_id: 32722585200
+      status: success
+    authenticated_cross_repo_acceptance:
+      workflow_run_id: 32722585121
+      status: success
+    product_loop_candidate_qualification:
+      workflow_run_id: 32722585024
+      status: success
+    product_loop_today_prepared_action:
+      workflow_run_id: 32722585061
+      status: success
+    product_loop_content_preparation:
+      workflow_run_id: 32722585054
+      status: success
+    m7_conversion_analytics:
+      workflow_run_id: 32722585110
+      status: success
+    product_loop_feedback_observability:
+      workflow_run_id: 32722585052
+      status: success
+  overall_merge_gate: completed_success
   source_fact_persistence_authorized: false
   background_sync_authorized: false
   global_lite_data_engine_productization_authorized: false
@@ -185,7 +239,7 @@ requirements:
     title: Trademark Asset On-Demand Product Admission
     stage: POST-G1-BOUNDED
     priority: P1
-    status: authorized_implementation_pending
+    status: accepted_completed
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -205,6 +259,7 @@ rules:
   g1_transport_acceptance_completed: true
   primary_gateway_runtime_admitted: true
   g1_completed: true
+  mo_de_010_completed: true
   cross_repo_ids_required_in_prs_and_tests: true
   copy_requirements_between_repos: false
   breaking_change_requires_rfc: true
