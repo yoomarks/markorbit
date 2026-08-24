@@ -13,6 +13,7 @@ on:
       - 'apps/gateway/tests/data-engine-g1-cross-repo.test.ts'
       - 'apps/gateway/tests/data-engine-primary-runtime.test.ts'
       - 'apps/gateway/tests/data-engine-primary-cross-repo.test.ts'
+      - 'apps/gateway/tests/data-engine-product-query-contract.test.ts'
       - 'packages/contracts/src/data-engine.ts'
       - 'docs/integrations/data-engine/**'
   workflow_dispatch:
@@ -141,6 +142,7 @@ jobs:
           pnpm --filter @markorbit/gateway typecheck
           pnpm --filter @markorbit/gateway exec vitest run \
             tests/data-engine-http.test.ts \
+            tests/data-engine-product-query-contract.test.ts \
             tests/data-engine-primary-runtime.test.ts \
             tests/data-engine-g1-cross-repo.test.ts \
             tests/data-engine-primary-cross-repo.test.ts
