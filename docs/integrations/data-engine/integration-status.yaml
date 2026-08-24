@@ -3,30 +3,31 @@ integration:
   name: markorbit-data-engine
   stage: G1
   stage_name: Protected Query Runtime
-  status: completed
-  consumer_status: protected_query_runtime_accepted
+  status: in_progress
+  consumer_status: transport_acceptance_complete_primary_gateway_pending
   initiated_at: 2026-08-23
   provider_response_received_at: 2026-08-23
   g0_consumer_accepted_at: 2026-08-23
   g0_closed_at: 2026-08-23
-  g1_closed_at: 2026-08-23
+  g1_transport_acceptance_at: 2026-08-23
+  g1_closed_at: null
 baselines:
   markorbit:
     repository: yoomarks/markorbit
     role: consumer-authority
-    baseline_sha: a8035efff46a2e71a4613abd1927b18dadff086b
+    baseline_sha: 9d6179ae2f5f0c85b93b7bcc6b86fac6f023edb4
     consumer_acceptance_pr: 176
     consumer_acceptance_merge_sha: a8035efff46a2e71a4613abd1927b18dadff086b
-    g1_pr: 177
-    g1_final_head_sha: 75cae91b88fc1b3587076f3e8b10cadd7e2e6d90
-    g1_merge_sha: 20bd9710e4af02e92fcfaa737ef67a9e58479145
+    g1_transport_pr: 177
+    g1_transport_final_head_sha: 75cae91b88fc1b3587076f3e8b10cadd7e2e6d90
+    g1_transport_merge_sha: 20bd9710e4af02e92fcfaa737ef67a9e58479145
   data_engine:
     repository: yoomarks/markorbit-data-engine
     role: provider-authority
-    baseline_sha: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
-    provider_pr: 209
-    provider_head_sha: cde643ea546a5ee7d885f94b56715c6907442df9
-    provider_ci: 30/30_completed_success
+    baseline_sha: 57be59ab27e41ac99ae95922ce802aa189c48181
+    g0_provider_pr: 209
+    g0_provider_head_sha: cde643ea546a5ee7d885f94b56715c6907442df9
+    g0_provider_ci: 30/30_completed_success
 authority:
   markorbit:
     owns:
@@ -63,12 +64,14 @@ consumer_acceptance:
   accepted_joint_decisions:
     - preserve_unknown_until_data_engine_explicitly_emits_evidence_backed_not_covered_no_observation_or_tombstone
     - accept_x_correlation_id_as_end_to_end_and_x_request_id_as_provider_hop_request_trace
-g1_execution:
+g1_transport_acceptance:
   requirement: MO-DE-006
   consumer_pr: 177
   consumer_final_head_sha: 75cae91b88fc1b3587076f3e8b10cadd7e2e6d90
   consumer_merge_sha: 20bd9710e4af02e92fcfaa737ef67a9e58479145
   provider_baseline_sha: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
+  acceptance_scope: transport_auth_error_contract_tracing
+  primary_gateway_runtime_admitted: false
   authenticated_cross_repo_acceptance:
     workflow_run_id: 32617003421
     status: success
@@ -79,6 +82,14 @@ g1_execution:
     workflow_run_id: 32617003386
     status: success
   overall_merge_gate: completed_success
+g1_primary_gateway_admission:
+  requirement: MO-DE-009
+  status: pending_implementation
+  owner: markorbit_gateway
+  primary_gateway_runtime_admitted: false
+  change_feed_authorized: false
+  brain_integration_authorized: false
+  lite_productization_authorized: false
 requirements:
   - id: MO-DE-001
     title: Query Contract V1 Freeze
@@ -106,10 +117,15 @@ requirements:
     priority: P0
     status: accepted_frozen
   - id: MO-DE-006
-    title: Authenticated Cross Repository Acceptance
-    stage: G1
+    title: Authenticated Cross Repository Transport Acceptance
+    stage: G1-A
     priority: P1
-    status: accepted_completed
+    status: accepted_transport_complete
+  - id: MO-DE-009
+    title: Primary Gateway Protected Query Admission
+    stage: G1-B
+    priority: P1
+    status: pending_implementation
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -126,7 +142,9 @@ cross_repo_decisions_accepted:
 rules:
   g1_requires_g0_closed: true
   g0_closed: true
-  g1_completed: true
+  g1_transport_acceptance_completed: true
+  primary_gateway_runtime_admitted: false
+  g1_completed: false
   cross_repo_ids_required_in_prs_and_tests: true
   copy_requirements_between_repos: false
   breaking_change_requires_rfc: true

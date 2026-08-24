@@ -65,16 +65,20 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Current engineering baseline: Milestone 15 — Execution Sandbox & Release Readiness is complete on `main` at `00993123795254bef8fd84e4cdcb2bf535924660`. The next milestone is intentionally not frozen pending a concentrated product, cross-repository integration and production-readiness audit.**
+**Milestone 15 — Execution Sandbox & Release Readiness remains the latest completed engineering milestone, with completion baseline `00993123795254bef8fd84e4cdcb2bf535924660`. A bounded Post-M15 Integration Admission stage is now active to reconcile cross-repository state and admit existing integrations through their primary product runtimes before any new business milestone is frozen.**
 
-Current sequencing facts:
+The Post-M15 Integration Admission stage is **not Milestone 16** and does not create a new business domain. Current sequencing facts are:
 
 - M8 Commercial Foundation is engineering-complete except for real Stripe test-mode provider acceptance, which remains `DEFERRED_BY_OWNER_NO_ACCOUNT`; MarkOrbit is not represented as Stripe-ready.
-- M9 Daily Workspace, M10 Trademark Asset Workspace, M11 Proactive Asset Management and M12 Trademark Service Workbench are engineering-complete.
+- M9 Daily Workspace, M10 Trademark Asset Workspace, M11 Proactive Asset Management and M12 Trademark Service Workbench are engineering-complete; bounded Daily Workspace continuity hardening through PR #188 is merged on top of the completed M9 baseline.
 - M13 established controlled service execution semantics and owner-domain handoffs.
 - M14 made those semantics durable and authenticated in the Execution owner domain.
 - M15 added non-production environment policy, connector isolation, deterministic simulation, operator readiness evidence, recovery drills and an independent release-readiness audit.
-- No production deployment, GA, production credentials, live filing, live payment, provider contact, external publication or Official Truth is authorized by these engineering milestones.
+- MarkOrbit × Data Engine `MO-DE-001..005` G0 contract requirements are accepted and frozen.
+- `MO-DE-006` real authenticated cross-repository transport/auth acceptance is complete, but it used the bounded acceptance runtime and does not by itself mean the primary MarkOrbit Gateway product runtime is admitted.
+- `MO-DE-009` Primary Gateway Protected Query Admission is the next authorized Data Engine consumer-integration task.
+- `MO-DE-007/008` change-feed/cursor work, Brain Data Engine integration and Lite Data Engine productization remain deferred and unauthorized until the required upstream admission is complete.
+- No production deployment, GA, production credentials, live filing, live payment, provider contact, external publication or Official Truth is authorized by these engineering or integration stages.
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
 
@@ -251,5 +255,8 @@ See:
 - `docs/planning/MO-MVP-MILESTONE-013-IMPLEMENTATION-TRACEABILITY.{md,json}`;
 - `docs/planning/MO-MVP-MILESTONE-014-IMPLEMENTATION-TRACEABILITY.{md,json}`;
 - `docs/planning/MO-MVP-MILESTONE-015-IMPLEMENTATION-TRACEABILITY.{md,json}`;
+- `docs/integrations/data-engine/README.md`;
+- `docs/integrations/data-engine/requirements.md`;
+- `docs/integrations/data-engine/integration-status.yaml`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.
