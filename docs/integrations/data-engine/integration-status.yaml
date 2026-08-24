@@ -121,6 +121,30 @@ g1_primary_gateway_admission:
   change_feed_authorized: false
   brain_integration_authorized: false
   lite_productization_authorized: false
+post_g1_product_admission:
+  requirement: MO-DE-010
+  title: Trademark Asset On-Demand Product Admission
+  priority: P1
+  status: authorized_implementation_pending
+  owner: markorbit_gateway_and_lite_trademark_asset_workspace
+  trademark_asset_detail_on_demand_authorized: true
+  allowed_jurisdictions:
+    - CN
+    - US
+  allowed_fact_kinds:
+    - APPLICATION_STATUS
+    - APPLICATION_DATE
+    - REGISTRATION_DATE
+    - OWNER_NAME
+    - NICE_CLASSES
+  renewal_date_requires_explicit_provider_field: true
+  degradation_to_existing_m10_detail_authorized: true
+  source_fact_persistence_authorized: false
+  background_sync_authorized: false
+  global_lite_data_engine_productization_authorized: false
+  g2_change_feed_authorized: false
+  brain_integration_authorized: false
+  production_authorized: false
 requirements:
   - id: MO-DE-001
     title: Query Contract V1 Freeze
@@ -157,6 +181,11 @@ requirements:
     stage: G1-B
     priority: P1
     status: accepted_completed
+  - id: MO-DE-010
+    title: Trademark Asset On-Demand Product Admission
+    stage: POST-G1-BOUNDED
+    priority: P1
+    status: authorized_implementation_pending
   - id: MO-DE-007
     title: US Trademark Change Feed Ownership
     stage: G2
@@ -182,4 +211,7 @@ rules:
   repository_local_green_ci_is_sufficient: false
   final_g1_auth_mode: required
   production_authorization: false
+  mo_de_010_trademark_asset_detail_authorized: true
+  global_lite_data_engine_productization_authorized: false
+  brain_integration_authorized: false
   mo_de_007_008_implementation_authorized: false

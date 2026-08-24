@@ -160,25 +160,73 @@ Explicitly still out of scope after G1 completion:
 - consumer cursor/checkpoint persistence;
 - `MO-DE-007` or `MO-DE-008` implementation;
 - Brain indexing/retrieval integration;
-- Lite Data Engine productization;
+- global Lite Data Engine productization;
 - new cross-service persistence or direct Data Engine SQL;
 - production credentials, deployment, GA or Official Truth authorization.
 
 Overall G1 is complete with `MO-DE-006` + `MO-DE-009` accepted.
+
+## Post-G1 bounded product admission
+
+### MO-DE-010 — Trademark Asset On-Demand Product Admission
+
+Priority: **P1**  
+Primary owner: **MarkOrbit Gateway + Lite Trademark Asset Workspace**  
+Provider owner: **Data Engine only if the frozen provider contract itself must change**  
+Status: **AUTHORIZED / IMPLEMENTATION PENDING**
+
+`MO-DE-010` authorizes one bounded downstream use of the already-admitted G1 read plane: enrich an existing M10 Trademark Asset detail view on demand from its durable Asset Anchor. This is an explicit use-case authorization, not a general G4/Lite Data Engine productization unlock.
+
+Authorized behavior:
+
+- the existing Trademark Asset Anchor remains the product identity authority and must provide `jurisdiction` plus an `APPLICATION_NUMBER` identifier before a Data Engine lookup is attempted;
+- Gateway remains the only holder of Data Engine service credentials and performs the protected provider read through the normal G1 client/runtime boundary;
+- `CN` anchors may use the frozen CN case read and `US` anchors may use the frozen US case read; unsupported jurisdictions do not create a provider query;
+- only schema-proven, source-owned factual values may be translated into existing `TrademarkAssetFactContribution` kinds;
+- the initial allowed fact kinds are `APPLICATION_STATUS`, `APPLICATION_DATE`, `REGISTRATION_DATE`, `OWNER_NAME` and `NICE_CLASSES` where the provider response explicitly supplies the corresponding value;
+- `RENEWAL_DATE` may be admitted only when an explicit provider field can be demonstrated; it must otherwise remain absent/unknown rather than derived;
+- Lite remains the single owner of Trademark Asset composition, conflict detection, attention computation, confidence handling and recommendations;
+- provider `not_found`, unavailable, timeout, rate-limit, auth or incompatible-response states may degrade to the original M10 detail view but must never manufacture a negative factual observation;
+- source provenance must remain visible through the existing `DATA_ENGINE_TRADEMARK_RECORD` owner and contribution metadata;
+- request/correlation tracing remains preserved across Gateway -> Data Engine and Gateway -> Lite hops.
+
+Acceptance:
+
+- a real normal Gateway Trademark Asset detail request can obtain an existing durable Lite anchor, perform the eligible Data Engine read, and return a Lite-composed detail containing validated Data Engine contributions;
+- unauthenticated / unauthorized MarkOrbit requests are rejected before provider access;
+- Data Engine credentials never reach the browser or Lite runtime configuration;
+- Data Engine failure/not-found has a tested non-fabricating degradation path;
+- unsupported jurisdiction or missing `APPLICATION_NUMBER` has a tested no-provider path;
+- contribution mapping has tests against representative CN and US V1 payload shapes and ignores unproven/unknown fields;
+- `officialTruthVerifiedByLite` remains `false`;
+- `legalDeadlineCertified` remains `false`;
+- `protectedActionAuthorized` remains `false`;
+- existing M10 conflict-preserving semantics remain unchanged.
+
+Explicitly out of scope for `MO-DE-010`:
+
+- `/api/v1/us/changes`, cursors, checkpoints or any `MO-DE-007/008` implementation;
+- scheduled/background synchronization or proactive ingestion;
+- new Data Engine fact persistence inside Lite/Core;
+- source-fact writeback or cross-service SQL;
+- Brain indexing/retrieval integration;
+- other Lite surfaces or global Data Engine productization;
+- legal conclusions, Official Truth certification, deadline certification or Protected Action authorization;
+- production credentials, production deployment or GA authorization.
 
 ## G2 — Decision Freeze Only; Implementation Deferred
 
 ### MO-DE-007 — US Trademark Change Feed Ownership
 
 Priority: **P2 DECISION**  
-Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION**
+Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION OR MO-DE-010**
 
 Proposed direction for later joint review: Data Engine owns factual change detection and durable provider-side change feed; MarkOrbit Core owns business/product event interpretation. Brain/Lite consumption is downstream and must not redefine source facts.
 
 ### MO-DE-008 — Cursor / Consumer Checkpoint Ownership
 
 Priority: **P2 DECISION**  
-Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION**
+Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION OR MO-DE-010**
 
 Freeze later whether the provider exposes durable feed cursors and which consumer checkpoints are owned by MarkOrbit. Dedupe/idempotency and replay semantics must be explicit before implementation.
 
@@ -187,6 +235,7 @@ Freeze later whether the provider exposes durable feed cursors and which consume
 1. `MO-DE-001..005` — accepted and frozen.
 2. `MO-DE-006` — real transport/auth cross-repository acceptance complete.
 3. `MO-DE-009` — primary Gateway protected query admission complete; overall G1 is closed.
-4. `MO-DE-007/008` — remain deferred; no implementation authorization.
-5. Brain and Lite Data Engine productization remain downstream and are not authorized by this requirement set.
-6. Any G2/G3/G4 work requires a new explicit authorization/decision rather than being inferred from G1 completion.
+4. `MO-DE-010` — bounded Trademark Asset on-demand product admission authorized; implementation and acceptance pending.
+5. `MO-DE-007/008` — remain deferred; no implementation authorization.
+6. Brain integration and global Lite Data Engine productization remain deferred.
+7. Any broader G2/G3/G4 work requires a new explicit authorization/decision rather than being inferred from G1 or `MO-DE-010`.
