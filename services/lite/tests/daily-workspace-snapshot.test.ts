@@ -17,6 +17,7 @@ function orbit(overrides: Partial<DailyOrbitSnapshot> = {}): DailyOrbitSnapshot 
     subjectUserId: userId,
     generatedAt,
     preferenceSource: 'NONE',
+    savedOrbitItemIds: [],
     items: [],
     contentPicks: [],
     partial: false,
@@ -65,7 +66,7 @@ describe('Lite Daily Workspace snapshot', () => {
       workspaceId,
       subjectUserId: userId,
       generatedAt,
-      see: { preferenceSource: 'NONE', orbitItems: [] },
+      see: { preferenceSource: 'NONE', savedOrbitItemIds: [], orbitItems: [] },
       create: { contentPicks: [] },
       move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
       partial: false,
@@ -84,6 +85,7 @@ describe('Lite Daily Workspace snapshot', () => {
     expect(result.partial).toBe(true);
     expect(result.warnings).toEqual(['SEE_CREATE_UNAVAILABLE']);
     expect(result.see.preferenceSource).toBeNull();
+    expect(result.see.savedOrbitItemIds).toEqual([]);
     expect(result.move.todayItems).toEqual([]);
     expect(result.move.recentFeedback).toEqual([]);
     expect(result.executionAuthorized).toBe(false);
@@ -96,6 +98,7 @@ describe('Lite Daily Workspace snapshot', () => {
 
     expect(result.partial).toBe(true);
     expect(result.warnings).toEqual(['MOVE_UNAVAILABLE']);
+    expect(result.see.savedOrbitItemIds).toEqual([]);
     expect(result.see.orbitItems).toEqual([]);
     expect(result.create.contentPicks).toEqual([]);
     expect(result.move.recentFeedback).toEqual([]);
