@@ -1,0 +1,53 @@
+name: Lite Durable Save State Compatibility Once
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'agent/lite-daily-workspace-durable-save-state'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/lite-daily-workspace-durable-save-state
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Keep internal snapshot readers backward compatible
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/lite/src/daily-orbit.ts')
+          text = path.read_text()
+          old = '  savedOrbitItemIds: readonly string[];\n'
+          new = '  savedOrbitItemIds?: readonly string[];\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one savedOrbitItemIds contract line, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write services/lite/src/daily-orbit.ts
+      - name: Validate Lite service compatibility
+        run: |
+          pnpm exec turbo run build --filter=@markorbit/lite-service...
+          pnpm --filter @markorbit/lite-service lint
+          pnpm --filter @markorbit/lite-service typecheck
+      - name: Commit fix and remove one-shot workflow
+        run: |
+          rm .github/workflows/lite-durable-save-state-compat-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(lite): keep Daily Orbit snapshot readers compatible"
+          git push origin HEAD:agent/lite-daily-workspace-durable-save-state
