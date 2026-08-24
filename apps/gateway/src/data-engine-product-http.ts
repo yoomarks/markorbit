@@ -195,17 +195,15 @@ export function createGatewayDataEngineRoutes(options: GatewayDataEngineRouteOpt
           'assignment_limit',
           'ttab_limit'
         ]);
+        const asOf = queryAsOf(request);
+        const historyLimit = queryPositiveInteger(request, 'history_limit', 5000);
+        const assignmentLimit = queryPositiveInteger(request, 'assignment_limit', 500);
+        const ttabLimit = queryPositiveInteger(request, 'ttab_limit', 500);
         const query = {
-          ...(queryAsOf(request) ? { asOf: queryAsOf(request) } : {}),
-          ...(queryPositiveInteger(request, 'history_limit', 5000) === undefined
-            ? {}
-            : { historyLimit: queryPositiveInteger(request, 'history_limit', 5000) }),
-          ...(queryPositiveInteger(request, 'assignment_limit', 500) === undefined
-            ? {}
-            : { assignmentLimit: queryPositiveInteger(request, 'assignment_limit', 500) }),
-          ...(queryPositiveInteger(request, 'ttab_limit', 500) === undefined
-            ? {}
-            : { ttabLimit: queryPositiveInteger(request, 'ttab_limit', 500) })
+          ...(asOf === undefined ? {} : { asOf }),
+          ...(historyLimit === undefined ? {} : { historyLimit }),
+          ...(assignmentLimit === undefined ? {} : { assignmentLimit }),
+          ...(ttabLimit === undefined ? {} : { ttabLimit })
         };
         return handle(request, (client) =>
           client.usCase360(
