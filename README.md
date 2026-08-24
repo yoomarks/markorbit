@@ -65,7 +65,7 @@ pnpm infra:down
 
 ## Current milestone and sequencing
 
-**Milestone 15 — Execution Sandbox & Release Readiness remains the latest completed engineering milestone, with completion baseline `00993123795254bef8fd84e4cdcb2bf535924660`. A bounded Post-M15 Integration Admission stage is active to reconcile cross-repository state and admit existing integrations through their primary product runtimes before any new business milestone is frozen. MarkOrbit × Data Engine G1 is now fully closed inside that stage.**
+**Milestone 15 — Execution Sandbox & Release Readiness remains the latest completed engineering milestone, with completion baseline `00993123795254bef8fd84e4cdcb2bf535924660`. A bounded Post-M15 Integration Admission stage is active to reconcile cross-repository state and admit existing integrations through their primary product runtimes before any new business milestone is frozen. MarkOrbit × Data Engine G1 is fully closed, and its bounded `MO-DE-010` Trademark Asset admission is also complete.**
 
 The Post-M15 Integration Admission stage is **not Milestone 16** and does not create a new business domain. Current sequencing facts are:
 
@@ -77,7 +77,8 @@ The Post-M15 Integration Admission stage is **not Milestone 16** and does not cr
 - MarkOrbit × Data Engine `MO-DE-001..005` G0 contract requirements are accepted and frozen.
 - `MO-DE-006` real authenticated cross-repository transport/auth acceptance is complete and retains the bounded acceptance-runtime evidence.
 - `MO-DE-009` Primary Gateway Protected Query Admission is complete in PR #190 / merge `eebbba5248a3f6ccc8e514700c1dcf555f6fbc06`; the normal `apps/gateway` `createRuntime()` now owns the accepted authenticated read path. Overall Data Engine G1 is complete.
-- `MO-DE-007/008` change-feed/cursor work, Brain Data Engine integration and Lite Data Engine productization remain deferred and are **not** implicitly authorized by G1 completion.
+- `MO-DE-010` bounded Trademark Asset On-Demand Product Admission is complete in PR #194 / merge `9600daa6b3ddc8d75cfbfcd443341ee755a30129`; PR #195 / merge `d996b1cd1b3e4f18b4e68b593bb6bfb8d88f2992` repaired and re-proved the cross-repository Lite acceptance gate. This is a narrow M10 detail-path admission, not a global Lite/Data Engine stage unlock.
+- `MO-DE-007/008` change-feed/cursor work, Brain Data Engine integration and broader/global Lite Data Engine productization remain deferred and are **not** implicitly authorized by G1 or `MO-DE-010` completion.
 - No production deployment, GA, production credentials, live filing, live payment, provider contact, external publication or Official Truth is authorized by these engineering or integration stages.
 
 M5-WP-08 merged in PR #70 as `242b34f806711df608a7178b238104289e65bb00`. The completed governed application/lifecycle path is:
@@ -259,5 +260,6 @@ See:
 - `docs/integrations/data-engine/requirements.md`;
 - `docs/integrations/data-engine/integration-status.yaml`;
 - `docs/integrations/data-engine/MO-DE-G1-CLOSEOUT-2026-08-24.md`;
+- `docs/integrations/data-engine/MO-DE-010-CLOSEOUT-2026-08-24.md`;
 - `docs/architecture/BETA-READINESS-AUTHORITY-BOUNDARY.md`;
 - `AGENTS.md`.
