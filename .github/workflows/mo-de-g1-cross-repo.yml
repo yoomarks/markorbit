@@ -1,4 +1,4 @@
-name: MO-DE-006 Cross-Repo Acceptance
+name: MO-DE G1 Cross-Repo Acceptance
 
 on:
   pull_request:
@@ -6,8 +6,13 @@ on:
       - '.github/workflows/mo-de-g1-cross-repo.yml'
       - 'apps/gateway/src/data-engine-http.ts'
       - 'apps/gateway/src/data-engine-g1-runtime.ts'
+      - 'apps/gateway/src/data-engine-route-support.ts'
+      - 'apps/gateway/src/data-engine-product-http.ts'
+      - 'apps/gateway/src/index.ts'
       - 'apps/gateway/tests/data-engine-http.test.ts'
       - 'apps/gateway/tests/data-engine-g1-cross-repo.test.ts'
+      - 'apps/gateway/tests/data-engine-primary-runtime.test.ts'
+      - 'apps/gateway/tests/data-engine-primary-cross-repo.test.ts'
       - 'packages/contracts/src/data-engine.ts'
       - 'docs/integrations/data-engine/**'
   workflow_dispatch:
@@ -16,11 +21,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: mo-de-006-cross-repo-${{ github.ref }}
+  group: mo-de-g1-cross-repo-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  DATA_ENGINE_G0_SHA: 42637eec302b1e2feeb6825e4f7b5208f4d00b9e
+  DATA_ENGINE_ACCEPTANCE_SHA: 57be59ab27e41ac99ae95922ce802aa189c48181
   MO_DE_G1_PROVIDER_URL: http://127.0.0.1:8201
   MO_DE_G1_RATE_LIMIT_PROVIDER_URL: http://127.0.0.1:8202
   MO_DE_G1_INVALID_CONFIG_PROVIDER_URL: http://127.0.0.1:8203
@@ -28,18 +33,18 @@ env:
 
 jobs:
   authenticated-cross-repo:
-    name: Authenticated MarkOrbit -> Data Engine
+    name: Authenticated primary Gateway -> Data Engine
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout MarkOrbit consumer
         uses: actions/checkout@v4
 
-      - name: Checkout frozen Data Engine provider
+      - name: Checkout current accepted Data Engine provider baseline
         uses: actions/checkout@v4
         with:
           repository: yoomarks/markorbit-data-engine
-          ref: ${{ env.DATA_ENGINE_G0_SHA }}
+          ref: ${{ env.DATA_ENGINE_ACCEPTANCE_SHA }}
           path: .cross-repo/markorbit-data-engine
 
       - uses: pnpm/action-setup@v4
@@ -68,7 +73,7 @@ jobs:
       - name: Install exact Data Engine provider
         run: python -m pip install -e .cross-repo/markorbit-data-engine
 
-      - name: Initialize frozen provider databases with provider-owned schema
+      - name: Initialize provider databases with provider-owned schema
         shell: bash
         run: |
           set -euo pipefail
@@ -91,7 +96,7 @@ jobs:
               INTEGRATION_API_KEYS="$KEY" \
               INTEGRATION_RATE_LIMIT_ENABLED=false \
               nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8201 \
-              > /tmp/mo-de-006-provider.log 2>&1 &
+              > /tmp/mo-de-g1-provider.log 2>&1 &
 
           env INTEGRATION_AUTH_MODE=required \
               INTEGRATION_API_KEYS="$KEY" \
@@ -99,13 +104,13 @@ jobs:
               INTEGRATION_RATE_LIMIT_MAX_REQUESTS=1 \
               INTEGRATION_RATE_LIMIT_WINDOW_SECONDS=60 \
               nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8202 \
-              > /tmp/mo-de-006-rate-limit.log 2>&1 &
+              > /tmp/mo-de-g1-rate-limit.log 2>&1 &
 
           env INTEGRATION_AUTH_MODE=required \
               INTEGRATION_API_KEYS= \
               INTEGRATION_RATE_LIMIT_ENABLED=false \
               nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8203 \
-              > /tmp/mo-de-006-invalid-config.log 2>&1 &
+              > /tmp/mo-de-g1-invalid-config.log 2>&1 &
 
           wait_http() {
             local url="$1"
@@ -131,20 +136,24 @@ jobs:
           # This profile intentionally answers 503 because required auth is misconfigured.
           wait_http http://127.0.0.1:8203/api/v1/contract
 
-      - name: Run consumer contract and cross-repository acceptance
+      - name: Run consumer contract and primary Gateway cross-repository acceptance
         run: |
           pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/gateway exec vitest run tests/data-engine-http.test.ts tests/data-engine-g1-cross-repo.test.ts
+          pnpm --filter @markorbit/gateway exec vitest run \
+            tests/data-engine-http.test.ts \
+            tests/data-engine-primary-runtime.test.ts \
+            tests/data-engine-g1-cross-repo.test.ts \
+            tests/data-engine-primary-cross-repo.test.ts
 
       - name: Show provider diagnostics on failure
         if: failure()
         run: |
           echo '--- primary provider ---'
-          cat /tmp/mo-de-006-provider.log || true
+          cat /tmp/mo-de-g1-provider.log || true
           echo '--- rate-limit provider ---'
-          cat /tmp/mo-de-006-rate-limit.log || true
+          cat /tmp/mo-de-g1-rate-limit.log || true
           echo '--- invalid-config provider ---'
-          cat /tmp/mo-de-006-invalid-config.log || true
+          cat /tmp/mo-de-g1-invalid-config.log || true
           echo '--- provider databases ---'
           cd .cross-repo/markorbit-data-engine
           docker compose ps || true
