@@ -79,8 +79,7 @@ function queryAsOf(request: JsonRequest): string | undefined {
   const raw = request.query.as_of;
   if (raw === undefined || raw === '') return undefined;
   const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(raw);
-  if (!match)
-    throw new HttpError(400, 'INVALID_REQUEST', 'as_of must use YYYY-MM-DD format.');
+  if (!match) throw new HttpError(400, 'INVALID_REQUEST', 'as_of must use YYYY-MM-DD format.');
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
@@ -145,10 +144,7 @@ export function createGatewayDataEngineRoutes(options: GatewayDataEngineRouteOpt
       return mapAuthentication(error);
     }
   };
-  const handle = async (
-    request: JsonRequest,
-    call: Parameters<typeof runDataEngineQuery>[2]
-  ) => {
+  const handle = async (request: JsonRequest, call: Parameters<typeof runDataEngineQuery>[2]) => {
     await resolvePrincipal(request);
     return runDataEngineQuery(configuredRuntime(options), request, call);
   };
@@ -168,10 +164,7 @@ export function createGatewayDataEngineRoutes(options: GatewayDataEngineRouteOpt
       handle: (request) => {
         assertOnlyQueryKeys(request, []);
         return handle(request, (client) =>
-          client.cnCase(
-            request.params.applicationNumber ?? '',
-            dataEngineRequestContext(request)
-          )
+          client.cnCase(request.params.applicationNumber ?? '', dataEngineRequestContext(request))
         );
       }
     },
@@ -189,12 +182,7 @@ export function createGatewayDataEngineRoutes(options: GatewayDataEngineRouteOpt
       method: 'GET',
       path: '/api/data-engine/us/cases/:serialNumber/360',
       handle: (request) => {
-        assertOnlyQueryKeys(request, [
-          'as_of',
-          'history_limit',
-          'assignment_limit',
-          'ttab_limit'
-        ]);
+        assertOnlyQueryKeys(request, ['as_of', 'history_limit', 'assignment_limit', 'ttab_limit']);
         const asOf = queryAsOf(request);
         const historyLimit = queryPositiveInteger(request, 'history_limit', 5000);
         const assignmentLimit = queryPositiveInteger(request, 'assignment_limit', 500);
