@@ -85,7 +85,7 @@ Acceptance covers:
 - stable machine-readable error code;
 - fail-closed contract/version validation.
 
-## G1 — Protected Query Runtime
+## G1 — Protected Query Runtime — complete
 
 ### MO-DE-006 — Authenticated Cross-Repository Transport Acceptance
 
@@ -115,22 +115,46 @@ Mocks/fixtures support local tests but do not replace the recorded real cross-re
 Priority: **P1**  
 Primary owner: **MarkOrbit Gateway**  
 Provider owner: **Data Engine only where provider behavior changes are required**  
-Status: **PENDING IMPLEMENTATION / ACCEPTANCE**
+Status: **ACCEPTED / COMPLETE**
 
-Admit the frozen Data Engine V1 read plane into the normal MarkOrbit primary Gateway runtime instead of relying on the isolated `gateway-data-engine-g1` acceptance runtime.
+The frozen Data Engine V1 read plane is admitted into the normal MarkOrbit primary Gateway runtime. PR #190 was squash-merged as `eebbba5248a3f6ccc8e514700c1dcf555f6fbc06` after its exact head `ea0a49c2817a92249dadca138790f2288e756652` passed validation, commercial runtime reliability and authenticated real cross-repository acceptance.
 
-Required scope:
+Accepted scope:
 
-- wire Data Engine URL, service credential and bounded timeout into the normal `apps/gateway` runtime;
-- fail closed when required Data Engine configuration/auth/contract validation is missing or invalid; never fall back to anonymous provider access;
-- keep Data Engine service credentials server-side at Gateway; browser/Lite/Core clients do not receive the service token;
-- protect product-facing Data Engine reads behind the existing authenticated MarkOrbit Workspace/principal boundary;
-- admit bounded read-only CN/US case query shapes from the frozen V1 contract;
-- preserve `not_found`, unknown coverage, `service_unavailable`, rate-limit, timeout and schema mismatch distinctions;
-- propagate request/correlation tracing through the normal Gateway path;
-- prove the path through the normal `createRuntime()` / primary Gateway startup, not a test-only substitute runtime.
+- Data Engine URL, service credential and bounded timeout are wired into normal `apps/gateway` runtime options;
+- invalid/missing Data Engine configuration fails closed; there is no anonymous provider fallback;
+- Data Engine service credentials remain server-side at Gateway;
+- product-facing Data Engine reads are protected by existing MarkOrbit session + Workspace resolution and `workspace:read`;
+- bounded read-only CN/US case query shapes from frozen V1 are admitted;
+- the Gateway preserves `not_found`, unknown coverage, `service_unavailable`, provider auth failure, rate-limit, timeout and schema mismatch distinctions;
+- request/correlation tracing passes through the normal Gateway path;
+- US 360 `as_of`, `history_limit`, `assignment_limit` and `ttab_limit` are forwarded under the provider's frozen maxima;
+- history, assignments and TTAB limits are enforced at the Gateway boundary;
+- unsupported query parameters fail closed instead of being silently ignored;
+- the real acceptance path uses normal `createRuntime()` and an auth-required Data Engine runtime.
 
-Explicitly out of scope:
+Accepted evidence includes:
+
+- authenticated MarkOrbit client -> primary Gateway -> auth-required Data Engine -> validated 200 response;
+- MarkOrbit authentication/Workspace permission denial before provider access;
+- missing/invalid Data Engine service configuration fails closed;
+- real provider 401 remains a provider-auth failure and never becomes a factual negative;
+- real provider 404 remains `not_found` with coverage unknown;
+- real 429 / `Retry-After` backpressure remains retryable;
+- invalid provider required-mode configuration and unavailable/5xx behavior remain retryable service failure;
+- timeout remains retryable `service_unavailable`;
+- request/correlation IDs remain traceable end to end;
+- `/us/changes` remains unexposed.
+
+Final exact-head workflow evidence:
+
+- validation: run `32707949365` — success;
+- M8 WP-06 Commercial Runtime Reliability: run `32707949344` — success;
+- MO-DE G1 Cross-Repo Acceptance: run `32707949408` — success.
+
+The final cross-repo workflow tested Data Engine SHA `57be59ab27e41ac99ae95922ce802aa189c48181`. During closeout, Data Engine `main` had advanced to `bdc43d12763a4db200b5363c8eda3060868d2d0b`, but the frozen V1 contract blob remained identical at `7567908e4d1c8d79eef27fb763fe63d58281f02a`; no contract drift was observed.
+
+Explicitly still out of scope after G1 completion:
 
 - `/api/v1/us/changes` product consumption;
 - consumer cursor/checkpoint persistence;
@@ -140,30 +164,21 @@ Explicitly out of scope:
 - new cross-service persistence or direct Data Engine SQL;
 - production credentials, deployment, GA or Official Truth authorization.
 
-Acceptance minimum:
-
-- authenticated MarkOrbit client -> primary Gateway -> auth-required Data Engine -> validated 200 response;
-- MarkOrbit authentication/Workspace permission denial remains enforced before provider access;
-- missing/invalid Data Engine service configuration fails closed;
-- provider 401/404/429/5xx/timeout/schema mismatch remain correctly mapped;
-- request/correlation IDs are traceable end to end;
-- no `/us/changes` or cursor/checkpoint route is exposed by this admission.
-
-Overall G1 is complete only after `MO-DE-009` is accepted.
+Overall G1 is complete with `MO-DE-006` + `MO-DE-009` accepted.
 
 ## G2 — Decision Freeze Only; Implementation Deferred
 
 ### MO-DE-007 — US Trademark Change Feed Ownership
 
 Priority: **P2 DECISION**  
-Status: **DEFERRED — DO NOT IMPLEMENT DURING G1**
+Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION**
 
 Proposed direction for later joint review: Data Engine owns factual change detection and durable provider-side change feed; MarkOrbit Core owns business/product event interpretation. Brain/Lite consumption is downstream and must not redefine source facts.
 
 ### MO-DE-008 — Cursor / Consumer Checkpoint Ownership
 
 Priority: **P2 DECISION**  
-Status: **DEFERRED — DO NOT IMPLEMENT DURING G1**
+Status: **DEFERRED — NOT AUTHORIZED BY G1 COMPLETION**
 
 Freeze later whether the provider exposes durable feed cursors and which consumer checkpoints are owned by MarkOrbit. Dedupe/idempotency and replay semantics must be explicit before implementation.
 
@@ -171,6 +186,7 @@ Freeze later whether the provider exposes durable feed cursors and which consume
 
 1. `MO-DE-001..005` — accepted and frozen.
 2. `MO-DE-006` — real transport/auth cross-repository acceptance complete.
-3. `MO-DE-009` — next authorized implementation: primary Gateway protected query admission.
+3. `MO-DE-009` — primary Gateway protected query admission complete; overall G1 is closed.
 4. `MO-DE-007/008` — remain deferred; no implementation authorization.
 5. Brain and Lite Data Engine productization remain downstream and are not authorized by this requirement set.
+6. Any G2/G3/G4 work requires a new explicit authorization/decision rather than being inferred from G1 completion.
