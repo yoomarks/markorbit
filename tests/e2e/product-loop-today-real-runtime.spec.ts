@@ -199,6 +199,25 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
       ).toBeVisible();
     }
 
+    const createVisualBriefResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lite/content-kits/') &&
+        response.url().endsWith('/visual-briefs') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByLabel('Governed IP package', { exact: true }).fill('MOKI');
+    await page.getByRole('button', { name: 'Create Visual Brief', exact: true }).click();
+    const createVisualBriefResponse = await createVisualBriefResponsePromise;
+    expect(createVisualBriefResponse.status()).toBe(201);
+    const createdVisualBrief = (await createVisualBriefResponse.json()) as {
+      brief: { visualBriefId: string; version: number };
+    };
+    const visualBriefId = createdVisualBrief.brief.visualBriefId;
+    expect(visualBriefId).toMatch(/^visual-brief_/);
+    await expect(
+      page.getByRole('button', { name: 'Request reuse-first visual', exact: true })
+    ).toBeVisible();
+
     const firstAngle = contentKitCard.locator('.daily-angle-list > li').first();
     await expect(firstAngle).toBeVisible();
     const angleResponsePromise = page.waitForResponse(
@@ -251,16 +270,54 @@ test.describe('M9 WP07 real durable Daily Workspace preference loop', () => {
     ).toBeDisabled();
 
     const durableUrl = page.url();
+    const reloadPreferencePosts: string[] = [];
+    const reloadRequestListener = (request: import('@playwright/test').Request) => {
+      if (
+        request.url().includes('/api/lite/product-preference-events') &&
+        request.method() === 'POST'
+      )
+        reloadPreferencePosts.push(request.url());
+    };
+    page.on('request', reloadRequestListener);
+    const visualBriefReloadResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/lite/visual-briefs/${visualBriefId}`) &&
+        response.request().method() === 'GET'
+    );
     await page.reload();
+    expect((await visualBriefReloadResponsePromise).status()).toBe(200);
     await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
     await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
     await expect(page.getByText('CONTENT KIT', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Request reuse-first visual', exact: true })
+    ).toBeVisible();
+    expect(reloadPreferencePosts).toEqual([]);
+    page.off('request', reloadRequestListener);
     await expect(page).toHaveURL(durableUrl);
 
     const direct = await page.context().newPage();
+    const directPreferencePosts: string[] = [];
+    direct.on('request', (request) => {
+      if (
+        request.url().includes('/api/lite/product-preference-events') &&
+        request.method() === 'POST'
+      )
+        directPreferencePosts.push(request.url());
+    });
+    const directVisualBriefResponsePromise = direct.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/lite/visual-briefs/${visualBriefId}`) &&
+        response.request().method() === 'GET'
+    );
     await direct.goto(durableUrl);
+    expect((await directVisualBriefResponsePromise).status()).toBe(200);
     await expect(direct.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
     await expect(direct.getByText('Owner handoff completed', { exact: true })).toBeVisible();
+    await expect(
+      direct.getByRole('button', { name: 'Request reuse-first visual', exact: true })
+    ).toBeVisible();
+    expect(directPreferencePosts).toEqual([]);
     await direct.close();
 
     const dismissCard = page.locator('#daily-orbit section.mo-card').filter({
