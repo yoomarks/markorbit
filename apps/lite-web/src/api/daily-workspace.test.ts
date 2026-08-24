@@ -75,7 +75,7 @@ afterEach(() => {
 });
 
 describe('Daily Workspace preference event wiring', () => {
-  it('records CONTENT_STARTED after a successful Visual Brief creation', async () => {
+  it('records CONTENT_STARTED and preserves exact Visual Brief read-your-writes continuity', async () => {
     const preferenceBodies: Record<string, unknown>[] = [];
     const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
       const url = requestUrl(input);
@@ -83,6 +83,8 @@ describe('Daily Workspace preference event wiring', () => {
         return Promise.resolve(jsonResponse({ csrfToken: csrf }));
       if (url.includes('/api/lite/content-kits/content-pick_wp07/visual-briefs'))
         return Promise.resolve(jsonResponse(visualRecord, 201));
+      if (url.endsWith('/api/lite/content-kits/content-pick_wp07'))
+        return Promise.resolve(jsonResponse(kit));
       if (url.endsWith('/api/lite/product-preference-events')) {
         preferenceBodies.push(parsedBody(init));
         return Promise.resolve(jsonResponse({ event: {}, preference: {} }, 201));
@@ -91,17 +93,18 @@ describe('Daily Workspace preference event wiring', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await createDailyWorkspaceClient(workspaceId).createVisualBrief(
-      'content-pick_wp07',
-      kit,
-      {
-        requestedIpPackage: 'MOKI',
-        outputKind: 'XIAOHONGSHU_COVER',
-        sceneIntent: 'MOKI explains the update.'
-      }
-    );
+    const client = createDailyWorkspaceClient(workspaceId);
+    const result = await client.createVisualBrief('content-pick_wp07', kit, {
+      requestedIpPackage: 'MOKI',
+      outputKind: 'XIAOHONGSHU_COVER',
+      sceneIntent: 'MOKI explains the update.'
+    });
+    const readAfterWrite = await client.loadContentKit('content-pick_wp07');
 
     expect(result).toEqual(visualRecord);
+    expect(readAfterWrite.visualBriefReferences).toEqual([
+      { id: brief.visualBriefId, version: brief.version }
+    ]);
     expect(preferenceBodies).toEqual([
       {
         workspaceId,
