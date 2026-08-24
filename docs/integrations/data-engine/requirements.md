@@ -95,7 +95,20 @@ Status: **ACCEPTED / TRANSPORT COMPLETE**
 
 `MO-DE-006` proved the real auth-required Data Engine runtime through the MarkOrbit Data Engine consumer adapter and an isolated Gateway acceptance runtime. It freezes transport/auth/error/tracing behavior but does **not** by itself admit Data Engine into the normal product Gateway runtime.
 
-Accepted evidence includes 200 success, authentication boundaries, `not_found`, rate limiting, timeout, provider failure, schema/version mismatch, tracing and required provider auth. Mocks/fixtures support local tests but do not replace recorded real cross-repository acceptance evidence.
+Accepted evidence includes:
+
+- 200 success;
+- 401 unauthenticated;
+- provider 403 semantics where applicable/reserved by contract;
+- `not_found` with MarkOrbit coverage preserved as unknown;
+- 429 / retry-after;
+- timeout;
+- provider 5xx / unavailable behavior;
+- schema/version mismatch fail-closed behavior;
+- request/correlation ID propagation;
+- provider `auth_mode=required`.
+
+Mocks/fixtures support local tests but do not replace the recorded real cross-repository acceptance evidence.
 
 ### MO-DE-009 — Primary Gateway Protected Query Admission
 
@@ -106,7 +119,50 @@ Status: **ACCEPTED / COMPLETE**
 
 The frozen Data Engine V1 read plane is admitted into the normal MarkOrbit primary Gateway runtime. PR #190 was squash-merged as `eebbba5248a3f6ccc8e514700c1dcf555f6fbc06` after its exact head `ea0a49c2817a92249dadca138790f2288e756652` passed validation, commercial runtime reliability and authenticated real cross-repository acceptance.
 
-Accepted scope includes server-side Data Engine credentials, MarkOrbit session/Workspace authorization before provider access, bounded CN/US reads, fail-closed contract validation, preserved provider error/factual-state distinctions, tracing and frozen bounded query parameters. `/us/changes` remains unexposed.
+Accepted scope:
+
+- Data Engine URL, service credential and bounded timeout are wired into normal `apps/gateway` runtime options;
+- invalid/missing Data Engine configuration fails closed; there is no anonymous provider fallback;
+- Data Engine service credentials remain server-side at Gateway;
+- product-facing Data Engine reads are protected by existing MarkOrbit session + Workspace resolution and `workspace:read`;
+- bounded read-only CN/US case query shapes from frozen V1 are admitted;
+- the Gateway preserves `not_found`, unknown coverage, `service_unavailable`, provider auth failure, rate-limit, timeout and schema mismatch distinctions;
+- request/correlation tracing passes through the normal Gateway path;
+- US 360 `as_of`, `history_limit`, `assignment_limit` and `ttab_limit` are forwarded under the provider's frozen maxima;
+- history, assignments and TTAB limits are enforced at the Gateway boundary;
+- unsupported query parameters fail closed instead of being silently ignored;
+- the real acceptance path uses normal `createRuntime()` and an auth-required Data Engine runtime.
+
+Accepted evidence includes:
+
+- authenticated MarkOrbit client -> primary Gateway -> auth-required Data Engine -> validated 200 response;
+- MarkOrbit authentication/Workspace permission denial before provider access;
+- missing/invalid Data Engine service configuration fails closed;
+- real provider 401 remains a provider-auth failure and never becomes a factual negative;
+- real provider 404 remains `not_found` with coverage unknown;
+- real 429 / `Retry-After` backpressure remains retryable;
+- invalid provider required-mode configuration and unavailable/5xx behavior remain retryable service failure;
+- timeout remains retryable `service_unavailable`;
+- request/correlation IDs remain traceable end to end;
+- `/us/changes` remains unexposed.
+
+Final exact-head workflow evidence:
+
+- validation: run `32707949365` — success;
+- M8 WP-06 Commercial Runtime Reliability: run `32707949344` — success;
+- MO-DE G1 Cross-Repo Acceptance: run `32707949408` — success.
+
+The final cross-repo workflow tested Data Engine SHA `57be59ab27e41ac99ae95922ce802aa189c48181`. During G1 closeout, Data Engine `main` had advanced to `bdc43d12763a4db200b5363c8eda3060868d2d0b`, but the frozen V1 contract blob remained identical at `7567908e4d1c8d79eef27fb763fe63d58281f02a`; no contract drift was observed.
+
+Explicitly still out of scope after G1 completion:
+
+- `/api/v1/us/changes` product consumption;
+- consumer cursor/checkpoint persistence;
+- `MO-DE-007` or `MO-DE-008` implementation;
+- Brain indexing/retrieval integration;
+- global Lite Data Engine productization;
+- new cross-service persistence or direct Data Engine SQL;
+- production credentials, deployment, GA or Official Truth authorization.
 
 Overall G1 is complete with `MO-DE-006` + `MO-DE-009` accepted.
 
@@ -123,15 +179,17 @@ Status: **ACCEPTED / COMPLETE**
 
 Accepted behavior:
 
-- the existing Trademark Asset Anchor remains the product identity authority and provides `jurisdiction` plus an `APPLICATION_NUMBER` before Data Engine lookup;
-- Gateway remains the only holder of Data Engine service credentials;
-- `CN` anchors use the frozen CN case read and `US` anchors use the frozen US case read; unsupported jurisdictions do not query the provider;
-- only schema-proven factual values become existing `TrademarkAssetFactContribution` kinds;
-- accepted kinds are `APPLICATION_STATUS`, `APPLICATION_DATE`, `REGISTRATION_DATE`, `OWNER_NAME` and `NICE_CLASSES` where explicitly supplied;
-- `RENEWAL_DATE` is accepted only from an explicit provider field and is never derived;
-- provider "current" records carry `UNKNOWN` freshness and are not promoted to legal-current truth;
-- Lite remains the sole owner of composition, conflict detection, attention, confidence and recommendations;
-- provider not-found/unavailable/timeout/rate-limit/auth/incompatible-response states degrade to the original M10 detail and never manufacture negative facts;
+- the existing Trademark Asset Anchor remains the product identity authority and provides `jurisdiction` plus an `APPLICATION_NUMBER` identifier before a Data Engine lookup is attempted;
+- Gateway remains the only holder of Data Engine service credentials and performs the protected provider read through the normal G1 client/runtime boundary;
+- `CN` anchors use the frozen CN case read and `US` anchors use the frozen US case read; unsupported jurisdictions do not create a provider query;
+- only schema-proven, source-owned factual values are translated into existing `TrademarkAssetFactContribution` kinds;
+- accepted fact kinds are `APPLICATION_STATUS`, `APPLICATION_DATE`, `REGISTRATION_DATE`, `OWNER_NAME` and `NICE_CLASSES` where the provider response explicitly supplies the corresponding value;
+- `RENEWAL_DATE` is admitted only when the provider response contains an explicit field; it is never derived;
+- provider "current" records are carried with `UNKNOWN` freshness and are not promoted into legal-current truth;
+- Lite remains the single owner of Trademark Asset composition, conflict detection, attention computation, confidence handling and recommendations;
+- provider `not_found`, unavailable, timeout, rate-limit, auth or incompatible-response states degrade to the original M10 detail view and never manufacture a negative factual observation;
+- source provenance remains visible through the existing `DATA_ENGINE_TRADEMARK_RECORD` owner and contribution metadata;
+- request/correlation tracing remains preserved across Gateway -> Data Engine and Gateway -> Lite hops;
 - no source-fact persistence, background synchronization, change feed, cursor/checkpoint, writeback or cross-service SQL is introduced;
 - `officialTruthVerifiedByLite=false`, `legalDeadlineCertified=false` and `protectedActionAuthorized=false` remain invariant.
 
