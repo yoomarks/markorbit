@@ -124,9 +124,11 @@ function optionalText(value: unknown, field: string): string | undefined {
 }
 
 function version(value: unknown, field: string): number {
-  if (!Number.isInteger(value) || Number(value) < 1)
+  const parsed =
+    typeof value === 'string' && /^[1-9]\d*$/u.test(value.trim()) ? Number(value.trim()) : value;
+  if (!Number.isInteger(parsed) || Number(parsed) < 1)
     throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive integer.`);
-  return Number(value);
+  return Number(parsed);
 }
 
 function outputKind(value: unknown): VisualOutputKind {
