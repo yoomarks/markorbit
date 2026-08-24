@@ -1122,7 +1122,10 @@ export function TodayWorkspace({
                 key={item.dailyOrbitItemId}
                 item={item}
                 title={orbitTitle(item, today)}
-                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}
+                saved={
+                  savedOrbitItemIds.has(item.dailyOrbitItemId) ||
+                  Boolean(orbit?.savedOrbitItemIds.includes(item.dailyOrbitItemId))
+                }
                 onSave={() => void recordOrbitPreference('SAVED', item)}
                 onDismiss={() => void recordOrbitPreference('DISMISSED', item)}
               />
@@ -1215,7 +1218,10 @@ export function TodayWorkspace({
                 key={item.dailyOrbitItemId}
                 item={item}
                 title={orbitTitle(item, today)}
-                saved={savedOrbitItemIds.has(item.dailyOrbitItemId)}
+                saved={
+                  savedOrbitItemIds.has(item.dailyOrbitItemId) ||
+                  Boolean(orbit?.savedOrbitItemIds.includes(item.dailyOrbitItemId))
+                }
                 onSave={() => void recordOrbitPreference('SAVED', item)}
                 onDismiss={() => void recordOrbitPreference('DISMISSED', item)}
               />

@@ -25,6 +25,7 @@ export interface DailyOrbitSnapshot {
   readonly subjectUserId: string;
   readonly generatedAt: string;
   readonly preferenceSource: 'EXPLICIT' | 'PRODUCT_FEEDBACK' | 'NONE';
+  readonly savedOrbitItemIds: readonly string[];
   readonly items: ReadonlyArray<Readonly<DailyOrbitItem>>;
   readonly contentPicks: ReadonlyArray<Readonly<ContentPick>>;
   readonly partial: boolean;
@@ -40,6 +41,7 @@ export interface DailyWorkspaceSnapshot {
   readonly generatedAt: string;
   readonly see: {
     readonly preferenceSource: DailyOrbitSnapshot['preferenceSource'] | null;
+    readonly savedOrbitItemIds: readonly string[];
     readonly orbitItems: ReadonlyArray<Readonly<DailyOrbitItem>>;
   };
   readonly create: {

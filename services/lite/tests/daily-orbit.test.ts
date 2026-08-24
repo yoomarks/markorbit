@@ -7,6 +7,7 @@ import {
   type DailyOrbitPreferenceProvider,
   type DailyOrbitTodayReader,
   type DailyOrbitVisibilityProvider,
+  type DailyOrbitVisibilityState,
   type DailySignalReader
 } from '../src/daily-orbit.js';
 
@@ -130,11 +131,11 @@ class Preferences implements DailyOrbitPreferenceProvider {
 }
 
 class Visibility implements DailyOrbitVisibilityProvider {
-  constructor(private readonly value: ReadonlySet<string> | Error) {}
-  dismissedOrbitItemIds(
+  constructor(private readonly value: Readonly<DailyOrbitVisibilityState> | Error) {}
+  orbitItemState(
     requestWorkspaceId: string,
     requestUserId: string
-  ): Promise<ReadonlySet<string>> {
+  ): Promise<Readonly<DailyOrbitVisibilityState>> {
     expect(requestWorkspaceId).toBe(workspaceId);
     expect(requestUserId).toBe(userId);
     if (this.value instanceof Error) return Promise.reject(this.value);
@@ -214,13 +215,43 @@ describe('M9-WP-03 Personal Daily Orbit', () => {
       new Today(today(recommendation(true))),
       new Preferences(preference()),
       () => '2026-08-18T03:00:00.000Z',
-      new Visibility(new Set([ranked.dailyOrbitItemId]))
+      new Visibility({
+        savedOrbitItemIds: new Set([ranked.dailyOrbitItemId]),
+        dismissedOrbitItemIds: new Set([ranked.dailyOrbitItemId])
+      })
     );
 
     const snapshot = await service.snapshot(workspaceId, userId);
 
     expect(snapshot.items).toEqual([]);
+    expect(snapshot.savedOrbitItemIds).toEqual([]);
     expect(snapshot.contentPicks).toEqual([]);
+    expect(snapshot.partial).toBe(false);
+  });
+
+  it('returns durable saved state only for visible exact Orbit items', async () => {
+    const ranked = rankDailyOrbitItem(
+      signal(),
+      userId,
+      preference(),
+      recommendation(),
+      '2026-08-18T03:00:00.000Z'
+    );
+    const service = new DailyOrbitService(
+      new Signals([signal()]),
+      new Today(today(recommendation(true))),
+      new Preferences(preference()),
+      () => '2026-08-18T03:00:00.000Z',
+      new Visibility({
+        savedOrbitItemIds: new Set([ranked.dailyOrbitItemId]),
+        dismissedOrbitItemIds: new Set()
+      })
+    );
+
+    const snapshot = await service.snapshot(workspaceId, userId);
+
+    expect(snapshot.items).toHaveLength(1);
+    expect(snapshot.savedOrbitItemIds).toEqual([ranked.dailyOrbitItemId]);
     expect(snapshot.partial).toBe(false);
   });
 
