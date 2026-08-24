@@ -129,15 +129,15 @@ M6 later hardened registry/learning, but the generic request path still shows fi
 
 The ranking uses five criteria: number of consumers, current/imminent duplication, security/secret centralization need, leverage on future capabilities, and migration cost if delayed.
 
-| Rank | Capability / runtime | Priority | Why now |
-| --- | --- | --- | --- |
-| 1 | Capability Runtime Execution & Admission Plane | P0 | prerequisite for every shared Capability; closes existing fixture seam |
-| 2 | Managed AI Execution / AI Gateway implementation | P0 | Knowledge already needs/uses AI; Brain/Lite/MarkReg will all need it; high secret/cost/model-governance risk |
-| 3 | Managed Communication / Communication Hub, Email first | P0 | Knowledge email ingestion is imminent; MarkReg/Lite also need communication; high privacy/credential/evidence risk |
-| 4 | Governed Document Understanding | P1 | Knowledge and MarkReg both process professional documents; prevents parser/OCR/extraction fragmentation |
-| 5 | Governed Retrieval | P1 | Brain, Lite and MarkReg need mixed Data/Knowledge/Core retrieval with authority/provenance preserved |
-| 6 | Cross-capability evaluation / conformance harness | P1 | required to compare implementation profiles and prevent provider/model drift from changing outcomes silently |
-| 7 | Domain Capability wave (monitoring, renewal, filing readiness, brand risk, content intelligence) | P2 staged | strategic product value, but should build on the shared foundation rather than creating more local infrastructure |
+| Rank | Capability / runtime                                                                             | Priority  | Why now                                                                                                            |
+| ---- | ------------------------------------------------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1    | Capability Runtime Execution & Admission Plane                                                   | P0        | prerequisite for every shared Capability; closes existing fixture seam                                             |
+| 2    | Managed AI Execution / AI Gateway implementation                                                 | P0        | Knowledge already needs/uses AI; Brain/Lite/MarkReg will all need it; high secret/cost/model-governance risk       |
+| 3    | Managed Communication / Communication Hub, Email first                                           | P0        | Knowledge email ingestion is imminent; MarkReg/Lite also need communication; high privacy/credential/evidence risk |
+| 4    | Governed Document Understanding                                                                  | P1        | Knowledge and MarkReg both process professional documents; prevents parser/OCR/extraction fragmentation            |
+| 5    | Governed Retrieval                                                                               | P1        | Brain, Lite and MarkReg need mixed Data/Knowledge/Core retrieval with authority/provenance preserved               |
+| 6    | Cross-capability evaluation / conformance harness                                                | P1        | required to compare implementation profiles and prevent provider/model drift from changing outcomes silently       |
+| 7    | Domain Capability wave (monitoring, renewal, filing readiness, brand risk, content intelligence) | P2 staged | strategic product value, but should build on the shared foundation rather than creating more local infrastructure  |
 
 ## 7. Why AI and Communication are P0 but not first in sequence
 
