@@ -211,6 +211,27 @@ jobs:
           pnpm --filter @markorbit/lite exec vitest run \
             tests/trademark-asset-composition-http.test.ts
 
+      - name: Generate canonical MO-DE-010 Prettier output
+        if: always()
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/trademark-asset-data-engine.ts \
+            apps/gateway/tests/trademark-asset-primary-cross-repo.test.ts \
+            apps/gateway/tests/trademark-asset-product-admission.test.ts \
+            services/lite/src/trademark-asset-composition-http.ts
+
+      - name: Upload canonical MO-DE-010 Prettier output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mo-de-010-prettier
+          path: |
+            apps/gateway/src/trademark-asset-data-engine.ts
+            apps/gateway/tests/trademark-asset-primary-cross-repo.test.ts
+            apps/gateway/tests/trademark-asset-product-admission.test.ts
+            services/lite/src/trademark-asset-composition-http.ts
+          if-no-files-found: error
+
       - name: Show provider diagnostics on failure
         if: failure()
         run: |
