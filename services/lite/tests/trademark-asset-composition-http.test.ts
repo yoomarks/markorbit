@@ -44,8 +44,9 @@ const anchor: TrademarkAsset = {
 };
 
 function route() {
+  const getAsset = vi.fn(() => Promise.resolve(anchor));
   const assets = {
-    get: vi.fn(() => Promise.resolve(anchor))
+    get: getAsset
   } as unknown as PostgresLiteTrademarkAssetStore;
   const refreshLedger = {
     listRecent: vi.fn(() => Promise.resolve([]))
@@ -57,7 +58,7 @@ function route() {
     now: () => '2026-08-24T03:00:00.000Z'
   })[0];
   if (!value) throw new Error('composition route missing');
-  return { value, assets, refreshLedger };
+  return { value, getAsset, refreshLedger };
 }
 
 function request(facts: unknown, secret = internalServiceSecret) {
@@ -87,7 +88,7 @@ const dataEngineSource = {
 
 describe('MO-DE-010 Lite trusted Trademark Asset recomposition', () => {
   it('recomposes admitted Data Engine facts while preserving authority invariants', async () => {
-    const { value, assets } = route();
+    const { value, getAsset } = route();
     const result = await value.handle(
       request([
         {
@@ -113,16 +114,16 @@ describe('MO-DE-010 Lite trusted Trademark Asset recomposition', () => {
         ]
       }
     });
-    expect(assets.get).toHaveBeenCalledWith(workspaceId, assetId);
+    expect(getAsset).toHaveBeenCalledWith(workspaceId, assetId);
   });
 
   it('rejects untrusted callers before reading the Asset', async () => {
-    const { value, assets } = route();
+    const { value, getAsset } = route();
     await expect(value.handle(request([], 'wrong-secret'))).rejects.toMatchObject({
       status: 401,
       code: 'UNTRUSTED_INTERNAL_CALLER'
     });
-    expect(assets.get).not.toHaveBeenCalled();
+    expect(getAsset).not.toHaveBeenCalled();
   });
 
   it('rejects non-Data-Engine fact ownership and lifecycle-stage injection', async () => {
