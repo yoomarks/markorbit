@@ -198,7 +198,7 @@ jobs:
       - name: Run consumer contract and primary Gateway cross-repository acceptance
         run: |
           pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/lite typecheck
+          pnpm --filter @markorbit/lite-service typecheck
           pnpm --filter @markorbit/gateway exec vitest run \
             tests/data-engine-http.test.ts \
             tests/data-engine-product-query-contract.test.ts \
@@ -208,7 +208,7 @@ jobs:
             tests/trademark-asset-data-engine.test.ts \
             tests/trademark-asset-product-admission.test.ts \
             tests/trademark-asset-primary-cross-repo.test.ts
-          pnpm --filter @markorbit/lite exec vitest run \
+          pnpm --filter @markorbit/lite-service exec vitest run \
             tests/trademark-asset-composition-http.test.ts
 
       - name: Show provider diagnostics on failure
