@@ -11,6 +11,11 @@ import {
   requireTrustedOrigin,
   validateCsrf
 } from './auth.js';
+import { createDataEngineClient } from './data-engine-http.js';
+import {
+  mapDataEngineTrademarkAssetFacts,
+  resolveTrademarkAssetDataEngineLookup
+} from './trademark-asset-data-engine.js';
 
 export interface GatewayProductLoopOptions {
   liteUrl: string;
@@ -18,6 +23,10 @@ export interface GatewayProductLoopOptions {
   internalServiceSecret?: string;
   csrfSecret: string;
   allowedOrigins: readonly string[];
+  dataEngineUrl?: string;
+  dataEngineApiKey?: string;
+  dataEngineTimeoutMs?: number;
+  dataEngineFetchImpl?: typeof fetch;
 }
 
 const actorSpoofFields = [
@@ -99,9 +108,20 @@ function hasPermissions(principal: WorkspacePrincipal, required: readonly Permis
   return required.every((permission) => principal.permissions.includes(permission));
 }
 
+function environmentTimeout(): number | undefined {
+  const raw = process.env.DATA_ENGINE_TIMEOUT_MS;
+  if (!raw) return undefined;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
 export function createGatewayProductLoopRoutes(
   options: GatewayProductLoopOptions
 ): readonly JsonRoute[] {
+  const dataEngineUrl = options.dataEngineUrl ?? process.env.DATA_ENGINE_URL;
+  const dataEngineApiKey = options.dataEngineApiKey ?? process.env.DATA_ENGINE_API_KEY;
+  const dataEngineTimeoutMs = options.dataEngineTimeoutMs ?? environmentTimeout();
+
   const authenticate = async (
     request: JsonRequest,
     mutation: boolean,
@@ -140,7 +160,11 @@ export function createGatewayProductLoopRoutes(
     }
   };
 
-  const forward = async (request: JsonRequest, principal: WorkspacePrincipal) => {
+  const liteCall = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    input: { method?: 'GET' | 'POST'; path?: string; body?: unknown } = {}
+  ): Promise<{ status: number; body: unknown }> => {
     if (!options.internalServiceSecret)
       throw new HttpError(
         503,
@@ -149,10 +173,11 @@ export function createGatewayProductLoopRoutes(
         true
       );
     try {
-      const search = new URLSearchParams(request.query).toString();
-      const path = request.path.replace('/api/lite', '/v1');
+      const method = input.method ?? request.method;
+      const search = input.path ? '' : new URLSearchParams(request.query).toString();
+      const path = input.path ?? request.path.replace('/api/lite', '/v1');
       const response = await fetch(`${options.liteUrl}${path}${search ? `?${search}` : ''}`, {
-        method: request.method,
+        method,
         headers: {
           'content-type': 'application/json',
           'x-markorbit-internal-authorization': options.internalServiceSecret,
@@ -165,12 +190,58 @@ export function createGatewayProductLoopRoutes(
             ? { 'idempotency-key': request.headers['idempotency-key'] }
             : {})
         },
-        ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
+        ...(method === 'GET' ? {} : { body: JSON.stringify(input.body ?? request.body ?? {}) })
       });
-      return json(response.status, await response.json());
+      return { status: response.status, body: await response.json() };
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Lite service is unavailable.', true);
+    }
+  };
+
+  const forward = async (request: JsonRequest, principal: WorkspacePrincipal) => {
+    const response = await liteCall(request, principal);
+    return json(response.status, response.body);
+  };
+
+  const trademarkAssetDetail = async (request: JsonRequest): Promise<ReturnType<typeof json>> => {
+    const principal = await authenticate(request, false, ['workspace:read']);
+    const base = await liteCall(request, principal);
+    if (base.status !== 200) return json(base.status, base.body);
+
+    const lookup = resolveTrademarkAssetDataEngineLookup(base.body);
+    if (!lookup || !dataEngineUrl || !dataEngineApiKey) return json(200, base.body);
+
+    try {
+      const client = createDataEngineClient({
+        dataEngineUrl,
+        apiKey: dataEngineApiKey,
+        ...(dataEngineTimeoutMs === undefined ? {} : { timeoutMs: dataEngineTimeoutMs }),
+        ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+      });
+      const context = {
+        ...(request.headers['x-correlation-id']
+          ? { correlationId: request.headers['x-correlation-id'] }
+          : {}),
+        ...(request.headers['x-request-id'] ? { requestId: request.headers['x-request-id'] } : {})
+      };
+      const envelope =
+        lookup.jurisdiction === 'CN'
+          ? await client.cnCase(lookup.applicationNumber, context)
+          : await client.usCase(lookup.applicationNumber, context);
+      const facts = mapDataEngineTrademarkAssetFacts(envelope);
+      if (!facts.length) return json(200, base.body);
+
+      const recomposed = await liteCall(request, principal, {
+        method: 'POST',
+        path: `/internal/v1/workspaces/${encodeURIComponent(principal.workspaceId)}/trademark-assets/${encodeURIComponent(request.params.trademarkAssetId!)}/compose`,
+        body: { facts }
+      });
+      return recomposed.status === 200 ? json(200, recomposed.body) : json(200, base.body);
+    } catch {
+      // MO-DE-010 enrichment is advisory read composition. Provider/config/runtime failure must
+      // preserve the original M10 detail rather than manufacture absence or make the Asset unusable.
+      return json(200, base.body);
     }
   };
 
@@ -193,7 +264,11 @@ export function createGatewayProductLoopRoutes(
     route('GET', '/api/lite/daily-orbit', ['workspace:read'], false),
     route('GET', '/api/lite/daily-workspace', ['workspace:read'], false),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], false),
-    route('GET', '/api/lite/trademark-assets/:trademarkAssetId', ['workspace:read'], false),
+    {
+      method: 'GET',
+      path: '/api/lite/trademark-assets/:trademarkAssetId',
+      handle: trademarkAssetDetail
+    },
     route(
       'GET',
       '/api/lite/trademark-assets/:trademarkAssetId/service-work-package',
