@@ -110,7 +110,8 @@ crossRepoDescribe('MO-DE-010 primary Gateway real provider product admission', (
         }
         if (
           request.method === 'POST' &&
-          request.url === `/internal/v1/workspaces/${workspaceId}/trademark-assets/${assetId}/compose`
+          request.url ===
+            `/internal/v1/workspaces/${workspaceId}/trademark-assets/${assetId}/compose`
         ) {
           const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
             facts?: Array<Record<string, unknown>>;
@@ -141,7 +142,8 @@ crossRepoDescribe('MO-DE-010 primary Gateway real provider product admission', (
       liteServer.listen(0, '127.0.0.1', resolve);
     });
     const address = liteServer.address();
-    if (!address || typeof address === 'string') throw new Error('Lite acceptance server did not bind.');
+    if (!address || typeof address === 'string')
+      throw new Error('Lite acceptance server did not bind.');
     liteUrl = `http://127.0.0.1:${address.port}`;
 
     process.env.DATA_ENGINE_URL = providerUrl;
@@ -197,7 +199,11 @@ crossRepoDescribe('MO-DE-010 primary Gateway real provider product admission', (
       'OWNER_NAME',
       'NICE_CLASSES'
     ]);
-    expect(receivedFacts.every((fact) => (fact.source as Record<string, unknown>).owner === 'DATA_ENGINE')).toBe(true);
+    expect(
+      receivedFacts.every(
+        (fact) => (fact.source as Record<string, unknown>).owner === 'DATA_ENGINE'
+      )
+    ).toBe(true);
     expect(body.view?.observedFacts).toEqual(receivedFacts);
     expect(body.view?.officialTruthVerifiedByLite).toBe(false);
     expect(body.view?.legalDeadlineCertified).toBe(false);

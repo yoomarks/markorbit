@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
-import type { DataEngineFactEnvelope, DataEngineJurisdiction } from '@markorbit/contracts/data-engine';
+import type {
+  DataEngineFactEnvelope,
+  DataEngineJurisdiction
+} from '@markorbit/contracts/data-engine';
 import type {
   TrademarkAssetFreshnessState,
   TrademarkAssetSourceReference
@@ -91,14 +94,16 @@ function contribution(
 }
 
 function uniqueStrings(values: readonly unknown[]): string[] {
-  return [...new Set(values.map(nonEmptyString).filter((value): value is string => Boolean(value)))].sort();
+  return [
+    ...new Set(values.map(nonEmptyString).filter((value): value is string => Boolean(value)))
+  ].sort();
 }
 
 function numericClasses(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((item) => Number.isInteger(item) && Number(item) > 0).map(String))].sort(
-    (a, b) => Number(a) - Number(b)
-  );
+  return [
+    ...new Set(value.filter((item) => Number.isInteger(item) && Number(item) > 0).map(String))
+  ].sort((a, b) => Number(a) - Number(b));
 }
 
 function usInternationalClasses(rows: readonly UnknownRecord[]): string[] {
@@ -110,7 +115,9 @@ function usInternationalClasses(rows: readonly UnknownRecord[]): string[] {
   return [...new Set(classes)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
-export function resolveTrademarkAssetDataEngineLookup(detail: unknown): TrademarkAssetDataEngineLookup | null {
+export function resolveTrademarkAssetDataEngineLookup(
+  detail: unknown
+): TrademarkAssetDataEngineLookup | null {
   const root = record(detail);
   const view = record(root?.view);
   const anchor = record(view?.anchor);

@@ -40,12 +40,20 @@ function trusted(configured: string, supplied: string | undefined): boolean {
 
 function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   if (!trusted(secret, request.headers['x-markorbit-internal-authorization']))
-    throw new HttpError(401, 'UNTRUSTED_INTERNAL_CALLER', 'Trusted internal authorization is required.');
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
   let principal: WorkspacePrincipal;
   try {
     principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
   } catch {
-    throw new HttpError(401, 'INVALID_INTERNAL_PRINCIPAL', 'A trusted Workspace Principal is required.');
+    throw new HttpError(
+      401,
+      'INVALID_INTERNAL_PRINCIPAL',
+      'A trusted Workspace Principal is required.'
+    );
   }
   const workspaceId = request.headers['x-markorbit-workspace-id'];
   if (!workspaceId || workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase())
@@ -68,7 +76,8 @@ function text(value: unknown, label: string): string {
 }
 
 function factValue(value: unknown): TrademarkAssetObservedFactValue {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    return value;
   if (Array.isArray(value) && value.every((item) => typeof item === 'string')) return value;
   throw new HttpError(400, 'INVALID_REQUEST', 'Fact value must be scalar or an array of strings.');
 }
@@ -76,15 +85,26 @@ function factValue(value: unknown): TrademarkAssetObservedFactValue {
 function sourceReference(value: unknown): TrademarkAssetSourceReference {
   const source = record(value);
   if (source.owner !== 'DATA_ENGINE' || source.kind !== 'DATA_ENGINE_TRADEMARK_RECORD')
-    throw new HttpError(400, 'INVALID_REQUEST', 'Only Data Engine trademark-record facts are accepted.');
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only Data Engine trademark-record facts are accepted.'
+    );
   const observedAt = text(source.observedAt, 'source.observedAt');
   if (Number.isNaN(Date.parse(observedAt)))
     throw new HttpError(400, 'INVALID_REQUEST', 'source.observedAt must be an ISO timestamp.');
   if (!trademarkAssetFreshnessStates.includes(source.freshness as never))
     throw new HttpError(400, 'INVALID_REQUEST', 'source.freshness is invalid.');
   const fingerprint = source.sourceFingerprintSha256;
-  if (fingerprint !== undefined && (typeof fingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(fingerprint)))
-    throw new HttpError(400, 'INVALID_REQUEST', 'source.sourceFingerprintSha256 must be SHA-256 hex.');
+  if (
+    fingerprint !== undefined &&
+    (typeof fingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(fingerprint))
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'source.sourceFingerprintSha256 must be SHA-256 hex.'
+    );
   return {
     owner: 'DATA_ENGINE',
     kind: 'DATA_ENGINE_TRADEMARK_RECORD',
@@ -102,10 +122,21 @@ function factsOf(request: JsonRequest): readonly TrademarkAssetFactContribution[
     throw new HttpError(400, 'INVALID_REQUEST', 'facts must be an array.');
   return body.facts.map((raw) => {
     const fact = record(raw);
-    if (!trademarkAssetObservedFactKinds.includes(fact.kind as never) || fact.kind === 'LIFECYCLE_STAGE')
-      throw new HttpError(400, 'INVALID_REQUEST', 'Fact kind is not admitted for Data Engine composition.');
+    if (
+      !trademarkAssetObservedFactKinds.includes(fact.kind as never) ||
+      fact.kind === 'LIFECYCLE_STAGE'
+    )
+      throw new HttpError(
+        400,
+        'INVALID_REQUEST',
+        'Fact kind is not admitted for Data Engine composition.'
+      );
     if (fact.consequential !== undefined && typeof fact.consequential !== 'boolean')
-      throw new HttpError(400, 'INVALID_REQUEST', 'fact.consequential must be boolean when supplied.');
+      throw new HttpError(
+        400,
+        'INVALID_REQUEST',
+        'fact.consequential must be boolean when supplied.'
+      );
     return {
       kind: fact.kind as TrademarkAssetFactContribution['kind'],
       value: factValue(fact.value),
@@ -134,7 +165,11 @@ export function createTrademarkAssetCompositionRoutes(
         const latestRefresh = (
           await options.refreshLedger.listRecent(principal.workspaceId, trademarkAssetId, 1)
         )[0];
-        const managementSignals = deriveTrademarkAssetManagementSignals(view, latestRefresh, composedAt);
+        const managementSignals = deriveTrademarkAssetManagementSignals(
+          view,
+          latestRefresh,
+          composedAt
+        );
         const recommendations = prepareTrademarkAssetManagementRecommendations({
           signals: managementSignals,
           relatedOwnerReferences: view.anchor.relations,

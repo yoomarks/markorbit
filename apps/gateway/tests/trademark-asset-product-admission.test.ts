@@ -140,7 +140,8 @@ function detailRoute(input: {
     dataEngineFetchImpl: input.dataEngineFetch
   }).find(
     (candidate) =>
-      candidate.method === 'GET' && candidate.path === '/api/lite/trademark-assets/:trademarkAssetId'
+      candidate.method === 'GET' &&
+      candidate.path === '/api/lite/trademark-assets/:trademarkAssetId'
   );
   if (!route) throw new Error('Trademark Asset detail route missing.');
   return route;
@@ -196,7 +197,9 @@ describe('MO-DE-010 Gateway Trademark Asset admission', () => {
         'OWNER_NAME',
         'NICE_CLASSES'
       ]);
-      expect(body.facts.every((fact) => (fact.source as Record<string, unknown>).owner === 'DATA_ENGINE')).toBe(true);
+      expect(
+        body.facts.every((fact) => (fact.source as Record<string, unknown>).owner === 'DATA_ENGINE')
+      ).toBe(true);
       return Promise.resolve(new Response(JSON.stringify(enriched), { status: 200 }));
     }) as unknown as typeof fetch;
     const dataEngineFetch = vi.fn((_url: string, init: RequestInit) =>
@@ -213,8 +216,12 @@ describe('MO-DE-010 Gateway Trademark Asset admission', () => {
 
   it('degrades to the original M10 detail on provider failure without composing absence', async () => {
     const base = baseDetail('US');
-    const liteFetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify(base), { status: 200 }))) as unknown as typeof fetch;
-    const dataEngineFetch = vi.fn(() => Promise.reject(new Error('provider unavailable'))) as unknown as typeof fetch;
+    const liteFetch = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify(base), { status: 200 }))
+    ) as unknown as typeof fetch;
+    const dataEngineFetch = vi.fn(() =>
+      Promise.reject(new Error('provider unavailable'))
+    ) as unknown as typeof fetch;
 
     const result = await detailRoute({ liteFetch, dataEngineFetch }).handle(request());
 
@@ -226,7 +233,9 @@ describe('MO-DE-010 Gateway Trademark Asset admission', () => {
 
   it('does not query Data Engine for an unsupported jurisdiction', async () => {
     const base = baseDetail('EU');
-    const liteFetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify(base), { status: 200 }))) as unknown as typeof fetch;
+    const liteFetch = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify(base), { status: 200 }))
+   ) as unknown as typeof fetch;
     const dataEngineFetch = vi.fn() as unknown as typeof fetch;
 
     const result = await detailRoute({ liteFetch, dataEngineFetch }).handle(request());
