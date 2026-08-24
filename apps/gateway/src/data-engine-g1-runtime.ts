@@ -1,8 +1,5 @@
 import { createServiceRuntime, type JsonRoute } from '@markorbit/service-kit';
-import {
-  dataEngineRequestContext,
-  runDataEngineQuery
-} from './data-engine-route-support.js';
+import { dataEngineRequestContext, runDataEngineQuery } from './data-engine-route-support.js';
 
 export interface DataEngineProtectedQueryRuntimeOptions {
   dataEngineUrl: string;
@@ -35,10 +32,7 @@ export function createDataEngineProtectedQueryRuntime(
       path: '/api/data-engine/not-found-probe',
       handle: (request) =>
         runDataEngineQuery(queryOptions, request, (client) =>
-          client.rawGet(
-            '/api/v1/__mo_de_006_not_found_probe__',
-            dataEngineRequestContext(request)
-          )
+          client.rawGet('/api/v1/__mo_de_006_not_found_probe__', dataEngineRequestContext(request))
         )
     }
   ];
