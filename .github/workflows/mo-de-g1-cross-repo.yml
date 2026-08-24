@@ -67,19 +67,6 @@ jobs:
       - name: Install MarkOrbit workspace
         run: pnpm install --frozen-lockfile
 
-      - name: Render canonical Prettier diff
-        run: |
-          pnpm exec prettier --write \
-            apps/gateway/src/data-engine-g1-runtime.ts \
-            apps/gateway/src/data-engine-product-http.ts \
-            apps/gateway/tests/data-engine-primary-runtime.test.ts \
-            apps/gateway/tests/data-engine-product-query-contract.test.ts
-          git diff -- \
-            apps/gateway/src/data-engine-g1-runtime.ts \
-            apps/gateway/src/data-engine-product-http.ts \
-            apps/gateway/tests/data-engine-primary-runtime.test.ts \
-            apps/gateway/tests/data-engine-product-query-contract.test.ts
-
       - name: Build G1 runtime workspace dependencies
         run: |
           pnpm --filter @markorbit/contracts build
