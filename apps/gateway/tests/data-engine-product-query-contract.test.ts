@@ -92,7 +92,8 @@ afterEach(() => {
 describe('MO-DE-009 frozen product query contract', () => {
   it('forwards every frozen US 360 query parameter without widening the contract', async () => {
     const provider = vi.fn((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       expect(url).toBe(
         'http://data-engine.test/api/v1/us/cases/99123456/360?as_of=2026-08-24&history_limit=5000&assignment_limit=500&ttab_limit=500'
       );
@@ -116,8 +117,10 @@ describe('MO-DE-009 frozen product query contract', () => {
   it('rejects a history limit above the frozen provider maximum before provider access', async () => {
     const provider = vi.fn() as typeof fetch;
     await expect(
-      route('/api/data-engine/us/cases/:serialNumber/history', provider).handle(
-        request('/api/data-engine/us/cases/99123456/history', { limit: '5001' })
+      Promise.resolve().then(() =>
+        route('/api/data-engine/us/cases/:serialNumber/history', provider).handle(
+          request('/api/data-engine/us/cases/99123456/history', { limit: '5001' })
+        )
       )
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
     expect(provider).not.toHaveBeenCalled();
@@ -126,8 +129,10 @@ describe('MO-DE-009 frozen product query contract', () => {
   it('rejects unknown query keys instead of silently dropping them', async () => {
     const provider = vi.fn() as typeof fetch;
     await expect(
-      route('/api/data-engine/us/cases/:serialNumber/history', provider).handle(
-        request('/api/data-engine/us/cases/99123456/history', { cursor: 'unexpected' })
+      Promise.resolve().then(() =>
+        route('/api/data-engine/us/cases/:serialNumber/history', provider).handle(
+          request('/api/data-engine/us/cases/99123456/history', { cursor: 'unexpected' })
+        )
       )
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
     expect(provider).not.toHaveBeenCalled();
@@ -136,8 +141,10 @@ describe('MO-DE-009 frozen product query contract', () => {
   it('rejects invalid as_of calendar dates before provider access', async () => {
     const provider = vi.fn() as typeof fetch;
     await expect(
-      route('/api/data-engine/us/cases/:serialNumber/360', provider).handle(
-        request('/api/data-engine/us/cases/99123456/360', { as_of: '2026-02-31' })
+      Promise.resolve().then(() =>
+        route('/api/data-engine/us/cases/:serialNumber/360', provider).handle(
+          request('/api/data-engine/us/cases/99123456/360', { as_of: '2026-02-31' })
+        )
       )
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
     expect(provider).not.toHaveBeenCalled();
