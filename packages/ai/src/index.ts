@@ -250,3 +250,7 @@ export class AiProviderRegistryV1 {
     return assertAdapterResult(adapter, result);
   }
 }
+
+export * from './deepseek.js';
+export * from './http-transport.js';
+export * from './provider-input.js';
