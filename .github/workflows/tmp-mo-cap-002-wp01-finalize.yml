@@ -1,0 +1,58 @@
+name: Temporary MO-CAP-002 WP01 Finalize
+
+on:
+  push:
+    branches:
+      - mo-cap-002-wp01-managed-ai-contract
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mo-cap-002-wp01-managed-ai-contract
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add package export and build entry
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.exports['./managed-ai-execution'] = {
+            types: './dist/managed-ai-execution.d.ts',
+            import: './dist/managed-ai-execution.js'
+          };
+          const marker = 'src/capability-runtime.ts src/beta-readiness.ts';
+          if (!pkg.scripts.build.includes('src/managed-ai-execution.ts')) {
+            if (!pkg.scripts.build.includes(marker)) throw new Error('contracts build marker not found');
+            pkg.scripts.build = pkg.scripts.build.replace(
+              marker,
+              'src/capability-runtime.ts src/managed-ai-execution.ts src/beta-readiness.ts'
+            );
+          }
+          fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+      - name: Apply canonical formatting
+        run: pnpm exec prettier --write packages/contracts/package.json packages/contracts/src/managed-ai-execution.ts packages/contracts/tests/managed-ai-execution-contract.test.ts
+      - name: Commit finalized WP01 files
+        run: |
+          if git diff --quiet -- packages/contracts; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/package.json packages/contracts/src/managed-ai-execution.ts packages/contracts/tests/managed-ai-execution-contract.test.ts
+          git commit -m "MO-CAP-002 WP01: finalize Managed AI contract package"
+          git push origin HEAD:mo-cap-002-wp01-managed-ai-contract
