@@ -21,6 +21,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: python3 tools/tmp_k_case_002_patch.py
+      - run: python3 tools/tmp_k_case_002_lintfix.py
       - run: pnpm exec prettier --write services/markreg/src/knowledge-case-promotion.ts services/markreg/src/main.ts services/markreg/tests/knowledge-case-promotion.test.ts
       - run: pnpm --filter @markorbit/markreg-service lint
       - run: pnpm --filter @markorbit/markreg-service typecheck
