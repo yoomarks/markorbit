@@ -4,7 +4,7 @@ import {
   AiGatewayBoundaryError,
   AiProviderRegistryV1,
   parseAiProviderExecutionRequestV1,
-  type AiProviderAdapterV1,
+  type AiProviderAdapterV1
 } from '../src/index.js';
 
 const request = () => ({
@@ -13,12 +13,10 @@ const request = () => ({
   implementationKey: 'ai:test-provider:v1',
   correlationId: 'corr_test',
   timeoutMs: 30_000,
-  input: { prompt: 'test' },
+  input: { prompt: 'test' }
 });
 
-function adapter(
-  overrides: Partial<AiProviderAdapterV1> = {},
-): AiProviderAdapterV1 {
+function adapter(overrides: Partial<AiProviderAdapterV1> = {}): AiProviderAdapterV1 {
   return {
     implementationKey: 'ai:test-provider:v1',
     provider: 'TEST_PROVIDER',
@@ -32,10 +30,10 @@ function adapter(
         exactResponse: new Uint8Array([1, 2, 3]),
         providerRequestId: 'provider_request_test',
         structuredOutput: { ok: true },
-        usage: { inputUnits: 10, outputUnits: 5, latencyMs: 100 },
-      }),
+        usage: { inputUnits: 10, outputUnits: 5, latencyMs: 100 }
+      })
     ),
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -48,8 +46,8 @@ describe('AI Gateway provider boundary', () => {
         model: 'test-model-v1',
         deliveryState: 'PROVIDER_COMPLETED' as const,
         retryDisposition: 'RETRY_FORBIDDEN' as const,
-        exactResponse: new Uint8Array([4, 5, 6]),
-      }),
+        exactResponse: new Uint8Array([4, 5, 6])
+      })
     );
     const registry = new AiProviderRegistryV1([adapter({ execute })]);
 
@@ -59,8 +57,8 @@ describe('AI Gateway provider boundary', () => {
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
         implementationKey: 'ai:test-provider:v1',
-        correlationId: 'corr_test',
-      }),
+        correlationId: 'corr_test'
+      })
     );
     expect(result.kind).toBe('SUCCESS');
     if (result.kind === 'SUCCESS') {
@@ -74,23 +72,23 @@ describe('AI Gateway provider boundary', () => {
       expect(() =>
         parseAiProviderExecutionRequestV1({
           ...request(),
-          [field]: 'caller-controlled',
-        }),
+          [field]: 'caller-controlled'
+        })
       ).toThrow(AiGatewayBoundaryError);
-    },
+    }
   );
 
   it('fails closed when an implementation key is not registered', async () => {
     const registry = new AiProviderRegistryV1([adapter()]);
 
     await expect(
-      registry.execute({ ...request(), implementationKey: 'ai:missing:v1' }),
+      registry.execute({ ...request(), implementationKey: 'ai:missing:v1' })
     ).rejects.toMatchObject({ code: 'AI_GATEWAY_IMPLEMENTATION_NOT_FOUND' });
   });
 
   it('rejects duplicate implementation registrations', () => {
     expect(() => new AiProviderRegistryV1([adapter(), adapter()])).toThrow(
-      /Duplicate AI implementation key/u,
+      /Duplicate AI implementation key/u
     );
   });
 
@@ -101,8 +99,8 @@ describe('AI Gateway provider boundary', () => {
       {
         protocolVersion: AI_PROVIDER_ADAPTER_PROTOCOL_VERSION,
         implementationKey: 'ai:test-provider:v1',
-        provider: 'TEST_PROVIDER',
-      },
+        provider: 'TEST_PROVIDER'
+      }
     ]);
   });
 
@@ -115,15 +113,13 @@ describe('AI Gateway provider boundary', () => {
             provider: 'TEST_PROVIDER',
             deliveryState: 'DELIVERY_UNCERTAIN' as const,
             retryDisposition: 'RETRY_ALLOWED' as const,
-            error: { code: 'TIMEOUT', message: 'Delivery cannot be proven.' },
-          }),
-        ),
-      }),
+            error: { code: 'TIMEOUT', message: 'Delivery cannot be proven.' }
+          })
+        )
+      })
     ]);
 
-    await expect(registry.execute(request())).rejects.toThrow(
-      /must require reconciliation/u,
-    );
+    await expect(registry.execute(request())).rejects.toThrow(/must require reconciliation/u);
   });
 
   it('rejects provider identity drift from an adapter result', async () => {
@@ -136,14 +132,14 @@ describe('AI Gateway provider boundary', () => {
             model: 'other-model',
             deliveryState: 'PROVIDER_COMPLETED' as const,
             retryDisposition: 'RETRY_FORBIDDEN' as const,
-            exactResponse: new Uint8Array([1]),
-          }),
-        ),
-      }),
+            exactResponse: new Uint8Array([1])
+          })
+        )
+      })
     ]);
 
     await expect(registry.execute(request())).rejects.toMatchObject({
-      code: 'AI_GATEWAY_ADAPTER_RESULT_INVALID',
+      code: 'AI_GATEWAY_ADAPTER_RESULT_INVALID'
     });
   });
 });

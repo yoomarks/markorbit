@@ -2,15 +2,10 @@ export const packageName = '@markorbit/ai' as const;
 export const AI_PROVIDER_ADAPTER_PROTOCOL_VERSION = 1 as const;
 
 export type AiProviderDeliveryState =
-  | 'NOT_DELIVERED'
-  | 'DELIVERY_UNCERTAIN'
-  | 'PROVIDER_REJECTED'
-  | 'PROVIDER_COMPLETED';
+  'NOT_DELIVERED' | 'DELIVERY_UNCERTAIN' | 'PROVIDER_REJECTED' | 'PROVIDER_COMPLETED';
 
 export type AiProviderRetryDisposition =
-  | 'RETRY_ALLOWED'
-  | 'RETRY_FORBIDDEN'
-  | 'RECONCILIATION_REQUIRED';
+  'RETRY_ALLOWED' | 'RETRY_FORBIDDEN' | 'RECONCILIATION_REQUIRED';
 
 export interface AiProviderUsageV1 {
   inputUnits?: number;
@@ -58,8 +53,7 @@ export interface AiProviderExecutionFailureV1 {
 }
 
 export type AiProviderExecutionResultV1 =
-  | AiProviderExecutionSuccessV1
-  | AiProviderExecutionFailureV1;
+  AiProviderExecutionSuccessV1 | AiProviderExecutionFailureV1;
 
 export interface AiProviderAdapterV1 {
   readonly implementationKey: string;
@@ -80,7 +74,7 @@ export class AiGatewayBoundaryError extends Error {
       | 'AI_GATEWAY_IMPLEMENTATION_NOT_FOUND'
       | 'AI_GATEWAY_IMPLEMENTATION_DUPLICATE'
       | 'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-    message: string,
+    message: string
   ) {
     super(message);
     this.name = 'AiGatewayBoundaryError';
@@ -95,7 +89,7 @@ function requireNonEmptyString(value: unknown, field: string, maxLength = 500): 
   if (cleaned.length === 0 || cleaned.length > maxLength) {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_REQUEST_INVALID',
-      `${field} must contain 1 to ${maxLength} characters.`,
+      `${field} must contain 1 to ${maxLength} characters.`
     );
   }
   return cleaned;
@@ -106,7 +100,7 @@ function assertRetryDeliveryConsistency(result: AiProviderExecutionResultV1): vo
     if (result.retryDisposition !== 'RECONCILIATION_REQUIRED') {
       throw new AiGatewayBoundaryError(
         'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-        'Delivery-uncertain provider results must require reconciliation.',
+        'Delivery-uncertain provider results must require reconciliation.'
       );
     }
     return;
@@ -115,19 +109,19 @@ function assertRetryDeliveryConsistency(result: AiProviderExecutionResultV1): vo
   if (result.retryDisposition === 'RECONCILIATION_REQUIRED') {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-      'Reconciliation-required results must use DELIVERY_UNCERTAIN delivery state.',
+      'Reconciliation-required results must use DELIVERY_UNCERTAIN delivery state.'
     );
   }
 }
 
 function assertAdapterResult(
   adapter: AiProviderAdapterV1,
-  result: AiProviderExecutionResultV1,
+  result: AiProviderExecutionResultV1
 ): AiProviderExecutionResultV1 {
   if (result.provider !== adapter.provider) {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-      `Provider adapter ${adapter.implementationKey} returned provider ${result.provider} instead of ${adapter.provider}.`,
+      `Provider adapter ${adapter.implementationKey} returned provider ${result.provider} instead of ${adapter.provider}.`
     );
   }
 
@@ -137,19 +131,19 @@ function assertAdapterResult(
     if (result.deliveryState !== 'PROVIDER_COMPLETED') {
       throw new AiGatewayBoundaryError(
         'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-        'Successful provider execution must use PROVIDER_COMPLETED delivery state.',
+        'Successful provider execution must use PROVIDER_COMPLETED delivery state.'
       );
     }
     if (!(result.exactResponse instanceof Uint8Array)) {
       throw new AiGatewayBoundaryError(
         'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-        'Successful provider execution must preserve exact response bytes.',
+        'Successful provider execution must preserve exact response bytes.'
       );
     }
   } else if (result.deliveryState === 'PROVIDER_COMPLETED') {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_ADAPTER_RESULT_INVALID',
-      'Failed provider execution cannot use PROVIDER_COMPLETED delivery state.',
+      'Failed provider execution cannot use PROVIDER_COMPLETED delivery state.'
     );
   }
 
@@ -158,7 +152,10 @@ function assertAdapterResult(
 
 export function parseAiProviderExecutionRequestV1(value: unknown): AiProviderExecutionRequestV1 {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new AiGatewayBoundaryError('AI_GATEWAY_REQUEST_INVALID', 'AI gateway request must be an object.');
+    throw new AiGatewayBoundaryError(
+      'AI_GATEWAY_REQUEST_INVALID',
+      'AI gateway request must be an object.'
+    );
   }
   const record = value as Record<string, unknown>;
   const allowed = new Set([
@@ -167,25 +164,25 @@ export function parseAiProviderExecutionRequestV1(value: unknown): AiProviderExe
     'implementationKey',
     'correlationId',
     'timeoutMs',
-    'input',
+    'input'
   ]);
   const unsupported = Object.keys(record).filter((key) => !allowed.has(key));
   if (unsupported.length > 0) {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_REQUEST_INVALID',
-      `AI gateway request contains unsupported fields: ${unsupported.join(', ')}.`,
+      `AI gateway request contains unsupported fields: ${unsupported.join(', ')}.`
     );
   }
   if (record.protocolVersion !== AI_PROVIDER_ADAPTER_PROTOCOL_VERSION) {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_REQUEST_INVALID',
-      `AI gateway protocolVersion must be ${AI_PROVIDER_ADAPTER_PROTOCOL_VERSION}.`,
+      `AI gateway protocolVersion must be ${AI_PROVIDER_ADAPTER_PROTOCOL_VERSION}.`
     );
   }
   if (!Number.isSafeInteger(record.timeoutMs) || (record.timeoutMs as number) < 1) {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_REQUEST_INVALID',
-      'AI gateway timeoutMs must be a positive safe integer.',
+      'AI gateway timeoutMs must be a positive safe integer.'
     );
   }
 
@@ -195,7 +192,7 @@ export function parseAiProviderExecutionRequestV1(value: unknown): AiProviderExe
     implementationKey: requireNonEmptyString(record.implementationKey, 'implementationKey', 500),
     correlationId: requireNonEmptyString(record.correlationId, 'correlationId', 300),
     timeoutMs: record.timeoutMs as number,
-    input: structuredClone(record.input),
+    input: structuredClone(record.input)
   };
 }
 
@@ -207,13 +204,13 @@ export class AiProviderRegistryV1 {
       const implementationKey = requireNonEmptyString(
         adapter.implementationKey,
         'adapter.implementationKey',
-        500,
+        500
       );
       requireNonEmptyString(adapter.provider, 'adapter.provider', 120);
       if (this.adapters.has(implementationKey)) {
         throw new AiGatewayBoundaryError(
           'AI_GATEWAY_IMPLEMENTATION_DUPLICATE',
-          `Duplicate AI implementation key: ${implementationKey}.`,
+          `Duplicate AI implementation key: ${implementationKey}.`
         );
       }
       this.adapters.set(implementationKey, adapter);
@@ -225,7 +222,7 @@ export class AiProviderRegistryV1 {
       .map((adapter) => ({
         protocolVersion: AI_PROVIDER_ADAPTER_PROTOCOL_VERSION,
         implementationKey: adapter.implementationKey,
-        provider: adapter.provider,
+        provider: adapter.provider
       }))
       .sort((left, right) => left.implementationKey.localeCompare(right.implementationKey));
   }
@@ -236,7 +233,7 @@ export class AiProviderRegistryV1 {
     if (!adapter) {
       throw new AiGatewayBoundaryError(
         'AI_GATEWAY_IMPLEMENTATION_NOT_FOUND',
-        `No AI provider adapter is registered for implementation key ${key}.`,
+        `No AI provider adapter is registered for implementation key ${key}.`
       );
     }
     return adapter;
