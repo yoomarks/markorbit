@@ -142,7 +142,7 @@ function parseSuccessfulResponse(raw: Uint8Array, latencyMs: number): ParsedDeep
   }
   const response = parsed as Record<string, unknown>;
   const choices = response.choices;
-  const first = Array.isArray(choices) ? choices[0] : undefined;
+  const first: unknown = Array.isArray(choices) ? (choices as unknown[])[0] : undefined;
   const message =
     first && typeof first === 'object' && !Array.isArray(first)
       ? (first as Record<string, unknown>).message
