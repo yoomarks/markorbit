@@ -10,6 +10,11 @@ import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorb
 import { createCapabilityCenterRoutes } from './capability-center-http.js';
 import { createCapabilityObservationRoutes } from './capability-observation-http.js';
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
+import {
+  createManagedAiExecutionRoutesV1,
+  type ManagedAiExecutionAuthorityV1,
+  type ManagedAiExecutionReplayRepositoryV1
+} from './managed-ai-http.js';
 import { createPrivateReflectionCandidateRoutes } from './private-reflection-candidate-http.js';
 import type { PostgresPrivateReflectionCandidateService } from './private-reflection-candidate.js';
 import { createReflectionDispositionProfileRoutes } from './reflection-disposition-profile-http.js';
@@ -21,6 +26,7 @@ export * from './capability-center-http.js';
 export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
+export * from './managed-ai-http.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
 export * from './reflection-disposition-profile-http.js';
@@ -58,6 +64,8 @@ export interface CapabilityEngineOptions {
   capabilityObservationLedger?: PostgresCapabilityObservationLedger;
   privateReflectionCandidates?: PostgresPrivateReflectionCandidateService;
   reflectionDispositionProfiles?: PostgresReflectionDispositionProfileService;
+  managedAiExecutor?: ManagedAiExecutionAuthorityV1;
+  managedAiReplayRepository?: ManagedAiExecutionReplayRepositoryV1;
   internalServiceSecret?: string;
 }
 export function createRuntime(options: CapabilityEngineOptions = {}) {
@@ -75,6 +83,10 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   if (options.reflectionDispositionProfiles && !options.internalServiceSecret)
     throw new Error('reflectionDispositionProfiles requires internalServiceSecret.');
+  if (options.managedAiExecutor && !options.internalServiceSecret)
+    throw new Error('managedAiExecutor requires internalServiceSecret.');
+  if (options.managedAiReplayRepository && !options.managedAiExecutor)
+    throw new Error('managedAiReplayRepository requires managedAiExecutor.');
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
@@ -113,6 +125,16 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           candidates: options.privateReflectionCandidates,
           reflections: options.reflectionDispositionProfiles,
           internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
+  const managedAiExecutionRoutes =
+    options.managedAiExecutor && options.internalServiceSecret
+      ? createManagedAiExecutionRoutesV1({
+          executor: options.managedAiExecutor,
+          internalServiceSecret: options.internalServiceSecret,
+          ...(options.managedAiReplayRepository === undefined
+            ? {}
+            : { replayRepository: options.managedAiReplayRepository })
         })
       : [];
   return createServiceRuntime(
@@ -197,7 +219,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...capabilityObservationRoutes,
         ...privateReflectionCandidateRoutes,
         ...reflectionDispositionProfileRoutes,
-        ...capabilityCenterRoutes
+        ...capabilityCenterRoutes,
+        ...managedAiExecutionRoutes
       ]
     }
   );
