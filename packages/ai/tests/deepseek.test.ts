@@ -66,11 +66,14 @@ describe('DeepSeek provider adapter V1', () => {
     const result = await adapter.execute(request());
 
     expect(transport).toHaveBeenCalledTimes(1);
+    const expectedHeaders: unknown = expect.objectContaining({
+      authorization: 'Bearer test-secret-never-persist'
+    });
     expect(transport).toHaveBeenCalledWith(
       expect.objectContaining({
         url: DEEPSEEK_CANONICAL_ENDPOINT,
         timeoutMs: 30_000,
-        headers: expect.objectContaining({ authorization: 'Bearer test-secret-never-persist' })
+        headers: expectedHeaders
       })
     );
     expect(result).toMatchObject({
