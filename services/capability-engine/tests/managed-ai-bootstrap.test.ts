@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEEPSEEK_CANONICAL_ENDPOINT,
   DEEPSEEK_DEFAULT_MODEL,
-  DEEPSEEK_SECRET_ENV
+  DEEPSEEK_SECRET_ENV,
+  type AiHttpTransportRequest
 } from '@markorbit/ai';
 import type { QueryClient } from '@markorbit/persistence';
 import {
@@ -113,7 +114,11 @@ describe('Managed AI server bootstrap', () => {
         usage: { prompt_tokens: 11, completion_tokens: 7 }
       })
     );
-    const transportSpy = vi.fn(() => Promise.resolve({ status: 200, body: raw }));
+    let capturedRequest: Readonly<AiHttpTransportRequest> | undefined;
+    const transportSpy = vi.fn((request: Readonly<AiHttpTransportRequest>) => {
+      capturedRequest = request;
+      return Promise.resolve({ status: 200, body: raw });
+    });
     const bindings = createManagedAiRuntimeBindingsV1({
       environment: enabledEnvironment(),
       database,
@@ -130,12 +135,12 @@ describe('Managed AI server bootstrap', () => {
     });
 
     expect(transportSpy).toHaveBeenCalledTimes(1);
-    const request = transportSpy.mock.calls[0]![0];
-    expect(request.url).toBe(DEEPSEEK_CANONICAL_ENDPOINT);
-    expect(request.headers.authorization).toBe(
+    if (!capturedRequest) throw new Error('Expected the governed DeepSeek transport to be invoked.');
+    expect(capturedRequest.url).toBe(DEEPSEEK_CANONICAL_ENDPOINT);
+    expect(capturedRequest.headers.authorization).toBe(
       'Bearer deepseek-test-secret-not-a-real-credential'
     );
-    expect(JSON.parse(request.body)).toMatchObject({
+    expect(JSON.parse(capturedRequest.body)).toMatchObject({
       model: DEEPSEEK_DEFAULT_MODEL,
       stream: false
     });
