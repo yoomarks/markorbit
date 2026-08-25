@@ -1,0 +1,37 @@
+name: Temporary Capability Integration Build Closure Patch
+
+on:
+  push:
+    branches:
+      - ci-capability-integration-build-closure
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add capability dependency-closure build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/ci.yml')
+          text = path.read_text()
+          needle = "      - name: Capability integration\n        if: github.event_name == 'push' || needs.detect.outputs.capability == 'true'\n        run: |\n"
+          replacement = needle + "          pnpm exec turbo run build --filter=@markorbit/capability-engine...\n"
+          if needle not in text:
+              raise SystemExit('Capability integration block not found')
+          if replacement in text:
+              raise SystemExit('Capability integration build already present')
+          path.write_text(text.replace(needle, replacement, 1))
+          PY
+      - name: Commit CI fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml
+          git commit -m "CI: build capability dependency closure before Postgres tests"
+          git push
