@@ -145,7 +145,8 @@
     },
     "./managed-ai-execution": {
       "types": "./dist/managed-ai-execution.d.ts",
-      "import": "./dist/managed-ai-execution.js"
+      "import": "./dist/managed-ai-execution.js",
+      "default": "./dist/managed-ai-execution.js"
     }
   },
   "scripts": {
