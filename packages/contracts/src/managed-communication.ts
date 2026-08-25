@@ -111,7 +111,11 @@ function asRecord(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(record: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  record: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allow = new Set(allowed);
   const unsupported = Object.keys(record).filter((key) => !allow.has(key));
   if (unsupported.length > 0) {
@@ -248,7 +252,11 @@ export function parseManagedCommunicationReadRequestV1(
   );
   return {
     schemaVersion: 1,
-    accountRef: nonEmptyString(record.accountRef, 'managedCommunicationReadRequest.accountRef', 500),
+    accountRef: nonEmptyString(
+      record.accountRef,
+      'managedCommunicationReadRequest.accountRef',
+      500
+    ),
     channel: enumValue(
       record.channel,
       managedCommunicationChannels,
@@ -281,7 +289,9 @@ export function parseManagedCommunicationMessageV1(value: unknown): ManagedCommu
     'managedCommunicationMessage'
   );
   if (record.schemaVersion !== 1) {
-    throw new ManagedCommunicationContractError('managedCommunicationMessage.schemaVersion must be 1.');
+    throw new ManagedCommunicationContractError(
+      'managedCommunicationMessage.schemaVersion must be 1.'
+    );
   }
   if (!Array.isArray(record.participants) || record.participants.length === 0) {
     throw new ManagedCommunicationContractError(
@@ -305,8 +315,16 @@ export function parseManagedCommunicationMessageV1(value: unknown): ManagedCommu
     parseAttachment(item, `managedCommunicationMessage.attachments[${index}]`)
   );
   const subject = optionalString(record.subject, 'managedCommunicationMessage.subject', 1000);
-  const textBody = optionalString(record.textBody, 'managedCommunicationMessage.textBody', 2_000_000);
-  const htmlBody = optionalString(record.htmlBody, 'managedCommunicationMessage.htmlBody', 4_000_000);
+  const textBody = optionalString(
+    record.textBody,
+    'managedCommunicationMessage.textBody',
+    2_000_000
+  );
+  const htmlBody = optionalString(
+    record.htmlBody,
+    'managedCommunicationMessage.htmlBody',
+    4_000_000
+  );
   return {
     schemaVersion: 1,
     messageId: nonEmptyString(record.messageId, 'managedCommunicationMessage.messageId', 500),
