@@ -1,0 +1,45 @@
+name: Temporary MO-CAP-002 DeepSeek Validate
+
+on:
+  push:
+    branches:
+      - mo-cap-002-first-provider-deepseek-stacked
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mo-cap-002-first-provider-deepseek-stacked
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply canonical formatting
+        run: pnpm exec prettier --write packages/ai/src/index.ts packages/ai/src/provider-input.ts packages/ai/src/http-transport.ts packages/ai/src/deepseek.ts packages/ai/tests/deepseek.test.ts packages/ai/tests/provider-registry.test.ts
+      - name: Commit formatting
+        run: |
+          if ! git diff --quiet -- packages/ai; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add packages/ai
+            git commit -m "CI: format DeepSeek provider adapter"
+            git push origin HEAD:mo-cap-002-first-provider-deepseek-stacked
+          fi
+      - name: Test AI package
+        run: pnpm --filter @markorbit/ai test
+      - name: Typecheck AI package
+        run: pnpm --filter @markorbit/ai typecheck
+      - name: Lint AI package
+        run: pnpm --filter @markorbit/ai lint
+      - name: Build AI package
+        run: pnpm --filter @markorbit/ai build
