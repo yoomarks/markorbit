@@ -7,6 +7,7 @@ import {
   PostgresReflectionDispositionProfileService,
   PostgresRuntimeCapabilityRegistry
 } from './index.js';
+import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -57,11 +58,17 @@ if (milestoneFixtureMode) {
     database,
     pool
   );
+  const managedAiRuntime = createManagedAiRuntimeBindingsV1({
+    environment: process.env,
+    database,
+    query: pool
+  });
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
     privateReflectionCandidates,
     reflectionDispositionProfiles,
+    ...(managedAiRuntime ?? {}),
     internalServiceSecret
   });
 }
