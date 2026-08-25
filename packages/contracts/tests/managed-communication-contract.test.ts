@@ -64,30 +64,38 @@ describe('Managed Communication contract V1', () => {
     expect(parseManagedCommunicationReadRequestV1(readRequest)).toEqual(readRequest);
   });
 
-  it.each(['provider', 'credential', 'accessToken', 'refreshToken', 'imapHost', 'smtpHost', 'providerCursor'])(
-    'rejects caller implementation control field %s',
-    (field) => {
-      expect(() =>
-        parseManagedCommunicationReadRequestV1({
-          ...readRequest,
-          [field]: 'caller-controlled'
-        })
-      ).toThrow(/unsupported fields/u);
-    }
-  );
+  it.each([
+    'provider',
+    'credential',
+    'accessToken',
+    'refreshToken',
+    'imapHost',
+    'smtpHost',
+    'providerCursor'
+  ])('rejects caller implementation control field %s', (field) => {
+    expect(() =>
+      parseManagedCommunicationReadRequestV1({
+        ...readRequest,
+        [field]: 'caller-controlled'
+      })
+    ).toThrow(/unsupported fields/u);
+  });
 
   it('normalizes message semantics while preserving provider observation provenance', () => {
     expect(parseManagedCommunicationMessageV1(message)).toEqual(message);
   });
 
-  it('requires exactly one semantic sender without promoting message content into business truth', () => {
-    expect(() =>
-      parseManagedCommunicationMessageV1({
-        ...message,
-        participants: [{ role: 'TO', address: 'workspace@example.test' }]
-      })
-    ).toThrow(/exactly one SENDER/u);
-  });
+  it(
+    'requires exactly one semantic sender without promoting message content into business truth',
+    () => {
+      expect(() =>
+        parseManagedCommunicationMessageV1({
+          ...message,
+          participants: [{ role: 'TO', address: 'workspace@example.test' }]
+        })
+      ).toThrow(/exactly one SENDER/u);
+    }
+  );
 
   it('supports outbound-normalized message observation without authorizing external send', () => {
     const outbound = parseManagedCommunicationMessageV1({
