@@ -291,6 +291,9 @@ importers:
 
   services/capability-engine:
     dependencies:
+      '@markorbit/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@markorbit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
