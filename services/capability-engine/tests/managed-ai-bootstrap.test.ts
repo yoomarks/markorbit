@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEEPSEEK_CANONICAL_ENDPOINT,
   DEEPSEEK_DEFAULT_MODEL,
-  DEEPSEEK_SECRET_ENV,
-  type AiHttpTransport,
-  type AiHttpTransportRequest
+  DEEPSEEK_SECRET_ENV
 } from '@markorbit/ai';
 import type { QueryClient } from '@markorbit/persistence';
 import {
@@ -115,15 +113,12 @@ describe('Managed AI server bootstrap', () => {
         usage: { prompt_tokens: 11, completion_tokens: 7 }
       })
     );
-    const transportSpy = vi.fn(
-      async (_request: Readonly<AiHttpTransportRequest>) => ({ status: 200, body: raw })
-    );
-    const transport = transportSpy as AiHttpTransport;
+    const transportSpy = vi.fn(() => Promise.resolve({ status: 200, body: raw }));
     const bindings = createManagedAiRuntimeBindingsV1({
       environment: enabledEnvironment(),
       database,
       query,
-      deepSeekTransport: transport,
+      deepSeekTransport: transportSpy,
       now: () => new Date('2026-08-23T00:00:00.000Z')
     });
 
@@ -163,14 +158,14 @@ describe('Managed AI server bootstrap', () => {
 
   it('preserves the governed off-peak dispatch policy before transport access', async () => {
     const { database, query } = persistence();
-    const transportSpy = vi.fn(async () => {
-      throw new Error('transport must not be called during governed peak window');
-    });
+    const transportSpy = vi.fn(() =>
+      Promise.reject(new Error('transport must not be called during governed peak window'))
+    );
     const bindings = createManagedAiRuntimeBindingsV1({
       environment: enabledEnvironment(),
       database,
       query,
-      deepSeekTransport: transportSpy as AiHttpTransport,
+      deepSeekTransport: transportSpy,
       now: () => new Date('2026-08-25T02:00:00.000Z')
     });
 
