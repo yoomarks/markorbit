@@ -232,9 +232,10 @@ integration('Managed AI durable execution claims', () => {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const result = await database
         .getPool()
-        .query(`SELECT state FROM capability_managed_ai_execution_claims WHERE idempotency_key=$1`, [
-          idempotencyKey
-        ]);
+        .query<{ state: string }>(
+          `SELECT state FROM capability_managed_ai_execution_claims WHERE idempotency_key=$1`,
+          [idempotencyKey]
+        );
       if (result.rows[0]?.state === 'DISPATCHING') break;
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
