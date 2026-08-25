@@ -1,0 +1,399 @@
+program:
+  id: MO-CAP-FOUNDATION
+  title: MarkOrbit Capability Foundation Program
+  status: DIRECTION_LOCKED_READY_FOR_STAGED_IMPLEMENTATION
+  date: 2026-08-25
+  planning_baseline: b7ee1ff4fda8a2a770b94d49c8cd9bbda52ee039
+  architecture: docs/architecture/CAPABILITY-FOUNDATION-ARCHITECTURE.md
+  audit: docs/audits/CAPABILITY-FOUNDATION-AUDIT-2026-08-25.md
+  roadmap: docs/planning/CAPABILITY-FOUNDATION-ROADMAP.md
+  canon_rule: 'Capability = Stable Outcome Contract + Governed Implementation + Evidence Base + Version Lineage + Controlled Evolution'
+  historical_reconciliation:
+    - MO-MVP-TASK-010
+    - MO-MVP-TASK-011
+    - MO-MVP-TASK-012
+    - MO-MVP-TASK-013
+    - MO-MVP-MILESTONE-006
+  production_authorized: false
+  execution_policy:
+    one_objective_per_pr: true
+    direct_main_push: false
+    exact_head_ci_required: true
+    cross_service_sql: forbidden
+    runtime_outcome_auto_canon_mutation: forbidden
+    brain_direct_canonical_product_api: forbidden
+
+architecture_locks:
+  product_consumption: CAPABILITY
+  brain_role: TYPED_ATTRIBUTABLE_VERSIONED_NON_CANONICAL_INTELLIGENCE
+  core_role: SHARED_SEMANTICS_IDENTITY_CONTEXT_GOVERNANCE
+  capability_engine_role: GOVERNED_RUNTIME_DEFINITION_BINDING_INVOCATION_OUTCOME_LEARNING
+  ai_gateway_role: IMPLEMENTATION_INFRASTRUCTURE_NOT_CAPABILITY_ID
+  communication_hub_role: IMPLEMENTATION_INFRASTRUCTURE_NOT_CAPABILITY_ID
+  email_providers_role: TOOL_PROVIDER_ADAPTER
+  ai_providers_role: TOOL_PROVIDER_ADAPTER
+
+sequence:
+  - id: MO-CAP-001
+    gate: START_NOW
+  - parallel_after:
+      prerequisite: MO-CAP-001_MINIMUM_INVOCATION_BINDING_CONTRACT_ACCEPTED
+      tasks:
+        - MO-CAP-002
+        - MO-CAP-003
+  - parallel_after:
+      prerequisite: FOUNDATION_RUNTIME_PATTERN_PROVEN
+      tasks:
+        - MO-CAP-004
+        - MO-CAP-005
+        - MO-CAP-006
+  - after:
+      prerequisite: MULTI_PRODUCT_FOUNDATION_REUSE_PROVEN
+      wave: DOMAIN_CAPABILITY_WAVE_1
+
+admission_levels:
+  - PLANNED
+  - IMPLEMENTATION_BOUND
+  - SINGLE_CONSUMER_PROVEN
+  - FOUNDATION_REUSABLE
+  - DEPRECATED
+
+foundation_reusable_gate:
+  minimum_independent_consumers: 2
+  requirements:
+    - stable_capability_definition_and_version
+    - approved_implementation_profile
+    - exact_head_conformance_for_each_consumer
+    - workspace_and_principal_isolation
+    - provider_secrets_confined_to_implementation_boundary
+    - deterministic_evidence_and_provenance
+    - usage_observability_where_applicable
+    - provider_or_tool_substitution_test_or_explicit_single_provider_limit
+    - no_product_dependency_on_provider_sdk_or_secret
+    - no_authority_promotion_of_brain_model_or_provider_output
+
+tasks:
+  - id: MO-CAP-001
+    title: Capability Runtime Execution & Admission Plane
+    priority: P0
+    status: AUTHORIZED_NEXT
+    owner:
+      primary: Capability Engine
+      supporting:
+        - Gateway
+        - Core
+        - Contracts
+    objective: >-
+      Evolve the existing Capability Engine from durable registry/learning maturity into the common
+      governed execution/admission plane: resolve an accepted Capability version, decide eligibility,
+      bind an approved implementation profile, execute, validate, and return a typed outcome/session receipt.
+    depends_on: []
+    preserves:
+      - M6 durable runtime registry/version lineage
+      - Capability Observation and Ledger
+      - Reflection Candidate and Disposition
+      - private Capability Profile/Twin
+      - capability pointer/registry/release guards
+    work_packages:
+      - id: MO-CAP-001-WP01
+        title: Historical TASK-010..013 and M6 reconciliation
+      - id: MO-CAP-001-WP02
+        title: Runtime invocation contract family
+      - id: MO-CAP-001-WP03
+        title: Durable Implementation Profile registry and binding
+      - id: MO-CAP-001-WP04
+        title: Governed invocation runtime replacing hard-coded fixture
+      - id: MO-CAP-001-WP05
+        title: Gateway/internal caller admission and context propagation
+      - id: MO-CAP-001-WP06
+        title: Reliability, replay, version and authority gates
+      - id: MO-CAP-001-WP07
+        title: First real consumer conformance thin slice
+      - id: MO-CAP-001-WP08
+        title: Independent integration and authority audit
+    required_contracts:
+      - ImplementationProfile
+      - CapabilityRequestV2
+      - CapabilityEligibilityDecision
+      - CapabilityComposition
+      - ImplementationBinding
+      - CapabilityInvocation
+      - CapabilityOutcome
+      - CapabilityReturn
+      - SessionReceipt
+    acceptance:
+      - hard_coded_trademark_application_recommendation_fixture_removed_from_real_request_path
+      - accepted_capability_version_resolved_from_durable_runtime_definition
+      - caller_cannot_select_raw_provider_endpoint_model_or_credential
+      - trusted_workspace_principal_and_caller_product_context
+      - applicability_and_eligibility_fail_closed
+      - exact_implementation_profile_and_version_bound
+      - output_contract_validated_before_return
+      - evidence_and_provenance_retained
+      - exact_replay_idempotent
+      - conflicting_replay_rejected
+      - stale_definition_or_binding_rejected
+      - restart_recovery_proven_for_durable_state
+      - no_runtime_auto_canon_mutation
+      - no_cross_service_sql
+      - exact_head_ci_green
+    non_goals:
+      - production_external_side_effects
+      - new_public_capability_marketplace
+      - automatic_professional_verification
+      - MO_DE_007_008
+
+  - id: MO-CAP-002
+    title: Managed AI Execution Capability V1
+    priority: P0
+    status: AUTHORIZED_AFTER_MO_CAP_001_MINIMUM_CONTRACT
+    capability_identity: managed-ai-execution
+    implementation_infrastructure: AI Gateway
+    owner:
+      primary: Capability Engine
+      implementation: AI Runtime / Gateway
+      consumers:
+        - Knowledge
+        - Brain
+        - Lite_via_higher_level_capabilities
+        - MarkReg_via_higher_level_capabilities
+    objective: >-
+      Provide provider-neutral typed AI execution with policy, model/prompt/profile provenance,
+      structured-output validation, budget/cost accounting, retry/fallback and evaluation while
+      keeping provider credentials and SDK semantics outside product consumers.
+    depends_on:
+      - MO-CAP-001_MINIMUM_INVOCATION_BINDING_CONTRACT_ACCEPTED
+    first_consumer: Knowledge
+    second_consumer: Brain
+    work_packages:
+      - id: MO-CAP-002-WP01
+        title: Provider-neutral AI outcome contract
+      - id: MO-CAP-002-WP02
+        title: AI Gateway provider/model adapter boundary
+      - id: MO-CAP-002-WP03
+        title: Prompt policy model and implementation lineage
+      - id: MO-CAP-002-WP04
+        title: Token cost latency and budget ledger
+      - id: MO-CAP-002-WP05
+        title: Structured output validation and evaluation harness
+      - id: MO-CAP-002-WP06
+        title: Knowledge AI gateway inventory and strangler migration
+      - id: MO-CAP-002-WP07
+        title: Brain second-consumer integration
+      - id: MO-CAP-002-WP08
+        title: Cross-repository admission audit
+    acceptance:
+      - provider_neutral_capability_contract
+      - provider_and_model_adapters_hidden_from_consumers
+      - provider_secrets_confined_to_ai_implementation_boundary
+      - structured_output_schema_validation
+      - model_prompt_profile_provenance
+      - usage_token_or_equivalent_and_cost_observability
+      - budget_policy_enforced
+      - retry_fallback_and_error_taxonomy
+      - knowledge_real_workload_consumes_shared_capability
+      - brain_real_workload_consumes_same_capability
+      - real_cross_repository_acceptance
+      - two_independent_consumers_proven_before_FOUNDATION_REUSABLE
+    post_admission_guard:
+      prohibit_new_direct_provider_integrations_outside_approved_adapters: true
+    non_goals:
+      - make_ai_output_canonical_truth
+      - let_product_select_arbitrary_raw_model
+      - migrate_all_ai_workloads_in_one_pr
+      - production_credentials_by_implication
+
+  - id: MO-CAP-003
+    title: Managed Communication Capability V1 / Communication Hub Email
+    priority: P0
+    status: AUTHORIZED_AFTER_MO_CAP_001_MINIMUM_CONTRACT
+    capability_identity: managed-communication
+    implementation_infrastructure: Communication Hub
+    initial_channel: EMAIL
+    provider_adapters:
+      - Gmail
+      - Microsoft Graph
+      - IMAP
+      - SMTP
+    owner:
+      primary: Capability Engine
+      implementation: Communication Hub
+      consumers:
+        - Knowledge
+        - MarkReg
+        - Brain_bounded_context
+        - Lite_bounded_projection
+    objective: >-
+      Provide provider-neutral governed inbound/outbound communication with account/channel isolation,
+      participants, threads, attachments, provenance, delivery state, consent/permission, cursor/dedupe,
+      idempotency and evidence semantics.
+    depends_on:
+      - MO-CAP-001_MINIMUM_INVOCATION_BINDING_CONTRACT_ACCEPTED
+    first_consumer: Knowledge lawyer/agent email source intake
+    second_consumer: MarkReg customer/professional communication
+    work_packages:
+      - id: MO-CAP-003-WP01
+        title: Provider-neutral communication semantic contract
+      - id: MO-CAP-003-WP02
+        title: Communication account and credential boundary
+      - id: MO-CAP-003-WP03
+        title: Inbound Email V1 cursor dedupe thread and attachment runtime
+      - id: MO-CAP-003-WP04
+        title: Knowledge email-source integration
+      - id: MO-CAP-003-WP05
+        title: Prepared outbound communication and controlled send boundary
+      - id: MO-CAP-003-WP06
+        title: MarkReg second-consumer integration
+      - id: MO-CAP-003-WP07
+        title: Brain and Lite bounded consumption rules
+      - id: MO-CAP-003-WP08
+        title: Cross-product admission audit
+    acceptance:
+      - provider_neutral_message_thread_participant_contract
+      - credentials_confined_to_communication_implementation_boundary
+      - cursor_checkpoint_recovery
+      - message_thread_dedupe
+      - attachment_refs_and_provider_provenance
+      - workspace_account_isolation
+      - provider_rate_limit_retry_semantics
+      - inbound_email_does_not_auto_mutate_customer_matter_or_legal_truth
+      - knowledge_real_email_source_path
+      - markreg_independent_communication_path
+      - external_send_has_explicit_authorization_idempotency_and_evidence
+      - two_independent_consumers_proven_before_FOUNDATION_REUSABLE
+    hold_points:
+      - production_live_outbound_send_requires_separate_provider_credential_acceptance
+    non_goals:
+      - make_communication_hub_owner_of_markreg_matter_truth
+      - auto_classify_brain_inference_as_message_fact
+      - all_channels_in_v1
+
+  - id: MO-CAP-004
+    title: Governed Document Understanding
+    priority: P1
+    status: PLANNED_DEFERRED
+    capability_identity: governed-document-understanding
+    likely_consumers:
+      - Knowledge
+      - MarkReg
+      - Brain
+    depends_on:
+      - FOUNDATION_RUNTIME_PATTERN_PROVEN
+    scope:
+      - existing_knowledge_conversion_and_markreg_document_inventory
+      - governed_file_reference
+      - extraction_and_optional_ocr_profiles
+      - structured_output_schema
+      - page_range_source_provenance
+      - data_classification_and_redaction
+      - confidence_and_review_state
+      - two_consumer_conformance
+    non_goals:
+      - own_markreg_formal_document_package_truth
+      - make_parser_or_ocr_library_the_capability_identity
+
+  - id: MO-CAP-005
+    title: Governed Retrieval
+    priority: P1
+    status: PLANNED_DEFERRED
+    capability_identity: governed-retrieval
+    likely_consumers:
+      - Brain
+      - Lite
+      - MarkReg
+    depends_on:
+      - FOUNDATION_RUNTIME_PATTERN_PROVEN
+    scope:
+      - workspace_and_permission
+      - source_allowlist_and_purpose
+      - freshness_as_of
+      - authority_and_provenance
+      - data_engine_fact_category_preservation
+      - knowledge_claim_category_preservation
+      - core_business_object_category_preservation
+      - brain_inference_non_canonical_category_preservation
+      - hybrid_keyword_semantic_entity_methods
+      - evidence_and_citation_refs
+    non_goals:
+      - make_vector_database_semantic_owner
+      - erase_source_authority_categories
+
+  - id: MO-CAP-006
+    title: Capability Conformance & Evaluation Harness
+    priority: P1
+    status: PLANNED_DEFERRED
+    capability_identity: null
+    type: PLATFORM_GOVERNANCE_RUNTIME
+    depends_on:
+      - FOUNDATION_RUNTIME_PATTERN_PROVEN
+    scope:
+      - contract_conformance
+      - golden_fixtures
+      - bounded_live_or_sandbox_provider_tests
+      - implementation_substitution
+      - latency_cost_error_quality
+      - provenance_completeness
+      - security_tenant_isolation
+      - drift_detection
+      - release_guard_integration
+    non_goals:
+      - create_user_visible_capability
+
+roadmap_only_domain_capabilities:
+  status: ROADMAP_ONLY_REQUIRES_SEPARATE_SCOPE_LOCK
+  candidates:
+    - id: MO-CAP-DOMAIN-TRM-MONITORING
+      title: Trademark Monitoring & Change Interpretation
+      likely_consumers: [MarkReg, Lite]
+    - id: MO-CAP-DOMAIN-TRM-RENEWAL
+      title: Renewal / Maintenance Readiness
+      likely_consumers: [MarkReg, Lite]
+    - id: MO-CAP-DOMAIN-CONTENT
+      title: Content Intelligence & Publication Preparation
+      likely_consumers: [Lite, MarkReg]
+    - id: MO-CAP-DOMAIN-FILING
+      title: Filing Strategy / Readiness
+      likely_consumers: [MarkReg]
+    - id: MO-CAP-DOMAIN-BRAND-RISK
+      title: Brand Risk / Protection Assessment
+      likely_consumers: [MarkReg, Lite]
+    - id: MO-CAP-DOMAIN-CLIENT-OPPORTUNITY
+      title: Client Opportunity / Service Readiness
+      likely_consumers: [Lite, MarkReg]
+
+program_metrics:
+  architecture:
+    - capabilities_with_two_or_more_independent_consumers
+    - direct_provider_sdk_or_secret_uses_outside_approved_adapters
+    - percent_ai_invocations_via_managed_ai_execution
+    - percent_admitted_email_via_communication_hub
+    - retired_product_local_horizontal_implementations
+  runtime:
+    - outcome_validation_failure_rate
+    - eligibility_binding_failure_rate
+    - replay_idempotency_conflict_rate
+    - p50_p95_latency
+    - provenance_completeness
+  economics:
+    - ai_cost_per_capability_outcome
+    - ai_budget_rejection_and_fallback_rate
+    - provider_model_substitution_conformance
+  communication:
+    - inbound_duplicate_rate
+    - cursor_checkpoint_recovery_success
+    - outbound_idempotency_conflicts
+    - delivery_evidence_completeness
+  migration:
+    - old_new_parity_rate
+    - rollback_success
+    - cross_repository_acceptance
+    - unresolved_architecture_exceptions
+
+program_hold_points:
+  - production_outbound_external_communication
+  - production_ai_provider_credentials_without_separate_acceptance
+  - autonomous_external_professional_action
+  - legal_deadline_certification_or_official_truth_promotion
+  - public_capability_marketplace_ranking_or_certification
+  - delete_working_local_implementation_without_parity_and_rollback
+  - MO_DE_007_008
