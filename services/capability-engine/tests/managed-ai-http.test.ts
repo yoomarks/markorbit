@@ -168,8 +168,7 @@ describe('Capability Engine internal Managed AI execution route', () => {
 
     const first = target.handle(request());
     const second = target.handle(request());
-    await Promise.resolve();
-    expect(execute).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
     release!(blockedOutcome);
 
     await expect(first).resolves.toEqual({ status: 200, body: blockedOutcome });
@@ -228,15 +227,11 @@ describe('Capability Engine internal Managed AI execution route', () => {
   });
 
   it('never enters executor access when the durable dispatch transition cannot be recorded', async () => {
-    const claim = vi.fn(() => Promise.resolve({ kind: 'ACQUIRED' as const }));
-    const markDispatching = vi.fn(() => Promise.reject(new Error('database unavailable')));
-    const complete = vi.fn(() => Promise.resolve());
-    const markReconciliationRequired = vi.fn(() => Promise.resolve());
     const claimStore: ManagedAiExecutionClaimStoreV1 = {
-      claim,
-      markDispatching,
-      complete,
-      markReconciliationRequired
+      claim: vi.fn(() => Promise.resolve({ kind: 'ACQUIRED' as const })),
+      markDispatching: vi.fn(() => Promise.reject(new Error('database unavailable'))),
+      complete: vi.fn(() => Promise.resolve()),
+      markReconciliationRequired: vi.fn(() => Promise.resolve())
     };
     const execute = vi.fn(() => Promise.resolve(blockedOutcome));
     const target = route({ execute }, claimStore);
@@ -246,8 +241,8 @@ describe('Capability Engine internal Managed AI execution route', () => {
       code: 'MANAGED_AI_CLAIM_STORE_UNAVAILABLE',
       retryable: true
     });
-    expect(claim).toHaveBeenCalledTimes(1);
-    expect(markDispatching).toHaveBeenCalledTimes(1);
+    expect(claimStore.claim).toHaveBeenCalledTimes(1);
+    expect(claimStore.markDispatching).toHaveBeenCalledTimes(1);
     expect(execute).not.toHaveBeenCalled();
   });
 });
