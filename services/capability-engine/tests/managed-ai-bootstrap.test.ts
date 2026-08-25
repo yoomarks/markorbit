@@ -57,7 +57,9 @@ function persistence() {
   return { database, query };
 }
 
-function enabledEnvironment(secret = 'deepseek-test-secret-not-a-real-credential'): NodeJS.ProcessEnv {
+function enabledEnvironment(
+  secret = 'deepseek-test-secret-not-a-real-credential'
+): NodeJS.ProcessEnv {
   return {
     [MANAGED_AI_RUNTIME_ENABLED_ENV]: '1',
     [MANAGED_AI_PROVIDER_DISPATCH_AUTHORIZED_ENV]: '1',
@@ -68,9 +70,7 @@ function enabledEnvironment(secret = 'deepseek-test-secret-not-a-real-credential
 describe('Managed AI server bootstrap', () => {
   it('keeps Managed AI absent by default', () => {
     const { database, query } = persistence();
-    expect(
-      createManagedAiRuntimeBindingsV1({ environment: {}, database, query })
-    ).toBeNull();
+    expect(createManagedAiRuntimeBindingsV1({ environment: {}, database, query })).toBeNull();
   });
 
   it.each([
@@ -135,7 +135,8 @@ describe('Managed AI server bootstrap', () => {
     });
 
     expect(transportSpy).toHaveBeenCalledTimes(1);
-    if (!capturedRequest) throw new Error('Expected the governed DeepSeek transport to be invoked.');
+    if (!capturedRequest)
+      throw new Error('Expected the governed DeepSeek transport to be invoked.');
     expect(capturedRequest.url).toBe(DEEPSEEK_CANONICAL_ENDPOINT);
     expect(capturedRequest.headers.authorization).toBe(
       'Bearer deepseek-test-secret-not-a-real-credential'
