@@ -136,9 +136,7 @@ export interface ManagedAiExactOutputReferenceV1 {
   ref: string;
 }
 
-export type ManagedAiExactOutputV1 =
-  | ManagedAiExactOutputInlineV1
-  | ManagedAiExactOutputReferenceV1;
+export type ManagedAiExactOutputV1 = ManagedAiExactOutputInlineV1 | ManagedAiExactOutputReferenceV1;
 
 export interface ManagedAiUsageV1 {
   inputUnits?: number;
@@ -208,11 +206,17 @@ function asRecord(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allow = new Set(allowed);
   const unknown = Object.keys(value).filter((key) => !allow.has(key));
   if (unknown.length)
-    throw new ManagedAiContractError(`${field} contains unsupported fields: ${unknown.join(', ')}.`);
+    throw new ManagedAiContractError(
+      `${field} contains unsupported fields: ${unknown.join(', ')}.`
+    );
 }
 
 function nonEmptyString(value: unknown, field: string, maxLength = 500): string {
@@ -223,11 +227,7 @@ function nonEmptyString(value: unknown, field: string, maxLength = 500): string 
   return cleaned;
 }
 
-function enumValue<T extends string>(
-  value: unknown,
-  allowed: readonly T[],
-  field: string
-): T {
+function enumValue<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
   if (typeof value !== 'string' || !allowed.includes(value as T))
     throw new ManagedAiContractError(`${field} is invalid.`);
   return value as T;
@@ -304,7 +304,9 @@ function parseBudget(value: unknown): ManagedAiBudgetV1 | undefined {
   )
     throw new ManagedAiContractError('budget must contain at least one governed limit.');
   if (currency !== undefined && !/^[A-Z]{3}$/u.test(currency))
-    throw new ManagedAiContractError('budget.currency must be an ISO-style three-letter uppercase code.');
+    throw new ManagedAiContractError(
+      'budget.currency must be an ISO-style three-letter uppercase code.'
+    );
   if (maxCostMinor !== undefined && currency === undefined)
     throw new ManagedAiContractError('budget.currency is required when maxCostMinor is supplied.');
   return {
@@ -319,7 +321,11 @@ function parsePromptPolicy(value: unknown): ManagedAiPromptPolicyRefV1 {
   const record = asRecord(value, 'promptPolicy');
   exactKeys(record, ['policyId', 'policyVersion', 'templateId', 'templateVersion'], 'promptPolicy');
   const templateId = optionalString(record.templateId, 'promptPolicy.templateId', 300);
-  const templateVersion = optionalString(record.templateVersion, 'promptPolicy.templateVersion', 120);
+  const templateVersion = optionalString(
+    record.templateVersion,
+    'promptPolicy.templateVersion',
+    120
+  );
   if ((templateId === undefined) !== (templateVersion === undefined))
     throw new ManagedAiContractError(
       'promptPolicy.templateId and promptPolicy.templateVersion must be supplied together.'
@@ -335,7 +341,11 @@ function parseEvidence(value: unknown): ManagedAiEvidenceExpectationV1 {
   const record = asRecord(value, 'evidence');
   exactKeys(record, ['exactOutput', 'providerRequestId'], 'evidence');
   return {
-    exactOutput: enumValue(record.exactOutput, ['REQUIRED', 'OPTIONAL'] as const, 'evidence.exactOutput'),
+    exactOutput: enumValue(
+      record.exactOutput,
+      ['REQUIRED', 'OPTIONAL'] as const,
+      'evidence.exactOutput'
+    ),
     providerRequestId: enumValue(
       record.providerRequestId,
       ['REQUIRED_WHEN_AVAILABLE', 'OPTIONAL'] as const,
@@ -414,7 +424,11 @@ function parseProvenance(value: unknown): ManagedAiImplementationProvenanceV1 {
   const inputSha256 = nonEmptyString(record.inputSha256, 'provenance.inputSha256', 64);
   if (!/^[a-f0-9]{64}$/u.test(inputSha256))
     throw new ManagedAiContractError('provenance.inputSha256 must be lowercase SHA-256 hex.');
-  const providerRequestId = optionalString(record.providerRequestId, 'provenance.providerRequestId', 500);
+  const providerRequestId = optionalString(
+    record.providerRequestId,
+    'provenance.providerRequestId',
+    500
+  );
   return {
     implementationProfileId: nonEmptyString(
       record.implementationProfileId,
@@ -422,7 +436,11 @@ function parseProvenance(value: unknown): ManagedAiImplementationProvenanceV1 {
       300
     ),
     implementationProfileVersion,
-    implementationKey: nonEmptyString(record.implementationKey, 'provenance.implementationKey', 500),
+    implementationKey: nonEmptyString(
+      record.implementationKey,
+      'provenance.implementationKey',
+      500
+    ),
     provider: nonEmptyString(record.provider, 'provenance.provider', 120),
     model: nonEmptyString(record.model, 'provenance.model', 300),
     promptPolicyId: nonEmptyString(record.promptPolicyId, 'provenance.promptPolicyId', 300),
@@ -441,21 +459,30 @@ function parseProvenance(value: unknown): ManagedAiImplementationProvenanceV1 {
 
 function parseExactOutput(value: unknown): ManagedAiExactOutputV1 {
   const record = asRecord(value, 'exactOutput');
-  const kind = enumValue(record.kind, ['INLINE_BASE64', 'DURABLE_REF'] as const, 'exactOutput.kind');
+  const kind = enumValue(
+    record.kind,
+    ['INLINE_BASE64', 'DURABLE_REF'] as const,
+    'exactOutput.kind'
+  );
   const common = ['kind', 'mediaType', 'sha256', 'sizeBytes'];
   exactKeys(record, [...common, kind === 'INLINE_BASE64' ? 'dataBase64' : 'ref'], 'exactOutput');
   const sha256 = nonEmptyString(record.sha256, 'exactOutput.sha256', 64);
   if (!/^[a-f0-9]{64}$/u.test(sha256))
     throw new ManagedAiContractError('exactOutput.sha256 must be lowercase SHA-256 hex.');
   const sizeBytes = optionalNonNegativeInteger(record.sizeBytes, 'exactOutput.sizeBytes');
-  if (sizeBytes === undefined) throw new ManagedAiContractError('exactOutput.sizeBytes is required.');
+  if (sizeBytes === undefined)
+    throw new ManagedAiContractError('exactOutput.sizeBytes is required.');
   const commonValue = {
     mediaType: nonEmptyString(record.mediaType, 'exactOutput.mediaType', 200),
     sha256,
     sizeBytes
   };
   if (kind === 'INLINE_BASE64') {
-    const dataBase64 = nonEmptyString(record.dataBase64, 'exactOutput.dataBase64', 16 * 1024 * 1024);
+    const dataBase64 = nonEmptyString(
+      record.dataBase64,
+      'exactOutput.dataBase64',
+      16 * 1024 * 1024
+    );
     if (!/^[A-Za-z0-9+/]*={0,2}$/u.test(dataBase64))
       throw new ManagedAiContractError('exactOutput.dataBase64 must be base64 text.');
     return { kind, ...commonValue, dataBase64 };
@@ -500,11 +527,15 @@ function parseUsage(value: unknown): ManagedAiUsageV1 | undefined {
   const currency = optionalString(record.currency, 'usage.currency', 12);
   if (currency !== undefined) {
     if (!/^[A-Z]{3}$/u.test(currency))
-      throw new ManagedAiContractError('usage.currency must be an ISO-style three-letter uppercase code.');
+      throw new ManagedAiContractError(
+        'usage.currency must be an ISO-style three-letter uppercase code.'
+      );
     usage.currency = currency;
   }
   if (usage.costMinor !== undefined && usage.currency === undefined)
-    throw new ManagedAiContractError('usage.currency is required when usage.costMinor is supplied.');
+    throw new ManagedAiContractError(
+      'usage.currency is required when usage.costMinor is supplied.'
+    );
   return usage;
 }
 
@@ -540,13 +571,18 @@ function assertOutcomeConsistency(outcome: ManagedAiExecutionOutcomeV1): void {
         'DELIVERY_UNCERTAIN outcomes must require reconciliation rather than retry.'
       );
   }
-  if (outcome.retryDisposition === 'RECONCILIATION_REQUIRED' && outcome.status !== 'REQUIRES_RECONCILIATION')
+  if (
+    outcome.retryDisposition === 'RECONCILIATION_REQUIRED' &&
+    outcome.status !== 'REQUIRES_RECONCILIATION'
+  )
     throw new ManagedAiContractError(
       'RECONCILIATION_REQUIRED retry disposition requires REQUIRES_RECONCILIATION status.'
     );
   if (outcome.status === 'COMPLETED') {
     if (outcome.deliveryState !== 'PROVIDER_COMPLETED')
-      throw new ManagedAiContractError('COMPLETED outcomes must use deliveryState PROVIDER_COMPLETED.');
+      throw new ManagedAiContractError(
+        'COMPLETED outcomes must use deliveryState PROVIDER_COMPLETED.'
+      );
     if (outcome.error !== undefined)
       throw new ManagedAiContractError('COMPLETED outcomes must not contain an error.');
     if (outcome.provenance === undefined)
@@ -556,8 +592,13 @@ function assertOutcomeConsistency(outcome: ManagedAiExecutionOutcomeV1): void {
     throw new ManagedAiContractError('PROVIDER_COMPLETED delivery requires COMPLETED status.');
   if (outcome.status !== 'COMPLETED' && outcome.error === undefined)
     throw new ManagedAiContractError('Non-completed outcomes require a typed generic error.');
-  if (outcome.retryDisposition === 'RETRY_ALLOWED' && outcome.deliveryState === 'DELIVERY_UNCERTAIN')
-    throw new ManagedAiContractError('Delivery-uncertain execution can never be marked retry allowed.');
+  if (
+    outcome.retryDisposition === 'RETRY_ALLOWED' &&
+    outcome.deliveryState === 'DELIVERY_UNCERTAIN'
+  )
+    throw new ManagedAiContractError(
+      'Delivery-uncertain execution can never be marked retry allowed.'
+    );
 }
 
 export function parseManagedAiExecutionOutcomeV1(value: unknown): ManagedAiExecutionOutcomeV1 {
@@ -590,8 +631,10 @@ export function parseManagedAiExecutionOutcomeV1(value: unknown): ManagedAiExecu
     throw new ManagedAiContractError(
       `managedAiOutcome.capabilityVersion must be ${MANAGED_AI_EXECUTION_CONTRACT_VERSION}.`
     );
-  const provenance = record.provenance === undefined ? undefined : parseProvenance(record.provenance);
-  const exactOutput = record.exactOutput === undefined ? undefined : parseExactOutput(record.exactOutput);
+  const provenance =
+    record.provenance === undefined ? undefined : parseProvenance(record.provenance);
+  const exactOutput =
+    record.exactOutput === undefined ? undefined : parseExactOutput(record.exactOutput);
   const usage = parseUsage(record.usage);
   const error = parseError(record.error);
   const outcome: ManagedAiExecutionOutcomeV1 = {

@@ -27,7 +27,10 @@ const validInput = () => ({
     templateId: 'knowledge-source-prompt',
     templateVersion: '3'
   },
-  evidence: { exactOutput: 'REQUIRED' as const, providerRequestId: 'REQUIRED_WHEN_AVAILABLE' as const }
+  evidence: {
+    exactOutput: 'REQUIRED' as const,
+    providerRequestId: 'REQUIRED_WHEN_AVAILABLE' as const
+  }
 });
 
 const provenance = () => ({
@@ -77,9 +80,9 @@ describe('Managed AI Execution V1 input contract', () => {
   it.each(['provider', 'model', 'endpoint', 'credential', 'apiKey', 'retryMode'])(
     'rejects caller implementation-control field %s',
     (field) => {
-      expect(() => parseManagedAiExecutionInputV1({ ...validInput(), [field]: 'caller-controlled' })).toThrow(
-        ManagedAiContractError
-      );
+      expect(() =>
+        parseManagedAiExecutionInputV1({ ...validInput(), [field]: 'caller-controlled' })
+      ).toThrow(ManagedAiContractError);
     }
   );
 
