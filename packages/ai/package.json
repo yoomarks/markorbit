@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Model gateway and structured invocation abstractions.",
+  "dependencies": {
+    "@markorbit/contracts": "workspace:*"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
