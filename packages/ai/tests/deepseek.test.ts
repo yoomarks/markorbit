@@ -122,8 +122,13 @@ describe('DeepSeek provider adapter V1', () => {
     expect(transport).not.toHaveBeenCalled();
   });
 
-  it('classifies explicit 429 and 5xx responses as delivered and retry eligible', async () => {
-    for (const status of [429, 503]) {
+  it('distinguishes rate limiting from temporary provider service failure', async () => {
+    const cases = [
+      [429, 'AI_PROVIDER_RATE_LIMITED'],
+      [503, 'AI_PROVIDER_TEMPORARY_FAILURE']
+    ] as const;
+
+    for (const [status, errorCode] of cases) {
       const raw = encode({ id: `deepseek_${status}`, error: { message: 'temporary' } });
       const transport: AiHttpTransport = vi.fn(() => Promise.resolve({ status, body: raw }));
       const adapter = new DeepSeekProviderAdapterV1({
@@ -139,7 +144,7 @@ describe('DeepSeek provider adapter V1', () => {
         deliveryState: 'DELIVERED_CONFIRMED',
         retryDisposition: 'RETRY_ALLOWED',
         providerRequestId: `deepseek_${status}`,
-        error: { code: 'AI_PROVIDER_TEMPORARY_FAILURE' }
+        error: { code: errorCode }
       });
       if (result.kind === 'FAILURE') expect(result.exactResponse).toEqual(raw);
     }
