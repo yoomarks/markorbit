@@ -1,0 +1,33 @@
+name: Temporary Managed AI Bootstrap Formatter
+
+on:
+  push:
+    branches: [mo-cap-002-managed-ai-server-bootstrap]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write services/capability-engine/tests/managed-ai-bootstrap.test.ts
+      - run: pnpm exec prettier --check services/capability-engine/tests/managed-ai-bootstrap.test.ts
+      - name: Persist formatter result
+        run: |
+          if git diff --quiet -- services/capability-engine/tests/managed-ai-bootstrap.test.ts; then
+            echo 'Test file already formatted.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/capability-engine/tests/managed-ai-bootstrap.test.ts
+          git commit -m 'Format Managed AI bootstrap test'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
