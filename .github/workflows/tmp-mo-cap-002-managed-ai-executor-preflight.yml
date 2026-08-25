@@ -22,6 +22,23 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --no-frozen-lockfile
+      - name: Fix implementation profile literal typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/ai/src/managed-executor.ts')
+          text = path.read_text()
+          old = "export const knowledgeDeepSeekImplementationProfileV1 = Object.freeze({"
+          new = "export const knowledgeDeepSeekImplementationProfileV1: Readonly<ManagedAiImplementationProfileV1> = Object.freeze({"
+          if old not in text:
+              raise SystemExit('profile declaration not found')
+          text = text.replace(old, new, 1)
+          old = "}) satisfies Readonly<ManagedAiImplementationProfileV1>;"
+          if old not in text:
+              raise SystemExit('profile satisfies clause not found')
+          text = text.replace(old, "});", 1)
+          path.write_text(text)
+          PY
       - run: >-
           pnpm exec prettier --write
           packages/ai/src/managed-executor.ts
@@ -34,7 +51,7 @@ jobs:
       - run: pnpm --filter @markorbit/ai lint
       - run: pnpm --filter @markorbit/ai typecheck
       - run: pnpm --filter @markorbit/ai test
-      - name: Commit lockfile and formatting
+      - name: Commit finalized executor files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
