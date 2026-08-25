@@ -59,6 +59,73 @@ export interface AiProviderExecutionFailureV1 {
 export type AiProviderExecutionResultV1 =
   AiProviderExecutionSuccessV1 | AiProviderExecutionFailureV1;
 
+export type AiProviderFollowupReasonV1 =
+  | 'NONE'
+  | 'RATE_LIMITED'
+  | 'TEMPORARY_SERVICE'
+  | 'NOT_DELIVERED'
+  | 'POLICY_DEFERRED'
+  | 'OTHER_RETRYABLE'
+  | 'RECONCILIATION_REQUIRED';
+
+export interface AiProviderFollowupPolicyV1 {
+  reason: AiProviderFollowupReasonV1;
+  retryCandidate: boolean;
+  fallbackCandidate: boolean;
+  budgetCheckRequired: boolean;
+  reconciliationRequired: boolean;
+}
+
+export function deriveAiProviderFollowupPolicyV1(
+  result: Readonly<AiProviderExecutionResultV1>
+): Readonly<AiProviderFollowupPolicyV1> {
+  if (
+    result.deliveryState === 'DELIVERY_UNCERTAIN' ||
+    result.retryDisposition === 'RECONCILIATION_REQUIRED'
+  ) {
+    return {
+      reason: 'RECONCILIATION_REQUIRED',
+      retryCandidate: false,
+      fallbackCandidate: false,
+      budgetCheckRequired: false,
+      reconciliationRequired: true
+    };
+  }
+
+  if (result.kind === 'SUCCESS' || result.retryDisposition !== 'RETRY_ALLOWED') {
+    return {
+      reason: 'NONE',
+      retryCandidate: false,
+      fallbackCandidate: false,
+      budgetCheckRequired: false,
+      reconciliationRequired: false
+    };
+  }
+
+  let reason: AiProviderFollowupReasonV1;
+  switch (result.error.code) {
+    case 'AI_PROVIDER_RATE_LIMITED':
+      reason = 'RATE_LIMITED';
+      break;
+    case 'AI_PROVIDER_TEMPORARY_FAILURE':
+      reason = 'TEMPORARY_SERVICE';
+      break;
+    case 'AI_PROVIDER_PEAK_PRICING_WINDOW':
+      reason = 'POLICY_DEFERRED';
+      break;
+    default:
+      reason = result.deliveryState === 'NOT_DELIVERED' ? 'NOT_DELIVERED' : 'OTHER_RETRYABLE';
+  }
+
+  return {
+    reason,
+    retryCandidate: true,
+    fallbackCandidate: true,
+    budgetCheckRequired: true,
+    reconciliationRequired: false
+  };
+}
+
 export interface AiProviderAdapterV1 {
   readonly implementationKey: string;
   readonly provider: string;
