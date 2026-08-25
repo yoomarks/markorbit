@@ -25,7 +25,8 @@ jobs:
       - run: pnpm exec prettier --write services/markreg/src/knowledge-case-promotion.ts services/markreg/src/main.ts services/markreg/tests/knowledge-case-promotion.test.ts
       - run: pnpm --filter @markorbit/markreg-service lint
       - run: pnpm --filter @markorbit/markreg-service typecheck
-      - run: pnpm --filter @markorbit/markreg-service test -- knowledge-case-promotion.test.ts
+      - run: pnpm exec turbo run build --filter=@markorbit/markreg-service...
+      - run: pnpm --filter @markorbit/markreg-service exec vitest run tests/knowledge-case-promotion.test.ts
       - name: Commit patched production files
         run: |
           git config user.name github-actions[bot]
