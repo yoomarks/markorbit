@@ -200,7 +200,7 @@ jobs:
           if [ "$PAYMENT_SCOPE" = "true" ]; then
             create_db markorbit_payment_test
           fi
-          if [ "$EXECUTION_SCOPE" = "true" ]; then
+          if [ "$EXECUTION_SCOPE" = "true" ] || [ "$MARKREG_SCOPE" = "true" ]; then
             create_db markorbit_execution_test
           fi
           if [ "$MGSN_SCOPE" = "true" ]; then
