@@ -65,7 +65,9 @@ export function registerCapabilityRuntimeConformanceSuite(
       const fixture = adapter.create();
       const first = fixture.invoke(adapter.command());
       const conflicting = fixture.invoke(
-        adapter.command({ input: { question: 'Conflicting input under the same idempotency key.' } })
+        adapter.command({
+          input: { question: 'Conflicting input under the same idempotency key.' }
+        })
       );
 
       await expect(conflicting).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
@@ -73,22 +75,25 @@ export function registerCapabilityRuntimeConformanceSuite(
       expect(fixture.executionCount()).toBe(1);
     });
 
-    it('persists invalid output as a non-retryable governed failure with stable replay', async () => {
-      const fixture = adapter.create('INVALID_OUTPUT');
-      const command = adapter.command();
+    it(
+      'persists invalid output as a non-retryable governed failure with stable replay',
+      async () => {
+        const fixture = adapter.create('INVALID_OUTPUT');
+        const command = adapter.command();
 
-      const first = await fixture.invoke(command);
-      const replay = await fixture.invoke(command);
+        const first = await fixture.invoke(command);
+        const replay = await fixture.invoke(command);
 
-      expect(first.outcome).toMatchObject({
-        status: 'FAILED',
-        error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: false }
-      });
-      expect(first.returnValue.status).toBe('FAILED');
-      expect(replay.outcome.capabilityOutcomeId).toBe(first.outcome.capabilityOutcomeId);
-      expect(fixture.executionCount()).toBe(1);
-      expectNoAuthority(first);
-    });
+        expect(first.outcome).toMatchObject({
+          status: 'FAILED',
+          error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: false }
+        });
+        expect(first.returnValue.status).toBe('FAILED');
+        expect(replay.outcome.capabilityOutcomeId).toBe(first.outcome.capabilityOutcomeId);
+        expect(fixture.executionCount()).toBe(1);
+        expectNoAuthority(first);
+      }
+    );
 
     it(
       'turns implementation exceptions into non-retryable governed outcomes with stable replay',
