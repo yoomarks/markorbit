@@ -1,0 +1,73 @@
+name: Temporary MarkReg Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tmp-markreg-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  markreg-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      MARKREG_POSTGRES_REQUIRED: '1'
+      MARKREG_AUDIT_POSTGRES_REQUIRED: '1'
+      MARKREG_AUDIT_HTTP_REQUIRED: '1'
+      MARKREG_ORDER_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_SERVICE_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_MATTER_POSTGRES_REQUIRED: '1'
+      MARKREG_ORDER_HTTP_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create MarkReg database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_markreg_test;'
+      - name: customer-confirmation
+        run: pnpm test:customer-confirmation
+      - name: customer-confirmation-postgres
+        run: pnpm test:customer-confirmation:postgres
+      - name: customer-confirmation-http
+        run: pnpm test:customer-confirmation:http
+      - name: lite-matter-postgres
+        run: pnpm test:lite-matter:postgres
+      - name: lite-matter-http
+        run: pnpm test:lite-matter:http
+      - name: document-package-postgres
+        run: pnpm test:document-package:postgres
+      - name: document-package-http
+        run: pnpm test:document-package:http
+      - name: markreg-service-suite
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts
+      - name: order-http
+        run: pnpm test:order:http
+      - name: order-client
+        run: pnpm test:order:client
+      - name: order-journey
+        run: pnpm test:order:journey
+      - name: audit-idempotency-postgres
+        run: pnpm test:audit-idempotency:postgres
+      - name: audit-idempotency-http
+        run: pnpm test:audit-idempotency:http
+      - name: audit-idempotency-restart
+        run: pnpm test:audit-idempotency:restart
