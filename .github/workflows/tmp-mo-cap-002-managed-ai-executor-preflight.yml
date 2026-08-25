@@ -22,22 +22,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --no-frozen-lockfile
-      - name: Fix implementation profile literal typing
+      - name: Const-lock implementation profile literals
         run: |
           python - <<'PY'
           from pathlib import Path
           path = Path('packages/ai/src/managed-executor.ts')
           text = path.read_text()
-          old = "export const knowledgeDeepSeekImplementationProfileV1 = Object.freeze({"
-          new = "export const knowledgeDeepSeekImplementationProfileV1: Readonly<ManagedAiImplementationProfileV1> = Object.freeze({"
-          if old not in text:
-              raise SystemExit('profile declaration not found')
-          text = text.replace(old, new, 1)
           old = "}) satisfies Readonly<ManagedAiImplementationProfileV1>;"
+          new = "} as const) satisfies Readonly<ManagedAiImplementationProfileV1>;"
           if old not in text:
               raise SystemExit('profile satisfies clause not found')
-          text = text.replace(old, "});", 1)
-          path.write_text(text)
+          path.write_text(text.replace(old, new, 1))
           PY
       - run: >-
           pnpm exec prettier --write
