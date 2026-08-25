@@ -6,6 +6,7 @@ import {
   managedAiNoAuthorityConsequences,
   type ManagedAiExecutionOutcomeV1
 } from '@markorbit/contracts/managed-ai-execution';
+import type { ManagedAiExecutionClaimStoreV1 } from '../src/managed-ai-execution-claim.js';
 import {
   createManagedAiExecutionRoutesV1,
   type ManagedAiExecutionAuthorityV1
@@ -76,10 +77,17 @@ function request(body: unknown = input(), headers: Record<string, string> = {}) 
   };
 }
 
-function route(executor: ManagedAiExecutionAuthorityV1) {
+function route(
+  executor: ManagedAiExecutionAuthorityV1,
+  claimStore?: ManagedAiExecutionClaimStoreV1
+) {
   return createManagedAiExecutionRoutesV1({
     internalServiceSecret: secret,
-    executor
+    executor,
+    ...(claimStore === undefined ? {} : { claimStore }),
+    now: () => '2026-08-25T00:00:00.000Z',
+    ownerTokenFactory: () => 'unit-test-runtime-owner',
+    claimLeaseMs: 60_000
   })[0]!;
 }
 
@@ -104,7 +112,7 @@ describe('Capability Engine internal Managed AI execution route', () => {
     });
   });
 
-  it('rejects untrusted internal callers before executor access', async () => {
+  it('rejects untrusted internal callers before claim or executor access', async () => {
     const execute = vi.fn(() => Promise.resolve(blockedOutcome));
     const target = route({ execute });
 
@@ -179,7 +187,7 @@ describe('Capability Engine internal Managed AI execution route', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it('fails closed when an executor attempts to return authority escalation', async () => {
+  it('fails closed when an executor attempts authority escalation and quarantines replay', async () => {
     const invalidOutcome = {
       ...blockedOutcome,
       authority: {
@@ -194,17 +202,48 @@ describe('Capability Engine internal Managed AI execution route', () => {
       status: 502,
       code: 'MANAGED_AI_EXECUTOR_INVALID_RESULT'
     });
+    await expect(target.handle(request())).rejects.toMatchObject({
+      status: 409,
+      code: 'MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED',
+      retryable: false
+    });
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
-  it('maps unexpected executor exceptions to a retryable service-unavailable boundary', async () => {
+  it('blocks automatic replay after an executor exception once dispatch is possible', async () => {
     const execute = vi.fn(() => Promise.reject(new Error('boom')));
     const target = route({ execute });
 
     await expect(target.handle(request())).rejects.toMatchObject({
       status: 503,
-      code: 'MANAGED_AI_EXECUTOR_UNAVAILABLE',
+      code: 'MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED',
+      retryable: false
+    });
+    await expect(target.handle(request())).rejects.toMatchObject({
+      status: 409,
+      code: 'MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED',
+      retryable: false
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('never enters executor access when the durable dispatch transition cannot be recorded', async () => {
+    const claimStore: ManagedAiExecutionClaimStoreV1 = {
+      claim: vi.fn(() => Promise.resolve({ kind: 'ACQUIRED' as const })),
+      markDispatching: vi.fn(() => Promise.reject(new Error('database unavailable'))),
+      complete: vi.fn(() => Promise.resolve()),
+      markReconciliationRequired: vi.fn(() => Promise.resolve())
+    };
+    const execute = vi.fn(() => Promise.resolve(blockedOutcome));
+    const target = route({ execute }, claimStore);
+
+    await expect(target.handle(request())).rejects.toMatchObject({
+      status: 503,
+      code: 'MANAGED_AI_CLAIM_STORE_UNAVAILABLE',
       retryable: true
     });
+    expect(claimStore.claim).toHaveBeenCalledTimes(1);
+    expect(claimStore.markDispatching).toHaveBeenCalledTimes(1);
+    expect(execute).not.toHaveBeenCalled();
   });
 });
