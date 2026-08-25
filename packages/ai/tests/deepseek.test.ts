@@ -8,7 +8,7 @@ import {
   DeepSeekProviderAdapterV1,
   isDeepSeekPeakPricingWindow,
   type AiHttpTransport,
-  type AiProviderExecutionRequestV1,
+  type AiProviderExecutionRequestV1
 } from '../src/index.js';
 
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
@@ -19,15 +19,15 @@ const request = (
     kind: 'TEXT_GENERATION',
     prompt: 'Return a governed research note.',
     systemInstruction: 'Return Markdown only.',
-    outputFormat: 'MARKDOWN',
-  },
+    outputFormat: 'MARKDOWN'
+  }
 ): AiProviderExecutionRequestV1 => ({
   protocolVersion: AI_PROVIDER_ADAPTER_PROTOCOL_VERSION,
   executionId: 'aiexec_deepseek_test',
   implementationKey: DEEPSEEK_IMPLEMENTATION_KEY,
   correlationId: 'corr_deepseek_test',
   timeoutMs: 30_000,
-  input,
+  input
 });
 
 const offPeakNow = () => new Date('2026-08-23T00:00:00.000Z');
@@ -43,10 +43,10 @@ function successTransport(): AiHttpTransport {
         usage: {
           prompt_tokens: 12,
           completion_tokens: 7,
-          prompt_cache_hit_tokens: 3,
-        },
-      }),
-    }),
+          prompt_cache_hit_tokens: 3
+        }
+      })
+    })
   );
 }
 
@@ -60,7 +60,7 @@ describe('DeepSeek provider adapter V1', () => {
       clockMs: (() => {
         const values = [1000, 1125];
         return () => values.shift() ?? 1125;
-      })(),
+      })()
     });
 
     const result = await adapter.execute(request());
@@ -70,8 +70,8 @@ describe('DeepSeek provider adapter V1', () => {
       expect.objectContaining({
         url: DEEPSEEK_CANONICAL_ENDPOINT,
         timeoutMs: 30_000,
-        headers: expect.objectContaining({ authorization: 'Bearer test-secret-never-persist' }),
-      }),
+        headers: expect.objectContaining({ authorization: 'Bearer test-secret-never-persist' })
+      })
     );
     expect(result).toMatchObject({
       kind: 'SUCCESS',
@@ -81,7 +81,7 @@ describe('DeepSeek provider adapter V1', () => {
       retryDisposition: 'RETRY_FORBIDDEN',
       providerRequestId: 'deepseek_request_1',
       structuredOutput: { text: '# Governed result', outputFormat: 'MARKDOWN' },
-      usage: { inputUnits: 12, outputUnits: 7, cachedInputUnits: 3, latencyMs: 125 },
+      usage: { inputUnits: 12, outputUnits: 7, cachedInputUnits: 3, latencyMs: 125 }
     });
     if (result.kind === 'SUCCESS') {
       expect(new TextDecoder().decode(result.exactResponse)).toContain('deepseek_request_1');
@@ -97,7 +97,7 @@ describe('DeepSeek provider adapter V1', () => {
       kind: 'FAILURE',
       deliveryState: 'NOT_DELIVERED',
       retryDisposition: 'RETRY_FORBIDDEN',
-      error: { code: 'AI_PROVIDER_CREDENTIAL_MISSING' },
+      error: { code: 'AI_PROVIDER_CREDENTIAL_MISSING' }
     });
     expect(transport).not.toHaveBeenCalled();
   });
@@ -107,14 +107,14 @@ describe('DeepSeek provider adapter V1', () => {
     const adapter = new DeepSeekProviderAdapterV1({
       environment: { DEEPSEEK_API_KEY: 'test-secret' },
       transport,
-      now: () => new Date('2026-08-24T01:00:00.000Z'),
+      now: () => new Date('2026-08-24T01:00:00.000Z')
     });
 
     await expect(adapter.execute(request())).resolves.toMatchObject({
       kind: 'FAILURE',
       deliveryState: 'NOT_DELIVERED',
       retryDisposition: 'RETRY_ALLOWED',
-      error: { code: 'AI_PROVIDER_PEAK_PRICING_WINDOW' },
+      error: { code: 'AI_PROVIDER_PEAK_PRICING_WINDOW' }
     });
     expect(transport).not.toHaveBeenCalled();
   });
@@ -126,7 +126,7 @@ describe('DeepSeek provider adapter V1', () => {
       const adapter = new DeepSeekProviderAdapterV1({
         environment: { DEEPSEEK_API_KEY: 'test-secret' },
         transport,
-        now: offPeakNow,
+        now: offPeakNow
       });
 
       const result = await adapter.execute(request());
@@ -136,7 +136,7 @@ describe('DeepSeek provider adapter V1', () => {
         deliveryState: 'DELIVERED_CONFIRMED',
         retryDisposition: 'RETRY_ALLOWED',
         providerRequestId: `deepseek_${status}`,
-        error: { code: 'AI_PROVIDER_TEMPORARY_FAILURE' },
+        error: { code: 'AI_PROVIDER_TEMPORARY_FAILURE' }
       });
       if (result.kind === 'FAILURE') expect(result.exactResponse).toEqual(raw);
     }
@@ -144,19 +144,19 @@ describe('DeepSeek provider adapter V1', () => {
 
   it('classifies a non-retryable provider rejection as delivered confirmed', async () => {
     const transport: AiHttpTransport = vi.fn(() =>
-      Promise.resolve({ status: 400, body: encode({ id: 'deepseek_400', error: 'bad request' }) }),
+      Promise.resolve({ status: 400, body: encode({ id: 'deepseek_400', error: 'bad request' }) })
     );
     const adapter = new DeepSeekProviderAdapterV1({
       environment: { DEEPSEEK_API_KEY: 'test-secret' },
       transport,
-      now: offPeakNow,
+      now: offPeakNow
     });
 
     await expect(adapter.execute(request())).resolves.toMatchObject({
       kind: 'FAILURE',
       deliveryState: 'DELIVERED_CONFIRMED',
       retryDisposition: 'RETRY_FORBIDDEN',
-      error: { code: 'AI_PROVIDER_REJECTED' },
+      error: { code: 'AI_PROVIDER_REJECTED' }
     });
   });
 
@@ -166,21 +166,21 @@ describe('DeepSeek provider adapter V1', () => {
         new AiHttpTransportError(
           'AI_HTTP_TIMEOUT',
           'Timed out after dispatch.',
-          'DELIVERY_UNCERTAIN',
-        ),
-      ),
+          'DELIVERY_UNCERTAIN'
+        )
+      )
     );
     const adapter = new DeepSeekProviderAdapterV1({
       environment: { DEEPSEEK_API_KEY: 'test-secret' },
       transport,
-      now: offPeakNow,
+      now: offPeakNow
     });
 
     await expect(adapter.execute(request())).resolves.toMatchObject({
       kind: 'FAILURE',
       deliveryState: 'DELIVERY_UNCERTAIN',
       retryDisposition: 'RECONCILIATION_REQUIRED',
-      error: { code: 'AI_HTTP_TIMEOUT' },
+      error: { code: 'AI_HTTP_TIMEOUT' }
     });
   });
 
@@ -190,21 +190,21 @@ describe('DeepSeek provider adapter V1', () => {
         new AiHttpTransportError(
           'AI_HTTP_NETWORK_ERROR',
           'Connection failed before dispatch.',
-          'NOT_DELIVERED',
-        ),
-      ),
+          'NOT_DELIVERED'
+        )
+      )
     );
     const adapter = new DeepSeekProviderAdapterV1({
       environment: { DEEPSEEK_API_KEY: 'test-secret' },
       transport,
-      now: offPeakNow,
+      now: offPeakNow
     });
 
     await expect(adapter.execute(request())).resolves.toMatchObject({
       kind: 'FAILURE',
       deliveryState: 'NOT_DELIVERED',
       retryDisposition: 'RETRY_ALLOWED',
-      error: { code: 'AI_HTTP_NETWORK_ERROR' },
+      error: { code: 'AI_HTTP_NETWORK_ERROR' }
     });
   });
 
@@ -214,7 +214,7 @@ describe('DeepSeek provider adapter V1', () => {
     const adapter = new DeepSeekProviderAdapterV1({
       environment: { DEEPSEEK_API_KEY: 'test-secret' },
       transport,
-      now: offPeakNow,
+      now: offPeakNow
     });
 
     const result = await adapter.execute(request());
@@ -223,7 +223,7 @@ describe('DeepSeek provider adapter V1', () => {
       kind: 'FAILURE',
       deliveryState: 'DELIVERED_CONFIRMED',
       retryDisposition: 'RETRY_FORBIDDEN',
-      error: { code: 'AI_PROVIDER_RESPONSE_INVALID' },
+      error: { code: 'AI_PROVIDER_RESPONSE_INVALID' }
     });
     if (result.kind === 'FAILURE') expect(result.exactResponse).toEqual(raw);
   });
@@ -233,7 +233,7 @@ describe('DeepSeek provider adapter V1', () => {
     const adapter = new DeepSeekProviderAdapterV1({
       environment: { DEEPSEEK_API_KEY: 'test-secret' },
       transport,
-      now: offPeakNow,
+      now: offPeakNow
     });
 
     for (const field of ['provider', 'model', 'endpoint', 'credential', 'apiKey', 'retryMode']) {
@@ -243,14 +243,14 @@ describe('DeepSeek provider adapter V1', () => {
           kind: 'TEXT_GENERATION',
           prompt: 'test',
           outputFormat: 'TEXT',
-          [field]: 'caller-controlled',
-        }),
+          [field]: 'caller-controlled'
+        })
       );
       expect(result).toMatchObject({
         kind: 'FAILURE',
         deliveryState: 'NOT_DELIVERED',
         retryDisposition: 'RETRY_FORBIDDEN',
-        error: { code: 'AI_PROVIDER_INPUT_INVALID' },
+        error: { code: 'AI_PROVIDER_INPUT_INVALID' }
       });
     }
     expect(transport).not.toHaveBeenCalled();

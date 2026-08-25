@@ -35,12 +35,12 @@ export function parseAiTextGenerationInputV1(value: unknown): AiTextGenerationIn
   const unsupported = Object.keys(record).filter((key) => !allowed.has(key));
   if (unsupported.length > 0) {
     throw new AiProviderInputError(
-      `AI text-generation input contains unsupported fields: ${unsupported.join(', ')}.`,
+      `AI text-generation input contains unsupported fields: ${unsupported.join(', ')}.`
     );
   }
   if (record.schemaVersion !== AI_TEXT_GENERATION_INPUT_VERSION) {
     throw new AiProviderInputError(
-      `AI text-generation input schemaVersion must be ${AI_TEXT_GENERATION_INPUT_VERSION}.`,
+      `AI text-generation input schemaVersion must be ${AI_TEXT_GENERATION_INPUT_VERSION}.`
     );
   }
   if (record.kind !== 'TEXT_GENERATION') {
@@ -58,6 +58,6 @@ export function parseAiTextGenerationInputV1(value: unknown): AiTextGenerationIn
     kind: 'TEXT_GENERATION',
     prompt: text(record.prompt, 'prompt', 1_000_000),
     ...(systemInstruction === undefined ? {} : { systemInstruction }),
-    outputFormat: record.outputFormat as AiTextGenerationOutputFormat,
+    outputFormat: record.outputFormat as AiTextGenerationOutputFormat
   };
 }

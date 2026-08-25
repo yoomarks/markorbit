@@ -9,9 +9,7 @@ export type AiProviderDeliveryState =
   | 'PROVIDER_COMPLETED';
 
 export type AiProviderRetryDisposition =
-  | 'RETRY_ALLOWED'
-  | 'RETRY_FORBIDDEN'
-  | 'RECONCILIATION_REQUIRED';
+  'RETRY_ALLOWED' | 'RETRY_FORBIDDEN' | 'RECONCILIATION_REQUIRED';
 
 export interface AiProviderUsageV1 {
   inputUnits?: number;

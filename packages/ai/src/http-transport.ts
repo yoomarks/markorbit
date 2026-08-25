@@ -1,7 +1,5 @@
 export type AiHttpTransportDeliveryState =
-  | 'NOT_DELIVERED'
-  | 'DELIVERED_CONFIRMED'
-  | 'DELIVERY_UNCERTAIN';
+  'NOT_DELIVERED' | 'DELIVERED_CONFIRMED' | 'DELIVERY_UNCERTAIN';
 
 export type AiHttpTransportRequest = {
   url: string;
@@ -18,14 +16,14 @@ export type AiHttpTransportResponse = {
 };
 
 export type AiHttpTransport = (
-  request: Readonly<AiHttpTransportRequest>,
+  request: Readonly<AiHttpTransportRequest>
 ) => Promise<AiHttpTransportResponse>;
 
 export class AiHttpTransportError extends Error {
   constructor(
     readonly code: 'AI_HTTP_TIMEOUT' | 'AI_HTTP_NETWORK_ERROR' | 'AI_HTTP_RESPONSE_TOO_LARGE',
     message: string,
-    readonly deliveryState: AiHttpTransportDeliveryState,
+    readonly deliveryState: AiHttpTransportDeliveryState
   ) {
     super(message);
     this.name = 'AiHttpTransportError';
@@ -33,7 +31,7 @@ export class AiHttpTransportError extends Error {
 }
 
 export async function fetchAiHttpTransport(
-  request: Readonly<AiHttpTransportRequest>,
+  request: Readonly<AiHttpTransportRequest>
 ): Promise<AiHttpTransportResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), request.timeoutMs);
@@ -43,7 +41,7 @@ export async function fetchAiHttpTransport(
       headers: request.headers,
       body: request.body,
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'error'
     });
     const reader = response.body?.getReader();
     const chunks: Uint8Array[] = [];
@@ -58,7 +56,7 @@ export async function fetchAiHttpTransport(
           throw new AiHttpTransportError(
             'AI_HTTP_RESPONSE_TOO_LARGE',
             'AI provider response exceeded the configured byte limit.',
-            'DELIVERED_CONFIRMED',
+            'DELIVERED_CONFIRMED'
           );
         }
         chunks.push(result.value);
@@ -77,7 +75,7 @@ export async function fetchAiHttpTransport(
     throw new AiHttpTransportError(
       aborted ? 'AI_HTTP_TIMEOUT' : 'AI_HTTP_NETWORK_ERROR',
       aborted ? 'AI provider request timed out.' : 'AI provider request failed.',
-      'DELIVERY_UNCERTAIN',
+      'DELIVERY_UNCERTAIN'
     );
   } finally {
     clearTimeout(timeout);

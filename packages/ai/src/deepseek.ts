@@ -4,12 +4,12 @@ import type {
   AiProviderExecutionRequestV1,
   AiProviderExecutionResultV1,
   AiProviderExecutionSuccessV1,
-  AiProviderUsageV1,
+  AiProviderUsageV1
 } from './index.js';
 import {
   AiHttpTransportError,
   fetchAiHttpTransport,
-  type AiHttpTransport,
+  type AiHttpTransport
 } from './http-transport.js';
 import { AiProviderInputError, parseAiTextGenerationInputV1 } from './provider-input.js';
 
@@ -46,7 +46,8 @@ type ParsedDeepSeekResponse = {
 };
 
 export function isDeepSeekPeakPricingWindow(at: Date): boolean {
-  if (Number.isNaN(at.getTime())) throw new TypeError('DeepSeek execution-window timestamp must be valid.');
+  if (Number.isNaN(at.getTime()))
+    throw new TypeError('DeepSeek execution-window timestamp must be valid.');
   const beijing = new Date(at.getTime() + BEIJING_UTC_OFFSET_MS);
   const weekday = beijing.getUTCDay();
   if (weekday === 0 || weekday === 6) return false;
@@ -62,7 +63,9 @@ function failure(
   retryDisposition: AiProviderExecutionFailureV1['retryDisposition'],
   code: string,
   message: string,
-  extras: Partial<Pick<AiProviderExecutionFailureV1, 'model' | 'providerRequestId' | 'exactResponse' | 'usage'>> = {},
+  extras: Partial<
+    Pick<AiProviderExecutionFailureV1, 'model' | 'providerRequestId' | 'exactResponse' | 'usage'>
+  > = {}
 ): AiProviderExecutionFailureV1 {
   return {
     kind: 'FAILURE',
@@ -70,14 +73,18 @@ function failure(
     deliveryState,
     retryDisposition,
     error: { code, message },
-    ...extras,
+    ...extras
   };
 }
 
 function boundedTimeout(timeoutMs: number): number {
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < MIN_TIMEOUT_MS || timeoutMs > MAX_TIMEOUT_MS) {
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < MIN_TIMEOUT_MS ||
+    timeoutMs > MAX_TIMEOUT_MS
+  ) {
     throw new AiProviderInputError(
-      `DeepSeek timeoutMs must be between ${MIN_TIMEOUT_MS} and ${MAX_TIMEOUT_MS} milliseconds.`,
+      `DeepSeek timeoutMs must be between ${MIN_TIMEOUT_MS} and ${MAX_TIMEOUT_MS} milliseconds.`
     );
   }
   return timeoutMs;
@@ -85,7 +92,9 @@ function boundedTimeout(timeoutMs: number): number {
 
 function boundedResponseBytes(value: number): number {
   if (!Number.isSafeInteger(value) || value < 1 || value > 64 * 1024 * 1024) {
-    throw new TypeError('DeepSeek maxResponseBytes must be a positive integer no greater than 64 MiB.');
+    throw new TypeError(
+      'DeepSeek maxResponseBytes must be a positive integer no greater than 64 MiB.'
+    );
   }
   return value;
 }
@@ -106,7 +115,7 @@ function parseUsage(value: unknown, latencyMs: number): Readonly<AiProviderUsage
     ...(inputUnits === undefined ? {} : { inputUnits }),
     ...(outputUnits === undefined ? {} : { outputUnits }),
     ...(cachedInputUnits === undefined ? {} : { cachedInputUnits }),
-    latencyMs,
+    latencyMs
   };
 }
 
@@ -143,7 +152,9 @@ function parseSuccessfulResponse(raw: Uint8Array, latencyMs: number): ParsedDeep
       ? (message as Record<string, unknown>).content
       : undefined;
   if (typeof content !== 'string' || !content.trim()) {
-    throw new AiProviderInputError('DeepSeek response did not contain non-empty assistant content.');
+    throw new AiProviderInputError(
+      'DeepSeek response did not contain non-empty assistant content.'
+    );
   }
   const model =
     typeof response.model === 'string' && response.model.trim()
@@ -156,19 +167,18 @@ function parseSuccessfulResponse(raw: Uint8Array, latencyMs: number): ParsedDeep
     text: content,
     model,
     ...(providerRequestId === undefined ? {} : { providerRequestId }),
-    ...(usage === undefined ? {} : { usage }),
+    ...(usage === undefined ? {} : { usage })
   };
 }
 
-function transportFailure(error: AiHttpTransportError, model: string): AiProviderExecutionFailureV1 {
+function transportFailure(
+  error: AiHttpTransportError,
+  model: string
+): AiProviderExecutionFailureV1 {
   if (error.deliveryState === 'DELIVERY_UNCERTAIN') {
-    return failure(
-      'DELIVERY_UNCERTAIN',
-      'RECONCILIATION_REQUIRED',
-      error.code,
-      error.message,
-      { model },
-    );
+    return failure('DELIVERY_UNCERTAIN', 'RECONCILIATION_REQUIRED', error.code, error.message, {
+      model
+    });
   }
   if (error.deliveryState === 'DELIVERED_CONFIRMED') {
     return failure('DELIVERED_CONFIRMED', 'RETRY_FORBIDDEN', error.code, error.message, { model });
@@ -192,7 +202,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
     this.transport = options.transport ?? fetchAiHttpTransport;
     this.model = options.model?.trim() || DEEPSEEK_DEFAULT_MODEL;
     this.maxResponseBytes = boundedResponseBytes(
-      options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES,
+      options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES
     );
     this.now = options.now ?? (() => new Date());
     this.clockMs = options.clockMs ?? (() => Date.now());
@@ -200,7 +210,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
   }
 
   async execute(
-    request: Readonly<AiProviderExecutionRequestV1>,
+    request: Readonly<AiProviderExecutionRequestV1>
   ): Promise<AiProviderExecutionResultV1> {
     let input;
     let timeoutMs: number;
@@ -213,7 +223,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RETRY_FORBIDDEN',
         'AI_PROVIDER_INPUT_INVALID',
         error instanceof Error ? error.message : 'DeepSeek provider input is invalid.',
-        { model: this.model },
+        { model: this.model }
       );
     }
 
@@ -224,7 +234,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RETRY_FORBIDDEN',
         'AI_PROVIDER_CREDENTIAL_MISSING',
         `DeepSeek credential environment variable ${DEEPSEEK_SECRET_ENV} is not configured.`,
-        { model: this.model },
+        { model: this.model }
       );
     }
 
@@ -235,7 +245,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RETRY_ALLOWED',
         'AI_PROVIDER_PEAK_PRICING_WINDOW',
         'DeepSeek paid execution is deferred during the governed peak pricing window.',
-        { model: this.model },
+        { model: this.model }
       );
     }
 
@@ -247,7 +257,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
     const body = JSON.stringify({
       model: this.model,
       messages,
-      stream: false,
+      stream: false
     });
 
     const startedMs = this.clockMs();
@@ -258,11 +268,11 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         headers: {
           authorization: `Bearer ${secret}`,
           'content-type': 'application/json',
-          accept: 'application/json',
+          accept: 'application/json'
         },
         body,
         timeoutMs,
-        maxResponseBytes: this.maxResponseBytes,
+        maxResponseBytes: this.maxResponseBytes
       });
     } catch (error) {
       if (error instanceof AiHttpTransportError) return transportFailure(error, this.model);
@@ -271,7 +281,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RECONCILIATION_REQUIRED',
         'AI_PROVIDER_EXECUTION_UNCERTAIN',
         'DeepSeek transport failed without a governed delivery-state classification.',
-        { model: this.model },
+        { model: this.model }
       );
     }
     const latencyMs = Math.max(0, Math.round(this.clockMs() - startedMs));
@@ -280,7 +290,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
       model: this.model,
       exactResponse: response.body,
       ...(providerRequestId === undefined ? {} : { providerRequestId }),
-      usage: { latencyMs },
+      usage: { latencyMs }
     };
 
     if (response.status === 429 || response.status >= 500) {
@@ -289,7 +299,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RETRY_ALLOWED',
         'AI_PROVIDER_TEMPORARY_FAILURE',
         `DeepSeek returned HTTP ${response.status}.`,
-        responseExtras,
+        responseExtras
       );
     }
     if (response.status < 200 || response.status >= 300) {
@@ -298,7 +308,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RETRY_FORBIDDEN',
         'AI_PROVIDER_REJECTED',
         `DeepSeek returned HTTP ${response.status}.`,
-        responseExtras,
+        responseExtras
       );
     }
 
@@ -311,7 +321,7 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         'RETRY_FORBIDDEN',
         'AI_PROVIDER_RESPONSE_INVALID',
         error instanceof Error ? error.message : 'DeepSeek returned an invalid response.',
-        responseExtras,
+        responseExtras
       );
     }
 
@@ -327,9 +337,9 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
         : { providerRequestId: parsed.providerRequestId }),
       structuredOutput: {
         text: parsed.text,
-        outputFormat: input.outputFormat,
+        outputFormat: input.outputFormat
       },
-      ...(parsed.usage === undefined ? {} : { usage: parsed.usage }),
+      ...(parsed.usage === undefined ? {} : { usage: parsed.usage })
     };
     return success;
   }
