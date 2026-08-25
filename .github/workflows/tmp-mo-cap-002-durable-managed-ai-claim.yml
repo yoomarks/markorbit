@@ -43,7 +43,6 @@ jobs:
           services/capability-engine/tests/managed-ai-execution-claim-postgres.test.ts
           services/capability-engine/package.json
           infrastructure/persistence/migration-owners.json
-          infrastructure/persistence/migrations/0064_capability_engine_managed_ai_execution_claims.sql
       - run: pnpm validate:persistence-boundaries
       - run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
       - run: pnpm --filter @markorbit/capability-engine lint
