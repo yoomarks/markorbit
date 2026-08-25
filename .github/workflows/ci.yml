@@ -193,6 +193,7 @@ jobs:
             create_db markorbit_capability_observation_test
             create_db markorbit_capability_reflection_test
             create_db markorbit_capability_profile_test
+            create_db markorbit_capability_managed_ai_test
           fi
           if [ "$MARKREG_SCOPE" = "true" ]; then
             create_db markorbit_markreg_test
@@ -243,6 +244,7 @@ jobs:
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_observation_test pnpm --filter @markorbit/capability-engine test:observation-ledger:postgres
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_reflection_test pnpm --filter @markorbit/capability-engine test:reflection-candidates:postgres
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_profile_test pnpm --filter @markorbit/capability-engine test:reflection-disposition-profile:postgres
+          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_managed_ai_test pnpm --filter @markorbit/capability-engine test:managed-ai-claim:postgres
       - name: MarkReg integration
         if: github.event_name == 'push' || needs.detect.outputs.markreg == 'true'
         run: |
