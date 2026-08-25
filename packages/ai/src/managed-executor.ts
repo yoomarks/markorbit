@@ -276,6 +276,8 @@ function managedErrorCode(
       return 'INVALID_REQUEST';
     case 'AI_PROVIDER_PEAK_PRICING_WINDOW':
       return 'POLICY_BLOCKED';
+    case 'AI_PROVIDER_RATE_LIMITED':
+      return 'RATE_LIMITED';
     case 'AI_PROVIDER_REJECTED':
       return 'PROVIDER_REJECTED';
     case 'AI_PROVIDER_RESPONSE_INVALID':

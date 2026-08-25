@@ -293,7 +293,16 @@ export class DeepSeekProviderAdapterV1 implements AiProviderAdapterV1 {
       usage: { latencyMs }
     };
 
-    if (response.status === 429 || response.status >= 500) {
+    if (response.status === 429) {
+      return failure(
+        'DELIVERED_CONFIRMED',
+        'RETRY_ALLOWED',
+        'AI_PROVIDER_RATE_LIMITED',
+        'DeepSeek rate limited the governed request.',
+        responseExtras
+      );
+    }
+    if (response.status >= 500) {
       return failure(
         'DELIVERED_CONFIRMED',
         'RETRY_ALLOWED',
