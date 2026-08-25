@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ROLE_PERMISSION_MATRIX, type FormalMatter, type WorkspacePrincipal } from '@markorbit/contracts';
+import {
+  ROLE_PERMISSION_MATRIX,
+  type FormalMatter,
+  type WorkspacePrincipal
+} from '@markorbit/contracts';
 import { InMemoryFormalMatterRepository } from '../src/formal-matter.js';
 import {
   HttpKnowledgeCaseIntakeClient,
@@ -98,10 +102,11 @@ async function seededMatterRepository() {
 class RecordingIntake implements KnowledgeCaseIntakeClient {
   readonly candidates: KnowledgeCaseCandidateV1[] = [];
   constructor(private readonly fail = false) {}
-  async accept(candidate: KnowledgeCaseCandidateV1) {
+  accept(candidate: KnowledgeCaseCandidateV1, principal: WorkspacePrincipal) {
+    void principal;
     this.candidates.push(structuredClone(candidate));
-    if (this.fail) throw new Error('connection reset after request dispatch');
-    return receipt(candidate);
+    if (this.fail) return Promise.reject(new Error('connection reset after request dispatch'));
+    return Promise.resolve(receipt(candidate));
   }
 }
 
@@ -243,14 +248,14 @@ describe('K-CASE-002 MarkReg Knowledge Case promotion', () => {
     expect(intake.candidates).toHaveLength(1);
   });
 
-  it('uses only the current Knowledge intake wire shape and validates its 202 receipt', async () => {
-    const seen: { url?: string; init?: RequestInit } = {};
+  it('uses authenticated Knowledge intake + collection with the same Workspace Principal', async () => {
+    const seen: Array<{ url: string; init: RequestInit | undefined }> = [];
     const candidate: KnowledgeCaseCandidateV1 = {
       protocolVersion: '1.0',
       objectType: 'CASE_CANDIDATE',
       candidateId: `case-candidate_${'b'.repeat(64)}`,
       sourceSystem: 'MARKREG',
-      sourceMatterId: 'formal-matter_case001',
+      sourceMatterId: 'formal-matter_a',
       sourceMatterVersion: 1,
       sourceSnapshotSha256: 'a'.repeat(64),
       sourceRetrievalRef: `markreg:case-source:v1:${'b'.repeat(64)}`,
@@ -259,23 +264,46 @@ describe('K-CASE-002 MarkReg Knowledge Case promotion', () => {
       accessScope: { sourceWorkspaceId: workspaceId, classification: 'INTERNAL' },
       idempotencyKey: 'promotion-key-http'
     };
-    const fakeFetch: typeof fetch = async (input, init) => {
-      seen.url = String(input);
-      seen.init = init;
-      return new Response(JSON.stringify(receipt(candidate)), {
-        status: 202,
-        headers: { 'content-type': 'application/json' }
-      });
+    const fakeFetch: typeof fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      seen.push({ url, init });
+      if (seen.length === 1)
+        return Promise.resolve(
+          new Response(JSON.stringify(receipt(candidate)), {
+            status: 202,
+            headers: { 'content-type': 'application/json' }
+          })
+        );
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            candidateId: candidate.candidateId,
+            collection: { collectionRef: 'case-evidence:test' }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
     };
-    const client = new HttpKnowledgeCaseIntakeClient('http://knowledge.internal/', fakeFetch);
+    const internalSecret = 'k'.repeat(32);
+    const operator = principal(['matter:read', 'matter:promote-knowledge']);
+    const client = new HttpKnowledgeCaseIntakeClient(
+      'http://knowledge.internal/',
+      internalSecret,
+      fakeFetch
+    );
 
-    await expect(client.accept(candidate)).resolves.toEqual(receipt(candidate));
-    expect(seen.url).toBe('http://knowledge.internal/api/case-candidates');
-    expect(seen.init?.method).toBe('POST');
-    expect(seen.init?.body).toBe(JSON.stringify(candidate));
-    expect(seen.init?.headers).toEqual({
-      accept: 'application/json',
-      'content-type': 'application/json'
-    });
+    await expect(client.accept(candidate, operator)).resolves.toEqual(receipt(candidate));
+    expect(seen.map((entry) => entry.url)).toEqual([
+      'http://knowledge.internal/api/internal/case-candidates',
+      `http://knowledge.internal/api/internal/case-candidates/${candidate.candidateId}/collect`
+    ]);
+    const intakeHeaders = seen[0]!.init?.headers as Record<string, string>;
+    const collectionHeaders = seen[1]!.init?.headers as Record<string, string>;
+    expect(intakeHeaders['x-markorbit-internal-authorization']).toBe(internalSecret);
+    expect(intakeHeaders['x-markorbit-principal']).toBeTruthy();
+    expect(intakeHeaders['x-markorbit-workspace-id']).toBe(workspaceId);
+    expect(collectionHeaders['x-markorbit-internal-authorization']).toBe(internalSecret);
+    expect(collectionHeaders['x-markorbit-principal']).toBe(intakeHeaders['x-markorbit-principal']);
+    expect(seen[0]!.init?.body).toBe(JSON.stringify(candidate));
   });
 });

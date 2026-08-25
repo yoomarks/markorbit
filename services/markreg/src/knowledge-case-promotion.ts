@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   AuthenticationError,
+  encodeInternalWorkspacePrincipal,
   parseInternalWorkspacePrincipal,
   type FormalMatter,
   type WorkspacePrincipal
@@ -8,11 +9,7 @@ import {
 import { HttpError, json, type JsonRoute } from '@markorbit/service-kit';
 import type { FormalMatterRepository } from './formal-matter.js';
 
-export const KNOWLEDGE_CASE_CLASSIFICATIONS = [
-  'INTERNAL',
-  'CONFIDENTIAL',
-  'RESTRICTED'
-] as const;
+export const KNOWLEDGE_CASE_CLASSIFICATIONS = ['INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'] as const;
 export type KnowledgeCaseClassification = (typeof KNOWLEDGE_CASE_CLASSIFICATIONS)[number];
 
 export type KnowledgeCaseCandidateV1 = {
@@ -58,10 +55,7 @@ export type KnowledgeCaseIntakeReceiptV1 = {
 };
 
 export type KnowledgeCasePromotionState =
-  | 'CLAIMED'
-  | 'DISPATCHING'
-  | 'COMPLETED'
-  | 'RECONCILIATION_REQUIRED';
+  'CLAIMED' | 'DISPATCHING' | 'COMPLETED' | 'RECONCILIATION_REQUIRED';
 
 export type KnowledgeCasePromotionRecord = {
   producerPromotionRef: string;
@@ -102,7 +96,10 @@ export interface KnowledgeCasePromotionRepository {
 }
 
 export interface KnowledgeCaseIntakeClient {
-  accept(candidate: KnowledgeCaseCandidateV1): Promise<KnowledgeCaseIntakeReceiptV1>;
+  accept(
+    candidate: KnowledgeCaseCandidateV1,
+    principal: WorkspacePrincipal
+  ): Promise<KnowledgeCaseIntakeReceiptV1>;
 }
 
 export type KnowledgeCasePromotionErrorCode =
@@ -230,36 +227,6 @@ function assertPrincipal(principal: WorkspacePrincipal, workspaceId: string): vo
     );
 }
 
-function isCandidate(value: unknown): value is KnowledgeCaseCandidateV1 {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const item = value as Record<string, unknown>;
-  const access = item.accessScope as Record<string, unknown> | undefined;
-  return (
-    item.protocolVersion === '1.0' &&
-    item.objectType === 'CASE_CANDIDATE' &&
-    typeof item.candidateId === 'string' &&
-    /^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/u.test(item.candidateId) &&
-    item.sourceSystem === 'MARKREG' &&
-    typeof item.sourceMatterId === 'string' &&
-    /^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$/u.test(item.sourceMatterId) &&
-    typeof item.sourceMatterVersion === 'number' &&
-    Number.isSafeInteger(item.sourceMatterVersion) &&
-    item.sourceMatterVersion >= 1 &&
-    typeof item.sourceSnapshotSha256 === 'string' &&
-    /^[a-f0-9]{64}$/u.test(item.sourceSnapshotSha256) &&
-    nonEmpty(item.sourceRetrievalRef) &&
-    nonEmpty(item.promotedBy) &&
-    timestamp(item.promotedAt) &&
-    (item.operatorCaseValueNote === undefined || nonEmpty(item.operatorCaseValueNote)) &&
-    access !== undefined &&
-    nonEmpty(access.sourceWorkspaceId) &&
-    KNOWLEDGE_CASE_CLASSIFICATIONS.includes(access.classification as KnowledgeCaseClassification) &&
-    nonEmpty(item.idempotencyKey) &&
-    String(item.idempotencyKey).length >= 8 &&
-    String(item.idempotencyKey).length <= 200
-  );
-}
-
 function isIntake(value: unknown): value is KnowledgeCaseIntakeV1 {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const item = value as Record<string, unknown>;
@@ -278,12 +245,12 @@ function isIntake(value: unknown): value is KnowledgeCaseIntakeV1 {
     const unavailable = item.sourceUnavailable as Record<string, unknown> | undefined;
     return Boolean(
       unavailable &&
-        nonEmpty(unavailable.code) &&
-        nonEmpty(unavailable.message) &&
-        timestamp(unavailable.observedAt) &&
-        unavailable.retryable === true &&
-        item.collectionRef === undefined &&
-        item.collectedAt === undefined
+      nonEmpty(unavailable.code) &&
+      nonEmpty(unavailable.message) &&
+      timestamp(unavailable.observedAt) &&
+      unavailable.retryable === true &&
+      item.collectionRef === undefined &&
+      item.collectedAt === undefined
     );
   }
   if (item.collectionState === 'COLLECTED')
@@ -299,29 +266,64 @@ function isIntake(value: unknown): value is KnowledgeCaseIntakeV1 {
   );
 }
 
-export function isKnowledgeCaseIntakeReceiptV1(value: unknown): value is KnowledgeCaseIntakeReceiptV1 {
+export function isKnowledgeCaseIntakeReceiptV1(
+  value: unknown
+): value is KnowledgeCaseIntakeReceiptV1 {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const item = value as Record<string, unknown>;
-  return isCandidate(item.candidate) && isIntake(item.intake);
+  return (
+    item.candidate !== null &&
+    typeof item.candidate === 'object' &&
+    !Array.isArray(item.candidate) &&
+    isIntake(item.intake)
+  );
 }
 
 export class HttpKnowledgeCaseIntakeClient implements KnowledgeCaseIntakeClient {
-  private readonly endpoint: string;
+  private readonly baseUrl: string;
   constructor(
     baseUrl: string,
+    private readonly internalServiceSecret: string,
     private readonly fetchImpl: typeof fetch = fetch
   ) {
-    const trimmed = baseUrl.trim().replace(/\/+$/u, '');
-    if (!/^https?:\/\//u.test(trimmed)) throw new TypeError('Knowledge base URL must use HTTP(S).');
-    this.endpoint = `${trimmed}/api/case-candidates`;
+    let parsed: URL;
+    try {
+      parsed = new URL(baseUrl.trim());
+    } catch {
+      throw new TypeError('Knowledge base URL must be a complete HTTP(S) URL.');
+    }
+    if (
+      !['http:', 'https:'].includes(parsed.protocol) ||
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash
+    )
+      throw new TypeError(
+        'Knowledge base URL must use HTTP(S) without credentials, query, or fragment.'
+      );
+    if (Buffer.byteLength(internalServiceSecret, 'utf8') < 32)
+      throw new TypeError('Knowledge internal service secret must be at least 32 bytes.');
+    parsed.pathname = parsed.pathname.replace(/\/+$/u, '') || '/';
+    this.baseUrl = parsed.toString().replace(/\/$/u, '');
   }
 
-  async accept(candidate: KnowledgeCaseCandidateV1): Promise<KnowledgeCaseIntakeReceiptV1> {
+  async accept(
+    candidate: KnowledgeCaseCandidateV1,
+    principal: WorkspacePrincipal
+  ): Promise<KnowledgeCaseIntakeReceiptV1> {
+    const principalHeader = encodeInternalWorkspacePrincipal(principal);
+    const commonHeaders = {
+      accept: 'application/json',
+      'x-markorbit-internal-authorization': this.internalServiceSecret,
+      'x-markorbit-principal': principalHeader,
+      'x-markorbit-workspace-id': principal.workspaceId
+    };
     let response: Response;
     try {
-      response = await this.fetchImpl(this.endpoint, {
+      response = await this.fetchImpl(`${this.baseUrl}/api/internal/case-candidates`, {
         method: 'POST',
-        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        headers: { ...commonHeaders, 'content-type': 'application/json' },
         body: JSON.stringify(candidate)
       });
     } catch (cause) {
@@ -353,8 +355,43 @@ export class HttpKnowledgeCaseIntakeClient implements KnowledgeCaseIntakeClient 
       body.intake.candidateId !== candidate.candidateId ||
       body.intake.sourceIdentitySha256 !== expectedSourceIdentity
     )
-      throw new Error('Knowledge Case intake receipt source identity does not match the candidate.');
-    return clone(body);
+      throw new Error(
+        'Knowledge Case intake receipt source identity does not match the candidate.'
+      );
+
+    let collectionResponse: Response;
+    try {
+      collectionResponse = await this.fetchImpl(
+        `${this.baseUrl}/api/internal/case-candidates/${encodeURIComponent(candidate.candidateId)}/collect`,
+        { method: 'POST', headers: commonHeaders }
+      );
+    } catch (cause) {
+      throw new Error('Knowledge Case evidence collection delivery is uncertain.', {
+        cause: cause instanceof Error ? cause : undefined
+      });
+    }
+    if (collectionResponse.status !== 200)
+      throw new Error(
+        `Knowledge Case evidence collection returned unexpected HTTP ${collectionResponse.status}.`
+      );
+    let collectionBody: unknown;
+    try {
+      collectionBody = await collectionResponse.json();
+    } catch (cause) {
+      throw new Error('Knowledge Case evidence collection returned invalid JSON.', {
+        cause: cause instanceof Error ? cause : undefined
+      });
+    }
+    if (
+      !collectionBody ||
+      typeof collectionBody !== 'object' ||
+      Array.isArray(collectionBody) ||
+      (collectionBody as Record<string, unknown>).candidateId !== candidate.candidateId ||
+      !(collectionBody as Record<string, unknown>).collection ||
+      typeof (collectionBody as Record<string, unknown>).collection !== 'object'
+    )
+      throw new Error('Knowledge Case evidence collection returned an invalid response.');
+    return structuredClone(body);
   }
 }
 
@@ -423,7 +460,9 @@ export class InMemoryKnowledgeCasePromotionRepository implements KnowledgeCasePr
         'PROMOTION_IN_PROGRESS',
         'Knowledge Case promotion is not claimable for dispatch.'
       );
-    return Promise.resolve(this.save(ref, { ...record, state: 'DISPATCHING', dispatchedAt: at, updatedAt: at }));
+    return Promise.resolve(
+      this.save(ref, { ...record, state: 'DISPATCHING', dispatchedAt: at, updatedAt: at })
+    );
   }
 
   markCompleted(
@@ -438,7 +477,13 @@ export class InMemoryKnowledgeCasePromotionRepository implements KnowledgeCasePr
         'Knowledge Case promotion is not dispatching.'
       );
     return Promise.resolve(
-      this.save(ref, { ...record, state: 'COMPLETED', receipt: clone(receipt), completedAt: at, updatedAt: at })
+      this.save(ref, {
+        ...record,
+        state: 'COMPLETED',
+        receipt: clone(receipt),
+        completedAt: at,
+        updatedAt: at
+      })
     );
   }
 
@@ -536,7 +581,9 @@ export class KnowledgeCasePromotionService {
       sourceRetrievalRef,
       promotedBy: principal.userId,
       promotedAt,
-      ...(input.operatorCaseValueNote ? { operatorCaseValueNote: input.operatorCaseValueNote } : {}),
+      ...(input.operatorCaseValueNote
+        ? { operatorCaseValueNote: input.operatorCaseValueNote }
+        : {}),
       accessScope: {
         sourceWorkspaceId: matter.workspaceId,
         classification: input.classification
@@ -562,9 +609,10 @@ export class KnowledgeCasePromotionService {
     await this.promotions.markDispatching(producerPromotionRef, dispatchAt);
     let receipt: KnowledgeCaseIntakeReceiptV1;
     try {
-      receipt = await this.intake.accept(candidate);
+      receipt = await this.intake.accept(candidate, principal);
     } catch (cause) {
-      const reason = cause instanceof Error ? cause.message : 'Knowledge Case intake delivery is uncertain.';
+      const reason =
+        cause instanceof Error ? cause.message : 'Knowledge Case intake delivery is uncertain.';
       try {
         await this.promotions.markReconciliationRequired(producerPromotionRef, reason, this.now());
       } catch (persistenceCause) {
@@ -582,7 +630,11 @@ export class KnowledgeCasePromotionService {
         { cause: cause instanceof Error ? cause : undefined }
       );
     }
-    const completed = await this.promotions.markCompleted(producerPromotionRef, receipt, this.now());
+    const completed = await this.promotions.markCompleted(
+      producerPromotionRef,
+      receipt,
+      this.now()
+    );
     return this.result(completed, false);
   }
 
@@ -652,7 +704,9 @@ export function createKnowledgeCasePromotionRoutes(options: {
   now?: () => string;
 }): readonly JsonRoute[] {
   if (Buffer.byteLength(options.internalServiceSecret, 'utf8') < 32)
-    throw new TypeError('Knowledge Case promotion internal service secret must be at least 32 bytes.');
+    throw new TypeError(
+      'Knowledge Case promotion internal service secret must be at least 32 bytes.'
+    );
   const service = new KnowledgeCasePromotionService(
     options.formalMatterRepository,
     options.promotionRepository,
