@@ -22,40 +22,46 @@ function adapter(
   return {
     implementationKey: 'ai:test-provider:v1',
     provider: 'TEST_PROVIDER',
-    execute: vi.fn(async () => ({
-      kind: 'SUCCESS' as const,
-      provider: 'TEST_PROVIDER',
-      model: 'test-model-v1',
-      deliveryState: 'PROVIDER_COMPLETED' as const,
-      retryDisposition: 'RETRY_FORBIDDEN' as const,
-      exactResponse: new Uint8Array([1, 2, 3]),
-      providerRequestId: 'provider_request_test',
-      structuredOutput: { ok: true },
-      usage: { inputUnits: 10, outputUnits: 5, latencyMs: 100 },
-    })),
+    execute: vi.fn(() =>
+      Promise.resolve({
+        kind: 'SUCCESS' as const,
+        provider: 'TEST_PROVIDER',
+        model: 'test-model-v1',
+        deliveryState: 'PROVIDER_COMPLETED' as const,
+        retryDisposition: 'RETRY_FORBIDDEN' as const,
+        exactResponse: new Uint8Array([1, 2, 3]),
+        providerRequestId: 'provider_request_test',
+        structuredOutput: { ok: true },
+        usage: { inputUnits: 10, outputUnits: 5, latencyMs: 100 },
+      }),
+    ),
     ...overrides,
   };
 }
 
 describe('AI Gateway provider boundary', () => {
   it('routes only through the trusted implementation key', async () => {
-    const execute = vi.fn(async () => ({
-      kind: 'SUCCESS' as const,
-      provider: 'TEST_PROVIDER',
-      model: 'test-model-v1',
-      deliveryState: 'PROVIDER_COMPLETED' as const,
-      retryDisposition: 'RETRY_FORBIDDEN' as const,
-      exactResponse: new Uint8Array([4, 5, 6]),
-    }));
+    const execute = vi.fn(() =>
+      Promise.resolve({
+        kind: 'SUCCESS' as const,
+        provider: 'TEST_PROVIDER',
+        model: 'test-model-v1',
+        deliveryState: 'PROVIDER_COMPLETED' as const,
+        retryDisposition: 'RETRY_FORBIDDEN' as const,
+        exactResponse: new Uint8Array([4, 5, 6]),
+      }),
+    );
     const registry = new AiProviderRegistryV1([adapter({ execute })]);
 
     const result = await registry.execute(request());
 
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(execute).toHaveBeenCalledWith(expect.objectContaining({
-      implementationKey: 'ai:test-provider:v1',
-      correlationId: 'corr_test',
-    }));
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        implementationKey: 'ai:test-provider:v1',
+        correlationId: 'corr_test',
+      }),
+    );
     expect(result.kind).toBe('SUCCESS');
     if (result.kind === 'SUCCESS') {
       expect([...result.exactResponse]).toEqual([4, 5, 6]);
@@ -103,13 +109,15 @@ describe('AI Gateway provider boundary', () => {
   it('forces delivery uncertainty to reconciliation-required', async () => {
     const registry = new AiProviderRegistryV1([
       adapter({
-        execute: vi.fn(async () => ({
-          kind: 'FAILURE' as const,
-          provider: 'TEST_PROVIDER',
-          deliveryState: 'DELIVERY_UNCERTAIN' as const,
-          retryDisposition: 'RETRY_ALLOWED' as const,
-          error: { code: 'TIMEOUT', message: 'Delivery cannot be proven.' },
-        })),
+        execute: vi.fn(() =>
+          Promise.resolve({
+            kind: 'FAILURE' as const,
+            provider: 'TEST_PROVIDER',
+            deliveryState: 'DELIVERY_UNCERTAIN' as const,
+            retryDisposition: 'RETRY_ALLOWED' as const,
+            error: { code: 'TIMEOUT', message: 'Delivery cannot be proven.' },
+          }),
+        ),
       }),
     ]);
 
@@ -121,14 +129,16 @@ describe('AI Gateway provider boundary', () => {
   it('rejects provider identity drift from an adapter result', async () => {
     const registry = new AiProviderRegistryV1([
       adapter({
-        execute: vi.fn(async () => ({
-          kind: 'SUCCESS' as const,
-          provider: 'OTHER_PROVIDER',
-          model: 'other-model',
-          deliveryState: 'PROVIDER_COMPLETED' as const,
-          retryDisposition: 'RETRY_FORBIDDEN' as const,
-          exactResponse: new Uint8Array([1]),
-        })),
+        execute: vi.fn(() =>
+          Promise.resolve({
+            kind: 'SUCCESS' as const,
+            provider: 'OTHER_PROVIDER',
+            model: 'other-model',
+            deliveryState: 'PROVIDER_COMPLETED' as const,
+            retryDisposition: 'RETRY_FORBIDDEN' as const,
+            exactResponse: new Uint8Array([1]),
+          }),
+        ),
       }),
     ]);
 
