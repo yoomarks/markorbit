@@ -11,6 +11,7 @@ import { createCapabilityCenterRoutes } from './capability-center-http.js';
 import { createCapabilityObservationRoutes } from './capability-observation-http.js';
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
 import type { ManagedAiExecutionClaimStoreV1 } from './managed-ai-execution-claim.js';
+import type { ManagedAiExactOutputStoreV1 } from './managed-ai-exact-output.js';
 import {
   createManagedAiExecutionRoutesV1,
   type ManagedAiExecutionAuthorityV1
@@ -27,6 +28,7 @@ export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
 export * from './managed-ai-execution-claim.js';
+export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
@@ -67,6 +69,7 @@ export interface CapabilityEngineOptions {
   reflectionDispositionProfiles?: PostgresReflectionDispositionProfileService;
   managedAiExecutor?: ManagedAiExecutionAuthorityV1;
   managedAiClaimStore?: ManagedAiExecutionClaimStoreV1;
+  managedAiExactOutputStore?: ManagedAiExactOutputStoreV1;
   internalServiceSecret?: string;
 }
 export function createRuntime(options: CapabilityEngineOptions = {}) {
@@ -88,6 +91,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('managedAiExecutor requires internalServiceSecret.');
   if (options.managedAiClaimStore && !options.managedAiExecutor)
     throw new Error('managedAiClaimStore requires managedAiExecutor.');
+  if (options.managedAiExactOutputStore && !options.managedAiExecutor)
+    throw new Error('managedAiExactOutputStore requires managedAiExecutor.');
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
@@ -135,7 +140,10 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret,
           ...(options.managedAiClaimStore === undefined
             ? {}
-            : { claimStore: options.managedAiClaimStore })
+            : { claimStore: options.managedAiClaimStore }),
+          ...(options.managedAiExactOutputStore === undefined
+            ? {}
+            : { exactOutputStore: options.managedAiExactOutputStore })
         })
       : [];
   return createServiceRuntime(

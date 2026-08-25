@@ -13,6 +13,7 @@
     "test:reflection-candidates:postgres": "vitest run tests/private-reflection-candidate-postgres.test.ts",
     "test:reflection-disposition-profile:postgres": "vitest run tests/reflection-disposition-profile-postgres.test.ts",
     "test:managed-ai-claim:postgres": "vitest run tests/managed-ai-execution-claim-postgres.test.ts",
+    "test:managed-ai-exact-output:postgres": "vitest run tests/managed-ai-exact-output-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"
