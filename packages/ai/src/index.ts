@@ -253,4 +253,5 @@ export class AiProviderRegistryV1 {
 
 export * from './deepseek.js';
 export * from './http-transport.js';
+export * from './managed-executor.js';
 export * from './provider-input.js';
