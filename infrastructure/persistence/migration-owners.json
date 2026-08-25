@@ -42,7 +42,8 @@
     "capability_engine_runtime_registry": "@markorbit/capability-engine",
     "capability_engine_observation_ledger": "@markorbit/capability-engine",
     "capability_engine_reflection_candidates": "@markorbit/capability-engine",
-    "capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine"
+    "capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine",
+    "capability_engine_managed_ai_execution_claims": "@markorbit/capability-engine"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -90,6 +91,7 @@
     "0060_lite_trademark_service_work_packages": "@markorbit/lite-service",
     "0061_execution_trademark_service_sessions": "@markorbit/execution-service",
     "0062_execution_trademark_service_sandbox_policy": "@markorbit/execution-service",
-    "0063_core_knowledge_v2_delivery_acceptance": "@markorbit/core-service"
+    "0063_core_knowledge_v2_delivery_acceptance": "@markorbit/core-service",
+    "0064_capability_engine_managed_ai_execution_claims": "@markorbit/capability-engine"
   }
 }

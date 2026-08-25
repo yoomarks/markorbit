@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   ManagedAiContractError,
   parseManagedAiExecutionInputV1,
@@ -13,6 +13,11 @@ import {
   type JsonResult,
   type JsonRoute
 } from '@markorbit/service-kit';
+import {
+  InMemoryManagedAiExecutionClaimStoreV1,
+  type ManagedAiExecutionClaimIdentityV1,
+  type ManagedAiExecutionClaimStoreV1
+} from './managed-ai-execution-claim.js';
 
 export interface ManagedAiExecutionContextV1 {
   executionId: string;
@@ -26,45 +31,16 @@ export interface ManagedAiExecutionAuthorityV1 {
   ): Promise<unknown>;
 }
 
-export interface ManagedAiExecutionReplayEntryV1 {
-  fingerprintSha256: string;
-  outcome: Readonly<ManagedAiExecutionOutcomeV1>;
-}
-
-export interface ManagedAiExecutionReplayRepositoryV1 {
-  find(idempotencyKey: string): Promise<ManagedAiExecutionReplayEntryV1 | undefined>;
-  save(idempotencyKey: string, entry: Readonly<ManagedAiExecutionReplayEntryV1>): Promise<void>;
-}
-
-export class InMemoryManagedAiExecutionReplayRepositoryV1 implements ManagedAiExecutionReplayRepositoryV1 {
-  private readonly entries = new Map<string, ManagedAiExecutionReplayEntryV1>();
-
-  find(idempotencyKey: string): Promise<ManagedAiExecutionReplayEntryV1 | undefined> {
-    const entry = this.entries.get(idempotencyKey);
-    return Promise.resolve(
-      entry
-        ? {
-            fingerprintSha256: entry.fingerprintSha256,
-            outcome: structuredClone(entry.outcome)
-          }
-        : undefined
-    );
-  }
-
-  save(idempotencyKey: string, entry: Readonly<ManagedAiExecutionReplayEntryV1>): Promise<void> {
-    this.entries.set(idempotencyKey, {
-      fingerprintSha256: entry.fingerprintSha256,
-      outcome: structuredClone(entry.outcome)
-    });
-    return Promise.resolve();
-  }
-}
-
 export interface ManagedAiExecutionRouteOptionsV1 {
   internalServiceSecret: string;
   executor: ManagedAiExecutionAuthorityV1;
-  replayRepository?: ManagedAiExecutionReplayRepositoryV1;
+  claimStore?: ManagedAiExecutionClaimStoreV1;
+  now?: () => string;
+  ownerTokenFactory?: () => string;
+  claimLeaseMs?: number;
 }
+
+const DEFAULT_CLAIM_LEASE_MS = 10 * 60 * 1000;
 
 function trusted(configured: string, supplied: string | undefined): boolean {
   if (Buffer.byteLength(configured) < 32)
@@ -157,11 +133,32 @@ function conflict(message: string): never {
   throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', message);
 }
 
+function claimStoreUnavailable(message: string, retryable: boolean): never {
+  throw new HttpError(503, 'MANAGED_AI_CLAIM_STORE_UNAVAILABLE', message, retryable);
+}
+
+async function bestEffortReconciliation(
+  claimStore: ManagedAiExecutionClaimStoreV1,
+  identity: Readonly<ManagedAiExecutionClaimIdentityV1>,
+  reason: string
+): Promise<void> {
+  try {
+    await claimStore.markReconciliationRequired({ ...identity, reason });
+  } catch {
+    // A failed reconciliation write must never trigger another provider execution.
+    // The durable DISPATCHING state, when available, remains fail-closed on lease expiry.
+  }
+}
+
 export function createManagedAiExecutionRoutesV1(
   options: ManagedAiExecutionRouteOptionsV1
 ): readonly JsonRoute[] {
-  const replayRepository =
-    options.replayRepository ?? new InMemoryManagedAiExecutionReplayRepositoryV1();
+  const claimStore = options.claimStore ?? new InMemoryManagedAiExecutionClaimStoreV1();
+  const now = options.now ?? (() => new Date().toISOString());
+  const ownerTokenFactory = options.ownerTokenFactory ?? randomUUID;
+  const claimLeaseMs = options.claimLeaseMs ?? DEFAULT_CLAIM_LEASE_MS;
+  if (!Number.isInteger(claimLeaseMs) || claimLeaseMs < 1_000 || claimLeaseMs > 60 * 60 * 1000)
+    throw new Error('Managed AI claimLeaseMs must be between 1000 and 3600000 milliseconds.');
   const inFlight = new Map<string, { fingerprintSha256: string; result: Promise<JsonResult> }>();
 
   return [
@@ -184,16 +181,6 @@ export function createManagedAiExecutionRoutesV1(
         );
         const input = parseInput(request.body);
         const fingerprintSha256 = sha256(canonicalJson({ correlationId, input }));
-
-        const existing = await replayRepository.find(idempotencyKey);
-        if (existing) {
-          if (existing.fingerprintSha256 !== fingerprintSha256)
-            return conflict(
-              'Idempotency key was already used with a different Managed AI request.'
-            );
-          return json(200, existing.outcome);
-        }
-
         const pending = inFlight.get(idempotencyKey);
         if (pending) {
           if (pending.fingerprintSha256 !== fingerprintSha256)
@@ -204,21 +191,105 @@ export function createManagedAiExecutionRoutesV1(
         }
 
         const executionId = `maiexec_${sha256(idempotencyKey).slice(0, 32)}`;
+        const ownerToken = ownerTokenFactory();
         const result = (async (): Promise<JsonResult> => {
-          let rawOutcome: unknown;
+          const claimedAt = now();
+          const leaseExpiresAt = new Date(Date.parse(claimedAt) + claimLeaseMs).toISOString();
+          let claim;
           try {
-            rawOutcome = await options.executor.execute(input, { executionId, correlationId });
-          } catch (error) {
-            if (error instanceof HttpError) throw error;
-            throw new HttpError(
-              503,
-              'MANAGED_AI_EXECUTOR_UNAVAILABLE',
-              'Managed AI executor is unavailable.',
+            claim = await claimStore.claim({
+              idempotencyKey,
+              fingerprintSha256,
+              executionId,
+              correlationId,
+              ownerToken,
+              now: claimedAt,
+              leaseExpiresAt
+            });
+          } catch {
+            return claimStoreUnavailable(
+              'Managed AI execution could not obtain its durable idempotency claim.',
               true
             );
           }
-          const outcome = parseOutcome(rawOutcome);
-          await replayRepository.save(idempotencyKey, { fingerprintSha256, outcome });
+
+          if (claim.kind === 'CONFLICT')
+            return conflict(
+              'Idempotency key was already used with a different Managed AI request.'
+            );
+          if (claim.kind === 'REPLAY') return json(200, claim.outcome);
+          if (claim.kind === 'IN_PROGRESS')
+            throw new HttpError(
+              409,
+              'MANAGED_AI_EXECUTION_IN_PROGRESS',
+              'The same Managed AI execution is already owned by another runtime.',
+              true
+            );
+          if (claim.kind === 'RECONCILIATION_REQUIRED')
+            throw new HttpError(
+              409,
+              'MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED',
+              'The prior Managed AI dispatch may have reached the provider and must be reconciled before another attempt.',
+              false
+            );
+
+          const identity = {
+            idempotencyKey,
+            fingerprintSha256,
+            ownerToken,
+            now: now()
+          } as const;
+          try {
+            await claimStore.markDispatching(identity);
+          } catch {
+            return claimStoreUnavailable(
+              'Managed AI execution could not durably mark provider dispatch before executor access.',
+              true
+            );
+          }
+
+          let rawOutcome: unknown;
+          try {
+            rawOutcome = await options.executor.execute(input, { executionId, correlationId });
+          } catch {
+            await bestEffortReconciliation(
+              claimStore,
+              { ...identity, now: now() },
+              'EXECUTOR_THROW_AFTER_DISPATCH_MARK'
+            );
+            throw new HttpError(
+              503,
+              'MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED',
+              'Managed AI executor failed after dispatch became possible; automatic replay is blocked.',
+              false
+            );
+          }
+
+          let outcome: ManagedAiExecutionOutcomeV1;
+          try {
+            outcome = parseOutcome(rawOutcome);
+          } catch (error) {
+            await bestEffortReconciliation(
+              claimStore,
+              { ...identity, now: now() },
+              'INVALID_GOVERNED_OUTCOME_AFTER_DISPATCH'
+            );
+            throw error;
+          }
+
+          try {
+            await claimStore.complete({ ...identity, now: now(), outcome });
+          } catch {
+            await bestEffortReconciliation(
+              claimStore,
+              { ...identity, now: now() },
+              'OUTCOME_PERSISTENCE_UNCERTAIN_AFTER_PROVIDER_RESULT'
+            );
+            return claimStoreUnavailable(
+              'Managed AI provider result could not be durably committed; automatic replay is blocked.',
+              false
+            );
+          }
           return json(200, outcome);
         })();
         inFlight.set(idempotencyKey, { fingerprintSha256, result });
