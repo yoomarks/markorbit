@@ -2,10 +2,16 @@ export const packageName = '@markorbit/ai' as const;
 export const AI_PROVIDER_ADAPTER_PROTOCOL_VERSION = 1 as const;
 
 export type AiProviderDeliveryState =
-  'NOT_DELIVERED' | 'DELIVERY_UNCERTAIN' | 'PROVIDER_REJECTED' | 'PROVIDER_COMPLETED';
+  | 'NOT_DELIVERED'
+  | 'DELIVERED_CONFIRMED'
+  | 'DELIVERY_UNCERTAIN'
+  | 'PROVIDER_REJECTED'
+  | 'PROVIDER_COMPLETED';
 
 export type AiProviderRetryDisposition =
-  'RETRY_ALLOWED' | 'RETRY_FORBIDDEN' | 'RECONCILIATION_REQUIRED';
+  | 'RETRY_ALLOWED'
+  | 'RETRY_FORBIDDEN'
+  | 'RECONCILIATION_REQUIRED';
 
 export interface AiProviderUsageV1 {
   inputUnits?: number;
