@@ -85,17 +85,14 @@ describe('Managed Communication contract V1', () => {
     expect(parseManagedCommunicationMessageV1(message)).toEqual(message);
   });
 
-  it(
-    'requires exactly one semantic sender without promoting message content into business truth',
-    () => {
-      expect(() =>
-        parseManagedCommunicationMessageV1({
-          ...message,
-          participants: [{ role: 'TO', address: 'workspace@example.test' }]
-        })
-      ).toThrow(/exactly one SENDER/u);
-    }
-  );
+  it('requires exactly one semantic sender without promoting message content into business truth', () => {
+    expect(() =>
+      parseManagedCommunicationMessageV1({
+        ...message,
+        participants: [{ role: 'TO', address: 'workspace@example.test' }]
+      })
+    ).toThrow(/exactly one SENDER/u);
+  });
 
   it('supports outbound-normalized message observation without authorizing external send', () => {
     const outbound = parseManagedCommunicationMessageV1({
