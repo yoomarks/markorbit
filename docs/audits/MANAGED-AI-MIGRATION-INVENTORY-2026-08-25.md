@@ -1,0 +1,115 @@
+# Managed AI Migration Inventory — 2026-08-25
+
+## Scope and exact baselines
+
+This is the Phase A inventory for `MO-CAP-002-WP06` / `K-CAP-AI-001`.
+
+- MarkOrbit baseline: `ff7e19ce9b7a3f7ad8d422ba9cac6bb01c5d055c`
+- Knowledge baseline: `a5fef459a5a681e2f7159971c87374c6625f4776`
+- Knowledge acceptance issue: `yoomarks/markorbit-knowledge#405` — OPEN at audit time.
+- Knowledge governance issue: `yoomarks/markorbit-knowledge#429` — OPEN at audit time.
+
+This inventory does not authorize a provider call, expose or move a credential, close either issue, retire the Knowledge provider path, or claim `FOUNDATION_REUSABLE` admission.
+
+## Frozen ownership rule
+
+The stable cross-repository boundary is **Managed AI Execution Capability** (`managed-ai-execution`).
+
+`@markorbit/ai` is MarkOrbit-internal implementation infrastructure. Knowledge must not bind directly to its provider SDKs, internal package layout, credentials, endpoints, model routing, or retry mode.
+
+Knowledge continues to own source-acquisition meaning and evidence: Assignment/question, InstructionSet, SourcePack/Binding, AI source/submission identity, exact provider-response evidence, distilled Knowledge artifact, RawArtifact lifecycle, lineage, provenance, indexing/retrieval, and Knowledge-specific queue/orchestration semantics.
+
+## Current MarkOrbit surface
+
+| Surface | Current path | Observed state | Classification | Action |
+| --- | --- | --- | --- | --- |
+| Capability runtime contract | `packages/contracts/src/capability-runtime.ts` | `CapabilityRequestV2`, `ImplementationProfile`, eligibility/composition/binding/invocation/outcome/return/receipt; caller implementation-control fields rejected | Shared Capability foundation | Reuse; extend only through versioned contracts. |
+| Governed deterministic runtime | `services/capability-engine/src/capability-runtime.ts` | Accepted-definition resolution, exact implementation binding, schema/caller/risk admission, one-attempt deterministic execution, process-local replay/conflict protection | Shared Capability foundation | Keep as MO-CAP-001 base. Process-local replay is not durable cross-process idempotency. |
+| AI Gateway package | `packages/ai/src/index.ts` | Skeleton only: exports package name | Shared Capability implementation target | Build provider-neutral gateway behind Managed AI Execution; do not expose as Knowledge product contract. |
+
+## Current Knowledge provider/runtime surface
+
+### Shared Capability candidates
+
+| Surface | Current Knowledge path/evidence | Classification | Target owner | Migration action | Required invariant |
+| --- | --- | --- | --- | --- | --- |
+| DeepSeek HTTP transport | `packages/worker-runtime/src/ai-distilled-knowledge-acquirer.ts` | Shared Capability | `@markorbit/ai` implementation | Re-express behind provider adapter registry | Canonical endpoint, bounded timeout/response size, typed provider failure. |
+| OpenAI HTTP transport | `packages/worker-runtime/src/openai-knowledge-adapter.ts` | Shared Capability | `@markorbit/ai` implementation | Re-express behind provider adapter registry | Canonical endpoint, bounded timeout/response size, typed provider failure. |
+| Provider credentials | Same adapter files read `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` from runtime environment | Shared Capability | Managed AI implementation boundary | Move credential ownership out of Knowledge consumer path | Secret must not enter Capability request, Knowledge records, SourcePack, RawArtifact, logs, receipts, or cross-repo contract. |
+| Provider/model defaults | DeepSeek default `deepseek-v4-flash`; OpenAI adapter carries its own default model | Shared Capability | ImplementationProfile/model catalog | Convert to governed implementation metadata | Caller cannot choose arbitrary provider/model through `CapabilityRequestV2`. |
+| Provider endpoint enforcement | Adapters reject non-canonical production endpoints | Shared Capability | Provider adapter | Preserve fail-closed endpoint policy | No raw endpoint from caller. |
+| Timeout and response-size controls | Both provider transports use `AbortController`, bounded timeout and max response bytes | Shared Capability | AI Gateway | Preserve as implementation policy | Timeout must not be interpreted as proven non-delivery. |
+| Provider HTTP/error mapping | 429/5xx temporary failures; non-2xx rejection; invalid JSON/content errors | Shared Capability | Managed AI generic error taxonomy + adapter mapping | Normalize provider-specific errors | Unknown provider failure defaults fail closed. |
+| Provider request identity | Adapters preserve provider response `id` when present | Shared Capability metadata | Capability outcome/implementation audit | Preserve | Knowledge must be able to reference provider request identity without receiving credentials. |
+| Exact provider bytes | Adapter returns `rawResponse: Uint8Array` | Boundary-spanning result | Managed AI returns exact bytes/reference; Knowledge persists source evidence | Preserve exactly across bridge | No lossy reserialization before Knowledge evidence capture. |
+| Delivery uncertainty | `apps/worker/src/adk-knowledge-job-worker.ts` classifies `AI_PROVIDER_TIMEOUT` and `AI_PROVIDER_NETWORK_ERROR` as delivery-uncertain and moves job to `BLOCKED_RECOVERY`; ungoverned exceptions also require recovery | Shared safety semantic | Managed AI outcome + runtime retry policy | Promote to explicit platform outcome/reconciliation semantics | Never `timeout -> failed -> automatic retry`; paid side effect may already have occurred. |
+| Provider-side retry eligibility | Explicit governed retryable provider errors remain separate from delivery uncertainty | Shared safety semantic | Managed AI outcome | Preserve separation | Retry decision must depend on delivery state, not merely `retryable=true`. |
+| Usage/cost accounting | No complete provider-neutral usage/cost mapping was observed in the inspected DeepSeek/OpenAI adapter sources | Shared Capability gap | Managed AI | Add nullable/unsupported usage, latency and cost fields in later WP04 | Never invent provider usage/cost values. |
+
+### Knowledge-only semantics
+
+| Surface | Current Knowledge evidence | Why it stays in Knowledge | Bridge requirement |
+| --- | --- | --- | --- |
+| `AiKnowledgeAssignmentV1` | Provider request is built from frozen Knowledge Assignment and instruction identity | It defines source-acquisition intent, not generic AI transport | Bridge maps Assignment/grounded input into Managed AI structured input without moving Assignment ownership. |
+| `AiResearchSubmissionV1` | Provider adapters currently construct submission identity, hashes, provider/model/timing/request id | It is an exact Knowledge AI-source record | New bridge must construct/preserve equivalent Knowledge submission from Capability return/provenance. |
+| `AiDistilledKnowledgeArtifactV1` | Provider adapters currently construct Knowledge artifact with `SYNTHETIC_AI` and `legalTruthVerified=false` | It is Knowledge domain/evidence semantics | Capability return cannot auto-promote output; Knowledge creates its artifact after validated return. |
+| Prompt/instruction lineage | Adapter hashes Assignment prompt and binds InstructionSet id/revision into the artifact | Knowledge evidence lineage | Managed AI must return enough prompt/policy/implementation lineage for Knowledge to bind exact evidence. |
+| RawArtifact ingestion | `apps/worker/src/adk-knowledge-job-worker.ts` calls `ingestAiDistilledKnowledgeAsRawArtifacts`, persisting exact provider response first and Markdown derivative with separate ids | RawArtifact lifecycle is Knowledge evidence storage | Bridge must provide exact provider bytes/reference before PREPARED/evidence promotion; lineage cannot be weakened. |
+| Queue/job state | `apps/worker/src/adk-knowledge-job-worker.ts` owns assignment lookup, Knowledge job status, persisted acquisition lineage and reconciliation states | Knowledge orchestration/domain workflow | Strangler bridge plugs into this workflow initially; do not delete queue semantics during transport migration. |
+| Grounded PREPARED envelope | PR #437 introduced provider-neutral grounded PREPARED execution tied to persisted Assignment/Binding/SourcePack with provider execution disabled | This is Knowledge source-grounding/evidence preparation | Reuse as consumer-side input/evidence identity; it is not the generic Managed AI contract. |
+| Grounded execution authorization | PR #441 introduced an append-only authorization object pinned to PREPARED identity and external gates | Knowledge live-acceptance governance | Do not silently replace with a generic Capability success state; reconcile explicitly before any #405 live path moves. |
+
+## Governance / acceptance-only surfaces
+
+| Surface | Verified state | Classification | Rule |
+| --- | --- | --- | --- |
+| Knowledge #405 — ADK-06 real 3×2 acceptance | OPEN. Requires exact 3 assignments × DeepSeek/OpenAI, 6 `EXECUTED` cells, 12 finalized RawArtifact receipts, exact commit SHA, runtime-only credentials, exact response lineage, no unresolved in-flight delivery, encrypted evidence retention | Governance/acceptance-only | Migration cannot mark it complete, reduce the matrix/evidence criteria, or substitute deterministic CI. If the runtime path changes first, acceptance path must be explicitly reconciled while preserving evidence goals. |
+| Knowledge #429 — repository governance | OPEN. Requires protected `main`, workflow review controls, isolated live secrets/environment, durable non-public evidence storage | Governance/acceptance-only | Code changes do not satisfy repository administration gates. #429 does not independently authorize paid execution. |
+| Exact-SHA authorization | #405/#429 require current authorized SHA and fail-closed dispatch | Governance/acceptance-only | Cross-repo migration must retain exact-head/authorized-head semantics. |
+| Evidence retention | #405/#429 require encrypted live evidence plus durable non-public retention | Governance/acceptance-only | Capability receipts are not a substitute for Knowledge RawArtifact/evidence retention. |
+
+## Migration matrix
+
+| Current responsibility | Destination | Phase | Compatibility strategy |
+| --- | --- | --- | --- |
+| Provider-neutral outcome contract | MarkOrbit Managed AI Execution | MO-CAP-002-WP01 | New versioned contract, no provider name in Capability identity. |
+| Provider SDK/HTTP, endpoint and credential isolation | MarkOrbit AI Gateway | MO-CAP-002-WP02 | First provider adapter with deterministic transport doubles; no live credential in CI. |
+| Prompt/policy/model/implementation lineage | MarkOrbit Managed AI | MO-CAP-002-WP03 | Return exact implementation/profile/policy lineage; Knowledge binds it into source evidence. |
+| Usage/budget/cost | MarkOrbit Managed AI | MO-CAP-002-WP04 | Nullable provider-neutral accounting; no fabricated values. |
+| Knowledge compatibility bridge | Knowledge | MO-CAP-002-WP06 / K-CAP-AI-004 | Strangler path; old provider path retained for rollback/parity. |
+| Second provider | MarkOrbit AI Gateway | MO-CAP-002-WP02/WP08 | Only after first-provider contract semantics are stable. |
+| Real Knowledge acquisition | Cross-repo | MO-CAP-002-WP06 | Real authenticated consumer acceptance only under separate authorization/gates. |
+| Brain second consumer | Cross-repo | MO-CAP-002-WP07 | Brain keeps reasoning semantics; uses same Managed AI contract. |
+| Duplicate Knowledge provider transport retirement | Knowledge | post-WP08 | Only after Knowledge + Brain exact-head acceptance, parity, rollback and governance gates. |
+
+## Required generic Managed AI semantics derived from Knowledge
+
+The following must become explicit, provider-neutral platform semantics before the old transport can be retired:
+
+1. delivery state distinct from execution error: at minimum `NOT_DELIVERED`, `DELIVERED_CONFIRMED`, `DELIVERY_UNCERTAIN`, `PROVIDER_REJECTED`, `PROVIDER_COMPLETED` or an equivalent frozen vocabulary;
+2. retry decision distinct from delivery state: `RETRY_ALLOWED`, `RETRY_FORBIDDEN`, `RECONCILIATION_REQUIRED` or equivalent;
+3. exact provider output bytes or a durable exact-output reference available to authorized consumers;
+4. provider request identity, implementation profile/version, model identity, prompt/policy/schema lineage, timing and correlation;
+5. caller cannot provide raw secret, endpoint, arbitrary provider/model or implementation retry mode;
+6. exact replay/conflicting replay semantics must become durable before relying on them for paid provider calls; the current MO-CAP-001 process-local replay map is not sufficient for cross-process paid execution;
+7. provider output has no authority to create legal truth, canonical Knowledge, Brain conclusions, filings, payments or protected professional actions.
+
+## Hold points
+
+Until a later PR explicitly satisfies the relevant acceptance conditions:
+
+- no production provider credential in MarkOrbit code/config/test fixtures;
+- no paid/live provider call;
+- no external email/send or protected action;
+- no provider-specific Capability ID;
+- no Knowledge dependency on `@markorbit/ai` internals;
+- no deletion of DeepSeek/OpenAI Knowledge transport;
+- no change that converts delivery uncertainty into automatic retry;
+- no closure or weakening of Knowledge #405 or #429;
+- no `FOUNDATION_REUSABLE` claim.
+
+## Phase A conclusion
+
+The migration target is not a code move. The reusable surface is provider execution infrastructure plus its safety/accounting/provenance envelope. Knowledge-specific Assignment, source/evidence, RawArtifact and provenance semantics remain in Knowledge and consume the new stable Capability boundary through a strangler bridge.
+
+The next bounded implementation PR is `MO-CAP-002-WP01`: freeze the provider-neutral Managed AI request/outcome vocabulary on top of MO-CAP-001, including delivery uncertainty, retry/reconciliation, exact-output reference/bytes, implementation/prompt lineage and nullable usage/cost fields. It must contain no production adapter credential and no paid call.
