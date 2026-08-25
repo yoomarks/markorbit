@@ -77,11 +77,13 @@ function ids(): CapabilityRuntimeIdFactory {
 }
 
 function runtime(options?: { outputValid?: boolean; allowedCallerProducts?: readonly string[] }) {
-  const execute = vi.fn(async () => ({
-    output: { answer: 'deterministic answer' },
-    evidenceRefs: ['evidence_fixture_1'],
-    usage: { latencyMs: 12 }
-  }));
+  const execute = vi.fn(() =>
+    Promise.resolve({
+      output: { answer: 'deterministic answer' },
+      evidenceRefs: ['evidence_fixture_1'],
+      usage: { latencyMs: 12 }
+    })
+  );
   const selectedProfile: ImplementationProfile = {
     ...profile,
     ...(options?.allowedCallerProducts
@@ -89,12 +91,14 @@ function runtime(options?: { outputValid?: boolean; allowedCallerProducts?: read
       : {})
   };
   const instance = new GovernedCapabilityRuntime({
-    definitions: { findCurrent: vi.fn(async () => definition) },
+    definitions: { findCurrent: vi.fn(() => Promise.resolve(definition)) },
     implementations: {
-      select: vi.fn(async () => ({
-        profile: selectedProfile,
-        policyVersion: 'capability-binding-policy.v1'
-      }))
+      select: vi.fn(() =>
+        Promise.resolve({
+          profile: selectedProfile,
+          policyVersion: 'capability-binding-policy.v1'
+        })
+      )
     },
     inputContracts: { validate: vi.fn(() => true) },
     outputContracts: { validate: vi.fn(() => options?.outputValid ?? true) },
