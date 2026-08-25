@@ -22,17 +22,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --no-frozen-lockfile
-      - name: Const-lock implementation profile literals
+      - name: Apply final Managed AI executor fixes
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('packages/ai/src/managed-executor.ts')
-          text = path.read_text()
+
+          source = Path('packages/ai/src/managed-executor.ts')
+          text = source.read_text()
           old = "}) satisfies Readonly<ManagedAiImplementationProfileV1>;"
           new = "} as const) satisfies Readonly<ManagedAiImplementationProfileV1>;"
           if old not in text:
               raise SystemExit('profile satisfies clause not found')
-          path.write_text(text.replace(old, new, 1))
+          source.write_text(text.replace(old, new, 1))
+
+          test = Path('packages/ai/tests/managed-executor.test.ts')
+          text = test.read_text()
+          old = "    const input = managedInput();\n    input.promptPolicy.policyVersion = '999';"
+          new = "    const baseInput = managedInput();\n    const input = {\n      ...baseInput,\n      promptPolicy: {\n        ...baseInput.promptPolicy,\n        policyVersion: '999'\n      }\n    };"
+          if old not in text:
+              raise SystemExit('policy mismatch test block not found')
+          test.write_text(text.replace(old, new, 1))
           PY
       - run: >-
           pnpm exec prettier --write
