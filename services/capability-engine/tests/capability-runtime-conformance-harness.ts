@@ -75,46 +75,40 @@ export function registerCapabilityRuntimeConformanceSuite(
       expect(fixture.executionCount()).toBe(1);
     });
 
-    it(
-      'persists invalid output as a non-retryable governed failure with stable replay',
-      async () => {
-        const fixture = adapter.create('INVALID_OUTPUT');
-        const command = adapter.command();
+    it('persists invalid output as a non-retryable governed failure with stable replay', async () => {
+      const fixture = adapter.create('INVALID_OUTPUT');
+      const command = adapter.command();
 
-        const first = await fixture.invoke(command);
-        const replay = await fixture.invoke(command);
+      const first = await fixture.invoke(command);
+      const replay = await fixture.invoke(command);
 
-        expect(first.outcome).toMatchObject({
-          status: 'FAILED',
-          error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: false }
-        });
-        expect(first.returnValue.status).toBe('FAILED');
-        expect(replay.outcome.capabilityOutcomeId).toBe(first.outcome.capabilityOutcomeId);
-        expect(fixture.executionCount()).toBe(1);
-        expectNoAuthority(first);
-      }
-    );
+      expect(first.outcome).toMatchObject({
+        status: 'FAILED',
+        error: { code: 'OUTPUT_CONTRACT_INVALID', retryable: false }
+      });
+      expect(first.returnValue.status).toBe('FAILED');
+      expect(replay.outcome.capabilityOutcomeId).toBe(first.outcome.capabilityOutcomeId);
+      expect(fixture.executionCount()).toBe(1);
+      expectNoAuthority(first);
+    });
 
-    it(
-      'turns implementation exceptions into non-retryable governed outcomes with stable replay',
-      async () => {
-        const fixture = adapter.create('EXECUTOR_FAILURE');
-        const command = adapter.command();
+    it('turns implementation exceptions into non-retryable governed outcomes with stable replay', async () => {
+      const fixture = adapter.create('EXECUTOR_FAILURE');
+      const command = adapter.command();
 
-        const first = await fixture.invoke(command);
-        const replay = await fixture.invoke(command);
+      const first = await fixture.invoke(command);
+      const replay = await fixture.invoke(command);
 
-        expect(first.invocation.status).toBe('FAILED');
-        expect(first.outcome).toMatchObject({
-          status: 'FAILED',
-          error: { code: 'IMPLEMENTATION_FAILED', retryable: false }
-        });
-        expect(replay.replayed).toBe(true);
-        expect(replay.outcome.capabilityOutcomeId).toBe(first.outcome.capabilityOutcomeId);
-        expect(fixture.executionCount()).toBe(1);
-        expectNoAuthority(first);
-      }
-    );
+      expect(first.invocation.status).toBe('FAILED');
+      expect(first.outcome).toMatchObject({
+        status: 'FAILED',
+        error: { code: 'IMPLEMENTATION_FAILED', retryable: false }
+      });
+      expect(replay.replayed).toBe(true);
+      expect(replay.outcome.capabilityOutcomeId).toBe(first.outcome.capabilityOutcomeId);
+      expect(fixture.executionCount()).toBe(1);
+      expectNoAuthority(first);
+    });
 
     it.each([
       ['CALLER_FORBIDDEN', 'CALLER_NOT_ALLOWED'],
