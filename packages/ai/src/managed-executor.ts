@@ -15,12 +15,10 @@ import type { AiProviderExecutionResultV1 } from './index.js';
 
 export const KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_PROFILE_ID =
   'managed-ai:knowledge-deepseek:v1' as const;
-export const KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY =
-  'ai:deepseek:chat-completions:v1' as const;
+export const KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY = 'ai:deepseek:chat-completions:v1' as const;
 export const KNOWLEDGE_DISTILLATION_PROMPT_POLICY_ID = 'knowledge.ai-distillation' as const;
 export const KNOWLEDGE_DISTILLATION_PROMPT_POLICY_VERSION = '1' as const;
-export const KNOWLEDGE_DISTILLED_MARKDOWN_SCHEMA_ID =
-  'knowledge.ai-distilled-markdown.v1' as const;
+export const KNOWLEDGE_DISTILLED_MARKDOWN_SCHEMA_ID = 'knowledge.ai-distilled-markdown.v1' as const;
 
 const DEFAULT_PROVIDER_TIMEOUT_MS = 120_000;
 
@@ -58,7 +56,7 @@ export const knowledgeDeepSeekImplementationProfileV1 = Object.freeze({
     }
   ],
   exactOutputMediaType: 'application/json'
-}) satisfies Readonly<ManagedAiImplementationProfileV1>;
+} as const) satisfies Readonly<ManagedAiImplementationProfileV1>;
 
 export interface ManagedAiExecutionContextV1 {
   executionId: string;
@@ -110,7 +108,10 @@ function assertProfile(profile: Readonly<ManagedAiImplementationProfileV1>): voi
       'profile.version must be a positive safe integer.'
     );
   }
-  if (profile.capabilities.length === 0 || new Set(profile.capabilities).size !== profile.capabilities.length) {
+  if (
+    profile.capabilities.length === 0 ||
+    new Set(profile.capabilities).size !== profile.capabilities.length
+  ) {
     throw new ManagedAiExecutorBoundaryError(
       'MANAGED_AI_PROFILE_INVALID',
       'profile.capabilities must be non-empty and unique.'
@@ -135,7 +136,11 @@ function profileMatches(
 ): boolean {
   if (!profile.processingClasses.includes(input.processingClass)) return false;
   if (!profile.dataClassifications.includes(input.dataClassification)) return false;
-  if (!input.requirements.capabilities.every((capability) => profile.capabilities.includes(capability))) {
+  if (
+    !input.requirements.capabilities.every((capability) =>
+      profile.capabilities.includes(capability)
+    )
+  ) {
     return false;
   }
   if (
@@ -173,7 +178,9 @@ export class ManagedAiImplementationRegistryV1 {
     this.profiles = [...profiles];
   }
 
-  select(input: Readonly<ManagedAiExecutionInputV1>): Readonly<ManagedAiImplementationProfileV1> | null {
+  select(
+    input: Readonly<ManagedAiExecutionInputV1>
+  ): Readonly<ManagedAiImplementationProfileV1> | null {
     const matches = this.profiles.filter((profile) => profileMatches(profile, input));
     if (matches.length > 1) {
       throw new ManagedAiExecutorBoundaryError(
@@ -231,7 +238,9 @@ function timestamp(now: () => Date): string {
   return value.toISOString();
 }
 
-function executionContext(value: Readonly<ManagedAiExecutionContextV1>): ManagedAiExecutionContextV1 {
+function executionContext(
+  value: Readonly<ManagedAiExecutionContextV1>
+): ManagedAiExecutionContextV1 {
   const executionId = value.executionId.trim();
   const correlationId = value.correlationId.trim();
   if (!executionId || executionId.length > 300 || !correlationId || correlationId.length > 300) {
@@ -257,7 +266,9 @@ function exactOutput(
   };
 }
 
-function managedErrorCode(result: Extract<AiProviderExecutionResultV1, { kind: 'FAILURE' }>): ManagedAiErrorCode {
+function managedErrorCode(
+  result: Extract<AiProviderExecutionResultV1, { kind: 'FAILURE' }>
+): ManagedAiErrorCode {
   switch (result.error.code) {
     case 'AI_PROVIDER_CREDENTIAL_MISSING':
       return 'AUTHENTICATION_FAILED';
@@ -301,7 +312,9 @@ function failureStatus(
   return 'FAILED';
 }
 
-function usage(result: AiProviderExecutionResultV1): ManagedAiExecutionOutcomeV1['usage'] | undefined {
+function usage(
+  result: AiProviderExecutionResultV1
+): ManagedAiExecutionOutcomeV1['usage'] | undefined {
   if (!result.usage) return undefined;
   return {
     ...(result.usage.inputUnits === undefined ? {} : { inputUnits: result.usage.inputUnits }),
@@ -346,7 +359,8 @@ export class ManagedAiExecutorV1 {
         retryDisposition: 'RETRY_FORBIDDEN',
         error: {
           code: 'POLICY_BLOCKED',
-          message: 'No trusted Managed AI implementation profile satisfies the requested policy and capability constraints.'
+          message:
+            'No trusted Managed AI implementation profile satisfies the requested policy and capability constraints.'
         },
         authority: managedAiNoAuthorityConsequences
       };

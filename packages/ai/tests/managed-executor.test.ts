@@ -71,10 +71,7 @@ function executorWith(
   const implementations = new ManagedAiImplementationRegistryV1([
     knowledgeDeepSeekImplementationProfileV1
   ]);
-  const moments = [
-    new Date('2026-08-25T02:40:00.000Z'),
-    new Date('2026-08-25T02:40:00.125Z')
-  ];
+  const moments = [new Date('2026-08-25T02:40:00.000Z'), new Date('2026-08-25T02:40:00.125Z')];
   return new ManagedAiExecutorV1(implementations, providers, {
     now: () => moments.shift() ?? new Date('2026-08-25T02:40:00.125Z')
   });
@@ -231,8 +228,14 @@ describe('Managed AI executor V1', () => {
       new ManagedAiImplementationRegistryV1([knowledgeDeepSeekImplementationProfileV1]),
       new AiProviderRegistryV1([adapter])
     );
-    const input = managedInput();
-    input.promptPolicy.policyVersion = '999';
+    const baseInput = managedInput();
+    const input = {
+      ...baseInput,
+      promptPolicy: {
+        ...baseInput.promptPolicy,
+        policyVersion: '999'
+      }
+    };
 
     await expect(executor.execute(input, context)).resolves.toMatchObject({
       status: 'BLOCKED',
