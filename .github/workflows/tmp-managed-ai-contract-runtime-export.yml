@@ -1,0 +1,52 @@
+name: Temporary Managed AI Contract Runtime Export Fix
+
+on:
+  push:
+    branches:
+      - fix-managed-ai-contract-runtime-export
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-smoke:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add runtime fallback export
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'packages/contracts/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const entry = pkg.exports['./managed-ai-execution'];
+          if (!entry || entry.import !== './dist/managed-ai-execution.js') {
+            throw new Error('managed-ai-execution export missing or unexpected');
+          }
+          entry.default = './dist/managed-ai-execution.js';
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+      - run: pnpm exec prettier --write packages/contracts/package.json
+      - run: pnpm --filter @markorbit/contracts build
+      - name: Exercise tsx CJS runtime resolution
+        working-directory: services/capability-engine
+        run: node -r tsx/cjs -e "require('@markorbit/contracts/managed-ai-execution'); console.log('managed-ai runtime export resolved')"
+      - name: Commit package export fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/package.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Fix Managed AI contract runtime export"
+          git push
