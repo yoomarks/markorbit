@@ -1,0 +1,43 @@
+name: Capability Runtime Conformance
+
+on:
+  pull_request:
+    paths:
+      - 'packages/contracts/src/capability-runtime.ts'
+      - 'services/capability-engine/src/capability-runtime.ts'
+      - 'services/capability-engine/tests/capability-runtime-conformance-harness.ts'
+      - 'services/capability-engine/tests/capability-runtime-conformance.test.ts'
+      - '.github/workflows/capability-conformance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/contracts/src/capability-runtime.ts'
+      - 'services/capability-engine/src/capability-runtime.ts'
+      - 'services/capability-engine/tests/capability-runtime-conformance-harness.ts'
+      - 'services/capability-engine/tests/capability-runtime-conformance.test.ts'
+      - '.github/workflows/capability-conformance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capability-runtime-conformance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Build Capability dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Run reusable runtime conformance suite
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-runtime-conformance.test.ts
+      - name: Typecheck Capability Engine
+        run: pnpm --filter @markorbit/capability-engine typecheck
