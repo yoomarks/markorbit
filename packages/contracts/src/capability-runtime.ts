@@ -1,6 +1,4 @@
-import type {
-  RuntimeCapabilityDefinitionId
-} from './capability-learning.js';
+import type { RuntimeCapabilityDefinitionId } from './capability-learning.js';
 
 export type CapabilityRequestV2Id = `capreq_${string}`;
 export type ImplementationProfileId = `implementation-profile_${string}`;
@@ -256,17 +254,12 @@ function text(value: unknown, field: string, maximum = 500): string {
     throw new CapabilityRuntimeContractError(`${field} must be a string.`);
   const cleaned = value.trim();
   if (!cleaned || cleaned.length > maximum)
-    throw new CapabilityRuntimeContractError(
-      `${field} must contain 1 to ${maximum} characters.`
-    );
+    throw new CapabilityRuntimeContractError(`${field} must contain 1 to ${maximum} characters.`);
   return cleaned;
 }
 
 function riskClass(value: unknown): CapabilityRiskClass {
-  if (
-    typeof value !== 'string' ||
-    !(capabilityRiskClasses as readonly string[]).includes(value)
-  )
+  if (typeof value !== 'string' || !(capabilityRiskClasses as readonly string[]).includes(value))
     throw new CapabilityRuntimeContractError('riskClass is invalid.');
   return value as CapabilityRiskClass;
 }

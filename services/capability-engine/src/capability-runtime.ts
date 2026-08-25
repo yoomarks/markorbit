@@ -141,7 +141,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function fingerprint(command: CapabilityRequestV2Command): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(command))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(command)))
+    .digest('hex');
 }
 
 function clone<T>(value: T): T {
@@ -159,13 +161,17 @@ export class GovernedCapabilityRuntime {
   private readonly ids: CapabilityRuntimeIdFactory;
   private readonly admittedImplementationKinds: ReadonlySet<ImplementationProfile['kind']>;
   private readonly completed = new Map<string, StoredExecution>();
-  private readonly inFlight = new Map<string, { fingerprint: string; result: Promise<CapabilityRuntimeExecution> }>();
+  private readonly inFlight = new Map<
+    string,
+    { fingerprint: string; result: Promise<CapabilityRuntimeExecution> }
+  >();
 
   constructor(private readonly options: GovernedCapabilityRuntimeOptions) {
     this.now = options.now ?? (() => new Date().toISOString());
     this.ids = options.ids ?? defaultIds();
     this.admittedImplementationKinds =
-      options.admittedImplementationKinds ?? new Set<ImplementationProfile['kind']>(['DETERMINISTIC_SERVICE']);
+      options.admittedImplementationKinds ??
+      new Set<ImplementationProfile['kind']>(['DETERMINISTIC_SERVICE']);
   }
 
   async invoke(value: unknown): Promise<CapabilityRuntimeExecution> {
@@ -290,7 +296,9 @@ export class GovernedCapabilityRuntime {
       const completedAt = this.now();
       invocation.status = 'COMPLETED';
       invocation.completedAt = completedAt;
-      if (!this.options.outputContracts.validate(request.outputSchemaId, implementationResult.output)) {
+      if (
+        !this.options.outputContracts.validate(request.outputSchemaId, implementationResult.output)
+      ) {
         outcome = {
           schemaVersion: 1,
           capabilityOutcomeId: this.ids.capabilityOutcome(),
