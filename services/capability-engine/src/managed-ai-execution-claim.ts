@@ -5,10 +5,7 @@ import {
 import type { QueryClient } from '@markorbit/persistence';
 
 export type ManagedAiExecutionClaimStateV1 =
-  | 'CLAIMED'
-  | 'DISPATCHING'
-  | 'COMPLETED'
-  | 'RECONCILIATION_REQUIRED';
+  'CLAIMED' | 'DISPATCHING' | 'COMPLETED' | 'RECONCILIATION_REQUIRED';
 
 export interface ManagedAiExecutionClaimCommandV1 {
   idempotencyKey: string;
@@ -43,18 +40,16 @@ export interface ManagedAiExecutionReconciliationV1 extends ManagedAiExecutionCl
 }
 
 export interface ManagedAiExecutionClaimStoreV1 {
-  claim(command: Readonly<ManagedAiExecutionClaimCommandV1>): Promise<ManagedAiExecutionClaimResultV1>;
+  claim(
+    command: Readonly<ManagedAiExecutionClaimCommandV1>
+  ): Promise<ManagedAiExecutionClaimResultV1>;
   markDispatching(command: Readonly<ManagedAiExecutionClaimIdentityV1>): Promise<void>;
   complete(command: Readonly<ManagedAiExecutionCompletionV1>): Promise<void>;
-  markReconciliationRequired(
-    command: Readonly<ManagedAiExecutionReconciliationV1>
-  ): Promise<void>;
+  markReconciliationRequired(command: Readonly<ManagedAiExecutionReconciliationV1>): Promise<void>;
 }
 
 export type ManagedAiExecutionClaimStoreErrorCode =
-  | 'PERSISTENCE_UNAVAILABLE'
-  | 'INVALID_PERSISTED_OUTCOME'
-  | 'CLAIM_STATE_CONFLICT';
+  'PERSISTENCE_UNAVAILABLE' | 'INVALID_PERSISTED_OUTCOME' | 'CLAIM_STATE_CONFLICT';
 
 export class ManagedAiExecutionClaimStoreError extends Error {
   constructor(
@@ -91,7 +86,9 @@ function expired(leaseExpiresAt: string, now: string): boolean {
 export class InMemoryManagedAiExecutionClaimStoreV1 implements ManagedAiExecutionClaimStoreV1 {
   private readonly rows = new Map<string, MemoryClaimRow>();
 
-  claim(command: Readonly<ManagedAiExecutionClaimCommandV1>): Promise<ManagedAiExecutionClaimResultV1> {
+  claim(
+    command: Readonly<ManagedAiExecutionClaimCommandV1>
+  ): Promise<ManagedAiExecutionClaimResultV1> {
     const existing = this.rows.get(command.idempotencyKey);
     if (!existing) {
       this.rows.set(command.idempotencyKey, {
@@ -152,9 +149,7 @@ export class InMemoryManagedAiExecutionClaimStoreV1 implements ManagedAiExecutio
     return Promise.resolve();
   }
 
-  markReconciliationRequired(
-    command: Readonly<ManagedAiExecutionReconciliationV1>
-  ): Promise<void> {
+  markReconciliationRequired(command: Readonly<ManagedAiExecutionReconciliationV1>): Promise<void> {
     const row = this.rows.get(command.idempotencyKey);
     if (
       !row ||
