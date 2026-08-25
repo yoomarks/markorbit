@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   AI_PROVIDER_ADAPTER_PROTOCOL_VERSION,
   AiProviderRegistryV1,
+  DeepSeekProviderAdapterV1,
   KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY,
   KNOWLEDGE_DISTILLATION_PROMPT_POLICY_ID,
   KNOWLEDGE_DISTILLATION_PROMPT_POLICY_VERSION,
@@ -10,18 +11,21 @@ import {
   ManagedAiExecutorV1,
   ManagedAiImplementationRegistryV1,
   knowledgeDeepSeekImplementationProfileV1,
+  type AiHttpTransport,
   type AiProviderAdapterV1,
   type AiProviderExecutionRequestV1,
   type AiProviderExecutionResultV1
 } from '../src/index.js';
 
-const managedInput = (taskInput: unknown = {
-  schemaVersion: 1,
-  kind: 'TEXT_GENERATION',
-  prompt: 'Write a governed research memo.',
-  systemInstruction: 'Return Markdown only.',
-  outputFormat: 'MARKDOWN'
-}) => ({
+const managedInput = (
+  taskInput: unknown = {
+    schemaVersion: 1,
+    kind: 'TEXT_GENERATION',
+    prompt: 'Write a governed research memo.',
+    systemInstruction: 'Return Markdown only.',
+    outputFormat: 'MARKDOWN'
+  }
+) => ({
   schemaVersion: 1,
   processingClass: 'SOURCE_ACQUISITION',
   dataClassification: 'PUBLIC',
@@ -101,7 +105,10 @@ function success(raw: Uint8Array): AiProviderExecutionResultV1 {
 describe('Managed AI executor V1', () => {
   it('selects the trusted implementation profile and emits exact governed evidence', async () => {
     const raw = new TextEncoder().encode(
-      JSON.stringify({ id: 'deepseek_request_1', choices: [{ message: { content: '# Governed result' } }] })
+      JSON.stringify({
+        id: 'deepseek_request_1',
+        choices: [{ message: { content: '# Governed result' } }]
+      })
     );
     const captured: AiProviderExecutionRequestV1[] = [];
     const executor = executorWith(success(raw), captured);
@@ -168,25 +175,40 @@ describe('Managed AI executor V1', () => {
     expect(outcome.provenance?.inputSha256).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it('never accepts provider/model/endpoint selection from the managed input', async () => {
-    const providerExecute = vi.fn(() => Promise.resolve(success(new TextEncoder().encode('{}'))));
-    const adapter: AiProviderAdapterV1 = {
-      implementationKey: KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY,
-      provider: 'DEEPSEEK',
-      execute: providerExecute
-    };
+  it('rejects provider/model/endpoint/credential controls before transport', async () => {
+    const transport: AiHttpTransport = vi.fn(() =>
+      Promise.resolve({
+        status: 200,
+        body: new TextEncoder().encode(
+          JSON.stringify({
+            id: 'should-not-run',
+            model: 'deepseek-v4-flash',
+            choices: [{ message: { content: '# unexpected' } }]
+          })
+        )
+      })
+    );
+    const adapter = new DeepSeekProviderAdapterV1({
+      environment: { DEEPSEEK_API_KEY: 'test-secret' },
+      transport,
+      now: () => new Date('2026-08-23T00:00:00.000Z')
+    });
     const executor = new ManagedAiExecutorV1(
       new ManagedAiImplementationRegistryV1([knowledgeDeepSeekImplementationProfileV1]),
       new AiProviderRegistryV1([adapter])
     );
-
     const input = managedInput({
-      ...managedInput().taskInput,
+      schemaVersion: 1,
+      kind: 'TEXT_GENERATION',
+      prompt: 'Write a governed research memo.',
+      systemInstruction: 'Return Markdown only.',
+      outputFormat: 'MARKDOWN',
       provider: 'OPENAI',
       model: 'caller-model',
       endpoint: 'https://caller.invalid',
       credential: 'caller-secret'
     });
+
     const outcome = await executor.execute(input, context);
 
     expect(outcome).toMatchObject({
@@ -195,10 +217,7 @@ describe('Managed AI executor V1', () => {
       retryDisposition: 'RETRY_FORBIDDEN',
       error: { code: 'INVALID_REQUEST' }
     });
-    expect(providerExecute).toHaveBeenCalledTimes(1);
-    expect(providerExecute.mock.calls[0]?.[0]).toMatchObject({
-      implementationKey: KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY
-    });
+    expect(transport).not.toHaveBeenCalled();
   });
 
   it('fails closed before provider execution when no trusted profile matches the policy', async () => {
