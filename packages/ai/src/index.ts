@@ -144,7 +144,7 @@ function assertAdapterResult(
         'Successful provider execution must preserve exact response bytes.'
       );
     }
-  } else if (result.deliveryState === 'PROVIDER_COMPLETED') {
+  } else if (String(result.deliveryState) === 'PROVIDER_COMPLETED') {
     throw new AiGatewayBoundaryError(
       'AI_GATEWAY_ADAPTER_RESULT_INVALID',
       'Failed provider execution cannot use PROVIDER_COMPLETED delivery state.'
