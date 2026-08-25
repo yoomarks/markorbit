@@ -13,6 +13,10 @@ import {
   type ManagedAiExecutionClaimStoreV1,
   type ManagedAiExecutionClaimTransactionHostV1
 } from './managed-ai-execution-claim.js';
+import {
+  PostgresManagedAiExactOutputStoreV1,
+  type ManagedAiExactOutputStoreV1
+} from './managed-ai-exact-output.js';
 import type { ManagedAiExecutionAuthorityV1 } from './managed-ai-http.js';
 
 export const MANAGED_AI_RUNTIME_ENABLED_ENV = 'MO_MANAGED_AI_RUNTIME_ENABLED' as const;
@@ -22,6 +26,7 @@ export const MANAGED_AI_PROVIDER_DISPATCH_AUTHORIZED_ENV =
 export interface ManagedAiRuntimeBindingsV1 {
   managedAiExecutor: ManagedAiExecutionAuthorityV1;
   managedAiClaimStore: ManagedAiExecutionClaimStoreV1;
+  managedAiExactOutputStore: ManagedAiExactOutputStoreV1;
 }
 
 export interface ManagedAiRuntimeBootstrapOptionsV1 {
@@ -90,6 +95,7 @@ export function createManagedAiRuntimeBindingsV1(
     options.database,
     options.query
   );
+  const managedAiExactOutputStore = new PostgresManagedAiExactOutputStoreV1(options.query);
 
-  return { managedAiExecutor, managedAiClaimStore };
+  return { managedAiExecutor, managedAiClaimStore, managedAiExactOutputStore };
 }

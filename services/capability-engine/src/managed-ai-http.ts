@@ -18,6 +18,10 @@ import {
   type ManagedAiExecutionClaimIdentityV1,
   type ManagedAiExecutionClaimStoreV1
 } from './managed-ai-execution-claim.js';
+import {
+  ManagedAiExactOutputStoreError,
+  type ManagedAiExactOutputStoreV1
+} from './managed-ai-exact-output.js';
 
 export interface ManagedAiExecutionContextV1 {
   executionId: string;
@@ -35,6 +39,7 @@ export interface ManagedAiExecutionRouteOptionsV1 {
   internalServiceSecret: string;
   executor: ManagedAiExecutionAuthorityV1;
   claimStore?: ManagedAiExecutionClaimStoreV1;
+  exactOutputStore?: ManagedAiExactOutputStoreV1;
   now?: () => string;
   ownerTokenFactory?: () => string;
   claimLeaseMs?: number;
@@ -137,6 +142,94 @@ function claimStoreUnavailable(message: string, retryable: boolean): never {
   throw new HttpError(503, 'MANAGED_AI_CLAIM_STORE_UNAVAILABLE', message, retryable);
 }
 
+function resolutionRef(body: unknown): string {
+  if (typeof body !== 'object' || body === null || Array.isArray(body))
+    throw new HttpError(
+      400,
+      'INVALID_MANAGED_AI_EXACT_OUTPUT_RESOLUTION',
+      'Exact-output resolution body must be an object.'
+    );
+  const record = body as Record<string, unknown>;
+  if (Object.keys(record).length !== 1 || typeof record.ref !== 'string')
+    throw new HttpError(
+      400,
+      'INVALID_MANAGED_AI_EXACT_OUTPUT_RESOLUTION',
+      'Exact-output resolution body must contain only ref.'
+    );
+  const ref = record.ref.trim();
+  if (!ref || ref.length > 2_000)
+    throw new HttpError(
+      400,
+      'INVALID_MANAGED_AI_EXACT_OUTPUT_RESOLUTION',
+      'Exact-output ref must contain 1 to 2000 characters.'
+    );
+  return ref;
+}
+
+async function resolveExactOutput(
+  store: ManagedAiExactOutputStoreV1,
+  ref: string
+): Promise<JsonResult> {
+  try {
+    return json(200, await store.resolve(ref));
+  } catch (error) {
+    if (error instanceof ManagedAiExactOutputStoreError) {
+      if (error.code === 'REFERENCE_NOT_FOUND')
+        throw new HttpError(
+          404,
+          'MANAGED_AI_EXACT_OUTPUT_NOT_FOUND',
+          'Managed AI exact-output reference was not found.',
+          false
+        );
+      if (error.code === 'PERSISTENCE_UNAVAILABLE')
+        throw new HttpError(
+          503,
+          'MANAGED_AI_EXACT_OUTPUT_STORE_UNAVAILABLE',
+          'Managed AI exact-output store is unavailable.',
+          true
+        );
+    }
+    throw new HttpError(
+      503,
+      'MANAGED_AI_EXACT_OUTPUT_INTEGRITY_FAILURE',
+      'Managed AI exact-output integrity could not be verified.',
+      false
+    );
+  }
+}
+
+async function durabilizeExactOutput(
+  store: ManagedAiExactOutputStoreV1,
+  executionId: string,
+  outcome: Readonly<ManagedAiExecutionOutcomeV1>,
+  exactOutputRequired: boolean,
+  now: string
+): Promise<ManagedAiExecutionOutcomeV1> {
+  if (!outcome.exactOutput) {
+    if (exactOutputRequired && outcome.status === 'COMPLETED')
+      throw new ManagedAiExactOutputStoreError(
+        'CONTENT_MISMATCH',
+        'Completed Managed AI execution is missing required exact provider output.'
+      );
+    return structuredClone(outcome);
+  }
+  if (outcome.exactOutput.kind === 'INLINE_BASE64') {
+    const durable = await store.persist({ executionId, output: outcome.exactOutput, now });
+    return parseOutcome({ ...outcome, exactOutput: durable });
+  }
+  const resolved = await store.resolve(outcome.exactOutput.ref);
+  if (
+    resolved.mediaType !== outcome.exactOutput.mediaType ||
+    resolved.sha256 !== outcome.exactOutput.sha256 ||
+    resolved.sizeBytes !== outcome.exactOutput.sizeBytes
+  )
+    throw new ManagedAiExactOutputStoreError(
+      'CONTENT_MISMATCH',
+      'Executor durable exact-output reference metadata does not match stored bytes.'
+    );
+  return structuredClone(outcome);
+}
+
 async function bestEffortReconciliation(
   claimStore: ManagedAiExecutionClaimStoreV1,
   identity: Readonly<ManagedAiExecutionClaimIdentityV1>,
@@ -154,6 +247,7 @@ export function createManagedAiExecutionRoutesV1(
   options: ManagedAiExecutionRouteOptionsV1
 ): readonly JsonRoute[] {
   const claimStore = options.claimStore ?? new InMemoryManagedAiExecutionClaimStoreV1();
+  const exactOutputStore = options.exactOutputStore;
   const now = options.now ?? (() => new Date().toISOString());
   const ownerTokenFactory = options.ownerTokenFactory ?? randomUUID;
   const claimLeaseMs = options.claimLeaseMs ?? DEFAULT_CLAIM_LEASE_MS;
@@ -161,7 +255,7 @@ export function createManagedAiExecutionRoutesV1(
     throw new Error('Managed AI claimLeaseMs must be between 1000 and 3600000 milliseconds.');
   const inFlight = new Map<string, { fingerprintSha256: string; result: Promise<JsonResult> }>();
 
-  return [
+  const routes: JsonRoute[] = [
     {
       method: 'POST',
       path: '/internal/v1/managed-ai-executions',
@@ -277,6 +371,30 @@ export function createManagedAiExecutionRoutesV1(
             throw error;
           }
 
+          if (exactOutputStore) {
+            try {
+              outcome = await durabilizeExactOutput(
+                exactOutputStore,
+                executionId,
+                outcome,
+                input.requirements.exactProviderOutputRequired,
+                now()
+              );
+            } catch {
+              await bestEffortReconciliation(
+                claimStore,
+                { ...identity, now: now() },
+                'EXACT_OUTPUT_PERSISTENCE_UNCERTAIN_AFTER_PROVIDER_RESULT'
+              );
+              throw new HttpError(
+                503,
+                'MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED',
+                'Managed AI exact provider output could not be durably verified and committed; automatic replay is blocked.',
+                false
+              );
+            }
+          }
+
           try {
             await claimStore.complete({ ...identity, now: now(), outcome });
           } catch {
@@ -301,4 +419,17 @@ export function createManagedAiExecutionRoutesV1(
       }
     }
   ];
+
+  if (exactOutputStore) {
+    routes.push({
+      method: 'POST',
+      path: '/internal/v1/managed-ai-exact-output-resolutions',
+      handle: async (request) => {
+        authorize(request, options.internalServiceSecret);
+        return resolveExactOutput(exactOutputStore, resolutionRef(request.body));
+      }
+    });
+  }
+
+  return routes;
 }

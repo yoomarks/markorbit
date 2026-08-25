@@ -15,6 +15,7 @@ import {
   PostgresManagedAiExecutionClaimStoreV1,
   type ManagedAiExecutionClaimTransactionHostV1
 } from '../src/managed-ai-execution-claim.js';
+import { PostgresManagedAiExactOutputStoreV1 } from '../src/managed-ai-exact-output.js';
 
 const input = {
   schemaVersion: 1,
@@ -129,6 +130,7 @@ describe('Managed AI server bootstrap', () => {
 
     expect(bindings).not.toBeNull();
     expect(bindings!.managedAiClaimStore).toBeInstanceOf(PostgresManagedAiExecutionClaimStoreV1);
+    expect(bindings!.managedAiExactOutputStore).toBeInstanceOf(PostgresManagedAiExactOutputStoreV1);
     const outcome = await bindings!.managedAiExecutor.execute(input, {
       executionId: 'maiexec_0123456789abcdef0123456789abcdef',
       correlationId: 'knowledge_assignment_1'
