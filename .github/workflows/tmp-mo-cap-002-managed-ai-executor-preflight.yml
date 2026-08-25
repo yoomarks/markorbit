@@ -29,6 +29,7 @@ jobs:
           packages/ai/src/index.ts
           packages/ai/package.json
           pnpm-lock.yaml
+      - run: pnpm --filter @markorbit/contracts build
       - run: pnpm --filter @markorbit/ai build
       - run: pnpm --filter @markorbit/ai lint
       - run: pnpm --filter @markorbit/ai typecheck
