@@ -7,6 +7,8 @@ import {
   PostgresReflectionDispositionProfileService,
   PostgresRuntimeCapabilityRegistry
 } from './index.js';
+import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
+import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
@@ -39,6 +41,7 @@ if (milestoneFixtureMode) {
   await database.start();
   const pool = database.getPool();
   const registry = new PostgresRuntimeCapabilityRegistry(database, pool);
+  const implementationProfiles = new PostgresImplementationProfileRegistryV1(database, pool);
   const sourceAuthority = new HttpExecutionCapabilityObservationSourceAuthority(
     executionUrl,
     internalServiceSecret
@@ -63,12 +66,19 @@ if (milestoneFixtureMode) {
     database,
     query: pool
   });
+  const governedCapabilityRuntime = createGovernedProductionRuntimeV1({
+    definitions: registry,
+    implementationProfiles,
+    managedAiRuntime,
+    internalServiceSecret
+  });
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
     privateReflectionCandidates,
     reflectionDispositionProfiles,
     ...(managedAiRuntime ?? {}),
+    ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),
     internalServiceSecret
   });
 }
