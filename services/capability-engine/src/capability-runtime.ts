@@ -62,6 +62,7 @@ export interface CapabilityImplementationExecutionResult {
   output: unknown;
   evidenceRefs?: readonly string[];
   usage?: Readonly<CapabilityUsage>;
+  failed?: boolean;
   requiresReview?: boolean;
 }
 
@@ -322,7 +323,11 @@ export class GovernedCapabilityRuntime {
           capabilityOutcomeId: this.ids.capabilityOutcome(),
           capabilityRequestId: request.capabilityRequestId,
           capabilityInvocationId: invocation.capabilityInvocationId,
-          status: implementationResult.requiresReview ? 'REQUIRES_REVIEW' : 'SUCCEEDED',
+          status: implementationResult.failed
+            ? 'FAILED'
+            : implementationResult.requiresReview
+              ? 'REQUIRES_REVIEW'
+              : 'SUCCEEDED',
           outputSchemaId: request.outputSchemaId,
           output: clone(implementationResult.output),
           evidenceRefs: [...(implementationResult.evidenceRefs ?? [])],
