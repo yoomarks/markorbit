@@ -15,6 +15,7 @@
     "test:managed-ai-claim:postgres": "vitest run tests/managed-ai-execution-claim-postgres.test.ts",
     "test:managed-ai-exact-output:postgres": "vitest run tests/managed-ai-exact-output-postgres.test.ts",
     "test:implementation-profile-registry:postgres": "vitest run tests/implementation-profile-registry-postgres.test.ts",
+    "test:governed-runtime-replay:postgres": "vitest run tests/capability-runtime-replay-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js"

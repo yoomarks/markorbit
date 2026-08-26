@@ -45,7 +45,8 @@
     "capability_engine_reflection_disposition_profile_twin": "@markorbit/capability-engine",
     "capability_engine_managed_ai_execution_claims": "@markorbit/capability-engine",
     "capability_engine_managed_ai_exact_outputs": "@markorbit/capability-engine",
-    "capability_engine_implementation_profile_registry": "@markorbit/capability-engine"
+    "capability_engine_implementation_profile_registry": "@markorbit/capability-engine",
+    "capability_engine_governed_runtime_replays": "@markorbit/capability-engine"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -96,6 +97,7 @@
     "0063_core_knowledge_v2_delivery_acceptance": "@markorbit/core-service",
     "0064_capability_engine_managed_ai_execution_claims": "@markorbit/capability-engine",
     "0065_capability_engine_managed_ai_exact_outputs": "@markorbit/capability-engine",
-    "0066_capability_engine_implementation_profile_registry": "@markorbit/capability-engine"
+    "0066_capability_engine_implementation_profile_registry": "@markorbit/capability-engine",
+    "0067_capability_engine_governed_runtime_replays": "@markorbit/capability-engine"
   }
 }
