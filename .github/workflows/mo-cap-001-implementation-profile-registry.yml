@@ -47,13 +47,6 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Capture exact Prettier output
-        run: |
-          pnpm exec prettier services/capability-engine/src/implementation-profile-registry-postgres.ts --write
-          echo '__PRETTIER_OUTPUT_BEGIN__'
-          cat services/capability-engine/src/implementation-profile-registry-postgres.ts
-          echo '__PRETTIER_OUTPUT_END__'
-          exit 1
       - name: Validate ownership boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries
       - name: Build Capability Engine dependency closure
