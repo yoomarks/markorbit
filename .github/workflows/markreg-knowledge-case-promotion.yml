@@ -72,6 +72,10 @@ jobs:
           pnpm validate:persistence-boundaries
       - name: Build MarkReg dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/markreg-service...
+      - name: Lint and typecheck MarkReg
+        run: |
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
       - name: Run durable promotion PostgreSQL acceptance
         run: >-
           pnpm --filter @markorbit/markreg-service exec vitest run --no-file-parallelism
