@@ -65,23 +65,25 @@ suite.sequential('PostgreSQL MarkReg Knowledge Case promotion durability', () =>
   async function insertMatter(suffix: string) {
     const formalMatterId = `formal-matter_${suffix}`;
     const snapshotSha256 = sha256(`snapshot:${suffix}`);
-    await database.getPool().query(
-      'INSERT INTO formal_matters (formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,1,$5,1,$6,1,$7,$8,$9::jsonb,1,$10,$11,$12,$12)',
-      [
-        formalMatterId,
-        workspaceId,
-        'TRADEMARK_REGISTRATION',
-        'OPEN',
-        `confirmation_${suffix}`,
-        `matter-draft_${suffix}`,
-        `quote_${suffix}`,
-        'quote-v1',
-        JSON.stringify({ preparation: { applicantName: 'Orbit Ltd', trademark: 'ORBIT' } }),
-        snapshotSha256,
-        `user_${suffix}`,
-        at
-      ]
-    );
+    await database
+      .getPool()
+      .query(
+        'INSERT INTO formal_matters (formal_matter_id,workspace_id,kind,status,version,source_customer_confirmation_id,source_customer_confirmation_version,source_matter_draft_id,source_matter_draft_version,source_quote_id,source_quote_version,source_snapshot,snapshot_schema_version,snapshot_sha256,created_by_user_id,created_at,updated_at) VALUES ($1,$2,$3,$4,1,$5,1,$6,1,$7,$8,$9::jsonb,1,$10,$11,$12,$12)',
+        [
+          formalMatterId,
+          workspaceId,
+          'TRADEMARK_REGISTRATION',
+          'OPEN',
+          `confirmation_${suffix}`,
+          `matter-draft_${suffix}`,
+          `quote_${suffix}`,
+          'quote-v1',
+          JSON.stringify({ preparation: { applicantName: 'Orbit Ltd', trademark: 'ORBIT' } }),
+          snapshotSha256,
+          `user_${suffix}`,
+          at
+        ]
+      );
     return { formalMatterId, snapshotSha256 };
   }
 
@@ -160,9 +162,11 @@ suite.sequential('PostgreSQL MarkReg Knowledge Case promotion durability', () =>
     expect(alias.acquired).toBe(false);
     expect(alias.record).toEqual(value);
 
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*) FROM markreg_knowledge_case_promotions) promotions, (SELECT count(*) FROM markreg_knowledge_case_promotion_commands) commands'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*) FROM markreg_knowledge_case_promotions) promotions, (SELECT count(*) FROM markreg_knowledge_case_promotion_commands) commands'
+      );
     expect(counts.rows[0]).toEqual({ promotions: '1', commands: '2' });
   });
 
@@ -264,9 +268,11 @@ suite.sequential('PostgreSQL MarkReg Knowledge Case promotion durability', () =>
     expect(results.filter((result) => result.acquired)).toHaveLength(1);
     expect(new Set(results.map((result) => result.record.producerPromotionRef)).size).toBe(1);
 
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*) FROM markreg_knowledge_case_promotions) promotions, (SELECT count(*) FROM markreg_knowledge_case_promotion_commands) commands'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*) FROM markreg_knowledge_case_promotions) promotions, (SELECT count(*) FROM markreg_knowledge_case_promotion_commands) commands'
+      );
     expect(counts.rows[0]).toEqual({ promotions: '1', commands: '2' });
   });
 });

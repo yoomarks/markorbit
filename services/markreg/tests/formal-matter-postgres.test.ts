@@ -170,9 +170,7 @@ suite('PostgreSQL Formal Matter migration, repository and service', () => {
   };
   it('applies and verifies owner migration 0022 with no workaround', async () => {
     const owned = await migrations();
-    expect(owned.map((x) => x.version)).toEqual(
-      expect.arrayContaining(['0020', '0021', '0022'])
-    );
+    expect(owned.map((x) => x.version)).toEqual(expect.arrayContaining(['0020', '0021', '0022']));
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (x) => x.state === 'applied'
