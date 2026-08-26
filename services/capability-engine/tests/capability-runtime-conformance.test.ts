@@ -61,6 +61,18 @@ function ids(): CapabilityRuntimeIdFactory {
   };
 }
 
+function definitionFor(mode: CapabilityRuntimeConformanceMode): RuntimeCapabilityDefinition {
+  if (mode === 'STALE_DEFINITION') {
+    return {
+      ...definition,
+      version: 6,
+      capabilityVersion: '0.9.0',
+      createdAt: '2026-08-25T16:00:00.000Z'
+    };
+  }
+  return definition;
+}
+
 function profileFor(mode: CapabilityRuntimeConformanceMode): ImplementationProfile {
   switch (mode) {
     case 'CALLER_FORBIDDEN':
@@ -69,6 +81,17 @@ function profileFor(mode: CapabilityRuntimeConformanceMode): ImplementationProfi
       return { ...baseProfile, maximumRiskClass: 'LOW' };
     case 'SCHEMA_MISMATCH':
       return { ...baseProfile, outputSchemaId: 'different-output.v1' };
+    case 'STALE_PROFILE':
+      return {
+        ...baseProfile,
+        version: 2,
+        capabilityVersion: '0.9.0',
+        createdAt: '2026-08-25T16:00:00.000Z'
+      };
+    case 'RETIRED_PROFILE':
+      return { ...baseProfile, version: 4, status: 'RETIRED' };
+    case 'INCOMPATIBLE_IMPLEMENTATION_KIND':
+      return { ...baseProfile, kind: 'AI_ASSISTED_SERVICE' };
     default:
       return { ...baseProfile };
   }
@@ -91,7 +114,8 @@ const adapter: CapabilityRuntimeConformanceAdapter = {
     outputSchemaId: 'conformance-output.v1',
     riskClass: 'MODERATE',
     idempotencyKey: 'conformance-idempotency-key',
-    correlationId: 'correlation_conformance'
+    correlationId: 'correlation_conformance',
+    ...overrides.extraFields
   }),
   create: (mode = 'DEFAULT') => {
     const execute = vi.fn(() => {
@@ -104,15 +128,19 @@ const adapter: CapabilityRuntimeConformanceAdapter = {
         usage: { latencyMs: 8 }
       });
     });
+    const select = vi.fn(() =>
+      Promise.resolve(
+        mode === 'MISSING_IMPLEMENTATION'
+          ? undefined
+          : {
+              profile: profileFor(mode),
+              policyVersion: 'capability-conformance-policy.v1'
+            }
+      )
+    );
     const runtime = new GovernedCapabilityRuntime({
-      definitions: { findCurrent: () => Promise.resolve(definition) },
-      implementations: {
-        select: () =>
-          Promise.resolve({
-            profile: profileFor(mode),
-            policyVersion: 'capability-conformance-policy.v1'
-          })
-      },
+      definitions: { findCurrent: () => Promise.resolve(definitionFor(mode)) },
+      implementations: { select },
       inputContracts: { validate: () => true },
       outputContracts: { validate: () => mode !== 'INVALID_OUTPUT' },
       executor: { execute },
@@ -121,7 +149,8 @@ const adapter: CapabilityRuntimeConformanceAdapter = {
     });
     return {
       invoke: (command: unknown) => runtime.invoke(command),
-      executionCount: () => execute.mock.calls.length
+      executionCount: () => execute.mock.calls.length,
+      selectionCount: () => select.mock.calls.length
     };
   }
 };
