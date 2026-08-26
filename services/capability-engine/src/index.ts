@@ -31,6 +31,7 @@ export * from './capability-runtime.js';
 export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
+export * from './managed-communication-foundation.js';
 export * from './milestone-capability-request-fixture.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
