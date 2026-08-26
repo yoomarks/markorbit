@@ -64,9 +64,7 @@ const profile: ImplementationProfile = {
 
 function registry(): DurableImplementationProfileRegistryV1 {
   return {
-    register: vi.fn((value: unknown) =>
-      Promise.resolve(value as ImplementationProfile)
-    ),
+    register: vi.fn((value: unknown) => Promise.resolve(value as ImplementationProfile)),
     findCurrent: vi.fn(() => Promise.resolve(profile)),
     findVersion: vi.fn(() => Promise.resolve(profile)),
     listCurrent: vi.fn(() => Promise.resolve([profile]))
