@@ -1,0 +1,518 @@
+name: MO-CAP-003 Idempotency Hardening Once
+
+on:
+  push:
+    branches: [mo-cap-003-durable-communication-foundation]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mo-cap-003-durable-communication-foundation
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Harden exact import idempotency
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          source = Path('services/capability-engine/src/managed-communication-foundation.ts')
+          text = source.read_text()
+
+          marker = "export interface ManagedCommunicationFoundationStoreV1 {"
+          interface = """export interface ManagedCommunicationFoundationTransactionHostV1 {
+            transact<T>(callback: (client: QueryClient) => Promise<T>): Promise<T>;
+          }
+
+          """
+          if interface.strip() not in text:
+              text = text.replace(marker, interface + marker)
+
+          old_fp = """function accountFingerprint(
+            binding: Omit<ManagedCommunicationAccountBindingV1, 'schemaVersion' | 'createdAt'>
+          ) {
+            return fingerprint(binding);
+          }"""
+          new_fp = """function accountFingerprint(binding: Readonly<ManagedCommunicationAccountBindingV1>) {
+            return fingerprint({
+              workspaceId: binding.workspaceId,
+              accountRef: binding.accountRef,
+              channel: binding.channel,
+              provider: binding.provider,
+              providerAccountRef: binding.providerAccountRef
+            });
+          }"""
+          if old_fp not in text:
+              raise SystemExit('accountFingerprint pattern not found')
+          text = text.replace(old_fp, new_fp)
+
+          old_mem = """        if (
+                  accountFingerprint(existing) !== accountFingerprint(binding) ||
+                  existing.createdAt !== binding.createdAt
+                )"""
+          new_mem = """        if (accountFingerprint(existing) !== accountFingerprint(binding))"""
+          if old_mem not in text:
+              raise SystemExit('in-memory binding pattern not found')
+          text = text.replace(old_mem, new_mem)
+
+          checkpoint_type = """type CheckpointRow = {
+            workspace_id: unknown;
+            account_ref: unknown;
+            checkpoint_ref: unknown;
+            provider_cursor: unknown;
+            cursor_sha256: unknown;
+            observed_at: unknown;
+            created_at: unknown;
+          };"""
+          claim_type = checkpoint_type + """
+
+          type ImportClaimRow = {
+            workspace_id: unknown;
+            account_ref: unknown;
+            idempotency_key_sha256: unknown;
+            provider: unknown;
+            provider_message_id: unknown;
+            observation_fingerprint_sha256: unknown;
+          };"""
+          if checkpoint_type not in text:
+              raise SystemExit('checkpoint row pattern not found')
+          text = text.replace(checkpoint_type, claim_type)
+
+          start = text.index('export class PostgresManagedCommunicationFoundationV1')
+          end = text.index('\nexport function newManagedCommunicationIdempotencyKeyV1', start)
+          new_class = r'''export class PostgresManagedCommunicationFoundationV1
+            implements ManagedCommunicationFoundationStoreV1
+          {
+            constructor(
+              private readonly transactionHost: ManagedCommunicationFoundationTransactionHostV1,
+              private readonly query: QueryClient
+            ) {}
+
+            async registerAccount(
+              command: Readonly<ManagedCommunicationRegisterAccountV1>
+            ): Promise<Readonly<ManagedCommunicationAccountBindingV1>> {
+              const binding = validatedBinding(command);
+              const bindingSha = accountFingerprint(binding);
+              try {
+                await this.query.query(
+                  `INSERT INTO capability_communication_accounts (
+                     workspace_id,account_ref,channel,provider,provider_account_ref,binding_fingerprint_sha256,created_at
+                   ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+                   ON CONFLICT DO NOTHING`,
+                  [
+                    binding.workspaceId,
+                    binding.accountRef,
+                    binding.channel,
+                    binding.provider,
+                    binding.providerAccountRef,
+                    bindingSha,
+                    binding.createdAt
+                  ]
+                );
+                const found = await this.query.query<AccountRow>(
+                  `SELECT workspace_id,account_ref,channel,provider,provider_account_ref,binding_fingerprint_sha256,created_at
+                     FROM capability_communication_accounts
+                    WHERE workspace_id=$1 AND account_ref=$2`,
+                  [binding.workspaceId, binding.accountRef]
+                );
+                const row = found.rows[0];
+                if (!row)
+                  throw new ManagedCommunicationFoundationError(
+                    'ACCOUNT_CONFLICT',
+                    'Communication provider account reference is already bound to another account in this workspace.'
+                  );
+                const persisted = bindingFromRow(row);
+                if (accountFingerprint(persisted) !== bindingSha)
+                  throw new ManagedCommunicationFoundationError(
+                    'ACCOUNT_CONFLICT',
+                    'Communication account reference is already bound to different durable metadata.'
+                  );
+                return Object.freeze(persisted);
+              } catch (error) {
+                if (error instanceof ManagedCommunicationFoundationError) throw error;
+                throw new ManagedCommunicationFoundationError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Managed Communication account persistence is unavailable.',
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+
+            async resolveAccount(
+              workspaceId: string,
+              accountRef: string
+            ): Promise<Readonly<ManagedCommunicationAccountBindingV1>> {
+              try {
+                const found = await this.query.query<AccountRow>(
+                  `SELECT workspace_id,account_ref,channel,provider,provider_account_ref,binding_fingerprint_sha256,created_at
+                     FROM capability_communication_accounts
+                    WHERE workspace_id=$1 AND account_ref=$2`,
+                  [clean(workspaceId, 'workspaceId', 500), clean(accountRef, 'accountRef', 500)]
+                );
+                const row = found.rows[0];
+                if (!row)
+                  throw new ManagedCommunicationFoundationError(
+                    'ACCOUNT_NOT_FOUND',
+                    'Communication account binding was not found in this workspace.'
+                  );
+                return Object.freeze(bindingFromRow(row));
+              } catch (error) {
+                if (error instanceof ManagedCommunicationFoundationError) throw error;
+                throw new ManagedCommunicationFoundationError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Managed Communication account resolution is unavailable.',
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+
+            private async findProviderMessage(
+              client: QueryClient,
+              workspaceId: string,
+              accountRef: string,
+              provider: string,
+              providerMessageId: string
+            ): Promise<StoredMessage | undefined> {
+              const found = await client.query<MessageRow>(
+                `SELECT workspace_id,account_ref,provider,provider_message_id,idempotency_key_sha256,
+                        observation_fingerprint_sha256,message_json
+                   FROM capability_communication_messages
+                  WHERE workspace_id=$1 AND account_ref=$2 AND provider=$3 AND provider_message_id=$4`,
+                [workspaceId, accountRef, provider, providerMessageId]
+              );
+              return found.rows[0] ? storedMessageFromRow(found.rows[0]) : undefined;
+            }
+
+            private async replayFromImportClaim(
+              client: QueryClient,
+              validated: ReturnType<typeof validatedObservation>
+            ): Promise<Readonly<ManagedCommunicationObservationOutcomeV1> | undefined> {
+              const found = await client.query<ImportClaimRow>(
+                `SELECT workspace_id,account_ref,idempotency_key_sha256,provider,provider_message_id,
+                        observation_fingerprint_sha256
+                   FROM capability_communication_import_claims
+                  WHERE workspace_id=$1 AND account_ref=$2 AND idempotency_key_sha256=$3`,
+                [validated.workspaceId, validated.accountRef, validated.idempotencyKeySha256]
+              );
+              const row = found.rows[0];
+              if (!row) return undefined;
+              if (
+                typeof row.workspace_id !== 'string' ||
+                typeof row.account_ref !== 'string' ||
+                typeof row.idempotency_key_sha256 !== 'string' ||
+                !SHA256.test(row.idempotency_key_sha256) ||
+                typeof row.provider !== 'string' ||
+                typeof row.provider_message_id !== 'string' ||
+                typeof row.observation_fingerprint_sha256 !== 'string' ||
+                !SHA256.test(row.observation_fingerprint_sha256)
+              )
+                throw new ManagedCommunicationFoundationError(
+                  'INVALID_PERSISTED_STATE',
+                  'Persisted Communication import claim is invalid.'
+                );
+              if (row.observation_fingerprint_sha256 !== validated.observationFingerprintSha256)
+                throw new ManagedCommunicationFoundationError(
+                  'IDEMPOTENCY_CONFLICT',
+                  'Communication idempotency key is already bound to a different observation.'
+                );
+              const stored = await this.findProviderMessage(
+                client,
+                row.workspace_id,
+                row.account_ref,
+                row.provider,
+                row.provider_message_id
+              );
+              if (!stored || stored.observationFingerprintSha256 !== row.observation_fingerprint_sha256)
+                throw new ManagedCommunicationFoundationError(
+                  'INVALID_PERSISTED_STATE',
+                  'Persisted Communication import claim no longer resolves to its immutable observation.'
+                );
+              return outcome('REPLAYED', stored.message);
+            }
+
+            private async bindImportClaim(
+              client: QueryClient,
+              validated: ReturnType<typeof validatedObservation>,
+              stored: StoredMessage
+            ): Promise<void> {
+              await client.query(
+                `INSERT INTO capability_communication_import_claims (
+                   workspace_id,account_ref,idempotency_key_sha256,provider,provider_message_id,
+                   observation_fingerprint_sha256,created_at
+                 ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                [
+                  validated.workspaceId,
+                  validated.accountRef,
+                  validated.idempotencyKeySha256,
+                  stored.provider,
+                  stored.providerMessageId,
+                  stored.observationFingerprintSha256,
+                  validated.now
+                ]
+              );
+            }
+
+            async admitObservation(
+              command: Readonly<ManagedCommunicationObservationCommandV1>
+            ): Promise<Readonly<ManagedCommunicationObservationOutcomeV1>> {
+              const binding = await this.resolveAccount(command.workspaceId, command.accountRef);
+              const validated = validatedObservation(binding, command);
+              try {
+                return await this.transactionHost.transact(async (client) => {
+                  const lockKeys = [
+                    `communication-idempotency:${validated.workspaceId}:${validated.accountRef}:${validated.idempotencyKeySha256}`,
+                    `communication-provider:${validated.workspaceId}:${validated.accountRef}:${validated.message.providerObservation.provider}:${validated.message.providerObservation.providerMessageId}`
+                  ].sort();
+                  for (const lockKey of lockKeys)
+                    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [lockKey]);
+
+                  const claimed = await this.replayFromImportClaim(client, validated);
+                  if (claimed) return claimed;
+
+                  const existingProvider = await this.findProviderMessage(
+                    client,
+                    validated.workspaceId,
+                    validated.accountRef,
+                    validated.message.providerObservation.provider,
+                    validated.message.providerObservation.providerMessageId
+                  );
+                  if (existingProvider) {
+                    if (
+                      existingProvider.observationFingerprintSha256 !==
+                      validated.observationFingerprintSha256
+                    )
+                      throw new ManagedCommunicationFoundationError(
+                        'PROVIDER_OBSERVATION_CONFLICT',
+                        'Provider message identity is already bound to a different normalized observation.'
+                      );
+                    await this.bindImportClaim(client, validated, existingProvider);
+                    return outcome('REPLAYED', existingProvider.message);
+                  }
+
+                  await client.query(
+                    `INSERT INTO capability_communication_messages (
+                       workspace_id,account_ref,provider,provider_message_id,provider_thread_id,message_id,thread_ref,
+                       idempotency_key_sha256,observation_fingerprint_sha256,message_json,observed_at,created_at
+                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12)`,
+                    [
+                      validated.workspaceId,
+                      validated.accountRef,
+                      validated.message.providerObservation.provider,
+                      validated.message.providerObservation.providerMessageId,
+                      validated.message.providerObservation.providerThreadId ?? null,
+                      validated.message.messageId,
+                      validated.message.threadRef,
+                      validated.idempotencyKeySha256,
+                      validated.observationFingerprintSha256,
+                      JSON.stringify(validated.message),
+                      validated.message.providerObservation.observedAt,
+                      validated.now
+                    ]
+                  );
+                  const persisted = await this.findProviderMessage(
+                    client,
+                    validated.workspaceId,
+                    validated.accountRef,
+                    validated.message.providerObservation.provider,
+                    validated.message.providerObservation.providerMessageId
+                  );
+                  if (!persisted)
+                    throw new ManagedCommunicationFoundationError(
+                      'PERSISTENCE_UNAVAILABLE',
+                      'Communication observation was not readable after persistence.'
+                    );
+                  await this.bindImportClaim(client, validated, persisted);
+                  return outcome('ADMITTED', persisted.message);
+                });
+              } catch (error) {
+                if (error instanceof ManagedCommunicationFoundationError) throw error;
+                throw new ManagedCommunicationFoundationError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Managed Communication observation persistence is unavailable.',
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+
+            async resolveMessage(
+              workspaceId: string,
+              accountRef: string,
+              messageId: string
+            ): Promise<Readonly<ManagedCommunicationMessageV1>> {
+              try {
+                const found = await this.query.query<MessageRow>(
+                  `SELECT workspace_id,account_ref,provider,provider_message_id,idempotency_key_sha256,
+                          observation_fingerprint_sha256,message_json
+                     FROM capability_communication_messages
+                    WHERE workspace_id=$1 AND account_ref=$2 AND message_id=$3`,
+                  [
+                    clean(workspaceId, 'workspaceId', 500),
+                    clean(accountRef, 'accountRef', 500),
+                    clean(messageId, 'messageId', 500)
+                  ]
+                );
+                const row = found.rows[0];
+                if (!row)
+                  throw new ManagedCommunicationFoundationError(
+                    'MESSAGE_NOT_FOUND',
+                    'Communication message was not found in this workspace/account scope.'
+                  );
+                return Object.freeze(cloneMessage(storedMessageFromRow(row).message));
+              } catch (error) {
+                if (error instanceof ManagedCommunicationFoundationError) throw error;
+                throw new ManagedCommunicationFoundationError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Managed Communication message resolution is unavailable.',
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+
+            async saveCheckpoint(
+              command: Readonly<ManagedCommunicationSaveCheckpointV1>
+            ): Promise<Readonly<ManagedCommunicationCheckpointV1>> {
+              await this.resolveAccount(command.workspaceId, command.accountRef);
+              const value = checkpoint(command);
+              const cursorSha = sha256(value.providerCursor);
+              try {
+                await this.query.query(
+                  `INSERT INTO capability_communication_checkpoints (
+                     workspace_id,account_ref,checkpoint_ref,provider_cursor,cursor_sha256,observed_at,created_at
+                   ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+                   ON CONFLICT DO NOTHING`,
+                  [
+                    value.workspaceId,
+                    value.accountRef,
+                    value.checkpointRef,
+                    value.providerCursor,
+                    cursorSha,
+                    value.observedAt,
+                    value.createdAt
+                  ]
+                );
+                const found = await this.query.query<CheckpointRow>(
+                  `SELECT workspace_id,account_ref,checkpoint_ref,provider_cursor,cursor_sha256,observed_at,created_at
+                     FROM capability_communication_checkpoints
+                    WHERE workspace_id=$1 AND account_ref=$2 AND checkpoint_ref=$3`,
+                  [value.workspaceId, value.accountRef, value.checkpointRef]
+                );
+                const row = found.rows[0];
+                if (!row)
+                  throw new ManagedCommunicationFoundationError(
+                    'PERSISTENCE_UNAVAILABLE',
+                    'Communication checkpoint was not readable after persistence.'
+                  );
+                const persisted = checkpointFromRow(row);
+                if (
+                  persisted.providerCursor !== value.providerCursor ||
+                  persisted.observedAt !== value.observedAt
+                )
+                  throw new ManagedCommunicationFoundationError(
+                    'CHECKPOINT_CONFLICT',
+                    'Communication checkpoint reference is already bound to different provider cursor state.'
+                  );
+                return cloneCheckpoint(persisted);
+              } catch (error) {
+                if (error instanceof ManagedCommunicationFoundationError) throw error;
+                throw new ManagedCommunicationFoundationError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Managed Communication checkpoint persistence is unavailable.',
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+
+            async latestCheckpoint(
+              workspaceId: string,
+              accountRef: string
+            ): Promise<Readonly<ManagedCommunicationCheckpointV1> | undefined> {
+              await this.resolveAccount(workspaceId, accountRef);
+              try {
+                const found = await this.query.query<CheckpointRow>(
+                  `SELECT workspace_id,account_ref,checkpoint_ref,provider_cursor,cursor_sha256,observed_at,created_at
+                     FROM capability_communication_checkpoints
+                    WHERE workspace_id=$1 AND account_ref=$2
+                    ORDER BY observed_at DESC, created_at DESC, checkpoint_ref DESC
+                    LIMIT 1`,
+                  [clean(workspaceId, 'workspaceId', 500), clean(accountRef, 'accountRef', 500)]
+                );
+                return found.rows[0] ? cloneCheckpoint(checkpointFromRow(found.rows[0])) : undefined;
+              } catch (error) {
+                if (error instanceof ManagedCommunicationFoundationError) throw error;
+                throw new ManagedCommunicationFoundationError(
+                  'PERSISTENCE_UNAVAILABLE',
+                  'Managed Communication checkpoint resolution is unavailable.',
+                  { cause: error instanceof Error ? error : undefined }
+                );
+              }
+            }
+          }'''
+          text = text[:start] + new_class + text[end:]
+          source.write_text(text)
+
+          pg_test = Path('services/capability-engine/tests/managed-communication-foundation-postgres.test.ts')
+          test = pg_test.read_text()
+          test = test.replace(
+              'return new PostgresManagedCommunicationFoundationV1(database.getPool());',
+              'return new PostgresManagedCommunicationFoundationV1(database, database.getPool());'
+          )
+          test = test.replace(
+              'capability_communication_checkpoints,\n         capability_communication_messages,',
+              'capability_communication_checkpoints,\n         capability_communication_import_claims,\n         capability_communication_messages,'
+          )
+          test = test.replace(
+              'TRUNCATE capability_communication_checkpoints,\n                capability_communication_messages,',
+              'TRUNCATE capability_communication_checkpoints,\n                capability_communication_import_claims,\n                capability_communication_messages,'
+          )
+          old_replay = """    expect(replay.disposition).toBe('REPLAYED');
+
+              await expect(
+                store().admitObservation({
+                  workspaceId,
+                  accountRef,
+                  idempotencyKey: 'communication-pg-import-3',"""
+          new_replay = """    expect(replay.disposition).toBe('REPLAYED');
+              const claims = await database.getPool().query<{ count: string }>(
+                'SELECT count(*)::text AS count FROM capability_communication_import_claims'
+              );
+              expect(claims.rows[0]?.count).toBe('2');
+
+              await expect(
+                store().admitObservation({
+                  workspaceId,
+                  accountRef,
+                  idempotencyKey: 'communication-pg-import-2',
+                  message: message('Conflicting reuse of admitted alias'),
+                  now: '2026-08-26T04:30:04.000Z'
+                })
+              ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+
+              await expect(
+                store().admitObservation({
+                  workspaceId,
+                  accountRef,
+                  idempotencyKey: 'communication-pg-import-3',"""
+          if old_replay not in test:
+              raise SystemExit('postgres replay test pattern not found')
+          test = test.replace(old_replay, new_replay)
+          pg_test.write_text(test)
+          PY
+          pnpm exec prettier --write services/capability-engine/src/managed-communication-foundation.ts services/capability-engine/tests/managed-communication-foundation-postgres.test.ts
+      - name: Commit hardening
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/capability-engine/src/managed-communication-foundation.ts services/capability-engine/tests/managed-communication-foundation-postgres.test.ts
+          git commit -m 'fix: persist exact communication import claims'
+          git push origin HEAD:mo-cap-003-durable-communication-foundation
