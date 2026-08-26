@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   AuthenticationError,
   type AccountAccessResult,
-  type WorkspaceEntry
+  type WorkspaceEntry,
+  type WorkspacePrincipal
 } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
-import { createGatewayAccountAccessRoutes } from '../src/account-access-http.js';
+import {
+  createGatewayAccountAccessRoutes,
+  resolveBrowserWorkspacePrincipal
+} from '../src/account-access-http.js';
 import { csrfToken, type CoreAuthenticationClient } from '../src/auth.js';
 
 const csrfSecret = 's'.repeat(32);
@@ -48,6 +52,24 @@ const workspace: WorkspaceEntry = {
     updatedAt: '2098-01-01T00:00:00.000Z'
   }
 };
+const workspacePrincipal: WorkspacePrincipal = {
+  kind: 'WORKSPACE',
+  sessionId: result.session.sessionId,
+  userId: result.account.userId,
+  workspaceId: workspace.workspace.workspaceId,
+  membershipId: workspace.membership.membershipId,
+  role: 'READ_ONLY',
+  permissions: [
+    'workspace:read',
+    'matter:read',
+    'order:read',
+    'review:read',
+    'execution:read',
+    'document-package:read',
+    'instruction-ledger:read'
+  ],
+  sessionExpiresAt: result.session.expiresAt
+};
 
 function client(overrides: Partial<CoreAuthenticationClient> = {}): CoreAuthenticationClient {
   return {
@@ -63,7 +85,7 @@ function client(overrides: Partial<CoreAuthenticationClient> = {}): CoreAuthenti
         userId: result.account.userId,
         sessionExpiresAt: result.session.expiresAt
       }),
-    resolveWorkspace: () => Promise.reject(new Error('not used')),
+    resolveWorkspace: () => Promise.resolve(workspacePrincipal),
     revoke: () => Promise.resolve(),
     ...overrides
   };
@@ -182,6 +204,57 @@ describe('Gateway real account access', () => {
     ).rejects.toMatchObject({ status: 401, code: 'INVALID_CREDENTIALS' });
   });
 
+  it('resolves the current browser session without returning the opaque token', async () => {
+    const route = routes(client()).find((value) => value.path === '/api/auth/session')!;
+    const response = await route.handle(authenticatedRequest());
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      authenticated: true,
+      userId: result.account.userId,
+      sessionId: result.session.sessionId,
+      sessionExpiresAt: result.session.expiresAt
+    });
+    expect(response.body).toMatchObject({
+      csrfToken: csrfToken(result.session.sessionId, csrfSecret)
+    });
+    expect(JSON.stringify(response.body)).not.toContain(result.rawToken);
+  });
+
+  it('logs out through trusted-origin and CSRF checks, revokes the session, and clears the cookie', async () => {
+    let revoked = '';
+    const route = routes(
+      client({
+        revoke: (sessionId) => {
+          revoked = sessionId;
+          return Promise.resolve();
+        }
+      })
+    ).find((value) => value.path === '/api/auth/logout')!;
+    const response = await route.handle(authenticatedRequest());
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ authenticated: false });
+    expect(response.headers?.['set-cookie']).toContain('mo_session=; Max-Age=0');
+    expect(revoked).toBe(result.session.sessionId);
+  });
+
+  it('fails logout closed when the browser mutation has no CSRF token', async () => {
+    let revoked = false;
+    const route = routes(
+      client({
+        revoke: () => {
+          revoked = true;
+          return Promise.resolve();
+        }
+      })
+    ).find((value) => value.path === '/api/auth/logout')!;
+    await expect(
+      route.handle(
+        request(undefined, 'https://app.example', { cookie: `mo_session=${result.rawToken}` })
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'INVALID_CSRF_TOKEN' });
+    expect(revoked).toBe(false);
+  });
+
   it('lists the authenticated user workspaces without trusting a user id from the browser', async () => {
     let listedUserId = '';
     const route = routes(
@@ -196,6 +269,58 @@ describe('Gateway real account access', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ workspaces: [workspace] });
     expect(listedUserId).toBe(result.account.userId);
+  });
+
+  it('derives the workspace principal server-side and ignores a forged browser principal header', async () => {
+    let resolvedToken = '';
+    let resolvedWorkspace = '';
+    const authenticationClient = client({
+      resolveWorkspace: (rawToken, workspaceId) => {
+        resolvedToken = rawToken;
+        resolvedWorkspace = workspaceId;
+        return Promise.resolve(workspacePrincipal);
+      }
+    });
+    const route = routes(authenticationClient).find(
+      (value) => value.path === '/api/auth/workspace-principal'
+    )!;
+    const browserRequest = authenticatedRequest();
+    browserRequest.headers['x-markorbit-workspace-id'] = workspace.workspace.workspaceId;
+    browserRequest.headers['x-markorbit-principal'] = 'forged-browser-principal';
+    const response = await route.handle(browserRequest);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ principal: workspacePrincipal });
+    expect(resolvedToken).toBe(result.rawToken);
+    expect(resolvedWorkspace).toBe(workspace.workspace.workspaceId);
+    expect(JSON.stringify(response.body)).not.toContain('forged-browser-principal');
+  });
+
+  it('fails workspace principal resolution closed when workspace context is absent', async () => {
+    await expect(
+      resolveBrowserWorkspacePrincipal(authenticatedRequest(), {
+        authenticationClient: client(),
+        csrfSecret,
+        allowedOrigins: ['https://app.example'],
+        secureCookies: false
+      })
+    ).rejects.toMatchObject({ code: 'WORKSPACE_CONTEXT_REQUIRED' });
+  });
+
+  it('propagates cross-workspace membership denial from Core instead of accepting browser context', async () => {
+    const route = routes(
+      client({
+        resolveWorkspace: () =>
+          Promise.reject(
+            new AuthenticationError('MEMBERSHIP_REQUIRED', 'Workspace membership is required.')
+          )
+      })
+    ).find((value) => value.path === '/api/auth/workspace-principal')!;
+    const browserRequest = authenticatedRequest();
+    browserRequest.headers['x-markorbit-workspace-id'] = '018f0000-0000-7000-8000-000000000099';
+    await expect(route.handle(browserRequest)).rejects.toMatchObject({
+      status: 401,
+      code: 'MEMBERSHIP_REQUIRED'
+    });
   });
 
   it('creates a WORKSPACE_ADMIN workspace through the authenticated session and CSRF boundary', async () => {
