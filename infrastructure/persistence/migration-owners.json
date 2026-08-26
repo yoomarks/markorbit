@@ -12,6 +12,7 @@
     "markreg_audit_hardening": "@markorbit/markreg-service",
     "markreg_orders": "@markorbit/markreg-service",
     "markreg_commercial_checkout": "@markorbit/markreg-service",
+    "markreg_knowledge_case_promotions": "@markorbit/markreg-service",
     "payment_foundation": "@markorbit/payment-service",
     "execution_filing_governance": "@markorbit/execution-service",
     "execution_trademark_service_sessions": "@markorbit/execution-service",
@@ -100,6 +101,7 @@
     "0065_capability_engine_managed_ai_exact_outputs": "@markorbit/capability-engine",
     "0066_capability_engine_implementation_profile_registry": "@markorbit/capability-engine",
     "0067_capability_engine_governed_runtime_replays": "@markorbit/capability-engine",
-    "0068_capability_engine_managed_communication_foundation": "@markorbit/capability-engine"
+    "0068_capability_engine_managed_communication_foundation": "@markorbit/capability-engine",
+    "0069_markreg_knowledge_case_promotions": "@markorbit/markreg-service"
   }
 }
