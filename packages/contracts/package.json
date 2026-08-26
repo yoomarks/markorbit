@@ -136,7 +136,8 @@
     },
     "./capability-runtime": {
       "types": "./dist/capability-runtime.d.ts",
-      "import": "./dist/capability-runtime.js"
+      "import": "./dist/capability-runtime.js",
+      "default": "./dist/capability-runtime.js"
     },
     "./beta-readiness": {
       "types": "./dist/beta-readiness.d.ts",

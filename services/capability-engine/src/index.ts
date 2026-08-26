@@ -1,21 +1,20 @@
-import { randomUUID } from 'node:crypto';
-import {
-  parseCapabilityRequestCommand,
-  type CapabilityRequest,
-  type CapabilityRequestCommand,
-  type EventEnvelope
-} from '@markorbit/contracts';
-import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
-import { createServiceRuntime, HttpError, json, type JsonResult } from '@markorbit/service-kit';
+import type { EventPublisher } from '@markorbit/events';
+import { createServiceRuntime } from '@markorbit/service-kit';
 import { createCapabilityCenterRoutes } from './capability-center-http.js';
 import { createCapabilityObservationRoutes } from './capability-observation-http.js';
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
+import { createCapabilityRuntimeRoutesV2 } from './capability-runtime-http.js';
+import type { GovernedCapabilityRuntime } from './capability-runtime.js';
 import type { ManagedAiExecutionClaimStoreV1 } from './managed-ai-execution-claim.js';
 import type { ManagedAiExactOutputStoreV1 } from './managed-ai-exact-output.js';
 import {
   createManagedAiExecutionRoutesV1,
   type ManagedAiExecutionAuthorityV1
 } from './managed-ai-http.js';
+import {
+  createMilestoneCapabilityRequestFixtureRoute,
+  type InMemoryCapabilityRequestRepository
+} from './milestone-capability-request-fixture.js';
 import { createPrivateReflectionCandidateRoutes } from './private-reflection-candidate-http.js';
 import type { PostgresPrivateReflectionCandidateService } from './private-reflection-candidate.js';
 import { createReflectionDispositionProfileRoutes } from './reflection-disposition-profile-http.js';
@@ -27,9 +26,12 @@ export * from './capability-center-http.js';
 export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
+export * from './capability-runtime-http.js';
+export * from './capability-runtime.js';
 export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
+export * from './milestone-capability-request-fixture.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
 export * from './reflection-disposition-profile-http.js';
@@ -42,24 +44,11 @@ export const serviceManifest = Object.freeze({
   port: Number(process.env.PORT ?? '4103'),
   version: '0.1.0'
 });
-interface Entry {
-  fingerprint: string;
-  record: CapabilityRequest;
-}
-export class InMemoryCapabilityRequestRepository {
-  private readonly entries = new Map<string, Entry>();
-  get size() {
-    return this.entries.size;
-  }
-  get(key: string) {
-    return this.entries.get(key);
-  }
-  save(key: string, entry: Entry) {
-    this.entries.set(key, entry);
-  }
-}
+
 export interface CapabilityEngineOptions {
   port?: number;
+  governedCapabilityRuntime?: Pick<GovernedCapabilityRuntime, 'invoke'>;
+  milestoneFixtureRequestPath?: boolean;
   repository?: InMemoryCapabilityRequestRepository;
   publisher?: EventPublisher;
   now?: () => string;
@@ -72,27 +61,53 @@ export interface CapabilityEngineOptions {
   managedAiExactOutputStore?: ManagedAiExactOutputStoreV1;
   internalServiceSecret?: string;
 }
+
 export function createRuntime(options: CapabilityEngineOptions = {}) {
-  const repository = options.repository ?? new InMemoryCapabilityRequestRepository();
-  const publisher = options.publisher ?? new InMemoryEventPublisher();
-  const now = options.now ?? (() => new Date().toISOString());
-  const inFlight = new Map<string, { fingerprint: string; result: Promise<JsonResult> }>();
-  if (Boolean(options.runtimeCapabilityRegistry) !== Boolean(options.internalServiceSecret))
+  const milestoneFixtureRequested =
+    options.milestoneFixtureRequestPath === true ||
+    options.repository !== undefined ||
+    options.publisher !== undefined ||
+    options.now !== undefined;
+  if (options.governedCapabilityRuntime && milestoneFixtureRequested) {
+    throw new Error(
+      'governedCapabilityRuntime and milestone Capability fixture options are mutually exclusive.'
+    );
+  }
+  if (Boolean(options.runtimeCapabilityRegistry) !== Boolean(options.internalServiceSecret)) {
     throw new Error(
       'runtimeCapabilityRegistry and internalServiceSecret must be configured together.'
     );
-  if (options.capabilityObservationLedger && !options.internalServiceSecret)
+  }
+  if (options.capabilityObservationLedger && !options.internalServiceSecret) {
     throw new Error('capabilityObservationLedger requires internalServiceSecret.');
-  if (options.privateReflectionCandidates && !options.internalServiceSecret)
+  }
+  if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
-  if (options.reflectionDispositionProfiles && !options.internalServiceSecret)
+  }
+  if (options.reflectionDispositionProfiles && !options.internalServiceSecret) {
     throw new Error('reflectionDispositionProfiles requires internalServiceSecret.');
-  if (options.managedAiExecutor && !options.internalServiceSecret)
+  }
+  if (options.managedAiExecutor && !options.internalServiceSecret) {
     throw new Error('managedAiExecutor requires internalServiceSecret.');
-  if (options.managedAiClaimStore && !options.managedAiExecutor)
+  }
+  if (options.managedAiClaimStore && !options.managedAiExecutor) {
     throw new Error('managedAiClaimStore requires managedAiExecutor.');
-  if (options.managedAiExactOutputStore && !options.managedAiExecutor)
+  }
+  if (options.managedAiExactOutputStore && !options.managedAiExecutor) {
     throw new Error('managedAiExactOutputStore requires managedAiExecutor.');
+  }
+
+  const capabilityRequestRoutes = options.governedCapabilityRuntime
+    ? createCapabilityRuntimeRoutesV2({ runtime: options.governedCapabilityRuntime })
+    : milestoneFixtureRequested
+      ? [
+          createMilestoneCapabilityRequestFixtureRoute({
+            ...(options.repository === undefined ? {} : { repository: options.repository }),
+            ...(options.publisher === undefined ? {} : { publisher: options.publisher }),
+            ...(options.now === undefined ? {} : { now: options.now })
+          })
+        ]
+      : [];
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
@@ -146,84 +161,12 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
             : { exactOutputStore: options.managedAiExactOutputStore })
         })
       : [];
+
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
-        {
-          method: 'POST',
-          path: '/v1/capability-requests',
-          async handle(request) {
-            let command: CapabilityRequestCommand;
-            try {
-              command = parseCapabilityRequestCommand(request.body);
-            } catch (error) {
-              throw new HttpError(
-                400,
-                'INVALID_REQUEST',
-                error instanceof Error ? error.message : 'Invalid request.'
-              );
-            }
-            const header = request.headers['idempotency-key'];
-            if (!header || header !== command.idempotencyKey)
-              throw new HttpError(
-                400,
-                'INVALID_REQUEST',
-                'Idempotency-Key header is required and must match the command.'
-              );
-            const fingerprint = JSON.stringify({ ...command, idempotencyKey: undefined });
-            const existing = repository.get(header);
-            if (existing) {
-              if (existing.fingerprint !== fingerprint)
-                throw new HttpError(
-                  409,
-                  'IDEMPOTENCY_CONFLICT',
-                  'Idempotency key was already used with a different payload.'
-                );
-              return json(200, existing.record);
-            }
-            const pending = inFlight.get(header);
-            if (pending) {
-              if (pending.fingerprint !== fingerprint)
-                throw new HttpError(
-                  409,
-                  'IDEMPOTENCY_CONFLICT',
-                  'Idempotency key is in use with a different payload.'
-                );
-              return pending.result;
-            }
-            const result = (async (): Promise<JsonResult> => {
-              const record: CapabilityRequest = {
-                capabilityRequestId: `capreq_${randomUUID()}`,
-                capabilityId: 'trademark-application-recommendation',
-                capabilityVersion: '0.1.0-fixture',
-                inputRef: command.inputRef,
-                status: 'ACCEPTED',
-                correlationId: command.correlationId,
-                createdAt: now()
-              };
-              const event: EventEnvelope<'capability.request.accepted.v1', CapabilityRequest> = {
-                eventId: `event_${randomUUID()}`,
-                eventType: 'capability.request.accepted.v1',
-                occurredAt: now(),
-                correlationId: command.correlationId,
-                causationId: command.inputRef,
-                actor: command.actor,
-                schemaVersion: 1,
-                payload: record
-              };
-              await publisher.publish(event);
-              repository.save(header, { fingerprint, record });
-              return json(201, record);
-            })();
-            inFlight.set(header, { fingerprint, result });
-            try {
-              return await result;
-            } finally {
-              inFlight.delete(header);
-            }
-          }
-        },
+        ...capabilityRequestRoutes,
         ...runtimeCapabilityRoutes,
         ...capabilityObservationRoutes,
         ...privateReflectionCandidateRoutes,
