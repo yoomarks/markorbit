@@ -1,0 +1,78 @@
+name: MarkReg Knowledge Case Promotion Durability
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/markreg-knowledge-case-promotion.yml'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0069_markreg_knowledge_case_promotions.sql'
+      - 'packages/contracts/src/identity.ts'
+      - 'services/markreg/package.json'
+      - 'services/markreg/src/knowledge-case-promotion.ts'
+      - 'services/markreg/src/knowledge-case-promotion-postgres.ts'
+      - 'services/markreg/src/formal-matter.ts'
+      - 'services/markreg/tests/formal-matter-postgres.test.ts'
+      - 'services/markreg/tests/knowledge-case-promotion.test.ts'
+      - 'services/markreg/tests/knowledge-case-promotion-postgres.test.ts'
+      - 'services/markreg/tests/support/markreg-test-database.ts'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/markreg-knowledge-case-promotion.yml'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0069_markreg_knowledge_case_promotions.sql'
+      - 'packages/contracts/src/identity.ts'
+      - 'services/markreg/package.json'
+      - 'services/markreg/src/knowledge-case-promotion.ts'
+      - 'services/markreg/src/knowledge-case-promotion-postgres.ts'
+      - 'services/markreg/src/formal-matter.ts'
+      - 'services/markreg/tests/formal-matter-postgres.test.ts'
+      - 'services/markreg/tests/knowledge-case-promotion.test.ts'
+      - 'services/markreg/tests/knowledge-case-promotion-postgres.test.ts'
+      - 'services/markreg/tests/support/markreg-test-database.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: markreg-knowledge-case-promotion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  durable-promotion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_knowledge_case_promotion_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_knowledge_case_promotion_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_knowledge_case_promotion_test
+      MARKREG_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Validate formatting and migration ownership
+        run: |
+          pnpm format:check
+          pnpm validate:persistence-boundaries
+      - name: Build MarkReg dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/markreg-service...
+      - name: Run durable promotion PostgreSQL acceptance
+        run: >-
+          pnpm --filter @markorbit/markreg-service exec vitest run --no-file-parallelism
+          tests/knowledge-case-promotion-postgres.test.ts
