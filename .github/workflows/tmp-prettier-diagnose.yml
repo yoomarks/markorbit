@@ -1,0 +1,30 @@
+name: Temporary Prettier Diagnose
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/tmp-prettier-diagnose.yml"
+      - "services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  prettier-diff:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        shell: bash
+        run: |
+          pnpm exec prettier --write services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts
+          git diff -- services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts
+          exit 1
