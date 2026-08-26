@@ -61,7 +61,6 @@ jobs:
             services/capability-engine/src/capability-runtime-replay-store.ts \
             services/capability-engine/tests/capability-runtime-replay.test.ts \
             services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
-          pnpm --filter @markorbit/capability-engine lint
       - name: Commit lint fixes when changed
         run: |
           if git diff --quiet -- \
