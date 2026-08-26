@@ -279,7 +279,7 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
 
     await database.getPool().query(
       `UPDATE capability_communication_messages
-          SET message_json=jsonb_set(message_json,'{subject}','\"tampered\"'::jsonb,false)`
+          SET message_json=jsonb_set(message_json,'{subject}',to_jsonb('tampered'::text),false)`
     );
     await expect(
       store().resolveMessage(workspaceId, accountRef, admitted.message.messageId)

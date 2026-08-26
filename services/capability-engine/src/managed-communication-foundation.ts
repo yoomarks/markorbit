@@ -386,7 +386,14 @@ export class InMemoryManagedCommunicationFoundationV1 implements ManagedCommunic
       this.accounts.set(key, { ...binding });
       return Promise.resolve(Object.freeze({ ...binding }));
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject(
+        error instanceof Error
+          ? error
+          : new ManagedCommunicationFoundationError(
+              'INVALID_PERSISTED_STATE',
+              'Managed Communication account registration failed with a non-Error rejection.'
+            )
+      );
     }
   }
 
