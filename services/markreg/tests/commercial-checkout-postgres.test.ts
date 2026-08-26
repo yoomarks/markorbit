@@ -98,11 +98,13 @@ suite.sequential('PostgreSQL commercial catalog and checkout', () => {
       migrationOwners,
       '@markorbit/markreg-service'
     );
-    expect(owned.at(-1)?.version).toBe('0050');
-    expect(
-      (await migrationStatus(database.getPool(), MARKREG_TEST_MIGRATION_NAMESPACE, owned)).at(-1)
-        ?.state
-    ).toBe('applied');
+    expect(owned.some((migration) => migration.version === '0050')).toBe(true);
+    const status = await migrationStatus(
+      database.getPool(),
+      MARKREG_TEST_MIGRATION_NAMESPACE,
+      owned
+    );
+    expect(status.find((migration) => migration.version === '0050')?.state).toBe('applied');
     const relations = await database
       .getPool()
       .query(
