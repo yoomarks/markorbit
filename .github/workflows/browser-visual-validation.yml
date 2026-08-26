@@ -38,6 +38,8 @@ jobs:
           node-version: 22.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build milestone runtime dependency closure
+        run: pnpm -w build
       - run: pnpm test:runtime
       - run: pnpm test:story-matrix
       - name: Build Storybook contract dependency
