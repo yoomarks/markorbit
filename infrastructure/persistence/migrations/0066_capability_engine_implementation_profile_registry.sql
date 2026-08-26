@@ -10,7 +10,17 @@ CREATE TABLE IF NOT EXISTS capability_implementation_profile_identities (
   CONSTRAINT capability_implementation_profile_identities_id_v1
     CHECK (implementation_profile_id ~ '^implementation-profile_[A-Za-z0-9][A-Za-z0-9._:-]*$'),
   CONSTRAINT capability_implementation_profile_identities_kind_v1
-    CHECK (kind IN ('LOCAL_DETERMINISTIC','AI_ASSISTED_SERVICE','EXTERNAL_PROVIDER','HUMAN_ASSISTED'))
+    CHECK (
+      kind IN (
+        'DETERMINISTIC_SERVICE',
+        'AI_ASSISTED_SERVICE',
+        'WORKFLOW',
+        'SKILL_AGENT',
+        'HUMAN_REVIEWED',
+        'EXTERNAL_PROVIDER',
+        'COMPOSITE'
+      )
+    )
 );
 
 CREATE TABLE IF NOT EXISTS capability_implementation_profile_versions (
