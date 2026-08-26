@@ -14,7 +14,7 @@ let database: ManagedDatabase | undefined;
 let runtime: ReturnType<typeof createRuntime>;
 
 if (milestoneFixtureMode) {
-  runtime = createRuntime();
+  runtime = createRuntime({ milestoneFixtureRequestPath: true });
 } else {
   const databaseUrl = process.env.CAPABILITY_ENGINE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseUrl)
