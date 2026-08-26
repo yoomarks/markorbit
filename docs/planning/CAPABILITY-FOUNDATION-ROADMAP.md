@@ -1,23 +1,23 @@
 # MarkOrbit Capability Foundation Roadmap
 
 - **Program:** `MO-CAP-FOUNDATION`
-- **Status:** DIRECTION_LOCKED / READY_FOR_STAGED_IMPLEMENTATION
-- **Date:** 2026-08-25
-- **Planning baseline:** `b7ee1ff4fda8a2a770b94d49c8cd9bbda52ee039`
+- **Status:** `ACTIVE_P0_REUSE_PROOF`
+- **Original direction lock:** 2026-08-25 at `c594ad26906d44e4b026bf86a5cc1d3507f1b95e`
+- **Reconciled:** 2026-08-26
+- **Reconciled main:** `6ddf351b0425a0024901dce10ba54f7243dade47`
 - **Architecture:** `docs/architecture/CAPABILITY-FOUNDATION-ARCHITECTURE.md`
-- **Audit:** `docs/audits/CAPABILITY-FOUNDATION-AUDIT-2026-08-25.md`
+- **Original audit:** `docs/audits/CAPABILITY-FOUNDATION-AUDIT-2026-08-25.md`
+- **MO-CAP-001 closeout audit:** `docs/audits/MO-CAP-001-CLOSEOUT-AUDIT-2026-08-26.md`
 - **Machine task ledger:** `docs/planning/CAPABILITY-FOUNDATION-TASKS.yaml`
 - **Production authority:** false
 
+> The original 2026-08-25 staged plan remains available in Git history at `c594ad26906d44e4b026bf86a5cc1d3507f1b95e`. This document is the current execution roadmap after reconciling that plan with the implementation actually merged through PR #241.
+
 ## 1. Program objective
 
-Move the existing Capability Engine from a durable definition/learning foundation into the common governed execution/admission layer used by MarkOrbit products and cross-repository systems.
+Capability Foundation exists to make the existing Capability Engine the common governed execution/admission layer used by independent MarkOrbit products and repositories, rather than allowing Knowledge, Brain, Lite, MarkReg and later products to permanently rebuild provider/tool infrastructure under different names.
 
-The program exists to prevent Knowledge, Brain, Lite, MarkReg and later products from permanently rebuilding the same AI, communication, document and retrieval infrastructure under different names.
-
-This is an evolution of M6 and historical `MO-MVP-TASK-010..013`, not a replacement Capability system.
-
-The target product dependency is:
+The locked dependency direction remains:
 
 ```text
 Data Engine + Knowledge
@@ -32,453 +32,283 @@ Capability Runtime  <---- Core shared identity/context/governance
    Lite      MarkReg       + future products
 ```
 
-Products consume stable Capability outcomes. Brain remains a typed, attributable, non-canonical intelligence producer. Provider/tool infrastructure is hidden behind governed implementation profiles.
+Products consume governed Capability outcomes. Brain remains a typed, attributable, versioned, non-canonical intelligence producer. Provider/model/mailbox/tool infrastructure remains hidden behind governed implementation boundaries.
 
-## 2. Priority model
+The canon remains:
 
-Capabilities are prioritized by five factors:
+`Capability = Stable Outcome Contract + Governed Implementation + Evidence Base + Version Lineage + Controlled Evolution`.
 
-1. **Cross-product leverage** — how many independent consumers need the outcome;
-2. **Duplication pressure** — whether a product/repository is already rebuilding the same infrastructure;
-3. **Security/authority concentration** — provider secrets, external side effects, tenant data, costs;
-4. **Dependency leverage** — how many future domain Capabilities require it;
-5. **Extraction cost if delayed** — how expensive it becomes after several products have local implementations.
+## 2. Reconciled program state
 
-This produces the following sequence:
+| Capability / platform work                                  | Priority       | Current status                                         | Next admission target                                                                            |
+| ----------------------------------------------------------- | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `MO-CAP-001` Capability Runtime Execution & Admission Plane | P0             | **SINGLE_CONSUMER_PROVEN**                             | second independent governed consumer before any `FOUNDATION_REUSABLE` claim                      |
+| `MO-CAP-002` Managed AI Execution                           | P0             | **IMPLEMENTATION_BOUND / CONSUMER MIGRATION REQUIRED** | one real Knowledge workload through Capability V2, then Brain second consumer                    |
+| `MO-CAP-003` Managed Communication / Email                  | P0             | **CONTRACT PROVEN / DURABLE FOUNDATION ACTIVE**        | durable no-send runtime, then Knowledge Expert communication slice, then MarkReg second consumer |
+| MarkReg → Knowledge Case producer/resolver                  | P0 integration | **ACTIVE**                                             | real FormalMatter promotion + trusted resolver + Knowledge K-CASE acceptance                     |
+| `MO-CAP-004` Governed Document Understanding                | P1             | **HOLD**                                               | only after P0 reuse pattern is proven                                                            |
+| `MO-CAP-005` Governed Retrieval                             | P1             | **HOLD**                                               | only after P0 reuse pattern is proven                                                            |
+| `MO-CAP-006` Conformance & Evaluation Harness               | P1 platform    | **PARTIALLY IMPLEMENTED**                              | grow with 002/003; do not create a duplicate harness                                             |
+| Domain Capability Wave 1                                    | P2 staged      | **ROADMAP ONLY / HOLD**                                | separate scope lock after multi-product foundation reuse                                         |
 
-| Sequence | Work                                                        | Priority  | Admission target                                   |
-| -------- | ----------------------------------------------------------- | --------- | -------------------------------------------------- |
-| 1        | `MO-CAP-001` Capability Runtime Execution & Admission Plane | P0        | first                                              |
-| 2A       | `MO-CAP-002` Managed AI Execution                           | P0        | after minimum MO-CAP-001 invocation contract       |
-| 2B       | `MO-CAP-003` Managed Communication / Email                  | P0        | after minimum MO-CAP-001 invocation contract       |
-| 3A       | `MO-CAP-004` Governed Document Understanding                | P1        | after AI/communication runtime patterns are proven |
-| 3B       | `MO-CAP-005` Governed Retrieval                             | P1        | after runtime patterns are proven                  |
-| 3C       | `MO-CAP-006` Capability Conformance & Evaluation Harness    | P1        | grows alongside 002–005                            |
-| 4        | Domain Capability Wave 1                                    | P2 staged | only after foundation reuse is proven              |
+The program is no longer in a “build the generic runtime” phase. The runtime exists. The current phase is **prove reuse through real independent consumers while preserving authority boundaries**.
 
-`MO-CAP-002` and `MO-CAP-003` may proceed in parallel once `MO-CAP-001` has frozen and merged the common invocation/binding contract they both consume.
+## 3. MO-CAP-001 — closeout state
 
-## 3. Stage 0 — 0–30 days: make Capability executable
+### Decision
 
-### MO-CAP-001 — Capability Runtime Execution & Admission Plane
+`MO-CAP-001 = SINGLE_CONSUMER_PROVEN`.
 
-**Outcome:** the existing Capability Engine can resolve a durable Capability version, determine eligibility, bind an approved implementation profile, execute it under trusted context, validate its output, and return a typed Capability Return / Session Receipt with evidence and provenance.
+The following implementation is merged on main:
 
-### Required work
+- provider-neutral Capability V2 contract and deterministic governed core — PR #198 / `ff7e19ce9b7a3f7ad8d422ba9cac6bb01c5d055c`;
+- durable Implementation Profile registry/binding — PR #228 / `8b599b33e04dbe3d654587c37b0acb67b7858165`;
+- governed normal request path replacing the historical fixture — PR #227 / `f9b7fa6af81be052f5992d3033567ca58edb75fe`;
+- trusted Gateway/internal caller admission — PR #232 / `2692079d527f80356645fef7a22b5836e1a4630a`;
+- reliability/version/output/authority conformance — PR #233 / `f4039c56a3b98d87122c850cff5ebc384f69a746`;
+- durable production runtime bootstrap — PR #235 / `25a37443c36497ec4c4b852db3bd3e4474bb8ce2`;
+- restart-safe governed replay — PR #239 / `f88911ca77ff64d0004d4ad550f2711e18851b7c`;
+- schema-independent Lite consumer client — PR #241 / `6ddf351b0425a0024901dce10ba54f7243dade47`.
 
-#### WP01 — Historical contract reconciliation
+The exact-head audit and requirement matrix live in `MO-CAP-001-CLOSEOUT-AUDIT-2026-08-26.md`.
 
-- reconcile `MO-MVP-TASK-010..013` with the M6 implementation and current runtime;
-- preserve M6 registry/learning semantics;
-- identify old fixture contracts that are still public or test-dependent;
-- produce one migration matrix rather than invent competing nouns.
+### What is still open
 
-#### WP02 — Runtime contract family
+The remaining admission gap is **reuse**, not another runtime layer.
 
-Freeze shared contracts for at least:
+`FOUNDATION_REUSABLE` requires at least two independent consumers. Lite is the first main-repository product thin slice. A second independent consumer must use the same governed request/binding/outcome model before promotion.
 
-- `ImplementationProfile`;
-- `CapabilityRequestV2`;
-- `CapabilityEligibilityDecision`;
-- `CapabilityComposition` where composition is used;
-- `ImplementationBinding`;
-- `CapabilityInvocation`;
-- `CapabilityOutcome`;
-- `CapabilityReturn` / `SessionReceipt`.
+Do not create another Capability runtime, provider-selection plane, replay system or product-owned provider gateway to satisfy this requirement.
 
-Every object must carry exact Capability identity/version, trusted Workspace/caller context, correlation/idempotency and version/evidence fields appropriate to its authority.
+## 4. MO-CAP-002 — Managed AI Execution
 
-#### WP03 — Durable implementation registry/binding
+### Current reality
 
-Capability Engine persists approved implementation profiles and binds only trusted profiles compatible with the requested Capability version and policy envelope.
+The main repository already contains substantial Managed AI infrastructure:
 
-The caller cannot choose arbitrary raw provider/model/endpoint/credential values.
+- provider-neutral Managed AI contracts;
+- AI provider adapter boundary;
+- DeepSeek implementation adapter;
+- governed executor and server-side authorization gates;
+- durable execution claims;
+- exact provider-output persistence/resolution;
+- provider failure/retry/follow-up policy hardening;
+- Managed AI audit telemetry;
+- governed production Capability runtime binding through the server-owned Managed AI implementation key.
 
-#### WP04 — Governed invocation runtime
+Knowledge also has a real cross-repository Managed AI HTTP consumer. However, that consumer still calls the specialized internal Managed AI execution endpoint rather than the schema-independent Capability V2 path.
 
-Replace the hard-coded request fixture with a real runtime path:
+Therefore MO-CAP-002 is **not** yet `SINGLE_CONSUMER_PROVEN` under the Capability Foundation admission model.
 
-`request -> definition -> eligibility -> binding -> invocation -> output validation -> return/receipt`.
+### Next mainline objective — Knowledge strangler migration
 
-Initial implementation may be deterministic and non-external to prove semantics before powerful providers are added.
+Migrate one bounded real Knowledge workload from the specialized Managed AI endpoint to governed Capability V2.
 
-#### WP05 — Gateway/internal admission
+Required sequence:
 
-- trusted caller/product identity;
-- Workspace/Principal propagation;
-- permission/entitlement checks;
-- service-to-service authentication;
-- correlation propagation;
-- no browser/provider secret leakage.
+1. inventory the exact current Knowledge workload and its request/outcome/provenance expectations;
+2. bind a stable accepted `managed-ai-execution` Capability definition/version and approved Implementation Profile;
+3. add a Knowledge-side governed Capability V2 client/adapter without exposing provider/model/credential authority;
+4. preserve the existing specialized path as rollback during the migration;
+5. run old/new parity for output schema, provider/profile provenance, idempotency, failure semantics and source lineage;
+6. prove exact cross-repository acceptance against pinned Core and Knowledge heads;
+7. admit Knowledge as the first governed consumer only after the real workload passes;
+8. then migrate one bounded Brain workload as the second independent consumer;
+9. only after both consumers pass may MO-CAP-002 be considered for `FOUNDATION_REUSABLE`.
 
-#### WP06 — Reliability and authority
+### Explicit non-goals
 
-Prove:
+- no big-bang migration of all Knowledge AI;
+- no product-selected arbitrary model/provider;
+- no implication that AI output is canonical truth;
+- no production credential authorization by code merge;
+- no deletion of the working rollback path before parity/recovery evidence.
 
-- exact replay idempotency;
-- conflicting replay rejection;
-- stale Capability/implementation version rejection;
-- Workspace isolation;
-- unsupported applicability/eligibility fail closed;
-- timeout/retry classification;
-- malformed/invalid outcome rejection;
-- restart recovery where durable state exists;
-- no automatic Capability canon mutation;
-- no automatic professional authority promotion.
+## 5. MO-CAP-003 — Managed Communication / Email
 
-#### WP07 — Consumer conformance thin slice
+### Current reality
 
-Use at least one main-repository consumer to prove the new invocation path without relying on a provider-specific shortcut.
+The provider-neutral Managed Communication contract is merged and already distinguishes:
 
-#### WP08 — independent audit
-
-Audit architecture, authority, compatibility with M6, exact-head CI and absence of cross-service SQL / hidden direct provider selection.
-
-### Exit gate
-
-`MO-CAP-001` is complete only when `/v1/capability-requests` or its approved successor no longer manufactures the hard-coded fixture and a real accepted runtime Capability can return a validated receipt through the normal authenticated path.
-
-No production external side effect is required or authorized for this gate.
-
----
-
-## 4. Stage 1A — 30–60 days: Managed AI Execution
-
-### MO-CAP-002 — Managed AI Execution Capability V1
-
-**Stable outcome:** produce one typed AI-assisted result under explicit model/prompt/data/budget/evaluation policy with complete usage and implementation provenance.
-
-**Implementation infrastructure:** shared AI Gateway.
-
-The Capability ID must remain provider-neutral. OpenAI, Anthropic, Gemini, DeepSeek, local models or later providers are implementation adapters/profiles.
-
-### Work packages
-
-#### WP01 — AI outcome contract
-
-Freeze request/output families for the first bounded use cases, including:
-
-- structured-output schema reference;
-- data classification/sensitivity;
-- allowed reasoning/processing purpose;
-- model capability requirements rather than product-selected model names;
-- max latency/cost/token envelope;
-- evidence/provenance;
-- result authority (`nonCanonical` unless another governing capability admits it).
-
-#### WP02 — AI Gateway provider boundary
-
-Centralize:
-
-- provider credentials;
-- model catalog/capabilities;
-- request normalization;
-- provider adapters;
-- rate limits;
-- retry/fallback policy;
-- timeouts;
-- structured-output validation;
-- error taxonomy.
-
-#### WP03 — Prompt/policy/version lineage
-
-Persist or otherwise bind exact prompt/policy/model/profile versions sufficient to reproduce and evaluate outcomes without storing secrets.
-
-#### WP04 — usage, budget and economics
-
-Record per invocation:
-
-- input/output tokens or provider-equivalent units;
-- provider/model/profile;
-- latency;
-- monetary cost when known;
-- budget decision;
-- retry/fallback behavior;
-- cache behavior where permitted.
-
-Budgeting is policy, not user-visible provider selection.
-
-#### WP05 — evaluation
-
-Add golden fixtures and bounded live/sandbox evaluation for:
-
-- schema validity;
-- semantic quality metrics appropriate to the use case;
-- hallucination/source-attribution risks;
-- provider/model substitution drift;
-- regression thresholds.
-
-#### WP06 — Knowledge migration, first real consumer
-
-Inventory the Knowledge-local AI gateway/AI-assisted collection behavior. Reuse/adapt the proven implementation where safe rather than rewriting it for architecture aesthetics.
-
-Migrate one real Knowledge workload through the shared Managed AI Execution Capability, preserving Knowledge ownership of Knowledge semantics and source provenance.
-
-#### WP07 — Brain second independent consumer
-
-Migrate one bounded Brain workload through the same Capability contract. Brain remains owner of typed reasoning-result semantics; it does not own provider credentials or provider SDK policy.
-
-#### WP08 — cross-repository admission
-
-Require real Knowledge + MarkOrbit/Brain cross-repository acceptance, exact implementation/profile pins, provider-secret isolation and outcome/provenance checks.
-
-### Exit gate
-
-Managed AI Execution reaches `FOUNDATION_REUSABLE` only after two independent consumers use the shared Capability path and neither consumer requires direct provider credentials/SDK semantics for the admitted workload.
-
-After this gate, new direct AI provider integrations outside approved implementation adapters require an explicit architecture exception.
-
----
-
-## 5. Stage 1B — 30–75 days: Managed Communication
-
-### MO-CAP-003 — Managed Communication Capability V1
-
-**Stable outcome:** receive, correlate, prepare/send and evidence permitted communications under explicit participant, thread, consent/permission, delivery and side-effect policy.
-
-**Initial implementation infrastructure:** Communication Hub, Email first.
-
-Gmail, Microsoft Graph, IMAP, SMTP and later messaging providers are Tools/adapters.
-
-### Work packages
-
-#### WP01 — communication semantic contract
-
-Define provider-neutral objects for:
-
-- `CommunicationAccountRef`;
-- `Participant`;
-- `Conversation` / `Thread`;
-- `Message`;
-- `AttachmentRef`;
+- account/channel references;
+- participants;
+- message/thread identity;
 - inbound/outbound direction;
+- attachment references/checksums;
 - provider observation/provenance;
-- delivery state;
-- send intent/authorization;
-- correlation with MarkOrbit objects by governed reference, not by shared database.
+- checkpointed reads;
+- explicit no-authority consequences.
 
-#### WP02 — account/credential boundary
+The missing piece is the durable Communication implementation/runtime. Knowledge issue `yoomarks/markorbit-knowledge#468` is already blocked on this shared capability for the first real Expert Q&A communication slice.
 
-Mailbox/provider credentials remain inside the Communication implementation boundary. Products receive opaque account/channel references and normalized communication outcomes.
+### Current parallel foundation lane
 
-#### WP03 — inbound Email V1
+Core issue **#243** owns the no-live-provider durable Communication foundation.
 
-Support a bounded provider path with:
+It must establish at least:
 
-- incremental cursor/checkpoint;
-- message/thread dedupe;
-- participant normalization;
-- attachment references;
-- provider timestamps/IDs;
-- rate-limit/retry;
+- durable account/channel binding;
+- immutable message/thread/provider-observation persistence;
+- checkpoint/cursor restart recovery;
+- provider message/thread dedupe;
+- conflicting replay fail-close behavior;
+- attachment reference/checksum provenance;
 - Workspace/account isolation;
-- raw-provider provenance.
+- immutable/integrity-checked replay semantics;
+- reusable in-memory/PostgreSQL conformance where persistence exists.
 
-Inbound content does **not** automatically become canonical Customer, Matter, deadline or legal truth.
+It must **not** send externally, use live credentials, mutate Customer/Matter/legal truth, or grant professional authority.
 
-#### WP04 — Knowledge first consumer
+### After durable foundation acceptance
 
-Knowledge consumes permitted lawyer/agent/official/industry email as a source through Managed Communication. Knowledge then applies its own source admission/provenance/content pipeline.
+The repository-lead integration sequence is:
 
-The Communication Hub owns mailbox transport, not Knowledge classification.
+1. freeze prepared-send / authorization / delivery-evidence state semantics;
+2. bind one provider adapter behind the Communication implementation boundary without leaking credentials into Knowledge;
+3. prove exactly-once/uncertain-delivery reconciliation semantics;
+4. integrate one Knowledge Expert question send + one real correlated inbound reply;
+5. preserve immutable raw reply evidence and attachment refs;
+6. run Knowledge #468 acceptance;
+7. then add an independent MarkReg communication journey as the second consumer;
+8. require cross-product admission before `FOUNDATION_REUSABLE`.
 
-#### WP05 — outbound preparation and controlled send
+Production live outbound send remains a separate hold point even after code completion.
 
-Separate:
+## 6. Immediate cross-repository product unblock — MarkReg → Knowledge Case
 
-`draft/prepared communication -> human/system authorization -> external send -> delivery evidence`.
+Knowledge issue `yoomarks/markorbit-knowledge#467` has already completed the Knowledge Case consumer foundation and is blocked on the authoritative producer side.
 
-External send must use durable idempotency, audit and protected-action policy. Production live send requires a separately accepted provider/credential gate; completing code does not authorize it.
+Core issue **#244** owns the MarkReg-side integration.
 
-#### WP06 — MarkReg second consumer
+The path must be:
 
-Integrate one bounded MarkReg customer/professional communication journey without moving Matter/lifecycle truth into Communication Hub.
+```text
+real MarkReg FormalMatter
+        |
+        v
+Send to Knowledge Case
+        |
+        v
+CaseCandidate source identity
+        |
+        v
+trusted authenticated MarkReg evidence resolver
+        |
+        v
+existing Knowledge Case pipeline / K-CASE acceptance
+```
 
-#### WP07 — Brain/Lite consumption boundary
+Requirements:
 
-Brain may consume permitted normalized communication context through governed retrieval/capability inputs. Lite may surface communication-derived attention/actions. Neither may bypass account permissions or treat inference as message truth.
+- actual Formal Matter id/version/workspace/snapshot lineage;
+- opaque producer promotion reference;
+- idempotent repeat promotion;
+- authenticated server-side resolver;
+- no direct Knowledge access to MarkReg persistence;
+- immutable evidence checksums/storage refs preserved;
+- no invented correspondence/payment evidence;
+- no implication of publication, recommendation, legal truth or professional success;
+- exact pinned cross-repository acceptance.
 
-#### WP08 — cross-product admission
+This integration is P0 because it unlocks already-built product value without requiring an external provider or a new horizontal platform layer.
 
-Require Knowledge + MarkReg real acceptance and prove that provider adapters can evolve without changing Capability outcome semantics.
+## 7. MO-CAP-006 — conformance is not a greenfield project
 
-### Exit gate
+The repository already contains reusable Capability runtime conformance and reliability/authority gates from PR #223/#233 plus dedicated PostgreSQL runtime/replay gates.
 
-Managed Communication reaches `FOUNDATION_REUSABLE` after one inbound Knowledge path and one independent MarkReg communication path run through the same normalized Capability/runtime with credential isolation and evidence-preserving semantics.
+MO-CAP-006 should therefore grow alongside MO-CAP-002 and MO-CAP-003 rather than restart as a separate platform rewrite.
 
----
+Remaining emphasis:
 
-## 6. Stage 2 — 60–120 days: Document, Retrieval and Conformance
+- consumer conformance across repository boundaries;
+- provider/tool substitution tests;
+- latency/cost/error quality comparisons;
+- provenance completeness;
+- tenant isolation;
+- drift detection;
+- release guard integration for promoted implementation profiles.
+
+## 8. P1 work remains intentionally deferred
 
 ### MO-CAP-004 — Governed Document Understanding
 
-**Goal:** prevent Knowledge and MarkReg from independently owning parser/OCR/extraction semantics that should be reused.
-
-Work includes:
-
-- inventory existing Knowledge conversion/extraction and MarkReg document flows;
-- document/file reference contract rather than arbitrary path passing;
-- malware/size/type policy boundary where relevant;
-- text/layout/metadata extraction profiles;
-- OCR only where needed and quality-signalled;
-- structured extraction schema;
-- exact source provenance and page/range references;
-- redaction/data classification;
-- human-review state;
-- evidence and confidence;
-- at least Knowledge + MarkReg conformance consumers.
-
-Non-goal: take ownership of MarkReg formal document-package/lifecycle state.
+Still valuable for Knowledge + MarkReg parser/extraction reuse, but **do not start now**. It remains blocked on proof that the P0 runtime + consumer migration pattern is actually reusable.
 
 ### MO-CAP-005 — Governed Retrieval
 
-**Goal:** let Brain and product Capabilities retrieve across Data Engine, Knowledge, Core and admitted Brain result stores without erasing source authority.
+Still required for mixed Data Engine / Knowledge / Core / Brain retrieval with authority/provenance preservation, but **do not start now** for the same reason.
 
-Retrieval must preserve categories such as:
+Starting 004/005 before 002/003 achieve real cross-product reuse would create breadth while the foundation admission model remains unproven.
 
-- authoritative Data Engine fact;
-- sourced Knowledge claim/content;
-- Core business object/context;
-- Brain inference/non-canonical result.
+## 9. Domain Capability wave remains roadmap-only
 
-Required concerns:
+The following candidates remain intentionally unscoped for implementation:
 
-- Workspace/permission;
-- source allowlist;
-- query purpose;
-- freshness/as-of;
-- authority/provenance;
-- bounded result budgets;
-- hybrid keyword/semantic/entity methods;
-- citations/evidence refs;
-- no assumption that one vector database is the semantic owner.
+- Trademark Monitoring & Change Interpretation;
+- Renewal / Maintenance Readiness;
+- Content Intelligence & Publication Preparation;
+- Filing Strategy / Readiness;
+- Brand Risk / Protection Assessment;
+- Client Opportunity / Service Readiness.
 
-### MO-CAP-006 — Capability Conformance & Evaluation Harness
+Each requires a separate outcome contract and scope lock after the shared foundation demonstrates multi-product reuse.
 
-Build the shared harness needed for implementation evolution:
+## 10. External/operator gates are not ordinary development backlog
 
-- contract conformance;
-- golden fixtures;
-- sandbox/live-provider bounded tests;
-- implementation substitution;
-- latency/cost/error quality;
-- source/evidence completeness;
-- security/tenant isolation;
-- drift detection;
-- outcome-equivalence thresholds;
-- release guard integration.
+Keep external evidence gates separate from code implementation.
 
-This becomes a prerequisite for promoting later implementation profiles and domain Capabilities.
+Examples include:
 
----
+- Core Stripe sandbox acceptance requiring the owner-provided Stripe test secret;
+- Knowledge paid-provider ADK acceptance requiring separately controlled provider credentials/evidence retention;
+- Data Engine target-host CN/SG acceptance requiring the machine that owns the real data/runtime state.
 
-## 7. Stage 3 — 3–6 months: first domain Capability wave
+Do not manufacture acceptance with CI doubles where the gate explicitly requires a real provider or target host.
 
-Domain Capabilities are not authorized merely because they are listed here. Each requires its own outcome contract and scope lock.
-
-Recommended first wave based on product leverage:
-
-### 7.1 Trademark Monitoring & Change Interpretation
-
-Consumes Data Engine facts, Knowledge/Brain context, retrieval and communication/attention surfaces to produce a governed change interpretation. It must preserve the distinction between provider fact and professional interpretation.
-
-Primary product consumers: MarkReg and Lite.
-
-### 7.2 Renewal / Maintenance Readiness
-
-Produces a readiness assessment and prepared-work outcome, not a fabricated legal deadline or automatic filing authority.
-
-Primary consumer: MarkReg; Lite may surface daily readiness/attention.
-
-### 7.3 Content Intelligence & Publication Preparation
-
-Consumes Knowledge/Brain and Managed AI Execution to produce evidence-linked content packages suitable for Lite. Publication remains a separate communication/protected-action step.
-
-### 7.4 Filing Strategy / Readiness
-
-Builds on existing recommendation/intake/work infrastructure. It must distinguish advice from formal Matter state, filing authorization and Official Truth.
-
-### 7.5 Brand Risk / Protection Assessment
-
-Combines governed facts, knowledge and reasoning into a typed risk/option outcome with evidence, uncertainty and review burden.
-
----
-
-## 8. Stage 4 — 6–12 months: Capability portfolio operations
-
-Once foundation capabilities demonstrate repeated multi-product reuse:
-
-- build an internal Capability catalog/center for operators/developers;
-- define product entitlement profiles independent of implementation profiles;
-- support explicit primary/supporting/critic Capability compositions where justified;
-- expose per-Capability reliability, latency, cost and quality economics;
-- compare implementation profiles without changing product contracts;
-- add deprecation/migration tooling for Capability and implementation versions;
-- measure cross-product reuse and duplicate direct-provider escape hatches;
-- allow Skills/workflows/providers to compete as implementations under stable Capability outcomes.
-
-This stage does **not** imply a public Capability marketplace or public professional ranking.
-
----
-
-## 9. Stage 5 — 12–24 months: evidence-backed Capability evolution
-
-Long-term direction:
-
-- mature Outcome -> Reflection -> Change Proposal -> Version -> Release pipeline;
-- use accumulated outcome evidence to propose, never silently enact, Capability improvements;
-- maintain source/reasoning/implementation evidence lineage;
-- grow professional Capability portfolios across trademark/brand/service domains;
-- support multiple implementation profiles including internal deterministic systems, AI-assisted implementations, human review and external provider/network implementations;
-- require conformance and explicit release governance for material changes;
-- preserve non-canonical Brain authority and human/professional decision boundaries.
-
-The long-term moat is not a fixed AI model or one integration. It is a governed portfolio of durable capabilities whose implementations can improve without forcing products to rebuild their meaning.
-
-## 10. Program metrics
-
-Track at least:
+## 11. Program metrics
 
 ### Architecture adoption
 
-- number and percentage of admitted Capabilities with **2+ independent consumers**;
-- count of direct provider SDK/credential uses outside approved adapters;
-- percentage of AI invocations routed through Managed AI Execution;
-- percentage of admitted email communication routed through Communication Hub;
-- number of product-local horizontal implementations retired after parity acceptance.
+- admitted Capabilities with 2+ independent consumers;
+- direct provider SDK/credential uses outside approved adapters;
+- percentage of admitted AI workloads routed through Managed AI Capability execution;
+- percentage of admitted communication routed through Communication Hub;
+- product-local horizontal implementations retired only after parity/rollback proof.
 
 ### Runtime quality
 
-- capability outcome validation failure rate;
+- outcome validation failure rate;
 - eligibility/binding failure rate;
-- retry/replay/idempotency conflict rate;
-- p50/p95 latency per Capability/implementation profile;
-- availability/error classification;
-- evidence/provenance completeness.
+- replay/idempotency conflict rate;
+- p50/p95 latency per Capability/profile;
+- evidence/provenance completeness;
+- restart/reconciliation outcomes.
 
-### AI economics/quality
+### AI quality/economics
 
-- token/provider units and cost per Capability outcome;
+- provider/model/profile and exact prompt/policy lineage;
+- token/provider units and cost where known;
 - budget rejection/fallback rate;
 - provider/model substitution conformance;
-- evaluation drift and schema failure rate.
+- schema/evaluation drift.
 
 ### Communication quality
 
 - duplicate inbound rate;
-- cursor/checkpoint recovery success;
+- checkpoint recovery success;
 - thread/participant normalization errors;
 - outbound idempotency conflicts;
-- delivery evidence completeness.
+- uncertain delivery reconciliation rate;
+- delivery/raw-evidence completeness.
 
 ### Migration quality
 
-- old/new path parity rate;
-- consumer rollback success;
+- old/new parity rate;
+- rollback success;
 - cross-repository acceptance status;
 - unresolved architecture exceptions.
 
-## 11. Development rules
+## 12. Development rules
 
 Every implementation PR under this program follows:
 
@@ -487,13 +317,15 @@ Every implementation PR under this program follows:
 3. no direct `main` push;
 4. source-owner and authority boundary explicit in contracts/tests;
 5. no cross-service SQL;
-6. migrations remain in owning service;
+6. migrations remain in the owning service and require collision checks before allocation;
 7. provider secrets never enter product/browser contracts;
 8. failure does not manufacture factual absence or professional success;
 9. runtime evidence cannot auto-mutate Capability canon;
-10. no production enablement is inferred from code merge.
+10. no production enablement is inferred from code merge;
+11. if main advances during a parallel lane, clean rebuild on the latest main and rerun exact-head gates;
+12. two-consumer admission must represent genuinely independent consumers, not two aliases of the same path.
 
-## 12. Program hold points
+## 13. Program hold points
 
 Require explicit new authorization before:
 
@@ -506,13 +338,23 @@ Require explicit new authorization before:
 - MO-DE-007/008 or other deferred Data Engine G2 work;
 - any architecture that makes Brain the direct canonical business API for Lite/MarkReg.
 
-## 13. Immediate execution order
+## 14. Immediate execution order — reconciled 2026-08-26
 
-The next implementation task is **`MO-CAP-001`**.
+### Repository lead
 
-After its minimum invocation/binding contract is accepted:
+1. close **#242** with the independent MO-CAP-001 audit and ledger reconciliation;
+2. execute **#244 MarkReg → Knowledge Case producer/trusted resolver** and run the existing Knowledge acceptance path;
+3. execute **MO-CAP-002 Knowledge governed Capability V2 strangler migration** for one real workload;
+4. after the durable Communication foundation is accepted, own the send/reply authorization state machine and Knowledge #468 end-to-end integration;
+5. own final cross-repository exact-head/authority merge gates.
 
-- start **`MO-CAP-002` Managed AI Execution**;
-- start **`MO-CAP-003` Managed Communication / Email** in parallel where team capacity permits.
+### Assistant-engineer parallel lanes
 
-Do not start P1/P2 work merely to create breadth. The first proof of the Capability architecture is reusable execution with two real independent consumers, not the number of Capability names in a registry.
+1. **#243 MO-CAP-003 durable Communication foundation** — no live provider/send authority;
+2. after the repository lead freezes the browser-session authority contract, Knowledge Expert Admin session bridge may proceed as a separate bounded lane;
+3. cross-repository CI pin/freshness maintenance only after the owning integration changes are accepted;
+4. conformance/golden test expansion where it does not overlap mainline authority files.
+
+### Deferred
+
+Do not begin MO-CAP-004, MO-CAP-005 or the domain Capability wave merely to create breadth. The next proof is **real reuse through independent consumers**.

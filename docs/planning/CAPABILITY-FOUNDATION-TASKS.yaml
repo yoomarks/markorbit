@@ -1,11 +1,14 @@
 program:
   id: MO-CAP-FOUNDATION
   title: MarkOrbit Capability Foundation Program
-  status: DIRECTION_LOCKED_READY_FOR_STAGED_IMPLEMENTATION
+  status: ACTIVE_P0_REUSE_PROOF
   date: 2026-08-25
+  last_reconciled: 2026-08-26
   planning_baseline: b7ee1ff4fda8a2a770b94d49c8cd9bbda52ee039
+  current_main: 6ddf351b0425a0024901dce10ba54f7243dade47
   architecture: docs/architecture/CAPABILITY-FOUNDATION-ARCHITECTURE.md
   audit: docs/audits/CAPABILITY-FOUNDATION-AUDIT-2026-08-25.md
+  closeout_audit: docs/audits/MO-CAP-001-CLOSEOUT-AUDIT-2026-08-26.md
   roadmap: docs/planning/CAPABILITY-FOUNDATION-ROADMAP.md
   canon_rule: 'Capability = Stable Outcome Contract + Governed Implementation + Evidence Base + Version Lineage + Controlled Evolution'
   historical_reconciliation:
@@ -35,14 +38,16 @@ architecture_locks:
 
 sequence:
   - id: MO-CAP-001
-    gate: START_NOW
-  - parallel_after:
+    gate: SINGLE_CONSUMER_PROVEN
+    closeout_issue: 242
+  - parallel_now:
       prerequisite: MO-CAP-001_MINIMUM_INVOCATION_BINDING_CONTRACT_ACCEPTED
+      prerequisite_status: SATISFIED
       tasks:
         - MO-CAP-002
         - MO-CAP-003
   - parallel_after:
-      prerequisite: FOUNDATION_RUNTIME_PATTERN_PROVEN
+      prerequisite: FOUNDATION_RUNTIME_PATTERN_PROVEN_WITH_TWO_INDEPENDENT_CONSUMERS
       tasks:
         - MO-CAP-004
         - MO-CAP-005
@@ -72,11 +77,30 @@ foundation_reusable_gate:
     - no_product_dependency_on_provider_sdk_or_secret
     - no_authority_promotion_of_brain_model_or_provider_output
 
+current_p0_cross_repository_blockers:
+  - id: MARKREG_KNOWLEDGE_CASE
+    core_issue: 244
+    knowledge_issue: 467
+    owner: MarkReg
+    status: ACTIVE_REPOSITORY_LEAD_LANE
+  - id: SHARED_COMMUNICATION_EXPERT
+    core_issue: 243
+    knowledge_issue: 468
+    owner: Capability_Communication
+    status: ACTIVE_ASSISTANT_FOUNDATION_LANE
+  - id: KNOWLEDGE_GOVERNED_AI_MIGRATION
+    owner: Capability_Managed_AI
+    status: NEXT_AFTER_MO_CAP_001_CLOSEOUT
+    note: Knowledge currently consumes the shared Managed AI specialized internal route; one bounded workload must migrate through governed Capability V2 before first-consumer admission for MO-CAP-002.
+
 tasks:
   - id: MO-CAP-001
     title: Capability Runtime Execution & Admission Plane
     priority: P0
-    status: AUTHORIZED_NEXT
+    status: SINGLE_CONSUMER_PROVEN
+    audited_main: 6ddf351b0425a0024901dce10ba54f7243dade47
+    closeout_issue: 242
+    closeout_audit: docs/audits/MO-CAP-001-CLOSEOUT-AUDIT-2026-08-26.md
     owner:
       primary: Capability Engine
       supporting:
@@ -97,20 +121,43 @@ tasks:
     work_packages:
       - id: MO-CAP-001-WP01
         title: Historical TASK-010..013 and M6 reconciliation
+        status: COMPLETED
+        evidence: c594ad26906d44e4b026bf86a5cc1d3507f1b95e
       - id: MO-CAP-001-WP02
         title: Runtime invocation contract family
+        status: COMPLETED
+        evidence: ff7e19ce9b7a3f7ad8d422ba9cac6bb01c5d055c
       - id: MO-CAP-001-WP03
         title: Durable Implementation Profile registry and binding
+        status: COMPLETED
+        evidence: 8b599b33e04dbe3d654587c37b0acb67b7858165
       - id: MO-CAP-001-WP04
         title: Governed invocation runtime replacing hard-coded fixture
+        status: COMPLETED
+        evidence: f9b7fa6af81be052f5992d3033567ca58edb75fe
       - id: MO-CAP-001-WP05
         title: Gateway/internal caller admission and context propagation
+        status: COMPLETED
+        evidence: 2692079d527f80356645fef7a22b5836e1a4630a
       - id: MO-CAP-001-WP06
         title: Reliability, replay, version and authority gates
+        status: COMPLETED
+        evidence:
+          - f4039c56a3b98d87122c850cff5ebc384f69a746
+          - f88911ca77ff64d0004d4ad550f2711e18851b7c
       - id: MO-CAP-001-WP07
         title: First real consumer conformance thin slice
+        status: COMPLETED
+        evidence:
+          - 25a37443c36497ec4c4b852db3bd3e4474bb8ce2
+          - 6ddf351b0425a0024901dce10ba54f7243dade47
       - id: MO-CAP-001-WP08
         title: Independent integration and authority audit
+        status: IN_CLOSEOUT_PR
+        issue: 242
+    implementation_label_note: >-
+      Implementation issues used WP07/WP07B/WP08 labels for production bootstrap, durable replay and the Lite client.
+      The conceptual roadmap mapping above remains authoritative and is reconciled by the 2026-08-26 closeout audit.
     required_contracts:
       - ImplementationProfile
       - CapabilityRequestV2
@@ -137,6 +184,8 @@ tasks:
       - no_runtime_auto_canon_mutation
       - no_cross_service_sql
       - exact_head_ci_green
+    foundation_reusable_remaining:
+      - second_independent_governed_consumer
     non_goals:
       - production_external_side_effects
       - new_public_capability_marketplace
@@ -146,7 +195,7 @@ tasks:
   - id: MO-CAP-002
     title: Managed AI Execution Capability V1
     priority: P0
-    status: AUTHORIZED_AFTER_MO_CAP_001_MINIMUM_CONTRACT
+    status: IMPLEMENTATION_BOUND_CONSUMER_MIGRATION_REQUIRED
     capability_identity: managed-ai-execution
     implementation_infrastructure: AI Gateway
     owner:
@@ -163,6 +212,15 @@ tasks:
       keeping provider credentials and SDK semantics outside product consumers.
     depends_on:
       - MO-CAP-001_MINIMUM_INVOCATION_BINDING_CONTRACT_ACCEPTED
+    dependency_status: SATISFIED
+    current_reality:
+      core_shared_managed_ai_runtime: IMPLEMENTED
+      durable_execution_claims: IMPLEMENTED
+      exact_provider_output_store: IMPLEMENTED
+      governed_runtime_binding: IMPLEMENTED
+      knowledge_specialized_managed_ai_http_consumer: IMPLEMENTED
+      knowledge_governed_capability_v2_consumer: NOT_YET_PROVEN
+      brain_second_consumer: NOT_YET_PROVEN
     first_consumer: Knowledge
     second_consumer: Brain
     work_packages:
@@ -178,10 +236,13 @@ tasks:
         title: Structured output validation and evaluation harness
       - id: MO-CAP-002-WP06
         title: Knowledge AI gateway inventory and strangler migration
+        status: NEXT_MAINLINE
       - id: MO-CAP-002-WP07
         title: Brain second-consumer integration
+        status: BLOCKED_BY_FIRST_CONSUMER_MIGRATION
       - id: MO-CAP-002-WP08
         title: Cross-repository admission audit
+        status: BLOCKED_BY_TWO_CONSUMERS
     acceptance:
       - provider_neutral_capability_contract
       - provider_and_model_adapters_hidden_from_consumers
@@ -206,7 +267,7 @@ tasks:
   - id: MO-CAP-003
     title: Managed Communication Capability V1 / Communication Hub Email
     priority: P0
-    status: AUTHORIZED_AFTER_MO_CAP_001_MINIMUM_CONTRACT
+    status: CONTRACT_PROVEN_DURABLE_FOUNDATION_ACTIVE
     capability_identity: managed-communication
     implementation_infrastructure: Communication Hub
     initial_channel: EMAIL
@@ -229,25 +290,42 @@ tasks:
       idempotency and evidence semantics.
     depends_on:
       - MO-CAP-001_MINIMUM_INVOCATION_BINDING_CONTRACT_ACCEPTED
+    dependency_status: SATISFIED
+    current_reality:
+      provider_neutral_contract: IMPLEMENTED
+      durable_communication_foundation: ACTIVE_CORE_ISSUE_243
+      live_provider_adapter: NOT_AUTHORIZED_IN_FOUNDATION_LANE
+      knowledge_expert_dependency: yoomarks/markorbit-knowledge#468
+      markreg_second_consumer: NOT_YET_PROVEN
     first_consumer: Knowledge lawyer/agent email source intake
     second_consumer: MarkReg customer/professional communication
     work_packages:
       - id: MO-CAP-003-WP01
         title: Provider-neutral communication semantic contract
+        status: COMPLETED
       - id: MO-CAP-003-WP02
         title: Communication account and credential boundary
+        status: ACTIVE_FOUNDATION
+        issue: 243
       - id: MO-CAP-003-WP03
         title: Inbound Email V1 cursor dedupe thread and attachment runtime
+        status: ACTIVE_FOUNDATION
+        issue: 243
       - id: MO-CAP-003-WP04
         title: Knowledge email-source integration
+        status: BLOCKED_BY_SHARED_COMMUNICATION_RUNTIME
       - id: MO-CAP-003-WP05
         title: Prepared outbound communication and controlled send boundary
+        status: HOLD_PENDING_DURABLE_FOUNDATION
       - id: MO-CAP-003-WP06
         title: MarkReg second-consumer integration
+        status: PLANNED
       - id: MO-CAP-003-WP07
         title: Brain and Lite bounded consumption rules
+        status: PLANNED
       - id: MO-CAP-003-WP08
         title: Cross-product admission audit
+        status: BLOCKED_BY_TWO_CONSUMERS
     acceptance:
       - provider_neutral_message_thread_participant_contract
       - credentials_confined_to_communication_implementation_boundary
@@ -321,11 +399,15 @@ tasks:
   - id: MO-CAP-006
     title: Capability Conformance & Evaluation Harness
     priority: P1
-    status: PLANNED_DEFERRED
+    status: PARTIALLY_IMPLEMENTED_GROWS_WITH_002_003
     capability_identity: null
     type: PLATFORM_GOVERNANCE_RUNTIME
     depends_on:
       - FOUNDATION_RUNTIME_PATTERN_PROVEN
+    current_reality:
+      generic_runtime_conformance: IMPLEMENTED
+      reliability_authority_conformance: IMPLEMENTED
+      provider_substitution_and_cross_consumer_evaluation: REMAINS
     scope:
       - contract_conformance
       - golden_fixtures
