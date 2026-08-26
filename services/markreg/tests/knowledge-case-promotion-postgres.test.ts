@@ -7,10 +7,10 @@ import {
   migrationStatus,
   verifyMigrations
 } from '@markorbit/persistence';
-import {
+import type {
   KnowledgeCasePromotionError,
-  type KnowledgeCaseCandidateV1,
-  type KnowledgeCasePromotionRecord
+  KnowledgeCaseCandidateV1,
+  KnowledgeCasePromotionRecord
 } from '../src/knowledge-case-promotion.js';
 import { PostgresKnowledgeCasePromotionRepository } from '../src/knowledge-case-promotion-postgres.js';
 import {
