@@ -42,6 +42,29 @@ CREATE TABLE IF NOT EXISTS capability_communication_messages (
 CREATE INDEX IF NOT EXISTS capability_communication_messages_thread_idx
   ON capability_communication_messages (workspace_id, account_ref, thread_ref);
 
+CREATE TABLE IF NOT EXISTS capability_communication_import_claims (
+  workspace_id text NOT NULL,
+  account_ref text NOT NULL,
+  idempotency_key_sha256 char(64) NOT NULL,
+  provider text NOT NULL,
+  provider_message_id text NOT NULL,
+  observation_fingerprint_sha256 char(64) NOT NULL,
+  created_at timestamptz NOT NULL,
+  PRIMARY KEY (workspace_id, account_ref, idempotency_key_sha256),
+  FOREIGN KEY (workspace_id, account_ref, provider, provider_message_id)
+    REFERENCES capability_communication_messages (
+      workspace_id,
+      account_ref,
+      provider,
+      provider_message_id
+    )
+    ON DELETE RESTRICT,
+  CONSTRAINT capability_communication_import_claims_idempotency_sha_v1
+    CHECK (idempotency_key_sha256 ~ '^[a-f0-9]{64}$'),
+  CONSTRAINT capability_communication_import_claims_observation_sha_v1
+    CHECK (observation_fingerprint_sha256 ~ '^[a-f0-9]{64}$')
+);
+
 CREATE TABLE IF NOT EXISTS capability_communication_checkpoints (
   workspace_id text NOT NULL,
   account_ref text NOT NULL,
@@ -64,6 +87,8 @@ CREATE INDEX IF NOT EXISTS capability_communication_checkpoints_latest_idx
 COMMENT ON TABLE capability_communication_accounts IS
   'Workspace-scoped provider-neutral Communication account bindings. No provider credentials are stored.';
 COMMENT ON TABLE capability_communication_messages IS
-  'Immutable normalized Communication observations with hashed idempotency keys and integrity fingerprints.';
+  'Immutable normalized Communication observations with hashed canonical idempotency keys and integrity fingerprints.';
+COMMENT ON TABLE capability_communication_import_claims IS
+  'Immutable hashed import-idempotency aliases bound to the exact normalized provider observation.';
 COMMENT ON TABLE capability_communication_checkpoints IS
   'Immutable provider cursor checkpoints for restart-safe Communication ingestion.';
