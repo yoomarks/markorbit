@@ -34,9 +34,7 @@ function unavailable(cause: unknown): KnowledgeCasePromotionError {
   );
 }
 
-export class PostgresKnowledgeCasePromotionRepository
-  implements KnowledgeCasePromotionRepository
-{
+export class PostgresKnowledgeCasePromotionRepository implements KnowledgeCasePromotionRepository {
   constructor(
     private readonly database: KnowledgeCasePromotionTransactionHost,
     private readonly query: QueryClient
@@ -107,11 +105,7 @@ export class PostgresKnowledgeCasePromotionRepository
               input.record.updatedAt
             ]
           );
-          await this.insertCommand(
-            client,
-            input,
-            input.record.producerPromotionRef
-          );
+          await this.insertCommand(client, input, input.record.producerPromotionRef);
           return { acquired: true, record: clone(input.record) };
         },
         { isolation: 'SERIALIZABLE' }
