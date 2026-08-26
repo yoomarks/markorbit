@@ -64,7 +64,9 @@ const profile: ImplementationProfile = {
 
 function registry(): DurableImplementationProfileRegistryV1 {
   return {
-    register: vi.fn((value: unknown) => Promise.resolve(value as ImplementationProfile)),
+    register: vi.fn((value: unknown) =>
+      Promise.resolve(value as ImplementationProfile)
+    ),
     findCurrent: vi.fn(() => Promise.resolve(profile)),
     findVersion: vi.fn(() => Promise.resolve(profile)),
     listCurrent: vi.fn(() => Promise.resolve([profile]))
@@ -138,7 +140,10 @@ function failedOutcome(): ManagedAiExecutionOutcomeV1 {
     status: 'FAILED',
     deliveryState: 'NOT_DELIVERED',
     retryDisposition: 'RETRY_ALLOWED',
-    error: { code: 'RATE_LIMITED', message: 'Provider rate limited the governed request.' },
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Provider rate limited the governed request.'
+    },
     authority: managedAiNoAuthorityConsequences
   };
 }
@@ -151,7 +156,10 @@ function blockedOutcome(): ManagedAiExecutionOutcomeV1 {
     status: 'BLOCKED',
     deliveryState: 'NOT_DELIVERED',
     retryDisposition: 'RETRY_FORBIDDEN',
-    error: { code: 'AUTHENTICATION_FAILED', message: 'Provider credential is unavailable.' },
+    error: {
+      code: 'AUTHENTICATION_FAILED',
+      message: 'Provider credential is unavailable.'
+    },
     authority: managedAiNoAuthorityConsequences
   };
 }
@@ -164,7 +172,10 @@ function reconciliationOutcome(): ManagedAiExecutionOutcomeV1 {
     status: 'REQUIRES_RECONCILIATION',
     deliveryState: 'DELIVERY_UNCERTAIN',
     retryDisposition: 'RECONCILIATION_REQUIRED',
-    error: { code: 'DELIVERY_UNCERTAIN', message: 'Delivery requires reconciliation.' },
+    error: {
+      code: 'DELIVERY_UNCERTAIN',
+      message: 'Delivery requires reconciliation.'
+    },
     authority: managedAiNoAuthorityConsequences
   };
 }
@@ -173,25 +184,28 @@ describe('MO-CAP-002 Managed AI outcome preservation through Capability V2', () 
   it.each([
     ['FAILED', failedOutcome()],
     ['BLOCKED', blockedOutcome()]
-  ] as const)('preserves a valid %s outcome and marks the Capability failed', async (_, managedOutcome) => {
-    const { instance, execute } = runtime(managedOutcome);
-    const request = command(`knowledge-v2-${managedOutcome.status.toLowerCase()}-1`);
+  ] as const)(
+    'preserves a valid %s outcome and marks the Capability failed',
+    async (_, managedOutcome) => {
+      const { instance, execute } = runtime(managedOutcome);
+      const request = command(`knowledge-v2-${managedOutcome.status.toLowerCase()}-1`);
 
-    const first = await instance.invoke(request);
-    const replay = await instance.invoke(request);
+      const first = await instance.invoke(request);
+      const replay = await instance.invoke(request);
 
-    expect(first.outcome.status).toBe('FAILED');
-    expect(first.returnValue.status).toBe('FAILED');
-    expect(first.returnValue.output).toEqual(managedOutcome);
-    expect(first.outcome.output).toEqual(managedOutcome);
-    expect(first.outcome.error).toBeUndefined();
-    expect(first.receipt.callerProduct).toBe('KNOWLEDGE');
-    expect(first.receipt.authority.providerSelectionAuthorityGrantedToCaller).toBe(false);
-    expect(replay.replayed).toBe(true);
-    expect(replay.returnValue.output).toEqual(managedOutcome);
-    expect(replay.receipt.sessionReceiptId).toBe(first.receipt.sessionReceiptId);
-    expect(execute).toHaveBeenCalledTimes(1);
-  });
+      expect(first.outcome.status).toBe('FAILED');
+      expect(first.returnValue.status).toBe('FAILED');
+      expect(first.returnValue.output).toEqual(managedOutcome);
+      expect(first.outcome.output).toEqual(managedOutcome);
+      expect(first.outcome.error).toBeUndefined();
+      expect(first.receipt.callerProduct).toBe('KNOWLEDGE');
+      expect(first.receipt.authority.providerSelectionAuthorityGrantedToCaller).toBe(false);
+      expect(replay.replayed).toBe(true);
+      expect(replay.returnValue.output).toEqual(managedOutcome);
+      expect(replay.receipt.sessionReceiptId).toBe(first.receipt.sessionReceiptId);
+      expect(execute).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('preserves reconciliation semantics and requires review without a second dispatch', async () => {
     const managedOutcome = reconciliationOutcome();
