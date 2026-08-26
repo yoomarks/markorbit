@@ -67,7 +67,7 @@
     "0034_markreg_lifecycle_projection": "@markorbit/markreg-service",
     "0035_markreg_recommended_actions": "@markorbit/markreg-service",
     "0036_execution_reviewed_source_handoff": "@markorbit/execution-service",
-    "0037_core_knowledge_v2_intakes": "@markorbit/core-service",
+    "0037_core_knowledge_intakes": "@markorbit/core-service",
     "0038_core_knowledge_intake_contents": "@markorbit/core-service",
     "0039_lite_content_preparation": "@markorbit/lite-service",
     "0040_lite_candidate_qualification": "@markorbit/lite-service",
