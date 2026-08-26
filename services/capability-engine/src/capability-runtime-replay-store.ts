@@ -60,8 +60,12 @@ export interface CapabilityRuntimeReplayWaitV1 extends CapabilityRuntimeReplayLo
 }
 
 export interface CapabilityRuntimeReplayStoreV1 {
-  inspect(input: Readonly<CapabilityRuntimeReplayLookupV1>): Promise<CapabilityRuntimeReplayDecisionV1>;
-  claim(input: Readonly<CapabilityRuntimeReplayClaimV1>): Promise<CapabilityRuntimeReplayClaimDecisionV1>;
+  inspect(
+    input: Readonly<CapabilityRuntimeReplayLookupV1>
+  ): Promise<CapabilityRuntimeReplayDecisionV1>;
+  claim(
+    input: Readonly<CapabilityRuntimeReplayClaimV1>
+  ): Promise<CapabilityRuntimeReplayClaimDecisionV1>;
   complete(input: Readonly<CapabilityRuntimeReplayCompletionV1>): Promise<void>;
   release(input: Readonly<CapabilityRuntimeReplayClaimV1>): Promise<void>;
   waitForCompletion(
@@ -151,9 +155,11 @@ function executionFingerprint(execution: Readonly<CapabilityRuntimeExecution>): 
 }
 
 function noAuthority(execution: Readonly<CapabilityRuntimeExecution>): boolean {
-  return [execution.outcome.authority, execution.returnValue.authority, execution.receipt.authority].every(
-    (authority) => Object.values(authority).every((value) => value === false)
-  );
+  return [
+    execution.outcome.authority,
+    execution.returnValue.authority,
+    execution.receipt.authority
+  ].every((authority) => Object.values(authority).every((value) => value === false));
 }
 
 function validateExecution(
@@ -206,7 +212,10 @@ function decisionFromStored(
   };
 }
 
-function storedFromRow(row: Row | undefined, expectedIdempotencyDigest: string): StoredReplay | undefined {
+function storedFromRow(
+  row: Row | undefined,
+  expectedIdempotencyDigest: string
+): StoredReplay | undefined {
   if (!row) return undefined;
   const state = row.state;
   const requestFingerprintSha256 = row.request_fingerprint_sha256;
@@ -452,7 +461,11 @@ export class PostgresCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
           [digest]
         );
         const stored = storedFromRow(result.rows[0] as Row | undefined, digest);
-        if (!stored || stored.requestFingerprintSha256 !== fingerprint || stored.ownerToken !== token)
+        if (
+          !stored ||
+          stored.requestFingerprintSha256 !== fingerprint ||
+          stored.ownerToken !== token
+        )
           throw new CapabilityRuntimeReplayStoreError(
             'CLAIM_OWNERSHIP_CONFLICT',
             'Governed Capability replay completion does not own the durable claim.'

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capability-learning';
 import type { ImplementationProfile } from '@markorbit/contracts/capability-runtime';
-import { GovernedCapabilityRuntime, type CapabilityRuntimeExecution } from '../src/capability-runtime.js';
+import {
+  GovernedCapabilityRuntime,
+  type CapabilityRuntimeExecution
+} from '../src/capability-runtime.js';
 import { InMemoryCapabilityRuntimeReplayStoreV1 } from '../src/capability-runtime-replay-store.js';
 import { DurableGovernedCapabilityRuntimeV1 } from '../src/durable-governed-capability-runtime.js';
 

@@ -1,5 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { parseCapabilityRequestV2Command, type CapabilityRequestV2Command } from '@markorbit/contracts/capability-runtime';
+import {
+  parseCapabilityRequestV2Command,
+  type CapabilityRequestV2Command
+} from '@markorbit/contracts/capability-runtime';
 import {
   GovernedCapabilityRuntimeError,
   type CapabilityRuntimeExecution,
@@ -59,7 +62,11 @@ export class DurableGovernedCapabilityRuntimeV1 {
     this.now = options.now ?? (() => new Date().toISOString());
     this.ownerTokenFactory = options.ownerTokenFactory ?? randomUUID;
     this.waitTimeoutMs = options.waitTimeoutMs ?? 60_000;
-    if (!Number.isInteger(this.waitTimeoutMs) || this.waitTimeoutMs < 1_000 || this.waitTimeoutMs > 300_000)
+    if (
+      !Number.isInteger(this.waitTimeoutMs) ||
+      this.waitTimeoutMs < 1_000 ||
+      this.waitTimeoutMs > 300_000
+    )
       throw new Error('waitTimeoutMs must be between 1000 and 300000 milliseconds.');
   }
 
@@ -86,7 +93,10 @@ export class DurableGovernedCapabilityRuntimeV1 {
     command: CapabilityRequestV2Command,
     fingerprint: string
   ): Promise<CapabilityRuntimeExecution> {
-    const lookup = { idempotencyKey: command.idempotencyKey, requestFingerprintSha256: fingerprint };
+    const lookup = {
+      idempotencyKey: command.idempotencyKey,
+      requestFingerprintSha256: fingerprint
+    };
     const inspected = await this.options.replayStore.inspect(lookup);
     if (inspected.kind === 'REPLAY') return replay(inspected.execution);
     if (inspected.kind === 'CONFLICT') this.throwConflict();

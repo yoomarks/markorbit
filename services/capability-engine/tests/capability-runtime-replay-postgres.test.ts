@@ -8,7 +8,10 @@ import {
   migrate,
   parseDatabaseConfig
 } from '@markorbit/persistence';
-import { GovernedCapabilityRuntime, type CapabilityRuntimeExecution } from '../src/capability-runtime.js';
+import {
+  GovernedCapabilityRuntime,
+  type CapabilityRuntimeExecution
+} from '../src/capability-runtime.js';
 import { PostgresCapabilityRuntimeReplayStoreV1 } from '../src/capability-runtime-replay-store.js';
 import { DurableGovernedCapabilityRuntimeV1 } from '../src/durable-governed-capability-runtime.js';
 
