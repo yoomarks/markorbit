@@ -3,6 +3,7 @@ import type { QueryClient } from '@markorbit/persistence';
 import type { CapabilityRuntimeExecution } from './capability-runtime.js';
 
 const SHA256 = /^[a-f0-9]{64}$/u;
+const PERSISTED_REPLAY_IDEMPOTENCY_KEY = '__MARKORBIT_REPLAY_KEY_REDACTED__';
 
 type Row = Record<string, unknown>;
 
@@ -162,10 +163,9 @@ function noAuthority(execution: Readonly<CapabilityRuntimeExecution>): boolean {
   ].every((authority) => Object.values(authority).every((value) => value === false));
 }
 
-function validateExecution(
+function preparePersistedExecution(
   execution: Readonly<CapabilityRuntimeExecution>,
-  expectedIdempotencyDigest: string,
-  expectedExecutionFingerprint?: string
+  expectedIdempotencyDigest: string
 ): CapabilityRuntimeExecution {
   const replay = jsonClone(execution);
   if (
@@ -178,21 +178,54 @@ function validateExecution(
   )
     throw new CapabilityRuntimeReplayStoreError(
       'INVALID_PERSISTED_REPLAY',
+      'Governed Capability replay violates identity or authority invariants before persistence.'
+    );
+  return {
+    ...replay,
+    request: {
+      ...replay.request,
+      idempotencyKey: PERSISTED_REPLAY_IDEMPOTENCY_KEY
+    }
+  };
+}
+
+function restorePersistedExecution(
+  execution: Readonly<CapabilityRuntimeExecution>,
+  expectedIdempotencyKey: string,
+  expectedExecutionFingerprint: string
+): CapabilityRuntimeExecution {
+  idempotencyDigest(expectedIdempotencyKey);
+  const replay = jsonClone(execution);
+  if (
+    typeof replay !== 'object' ||
+    replay === null ||
+    replay.replayed !== false ||
+    replay.request?.idempotencyKey !== PERSISTED_REPLAY_IDEMPOTENCY_KEY ||
+    !noAuthority(replay)
+  )
+    throw new CapabilityRuntimeReplayStoreError(
+      'INVALID_PERSISTED_REPLAY',
       'Persisted governed Capability replay violates identity or authority invariants.'
     );
   const actualFingerprint = executionFingerprint(replay);
-  if (expectedExecutionFingerprint && actualFingerprint !== expectedExecutionFingerprint)
+  if (actualFingerprint !== expectedExecutionFingerprint)
     throw new CapabilityRuntimeReplayStoreError(
       'INVALID_PERSISTED_REPLAY',
       'Persisted governed Capability replay fingerprint does not match its immutable execution.'
     );
-  return replay;
+  return {
+    ...replay,
+    request: {
+      ...replay.request,
+      idempotencyKey: expectedIdempotencyKey
+    }
+  };
 }
 
 function decisionFromStored(
   stored: StoredReplay | undefined,
   expectedRequestFingerprint: string,
-  expectedIdempotencyDigest: string
+  expectedIdempotencyKey: string
 ): CapabilityRuntimeReplayDecisionV1 {
   if (!stored) return { kind: 'MISS' };
   if (stored.requestFingerprintSha256 !== expectedRequestFingerprint) return { kind: 'CONFLICT' };
@@ -204,18 +237,15 @@ function decisionFromStored(
     );
   return {
     kind: 'REPLAY',
-    execution: validateExecution(
+    execution: restorePersistedExecution(
       stored.execution,
-      expectedIdempotencyDigest,
+      expectedIdempotencyKey,
       stored.executionFingerprintSha256
     )
   };
 }
 
-function storedFromRow(
-  row: Row | undefined,
-  expectedIdempotencyDigest: string
-): StoredReplay | undefined {
+function storedFromRow(row: Row | undefined): StoredReplay | undefined {
   if (!row) return undefined;
   const state = row.state;
   const requestFingerprintSha256 = row.request_fingerprint_sha256;
@@ -254,11 +284,7 @@ function storedFromRow(
     state,
     requestFingerprintSha256,
     ownerToken: persistedOwnerToken,
-    execution: validateExecution(
-      execution as CapabilityRuntimeExecution,
-      expectedIdempotencyDigest,
-      persistedFingerprint
-    ),
+    execution: jsonClone(execution as CapabilityRuntimeExecution),
     executionFingerprintSha256: persistedFingerprint
   };
 }
@@ -276,7 +302,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
     await Promise.resolve();
     const digest = idempotencyDigest(input.idempotencyKey);
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
-    return decisionFromStored(this.rows.get(digest), fingerprint, digest);
+    return decisionFromStored(this.rows.get(digest), fingerprint, input.idempotencyKey);
   }
 
   async claim(
@@ -287,7 +313,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
     const token = ownerToken(input.ownerToken);
     timestamp(input.now);
-    const decision = decisionFromStored(this.rows.get(digest), fingerprint, digest);
+    const decision = decisionFromStored(this.rows.get(digest), fingerprint, input.idempotencyKey);
     if (decision.kind !== 'MISS') return decision;
     this.rows.set(digest, {
       requestFingerprintSha256: fingerprint,
@@ -309,7 +335,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
         'CLAIM_OWNERSHIP_CONFLICT',
         'Governed Capability replay completion does not own the durable claim.'
       );
-    const execution = validateExecution(input.execution, digest);
+    const execution = preparePersistedExecution(input.execution, digest);
     const immutableFingerprint = executionFingerprint(execution);
     if (stored.state === 'COMPLETED') {
       if (stored.executionFingerprintSha256 !== immutableFingerprint)
@@ -388,9 +414,9 @@ export class PostgresCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
         [digest]
       );
       return decisionFromStored(
-        storedFromRow(result.rows[0] as Row | undefined, digest),
+        storedFromRow(result.rows[0] as Row | undefined),
         fingerprint,
-        digest
+        input.idempotencyKey
       );
     } catch (error) {
       if (error instanceof CapabilityRuntimeReplayStoreError) throw error;
@@ -422,9 +448,9 @@ export class PostgresCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
           [digest]
         );
         const decision = decisionFromStored(
-          storedFromRow(existing.rows[0] as Row | undefined, digest),
+          storedFromRow(existing.rows[0] as Row | undefined),
           fingerprint,
-          digest
+          input.idempotencyKey
         );
         if (decision.kind !== 'MISS') return decision;
         await client.query(
@@ -450,7 +476,7 @@ export class PostgresCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
     const token = ownerToken(input.ownerToken);
     const now = timestamp(input.now);
-    const execution = validateExecution(input.execution, digest);
+    const execution = preparePersistedExecution(input.execution, digest);
     const immutableFingerprint = executionFingerprint(execution);
     try {
       await this.database.transact(async (client) => {
@@ -464,7 +490,7 @@ export class PostgresCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
             FOR UPDATE`,
           [digest]
         );
-        const stored = storedFromRow(result.rows[0] as Row | undefined, digest);
+        const stored = storedFromRow(result.rows[0] as Row | undefined);
         if (
           !stored ||
           stored.requestFingerprintSha256 !== fingerprint ||

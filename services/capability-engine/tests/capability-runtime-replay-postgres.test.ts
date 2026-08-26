@@ -174,9 +174,17 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
     const execute = vi.fn(() => Promise.resolve({ output: { answer: 'postgres durable result' } }));
 
     const first = await runtime(execute).invoke(command());
+    const persisted = await database
+      .getPool()
+      .query('SELECT execution_json FROM capability_governed_runtime_replays');
+    const persistedExecution = JSON.stringify(persisted.rows[0]?.execution_json);
+    expect(persistedExecution).not.toContain('durable-replay-postgres-1');
+    expect(persistedExecution).toContain('__MARKORBIT_REPLAY_KEY_REDACTED__');
+
     const restartedReplay = await runtime(execute).invoke(command());
 
     expect(first.replayed).toBe(false);
+    expect(restartedReplay.request.idempotencyKey).toBe('durable-replay-postgres-1');
     expect(restartedReplay.replayed).toBe(true);
     expect(governedIds(restartedReplay)).toEqual(governedIds(first));
     expect(restartedReplay.outcome).toEqual(first.outcome);
