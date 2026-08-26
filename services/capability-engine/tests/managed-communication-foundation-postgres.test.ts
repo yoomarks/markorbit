@@ -158,7 +158,10 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
     } as const;
 
     const first = await store().admitObservation(command);
-    const reconstructed = new PostgresManagedCommunicationFoundationV1(database.getPool());
+    const reconstructed = new PostgresManagedCommunicationFoundationV1(
+      database,
+      database.getPool()
+    );
     const replay = await reconstructed.admitObservation(command);
 
     expect(first.disposition).toBe('ADMITTED');
@@ -239,7 +242,10 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
       now: '2026-08-26T04:32:01.000Z'
     });
 
-    const reconstructed = new PostgresManagedCommunicationFoundationV1(database.getPool());
+    const reconstructed = new PostgresManagedCommunicationFoundationV1(
+      database,
+      database.getPool()
+    );
     await expect(reconstructed.latestCheckpoint(workspaceId, accountRef)).resolves.toMatchObject({
       checkpointRef: 'checkpoint-pg-2',
       providerCursor: 'opaque-provider-cursor-pg-2'
