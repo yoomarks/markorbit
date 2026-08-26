@@ -267,9 +267,9 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
       store().resolveMessage(workspaceId, accountRef, admitted.message.messageId)
     ).rejects.toMatchObject({ code: 'INVALID_PERSISTED_STATE' });
 
-    await database.getPool().query(
-      `UPDATE capability_communication_checkpoints SET provider_cursor='tampered-cursor'`
-    );
+    await database
+      .getPool()
+      .query(`UPDATE capability_communication_checkpoints SET provider_cursor='tampered-cursor'`);
     await expect(store().latestCheckpoint(workspaceId, accountRef)).rejects.toMatchObject({
       code: 'INVALID_PERSISTED_STATE'
     });

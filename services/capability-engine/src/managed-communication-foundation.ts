@@ -163,11 +163,15 @@ function fingerprint(value: unknown): string {
   return sha256(JSON.stringify(canonicalize(value)));
 }
 
-function cloneMessage(message: Readonly<ManagedCommunicationMessageV1>): ManagedCommunicationMessageV1 {
+function cloneMessage(
+  message: Readonly<ManagedCommunicationMessageV1>
+): ManagedCommunicationMessageV1 {
   return parseManagedCommunicationMessageV1(JSON.parse(JSON.stringify(message)) as unknown);
 }
 
-function accountFingerprint(binding: Omit<ManagedCommunicationAccountBindingV1, 'schemaVersion' | 'createdAt'>) {
+function accountFingerprint(
+  binding: Omit<ManagedCommunicationAccountBindingV1, 'schemaVersion' | 'createdAt'>
+) {
   return fingerprint(binding);
 }
 
@@ -334,9 +338,7 @@ function cloneCheckpoint(value: Readonly<ManagedCommunicationCheckpointV1>) {
   return Object.freeze({ ...value });
 }
 
-export class InMemoryManagedCommunicationFoundationV1
-  implements ManagedCommunicationFoundationStoreV1
-{
+export class InMemoryManagedCommunicationFoundationV1 implements ManagedCommunicationFoundationStoreV1 {
   private readonly accounts = new Map<string, ManagedCommunicationAccountBindingV1>();
   private readonly messagesByProvider = new Map<string, StoredMessage>();
   private readonly messagesByIdempotency = new Map<string, StoredMessage>();
@@ -542,7 +544,8 @@ type CheckpointRow = {
 };
 
 function isoFromDatabase(value: unknown, field: string): string {
-  const date = value instanceof Date ? value : typeof value === 'string' ? new Date(value) : undefined;
+  const date =
+    value instanceof Date ? value : typeof value === 'string' ? new Date(value) : undefined;
   if (!date || Number.isNaN(date.getTime()))
     throw new ManagedCommunicationFoundationError(
       'INVALID_PERSISTED_STATE',
@@ -653,9 +656,7 @@ function checkpointFromRow(row: CheckpointRow): ManagedCommunicationCheckpointV1
   };
 }
 
-export class PostgresManagedCommunicationFoundationV1
-  implements ManagedCommunicationFoundationStoreV1
-{
+export class PostgresManagedCommunicationFoundationV1 implements ManagedCommunicationFoundationStoreV1 {
   constructor(private readonly query: QueryClient) {}
 
   async registerAccount(

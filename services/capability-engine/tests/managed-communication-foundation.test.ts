@@ -14,8 +14,11 @@ function sha(value: string) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function message(overrides: Partial<ManagedCommunicationMessageV1> = {}): ManagedCommunicationMessageV1 {
-  const providerMessageId = overrides.providerObservation?.providerMessageId ?? 'provider-message-1';
+function message(
+  overrides: Partial<ManagedCommunicationMessageV1> = {}
+): ManagedCommunicationMessageV1 {
+  const providerMessageId =
+    overrides.providerObservation?.providerMessageId ?? 'provider-message-1';
   const providerThreadId = overrides.providerObservation?.providerThreadId ?? 'provider-thread-1';
   const ids = managedCommunicationNormalizedIdsV1({
     workspaceId,
