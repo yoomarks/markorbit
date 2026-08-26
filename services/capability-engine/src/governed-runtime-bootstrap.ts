@@ -130,24 +130,18 @@ class ManagedAiCapabilityImplementationExecutorV1 implements CapabilityImplement
       );
     }
     const usage = capabilityUsage(outcome);
-    if (outcome.status === 'COMPLETED') {
-      return {
-        output: outcome,
-        evidenceRefs: evidenceRefs(outcome),
-        ...(usage === undefined ? {} : { usage })
-      };
-    }
-    if (outcome.status === 'REQUIRES_RECONCILIATION') {
-      return {
-        output: outcome,
-        evidenceRefs: evidenceRefs(outcome),
-        ...(usage === undefined ? {} : { usage }),
-        requiresReview: true
-      };
-    }
-    throw new Error(
-      outcome.error?.message ?? 'Managed AI execution did not complete successfully.'
-    );
+    const result = {
+      output: outcome,
+      evidenceRefs: evidenceRefs(outcome),
+      ...(usage === undefined ? {} : { usage })
+    };
+    if (outcome.status === 'COMPLETED') return result;
+    if (outcome.status === 'REQUIRES_RECONCILIATION') return { ...result, requiresReview: true };
+
+    // FAILED/BLOCKED are valid provider-neutral Managed AI outcomes. Preserve the
+    // exact delivery/retry/error semantics as governed output while marking the
+    // outer Capability outcome FAILED rather than collapsing to IMPLEMENTATION_FAILED.
+    return { ...result, failed: true };
   }
 }
 
