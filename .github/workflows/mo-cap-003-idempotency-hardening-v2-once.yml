@@ -1,0 +1,120 @@
+name: MO-CAP-003 Idempotency Hardening V2 Once
+
+on:
+  push:
+    branches: [mo-cap-003-durable-communication-foundation]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mo-cap-003-durable-communication-foundation
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Apply transactional import claims
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          workflow = Path('.github/workflows/mo-cap-003-idempotency-hardening-once.yml').read_text()
+          match = re.search(r"new_class = r'''(.*?)'''", workflow, re.S)
+          if not match:
+              raise SystemExit('source transactional class not found')
+          raw = match.group(1)
+          lines = raw.splitlines()
+          new_class = lines[0] + '\n' + '\n'.join(
+              line[10:] if line.startswith('          ') else line for line in lines[1:]
+          )
+
+          source = Path('services/capability-engine/src/managed-communication-foundation.ts')
+          text = source.read_text()
+          marker = 'export interface ManagedCommunicationFoundationStoreV1 {'
+          interface = '''export interface ManagedCommunicationFoundationTransactionHostV1 {
+            transact<T>(callback: (client: QueryClient) => Promise<T>): Promise<T>;
+          }
+
+          '''
+          if 'ManagedCommunicationFoundationTransactionHostV1' not in text:
+              text = text.replace(marker, interface + marker)
+
+          if 'type ImportClaimRow = {' not in text:
+              checkpoint_match = re.search(r'type CheckpointRow = \{.*?\n\};', text, re.S)
+              if not checkpoint_match:
+                  raise SystemExit('CheckpointRow not found')
+              claim = '''
+
+          type ImportClaimRow = {
+            workspace_id: unknown;
+            account_ref: unknown;
+            idempotency_key_sha256: unknown;
+            provider: unknown;
+            provider_message_id: unknown;
+            observation_fingerprint_sha256: unknown;
+          };'''
+              text = text[:checkpoint_match.end()] + claim + text[checkpoint_match.end():]
+
+          start = text.index('export class PostgresManagedCommunicationFoundationV1')
+          end = text.index('\nexport function newManagedCommunicationIdempotencyKeyV1', start)
+          text = text[:start] + new_class + text[end:]
+          source.write_text(text)
+
+          pg_test = Path('services/capability-engine/tests/managed-communication-foundation-postgres.test.ts')
+          test = pg_test.read_text()
+          test = test.replace(
+              'return new PostgresManagedCommunicationFoundationV1(database.getPool());',
+              'return new PostgresManagedCommunicationFoundationV1(database, database.getPool());'
+          )
+          test = test.replace(
+              'capability_communication_checkpoints,\n         capability_communication_messages,',
+              'capability_communication_checkpoints,\n         capability_communication_import_claims,\n         capability_communication_messages,'
+          )
+          test = test.replace(
+              'TRUNCATE capability_communication_checkpoints,\n                capability_communication_messages,',
+              'TRUNCATE capability_communication_checkpoints,\n                capability_communication_import_claims,\n                capability_communication_messages,'
+          )
+          needle = "    expect(replay.disposition).toBe('REPLAYED');\n\n    await expect(\n      store().admitObservation({\n        workspaceId,\n        accountRef,\n        idempotencyKey: 'communication-pg-import-3',"
+          replacement = """    expect(replay.disposition).toBe('REPLAYED');
+              const claims = await database.getPool().query<{ count: string }>(
+                'SELECT count(*)::text AS count FROM capability_communication_import_claims'
+              );
+              expect(claims.rows[0]?.count).toBe('2');
+
+              await expect(
+                store().admitObservation({
+                  workspaceId,
+                  accountRef,
+                  idempotencyKey: 'communication-pg-import-2',
+                  message: message('Conflicting reuse of admitted alias'),
+                  now: '2026-08-26T04:30:04.000Z'
+                })
+              ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+
+              await expect(
+                store().admitObservation({
+                  workspaceId,
+                  accountRef,
+                  idempotencyKey: 'communication-pg-import-3',"""
+          if needle not in test:
+              raise SystemExit('replay test insertion point not found')
+          test = test.replace(needle, replacement)
+          pg_test.write_text(test)
+          PY
+          pnpm exec prettier --write services/capability-engine/src/managed-communication-foundation.ts services/capability-engine/tests/managed-communication-foundation-postgres.test.ts
+      - name: Commit hardening
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/capability-engine/src/managed-communication-foundation.ts services/capability-engine/tests/managed-communication-foundation-postgres.test.ts
+          git commit -m 'fix: persist exact communication import claims'
+          git push origin HEAD:mo-cap-003-durable-communication-foundation
