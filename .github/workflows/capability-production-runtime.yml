@@ -1,0 +1,68 @@
+name: Capability Production Runtime
+
+on:
+  pull_request:
+    paths:
+      - 'services/capability-engine/src/governed-runtime-bootstrap.ts'
+      - 'services/capability-engine/src/main.ts'
+      - 'services/capability-engine/tests/governed-runtime-bootstrap.test.ts'
+      - 'services/capability-engine/tests/governed-runtime-bootstrap-postgres.test.ts'
+      - '.github/workflows/capability-production-runtime.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'services/capability-engine/src/governed-runtime-bootstrap.ts'
+      - 'services/capability-engine/src/main.ts'
+      - 'services/capability-engine/tests/governed-runtime-bootstrap.test.ts'
+      - 'services/capability-engine/tests/governed-runtime-bootstrap-postgres.test.ts'
+      - '.github/workflows/capability-production-runtime.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capability-production-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governed-production-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: markorbit_capability_wp07
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d markorbit_capability_wp07"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CAPABILITY_ENGINE_GOVERNED_RUNTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_capability_wp07
+      CAPABILITY_ENGINE_GOVERNED_RUNTIME_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Validate formatting and Capability boundaries
+        run: |
+          pnpm format:check
+          pnpm validate:persistence-boundaries
+      - name: Build typed Capability dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Lint and typecheck Capability Engine
+        run: |
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+      - name: Run governed production bootstrap unit acceptance
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/governed-runtime-bootstrap.test.ts
+      - name: Run governed production PostgreSQL restart acceptance
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/governed-runtime-bootstrap-postgres.test.ts
