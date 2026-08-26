@@ -273,6 +273,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
   async inspect(
     input: Readonly<CapabilityRuntimeReplayLookupV1>
   ): Promise<CapabilityRuntimeReplayDecisionV1> {
+    await Promise.resolve();
     const digest = idempotencyDigest(input.idempotencyKey);
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
     return decisionFromStored(this.rows.get(digest), fingerprint, digest);
@@ -281,6 +282,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
   async claim(
     input: Readonly<CapabilityRuntimeReplayClaimV1>
   ): Promise<CapabilityRuntimeReplayClaimDecisionV1> {
+    await Promise.resolve();
     const digest = idempotencyDigest(input.idempotencyKey);
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
     const token = ownerToken(input.ownerToken);
@@ -296,6 +298,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
   }
 
   async complete(input: Readonly<CapabilityRuntimeReplayCompletionV1>): Promise<void> {
+    await Promise.resolve();
     const digest = idempotencyDigest(input.idempotencyKey);
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
     const token = ownerToken(input.ownerToken);
@@ -326,6 +329,7 @@ export class InMemoryCapabilityRuntimeReplayStoreV1 implements CapabilityRuntime
   }
 
   async release(input: Readonly<CapabilityRuntimeReplayClaimV1>): Promise<void> {
+    await Promise.resolve();
     const digest = idempotencyDigest(input.idempotencyKey);
     const fingerprint = requestFingerprint(input.requestFingerprintSha256);
     const token = ownerToken(input.ownerToken);

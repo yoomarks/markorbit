@@ -171,7 +171,7 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
   afterAll(async () => database.close());
 
   it('survives process reconstruction with exact governed identifiers and no second implementation execution', async () => {
-    const execute = vi.fn(async () => ({ output: { answer: 'postgres durable result' } }));
+    const execute = vi.fn(() => Promise.resolve({ output: { answer: 'postgres durable result' } }));
 
     const first = await runtime(execute).invoke(command());
     const restartedReplay = await runtime(execute).invoke(command());
@@ -186,7 +186,7 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
   });
 
   it('fails closed for a conflicting command after restart', async () => {
-    const execute = vi.fn(async () => ({ output: { answer: 'postgres durable result' } }));
+    const execute = vi.fn(() => Promise.resolve({ output: { answer: 'postgres durable result' } }));
     await runtime(execute).invoke(command());
 
     await expect(
@@ -218,7 +218,9 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
   });
 
   it('detects persisted execution tampering instead of replaying corrupted governed identifiers', async () => {
-    const execute = vi.fn(async () => ({ output: { answer: 'postgres immutable result' } }));
+    const execute = vi.fn(() =>
+      Promise.resolve({ output: { answer: 'postgres immutable result' } })
+    );
     await runtime(execute).invoke(command());
 
     await database.getPool().query(

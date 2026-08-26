@@ -116,7 +116,7 @@ function runtime(
 describe('MO-CAP-001 WP07B durable governed replay coordinator', () => {
   it('preserves every governed identifier and performs no second execution after runtime reconstruction', async () => {
     const replayStore = new InMemoryCapabilityRuntimeReplayStoreV1();
-    const execute = vi.fn(async () => ({ output: { answer: 'durable result' } }));
+    const execute = vi.fn(() => Promise.resolve({ output: { answer: 'durable result' } }));
 
     const first = await runtime(replayStore, execute).invoke(command());
     const afterRestart = await runtime(replayStore, execute).invoke(command());
@@ -133,7 +133,7 @@ describe('MO-CAP-001 WP07B durable governed replay coordinator', () => {
 
   it('fails closed for conflicting reuse after restart without executing again', async () => {
     const replayStore = new InMemoryCapabilityRuntimeReplayStoreV1();
-    const execute = vi.fn(async () => ({ output: { answer: 'durable result' } }));
+    const execute = vi.fn(() => Promise.resolve({ output: { answer: 'durable result' } }));
     await runtime(replayStore, execute).invoke(command());
 
     await expect(
@@ -171,7 +171,7 @@ describe('MO-CAP-001 WP07B durable governed replay coordinator', () => {
 
   it('replays output-contract failure as the original governed failure rather than promoting success', async () => {
     const replayStore = new InMemoryCapabilityRuntimeReplayStoreV1();
-    const execute = vi.fn(async () => ({ output: { invalid: true } }));
+    const execute = vi.fn(() => Promise.resolve({ output: { invalid: true } }));
 
     const first = await runtime(replayStore, execute, false).invoke(command());
     const afterRestart = await runtime(replayStore, execute, true).invoke(command());
@@ -190,7 +190,7 @@ describe('MO-CAP-001 WP07B durable governed replay coordinator', () => {
 
   it('keeps the immutable durable replay isolated from caller mutation of a returned clone', async () => {
     const replayStore = new InMemoryCapabilityRuntimeReplayStoreV1();
-    const execute = vi.fn(async () => ({ output: { answer: 'immutable result' } }));
+    const execute = vi.fn(() => Promise.resolve({ output: { answer: 'immutable result' } }));
 
     const first = await runtime(replayStore, execute).invoke(command());
     (first.returnValue.output as { answer: string }).answer = 'caller-mutated';
