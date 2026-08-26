@@ -73,10 +73,11 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
       'governedCapabilityRuntime and milestone Capability fixture options are mutually exclusive.'
     );
   }
-  if (Boolean(options.runtimeCapabilityRegistry) !== Boolean(options.internalServiceSecret)) {
-    throw new Error(
-      'runtimeCapabilityRegistry and internalServiceSecret must be configured together.'
-    );
+  if (options.governedCapabilityRuntime && !options.internalServiceSecret) {
+    throw new Error('governedCapabilityRuntime requires internalServiceSecret.');
+  }
+  if (options.runtimeCapabilityRegistry && !options.internalServiceSecret) {
+    throw new Error('runtimeCapabilityRegistry requires internalServiceSecret.');
   }
   if (options.capabilityObservationLedger && !options.internalServiceSecret) {
     throw new Error('capabilityObservationLedger requires internalServiceSecret.');
@@ -97,17 +98,21 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('managedAiExactOutputStore requires managedAiExecutor.');
   }
 
-  const capabilityRequestRoutes = options.governedCapabilityRuntime
-    ? createCapabilityRuntimeRoutesV2({ runtime: options.governedCapabilityRuntime })
-    : milestoneFixtureRequested
-      ? [
-          createMilestoneCapabilityRequestFixtureRoute({
-            ...(options.repository === undefined ? {} : { repository: options.repository }),
-            ...(options.publisher === undefined ? {} : { publisher: options.publisher }),
-            ...(options.now === undefined ? {} : { now: options.now })
-          })
-        ]
-      : [];
+  const capabilityRequestRoutes =
+    options.governedCapabilityRuntime && options.internalServiceSecret
+      ? createCapabilityRuntimeRoutesV2({
+          runtime: options.governedCapabilityRuntime,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : milestoneFixtureRequested
+        ? [
+            createMilestoneCapabilityRequestFixtureRoute({
+              ...(options.repository === undefined ? {} : { repository: options.repository }),
+              ...(options.publisher === undefined ? {} : { publisher: options.publisher }),
+              ...(options.now === undefined ? {} : { now: options.now })
+            })
+          ]
+        : [];
   const runtimeCapabilityRoutes =
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({

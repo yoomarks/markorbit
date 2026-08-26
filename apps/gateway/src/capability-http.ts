@@ -3,6 +3,10 @@ import {
   encodeInternalWorkspacePrincipal,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
+import {
+  parseCapabilityRequestV2Command,
+  type CapabilityRequestV2Command
+} from '@markorbit/contracts/capability-runtime';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   type CoreAuthenticationClient,
@@ -36,6 +40,41 @@ const dispositionFields = new Set([
   'outcome',
   'rationale'
 ]);
+const capabilityRequestFields = new Set([
+  'schemaVersion',
+  'capabilityId',
+  'capabilityVersion',
+  'purpose',
+  'input',
+  'inputSchemaId',
+  'outputSchemaId',
+  'riskClass',
+  'idempotencyKey',
+  'correlationId'
+]);
+const capabilityIdentitySpoofFields = [
+  'caller',
+  'workspaceId',
+  'principalId',
+  'callerProduct',
+  'permissionContextRef',
+  'entitlementContextRef',
+  'membershipId',
+  'userId',
+  'principal'
+] as const;
+const implementationControlFields = [
+  'provider',
+  'providerId',
+  'model',
+  'modelId',
+  'endpoint',
+  'credential',
+  'credentialRef',
+  'implementation',
+  'implementationKey',
+  'implementationProfileId'
+] as const;
 
 function token(request: JsonRequest): string {
   const value = readSessionCookie(request.headers.cookie);
@@ -100,6 +139,85 @@ function mutationAllowed(principal: WorkspacePrincipal): boolean {
   );
 }
 
+function trustedCapabilityCommand(
+  request: JsonRequest,
+  principal: WorkspacePrincipal
+): CapabilityRequestV2Command {
+  const body = bodyRecord(request);
+  if (
+    capabilityIdentitySpoofFields.some((field) => Object.prototype.hasOwnProperty.call(body, field))
+  ) {
+    throw new HttpError(
+      400,
+      'SUBJECT_SPOOF_REJECTED',
+      'Capability caller identity is derived from the authenticated Core Workspace Principal.'
+    );
+  }
+  if (
+    implementationControlFields.some((field) => Object.prototype.hasOwnProperty.call(body, field))
+  ) {
+    throw new HttpError(
+      400,
+      'IMPLEMENTATION_CONTROL_REJECTED',
+      'Provider, model, credential and implementation selection are server-governed.'
+    );
+  }
+  const unsupported = Object.keys(body).filter((key) => !capabilityRequestFields.has(key));
+  if (unsupported.length) {
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      `Capability request contains unsupported fields: ${unsupported.join(', ')}.`
+    );
+  }
+
+  let command: CapabilityRequestV2Command;
+  try {
+    command = parseCapabilityRequestV2Command({
+      schemaVersion: body.schemaVersion,
+      capabilityId: body.capabilityId,
+      capabilityVersion: body.capabilityVersion,
+      caller: {
+        workspaceId: principal.workspaceId,
+        principalId: principal.userId,
+        callerProduct: 'LITE',
+        permissionContextRef: `core-workspace-membership:${principal.membershipId}`
+      },
+      purpose: body.purpose,
+      input: body.input,
+      inputSchemaId: body.inputSchemaId,
+      outputSchemaId: body.outputSchemaId,
+      riskClass: body.riskClass,
+      idempotencyKey: body.idempotencyKey,
+      correlationId: body.correlationId
+    });
+  } catch (error) {
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      error instanceof Error ? error.message : 'Capability request is invalid.'
+    );
+  }
+
+  const idempotencyKey = request.headers['idempotency-key']?.trim();
+  if (!idempotencyKey || idempotencyKey !== command.idempotencyKey) {
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Idempotency-Key header is required and must match the governed request command.'
+    );
+  }
+  const correlationId = request.headers['x-correlation-id']?.trim();
+  if (correlationId && correlationId !== command.correlationId) {
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'X-Correlation-Id must match the governed request command when supplied.'
+    );
+  }
+  return command;
+}
+
 export function createGatewayCapabilityRoutes(
   options: GatewayCapabilityOptions
 ): readonly JsonRoute[] {
@@ -148,11 +266,46 @@ export function createGatewayCapabilityRoutes(
     }
   };
 
+  const authenticateInvocation = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
+    if (!options.authenticationClient)
+      throw new HttpError(
+        503,
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Authentication service is unavailable.',
+        true
+      );
+    try {
+      const principal = await options.authenticationClient.resolveWorkspace(
+        token(request),
+        workspaceId(request),
+        request.headers['x-correlation-id']
+      );
+      if (!principal.permissions.includes('workspace:read'))
+        throw new AuthenticationError(
+          'PERMISSION_DENIED',
+          'workspace:read permission is required.'
+        );
+      requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+      validateCsrf(
+        principal.sessionId,
+        options.csrfSecret,
+        request.headers['x-markorbit-csrf-token']
+      );
+      if (!request.headers['idempotency-key']?.trim())
+        throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+      return principal;
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
+
   const forward = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
     path: string,
-    body?: Readonly<Record<string, unknown>>
+    body?: unknown,
+    callerProduct?: string,
+    correlationId?: string
   ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
@@ -162,6 +315,7 @@ export function createGatewayCapabilityRoutes(
         true
       );
     try {
+      const forwardedCorrelationId = correlationId ?? request.headers['x-correlation-id'];
       const response = await fetch(`${options.capabilityEngineUrl}${path}`, {
         method: request.method,
         headers: {
@@ -169,9 +323,8 @@ export function createGatewayCapabilityRoutes(
           'x-markorbit-internal-authorization': options.internalServiceSecret,
           'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
           'x-markorbit-workspace-id': principal.workspaceId,
-          ...(request.headers['x-correlation-id']
-            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
-            : {}),
+          ...(callerProduct ? { 'x-markorbit-caller-product': callerProduct } : {}),
+          ...(forwardedCorrelationId ? { 'x-correlation-id': forwardedCorrelationId } : {}),
           ...(request.headers['idempotency-key']
             ? { 'idempotency-key': request.headers['idempotency-key'] }
             : {})
@@ -187,6 +340,22 @@ export function createGatewayCapabilityRoutes(
   };
 
   return [
+    {
+      method: 'POST',
+      path: '/api/lite/capability-requests',
+      handle: async (request) => {
+        const principal = await authenticateInvocation(request);
+        const command = trustedCapabilityCommand(request, principal);
+        return forward(
+          request,
+          principal,
+          '/v1/capability-requests',
+          command,
+          'LITE',
+          command.correlationId
+        );
+      }
+    },
     {
       method: 'GET',
       path: '/api/lite/capability-center',

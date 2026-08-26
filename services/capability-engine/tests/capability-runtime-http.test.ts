@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capability-learning';
 import type { ImplementationProfile } from '@markorbit/contracts/capability-runtime';
 import type { JsonRequest } from '@markorbit/service-kit';
@@ -8,6 +9,18 @@ import {
   type CapabilityRuntimeIdFactory
 } from '../src/capability-runtime.js';
 import { createRuntime } from '../src/index.js';
+
+const internalServiceSecret = 'wp05-capability-internal-secret-32-bytes-minimum';
+const principal: WorkspacePrincipal = {
+  kind: 'WORKSPACE',
+  sessionId: 'session_http_test',
+  userId: 'principal_test',
+  workspaceId: 'workspace_test',
+  membershipId: 'membership_http_test',
+  role: 'REVIEWER',
+  permissions: ['workspace:read', 'review:perform'],
+  sessionExpiresAt: '2030-01-01T00:00:00.000Z'
+};
 
 const definition: RuntimeCapabilityDefinition = {
   schemaVersion: 1,
@@ -53,10 +66,10 @@ const command = () => ({
   capabilityId: 'managed-ai-execution',
   capabilityVersion: '1.0.0',
   caller: {
-    workspaceId: 'workspace_test',
-    principalId: 'principal_test',
+    workspaceId: principal.workspaceId,
+    principalId: principal.userId,
     callerProduct: 'KNOWLEDGE',
-    permissionContextRef: 'permission_context_test'
+    permissionContextRef: `core-workspace-membership:${principal.membershipId}`
   },
   purpose: 'Acquire one governed AI source result.',
   input: { question: 'What changed?' },
@@ -125,10 +138,19 @@ function request(
     query: {},
     headers: {
       'idempotency-key': command().idempotencyKey,
+      'x-correlation-id': command().correlationId,
+      'x-markorbit-internal-authorization': internalServiceSecret,
+      'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+      'x-markorbit-workspace-id': principal.workspaceId,
+      'x-markorbit-caller-product': 'KNOWLEDGE',
       ...headers
     },
     body
   };
+}
+
+function route(runtime: Pick<GovernedCapabilityRuntime, 'invoke'>) {
+  return createCapabilityRuntimeRoutesV2({ runtime, internalServiceSecret })[0]!;
 }
 
 const running: Array<ReturnType<typeof createRuntime>> = [];
@@ -136,13 +158,13 @@ afterEach(async () => {
   await Promise.all(running.splice(0).map((runtime) => runtime.stop()));
 });
 
-describe('MO-CAP-001 WP04 governed Capability request path', () => {
+describe('MO-CAP-001 WP05 trusted governed Capability request path', () => {
   it('returns a governed V2 execution with exact binding, receipt, evidence and no authority promotion', async () => {
     const { runtime, execute } = governed();
-    const route = createCapabilityRuntimeRoutesV2({ runtime })[0]!;
+    const handler = route(runtime);
 
-    const first = await route.handle(request());
-    const replay = await route.handle(request());
+    const first = await handler.handle(request());
+    const replay = await handler.handle(request());
 
     expect(first.status).toBe(201);
     expect(replay.status).toBe(200);
@@ -166,8 +188,8 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
         evidenceRefs: ['evidence_http_1']
       },
       receipt: {
-        workspaceId: 'workspace_test',
-        principalId: 'principal_test',
+        workspaceId: principal.workspaceId,
+        principalId: principal.userId,
         callerProduct: 'KNOWLEDGE',
         implementation: {
           id: profile.implementationProfileId,
@@ -185,32 +207,58 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
-  it('fails closed when the Idempotency-Key header is missing or mismatched', async () => {
+  it('rejects untrusted direct callers before parsing or executing a Capability request', async () => {
     const { runtime, execute } = governed();
-    const route = createCapabilityRuntimeRoutesV2({ runtime })[0]!;
+    const handler = route(runtime);
 
     await expect(
-      route.handle(request(command(), { 'idempotency-key': undefined }))
-    ).rejects.toMatchObject({
-      status: 400,
-      code: 'INVALID_REQUEST'
-    });
+      handler.handle(
+        request(command(), {
+          'x-markorbit-internal-authorization': 'not-the-trusted-secret'
+        })
+      )
+    ).rejects.toMatchObject({ status: 401, code: 'UNTRUSTED_INTERNAL_CALLER' });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects body caller identity that diverges from the authenticated Workspace Principal', async () => {
+    const { runtime, execute } = governed();
+    const handler = route(runtime);
+
     await expect(
-      route.handle(request(command(), { 'idempotency-key': 'different-key' }))
-    ).rejects.toMatchObject({
-      status: 400,
-      code: 'INVALID_REQUEST'
-    });
+      handler.handle(
+        request({
+          ...command(),
+          caller: { ...command().caller, principalId: 'attacker' }
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'SUBJECT_SPOOF_REJECTED' });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the Idempotency-Key or correlation header conflicts with the command', async () => {
+    const { runtime, execute } = governed();
+    const handler = route(runtime);
+
+    await expect(
+      handler.handle(request(command(), { 'idempotency-key': undefined }))
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    await expect(
+      handler.handle(request(command(), { 'idempotency-key': 'different-key' }))
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    await expect(
+      handler.handle(request(command(), { 'x-correlation-id': 'different-correlation' }))
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
     expect(execute).not.toHaveBeenCalled();
   });
 
   it('rejects caller-supplied provider implementation controls before runtime selection', async () => {
     const { runtime, execute } = governed();
     const invoke = vi.spyOn(runtime, 'invoke');
-    const route = createCapabilityRuntimeRoutesV2({ runtime })[0]!;
+    const handler = route(runtime);
 
     await expect(
-      route.handle(
+      handler.handle(
         request({
           ...command(),
           provider: 'openai',
@@ -233,8 +281,7 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
       executor: { execute: missingDefinition.execute },
       ids: ids()
     });
-    const noDefinitionRoute = createCapabilityRuntimeRoutesV2({ runtime: noDefinition })[0]!;
-    await expect(noDefinitionRoute.handle(request())).rejects.toMatchObject({
+    await expect(route(noDefinition).handle(request())).rejects.toMatchObject({
       status: 404,
       code: 'CAPABILITY_NOT_FOUND'
     });
@@ -247,10 +294,7 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
       executor: { execute: missingDefinition.execute },
       ids: ids()
     });
-    const noImplementationRoute = createCapabilityRuntimeRoutesV2({
-      runtime: noImplementation
-    })[0]!;
-    await expect(noImplementationRoute.handle(request())).rejects.toMatchObject({
+    await expect(route(noImplementation).handle(request())).rejects.toMatchObject({
       status: 409,
       code: 'NO_APPROVED_IMPLEMENTATION'
     });
@@ -259,11 +303,11 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
 
   it('rejects conflicting exact replay before a second implementation execution', async () => {
     const { runtime, execute } = governed();
-    const route = createCapabilityRuntimeRoutesV2({ runtime })[0]!;
-    await route.handle(request());
+    const handler = route(runtime);
+    await handler.handle(request());
 
     await expect(
-      route.handle(
+      handler.handle(
         request({
           ...command(),
           input: { question: 'Different input under the same key.' }
@@ -292,9 +336,20 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
     expect(body.code).toBe('NOT_FOUND');
   });
 
-  it('exposes the governed request route only when a governed runtime is injected', async () => {
+  it('requires internal authorization when a governed request runtime is configured', () => {
+    const { runtime: governedRuntime } = governed();
+    expect(() => createRuntime({ port: 0, governedCapabilityRuntime: governedRuntime })).toThrow(
+      'governedCapabilityRuntime requires internalServiceSecret.'
+    );
+  });
+
+  it('exposes the governed request route only to an authenticated internal Workspace Principal', async () => {
     const { runtime: governedRuntime, execute } = governed();
-    const runtime = createRuntime({ port: 0, governedCapabilityRuntime: governedRuntime });
+    const runtime = createRuntime({
+      port: 0,
+      governedCapabilityRuntime: governedRuntime,
+      internalServiceSecret
+    });
     running.push(runtime);
     await runtime.start();
 
@@ -305,7 +360,11 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
         headers: {
           'content-type': 'application/json',
           'idempotency-key': command().idempotencyKey,
-          'x-correlation-id': command().correlationId
+          'x-correlation-id': command().correlationId,
+          'x-markorbit-internal-authorization': internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': principal.workspaceId,
+          'x-markorbit-caller-product': 'KNOWLEDGE'
         },
         body: JSON.stringify(command())
       }
@@ -320,20 +379,18 @@ describe('MO-CAP-001 WP04 governed Capability request path', () => {
   });
 
   it('preserves typed dependency failures instead of misclassifying them as invalid caller input', async () => {
-    const route = createCapabilityRuntimeRoutesV2({
-      runtime: {
-        invoke: vi.fn(() =>
-          Promise.reject(
-            Object.assign(new Error('registry unavailable'), {
-              status: 503,
-              code: 'PERSISTENCE_UNAVAILABLE'
-            })
-          )
+    const handler = route({
+      invoke: vi.fn(() =>
+        Promise.reject(
+          Object.assign(new Error('registry unavailable'), {
+            status: 503,
+            code: 'PERSISTENCE_UNAVAILABLE'
+          })
         )
-      }
-    })[0]!;
+      )
+    });
 
-    await expect(route.handle(request())).rejects.toEqual(
+    await expect(handler.handle(request())).rejects.toEqual(
       expect.objectContaining({
         status: 503,
         code: 'PERSISTENCE_UNAVAILABLE'
