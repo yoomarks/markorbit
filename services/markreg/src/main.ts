@@ -31,6 +31,11 @@ import {
   createMarkRegFormalOpportunityRoutes,
   HttpQualifiedOpportunityAuthority
 } from './formal-opportunity-http.js';
+import { PostgresKnowledgeCasePromotionRepository } from './knowledge-case-promotion-postgres.js';
+import {
+  createKnowledgeCasePromotionRoutes,
+  HttpKnowledgeCaseIntakeClient
+} from './knowledge-case-promotion.js';
 import { CommercialCheckoutService } from './commercial-checkout.js';
 import { PostgresCommercialCatalogRepository } from './commercial-checkout-postgres.js';
 import { createCommercialCheckoutHttpRoutes } from './commercial-checkout-http.js';
@@ -155,6 +160,18 @@ if (fixtureRuntime) {
     internalServiceSecret,
     store: formalOpportunityStore
   });
+  const knowledgeCaseRoutes = (() => {
+    if (process.env.MO_KNOWLEDGE_CASE_PROMOTION_ENABLED !== '1') return [];
+    const knowledgeUrl = process.env.KNOWLEDGE_URL;
+    if (!knowledgeUrl)
+      throw new Error('KNOWLEDGE_URL is required when MO_KNOWLEDGE_CASE_PROMOTION_ENABLED=1.');
+    return createKnowledgeCasePromotionRoutes({
+      internalServiceSecret,
+      formalMatterRepository,
+      promotionRepository: new PostgresKnowledgeCasePromotionRepository(database, pool),
+      intakeClient: new HttpKnowledgeCaseIntakeClient(knowledgeUrl, internalServiceSecret)
+    });
+  })();
   runtime = createRuntime({
     customerConfirmationRepository: new PostgresCustomerConfirmationRepository(pool),
     matterDraftRepository: new PostgresMatterDraftRepository(pool),
@@ -168,7 +185,8 @@ if (fixtureRuntime) {
       ...commercialAdminRoutes,
       ...lifecycleRoutes,
       ...lifecycleSurfaceRoutes,
-      ...formalOpportunityRoutes
+      ...formalOpportunityRoutes,
+      ...knowledgeCaseRoutes
     ]
   });
 }
