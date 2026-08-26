@@ -136,12 +136,12 @@ class ManagedAiCapabilityImplementationExecutorV1 implements CapabilityImplement
       ...(usage === undefined ? {} : { usage })
     };
     if (outcome.status === 'COMPLETED') return result;
+    if (outcome.status === 'REQUIRES_RECONCILIATION') return { ...result, requiresReview: true };
 
-    // A valid Managed AI failure/reconciliation result is itself governed evidence.
-    // Preserve it inside the Capability envelope instead of collapsing provider-neutral
-    // delivery/retry semantics into a generic IMPLEMENTATION_FAILED exception. The outer
-    // Capability remains fail-closed as REVIEW_REQUIRED for every non-completed AI outcome.
-    return { ...result, requiresReview: true };
+    // FAILED/BLOCKED are valid provider-neutral Managed AI outcomes. Preserve the
+    // exact delivery/retry/error semantics as governed output while marking the
+    // outer Capability outcome FAILED rather than collapsing to IMPLEMENTATION_FAILED.
+    return { ...result, failed: true };
   }
 }
 
