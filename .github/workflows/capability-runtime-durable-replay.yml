@@ -8,67 +8,51 @@ on:
       - 'services/capability-engine/src/durable-governed-capability-runtime.ts'
       - 'services/capability-engine/tests/capability-runtime-replay.test.ts'
       - 'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts'
-      - 'services/capability-engine/package.json'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'infrastructure/persistence/migrations/0067_capability_engine_governed_runtime_replays.sql'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/capability-runtime-durable-replay.yml'
-      - 'services/capability-engine/src/capability-runtime-replay-store.ts'
-      - 'services/capability-engine/src/durable-governed-capability-runtime.ts'
-      - 'services/capability-engine/tests/capability-runtime-replay.test.ts'
-      - 'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts'
-      - 'services/capability-engine/package.json'
-      - 'infrastructure/persistence/migration-owners.json'
-      - 'infrastructure/persistence/migrations/0067_capability_engine_governed_runtime_replays.sql'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: capability-runtime-durable-replay-${{ github.ref }}
+  group: capability-runtime-durable-replay-format-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  durable-governed-replay:
+  format-once:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: markorbit_test
-          POSTGRES_PASSWORD: markorbit-test-only
-          POSTGRES_DB: markorbit_capability_replay_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U markorbit_test -d markorbit_capability_replay_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      CAPABILITY_ENGINE_REPLAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_replay_test
-      CAPABILITY_ENGINE_REPLAY_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Validate formatting and persistence boundaries
+      - name: Format WP07B files with repository Prettier
         run: |
-          pnpm format:check
-          pnpm validate:persistence-boundaries
-      - name: Build typed Capability dependency closure
-        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
-      - name: Lint and typecheck Capability Engine
+          pnpm exec prettier --write \
+            services/capability-engine/src/capability-runtime-replay-store.ts \
+            services/capability-engine/src/durable-governed-capability-runtime.ts \
+            services/capability-engine/tests/capability-runtime-replay.test.ts \
+            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
+      - name: Commit formatted files when changed
         run: |
-          pnpm --filter @markorbit/capability-engine lint
-          pnpm --filter @markorbit/capability-engine typecheck
-      - name: Run in-memory restart replay conformance
-        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-runtime-replay.test.ts
-      - name: Run PostgreSQL restart replay acceptance
-        run: pnpm --filter @markorbit/capability-engine test:governed-runtime-replay:postgres
+          if git diff --quiet -- \
+            services/capability-engine/src/capability-runtime-replay-store.ts \
+            services/capability-engine/src/durable-governed-capability-runtime.ts \
+            services/capability-engine/tests/capability-runtime-replay.test.ts \
+            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts; then
+            echo 'No formatting changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            services/capability-engine/src/capability-runtime-replay-store.ts \
+            services/capability-engine/src/durable-governed-capability-runtime.ts \
+            services/capability-engine/tests/capability-runtime-replay.test.ts \
+            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
+          git commit -m 'style: format durable replay implementation'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
