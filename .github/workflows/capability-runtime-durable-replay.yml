@@ -5,76 +5,70 @@ on:
     paths:
       - '.github/workflows/capability-runtime-durable-replay.yml'
       - 'services/capability-engine/src/capability-runtime-replay-store.ts'
+      - 'services/capability-engine/src/durable-governed-capability-runtime.ts'
       - 'services/capability-engine/tests/capability-runtime-replay.test.ts'
       - 'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts'
+      - 'services/capability-engine/package.json'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0067_capability_engine_governed_runtime_replays.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/capability-runtime-durable-replay.yml'
+      - 'services/capability-engine/src/capability-runtime-replay-store.ts'
+      - 'services/capability-engine/src/durable-governed-capability-runtime.ts'
+      - 'services/capability-engine/tests/capability-runtime-replay.test.ts'
+      - 'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts'
+      - 'services/capability-engine/package.json'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0067_capability_engine_governed_runtime_replays.sql'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: capability-runtime-durable-replay-lint-fix-${{ github.event.pull_request.number }}
+  group: capability-runtime-durable-replay-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint-fix-once:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+  durable-governed-replay:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_capability_replay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_capability_replay_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CAPABILITY_ENGINE_REPLAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_replay_test
+      CAPABILITY_ENGINE_REPLAY_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Apply deterministic lint fixes
+      - name: Validate formatting and persistence boundaries
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          store = Path('services/capability-engine/src/capability-runtime-replay-store.ts')
-          text = store.read_text()
-          needles = [
-              "  async inspect(\n    input: Readonly<CapabilityRuntimeReplayLookupV1>\n  ): Promise<CapabilityRuntimeReplayDecisionV1> {\n",
-              "  async claim(\n    input: Readonly<CapabilityRuntimeReplayClaimV1>\n  ): Promise<CapabilityRuntimeReplayClaimDecisionV1> {\n",
-              "  async complete(input: Readonly<CapabilityRuntimeReplayCompletionV1>): Promise<void> {\n",
-              "  async release(input: Readonly<CapabilityRuntimeReplayClaimV1>): Promise<void> {\n",
-          ]
-          for needle in needles:
-              if needle not in text:
-                  raise SystemExit(f'Expected in-memory method not found: {needle.splitlines()[0]}')
-              text = text.replace(needle, needle + '    await Promise.resolve();\n', 1)
-          store.write_text(text)
-
-          for filename in [
-              'services/capability-engine/tests/capability-runtime-replay.test.ts',
-              'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts',
-          ]:
-              path = Path(filename)
-              text = path.read_text()
-              text = text.replace('vi.fn(async () => (', 'vi.fn(() => Promise.resolve(')
-              path.write_text(text)
-          PY
-          pnpm exec prettier --write \
-            services/capability-engine/src/capability-runtime-replay-store.ts \
-            services/capability-engine/tests/capability-runtime-replay.test.ts \
-            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
-      - name: Commit lint fixes when changed
+          pnpm format:check
+          pnpm validate:persistence-boundaries
+      - name: Build typed Capability dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Lint and typecheck Capability Engine
         run: |
-          if git diff --quiet -- \
-            services/capability-engine/src/capability-runtime-replay-store.ts \
-            services/capability-engine/tests/capability-runtime-replay.test.ts \
-            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts; then
-            echo 'No lint fixes required.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            services/capability-engine/src/capability-runtime-replay-store.ts \
-            services/capability-engine/tests/capability-runtime-replay.test.ts \
-            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
-          git commit -m 'fix: satisfy durable replay lint invariants'
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+      - name: Run in-memory restart replay conformance
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-runtime-replay.test.ts
+      - name: Run PostgreSQL restart replay acceptance
+        run: pnpm --filter @markorbit/capability-engine test:governed-runtime-replay:postgres
