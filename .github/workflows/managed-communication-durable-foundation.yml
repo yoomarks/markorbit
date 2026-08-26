@@ -1,0 +1,76 @@
+name: Managed Communication Durable Foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/managed-communication-durable-foundation.yml'
+      - 'packages/contracts/src/managed-communication.ts'
+      - 'services/capability-engine/src/managed-communication-foundation.ts'
+      - 'services/capability-engine/src/index.ts'
+      - 'services/capability-engine/tests/managed-communication-foundation.test.ts'
+      - 'services/capability-engine/tests/managed-communication-foundation-postgres.test.ts'
+      - 'services/capability-engine/package.json'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0068_capability_engine_managed_communication_foundation.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/managed-communication-durable-foundation.yml'
+      - 'packages/contracts/src/managed-communication.ts'
+      - 'services/capability-engine/src/managed-communication-foundation.ts'
+      - 'services/capability-engine/src/index.ts'
+      - 'services/capability-engine/tests/managed-communication-foundation.test.ts'
+      - 'services/capability-engine/tests/managed-communication-foundation-postgres.test.ts'
+      - 'services/capability-engine/package.json'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0068_capability_engine_managed_communication_foundation.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: managed-communication-durable-foundation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  managed-communication-durable-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_managed_communication_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_managed_communication_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CAPABILITY_ENGINE_COMMUNICATION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_managed_communication_test
+      CAPABILITY_ENGINE_COMMUNICATION_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Validate formatting and persistence ownership
+        run: |
+          pnpm format:check
+          pnpm validate:persistence-boundaries
+      - name: Build typed Capability dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Lint and typecheck Capability Engine
+        run: |
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+      - name: Run in-memory Communication conformance
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/managed-communication-foundation.test.ts
+      - name: Run PostgreSQL Communication restart acceptance
+        run: pnpm --filter @markorbit/capability-engine test:managed-communication:postgres
