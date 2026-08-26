@@ -14,6 +14,7 @@ export const PERMISSIONS = [
   'matter:read',
   'matter:create',
   'matter:manage',
+  'matter:promote-knowledge',
   'order:create',
   'order:read',
   'order:update',
@@ -40,6 +41,7 @@ export const ROLE_PERMISSION_MATRIX = Object.freeze({
     'matter:read',
     'matter:create',
     'matter:manage',
+    'matter:promote-knowledge',
     'order:create',
     'order:read',
     'order:update',
@@ -120,80 +122,12 @@ export interface WorkspaceEntry {
   workspace: Workspace;
   membership: WorkspaceMembership;
 }
-export type UserIdentity = Pick<User, 'userId'>;
-export type WorkspaceIdentity = Pick<Workspace, 'workspaceId'>;
-export type MembershipIdentity = Pick<
-  WorkspaceMembership,
-  'membershipId' | 'workspaceId' | 'userId'
->;
-
-export type IdentityErrorCode =
-  | 'INVALID_USER'
-  | 'INVALID_WORKSPACE'
-  | 'INVALID_MEMBERSHIP'
-  | 'DUPLICATE_NORMALIZED_EMAIL'
-  | 'DUPLICATE_WORKSPACE_SLUG'
-  | 'DUPLICATE_MEMBERSHIP'
-  | 'USER_NOT_FOUND'
-  | 'WORKSPACE_NOT_FOUND'
-  | 'MEMBERSHIP_NOT_FOUND'
-  | 'USER_DISABLED'
-  | 'WORKSPACE_ARCHIVED'
-  | 'MEMBERSHIP_SUSPENDED'
-  | 'STALE_VERSION'
-  | 'INVALID_ROLE'
-  | 'INVALID_PERMISSION'
-  | 'WORKSPACE_SCOPE_MISMATCH'
-  | 'PERSISTENCE_UNAVAILABLE';
-export class IdentityError extends Error {
-  constructor(
-    public readonly code: IdentityErrorCode,
-    message: string,
-    options?: ErrorOptions
-  ) {
-    super(message, options);
-    this.name = 'IdentityError';
-  }
-}
-
-export interface UserRepository {
-  create(input: Pick<User, 'userId' | 'email' | 'displayName'>): Promise<User>;
-  findById(userId: string): Promise<User | null>;
-  findByNormalizedEmail(normalizedEmail: string): Promise<User | null>;
-  update(
-    userId: string,
-    expectedVersion: number,
-    input: Pick<User, 'email' | 'displayName'>
-  ): Promise<User>;
-  disable(userId: string, expectedVersion: number): Promise<User>;
-}
-export interface WorkspaceRepository {
-  create(input: Pick<Workspace, 'workspaceId' | 'name' | 'slug'>): Promise<Workspace>;
-  findById(workspaceId: string): Promise<Workspace | null>;
-  findBySlug(slug: string): Promise<Workspace | null>;
-  update(
-    workspaceId: string,
-    expectedVersion: number,
-    input: Pick<Workspace, 'name' | 'slug'>
-  ): Promise<Workspace>;
-  archive(workspaceId: string, expectedVersion: number): Promise<Workspace>;
-}
-export interface MembershipRepository {
-  create(
-    input: Pick<WorkspaceMembership, 'membershipId' | 'workspaceId' | 'userId' | 'role'>
-  ): Promise<WorkspaceMembership>;
-  findByWorkspaceAndUser(workspaceId: string, userId: string): Promise<WorkspaceMembership | null>;
-  listByUser(userId: string): Promise<WorkspaceMembership[]>;
-  listByWorkspace(workspaceId: string): Promise<WorkspaceMembership[]>;
-  changeRole(
-    workspaceId: string,
-    userId: string,
-    expectedVersion: number,
-    role: Role
-  ): Promise<WorkspaceMembership>;
-  suspend(
-    workspaceId: string,
-    userId: string,
-    expectedVersion: number
-  ): Promise<WorkspaceMembership>;
+export interface WorkspacePrincipal {
+  kind: 'WORKSPACE';
+  userId: string;
+  workspaceId: string;
+  membershipId: string;
+  role: Role;
+  permissions: readonly Permission[];
+  authenticatedAt: string;
 }
