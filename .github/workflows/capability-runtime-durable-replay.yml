@@ -5,108 +5,70 @@ on:
     paths:
       - '.github/workflows/capability-runtime-durable-replay.yml'
       - 'services/capability-engine/src/capability-runtime-replay-store.ts'
+      - 'services/capability-engine/src/durable-governed-capability-runtime.ts'
+      - 'services/capability-engine/tests/capability-runtime-replay.test.ts'
       - 'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts'
+      - 'services/capability-engine/package.json'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0067_capability_engine_governed_runtime_replays.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/capability-runtime-durable-replay.yml'
+      - 'services/capability-engine/src/capability-runtime-replay-store.ts'
+      - 'services/capability-engine/src/durable-governed-capability-runtime.ts'
+      - 'services/capability-engine/tests/capability-runtime-replay.test.ts'
+      - 'services/capability-engine/tests/capability-runtime-replay-postgres.test.ts'
+      - 'services/capability-engine/package.json'
+      - 'infrastructure/persistence/migration-owners.json'
+      - 'infrastructure/persistence/migrations/0067_capability_engine_governed_runtime_replays.sql'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: capability-runtime-durable-replay-redaction-${{ github.event.pull_request.number }}
+  group: capability-runtime-durable-replay-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  harden-once:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+  durable-governed-replay:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_capability_replay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_capability_replay_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CAPABILITY_ENGINE_REPLAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_replay_test
+      CAPABILITY_ENGINE_REPLAY_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Redact raw replay key from persisted execution envelope
+      - name: Validate formatting and persistence boundaries
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          store = Path('services/capability-engine/src/capability-runtime-replay-store.ts')
-          text = store.read_text()
-          sha_line = "const SHA256 = /^[a-f0-9]{64}$/u;\n"
-          if sha_line not in text:
-              raise SystemExit('SHA256 anchor missing')
-          text = text.replace(
-              sha_line,
-              sha_line + "const PERSISTED_REPLAY_IDEMPOTENCY_KEY = '__MARKORBIT_REPLAY_KEY_REDACTED__';\n",
-              1,
-          )
-
-          start = text.index('function validateExecution(')
-          end = text.index('function decisionFromStored(', start)
-          replacement = '''function preparePersistedExecution(\n  execution: Readonly<CapabilityRuntimeExecution>,\n  expectedIdempotencyDigest: string\n): CapabilityRuntimeExecution {\n  const replay = jsonClone(execution);\n  if (\n    typeof replay !== 'object' ||\n    replay === null ||\n    replay.replayed !== false ||\n    typeof replay.request?.idempotencyKey !== 'string' ||\n    idempotencyDigest(replay.request.idempotencyKey) !== expectedIdempotencyDigest ||\n    !noAuthority(replay)\n  )\n    throw new CapabilityRuntimeReplayStoreError(\n      'INVALID_PERSISTED_REPLAY',\n      'Governed Capability replay violates identity or authority invariants before persistence.'\n    );\n  return {\n    ...replay,\n    request: {\n      ...replay.request,\n      idempotencyKey: PERSISTED_REPLAY_IDEMPOTENCY_KEY\n    }\n  };\n}\n\nfunction restorePersistedExecution(\n  execution: Readonly<CapabilityRuntimeExecution>,\n  expectedIdempotencyKey: string,\n  expectedExecutionFingerprint: string\n): CapabilityRuntimeExecution {\n  idempotencyDigest(expectedIdempotencyKey);\n  const replay = jsonClone(execution);\n  if (\n    typeof replay !== 'object' ||\n    replay === null ||\n    replay.replayed !== false ||\n    replay.request?.idempotencyKey !== PERSISTED_REPLAY_IDEMPOTENCY_KEY ||\n    !noAuthority(replay)\n  )\n    throw new CapabilityRuntimeReplayStoreError(\n      'INVALID_PERSISTED_REPLAY',\n      'Persisted governed Capability replay violates identity or authority invariants.'\n    );\n  const actualFingerprint = executionFingerprint(replay);\n  if (actualFingerprint !== expectedExecutionFingerprint)\n    throw new CapabilityRuntimeReplayStoreError(\n      'INVALID_PERSISTED_REPLAY',\n      'Persisted governed Capability replay fingerprint does not match its immutable execution.'\n    );\n  return {\n    ...replay,\n    request: {\n      ...replay.request,\n      idempotencyKey: expectedIdempotencyKey\n    }\n  };\n}\n\n'''
-          text = text[:start] + replacement + text[end:]
-
-          start = text.index('function decisionFromStored(')
-          end = text.index('function storedFromRow(', start)
-          replacement = '''function decisionFromStored(\n  stored: StoredReplay | undefined,\n  expectedRequestFingerprint: string,\n  expectedIdempotencyKey: string\n): CapabilityRuntimeReplayDecisionV1 {\n  if (!stored) return { kind: 'MISS' };\n  if (stored.requestFingerprintSha256 !== expectedRequestFingerprint) return { kind: 'CONFLICT' };\n  if (stored.state === 'IN_PROGRESS') return { kind: 'IN_PROGRESS' };\n  if (!stored.execution || !stored.executionFingerprintSha256)\n    throw new CapabilityRuntimeReplayStoreError(\n      'INVALID_PERSISTED_REPLAY',\n      'Completed governed Capability replay is missing its immutable execution.'\n    );\n  return {\n    kind: 'REPLAY',\n    execution: restorePersistedExecution(\n      stored.execution,\n      expectedIdempotencyKey,\n      stored.executionFingerprintSha256\n    )\n  };\n}\n\n'''
-          text = text[:start] + replacement + text[end:]
-
-          start = text.index('function storedFromRow(')
-          end = text.index('async function pause(', start)
-          replacement = '''function storedFromRow(row: Row | undefined): StoredReplay | undefined {\n  if (!row) return undefined;\n  const state = row.state;\n  const requestFingerprintSha256 = row.request_fingerprint_sha256;\n  const persistedOwnerToken = row.owner_token;\n  if (\n    (state !== 'IN_PROGRESS' && state !== 'COMPLETED') ||\n    typeof requestFingerprintSha256 !== 'string' ||\n    !SHA256.test(requestFingerprintSha256) ||\n    typeof persistedOwnerToken !== 'string' ||\n    !persistedOwnerToken\n  )\n    throw new CapabilityRuntimeReplayStoreError(\n      'INVALID_PERSISTED_REPLAY',\n      'Persisted governed Capability replay claim is invalid.'\n    );\n  if (state === 'IN_PROGRESS')\n    return {\n      state,\n      requestFingerprintSha256,\n      ownerToken: persistedOwnerToken\n    };\n  const execution = row.execution_json;\n  const persistedFingerprint = row.execution_fingerprint_sha256;\n  if (\n    typeof execution !== 'object' ||\n    execution === null ||\n    Array.isArray(execution) ||\n    typeof persistedFingerprint !== 'string' ||\n    !SHA256.test(persistedFingerprint)\n  )\n    throw new CapabilityRuntimeReplayStoreError(\n      'INVALID_PERSISTED_REPLAY',\n      'Persisted governed Capability replay execution is invalid.'\n    );\n  return {\n    state,\n    requestFingerprintSha256,\n    ownerToken: persistedOwnerToken,\n    execution: jsonClone(execution as CapabilityRuntimeExecution),\n    executionFingerprintSha256: persistedFingerprint\n  };\n}\n\n'''
-          text = text[:start] + replacement + text[end:]
-
-          text = text.replace(
-              'decisionFromStored(this.rows.get(digest), fingerprint, digest)',
-              'decisionFromStored(this.rows.get(digest), fingerprint, input.idempotencyKey)',
-          )
-          text = text.replace(
-              'const execution = validateExecution(input.execution, digest);',
-              'const execution = preparePersistedExecution(input.execution, digest);',
-          )
-          text = text.replace(
-              'storedFromRow(result.rows[0] as Row | undefined, digest)',
-              'storedFromRow(result.rows[0] as Row | undefined)',
-          )
-          text = text.replace(
-              'storedFromRow(existing.rows[0] as Row | undefined, digest)',
-              'storedFromRow(existing.rows[0] as Row | undefined)',
-          )
-          text = text.replace(
-              'storedFromRow(result.rows[0] as Row | undefined, digest)',
-              'storedFromRow(result.rows[0] as Row | undefined)',
-          )
-          text = text.replace(
-              '        fingerprint,\n        digest\n      );',
-              '        fingerprint,\n        input.idempotencyKey\n      );',
-          )
-          text = text.replace(
-              '          fingerprint,\n          digest\n        );',
-              '          fingerprint,\n          input.idempotencyKey\n        );',
-          )
-          store.write_text(text)
-
-          test = Path('services/capability-engine/tests/capability-runtime-replay-postgres.test.ts')
-          t = test.read_text()
-          anchor = '''    const first = await runtime(execute).invoke(command());\n    const restartedReplay = await runtime(execute).invoke(command());\n\n    expect(first.replayed).toBe(false);\n'''
-          if anchor not in t:
-              raise SystemExit('PostgreSQL restart test anchor missing')
-          addition = '''    const first = await runtime(execute).invoke(command());\n    const persisted = await database\n      .getPool()\n      .query('SELECT execution_json FROM capability_governed_runtime_replays');\n    const persistedExecution = JSON.stringify(persisted.rows[0]?.execution_json);\n    expect(persistedExecution).not.toContain('durable-replay-postgres-1');\n    expect(persistedExecution).toContain('__MARKORBIT_REPLAY_KEY_REDACTED__');\n\n    const restartedReplay = await runtime(execute).invoke(command());\n\n    expect(first.replayed).toBe(false);\n    expect(restartedReplay.request.idempotencyKey).toBe('durable-replay-postgres-1');\n'''
-          t = t.replace(anchor, addition, 1)
-          test.write_text(t)
-          PY
-          pnpm exec prettier --write \
-            services/capability-engine/src/capability-runtime-replay-store.ts \
-            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
-      - name: Commit redaction hardening
+          pnpm format:check
+          pnpm validate:persistence-boundaries
+      - name: Build typed Capability dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Lint and typecheck Capability Engine
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            services/capability-engine/src/capability-runtime-replay-store.ts \
-            services/capability-engine/tests/capability-runtime-replay-postgres.test.ts
-          git commit -m 'security: redact durable replay idempotency key'
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+      - name: Run in-memory restart replay conformance
+        run: pnpm --filter @markorbit/capability-engine exec vitest run tests/capability-runtime-replay.test.ts
+      - name: Run PostgreSQL restart replay acceptance
+        run: pnpm --filter @markorbit/capability-engine test:governed-runtime-replay:postgres
