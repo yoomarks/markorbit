@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS capability_communication_messages (
 );
 
 CREATE INDEX IF NOT EXISTS capability_communication_messages_thread_idx
-  ON capability_communication_messages (workspace_id, account_ref, thread_ref, occurred_at(message_json));
+  ON capability_communication_messages (workspace_id, account_ref, thread_ref);
 
 CREATE TABLE IF NOT EXISTS capability_communication_checkpoints (
   workspace_id text NOT NULL,
