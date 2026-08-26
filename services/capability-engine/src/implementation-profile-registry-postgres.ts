@@ -22,8 +22,7 @@ const PROFILE_ID = /^implementation-profile_[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
 type Row = Record<string, unknown>;
 
 export type DurableImplementationProfileRegistryErrorCode =
-  | 'PERSISTENCE_UNAVAILABLE'
-  | 'INVALID_PERSISTED_PROFILE';
+  'PERSISTENCE_UNAVAILABLE' | 'INVALID_PERSISTED_PROFILE';
 
 export class DurableImplementationProfileRegistryError extends Error {
   constructor(
@@ -87,7 +86,11 @@ function profileId(value: unknown): string {
 
 function capabilityId(value: unknown): string {
   if (typeof value !== 'string')
-    throw new ImplementationProfileRegistryError('INVALID_PROFILE', 'capabilityId must be a string.', 422);
+    throw new ImplementationProfileRegistryError(
+      'INVALID_PROFILE',
+      'capabilityId must be a string.',
+      422
+    );
   const cleaned = value.trim();
   if (!cleaned || cleaned.length > 300)
     throw new ImplementationProfileRegistryError(
@@ -152,9 +155,7 @@ function sameIdentityLineage(row: Row, profile: Readonly<ImplementationProfile>)
   );
 }
 
-export class PostgresImplementationProfileRegistryV1
-  implements DurableImplementationProfileRegistryV1
-{
+export class PostgresImplementationProfileRegistryV1 implements DurableImplementationProfileRegistryV1 {
   constructor(
     private readonly database: ImplementationProfileRegistryTransactionHostV1,
     private readonly query: QueryClient
@@ -179,10 +180,7 @@ export class PostgresImplementationProfileRegistryV1
           [profile.implementationKey]
         );
         const keyOwner = keyOwnerResult.rows[0] as Row | undefined;
-        if (
-          keyOwner &&
-          keyOwner.implementation_profile_id !== profile.implementationProfileId
-        )
+        if (keyOwner && keyOwner.implementation_profile_id !== profile.implementationProfileId)
           throw new ImplementationProfileRegistryError(
             'IMPLEMENTATION_KEY_CONFLICT',
             'An implementation key can belong to only one Implementation Profile lineage.'
@@ -388,9 +386,7 @@ export class PostgresImplementationProfileRegistryV1
   }
 }
 
-export class PostgresGovernedImplementationProfileSelectorV1
-  implements ImplementationProfileSelector
-{
+export class PostgresGovernedImplementationProfileSelectorV1 implements ImplementationProfileSelector {
   private readonly policy: Readonly<GovernedImplementationSelectionPolicyV1>;
 
   constructor(
