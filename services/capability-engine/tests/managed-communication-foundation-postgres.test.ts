@@ -78,7 +78,7 @@ function message(subject = 'PostgreSQL durable communication'): ManagedCommunica
 let database: ManagedDatabase;
 
 function store() {
-  return new PostgresManagedCommunicationFoundationV1(database.getPool());
+  return new PostgresManagedCommunicationFoundationV1(database, database.getPool());
 }
 
 async function register() {
@@ -106,6 +106,7 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
     await database.getPool().query(
       `DROP TABLE IF EXISTS
          capability_communication_checkpoints,
+         capability_communication_import_claims,
          capability_communication_messages,
          capability_communication_accounts,
          capability_governed_runtime_replays,
@@ -138,6 +139,7 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
   beforeEach(async () => {
     await database.getPool().query(
       `TRUNCATE capability_communication_checkpoints,
+                capability_communication_import_claims,
                 capability_communication_messages,
                 capability_communication_accounts CASCADE`
     );
@@ -191,6 +193,22 @@ integration('MO-CAP-003 PostgreSQL Managed Communication foundation', () => {
       now: '2026-08-26T04:30:03.000Z'
     });
     expect(replay.disposition).toBe('REPLAYED');
+    const claims = await database
+      .getPool()
+      .query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM capability_communication_import_claims'
+      );
+    expect(claims.rows[0]?.count).toBe('2');
+
+    await expect(
+      store().admitObservation({
+        workspaceId,
+        accountRef,
+        idempotencyKey: 'communication-pg-import-2',
+        message: message('Conflicting reuse of admitted alias'),
+        now: '2026-08-26T04:30:04.000Z'
+      })
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
 
     await expect(
       store().admitObservation({

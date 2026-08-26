@@ -86,6 +86,10 @@ export interface ManagedCommunicationSaveCheckpointV1 {
   now: string;
 }
 
+export interface ManagedCommunicationFoundationTransactionHostV1 {
+  transact<T>(callback: (client: QueryClient) => Promise<T>): Promise<T>;
+}
+
 export interface ManagedCommunicationFoundationStoreV1 {
   registerAccount(
     command: Readonly<ManagedCommunicationRegisterAccountV1>
@@ -543,6 +547,15 @@ type CheckpointRow = {
   created_at: unknown;
 };
 
+type ImportClaimRow = {
+  workspace_id: unknown;
+  account_ref: unknown;
+  idempotency_key_sha256: unknown;
+  provider: unknown;
+  provider_message_id: unknown;
+  observation_fingerprint_sha256: unknown;
+};
+
 function isoFromDatabase(value: unknown, field: string): string {
   const date =
     value instanceof Date ? value : typeof value === 'string' ? new Date(value) : undefined;
@@ -657,7 +670,10 @@ function checkpointFromRow(row: CheckpointRow): ManagedCommunicationCheckpointV1
 }
 
 export class PostgresManagedCommunicationFoundationV1 implements ManagedCommunicationFoundationStoreV1 {
-  constructor(private readonly query: QueryClient) {}
+  constructor(
+    private readonly transactionHost: ManagedCommunicationFoundationTransactionHostV1,
+    private readonly query: QueryClient
+  ) {}
 
   async registerAccount(
     command: Readonly<ManagedCommunicationRegisterAccountV1>
@@ -693,11 +709,7 @@ export class PostgresManagedCommunicationFoundationV1 implements ManagedCommunic
           'Communication provider account reference is already bound to another account in this workspace.'
         );
       const persisted = bindingFromRow(row);
-      if (
-        persisted.channel !== binding.channel ||
-        persisted.provider !== binding.provider ||
-        persisted.providerAccountRef !== binding.providerAccountRef
-      )
+      if (accountFingerprint(persisted) !== bindingSha)
         throw new ManagedCommunicationFoundationError(
           'ACCOUNT_CONFLICT',
           'Communication account reference is already bound to different durable metadata.'
@@ -741,76 +753,163 @@ export class PostgresManagedCommunicationFoundationV1 implements ManagedCommunic
     }
   }
 
+  private async findProviderMessage(
+    client: QueryClient,
+    workspaceId: string,
+    accountRef: string,
+    provider: string,
+    providerMessageId: string
+  ): Promise<StoredMessage | undefined> {
+    const found = await client.query<MessageRow>(
+      `SELECT workspace_id,account_ref,provider,provider_message_id,idempotency_key_sha256,
+              observation_fingerprint_sha256,message_json
+         FROM capability_communication_messages
+        WHERE workspace_id=$1 AND account_ref=$2 AND provider=$3 AND provider_message_id=$4`,
+      [workspaceId, accountRef, provider, providerMessageId]
+    );
+    return found.rows[0] ? storedMessageFromRow(found.rows[0]) : undefined;
+  }
+
+  private async replayFromImportClaim(
+    client: QueryClient,
+    validated: ReturnType<typeof validatedObservation>
+  ): Promise<Readonly<ManagedCommunicationObservationOutcomeV1> | undefined> {
+    const found = await client.query<ImportClaimRow>(
+      `SELECT workspace_id,account_ref,idempotency_key_sha256,provider,provider_message_id,
+              observation_fingerprint_sha256
+         FROM capability_communication_import_claims
+        WHERE workspace_id=$1 AND account_ref=$2 AND idempotency_key_sha256=$3`,
+      [validated.workspaceId, validated.accountRef, validated.idempotencyKeySha256]
+    );
+    const row = found.rows[0];
+    if (!row) return undefined;
+    if (
+      typeof row.workspace_id !== 'string' ||
+      typeof row.account_ref !== 'string' ||
+      typeof row.idempotency_key_sha256 !== 'string' ||
+      !SHA256.test(row.idempotency_key_sha256) ||
+      typeof row.provider !== 'string' ||
+      typeof row.provider_message_id !== 'string' ||
+      typeof row.observation_fingerprint_sha256 !== 'string' ||
+      !SHA256.test(row.observation_fingerprint_sha256)
+    )
+      throw new ManagedCommunicationFoundationError(
+        'INVALID_PERSISTED_STATE',
+        'Persisted Communication import claim is invalid.'
+      );
+    if (row.observation_fingerprint_sha256 !== validated.observationFingerprintSha256)
+      throw new ManagedCommunicationFoundationError(
+        'IDEMPOTENCY_CONFLICT',
+        'Communication idempotency key is already bound to a different observation.'
+      );
+    const stored = await this.findProviderMessage(
+      client,
+      row.workspace_id,
+      row.account_ref,
+      row.provider,
+      row.provider_message_id
+    );
+    if (!stored || stored.observationFingerprintSha256 !== row.observation_fingerprint_sha256)
+      throw new ManagedCommunicationFoundationError(
+        'INVALID_PERSISTED_STATE',
+        'Persisted Communication import claim no longer resolves to its immutable observation.'
+      );
+    return outcome('REPLAYED', stored.message);
+  }
+
+  private async bindImportClaim(
+    client: QueryClient,
+    validated: ReturnType<typeof validatedObservation>,
+    stored: StoredMessage
+  ): Promise<void> {
+    await client.query(
+      `INSERT INTO capability_communication_import_claims (
+         workspace_id,account_ref,idempotency_key_sha256,provider,provider_message_id,
+         observation_fingerprint_sha256,created_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        validated.workspaceId,
+        validated.accountRef,
+        validated.idempotencyKeySha256,
+        stored.provider,
+        stored.providerMessageId,
+        stored.observationFingerprintSha256,
+        validated.now
+      ]
+    );
+  }
+
   async admitObservation(
     command: Readonly<ManagedCommunicationObservationCommandV1>
   ): Promise<Readonly<ManagedCommunicationObservationOutcomeV1>> {
     const binding = await this.resolveAccount(command.workspaceId, command.accountRef);
     const validated = validatedObservation(binding, command);
     try {
-      const existingIdempotency = await this.query.query<MessageRow>(
-        `SELECT workspace_id,account_ref,provider,provider_message_id,idempotency_key_sha256,
-                observation_fingerprint_sha256,message_json
-           FROM capability_communication_messages
-          WHERE workspace_id=$1 AND account_ref=$2 AND idempotency_key_sha256=$3`,
-        [validated.workspaceId, validated.accountRef, validated.idempotencyKeySha256]
-      );
-      if (existingIdempotency.rows[0]) {
-        const existing = storedMessageFromRow(existingIdempotency.rows[0]);
-        if (existing.observationFingerprintSha256 !== validated.observationFingerprintSha256)
-          throw new ManagedCommunicationFoundationError(
-            'IDEMPOTENCY_CONFLICT',
-            'Communication idempotency key is already bound to a different observation.'
-          );
-        return outcome('REPLAYED', existing.message);
-      }
-      await this.query.query(
-        `INSERT INTO capability_communication_messages (
-           workspace_id,account_ref,provider,provider_message_id,provider_thread_id,message_id,thread_ref,
-           idempotency_key_sha256,observation_fingerprint_sha256,message_json,observed_at,created_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12)
-         ON CONFLICT DO NOTHING`,
-        [
-          validated.workspaceId,
-          validated.accountRef,
-          validated.message.providerObservation.provider,
-          validated.message.providerObservation.providerMessageId,
-          validated.message.providerObservation.providerThreadId ?? null,
-          validated.message.messageId,
-          validated.message.threadRef,
-          validated.idempotencyKeySha256,
-          validated.observationFingerprintSha256,
-          JSON.stringify(validated.message),
-          validated.message.providerObservation.observedAt,
-          validated.now
-        ]
-      );
-      const found = await this.query.query<MessageRow>(
-        `SELECT workspace_id,account_ref,provider,provider_message_id,idempotency_key_sha256,
-                observation_fingerprint_sha256,message_json
-           FROM capability_communication_messages
-          WHERE workspace_id=$1 AND account_ref=$2 AND provider=$3 AND provider_message_id=$4`,
-        [
+      return await this.transactionHost.transact(async (client) => {
+        const lockKeys = [
+          `communication-idempotency:${validated.workspaceId}:${validated.accountRef}:${validated.idempotencyKeySha256}`,
+          `communication-provider:${validated.workspaceId}:${validated.accountRef}:${validated.message.providerObservation.provider}:${validated.message.providerObservation.providerMessageId}`
+        ].sort();
+        for (const lockKey of lockKeys)
+          await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [lockKey]);
+
+        const claimed = await this.replayFromImportClaim(client, validated);
+        if (claimed) return claimed;
+
+        const existingProvider = await this.findProviderMessage(
+          client,
           validated.workspaceId,
           validated.accountRef,
           validated.message.providerObservation.provider,
           validated.message.providerObservation.providerMessageId
-        ]
-      );
-      const row = found.rows[0];
-      if (!row)
-        throw new ManagedCommunicationFoundationError(
-          'PERSISTENCE_UNAVAILABLE',
-          'Communication observation was not readable after persistence.'
         );
-      const persisted = storedMessageFromRow(row);
-      if (persisted.observationFingerprintSha256 !== validated.observationFingerprintSha256)
-        throw new ManagedCommunicationFoundationError(
-          'PROVIDER_OBSERVATION_CONFLICT',
-          'Provider message identity is already bound to a different normalized observation.'
+        if (existingProvider) {
+          if (
+            existingProvider.observationFingerprintSha256 !== validated.observationFingerprintSha256
+          )
+            throw new ManagedCommunicationFoundationError(
+              'PROVIDER_OBSERVATION_CONFLICT',
+              'Provider message identity is already bound to a different normalized observation.'
+            );
+          await this.bindImportClaim(client, validated, existingProvider);
+          return outcome('REPLAYED', existingProvider.message);
+        }
+
+        await client.query(
+          `INSERT INTO capability_communication_messages (
+             workspace_id,account_ref,provider,provider_message_id,provider_thread_id,message_id,thread_ref,
+             idempotency_key_sha256,observation_fingerprint_sha256,message_json,observed_at,created_at
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12)`,
+          [
+            validated.workspaceId,
+            validated.accountRef,
+            validated.message.providerObservation.provider,
+            validated.message.providerObservation.providerMessageId,
+            validated.message.providerObservation.providerThreadId ?? null,
+            validated.message.messageId,
+            validated.message.threadRef,
+            validated.idempotencyKeySha256,
+            validated.observationFingerprintSha256,
+            JSON.stringify(validated.message),
+            validated.message.providerObservation.observedAt,
+            validated.now
+          ]
         );
-      const disposition =
-        persisted.idempotencyKeySha256 === validated.idempotencyKeySha256 ? 'ADMITTED' : 'REPLAYED';
-      return outcome(disposition, persisted.message);
+        const persisted = await this.findProviderMessage(
+          client,
+          validated.workspaceId,
+          validated.accountRef,
+          validated.message.providerObservation.provider,
+          validated.message.providerObservation.providerMessageId
+        );
+        if (!persisted)
+          throw new ManagedCommunicationFoundationError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Communication observation was not readable after persistence.'
+          );
+        await this.bindImportClaim(client, validated, persisted);
+        return outcome('ADMITTED', persisted.message);
+      });
     } catch (error) {
       if (error instanceof ManagedCommunicationFoundationError) throw error;
       throw new ManagedCommunicationFoundationError(
@@ -934,7 +1033,6 @@ export class PostgresManagedCommunicationFoundationV1 implements ManagedCommunic
     }
   }
 }
-
 export function newManagedCommunicationIdempotencyKeyV1(): string {
   return `communication-import-${randomUUID()}`;
 }
