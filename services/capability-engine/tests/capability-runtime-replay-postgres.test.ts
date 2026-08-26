@@ -176,7 +176,9 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
     const first = await runtime(execute).invoke(command());
     const persisted = await database
       .getPool()
-      .query('SELECT execution_json FROM capability_governed_runtime_replays');
+      .query<{ execution_json: unknown }>(
+        'SELECT execution_json FROM capability_governed_runtime_replays'
+      );
     const persistedExecution = JSON.stringify(persisted.rows[0]?.execution_json);
     expect(persistedExecution).not.toContain('durable-replay-postgres-1');
     expect(persistedExecution).toContain('__MARKORBIT_REPLAY_KEY_REDACTED__');
@@ -236,7 +238,7 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
           SET execution_json=jsonb_set(
             execution_json,
             '{receipt,sessionReceiptId}',
-            '"session-receipt_tampered"'::jsonb,
+            '\"session-receipt_tampered\"'::jsonb,
             false
           )`
     );
