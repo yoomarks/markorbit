@@ -1,4 +1,4 @@
-name: Temporary Prettier Diagnose
+name: Temporary Prettier Autofix
 
 on:
   pull_request:
@@ -7,13 +7,15 @@ on:
       - "services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  prettier-diff:
+  prettier-autofix:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: issue-251-managed-ai-v2-failure-semantics-v2
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -22,9 +24,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier diff
+      - name: Apply exact Prettier format
         shell: bash
         run: |
           pnpm exec prettier --write services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts
-          git diff -- services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts
-          exit 1
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/capability-engine/tests/managed-ai-v2-outcome-preservation.test.ts
+          git commit -m "style: apply exact Prettier formatting"
+          git push origin HEAD:issue-251-managed-ai-v2-failure-semantics-v2
