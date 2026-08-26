@@ -238,7 +238,7 @@ integration('MO-CAP-001 WP07B PostgreSQL governed replay', () => {
           SET execution_json=jsonb_set(
             execution_json,
             '{receipt,sessionReceiptId}',
-            '\"session-receipt_tampered\"'::jsonb,
+            '"session-receipt_tampered"'::jsonb,
             false
           )`
     );
