@@ -51,7 +51,9 @@ function stored(value: unknown): OfficialFeeReferenceV1 {
 }
 
 async function lock(client: QueryClient): Promise<void> {
-  await client.query("SELECT pg_advisory_xact_lock(hashtextextended('core:official-fee-pilot', 0))");
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtextextended('core:official-fee-pilot', 0))"
+  );
 }
 
 export class PostgresOfficialFeeReferenceStore {
@@ -125,13 +127,16 @@ export class PostgresOfficialFeeReferenceStore {
     }
   }
 
-  async get(referenceId: OfficialFeeReferenceId): Promise<Readonly<OfficialFeeReferenceV1> | undefined> {
+  async get(
+    referenceId: OfficialFeeReferenceId
+  ): Promise<Readonly<OfficialFeeReferenceV1> | undefined> {
     try {
       const result = await this.database
         .getPool()
-        .query<ReferenceRow>('SELECT reference_json FROM official_fee_references WHERE reference_id=$1', [
-          referenceId
-        ]);
+        .query<ReferenceRow>(
+          'SELECT reference_json FROM official_fee_references WHERE reference_id=$1',
+          [referenceId]
+        );
       return result.rows[0] ? stored(result.rows[0].reference_json) : undefined;
     } catch (error) {
       persistenceFailure(error);

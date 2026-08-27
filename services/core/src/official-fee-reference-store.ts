@@ -190,7 +190,8 @@ export function prepareOfficialFeeMaterialization(
     amountMinor: input.amountMinor,
     unit: input.unit
   });
-  const referenceId = `official-fee-ref_${materializationFingerprintSha256}` as OfficialFeeReferenceId;
+  const referenceId =
+    `official-fee-ref_${materializationFingerprintSha256}` as OfficialFeeReferenceId;
 
   return {
     replayIdentityFingerprintSha256,

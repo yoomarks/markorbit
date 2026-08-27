@@ -139,7 +139,9 @@ describe('Official Fee Reference materializer/store', () => {
   it('rejects inactive, out-of-scope and lineage-free packages', () => {
     const store = new InMemoryOfficialFeeReferenceStore();
     expect(() =>
-      store.materialize(input(sha('a'), 12345, { package: methodPackage(sha('a'), { lifecycle: 'VALIDATED' }) }))
+      store.materialize(
+        input(sha('a'), 12345, { package: methodPackage(sha('a'), { lifecycle: 'VALIDATED' }) })
+      )
     ).toThrowError(expect.objectContaining({ code: 'PACKAGE_NOT_ACTIVE' }));
 
     expect(() =>

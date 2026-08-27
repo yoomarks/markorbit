@@ -158,7 +158,9 @@ integration('PostgreSQL Official Fee Reference durability', () => {
 
     expect(replay).toEqual(first);
     expect(resolved).toEqual(first);
-    expect((await database.getPool().query('SELECT 1 FROM official_fee_references')).rowCount).toBe(1);
+    expect((await database.getPool().query('SELECT 1 FROM official_fee_references')).rowCount).toBe(
+      1
+    );
   });
 
   it('stales prior lineage atomically when a newer source is materialized', async () => {
@@ -171,7 +173,9 @@ integration('PostgreSQL Official Fee Reference durability', () => {
     expect((await store.resolveCurrent(query)).referenceId).toBe(current.referenceId);
     const rows = await database
       .getPool()
-      .query<{ status: string }>('SELECT status FROM official_fee_references ORDER BY materialized_at');
+      .query<{ status: string }>(
+        'SELECT status FROM official_fee_references ORDER BY materialized_at'
+      );
     expect(rows.rows.map((row) => row.status)).toEqual(['STALE', 'CURRENT']);
   });
 
@@ -182,6 +186,8 @@ integration('PostgreSQL Official Fee Reference durability', () => {
     await expect(store.materialize(input(sha('a'), 54321))).rejects.toMatchObject({
       code: 'CONFLICT'
     });
-    expect((await database.getPool().query('SELECT 1 FROM official_fee_references')).rowCount).toBe(1);
+    expect((await database.getPool().query('SELECT 1 FROM official_fee_references')).rowCount).toBe(
+      1
+    );
   });
 });
