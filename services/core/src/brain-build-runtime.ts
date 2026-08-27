@@ -2,10 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   parseBrainAssetVersion,
   type BrainAssetType,
-  type BrainAssetVersion,
-  type BrainAssetId,
-  type BrainAssetVersionId,
-  type BrainBuildRunId
+  type BrainAssetVersion
 } from '@markorbit/contracts/brain';
 import type {
   BrainBuildBlockedReason,
@@ -76,7 +73,7 @@ function blocked(
   return {
     run: {
       schemaVersion: 1,
-      brainBuildRunId: `brain-build-run_${fingerprint}` as BrainBuildRunId,
+      brainBuildRunId: `brain-build-run_${fingerprint}`,
       status: 'BLOCKED',
       inputFingerprintSha256: fingerprint,
       compilerPolicyId: brainCompilerPolicyV1.policyId,
@@ -118,8 +115,8 @@ function compiledAssetVersion(
   const versionHash = sha256({ assetHash, fingerprint, status });
   return parseBrainAssetVersion({
     schemaVersion: 1,
-    brainAssetId: `brain-asset_${assetHash}` as BrainAssetId,
-    brainAssetVersionId: `brain-asset-version_${versionHash}` as BrainAssetVersionId,
+    brainAssetId: `brain-asset_${assetHash}`,
+    brainAssetVersionId: `brain-asset-version_${versionHash}`,
     version: 1,
     assetType,
     status,
@@ -210,7 +207,7 @@ export function runBrainBuild(request: Readonly<BrainBuildRequest>): Readonly<Br
   return {
     run: {
       schemaVersion: 1,
-      brainBuildRunId: `brain-build-run_${fingerprint}` as BrainBuildRunId,
+      brainBuildRunId: `brain-build-run_${fingerprint}`,
       status: validated ? 'VALIDATED_READY' : 'CANDIDATE_READY',
       inputFingerprintSha256: fingerprint,
       compilerPolicyId: brainCompilerPolicyV1.policyId,
