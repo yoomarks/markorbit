@@ -83,10 +83,7 @@ export async function resolveBrowserWorkspacePrincipal(
   workspaceId = request.headers[WORKSPACE_HEADER_NAME]
 ) {
   if (!workspaceId)
-    throw new AuthenticationError(
-      'WORKSPACE_CONTEXT_REQUIRED',
-      'Workspace context is required.'
-    );
+    throw new AuthenticationError('WORKSPACE_CONTEXT_REQUIRED', 'Workspace context is required.');
   return client(options).resolveWorkspace(token(request), workspaceId, correlation(request));
 }
 
