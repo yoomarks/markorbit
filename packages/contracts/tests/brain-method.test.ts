@@ -168,11 +168,13 @@ describe('Brain Method V1 contracts', () => {
   });
 
   it('rejects incomplete or fabricated Knowledge retrieval lineage', () => {
-    const { chunkId: _chunkId, ...withoutChunk } = knowledgeSource;
     expect(() =>
       parseBrainMethodContractV1({
         ...activeMethod(),
-        lineage: { knowledgeSources: [withoutChunk], researchDatasets: [] }
+        lineage: {
+          knowledgeSources: [{ ...knowledgeSource, chunkId: undefined }],
+          researchDatasets: []
+        }
       })
     ).toThrow('knowledgeRetrievalLineage.chunkId');
 
@@ -183,7 +185,10 @@ describe('Brain Method V1 contracts', () => {
           knowledgeSources: [
             {
               ...knowledgeSource,
-              content: { ...knowledgeSource.content, objectType: 'SYNTHETIC_SOURCE' }
+              content: {
+                ...knowledgeSource.content,
+                objectType: 'SYNTHETIC_SOURCE'
+              }
             }
           ],
           researchDatasets: []
@@ -199,7 +204,11 @@ describe('Brain Method V1 contracts', () => {
         lineage: {
           knowledgeSources: [],
           researchDatasets: [
-            { ...researchDataset, as_of: '2026-08-26T00:00:00.000Z', watermark: 'wm:1' }
+            {
+              ...researchDataset,
+              as_of: '2026-08-26T00:00:00.000Z',
+              watermark: 'wm:1'
+            }
           ]
         }
       })
@@ -213,7 +222,10 @@ describe('Brain Method V1 contracts', () => {
         lineage: {
           knowledgeSources: [],
           researchDatasets: [
-            { ...researchDataset, dataset_ref_id: `research-dataset_${'c'.repeat(64)}` }
+            {
+              ...researchDataset,
+              dataset_ref_id: `research-dataset_${'c'.repeat(64)}`
+            }
           ]
         }
       })
@@ -227,7 +239,10 @@ describe('Brain Method V1 contracts', () => {
         lineage: {
           knowledgeSources: [],
           researchDatasets: [
-            { ...researchDataset, sampling: { strategy: 'HASH', seed: 'random' } }
+            {
+              ...researchDataset,
+              sampling: { strategy: 'HASH', seed: 'random' }
+            }
           ]
         }
       })
