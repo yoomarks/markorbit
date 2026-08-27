@@ -1,0 +1,39 @@
+name: Phase 2 Format Preview
+
+on:
+  pull_request:
+    paths:
+      - 'services/core/src/official-fee-reference-store.ts'
+      - 'services/core/src/official-fee-reference-store-postgres.ts'
+      - 'services/core/tests/official-fee-reference-store.test.ts'
+      - 'services/core/tests/official-fee-reference-store-postgres.test.ts'
+      - '.github/workflows/phase2-format-preview.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact Phase 2 files and print patch
+        run: |
+          pnpm exec prettier --write \
+            services/core/src/official-fee-reference-store.ts \
+            services/core/src/official-fee-reference-store-postgres.ts \
+            services/core/tests/official-fee-reference-store.test.ts \
+            services/core/tests/official-fee-reference-store-postgres.test.ts
+          git diff -- \
+            services/core/src/official-fee-reference-store.ts \
+            services/core/src/official-fee-reference-store-postgres.ts \
+            services/core/tests/official-fee-reference-store.test.ts \
+            services/core/tests/official-fee-reference-store-postgres.test.ts
