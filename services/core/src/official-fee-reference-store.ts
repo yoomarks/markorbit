@@ -96,7 +96,7 @@ function stable(value: unknown): string {
     );
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(',')}}`;
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? 'undefined';
 }
 
 function digest(value: unknown): string {
