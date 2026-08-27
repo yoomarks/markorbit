@@ -1,0 +1,76 @@
+name: BRN007 Gap Registry Wire
+
+on:
+  push:
+    branches: [brain-brn-007-gap-registry]
+    paths:
+      - '.github/workflows/brn007-gap-registry-wire.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: brain-brn-007-gap-registry
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - name: Wire stable gap identity and registry export
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const auditPath = 'services/core/src/brain-self-audit.ts';
+          let audit = fs.readFileSync(auditPath, 'utf8');
+          const oldIdentity = `  const identity = {
+    policyId: brainSelfAuditPolicyV1.policyId,
+    policyVersion: brainSelfAuditPolicyV1.version,
+    brainBuildRunId: run.brainBuildRunId,
+    gapType: type,
+    domain: run.resolution.domain,
+    jurisdiction: run.resolution.jurisdiction ?? null,
+    concept: run.resolution.concept,
+    evidenceRefs
+  };`;
+          const newIdentity = `  const identity = {
+    gapType: type,
+    domain: run.resolution.domain,
+    jurisdiction: run.resolution.jurisdiction?.trim().toUpperCase() ?? null,
+    concept: run.resolution.concept,
+    targetModule: targetFor(type),
+    reasonCode: details.reasonCode
+  };`;
+          if (!audit.includes(oldIdentity)) throw new Error('expected BRN-006 identity block not found');
+          audit = audit.replace(oldIdentity, newIdentity);
+          fs.writeFileSync(auditPath, audit);
+
+          const pkgPath = 'services/core/package.json';
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          if (!pkg.scripts.build.includes('src/brain-gap-registry.ts')) {
+            pkg.scripts.build = pkg.scripts.build.replace('src/brain-self-audit.ts', 'src/brain-self-audit.ts src/brain-gap-registry.ts');
+          }
+          pkg.exports['./brain-gap-registry'] = {
+            types: './dist/brain-gap-registry.d.ts',
+            import: './dist/brain-gap-registry.js'
+          };
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write packages/contracts/src/brain-gap.ts services/core/package.json services/core/src/brain-self-audit.ts services/core/src/brain-gap-registry.ts services/core/tests/brain-gap-registry.test.ts services/core/tests/brain-self-audit.test.ts
+          pnpm exec eslint services/core/src/brain-self-audit.ts services/core/src/brain-gap-registry.ts services/core/tests/brain-gap-registry.test.ts services/core/tests/brain-self-audit.test.ts
+          pnpm --filter @markorbit/core-service typecheck
+          pnpm --filter @markorbit/core-service exec vitest run tests/brain-self-audit.test.ts tests/brain-gap-registry.test.ts
+
+          git config user.name yoomarks
+          git config user.email lukeluccas6292643@gmail.com
+          git add packages/contracts/src/brain-gap.ts services/core/package.json services/core/src/brain-self-audit.ts services/core/src/brain-gap-registry.ts services/core/tests/brain-gap-registry.test.ts
+          git commit -m 'BRN-007: finalize governed BrainGap Registry lifecycle'
+          git push origin HEAD:brain-brn-007-gap-registry
