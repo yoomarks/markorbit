@@ -91,7 +91,6 @@ jobs:
   persistence:
     name: persistence
     needs: detect
-    if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -142,25 +141,33 @@ jobs:
       LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_test
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
       LITE_CANDIDATE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_candidate_test
-      LITE_CANDIDATE_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CANDIDATE_POSTGRES_REQUIRED: '1'
       LITE_FEEDBACK_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_feedback_test
-      LITE_FEEDBACK_POSTGRES_TEST_REQUIRED: '1'
+      LITE_FEEDBACK_POSTGRES_REQUIRED: '1'
       LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_prepared_test
       LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
       LITE_CONVERSION_ANALYTICS_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_conversion_test
-      LITE_CONVERSION_ANALYTICS_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CONVERSION_ANALYTICS_POSTGRES_REQUIRED: '1'
       CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED: '1'
       MO_INTERNAL_SERVICE_SECRET: task-019-ci-internal-secret-32-bytes-minimum
       MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
       WEB_ORIGINS: https://test.markorbit.local
     steps:
+      - name: No integration scope
+        if: github.event_name == 'pull_request' && needs.detect.outputs.integration != 'true'
+        run: echo 'No integration-affecting changes; required persistence check passes as no-op.'
       - uses: actions/checkout@v4
+        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
       - uses: pnpm/action-setup@v4
+        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
+        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
         with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
+      - if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
+        run: pnpm install --frozen-lockfile
       - name: Create affected suite databases
+        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
         env:
           PGPASSWORD: markorbit-test-only
           PERSISTENCE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.persistence == 'true' }}
@@ -294,12 +301,12 @@ jobs:
       - name: Cross-domain Execution to MarkReg handoff
         if: github.event_name == 'push' || (needs.detect.outputs.execution == 'true' && needs.detect.outputs.markreg == 'true')
         run: pnpm exec vitest run scripts/milestone5-reviewed-source-handoff.integration.test.ts
-      - run: pnpm test:gateway-inventory
+      - if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
+        run: pnpm test:gateway-inventory
 
   professional-review-browser:
     name: professional-review-browser
     needs: detect
-    if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -320,18 +327,30 @@ jobs:
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_review_browser
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
     steps:
+      - name: No browser scope
+        if: github.event_name == 'pull_request' && needs.detect.outputs.browser != 'true'
+        run: echo 'No browser-affecting changes; required browser check passes as no-op.'
       - uses: actions/checkout@v4
+        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
       - uses: pnpm/action-setup@v4
+        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
+        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
         with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
+      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+        run: pnpm install --frozen-lockfile
       - name: Create Execution browser database
+        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
         env:
           PGPASSWORD: markorbit-test-only
         run: psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_review_browser;'
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:professional-review:browser
-      - run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop --reporter=line
+      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+        run: pnpm test:professional-review:browser
+      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+        run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop --reporter=line
       - name: Run durable Order journey real runtime
+        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
         run: pnpm test:order:journey:browser
