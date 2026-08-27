@@ -3,7 +3,9 @@ import type { ExecutableMethodPackageV1 } from '@markorbit/contracts/brain-metho
 import {
   InMemoryOfficialFeeReferenceStore,
   OFFICIAL_FEE_PILOT_OPERATION,
-  type OfficialFeeMaterializationInputV1
+  OfficialFeeReferenceStoreError,
+  type OfficialFeeMaterializationInputV1,
+  type OfficialFeeReferenceStoreErrorCode
 } from '../src/official-fee-reference-store.js';
 
 const sha = (character: string) => character.repeat(64);
@@ -122,6 +124,18 @@ function input(
   };
 }
 
+function expectStoreError(action: () => unknown, code: OfficialFeeReferenceStoreErrorCode): void {
+  try {
+    action();
+  } catch (error) {
+    expect(error).toBeInstanceOf(OfficialFeeReferenceStoreError);
+    if (!(error instanceof OfficialFeeReferenceStoreError)) throw error;
+    expect(error.code).toBe(code);
+    return;
+  }
+  throw new Error(`Expected OfficialFeeReferenceStoreError with code ${code}.`);
+}
+
 const query = {
   operation: OFFICIAL_FEE_PILOT_OPERATION,
   jurisdiction: 'US' as const,
@@ -146,9 +160,7 @@ describe('Official Fee Reference materializer/store', () => {
     const store = new InMemoryOfficialFeeReferenceStore();
     store.materialize(input());
 
-    expect(() => store.materialize(input(sha('a'), 54321))).toThrowError(
-      expect.objectContaining({ code: 'CONFLICT' })
-    );
+    expectStoreError(() => store.materialize(input(sha('a'), 54321)), 'CONFLICT');
   });
 
   it('stales the prior reference when exact source lineage changes', () => {
@@ -167,29 +179,35 @@ describe('Official Fee Reference materializer/store', () => {
 
   it('rejects inactive, out-of-scope and Knowledge-lineage-free packages', () => {
     const store = new InMemoryOfficialFeeReferenceStore();
-    expect(() =>
-      store.materialize(
-        input(sha('a'), 12345, { package: methodPackage(sha('a'), { lifecycle: 'VALIDATED' }) })
-      )
-    ).toThrowError(expect.objectContaining({ code: 'PACKAGE_NOT_ACTIVE' }));
+    expectStoreError(
+      () =>
+        store.materialize(
+          input(sha('a'), 12345, { package: methodPackage(sha('a'), { lifecycle: 'VALIDATED' }) })
+        ),
+      'PACKAGE_NOT_ACTIVE'
+    );
 
-    expect(() =>
-      store.materialize(
-        input(sha('a'), 12345, {
-          package: methodPackage(sha('a'), {
-            applicability: { ...methodPackage().applicability, jurisdictions: ['CA'] }
+    expectStoreError(
+      () =>
+        store.materialize(
+          input(sha('a'), 12345, {
+            package: methodPackage(sha('a'), {
+              applicability: { ...methodPackage().applicability, jurisdictions: ['CA'] }
+            })
           })
-        })
-      )
-    ).toThrowError(expect.objectContaining({ code: 'PACKAGE_OUT_OF_SCOPE' }));
+        ),
+      'PACKAGE_OUT_OF_SCOPE'
+    );
 
-    expect(() =>
-      store.materialize(
-        input(sha('a'), 12345, {
-          package: methodPackage(sha('a'), { lineage: dataEngineOnlyLineage() })
-        })
-      )
-    ).toThrowError(expect.objectContaining({ code: 'MISSING_KNOWLEDGE_LINEAGE' }));
+    expectStoreError(
+      () =>
+        store.materialize(
+          input(sha('a'), 12345, {
+            package: methodPackage(sha('a'), { lineage: dataEngineOnlyLineage() })
+          })
+        ),
+      'MISSING_KNOWLEDGE_LINEAGE'
+    );
   });
 
   it('fails closed outside temporal coverage', () => {
@@ -201,8 +219,6 @@ describe('Official Fee Reference materializer/store', () => {
       })
     );
 
-    expect(() => store.resolveCurrent(query)).toThrowError(
-      expect.objectContaining({ code: 'NO_CURRENT_REFERENCE' })
-    );
+    expectStoreError(() => store.resolveCurrent(query), 'NO_CURRENT_REFERENCE');
   });
 });
