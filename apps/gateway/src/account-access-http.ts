@@ -32,9 +32,12 @@ function mapAuthentication(error: unknown): never {
     status = 503;
   else if (code === 'EMAIL_ALREADY_REGISTERED' || code === 'DUPLICATE_WORKSPACE_SLUG') status = 409;
   else if (
-    ['INVALID_ACCOUNT_TYPE', 'WEAK_PASSWORD', 'INVALID_WORKSPACE', 'WORKSPACE_CONTEXT_REQUIRED'].includes(
-      code
-    )
+    [
+      'INVALID_ACCOUNT_TYPE',
+      'WEAK_PASSWORD',
+      'INVALID_WORKSPACE',
+      'WORKSPACE_CONTEXT_REQUIRED'
+    ].includes(code)
   )
     status = 400;
   else if (code === 'USER_NOT_FOUND') status = 404;
