@@ -1,0 +1,36 @@
+name: PR 255 one-shot prettier
+
+on:
+  push:
+    branches:
+      - issue-247-global-admin-browser-session
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: issue-247-global-admin-browser-session
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/gateway/src/account-access-http.ts
+      - name: Commit formatted source and remove one-shot workflow
+        run: |
+          rm .github/workflows/tmp-pr255-prettier.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/gateway/src/account-access-http.ts .github/workflows/tmp-pr255-prettier.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "style(gateway): format browser session boundary"
+          git push origin HEAD:issue-247-global-admin-browser-session
