@@ -1,12 +1,14 @@
 import { AuthenticationError, type SelfServiceAccountType } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
+  clearSessionCookie,
   csrfToken,
   type CoreAuthenticationClient,
   readSessionCookie,
   requireTrustedOrigin,
   sessionCookie,
-  validateCsrf
+  validateCsrf,
+  WORKSPACE_HEADER_NAME
 } from './auth.js';
 
 export interface GatewayAccountAccessOptions {
@@ -29,7 +31,14 @@ function mapAuthentication(error: unknown): never {
   if (code === 'AUTHENTICATION_SERVICE_UNAVAILABLE' || code === 'PERSISTENCE_UNAVAILABLE')
     status = 503;
   else if (code === 'EMAIL_ALREADY_REGISTERED' || code === 'DUPLICATE_WORKSPACE_SLUG') status = 409;
-  else if (['INVALID_ACCOUNT_TYPE', 'WEAK_PASSWORD', 'INVALID_WORKSPACE'].includes(code))
+  else if (
+    [
+      'INVALID_ACCOUNT_TYPE',
+      'WEAK_PASSWORD',
+      'INVALID_WORKSPACE',
+      'WORKSPACE_CONTEXT_REQUIRED'
+    ].includes(code)
+  )
     status = 400;
   else if (code === 'USER_NOT_FOUND') status = 404;
   else if (
@@ -66,6 +75,16 @@ function token(request: JsonRequest) {
   const value = readSessionCookie(request.headers.cookie);
   if (!value) throw new HttpError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required.');
   return value;
+}
+
+export async function resolveBrowserWorkspacePrincipal(
+  request: JsonRequest,
+  options: GatewayAccountAccessOptions,
+  workspaceId = request.headers[WORKSPACE_HEADER_NAME]
+) {
+  if (!workspaceId)
+    throw new AuthenticationError('WORKSPACE_CONTEXT_REQUIRED', 'Workspace context is required.');
+  return client(options).resolveWorkspace(token(request), workspaceId, correlation(request));
 }
 
 function response(
@@ -151,6 +170,60 @@ export function createGatewayAccountAccessRoutes(
             correlation(request)
           );
           return response(result, 200, options);
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/auth/session',
+      handle: async (request) => {
+        try {
+          const principal = await client(options).resolve(token(request), correlation(request));
+          return json(200, {
+            authenticated: true,
+            userId: principal.userId,
+            sessionId: principal.sessionId,
+            sessionExpiresAt: principal.sessionExpiresAt,
+            csrfToken: csrfToken(principal.sessionId, options.csrfSecret)
+          });
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/auth/logout',
+      handle: async (request) => {
+        try {
+          requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+          const authentication = client(options);
+          const principal = await authentication.resolve(token(request), correlation(request));
+          validateCsrf(
+            principal.sessionId,
+            options.csrfSecret,
+            request.headers['x-markorbit-csrf-token']
+          );
+          await authentication.revoke(principal.sessionId, correlation(request));
+          return json(
+            200,
+            { authenticated: false },
+            { 'set-cookie': clearSessionCookie(options.secureCookies) }
+          );
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/auth/workspace-principal',
+      handle: async (request) => {
+        try {
+          const principal = await resolveBrowserWorkspacePrincipal(request, options);
+          return json(200, { principal });
         } catch (error) {
           return mapAuthentication(error);
         }
