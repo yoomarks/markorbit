@@ -1,0 +1,50 @@
+name: BRN006 one-shot wire
+on:
+  push:
+    branches: [brain-brn-006-self-audit]
+    paths: [.github/workflows/brn006-wire.yml]
+permissions:
+  contents: write
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: brain-brn-006-self-audit
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire contracts and core self-audit
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const cpath='packages/contracts/package.json';
+          const c=JSON.parse(fs.readFileSync(cpath,'utf8'));
+          c.exports['./brain-gap']={types:'./dist/brain-gap.d.ts',import:'./dist/brain-gap.js',default:'./dist/brain-gap.js'};
+          c.scripts.build=c.scripts.build.replace('src/brain-confidence.ts','src/brain-confidence.ts src/brain-gap.ts');
+          fs.writeFileSync(cpath,JSON.stringify(c,null,2)+'\n');
+          const spath='services/core/package.json';
+          const s=JSON.parse(fs.readFileSync(spath,'utf8'));
+          s.scripts.build=s.scripts.build.replace('src/brain-build-runtime.ts','src/brain-build-runtime.ts src/brain-self-audit.ts');
+          s.exports['./brain-self-audit']={types:'./dist/brain-self-audit.d.ts',import:'./dist/brain-self-audit.js'};
+          fs.writeFileSync(spath,JSON.stringify(s,null,2)+'\n');
+          const tpath='tsconfig.base.json';
+          const t=JSON.parse(fs.readFileSync(tpath,'utf8'));
+          t.compilerOptions.paths['@markorbit/contracts/brain-gap']=['packages/contracts/src/brain-gap.ts'];
+          fs.writeFileSync(tpath,JSON.stringify(t,null,2)+'\n');
+          NODE
+      - name: Format BRN-006 files
+        run: pnpm exec prettier --write packages/contracts/package.json packages/contracts/src/brain-gap.ts services/core/package.json services/core/src/brain-self-audit.ts services/core/tests/brain-self-audit.test.ts tsconfig.base.json
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm .github/workflows/brn006-wire.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/contracts/package.json packages/contracts/src/brain-gap.ts services/core/package.json services/core/src/brain-self-audit.ts services/core/tests/brain-self-audit.test.ts tsconfig.base.json .github/workflows/brn006-wire.yml
+          git commit -m 'build(brain): wire and format BRN-006 self-audit'
+          git push origin HEAD:brain-brn-006-self-audit
