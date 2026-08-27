@@ -134,16 +134,12 @@ function canonicalMetadata(
       'INVALID_EXACT_EVIDENCE',
       'metadata must be an object.'
     );
-  return Object.freeze(
-    Object.fromEntries(
-      Object.entries(metadata)
-        .map(([key, value]) => [
-          clean(key, 'metadata key', 200),
-          clean(value, `metadata.${key}`, 20_000)
-        ])
-        .sort(([left], [right]) => left.localeCompare(right))
-    )
-  );
+  const entries: [string, string][] = Object.entries(metadata).map(([key, value]) => [
+    clean(key, 'metadata key', 200),
+    clean(value, `metadata.${key}`, 20_000)
+  ]);
+  entries.sort(([left], [right]) => left.localeCompare(right));
+  return Object.freeze(Object.fromEntries(entries));
 }
 
 type ValidatedAdmission = {
@@ -436,11 +432,7 @@ export class PostgresManagedCommunicationExactEvidenceStoreV1 implements Managed
                 payload_size_bytes,provenance_json,observed_at
            FROM capability_communication_exact_evidence
           WHERE workspace_id=$1 AND account_ref=$2 AND message_id=$3`,
-        [
-          clean(input.workspaceId, 'workspaceId', 500),
-          clean(input.accountRef, 'accountRef', 500),
-          clean(input.messageId, 'messageId', 500)
-        ]
+        [clean(input.workspaceId, 'workspaceId', 500), clean(input.accountRef, 'accountRef', 500), clean(input.messageId, 'messageId', 500)]
       );
       const row = result.rows[0] as EvidenceRow | undefined;
       return row ? persistedRef(row) : undefined;
@@ -448,7 +440,7 @@ export class PostgresManagedCommunicationExactEvidenceStoreV1 implements Managed
       if (error instanceof ManagedCommunicationExactEvidenceError) throw error;
       throw new ManagedCommunicationExactEvidenceError(
         'PERSISTENCE_UNAVAILABLE',
-        'Managed Communication exact evidence could not be resolved.',
+        'Managed Communication exact evidence persistence is unavailable.',
         { cause: error instanceof Error ? error : undefined }
       );
     }
