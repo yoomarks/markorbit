@@ -56,6 +56,7 @@ jobs:
       - name: Validate V2 contract and Core boundary
         run: |
           pnpm --filter @markorbit/contracts typecheck
+          pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/core-service lint
           pnpm --filter @markorbit/core-service typecheck
           pnpm build:identity-postgres-deps
