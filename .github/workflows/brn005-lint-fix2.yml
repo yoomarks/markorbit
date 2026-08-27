@@ -1,0 +1,56 @@
+name: BRN005 one-shot lint fix 2
+
+on:
+  push:
+    branches:
+      - brain-brn-005-build-runtime
+    paths:
+      - .github/workflows/brn005-lint-fix2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: brain-brn-005-build-runtime
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Remove redundant casts and imports
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'services/core/src/brain-build-runtime.ts';
+          let text = fs.readFileSync(path, 'utf8');
+          for (const line of ['  type BrainAssetId,\n','  type BrainAssetVersionId,\n','  type BrainBuildRunId\n']) {
+            if (!text.includes(line)) throw new Error(`missing expected import: ${line}`);
+            text = text.replace(line, '');
+          }
+          for (const [from, to] of [
+            ['`brain-build-run_${fingerprint}` as BrainBuildRunId', '`brain-build-run_${fingerprint}`'],
+            ['`brain-asset_${assetHash}` as BrainAssetId', '`brain-asset_${assetHash}`'],
+            ['`brain-asset-version_${versionHash}` as BrainAssetVersionId', '`brain-asset-version_${versionHash}`']
+          ]) {
+            if (!text.includes(from)) throw new Error(`missing expected cast: ${from}`);
+            text = text.replaceAll(from, to);
+          }
+          fs.writeFileSync(path, text);
+          NODE
+      - run: pnpm exec prettier --write services/core/src/brain-build-runtime.ts
+      - run: pnpm exec eslint services/core/src/brain-build-runtime.ts
+      - name: Remove one-shot workflows and commit
+        run: |
+          rm -f .github/workflows/brn005-lint-fix.yml .github/workflows/brn005-lint-fix2.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/core/src/brain-build-runtime.ts .github/workflows/brn005-lint-fix.yml .github/workflows/brn005-lint-fix2.yml
+          git commit -m "fix(brain): remove redundant BRN-005 type assertions"
+          git push origin HEAD:brain-brn-005-build-runtime
