@@ -105,7 +105,7 @@ function canonicalHeaders(
       'INVALID_EXACT_EVIDENCE',
       'headers must be an array.'
     );
-  const normalized = headers.map((header, index) => {
+  const normalized = headers.map((header: ManagedCommunicationEvidenceHeaderV1, index) => {
     const name = clean(header.name, `headers[${index}].name`, 200).toLowerCase();
     if (SENSITIVE_HEADER.test(name))
       throw new ManagedCommunicationExactEvidenceError(
@@ -275,7 +275,9 @@ export class InMemoryManagedCommunicationExactEvidenceStoreV1 implements Managed
         Object.freeze({ schemaVersion: 1, disposition: 'ADMITTED', evidence })
       );
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject(
+        error instanceof Error ? error : new Error('Unexpected exact evidence admission error.')
+      );
     }
   }
 
