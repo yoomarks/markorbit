@@ -7,17 +7,24 @@ const lineage = {
   knowledgeSources: [],
   researchDatasets: [
     {
-      schemaVersion: 1,
-      datasetRefId: 'research-dataset_fallback-test',
-      engineVersion: 'M1.7',
-      factSchemaVersion: 'history-v1',
+      contract_version: 1,
+      dataset_ref_id: `research-dataset_${sha}`,
+      engine_version: 'M1.7',
+      fact_schema_version: 'history-v1',
       jurisdictions: ['US'],
-      resourceKinds: ['application_history'],
-      queryFingerprintSha256: sha,
-      temporalBoundary: { kind: 'WATERMARK', value: 'fixture:1' },
+      resource_kinds: ['application_history'],
+      query: { resource: 'application_history', fixture: 'fallback' },
+      as_of: null,
+      watermark: 'fixture:1',
       completeness: 'COMPLETE_BOUNDED',
-      rowCount: 10,
-      integritySha256: sha
+      pagination: null,
+      aggregation: null,
+      sampling: null,
+      partition: null,
+      row_count: 10,
+      generated_at: '2026-08-27T00:00:00.000Z',
+      query_fingerprint_sha256: sha,
+      integrity_sha256: sha
     }
   ]
 } as const;

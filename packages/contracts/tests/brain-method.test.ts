@@ -8,6 +8,7 @@ import {
 } from '../src/brain-method.js';
 
 const sha = 'a'.repeat(64);
+const querySha = 'b'.repeat(64);
 
 const applicability = {
   jurisdictions: ['US'],
@@ -31,34 +32,48 @@ const evaluation = {
   evidenceSummary: 'Validated on a reproducible bounded historical cohort.'
 } as const;
 
+const knowledgeSource = {
+  schemaVersion: 1,
+  sourceSystem: 'MARKORBIT_KNOWLEDGE',
+  content: {
+    protocolVersion: '1.0',
+    objectType: 'CONTENT_OBJECT_REF',
+    objectId: 'knowledge_doc_us_exam_rule',
+    objectKind: 'DOCUMENT',
+    workspaceId: 'knowledge-us-trademark'
+  },
+  chunkId: 'chunk_exam_1',
+  contentSha256: sha,
+  indexedAt: '2026-08-26T00:00:00.000Z',
+  indexMode: 'SQLITE_FTS5_BM25',
+  headingPath: ['Examination', 'Basis'],
+  retrievalRationale: 'Authoritative examination rule source.'
+} as const;
+
+const researchDataset = {
+  contract_version: 1,
+  dataset_ref_id: `research-dataset_${querySha}`,
+  engine_version: 'M1.7',
+  fact_schema_version: 'us-case-history-v1',
+  jurisdictions: ['US'],
+  resource_kinds: ['application_history'],
+  query: { resource: 'application_history', filter: { owner: true } },
+  as_of: null,
+  watermark: 'us-history:2026-08-26',
+  completeness: 'COMPLETE_TO_WATERMARK',
+  pagination: null,
+  aggregation: null,
+  sampling: { strategy: 'HASH', seed: 17 },
+  partition: null,
+  row_count: 1200,
+  generated_at: '2026-08-27T00:00:00.000Z',
+  query_fingerprint_sha256: querySha,
+  integrity_sha256: sha
+} as const;
+
 const lineage = {
-  knowledgeSources: [
-    {
-      schemaVersion: 1,
-      documentId: 'knowledge_doc_us_exam_rule',
-      documentVersion: 'v3',
-      contentSha256: sha,
-      chunkId: 'chunk_exam_1',
-      authority: 'USPTO',
-      observedAt: '2026-08-26T00:00:00.000Z',
-      retrievalRationale: 'Authoritative examination rule source.'
-    }
-  ],
-  researchDatasets: [
-    {
-      schemaVersion: 1,
-      datasetRefId: 'research-dataset_example',
-      engineVersion: 'M1.7',
-      factSchemaVersion: 'us-case-history-v1',
-      jurisdictions: ['US'],
-      resourceKinds: ['application_history'],
-      queryFingerprintSha256: sha,
-      temporalBoundary: { kind: 'WATERMARK', value: 'us-history:2026-08-26' },
-      completeness: 'COMPLETE_TO_WATERMARK',
-      rowCount: 1200,
-      integritySha256: sha
-    }
-  ]
+  knowledgeSources: [knowledgeSource],
+  researchDatasets: [researchDataset]
 } as const;
 
 function activeMethod() {
@@ -133,7 +148,8 @@ describe('Brain Method V1 contracts', () => {
     const parsed = parseBrainMethodContractV1(activeMethod());
     expect(parsed.lifecycle).toBe('ACTIVE');
     expect(parsed.applicability.jurisdictions).toEqual(['US']);
-    expect(parsed.lineage.researchDatasets[0]?.engineVersion).toBe('M1.7');
+    expect(parsed.lineage.knowledgeSources[0]?.chunkId).toBe('chunk_exam_1');
+    expect(parsed.lineage.researchDatasets[0]?.engine_version).toBe('M1.7');
   });
 
   it('rejects production-ready methods without limitations', () => {
@@ -149,6 +165,88 @@ describe('Brain Method V1 contracts', () => {
         lineage: { knowledgeSources: [], researchDatasets: [] }
       })
     ).toThrow('lineage requires at least one');
+  });
+
+  it('rejects incomplete or fabricated Knowledge retrieval lineage', () => {
+    expect(() =>
+      parseBrainMethodContractV1({
+        ...activeMethod(),
+        lineage: {
+          knowledgeSources: [{ ...knowledgeSource, chunkId: undefined }],
+          researchDatasets: []
+        }
+      })
+    ).toThrow('knowledgeRetrievalLineage.chunkId');
+
+    expect(() =>
+      parseBrainMethodContractV1({
+        ...activeMethod(),
+        lineage: {
+          knowledgeSources: [
+            {
+              ...knowledgeSource,
+              content: {
+                ...knowledgeSource.content,
+                objectType: 'SYNTHETIC_SOURCE'
+              }
+            }
+          ],
+          researchDatasets: []
+        }
+      })
+    ).toThrow('CONTENT_OBJECT_REF');
+  });
+
+  it('rejects Data Engine refs with ambiguous temporal boundaries', () => {
+    expect(() =>
+      parseBrainMethodContractV1({
+        ...activeMethod(),
+        lineage: {
+          knowledgeSources: [],
+          researchDatasets: [
+            {
+              ...researchDataset,
+              as_of: '2026-08-26T00:00:00.000Z',
+              watermark: 'wm:1'
+            }
+          ]
+        }
+      })
+    ).toThrow('exactly one of as_of or watermark');
+  });
+
+  it('rejects Data Engine refs whose dataset id does not bind the query fingerprint', () => {
+    expect(() =>
+      parseBrainMethodContractV1({
+        ...activeMethod(),
+        lineage: {
+          knowledgeSources: [],
+          researchDatasets: [
+            {
+              ...researchDataset,
+              dataset_ref_id: `research-dataset_${'c'.repeat(64)}`
+            }
+          ]
+        }
+      })
+    ).toThrow('must match query_fingerprint_sha256');
+  });
+
+  it('rejects nondeterministic sampling lineage without an integer seed', () => {
+    expect(() =>
+      parseBrainMethodContractV1({
+        ...activeMethod(),
+        lineage: {
+          knowledgeSources: [],
+          researchDatasets: [
+            {
+              ...researchDataset,
+              sampling: { strategy: 'HASH', seed: 'random' }
+            }
+          ]
+        }
+      })
+    ).toThrow('sampling.seed must be a safe integer');
   });
 
   it('rejects ACTIVE methods with failed evaluation', () => {
