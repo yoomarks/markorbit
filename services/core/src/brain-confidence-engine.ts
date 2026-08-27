@@ -59,7 +59,10 @@ function rounded(value: number): number {
   return Math.round(clamp(value) * 1_000_000) / 1_000_000;
 }
 
-function band(score: number, thresholds: BrainConfidenceBandThresholds): 'VERY_LOW' | 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH' {
+function band(
+  score: number,
+  thresholds: BrainConfidenceBandThresholds
+): 'VERY_LOW' | 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH' {
   if (score >= thresholds.veryHigh) return 'VERY_HIGH';
   if (score >= thresholds.high) return 'HIGH';
   if (score >= thresholds.medium) return 'MEDIUM';
@@ -69,27 +72,31 @@ function band(score: number, thresholds: BrainConfidenceBandThresholds): 'VERY_L
 
 function stableCandidateFingerprint(candidate: BrainEvidenceResolutionCandidate): string {
   const refs = [...candidate.supportingAssertions, ...candidate.conflictingAssertions]
-    .map((summary) => [
-      summary.evidenceRef.sourceOwner,
-      summary.evidenceRef.sourceObjectId,
-      summary.evidenceRef.sourceVersion,
-      summary.evidenceRef.sourceFingerprintSha256,
-      summary.authorityClass,
-      summary.valueKind,
-      summary.valueFingerprintSha256
-    ].join(':'))
+    .map((summary) =>
+      [
+        summary.evidenceRef.sourceOwner,
+        summary.evidenceRef.sourceObjectId,
+        summary.evidenceRef.sourceVersion,
+        summary.evidenceRef.sourceFingerprintSha256,
+        summary.authorityClass,
+        summary.valueKind,
+        summary.valueFingerprintSha256
+      ].join(':')
+    )
     .sort();
   return createHash('sha256')
-    .update(JSON.stringify({
-      domain: candidate.domain,
-      jurisdiction: candidate.jurisdiction ?? null,
-      concept: candidate.concept,
-      asOf: candidate.asOf,
-      status: candidate.status,
-      selectedAuthorityClass: candidate.selectedAuthorityClass ?? null,
-      selectedValueKind: candidate.selectedValueKind ?? null,
-      refs
-    }))
+    .update(
+      JSON.stringify({
+        domain: candidate.domain,
+        jurisdiction: candidate.jurisdiction ?? null,
+        concept: candidate.concept,
+        asOf: candidate.asOf,
+        status: candidate.status,
+        selectedAuthorityClass: candidate.selectedAuthorityClass ?? null,
+        selectedValueKind: candidate.selectedValueKind ?? null,
+        refs
+      })
+    )
     .digest('hex');
 }
 
@@ -129,13 +136,16 @@ function agreementScore(
   candidate: BrainEvidenceResolutionCandidate,
   policy: BrainConfidencePolicy
 ): { score: number; reason: string } {
-  const independentSupportingSources = new Set(candidate.supportingAssertions.map(sourceIdentity)).size;
+  const independentSupportingSources = new Set(candidate.supportingAssertions.map(sourceIdentity))
+    .size;
   if (!independentSupportingSources)
     return { score: 0, reason: 'No independent supporting source is available.' };
-  const base = independentSupportingSources === 1
-    ? policy.singleSourceAgreement
-    : Math.min(1, policy.singleSourceAgreement + 0.15 * (independentSupportingSources - 1));
-  const independentCounterSources = new Set(candidate.conflictingAssertions.map(sourceIdentity)).size;
+  const base =
+    independentSupportingSources === 1
+      ? policy.singleSourceAgreement
+      : Math.min(1, policy.singleSourceAgreement + 0.15 * (independentSupportingSources - 1));
+  const independentCounterSources = new Set(candidate.conflictingAssertions.map(sourceIdentity))
+    .size;
   const score = rounded(base - independentCounterSources * policy.counterEvidencePenalty);
   return {
     score,
@@ -145,7 +155,10 @@ function agreementScore(
   };
 }
 
-function authorityScore(candidate: BrainEvidenceResolutionCandidate): { score: number; reason: string } {
+function authorityScore(candidate: BrainEvidenceResolutionCandidate): {
+  score: number;
+  reason: string;
+} {
   const selected = candidate.selectedAuthorityClass;
   if (!selected) return { score: 0, reason: 'No selected evidence authority class is available.' };
   return {
@@ -155,15 +168,18 @@ function authorityScore(candidate: BrainEvidenceResolutionCandidate): { score: n
 }
 
 function evidenceRefs(candidate: BrainEvidenceResolutionCandidate) {
-  const refs = [...candidate.supportingAssertions, ...candidate.conflictingAssertions]
-    .map((summary) => summary.evidenceRef);
+  const refs = [...candidate.supportingAssertions, ...candidate.conflictingAssertions].map(
+    (summary) => summary.evidenceRef
+  );
   const seen = new Set<string>();
-  return refs.filter((ref) => {
-    const identity = `${ref.sourceOwner}:${ref.sourceObjectId}:${ref.sourceVersion}:${ref.sourceFingerprintSha256}`;
-    if (seen.has(identity)) return false;
-    seen.add(identity);
-    return true;
-  }).map((ref) => structuredClone(ref));
+  return refs
+    .filter((ref) => {
+      const identity = `${ref.sourceOwner}:${ref.sourceObjectId}:${ref.sourceVersion}:${ref.sourceFingerprintSha256}`;
+      if (seen.has(identity)) return false;
+      seen.add(identity);
+      return true;
+    })
+    .map((ref) => structuredClone(ref));
 }
 
 function unscorable(
@@ -178,9 +194,10 @@ function unscorable(
     resolutionFingerprint: stableCandidateFingerprint(candidate),
     factorEvidence: [],
     evidenceRefs: evidenceRefs(candidate),
-    explanation: status === 'UNSCORABLE_NO_EVIDENCE'
-      ? 'Confidence is not computed because the evidence resolver found no applicable evidence.'
-      : 'Confidence is not computed because the highest-authority evidence is materially conflicted.'
+    explanation:
+      status === 'UNSCORABLE_NO_EVIDENCE'
+        ? 'Confidence is not computed because the evidence resolver found no applicable evidence.'
+        : 'Confidence is not computed because the highest-authority evidence is materially conflicted.'
   };
 }
 
@@ -202,7 +219,11 @@ export function evaluateBrainConfidence(
     { factor: 'agreement', score: rounded(agreement.score), reason: agreement.reason },
     { factor: 'coverage', score: rounded(quality.coverage), reason: quality.coverageReason },
     { factor: 'validation', score: rounded(quality.validation), reason: quality.validationReason },
-    { factor: 'methodQuality', score: rounded(quality.methodQuality), reason: quality.methodQualityReason }
+    {
+      factor: 'methodQuality',
+      score: rounded(quality.methodQuality),
+      reason: quality.methodQualityReason
+    }
   ];
 
   const factors = Object.fromEntries(factorEvidence.map((item) => [item.factor, item.score])) as {
@@ -216,11 +237,11 @@ export function evaluateBrainConfidence(
   const weights = brainConfidencePolicyV1.weights;
   const score = rounded(
     factors.authority * weights.authority +
-    factors.freshness * weights.freshness +
-    factors.agreement * weights.agreement +
-    factors.coverage * weights.coverage +
-    factors.validation * weights.validation +
-    factors.methodQuality * weights.methodQuality
+      factors.freshness * weights.freshness +
+      factors.agreement * weights.agreement +
+      factors.coverage * weights.coverage +
+      factors.validation * weights.validation +
+      factors.methodQuality * weights.methodQuality
   );
 
   return {
@@ -236,6 +257,7 @@ export function evaluateBrainConfidence(
     },
     factorEvidence,
     evidenceRefs: evidenceRefs(candidate),
-    explanation: 'Confidence is a deterministic weighted evaluation of decomposable evidence-quality factors under the versioned Core Brain confidence policy.'
+    explanation:
+      'Confidence is a deterministic weighted evaluation of decomposable evidence-quality factors under the versioned Core Brain confidence policy.'
   };
 }

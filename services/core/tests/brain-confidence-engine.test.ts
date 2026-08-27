@@ -24,7 +24,9 @@ function summary(
   };
 }
 
-function candidate(overrides: Partial<BrainEvidenceResolutionCandidate> = {}): BrainEvidenceResolutionCandidate {
+function candidate(
+  overrides: Partial<BrainEvidenceResolutionCandidate> = {}
+): BrainEvidenceResolutionCandidate {
   return {
     schemaVersion: 1,
     domain: 'TRADEMARK',
@@ -122,9 +124,7 @@ describe('Brain confidence engine', () => {
     const clean = evaluate(candidate());
     const countered = evaluate(
       candidate({
-        conflictingAssertions: [
-          summary('secondary-a', 'SECONDARY_PROFESSIONAL', 'f'.repeat(64))
-        ]
+        conflictingAssertions: [summary('secondary-a', 'SECONDARY_PROFESSIONAL', 'f'.repeat(64))]
       })
     );
     expect(countered.confidence!.factors.agreement).toBeLessThan(
