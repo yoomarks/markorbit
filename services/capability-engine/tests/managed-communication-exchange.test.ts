@@ -67,14 +67,14 @@ describe('Shared Communication outbound exchange', () => {
   it('sends exactly once, durabilizes outbound evidence, and replays the receipt', async () => {
     let calls = 0;
     const { exchange, foundation } = await setup({
-      send: async () => {
+      send: () => {
         calls += 1;
-        return {
+        return Promise.resolve({
           providerMessageId: 'provider-message-1',
           providerThreadId: 'provider-thread-1',
           providerReceiptRef: 'provider-receipt-1',
           acceptedAt: '2026-08-27T04:01:01.000Z'
-        };
+        });
       }
     });
     const input = {
@@ -106,14 +106,14 @@ describe('Shared Communication outbound exchange', () => {
   it('rejects idempotency reuse with changed content without a second provider call', async () => {
     let calls = 0;
     const { exchange } = await setup({
-      send: async () => {
+      send: () => {
         calls += 1;
-        return {
+        return Promise.resolve({
           providerMessageId: `provider-message-${calls}`,
           providerThreadId: 'provider-thread-1',
           providerReceiptRef: `provider-receipt-${calls}`,
           acceptedAt: '2026-08-27T04:01:01.000Z'
-        };
+        });
       }
     });
     await exchange.send({
@@ -168,14 +168,14 @@ describe('Shared Communication outbound exchange', () => {
     });
     let calls = 0;
     const { exchange } = await setup({
-      send: async () => {
+      send: () => {
         calls += 1;
-        return {
+        return Promise.resolve({
           providerMessageId: 'provider-reply-1',
           providerThreadId: 'different-thread',
           providerReceiptRef: 'provider-receipt-reply',
           acceptedAt: '2026-08-27T04:01:01.000Z'
-        };
+        });
       }
     });
 
@@ -193,9 +193,9 @@ describe('Shared Communication outbound exchange', () => {
   it('rejects attachment references without immutable checksums before dispatch', async () => {
     let calls = 0;
     const { exchange } = await setup({
-      send: async () => {
+      send: () => {
         calls += 1;
-        throw new Error('must not run');
+        return Promise.reject(new Error('must not run'));
       }
     });
     await expect(

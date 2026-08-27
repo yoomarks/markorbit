@@ -235,10 +235,13 @@ function validateRequest(
       'INVALID_SEND_REQUEST',
       'Outbound communication requires sender and recipient participants.'
     );
-  const participants = request.participants.map((participant) => ({
-    ...participant,
-    address: clean(participant.address, 'participant.address', 500)
-  }));
+  const participants = request.participants.map(
+    (participant: Readonly<ManagedCommunicationParticipantV1>) => ({
+      ...participant,
+      ...participant,
+      address: clean(participant.address, 'participant.address', 500)
+    })
+  );
   if (participants.filter((participant) => participant.role === 'SENDER').length !== 1)
     throw new ManagedCommunicationExchangeError(
       'INVALID_SEND_REQUEST',
@@ -254,14 +257,19 @@ function validateRequest(
       'INVALID_SEND_REQUEST',
       'Outbound communication attachments must be an array.'
     );
-  const attachments = request.attachments.map((attachment) => {
-    if (!attachment.sha256 || !SHA256.test(attachment.sha256))
-      throw new ManagedCommunicationExchangeError(
-        'INVALID_SEND_REQUEST',
-        'Every outbound attachment reference must carry a lowercase SHA-256 checksum.'
-      );
-    return { ...attachment, attachmentRef: clean(attachment.attachmentRef, 'attachmentRef', 500) };
-  });
+  const attachments = request.attachments.map(
+    (attachment: Readonly<ManagedCommunicationAttachmentRefV1>) => {
+      if (!attachment.sha256 || !SHA256.test(attachment.sha256))
+        throw new ManagedCommunicationExchangeError(
+          'INVALID_SEND_REQUEST',
+          'Every outbound attachment reference must carry a lowercase SHA-256 checksum.'
+        );
+      return {
+        ...attachment,
+        attachmentRef: clean(attachment.attachmentRef, 'attachmentRef', 500)
+      };
+    }
+  );
   if (!request.textBody?.trim() && !request.htmlBody?.trim())
     throw new ManagedCommunicationExchangeError(
       'INVALID_SEND_REQUEST',
@@ -523,7 +531,10 @@ export class PostgresManagedCommunicationSendClaimStoreV1 implements ManagedComm
               workspaceId: command.workspaceId,
               accountRef: command.accountRef,
               state: 'RECONCILIATION_REQUIRED',
-              reason: String(row.reconciliation_reason ?? 'UNKNOWN_DELIVERY_STATE'),
+              reason:
+                typeof row.reconciliation_reason === 'string'
+                  ? row.reconciliation_reason
+                  : 'UNKNOWN_DELIVERY_STATE',
               updatedAt: new Date(String(row.updated_at)).toISOString()
             }
           };

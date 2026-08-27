@@ -152,14 +152,14 @@ integration('Shared Communication PostgreSQL outbound exchange', () => {
   it('replays one durable send after store reconstruction without another provider call', async () => {
     let calls = 0;
     const sender: ManagedCommunicationProviderSenderV1 = {
-      send: async () => {
+      send: () => {
         calls += 1;
-        return {
+        return Promise.resolve({
           providerMessageId: 'provider-message-pg-send-1',
           providerThreadId: 'provider-thread-pg-send-1',
           providerReceiptRef: 'provider-receipt-pg-send-1',
           acceptedAt: '2026-08-27T05:01:01.000Z'
-        };
+        });
       }
     };
     const input = {
@@ -229,12 +229,13 @@ integration('Shared Communication PostgreSQL outbound exchange', () => {
 
   it('correlates immutable inbound reply evidence on the durable provider thread', async () => {
     const sender: ManagedCommunicationProviderSenderV1 = {
-      send: async () => ({
-        providerMessageId: 'provider-message-pg-thread-out',
-        providerThreadId: 'provider-thread-pg-shared',
-        providerReceiptRef: 'provider-receipt-pg-thread-out',
-        acceptedAt: '2026-08-27T05:01:01.000Z'
-      })
+      send: () =>
+        Promise.resolve({
+          providerMessageId: 'provider-message-pg-thread-out',
+          providerThreadId: 'provider-thread-pg-shared',
+          providerReceiptRef: 'provider-receipt-pg-thread-out',
+          acceptedAt: '2026-08-27T05:01:01.000Z'
+        })
     };
     const sent = await exchange(sender).send({
       workspaceId,
