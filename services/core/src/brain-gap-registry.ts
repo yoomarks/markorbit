@@ -118,7 +118,9 @@ function cloneRecord(record: BrainGapRegistryRecord): BrainGapRegistryRecord {
   return structuredClone(record);
 }
 
-function cloneState(source: Map<BrainGapRegistryKey, InternalRecord>): Map<BrainGapRegistryKey, InternalRecord> {
+function cloneState(
+  source: Map<BrainGapRegistryKey, InternalRecord>
+): Map<BrainGapRegistryKey, InternalRecord> {
   return new Map(
     [...source.entries()].map(([key, value]) => [
       key,
@@ -139,7 +141,10 @@ function latestDispositionForRecurrence(gap: Readonly<BrainGap>): BrainGapDispos
   };
 }
 
-function admitOne(state: Map<BrainGapRegistryKey, InternalRecord>, gap: Readonly<BrainGap>): BrainGapRegistryRecord {
+function admitOne(
+  state: Map<BrainGapRegistryKey, InternalRecord>,
+  gap: Readonly<BrainGap>
+): BrainGapRegistryRecord {
   validateGap(gap);
   const key = registryKey(gap.fingerprintSha256);
   const occurrence = occurrenceFingerprint(gap);
@@ -179,7 +184,8 @@ function admitOne(state: Map<BrainGapRegistryKey, InternalRecord>, gap: Readonly
 
   if (
     status === 'RESOLVED' &&
-    (!latestDisposition || detectedAt > parseTime(latestDisposition.occurredAt, 'disposition.occurredAt'))
+    (!latestDisposition ||
+      detectedAt > parseTime(latestDisposition.occurredAt, 'disposition.occurredAt'))
   ) {
     status = 'OPEN';
     latestDisposition = latestDispositionForRecurrence(gap);
@@ -239,7 +245,10 @@ export class InMemoryBrainGapRegistry {
       );
     const current = this.records.get(command.brainGapRegistryKey);
     if (!current)
-      throw new BrainGapRegistryError('RECORD_NOT_FOUND', 'BrainGap registry record was not found.');
+      throw new BrainGapRegistryError(
+        'RECORD_NOT_FOUND',
+        'BrainGap registry record was not found.'
+      );
     if (!transitions[current.record.status].includes(command.toStatus))
       throw new BrainGapRegistryError(
         'INVALID_TRANSITION',

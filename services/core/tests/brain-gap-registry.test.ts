@@ -11,11 +11,7 @@ import {
   brainGapIdentityFingerprint
 } from '../src/brain-gap-registry.js';
 
-function gap(
-  type: BrainGapType,
-  detectedAt: string,
-  overrides: Partial<BrainGap> = {}
-): BrainGap {
+function gap(type: BrainGapType, detectedAt: string, overrides: Partial<BrainGap> = {}): BrainGap {
   const base: BrainGap = {
     schemaVersion: 1,
     brainGapId: 'brain-gap_pending',
