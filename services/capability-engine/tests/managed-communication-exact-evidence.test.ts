@@ -24,7 +24,9 @@ function store() {
   return value;
 }
 
-function admission(overrides: Partial<Parameters<ReturnType<typeof store>['admitExactEvidence']>[0]> = {}) {
+function admission(
+  overrides: Partial<Parameters<ReturnType<typeof store>['admitExactEvidence']>[0]> = {}
+) {
   return {
     workspaceId,
     accountRef,
@@ -56,7 +58,11 @@ describe('Managed Communication immutable exact evidence', () => {
     expect(replay.evidence).toEqual(first.evidence);
     expect(first.evidence.sha256).toBe(createHash('sha256').update(raw()).digest('hex'));
     expect(first.evidence.evidenceRef).toMatch(/^commevidence_[a-f0-9]{40}$/u);
-    expect(first.evidence.headers.map((header) => header.name)).toEqual(['from', 'message-id', 'to']);
+    expect(first.evidence.headers.map((header) => header.name)).toEqual([
+      'from',
+      'message-id',
+      'to'
+    ]);
   });
 
   it('fails closed if the same normalized message is rebound to different raw bytes', async () => {

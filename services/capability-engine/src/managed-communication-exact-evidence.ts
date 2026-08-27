@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import type { QueryClient } from '@markorbit/persistence';
 
 const SHA256 = /^[a-f0-9]{64}$/u;
-const SENSITIVE_HEADER = /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key)$/iu;
+const SENSITIVE_HEADER =
+  /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key)$/iu;
 
 export type ManagedCommunicationEvidenceHeaderV1 = Readonly<{
   name: string;
@@ -117,7 +118,9 @@ function canonicalHeaders(
     });
   });
   normalized.sort((left, right) =>
-    left.name === right.name ? left.value.localeCompare(right.value) : left.name.localeCompare(right.name)
+    left.name === right.name
+      ? left.value.localeCompare(right.value)
+      : left.name.localeCompare(right.name)
   );
   return Object.freeze(normalized);
 }
@@ -134,7 +137,10 @@ function canonicalMetadata(
   return Object.freeze(
     Object.fromEntries(
       Object.entries(metadata)
-        .map(([key, value]) => [clean(key, 'metadata key', 200), clean(value, `metadata.${key}`, 20_000)])
+        .map(([key, value]) => [
+          clean(key, 'metadata key', 200),
+          clean(value, `metadata.${key}`, 20_000)
+        ])
         .sort(([left], [right]) => left.localeCompare(right))
     )
   );
@@ -209,11 +215,12 @@ type MemoryRow = {
   rawPayload: Uint8Array;
 };
 
-export class InMemoryManagedCommunicationExactEvidenceStoreV1
-  implements ManagedCommunicationExactEvidenceStoreV1
-{
+export class InMemoryManagedCommunicationExactEvidenceStoreV1 implements ManagedCommunicationExactEvidenceStoreV1 {
   private readonly rows = new Map<string, MemoryRow>();
-  private readonly messageProvenance = new Map<string, { provider: string; providerMessageId: string }>();
+  private readonly messageProvenance = new Map<
+    string,
+    { provider: string; providerMessageId: string }
+  >();
 
   registerNormalizedMessage(input: {
     workspaceId: string;
@@ -268,7 +275,9 @@ export class InMemoryManagedCommunicationExactEvidenceStoreV1
       }
       const evidence = ref(value);
       this.rows.set(key, { evidence, rawPayload: value.rawPayload });
-      return Promise.resolve(Object.freeze({ schemaVersion: 1, disposition: 'ADMITTED', evidence }));
+      return Promise.resolve(
+        Object.freeze({ schemaVersion: 1, disposition: 'ADMITTED', evidence })
+      );
     } catch (error) {
       return Promise.reject(error);
     }
@@ -279,7 +288,9 @@ export class InMemoryManagedCommunicationExactEvidenceStoreV1
     accountRef: string;
     messageId: string;
   }): Promise<ManagedCommunicationExactEvidenceRefV1 | undefined> {
-    const row = this.rows.get(`${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`);
+    const row = this.rows.get(
+      `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`
+    );
     return Promise.resolve(row?.evidence);
   }
 }
@@ -303,7 +314,9 @@ function persistedRef(row: EvidenceRow): ManagedCommunicationExactEvidenceRefV1 
       'Persisted Communication exact evidence provenance is invalid.'
     );
   const metadata = canonicalMetadata(
-    provenance.metadata && typeof provenance.metadata === 'object' && !Array.isArray(provenance.metadata)
+    provenance.metadata &&
+      typeof provenance.metadata === 'object' &&
+      !Array.isArray(provenance.metadata)
       ? (provenance.metadata as Record<string, string>)
       : {}
   );
@@ -333,9 +346,7 @@ function persistedRef(row: EvidenceRow): ManagedCommunicationExactEvidenceRefV1 
   });
 }
 
-export class PostgresManagedCommunicationExactEvidenceStoreV1
-  implements ManagedCommunicationExactEvidenceStoreV1
-{
+export class PostgresManagedCommunicationExactEvidenceStoreV1 implements ManagedCommunicationExactEvidenceStoreV1 {
   constructor(private readonly query: QueryClient) {}
 
   async admitExactEvidence(
@@ -350,8 +361,7 @@ export class PostgresManagedCommunicationExactEvidenceStoreV1
         [value.workspaceId, value.accountRef, value.messageId]
       );
       const message = normalized.rows[0] as
-        | { provider: unknown; provider_message_id: unknown }
-        | undefined;
+        { provider: unknown; provider_message_id: unknown } | undefined;
       if (!message)
         throw new ManagedCommunicationExactEvidenceError(
           'NORMALIZED_MESSAGE_NOT_FOUND',
