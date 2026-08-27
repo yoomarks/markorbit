@@ -77,6 +77,35 @@ function methodPackage(
   };
 }
 
+function dataEngineOnlyLineage(): ExecutableMethodPackageV1['lineage'] {
+  const queryFingerprint = sha('d');
+  return {
+    knowledgeSources: [],
+    researchDatasets: [
+      {
+        contract_version: 1,
+        dataset_ref_id: `research-dataset_${queryFingerprint}`,
+        engine_version: 'test-engine-v1',
+        fact_schema_version: 'test-fact-v1',
+        jurisdictions: ['US'],
+        resource_kinds: ['TRADEMARK_APPLICATION'],
+        query: { operation: 'official-fee-test-fixture' },
+        as_of: '2026-08-27T00:00:00.000Z',
+        watermark: null,
+        completeness: 'COMPLETE_BOUNDED',
+        pagination: null,
+        aggregation: null,
+        sampling: null,
+        partition: null,
+        row_count: 1,
+        generated_at: '2026-08-27T00:00:00.000Z',
+        query_fingerprint_sha256: queryFingerprint,
+        integrity_sha256: sha('e')
+      }
+    ]
+  };
+}
+
 function input(
   sourceSha = sha('a'),
   amountMinor = 12345,
@@ -136,7 +165,7 @@ describe('Official Fee Reference materializer/store', () => {
     );
   });
 
-  it('rejects inactive, out-of-scope and lineage-free packages', () => {
+  it('rejects inactive, out-of-scope and Knowledge-lineage-free packages', () => {
     const store = new InMemoryOfficialFeeReferenceStore();
     expect(() =>
       store.materialize(
@@ -157,9 +186,7 @@ describe('Official Fee Reference materializer/store', () => {
     expect(() =>
       store.materialize(
         input(sha('a'), 12345, {
-          package: methodPackage(sha('a'), {
-            lineage: { knowledgeSources: [], researchDatasets: [] }
-          })
+          package: methodPackage(sha('a'), { lineage: dataEngineOnlyLineage() })
         })
       )
     ).toThrowError(expect.objectContaining({ code: 'MISSING_KNOWLEDGE_LINEAGE' }));
