@@ -1,0 +1,25 @@
+name: BRN006 sync latest main
+on:
+  push:
+    branches: [brain-brn-006-self-audit]
+    paths: [.github/workflows/brn006-sync-main.yml]
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: brain-brn-006-self-audit
+          fetch-depth: 0
+      - name: Merge exact latest main and remove helper
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "4100a03cf45fc80bb6f01079bdd738be3cda1e83"
+          git merge --no-ff origin/main -m 'chore(brain): sync BRN-006 self-audit with main'
+          git rm .github/workflows/brn006-sync-main.yml
+          git commit --amend --no-edit
+          git push origin HEAD:brain-brn-006-self-audit
