@@ -126,14 +126,12 @@ function gap(
       )
     );
   const identity = {
-    policyId: brainSelfAuditPolicyV1.policyId,
-    policyVersion: brainSelfAuditPolicyV1.version,
-    brainBuildRunId: run.brainBuildRunId,
     gapType: type,
     domain: run.resolution.domain,
-    jurisdiction: run.resolution.jurisdiction ?? null,
+    jurisdiction: run.resolution.jurisdiction?.trim().toUpperCase() ?? null,
     concept: run.resolution.concept,
-    evidenceRefs
+    targetModule: targetFor(type),
+    reasonCode: details.reasonCode
   };
   const fingerprintSha256 = sha256(identity);
   return {
