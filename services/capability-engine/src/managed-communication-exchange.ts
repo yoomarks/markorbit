@@ -1,9 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
-  managedCommunicationNoAuthorityConsequences,
   parseManagedCommunicationMessageV1,
   type ManagedCommunicationAttachmentRefV1,
-  type ManagedCommunicationAuthorityConsequencesV1,
   type ManagedCommunicationMessageV1,
   type ManagedCommunicationParticipantV1
 } from '@markorbit/contracts/managed-communication';
@@ -37,6 +35,15 @@ export interface ManagedCommunicationProviderSendResultV1 {
   acceptedAt: string;
 }
 
+export interface ManagedCommunicationSendAuthorityV1 {
+  externalMessageSent: true;
+  customerTruthMutated: false;
+  matterTruthMutated: false;
+  legalTruthCreated: false;
+  knowledgeApproved: false;
+  professionalDecisionCreated: false;
+}
+
 export interface ManagedCommunicationSendReceiptV1 {
   schemaVersion: 1;
   sendId: string;
@@ -52,9 +59,7 @@ export interface ManagedCommunicationSendReceiptV1 {
   providerThreadId?: string;
   providerReceiptRef: string;
   acceptedAt: string;
-  authority: Readonly<ManagedCommunicationAuthorityConsequencesV1> & {
-    externalMessageSent: true;
-  };
+  authority: Readonly<ManagedCommunicationSendAuthorityV1>;
 }
 
 export interface ManagedCommunicationReconciliationReceiptV1 {
@@ -243,6 +248,11 @@ function validateRequest(
     throw new ManagedCommunicationExchangeError(
       'INVALID_SEND_REQUEST',
       'Outbound communication requires at least one TO participant.'
+    );
+  if (!Array.isArray(request.attachments))
+    throw new ManagedCommunicationExchangeError(
+      'INVALID_SEND_REQUEST',
+      'Outbound communication attachments must be an array.'
     );
   const attachments = request.attachments.map((attachment) => {
     if (!attachment.sha256 || !SHA256.test(attachment.sha256))
@@ -679,7 +689,7 @@ export class PostgresManagedCommunicationThreadEvidenceReaderV1 implements Manag
         `SELECT message_json
            FROM capability_communication_messages
           WHERE workspace_id=$1 AND account_ref=$2 AND thread_ref=$3
-          ORDER BY occurred_at ASC, created_at ASC`,
+          ORDER BY observed_at ASC, created_at ASC`,
         [
           clean(input.workspaceId, 'workspaceId', 500),
           clean(input.accountRef, 'accountRef', 500),
@@ -891,8 +901,12 @@ export class ManagedCommunicationExchangeV1 {
       providerReceiptRef,
       acceptedAt,
       authority: {
-        ...managedCommunicationNoAuthorityConsequences,
-        externalMessageSent: true
+        externalMessageSent: true,
+        customerTruthMutated: false,
+        matterTruthMutated: false,
+        legalTruthCreated: false,
+        knowledgeApproved: false,
+        professionalDecisionCreated: false
       }
     };
     try {
