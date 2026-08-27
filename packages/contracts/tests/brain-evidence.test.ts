@@ -25,7 +25,7 @@ function assertion(overrides: Record<string, unknown> = {}): BrainEvidenceAssert
     value: { amountMinor: 35000, currency: 'USD', unit: 'CLASS' },
     assertedAt: '2026-08-20T00:00:00.000Z',
     ...overrides
-  } as BrainEvidenceAssertion;
+  };
 }
 
 describe('Brain evidence contracts', () => {
