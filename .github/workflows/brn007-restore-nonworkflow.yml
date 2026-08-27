@@ -1,4 +1,4 @@
-name: BRN007 restore nonworkflow
+name: BRN007 finalize nonworkflow wiring
 
 on:
   push:
@@ -10,26 +10,20 @@ permissions:
   contents: write
 
 jobs:
-  restore:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: brain-brn-007-postgres-registry
-          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
-      - name: Restore BRN-007 implementation onto current main-derived branch
+      - name: Wire BRN-007 non-workflow files
         shell: bash
         run: |
           set -euo pipefail
-          OLD=d3d7b8f3e9f6d01f6d1d2e42b68c9800e4057b30
-          git show "$OLD:services/core/src/brain-asset-registry-postgres.ts" > services/core/src/brain-asset-registry-postgres.ts
-          git show "$OLD:services/core/tests/brain-asset-registry-postgres.test.ts" > services/core/tests/brain-asset-registry-postgres.test.ts
-          git show "$OLD:infrastructure/persistence/migrations/0070_core_brain_registry.sql" > infrastructure/persistence/migrations/0071_core_brain_registry.sql
-
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const ownersPath = 'infrastructure/persistence/migration-owners.json';
@@ -65,6 +59,6 @@ jobs:
 
           git config user.name yoomarks
           git config user.email lukeluccas6292643@gmail.com
-          git add infrastructure/persistence/migration-owners.json infrastructure/persistence/migrations/0071_core_brain_registry.sql services/core/package.json services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/tests/brain-asset-registry-postgres.test.ts
-          git commit -m 'BRN-007: restore durable Brain Registry on latest main'
+          git add infrastructure/persistence/migration-owners.json services/core/package.json services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/tests/brain-asset-registry-postgres.test.ts
+          git commit -m 'BRN-007: wire durable Brain Registry on latest main'
           git push origin HEAD:brain-brn-007-postgres-registry
