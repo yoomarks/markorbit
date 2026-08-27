@@ -30,7 +30,8 @@
       "@markorbit/contracts/brain": ["packages/contracts/src/brain.ts"],
       "@markorbit/contracts/brain-evidence": ["packages/contracts/src/brain-evidence.ts"],
       "@markorbit/*": ["packages/*/src", "services/*/src", "apps/*/src"],
-      "@markorbit/contracts/brain-confidence": ["packages/contracts/src/brain-confidence.ts"]
+      "@markorbit/contracts/brain-confidence": ["packages/contracts/src/brain-confidence.ts"],
+      "@markorbit/contracts/brain-build": ["packages/contracts/src/brain-build.ts"]
     }
   }
 }

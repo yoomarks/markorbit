@@ -149,9 +149,7 @@ function compiledAssetVersion(
   });
 }
 
-export function runBrainBuild(
-  request: Readonly<BrainBuildRequest>
-): Readonly<BrainBuildResult> {
+export function runBrainBuild(request: Readonly<BrainBuildRequest>): Readonly<BrainBuildResult> {
   const fingerprint = inputFingerprint(request);
   const resolution = resolveBrainEvidence(request.assertions, request.query);
   const confidenceEvaluation = evaluateBrainConfidence({
@@ -161,7 +159,13 @@ export function runBrainBuild(
   });
 
   if (resolution.status === 'NO_EVIDENCE') {
-    return blocked(request, 'NO_APPLICABLE_EVIDENCE', fingerprint, resolution, confidenceEvaluation);
+    return blocked(
+      request,
+      'NO_APPLICABLE_EVIDENCE',
+      fingerprint,
+      resolution,
+      confidenceEvaluation
+    );
   }
   if (resolution.status === 'CONFLICTED') {
     return blocked(request, 'EVIDENCE_CONFLICT', fingerprint, resolution, confidenceEvaluation);
@@ -171,7 +175,13 @@ export function runBrainBuild(
   }
   const assetType = assetTypeFor(resolution.selectedValueKind);
   if (!assetType) {
-    return blocked(request, 'UNSUPPORTED_VALUE_KIND', fingerprint, resolution, confidenceEvaluation);
+    return blocked(
+      request,
+      'UNSUPPORTED_VALUE_KIND',
+      fingerprint,
+      resolution,
+      confidenceEvaluation
+    );
   }
   if (confidenceEvaluation.confidence.score < brainCompilerPolicyV1.candidateMinimumScore) {
     return blocked(

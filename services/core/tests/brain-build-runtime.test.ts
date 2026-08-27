@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  BrainBuildRequest
-} from '@markorbit/contracts/brain-build';
+import type { BrainBuildRequest } from '@markorbit/contracts/brain-build';
 import type { BrainEvidenceAssertion } from '@markorbit/contracts/brain-evidence';
 import { runBrainBuild } from '../src/brain-build-runtime.js';
 
@@ -98,24 +96,25 @@ describe('Brain Build Runtime', () => {
   });
 
   it('fails closed when no evidence applies or highest-authority evidence conflicts', () => {
-    const wrongJurisdiction = assertion('official-eu', { answer: 1 }, {
-      scope: {
-        domain: 'TRADEMARK',
-        jurisdiction: 'EU',
-        concept: 'test.official.value',
-        effectiveFrom: '2026-01-01T00:00:00.000Z'
+    const wrongJurisdiction = assertion(
+      'official-eu',
+      { answer: 1 },
+      {
+        scope: {
+          domain: 'TRADEMARK',
+          jurisdiction: 'EU',
+          concept: 'test.official.value',
+          effectiveFrom: '2026-01-01T00:00:00.000Z'
+        }
       }
-    });
+    );
     const noEvidence = runBrainBuild(request([wrongJurisdiction]));
     expect(noEvidence.run.status).toBe('BLOCKED');
     expect(noEvidence.run.blockedReason).toBe('NO_APPLICABLE_EVIDENCE');
     expect(noEvidence.run.producedAssetVersion).toBeUndefined();
 
     const conflict = runBrainBuild(
-      request([
-        assertion('official-a', { answer: 1 }),
-        assertion('official-b', { answer: 2 })
-      ])
+      request([assertion('official-a', { answer: 1 }), assertion('official-b', { answer: 2 })])
     );
     expect(conflict.run.status).toBe('BLOCKED');
     expect(conflict.run.blockedReason).toBe('EVIDENCE_CONFLICT');
@@ -123,9 +122,7 @@ describe('Brain Build Runtime', () => {
   });
 
   it('blocks low-confidence and unsupported derived candidates', () => {
-    const low = runBrainBuild(
-      request([assertion('official-a', { answer: 1 })], 0, 0, 0)
-    );
+    const low = runBrainBuild(request([assertion('official-a', { answer: 1 })], 0, 0, 0));
     expect(low.run.status).toBe('BLOCKED');
     expect(low.run.blockedReason).toBe('CONFIDENCE_BELOW_CANDIDATE_THRESHOLD');
 

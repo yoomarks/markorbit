@@ -1,12 +1,9 @@
+import type { BrainAssetVersion, BrainBuildRunId } from './brain.js';
 import type {
-  BrainAssetVersion,
-  BrainBuildRunId
-} from './brain.js';
-import type { BrainConfidenceEvaluation, BrainConfidenceQualityEvidence } from './brain-confidence.js';
-import type {
-  BrainEvidenceAssertion,
-  BrainEvidenceResolutionCandidate
-} from './brain-evidence.js';
+  BrainConfidenceEvaluation,
+  BrainConfidenceQualityEvidence
+} from './brain-confidence.js';
+import type { BrainEvidenceAssertion, BrainEvidenceResolutionCandidate } from './brain-evidence.js';
 
 export const brainBuildStatuses = [
   'STARTED',
