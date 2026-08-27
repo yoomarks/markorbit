@@ -108,15 +108,19 @@ describe('Brain Cognitive Self-Audit', () => {
   });
 
   it('detects stale evidence independently of agreement', () => {
-    const staleEvidence = assertion('old-official', { answer: 1 }, {
-      evidenceRef: {
-        sourceOwner: 'KNOWLEDGE',
-        sourceObjectId: 'old-official',
-        sourceVersion: '2024-01',
-        sourceFingerprintSha256: sourceSha,
-        observedAt: '2024-01-01T00:00:00.000Z'
+    const staleEvidence = assertion(
+      'old-official',
+      { answer: 1 },
+      {
+        evidenceRef: {
+          sourceOwner: 'KNOWLEDGE',
+          sourceObjectId: 'old-official',
+          sourceVersion: '2024-01',
+          sourceFingerprintSha256: sourceSha,
+          observedAt: '2024-01-01T00:00:00.000Z'
+        }
       }
-    });
+    );
     const result = audit(request([staleEvidence]));
 
     expect(result.gaps.some((item) => item.gapType === 'STALE_EVIDENCE')).toBe(true);
@@ -149,9 +153,9 @@ describe('Brain Cognitive Self-Audit', () => {
 
     expect(types).toContain('INSUFFICIENT_SAMPLE');
     expect(types).toContain('LOW_CONFIDENCE');
-    expect(
-      result.gaps.find((item) => item.gapType === 'INSUFFICIENT_SAMPLE')?.targetModule
-    ).toBe('DATA_ENGINE');
+    expect(result.gaps.find((item) => item.gapType === 'INSUFFICIENT_SAMPLE')?.targetModule).toBe(
+      'DATA_ENGINE'
+    );
     expect(new Set(result.gaps.map((item) => item.fingerprintSha256)).size).toBe(
       result.gaps.length
     );
@@ -160,10 +164,7 @@ describe('Brain Cognitive Self-Audit', () => {
 
   it('does not manufacture a gap for a fresh high-quality build', () => {
     const result = audit(
-      request([
-        assertion('official-a', { answer: 1 }),
-        assertion('official-b', { answer: 1 })
-      ])
+      request([assertion('official-a', { answer: 1 }), assertion('official-b', { answer: 1 })])
     );
 
     expect(result.gaps).toEqual([]);

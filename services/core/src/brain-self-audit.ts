@@ -18,10 +18,13 @@ export const brainSelfAuditPolicyV1 = Object.freeze({
 });
 
 function canonicalize(value: unknown): string {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (value === null || typeof value === 'string' || typeof value === 'boolean')
+    return JSON.stringify(value);
   if (typeof value === 'number') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
-  const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
+  const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+    left.localeCompare(right)
+  );
   return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalize(item)}`).join(',')}}`;
 }
 
@@ -43,56 +46,77 @@ function impactFor(type: BrainGapType): BrainGapBusinessImpact {
 }
 
 function targetFor(type: BrainGapType): BrainGapTargetModule {
-  if (['MISSING_EVIDENCE', 'STALE_EVIDENCE', 'CONFLICTING_EVIDENCE'].includes(type)) return 'KNOWLEDGE';
+  if (['MISSING_EVIDENCE', 'STALE_EVIDENCE', 'CONFLICTING_EVIDENCE'].includes(type))
+    return 'KNOWLEDGE';
   if (type === 'INSUFFICIENT_SAMPLE') return 'DATA_ENGINE';
-  if (['MISSING_METHOD', 'MISSING_PATTERN', 'LOW_MODEL_QUALITY', 'NOVEL_CASE'].includes(type)) return 'BRAIN_BUILD';
+  if (['MISSING_METHOD', 'MISSING_PATTERN', 'LOW_MODEL_QUALITY', 'NOVEL_CASE'].includes(type))
+    return 'BRAIN_BUILD';
   if (type === 'MISSING_CAPABILITY') return 'CAPABILITY';
   if (type === 'MISSING_JURISDICTION') return 'KNOWLEDGE';
   return 'BRAIN_BUILD';
 }
 
-function explanationFor(type: BrainGapType): { reasonCode: string; explanation: string; remediationHint: string } {
+function explanationFor(type: BrainGapType): {
+  reasonCode: string;
+  explanation: string;
+  remediationHint: string;
+} {
   switch (type) {
     case 'MISSING_EVIDENCE':
       return {
         reasonCode: 'NO_APPLICABLE_EVIDENCE',
-        explanation: 'No applicable evidence was available for the requested Brain concept and scope.',
-        remediationHint: 'Acquire authoritative evidence for this concept and scope, then re-run the Brain build.'
+        explanation:
+          'No applicable evidence was available for the requested Brain concept and scope.',
+        remediationHint:
+          'Acquire authoritative evidence for this concept and scope, then re-run the Brain build.'
       };
     case 'CONFLICTING_EVIDENCE':
       return {
         reasonCode: 'HIGHEST_AUTHORITY_CONFLICT',
-        explanation: 'The highest-authority applicable evidence contains materially conflicting values.',
-        remediationHint: 'Verify scope, effective dates and authoritative sources before recomputing the Brain asset.'
+        explanation:
+          'The highest-authority applicable evidence contains materially conflicting values.',
+        remediationHint:
+          'Verify scope, effective dates and authoritative sources before recomputing the Brain asset.'
       };
     case 'STALE_EVIDENCE':
       return {
         reasonCode: 'FRESHNESS_BELOW_TRUSTED_THRESHOLD',
-        explanation: 'Supporting evidence freshness is below the trusted self-audit threshold or lacks observation timestamps.',
-        remediationHint: 'Refresh the supporting source evidence and preserve a current observation timestamp.'
+        explanation:
+          'Supporting evidence freshness is below the trusted self-audit threshold or lacks observation timestamps.',
+        remediationHint:
+          'Refresh the supporting source evidence and preserve a current observation timestamp.'
       };
     case 'INSUFFICIENT_SAMPLE':
       return {
         reasonCode: 'STATISTICAL_COVERAGE_BELOW_THRESHOLD',
-        explanation: 'A statistical or model estimate has insufficient coverage for a trusted operational estimate.',
-        remediationHint: 'Increase the verified sample or coverage through Data Engine aggregation, then recompute.'
+        explanation:
+          'A statistical or model estimate has insufficient coverage for a trusted operational estimate.',
+        remediationHint:
+          'Increase the verified sample or coverage through Data Engine aggregation, then recompute.'
       };
     case 'LOW_CONFIDENCE':
       return {
         reasonCode: 'CONFIDENCE_BELOW_OPERATIONAL_THRESHOLD',
-        explanation: 'The resolved candidate confidence is below the self-audit threshold for reusable operational cognition.',
-        remediationHint: 'Inspect the decomposed confidence factors and strengthen the weakest evidence-quality dimensions.'
+        explanation:
+          'The resolved candidate confidence is below the self-audit threshold for reusable operational cognition.',
+        remediationHint:
+          'Inspect the decomposed confidence factors and strengthen the weakest evidence-quality dimensions.'
       };
     default:
       return {
         reasonCode: type,
         explanation: `Brain self-audit detected ${type}.`,
-        remediationHint: 'Route the gap to the deterministic target module for governed remediation planning.'
+        remediationHint:
+          'Route the gap to the deterministic target module for governed remediation planning.'
       };
   }
 }
 
-function gap(run: Readonly<BrainBuildRun>, type: BrainGapType, auditedAt: string): Readonly<BrainGap> {
+function gap(
+  run: Readonly<BrainBuildRun>,
+  type: BrainGapType,
+  auditedAt: string
+): Readonly<BrainGap> {
   const details = explanationFor(type);
   const evidenceRefs = run.confidenceEvaluation.evidenceRefs
     .map((ref) => structuredClone(ref))
@@ -143,7 +167,8 @@ export function auditBrainBuildRun(
   run: Readonly<BrainBuildRun>,
   auditedAt: string
 ): Readonly<BrainSelfAuditResult> {
-  if (Number.isNaN(Date.parse(auditedAt))) throw new TypeError('auditedAt must be an ISO date/time.');
+  if (Number.isNaN(Date.parse(auditedAt)))
+    throw new TypeError('auditedAt must be an ISO date/time.');
   const types = new Set<BrainGapType>();
 
   if (run.resolution.status === 'NO_EVIDENCE') types.add('MISSING_EVIDENCE');
@@ -166,9 +191,7 @@ export function auditBrainBuildRun(
     }
   }
 
-  const gaps = [...types]
-    .sort()
-    .map((type) => gap(run, type, auditedAt));
+  const gaps = [...types].sort().map((type) => gap(run, type, auditedAt));
 
   return {
     schemaVersion: 1,

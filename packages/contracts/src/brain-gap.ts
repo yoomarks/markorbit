@@ -23,10 +23,21 @@ export type BrainGapSeverity = (typeof brainGapSeverities)[number];
 export const brainGapBusinessImpacts = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 export type BrainGapBusinessImpact = (typeof brainGapBusinessImpacts)[number];
 
-export const brainGapStatuses = ['OPEN', 'ACKNOWLEDGED', 'RESOLVING', 'RESOLVED', 'DISMISSED'] as const;
+export const brainGapStatuses = [
+  'OPEN',
+  'ACKNOWLEDGED',
+  'RESOLVING',
+  'RESOLVED',
+  'DISMISSED'
+] as const;
 export type BrainGapStatus = (typeof brainGapStatuses)[number];
 
-export const brainGapDetectionSources = ['BUILD_RUN', 'ASSET_AUDIT', 'CASE_RUN', 'EVALUATION'] as const;
+export const brainGapDetectionSources = [
+  'BUILD_RUN',
+  'ASSET_AUDIT',
+  'CASE_RUN',
+  'EVALUATION'
+] as const;
 export type BrainGapDetectionSource = (typeof brainGapDetectionSources)[number];
 
 export const brainGapTargetModules = [
