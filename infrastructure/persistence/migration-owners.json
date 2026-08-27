@@ -51,7 +51,8 @@
     "capability_engine_managed_communication_foundation": "@markorbit/capability-engine",
     "capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
     "capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
-    "core_brain_registry": "@markorbit/core-service"
+    "core_brain_registry": "@markorbit/core-service",
+    "core_official_fee_reference": "@markorbit/core-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -108,6 +109,7 @@
     "0069_markreg_knowledge_case_promotions": "@markorbit/markreg-service",
     "0070_capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
     "0071_core_brain_registry": "@markorbit/core-service",
-    "0072_capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine"
+    "0072_capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
+    "0073_core_official_fee_references": "@markorbit/core-service"
   }
 }
