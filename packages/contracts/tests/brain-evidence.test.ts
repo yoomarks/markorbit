@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BrainContractError } from '../src/brain.js';
-import {
-  parseBrainEvidenceAssertion,
-  type BrainEvidenceAssertion
-} from '../src/brain-evidence.js';
+import { parseBrainEvidenceAssertion, type BrainEvidenceAssertion } from '../src/brain-evidence.js';
 
 const sha = 'c'.repeat(64);
 
@@ -45,9 +42,9 @@ describe('Brain evidence contracts', () => {
     expect(() =>
       parseBrainEvidenceAssertion({ ...assertion(), authorityClass: 'BLOG_GUESS' })
     ).toThrow(BrainContractError);
-    expect(() =>
-      parseBrainEvidenceAssertion({ ...assertion(), valueKind: 'CONFLICTED' })
-    ).toThrow('valueKind is invalid');
+    expect(() => parseBrainEvidenceAssertion({ ...assertion(), valueKind: 'CONFLICTED' })).toThrow(
+      'valueKind is invalid'
+    );
   });
 
   it('rejects unsupported fields and non-JSON assertion payloads', () => {

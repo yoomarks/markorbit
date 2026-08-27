@@ -105,7 +105,8 @@ function jsonValue(value: unknown, field: string): unknown {
     if (!Number.isFinite(value)) throw new BrainContractError(`${field} must be finite JSON data.`);
     return value;
   }
-  if (Array.isArray(value)) return value.map((item, index) => jsonValue(item, `${field}[${index}]`));
+  if (Array.isArray(value))
+    return value.map((item, index) => jsonValue(item, `${field}[${index}]`));
   if (typeof value === 'object' && value !== null) {
     const output: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
@@ -153,7 +154,9 @@ export function parseBrainEvidenceAssertion(value: unknown): BrainEvidenceAssert
       ? undefined
       : instant(scope.effectiveTo, 'brainEvidenceAssertion.scope.effectiveTo');
   if (effectiveTo && Date.parse(effectiveTo) <= Date.parse(effectiveFrom))
-    throw new BrainContractError('brainEvidenceAssertion.scope.effectiveTo must be after effectiveFrom.');
+    throw new BrainContractError(
+      'brainEvidenceAssertion.scope.effectiveTo must be after effectiveFrom.'
+    );
   return {
     schemaVersion: 1,
     evidenceRef: parseBrainEvidenceRef(assertion.evidenceRef),

@@ -57,7 +57,10 @@ function effectiveAt(assertion: BrainEvidenceAssertion, asOf: number): boolean {
   return from <= asOf && asOf < to;
 }
 
-function applicable(assertion: BrainEvidenceAssertion, query: BrainEvidenceResolutionQuery): boolean {
+function applicable(
+  assertion: BrainEvidenceAssertion,
+  query: BrainEvidenceResolutionQuery
+): boolean {
   const asOf = Date.parse(query.asOf);
   return (
     assertion.scope.domain === query.domain &&
@@ -95,11 +98,14 @@ export function resolveBrainEvidence(
       status: 'NO_EVIDENCE',
       supportingAssertions: [],
       conflictingAssertions: [],
-      explanation: 'No applicable evidence assertion exists for the requested scope and effective time.'
+      explanation:
+        'No applicable evidence assertion exists for the requested scope and effective time.'
     };
 
   const highestRank = Math.min(
-    ...relevant.map((assertion) => authorityRank.get(assertion.authorityClass) ?? Number.MAX_SAFE_INTEGER)
+    ...relevant.map(
+      (assertion) => authorityRank.get(assertion.authorityClass) ?? Number.MAX_SAFE_INTEGER
+    )
   );
   const highest = relevant.filter(
     (assertion) => authorityRank.get(assertion.authorityClass) === highestRank
@@ -112,7 +118,9 @@ export function resolveBrainEvidence(
       ...common,
       status: 'CONFLICTED',
       selectedAuthorityClass: selected.authorityClass,
-      supportingAssertions: highest.filter((assertion) => sameValue(assertion, selected)).map(summary),
+      supportingAssertions: highest
+        .filter((assertion) => sameValue(assertion, selected))
+        .map(summary),
       conflictingAssertions: highestConflicts.map(summary),
       explanation:
         'Applicable evidence at the highest available authority class materially conflicts; no value is selected.'

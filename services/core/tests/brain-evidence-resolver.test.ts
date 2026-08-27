@@ -47,23 +47,31 @@ describe('resolveBrainEvidence', () => {
   it('returns NO_EVIDENCE when all assertions are outside the governed scope', () => {
     const result = resolveBrainEvidence(
       [
-        assertion('CURRENT_OFFICIAL_PRIMARY', { amountMinor: 35000 }, {
-          scope: {
-            domain: 'TRADEMARK',
-            jurisdiction: 'EU',
-            concept: 'trademark.application.official_fee',
-            effectiveFrom: '2026-01-01T00:00:00.000Z'
+        assertion(
+          'CURRENT_OFFICIAL_PRIMARY',
+          { amountMinor: 35000 },
+          {
+            scope: {
+              domain: 'TRADEMARK',
+              jurisdiction: 'EU',
+              concept: 'trademark.application.official_fee',
+              effectiveFrom: '2026-01-01T00:00:00.000Z'
+            }
           }
-        }),
-        assertion('CURRENT_OFFICIAL_PRIMARY', { amountMinor: 30000 }, {
-          scope: {
-            domain: 'TRADEMARK',
-            jurisdiction: 'US',
-            concept: 'trademark.application.official_fee',
-            effectiveFrom: '2025-01-01T00:00:00.000Z',
-            effectiveTo: '2026-01-01T00:00:00.000Z'
+        ),
+        assertion(
+          'CURRENT_OFFICIAL_PRIMARY',
+          { amountMinor: 30000 },
+          {
+            scope: {
+              domain: 'TRADEMARK',
+              jurisdiction: 'US',
+              concept: 'trademark.application.official_fee',
+              effectiveFrom: '2025-01-01T00:00:00.000Z',
+              effectiveTo: '2026-01-01T00:00:00.000Z'
+            }
           }
-        })
+        )
       ],
       query
     );
