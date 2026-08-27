@@ -133,16 +133,21 @@ async function cleanup(): Promise<void> {
   await database.getPool().query('TRUNCATE official_fee_references');
 }
 
+async function ensureCoreMigrations(): Promise<void> {
+  const result = await database
+    .getPool()
+    .query<{ exists: boolean }>(
+      "SELECT to_regclass('public.official_fee_references') IS NOT NULL AS exists"
+    );
+  if (!result.rows[0]?.exists)
+    await migrate(database.getPool(), 'core_official_fee_reference', await coreMigrations());
+}
+
 integration('PostgreSQL Official Fee Reference durability', () => {
   beforeAll(async () => {
     database = new ManagedDatabase(config());
     await database.start();
-    await database
-      .getPool()
-      .query(
-        'DROP TABLE IF EXISTS official_fee_references CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
-      );
-    await migrate(database.getPool(), 'core_official_fee_reference', await coreMigrations());
+    await ensureCoreMigrations();
   });
 
   afterAll(async () => database.close());
