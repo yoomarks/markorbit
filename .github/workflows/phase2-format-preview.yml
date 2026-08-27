@@ -25,15 +25,20 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Format exact Phase 2 files and print patch
+      - name: Format exact Phase 2 files
         run: |
           pnpm exec prettier --write \
             services/core/src/official-fee-reference-store.ts \
             services/core/src/official-fee-reference-store-postgres.ts \
             services/core/tests/official-fee-reference-store.test.ts \
             services/core/tests/official-fee-reference-store-postgres.test.ts
-          git diff -- \
-            services/core/src/official-fee-reference-store.ts \
-            services/core/src/official-fee-reference-store-postgres.ts \
-            services/core/tests/official-fee-reference-store.test.ts \
+      - name: Upload formatted Phase 2 files
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-prettier-output
+          path: |
+            services/core/src/official-fee-reference-store.ts
+            services/core/src/official-fee-reference-store-postgres.ts
+            services/core/tests/official-fee-reference-store.test.ts
             services/core/tests/official-fee-reference-store-postgres.test.ts
+          if-no-files-found: error
