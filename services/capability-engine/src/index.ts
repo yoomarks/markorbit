@@ -15,6 +15,7 @@ import type {
   ManagedCommunicationExchangeV1,
   ManagedCommunicationThreadEvidenceReaderV1
 } from './managed-communication-exchange.js';
+import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
 import { createManagedCommunicationRoutesV1 } from './managed-communication-http.js';
 import {
   createMilestoneCapabilityRequestFixtureRoute,
@@ -37,6 +38,7 @@ export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
 export * from './managed-communication-exchange.js';
+export * from './managed-communication-exact-evidence.js';
 export * from './managed-communication-foundation.js';
 export * from './managed-communication-http.js';
 export * from './milestone-capability-request-fixture.js';
@@ -69,6 +71,10 @@ export interface CapabilityEngineOptions {
   managedAiExactOutputStore?: ManagedAiExactOutputStoreV1;
   managedCommunicationExchange?: Pick<ManagedCommunicationExchangeV1, 'send'>;
   managedCommunicationThreadReader?: ManagedCommunicationThreadEvidenceReaderV1;
+  managedCommunicationExactEvidence?: Pick<
+    ManagedCommunicationExactEvidenceStoreV1,
+    'resolveExactEvidence'
+  >;
   internalServiceSecret?: string;
 }
 
@@ -108,17 +114,27 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('managedAiExactOutputStore requires managedAiExecutor.');
   }
   if (
-    (options.managedCommunicationExchange || options.managedCommunicationThreadReader) &&
+    (options.managedCommunicationExchange ||
+      options.managedCommunicationThreadReader ||
+      options.managedCommunicationExactEvidence) &&
     !options.internalServiceSecret
   ) {
     throw new Error('Managed Communication routes require internalServiceSecret.');
   }
   if (
-    Boolean(options.managedCommunicationExchange) !==
-    Boolean(options.managedCommunicationThreadReader)
+    [
+      options.managedCommunicationExchange,
+      options.managedCommunicationThreadReader,
+      options.managedCommunicationExactEvidence
+    ].filter(Boolean).length !== 0 &&
+    [
+      options.managedCommunicationExchange,
+      options.managedCommunicationThreadReader,
+      options.managedCommunicationExactEvidence
+    ].filter(Boolean).length !== 3
   ) {
     throw new Error(
-      'managedCommunicationExchange and managedCommunicationThreadReader must be configured together.'
+      'managedCommunicationExchange, managedCommunicationThreadReader and managedCommunicationExactEvidence must be configured together.'
     );
   }
 
@@ -193,10 +209,12 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
   const managedCommunicationRoutes =
     options.managedCommunicationExchange &&
     options.managedCommunicationThreadReader &&
+    options.managedCommunicationExactEvidence &&
     options.internalServiceSecret
       ? createManagedCommunicationRoutesV1({
           exchange: options.managedCommunicationExchange,
           threadReader: options.managedCommunicationThreadReader,
+          exactEvidence: options.managedCommunicationExactEvidence,
           internalServiceSecret: options.internalServiceSecret
         })
       : [];

@@ -6,11 +6,16 @@ import {
   type ManagedCommunicationSendRequestV1,
   type ManagedCommunicationThreadEvidenceReaderV1
 } from './managed-communication-exchange.js';
+import {
+  ManagedCommunicationExactEvidenceError,
+  type ManagedCommunicationExactEvidenceStoreV1
+} from './managed-communication-exact-evidence.js';
 
 export interface ManagedCommunicationRoutesOptionsV1 {
   internalServiceSecret: string;
   exchange: Pick<ManagedCommunicationExchangeV1, 'send'>;
   threadReader: ManagedCommunicationThreadEvidenceReaderV1;
+  exactEvidence: Pick<ManagedCommunicationExactEvidenceStoreV1, 'resolveExactEvidence'>;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -70,6 +75,17 @@ function threadRequest(body: unknown): { accountRef: string; threadRef: string }
 }
 
 function exchangeError(error: unknown): never {
+  if (error instanceof ManagedCommunicationExactEvidenceError) {
+    switch (error.code) {
+      case 'INVALID_EXACT_EVIDENCE':
+      case 'NORMALIZED_MESSAGE_NOT_FOUND':
+      case 'PROVENANCE_MISMATCH':
+      case 'EXACT_EVIDENCE_CONFLICT':
+        throw new HttpError(409, error.code, error.message, false);
+      case 'PERSISTENCE_UNAVAILABLE':
+        throw new HttpError(503, error.code, error.message, true);
+    }
+  }
   if (!(error instanceof ManagedCommunicationExchangeError)) throw error;
   switch (error.code) {
     case 'INVALID_SEND_REQUEST':
@@ -139,7 +155,20 @@ export function createManagedCommunicationRoutesV1(
         );
         const input = threadRequest(request.body);
         try {
-          const messages = await options.threadReader.resolveThread({ workspaceId, ...input });
+          const normalized = await options.threadReader.resolveThread({ workspaceId, ...input });
+          const messages = await Promise.all(
+            normalized.map(async (message) => {
+              const exactEvidence = await options.exactEvidence.resolveExactEvidence({
+                workspaceId,
+                accountRef: input.accountRef,
+                messageId: message.messageId
+              });
+              return Object.freeze({
+                ...message,
+                ...(exactEvidence === undefined ? {} : { exactEvidence })
+              });
+            })
+          );
           return json(200, {
             schemaVersion: 1,
             workspaceId,
