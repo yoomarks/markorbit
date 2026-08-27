@@ -181,3 +181,5 @@ export function parseBrainEvidenceAssertion(value: unknown): BrainEvidenceAssert
     assertedAt: instant(assertion.assertedAt, 'brainEvidenceAssertion.assertedAt')
   };
 }
+
+export * from './brain-confidence.js';
