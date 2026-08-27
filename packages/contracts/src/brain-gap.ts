@@ -1,6 +1,7 @@
 import type { BrainAssetVersionId, BrainBuildRunId, BrainEvidenceRef } from './brain.js';
 
 export type BrainGapId = `brain-gap_${string}`;
+export type BrainGapRegistryKey = `brain-gap-key_${string}`;
 
 export const brainGapTypes = [
   'MISSING_EVIDENCE',
@@ -56,6 +57,7 @@ export interface BrainGapScope {
   concept: string;
 }
 
+/** One immutable cognitive-gap detection occurrence with exact runtime lineage. */
 export interface BrainGap {
   schemaVersion: 1;
   brainGapId: BrainGapId;
@@ -80,4 +82,42 @@ export interface BrainSelfAuditResult {
   schemaVersion: 1;
   gaps: readonly Readonly<BrainGap>[];
   auditedAt: string;
+}
+
+export type BrainGapDispositionSource = 'MANUAL' | 'RECURRENCE';
+
+export interface BrainGapDisposition {
+  status: BrainGapStatus;
+  occurredAt: string;
+  reason: string;
+  source: BrainGapDispositionSource;
+}
+
+/** Longitudinal registry identity that groups recurring BrainGap occurrences. */
+export interface BrainGapRegistryRecord {
+  schemaVersion: 1;
+  brainGapRegistryKey: BrainGapRegistryKey;
+  identityFingerprintSha256: string;
+  status: BrainGapStatus;
+  firstDetectedAt: string;
+  lastDetectedAt: string;
+  occurrenceCount: number;
+  latestGap: Readonly<BrainGap>;
+  latestDisposition?: Readonly<BrainGapDisposition>;
+}
+
+export interface BrainGapTransitionCommand {
+  brainGapRegistryKey: BrainGapRegistryKey;
+  toStatus: BrainGapStatus;
+  occurredAt: string;
+  reason: string;
+}
+
+export interface BrainGapRegistryQuery {
+  status?: BrainGapStatus;
+  gapType?: BrainGapType;
+  targetModule?: BrainGapTargetModule;
+  domain?: string;
+  jurisdiction?: string;
+  concept?: string;
 }
