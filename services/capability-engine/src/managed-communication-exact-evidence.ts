@@ -432,7 +432,11 @@ export class PostgresManagedCommunicationExactEvidenceStoreV1 implements Managed
                 payload_size_bytes,provenance_json,observed_at
            FROM capability_communication_exact_evidence
           WHERE workspace_id=$1 AND account_ref=$2 AND message_id=$3`,
-        [clean(input.workspaceId, 'workspaceId', 500), clean(input.accountRef, 'accountRef', 500), clean(input.messageId, 'messageId', 500)]
+        [
+          clean(input.workspaceId, 'workspaceId', 500),
+          clean(input.accountRef, 'accountRef', 500),
+          clean(input.messageId, 'messageId', 500)
+        ]
       );
       const row = result.rows[0] as EvidenceRow | undefined;
       return row ? persistedRef(row) : undefined;
