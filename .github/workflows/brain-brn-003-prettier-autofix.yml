@@ -1,0 +1,34 @@
+name: Brain BRN-003 Prettier Autofix
+
+on:
+  push:
+    branches: [brain-brn-003-evidence-resolution]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: brain-brn-003-evidence-resolution
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format BRN-003 files
+        run: pnpm exec prettier --write packages/contracts/src/brain-evidence.ts packages/contracts/tests/brain-evidence.test.ts services/core/src/brain-evidence-resolver.ts services/core/tests/brain-evidence-resolver.test.ts
+      - name: Commit formatted files and remove one-shot workflow
+        run: |
+          rm .github/workflows/brain-brn-003-prettier-autofix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/brain-evidence.ts packages/contracts/tests/brain-evidence.test.ts services/core/src/brain-evidence-resolver.ts services/core/tests/brain-evidence-resolver.test.ts .github/workflows/brain-brn-003-prettier-autofix.yml
+          git commit -m "style(brain): apply repository prettier to BRN-003" || exit 0
+          git push origin HEAD:brain-brn-003-evidence-resolution
