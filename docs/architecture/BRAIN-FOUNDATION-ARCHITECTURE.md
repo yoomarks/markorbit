@@ -17,13 +17,13 @@ The working definition is:
 
 ## 2. Permanent source ownership
 
-| System | Owns | Does not own |
-| --- | --- | --- |
-| Data Engine | external/raw structured data, events, source statistics | professional interpretation |
-| Knowledge | raw evidence, documents, regulations, cases, articles, expert evidence and source lineage | final operational resolution |
-| MarkReg | customer, trademark, FormalMatter and service/business truth | generic cognitive methods |
-| Brain | derived/resolved operational intelligence, reasoning methods, patterns, estimates, confidence and cognitive gaps | source truth or official truth |
-| Capability Runtime | governed execution/admission and implementation binding | professional meaning of evidence |
+| System             | Owns                                                                                                             | Does not own                     |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Data Engine        | external/raw structured data, events, source statistics                                                          | professional interpretation      |
+| Knowledge          | raw evidence, documents, regulations, cases, articles, expert evidence and source lineage                        | final operational resolution     |
+| MarkReg            | customer, trademark, FormalMatter and service/business truth                                                     | generic cognitive methods        |
+| Brain              | derived/resolved operational intelligence, reasoning methods, patterns, estimates, confidence and cognitive gaps | source truth or official truth   |
+| Capability Runtime | governed execution/admission and implementation binding                                                          | professional meaning of evidence |
 
 Brain persistence stores immutable source references, versions and fingerprints. It must not copy source-owned canonical records merely to make them convenient to query.
 

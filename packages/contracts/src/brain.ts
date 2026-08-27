@@ -44,8 +44,7 @@ export const brainOperationalResolutionStatuses = [
   'INSUFFICIENT_EVIDENCE',
   'CONFLICTED'
 ] as const;
-export type BrainOperationalResolutionStatus =
-  (typeof brainOperationalResolutionStatuses)[number];
+export type BrainOperationalResolutionStatus = (typeof brainOperationalResolutionStatuses)[number];
 
 export const brainValueKinds = [
   'EXACT',
@@ -136,11 +135,17 @@ function record(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allow = new Set(allowed);
   const unsupported = Object.keys(value).filter((key) => !allow.has(key));
   if (unsupported.length)
-    throw new BrainContractError(`${field} contains unsupported fields: ${unsupported.join(', ')}.`);
+    throw new BrainContractError(
+      `${field} contains unsupported fields: ${unsupported.join(', ')}.`
+    );
 }
 
 function text(value: unknown, field: string, maximum = 500): string {
@@ -153,7 +158,8 @@ function text(value: unknown, field: string, maximum = 500): string {
 
 function instant(value: unknown, field: string): string {
   const cleaned = text(value, field, 100);
-  if (Number.isNaN(Date.parse(cleaned))) throw new BrainContractError(`${field} must be an ISO date/time.`);
+  if (Number.isNaN(Date.parse(cleaned)))
+    throw new BrainContractError(`${field} must be an ISO date/time.`);
   return cleaned;
 }
 
@@ -163,11 +169,7 @@ function score(value: unknown, field: string): number {
   return value;
 }
 
-function enumValue<T extends string>(
-  value: unknown,
-  values: readonly T[],
-  field: string
-): T {
+function enumValue<T extends string>(value: unknown, values: readonly T[], field: string): T {
   if (typeof value !== 'string' || !(values as readonly string[]).includes(value))
     throw new BrainContractError(`${field} is invalid.`);
   return value as T;
@@ -193,7 +195,9 @@ export function parseBrainEvidenceRef(value: unknown): BrainEvidenceRef {
     64
   ).toLowerCase();
   if (!SHA256.test(fingerprint))
-    throw new BrainContractError('evidenceRef.sourceFingerprintSha256 must be a SHA-256 fingerprint.');
+    throw new BrainContractError(
+      'evidenceRef.sourceFingerprintSha256 must be a SHA-256 fingerprint.'
+    );
   return {
     sourceOwner: enumValue(evidence.sourceOwner, brainSourceOwners, 'evidenceRef.sourceOwner'),
     sourceObjectId: text(evidence.sourceObjectId, 'evidenceRef.sourceObjectId', 500),
@@ -293,8 +297,7 @@ export function parseBrainAssetVersion(value: unknown): BrainAssetVersion {
   if (['VALIDATED', 'ACTIVE', 'DEGRADED'].includes(status)) {
     if (!evidenceRefs.length)
       throw new BrainContractError(`${status} Brain assets require at least one evidenceRef.`);
-    if (!validatedAt)
-      throw new BrainContractError(`${status} Brain assets require validatedAt.`);
+    if (!validatedAt) throw new BrainContractError(`${status} Brain assets require validatedAt.`);
     if (confidence.factors.validation <= 0)
       throw new BrainContractError(`${status} Brain assets require positive validation evidence.`);
   }

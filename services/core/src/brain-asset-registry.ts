@@ -58,7 +58,9 @@ function sameScope(left: BrainAssetVersion, right: BrainAssetVersion): boolean {
 
 function effectiveAt(asset: BrainAssetVersion, asOf: number): boolean {
   const from = Date.parse(asset.scope.effectiveFrom);
-  const to = asset.scope.effectiveTo ? Date.parse(asset.scope.effectiveTo) : Number.POSITIVE_INFINITY;
+  const to = asset.scope.effectiveTo
+    ? Date.parse(asset.scope.effectiveTo)
+    : Number.POSITIVE_INFINITY;
   return from <= asOf && asOf < to;
 }
 
@@ -78,10 +80,14 @@ export class InMemoryBrainAssetRegistry {
     const versions = this.byAssetId.get(asset.brainAssetId) ?? [];
     const duplicateVersion = versions.find((candidate) => candidate.version === asset.version);
     if (duplicateVersion)
-      throw new BrainAssetRegistryError('VERSION_CONFLICT', 'Brain asset version is already registered.', {
-        brainAssetId: asset.brainAssetId,
-        version: asset.version
-      });
+      throw new BrainAssetRegistryError(
+        'VERSION_CONFLICT',
+        'Brain asset version is already registered.',
+        {
+          brainAssetId: asset.brainAssetId,
+          version: asset.version
+        }
+      );
 
     const previous = versions.at(-1);
     if (!previous) {
@@ -150,12 +156,16 @@ export class InMemoryBrainAssetRegistry {
 
     const active = [...latestActiveByAsset.values()];
     if (!active.length)
-      throw new BrainAssetRegistryError('NO_ACTIVE_ASSET', 'No ACTIVE Brain asset matches the query.', {
-        domain: query.domain,
-        jurisdiction,
-        concept: query.concept,
-        asOf: query.asOf
-      });
+      throw new BrainAssetRegistryError(
+        'NO_ACTIVE_ASSET',
+        'No ACTIVE Brain asset matches the query.',
+        {
+          domain: query.domain,
+          jurisdiction,
+          concept: query.concept,
+          asOf: query.asOf
+        }
+      );
     if (active.length > 1)
       throw new BrainAssetRegistryError(
         'AMBIGUOUS_ACTIVE_ASSET',
