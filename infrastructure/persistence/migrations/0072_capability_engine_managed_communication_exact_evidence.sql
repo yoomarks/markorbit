@@ -14,8 +14,11 @@ CREATE TABLE IF NOT EXISTS capability_communication_exact_evidence (
   created_at timestamptz NOT NULL,
   PRIMARY KEY (workspace_id, account_ref, message_id),
   UNIQUE (workspace_id, evidence_ref),
-  FOREIGN KEY (workspace_id, account_ref, message_id)
-    REFERENCES capability_communication_messages (workspace_id, account_ref, message_id)
+  FOREIGN KEY (workspace_id, message_id)
+    REFERENCES capability_communication_messages (workspace_id, message_id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY (workspace_id, account_ref)
+    REFERENCES capability_communication_accounts (workspace_id, account_ref)
     ON DELETE RESTRICT,
   CONSTRAINT capability_communication_exact_evidence_payload_sha_v1
     CHECK (payload_sha256 ~ '^[a-f0-9]{64}$'),
