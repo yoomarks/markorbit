@@ -289,7 +289,11 @@ integration('Shared Communication PostgreSQL outbound exchange', () => {
 
     expect(inbound.threadRef).toBe(sent.threadRef);
     const reader = new PostgresManagedCommunicationThreadEvidenceReaderV1(database.getPool());
-    const thread = await reader.resolveThread({ workspaceId, accountRef, threadRef: sent.threadRef });
+    const thread = await reader.resolveThread({
+      workspaceId,
+      accountRef,
+      threadRef: sent.threadRef
+    });
     expect(thread).toHaveLength(2);
     expect(thread.map((item) => item.direction)).toEqual(['OUTBOUND', 'INBOUND']);
     expect(thread[1]?.attachments[0]?.sha256).toBe(sha('reply-pdf'));

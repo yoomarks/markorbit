@@ -16,10 +16,7 @@ import {
 } from './managed-communication-foundation.js';
 
 export type ManagedCommunicationSendStateV1 =
-  | 'CLAIMED'
-  | 'DISPATCHING'
-  | 'SENT'
-  | 'RECONCILIATION_REQUIRED';
+  'CLAIMED' | 'DISPATCHING' | 'SENT' | 'RECONCILIATION_REQUIRED';
 
 export interface ManagedCommunicationSendRequestV1 {
   schemaVersion: 1;
@@ -74,7 +71,10 @@ export type ManagedCommunicationSendClaimResultV1 =
   | { kind: 'ACQUIRED'; sendId: string }
   | { kind: 'REPLAY'; receipt: Readonly<ManagedCommunicationSendReceiptV1> }
   | { kind: 'IN_PROGRESS'; sendId: string }
-  | { kind: 'RECONCILIATION_REQUIRED'; receipt: Readonly<ManagedCommunicationReconciliationReceiptV1> }
+  | {
+      kind: 'RECONCILIATION_REQUIRED';
+      receipt: Readonly<ManagedCommunicationReconciliationReceiptV1>;
+    }
   | { kind: 'CONFLICT' };
 
 export interface ManagedCommunicationSendClaimCommandV1 {
@@ -98,13 +98,11 @@ export interface ManagedCommunicationSendIdentityV1 {
   now: string;
 }
 
-export interface ManagedCommunicationSendCompletionV1
-  extends ManagedCommunicationSendIdentityV1 {
+export interface ManagedCommunicationSendCompletionV1 extends ManagedCommunicationSendIdentityV1 {
   receipt: Readonly<ManagedCommunicationSendReceiptV1>;
 }
 
-export interface ManagedCommunicationSendReconciliationV1
-  extends ManagedCommunicationSendIdentityV1 {
+export interface ManagedCommunicationSendReconciliationV1 extends ManagedCommunicationSendIdentityV1 {
   reason: string;
 }
 
@@ -288,9 +286,7 @@ function expired(leaseExpiresAt: string, now: string): boolean {
   return Date.parse(leaseExpiresAt) <= Date.parse(now);
 }
 
-export class InMemoryManagedCommunicationSendClaimStoreV1
-  implements ManagedCommunicationSendClaimStoreV1
-{
+export class InMemoryManagedCommunicationSendClaimStoreV1 implements ManagedCommunicationSendClaimStoreV1 {
   private readonly rows = new Map<string, MemorySendRow>();
 
   claim(
@@ -463,9 +459,7 @@ function persistedReceipt(value: unknown): ManagedCommunicationSendReceiptV1 {
   return structuredClone(receipt);
 }
 
-export class PostgresManagedCommunicationSendClaimStoreV1
-  implements ManagedCommunicationSendClaimStoreV1
-{
+export class PostgresManagedCommunicationSendClaimStoreV1 implements ManagedCommunicationSendClaimStoreV1 {
   constructor(
     private readonly database: ManagedCommunicationSendTransactionHostV1,
     private readonly query: QueryClient
@@ -508,7 +502,8 @@ export class PostgresManagedCommunicationSendClaimStoreV1
         if (String(row.request_fingerprint_sha256) !== command.requestFingerprintSha256)
           return { kind: 'CONFLICT' };
         const state = persistedState(row.state);
-        if (state === 'SENT') return { kind: 'REPLAY', receipt: persistedReceipt(row.receipt_json) };
+        if (state === 'SENT')
+          return { kind: 'REPLAY', receipt: persistedReceipt(row.receipt_json) };
         if (state === 'RECONCILIATION_REQUIRED')
           return {
             kind: 'RECONCILIATION_REQUIRED',
@@ -671,9 +666,7 @@ export class PostgresManagedCommunicationSendClaimStoreV1
   }
 }
 
-export class PostgresManagedCommunicationThreadEvidenceReaderV1
-  implements ManagedCommunicationThreadEvidenceReaderV1
-{
+export class PostgresManagedCommunicationThreadEvidenceReaderV1 implements ManagedCommunicationThreadEvidenceReaderV1 {
   constructor(private readonly query: QueryClient) {}
 
   async resolveThread(input: {

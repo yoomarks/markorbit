@@ -1,10 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import {
-  HttpError,
-  json,
-  type JsonRequest,
-  type JsonRoute
-} from '@markorbit/service-kit';
+import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   ManagedCommunicationExchangeError,
   type ManagedCommunicationExchangeV1,
