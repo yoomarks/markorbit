@@ -16,7 +16,8 @@ export type BrainAssetRegistryErrorCode =
   | 'AMBIGUOUS_ACTIVE_ASSET'
   | 'NO_ACTIVE_ASSET'
   | 'BUILD_NOT_ADMISSIBLE'
-  | 'BUILD_IDENTITY_CONFLICT';
+  | 'BUILD_IDENTITY_CONFLICT'
+  | 'PERSISTENCE_UNAVAILABLE';
 
 export class BrainAssetRegistryError extends Error {
   constructor(
