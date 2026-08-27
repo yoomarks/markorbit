@@ -144,10 +144,7 @@ export class InMemoryBrainAssetRegistry {
   admitBuildResult(result: Readonly<BrainBuildResult>): Readonly<BrainAssetVersion> {
     const { run } = result;
     const produced = run.producedAssetVersion;
-    if (
-      !produced ||
-      (run.status !== 'CANDIDATE_READY' && run.status !== 'VALIDATED_READY')
-    ) {
+    if (!produced || (run.status !== 'CANDIDATE_READY' && run.status !== 'VALIDATED_READY')) {
       throw new BrainAssetRegistryError(
         'BUILD_NOT_ADMISSIBLE',
         'Only successful CANDIDATE_READY or VALIDATED_READY Brain BuildRuns may be admitted.',
