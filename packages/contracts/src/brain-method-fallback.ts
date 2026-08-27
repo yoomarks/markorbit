@@ -51,9 +51,7 @@ export function resolveExplicitMethodFallbackV1(
 
   const fallbackMethodId = primary.fallback.fallbackMethodId;
   if (!fallbackMethodId) {
-    throw new BrainMethodContractError(
-      'METHOD fallback requires an explicit fallbackMethodId.'
-    );
+    throw new BrainMethodContractError('METHOD fallback requires an explicit fallbackMethodId.');
   }
 
   const fallbackCandidates = packages
@@ -75,24 +73,26 @@ export function resolveExplicitMethodFallbackV1(
     );
   }
 
-  const selected: MethodSelectionResultV1 = selectExecutableMethodPackageV1(
-    fallbackCandidates,
-    { ...context, methodFamily: families[0]! }
-  );
+  const selected: MethodSelectionResultV1 = selectExecutableMethodPackageV1(fallbackCandidates, {
+    ...context,
+    methodFamily: families[0]!
+  });
 
   if (selected.status === 'SELECTED') {
     return {
       status: 'FALLBACK_SELECTED',
       primaryPackageId: primary.packageId,
       fallback: selected.package,
-      reason: 'Selected the explicitly referenced fallback method after independent applicability validation.'
+      reason:
+        'Selected the explicitly referenced fallback method after independent applicability validation.'
     };
   }
   if (selected.status === 'AMBIGUOUS') {
     return {
       status: 'AMBIGUOUS',
       primaryPackageId: primary.packageId,
-      reason: 'The explicitly referenced fallback method has multiple highest-priority applicable packages.',
+      reason:
+        'The explicitly referenced fallback method has multiple highest-priority applicable packages.',
       packageIds: selected.packageIds
     };
   }

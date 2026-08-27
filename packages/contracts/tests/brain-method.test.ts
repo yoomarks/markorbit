@@ -137,9 +137,9 @@ describe('Brain Method V1 contracts', () => {
   });
 
   it('rejects production-ready methods without limitations', () => {
-    expect(() =>
-      parseBrainMethodContractV1({ ...activeMethod(), limitations: [] })
-    ).toThrow('limitations must not be empty');
+    expect(() => parseBrainMethodContractV1({ ...activeMethod(), limitations: [] })).toThrow(
+      'limitations must not be empty'
+    );
   });
 
   it('rejects methods without research lineage', () => {
@@ -174,7 +174,9 @@ describe('Brain Method V1 contracts', () => {
       problem: 'Research a bounded USPTO risk method.',
       targetMethodFamily: 'RISK',
       applicabilityTarget: applicability,
-      knowledgeResearchPlan: ['Retrieve authoritative examination rules with exact source identity.'],
+      knowledgeResearchPlan: [
+        'Retrieve authoritative examination rules with exact source identity.'
+      ],
       dataEngineResearchPlan: ['Build reproducible application-history cohort.'],
       hypotheses: ['Status history contains reusable risk signal.'],
       featurePlan: ['Evaluate status-transition features.'],
@@ -226,10 +228,7 @@ describe('Brain Method V1 contracts', () => {
 
   it('fails closed as AMBIGUOUS instead of silently tie-breaking equal-priority packages', () => {
     const result = selectExecutableMethodPackageV1(
-      [
-        activePackage(),
-        activePackage({ packageId: 'executable-method-package_us-risk-v1-alt' })
-      ],
+      [activePackage(), activePackage({ packageId: 'executable-method-package_us-risk-v1-alt' })],
       context
     );
     expect(result.status).toBe('AMBIGUOUS');
@@ -251,9 +250,7 @@ describe('Brain Method V1 contracts', () => {
 
   it('rejects malformed fallback contracts', () => {
     expect(() =>
-      parseExecutableMethodPackageV1(
-        activePackage({ fallback: { behavior: 'METHOD' } })
-      )
+      parseExecutableMethodPackageV1(activePackage({ fallback: { behavior: 'METHOD' } }))
     ).toThrow(BrainMethodContractError);
     expect(() =>
       parseExecutableMethodPackageV1(

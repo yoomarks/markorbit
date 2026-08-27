@@ -52,8 +52,7 @@ export interface ResearchDatasetRefV1 {
   resourceKinds: readonly string[];
   queryFingerprintSha256: string;
   temporalBoundary: Readonly<
-    | { kind: 'AS_OF'; value: string }
-    | { kind: 'WATERMARK'; value: string }
+    { kind: 'AS_OF'; value: string } | { kind: 'WATERMARK'; value: string }
   >;
   completeness: 'COMPLETE_BOUNDED' | 'COMPLETE_TO_WATERMARK' | 'PAGE_STREAM';
   rowCount: number;
@@ -204,11 +203,17 @@ function record(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allowedKeys = new Set(allowed);
   const unsupported = Object.keys(value).filter((key) => !allowedKeys.has(key));
   if (unsupported.length) {
-    throw new BrainMethodContractError(`${field} contains unsupported fields: ${unsupported.join(', ')}.`);
+    throw new BrainMethodContractError(
+      `${field} contains unsupported fields: ${unsupported.join(', ')}.`
+    );
   }
 }
 
@@ -274,9 +279,7 @@ function stringArray(
   if (options.nonEmpty && value.length === 0) {
     throw new BrainMethodContractError(`${field} must not be empty.`);
   }
-  const items = value.map((item, index) =>
-    text(item, `${field}[${index}]`, 500)
-  );
+  const items = value.map((item, index) => text(item, `${field}[${index}]`, 500));
   const normalized = options.uppercase ? items.map((item) => item.toUpperCase()) : items;
   if (new Set(normalized).size !== normalized.length) {
     throw new BrainMethodContractError(`${field} must not contain duplicates.`);
@@ -315,7 +318,11 @@ export function parseKnowledgeResearchSourceRefV1(value: unknown): KnowledgeRese
   return {
     schemaVersion: 1,
     documentId: text(source.documentId, 'knowledgeResearchSourceRef.documentId', 500),
-    documentVersion: text(source.documentVersion, 'knowledgeResearchSourceRef.documentVersion', 300),
+    documentVersion: text(
+      source.documentVersion,
+      'knowledgeResearchSourceRef.documentVersion',
+      300
+    ),
     contentSha256: sha256(source.contentSha256, 'knowledgeResearchSourceRef.contentSha256'),
     ...(source.chunkId === undefined
       ? {}
@@ -359,7 +366,11 @@ export function parseResearchDatasetRefV1(value: unknown): ResearchDatasetRefV1 
   }
   const temporal = record(dataset.temporalBoundary, 'researchDatasetRef.temporalBoundary');
   exactKeys(temporal, ['kind', 'value'], 'researchDatasetRef.temporalBoundary');
-  const kind = enumValue(temporal.kind, ['AS_OF', 'WATERMARK'] as const, 'researchDatasetRef.temporalBoundary.kind');
+  const kind = enumValue(
+    temporal.kind,
+    ['AS_OF', 'WATERMARK'] as const,
+    'researchDatasetRef.temporalBoundary.kind'
+  );
   const temporalValue =
     kind === 'AS_OF'
       ? instant(temporal.value, 'researchDatasetRef.temporalBoundary.value')
@@ -524,7 +535,9 @@ export function parseBrainMethodLineageV1(value: unknown): BrainMethodLineageV1 
   const knowledgeSources = lineage.knowledgeSources.map(parseKnowledgeResearchSourceRefV1);
   const researchDatasets = lineage.researchDatasets.map(parseResearchDatasetRefV1);
   if (!knowledgeSources.length && !researchDatasets.length) {
-    throw new BrainMethodContractError('lineage requires at least one Knowledge or Data Engine source.');
+    throw new BrainMethodContractError(
+      'lineage requires at least one Knowledge or Data Engine source.'
+    );
   }
   return { knowledgeSources, researchDatasets };
 }
@@ -628,13 +641,18 @@ function parseMethodCore(
 > {
   const lifecycle = enumValue(value.lifecycle, brainMethodLifecycleStates, 'brainMethod.lifecycle');
   const evaluation = parseBrainMethodEvaluationV1(value.evaluation);
-  const validatedAt = value.validatedAt === undefined ? undefined : instant(value.validatedAt, 'brainMethod.validatedAt');
+  const validatedAt =
+    value.validatedAt === undefined
+      ? undefined
+      : instant(value.validatedAt, 'brainMethod.validatedAt');
   if (['VALIDATED', 'ACTIVE', 'DEGRADED'].includes(lifecycle)) {
     if (!validatedAt) {
       throw new BrainMethodContractError(`${lifecycle} Brain methods require validatedAt.`);
     }
     if (evaluation.status === 'FAILED') {
-      throw new BrainMethodContractError(`${lifecycle} Brain methods cannot carry FAILED evaluation.`);
+      throw new BrainMethodContractError(
+        `${lifecycle} Brain methods cannot carry FAILED evaluation.`
+      );
     }
   }
   const algorithm = record(value.algorithm, 'brainMethod.algorithm');
@@ -651,7 +669,11 @@ function parseMethodCore(
     methodFamily: enumValue(value.methodFamily, brainMethodFamilies, 'brainMethod.methodFamily'),
     version: positiveInteger(value.version, 'brainMethod.version'),
     purpose: text(value.purpose, 'brainMethod.purpose', 2000),
-    targetObjectType: text(value.targetObjectType, 'brainMethod.targetObjectType', 300).toUpperCase(),
+    targetObjectType: text(
+      value.targetObjectType,
+      'brainMethod.targetObjectType',
+      300
+    ).toUpperCase(),
     applicability: parseMethodApplicabilityV1(value.applicability),
     requiredInputs: stringArray(value.requiredInputs, 'brainMethod.requiredInputs', {
       nonEmpty: true
@@ -783,7 +805,11 @@ export function parseExecutableMethodPackageV1(value: unknown): ExecutableMethod
       'executableMethodPackage.packageId'
     ),
     packageVersion: positiveInteger(pkg.packageVersion, 'executableMethodPackage.packageVersion'),
-    methodId: prefixedId<BrainMethodId>(pkg.methodId, 'brain-method_', 'executableMethodPackage.methodId'),
+    methodId: prefixedId<BrainMethodId>(
+      pkg.methodId,
+      'brain-method_',
+      'executableMethodPackage.methodId'
+    ),
     methodVersionId: prefixedId<BrainMethodVersionId>(
       pkg.methodVersionId,
       'brain-method-version_',
@@ -830,7 +856,8 @@ function includesNormalized(values: readonly string[], value: string): boolean {
 
 function effectiveAt(applicability: Readonly<MethodApplicabilityV1>, asOf: string): boolean {
   const timestamp = Date.parse(asOf);
-  if (Number.isNaN(timestamp)) throw new BrainMethodContractError('selectionContext.asOf must be an ISO date/time.');
+  if (Number.isNaN(timestamp))
+    throw new BrainMethodContractError('selectionContext.asOf must be an ISO date/time.');
   const from = Date.parse(applicability.effectiveFrom);
   const to = applicability.effectiveTo
     ? Date.parse(applicability.effectiveTo)
@@ -866,8 +893,16 @@ export function selectExecutableMethodPackageV1(
   contextValue: Readonly<MethodSelectionContextV1>
 ): MethodSelectionResultV1 {
   const context: MethodSelectionContextV1 = {
-    methodFamily: enumValue(contextValue.methodFamily, brainMethodFamilies, 'selectionContext.methodFamily'),
-    jurisdiction: text(contextValue.jurisdiction, 'selectionContext.jurisdiction', 100).toUpperCase(),
+    methodFamily: enumValue(
+      contextValue.methodFamily,
+      brainMethodFamilies,
+      'selectionContext.methodFamily'
+    ),
+    jurisdiction: text(
+      contextValue.jurisdiction,
+      'selectionContext.jurisdiction',
+      100
+    ).toUpperCase(),
     authority: text(contextValue.authority, 'selectionContext.authority', 200).toUpperCase(),
     objectType: text(contextValue.objectType, 'selectionContext.objectType', 200).toUpperCase(),
     operation: text(contextValue.operation, 'selectionContext.operation', 200).toUpperCase(),
@@ -883,7 +918,10 @@ export function selectExecutableMethodPackageV1(
   const parsed = packages.map(parseExecutableMethodPackageV1);
   const candidates = parsed.filter((pkg) => applicable(pkg, context));
   if (!candidates.length) {
-    return { status: 'NOT_APPLICABLE', reason: 'No ACTIVE executable method package matches the request scope and available data.' };
+    return {
+      status: 'NOT_APPLICABLE',
+      reason: 'No ACTIVE executable method package matches the request scope and available data.'
+    };
   }
   const highestPriority = Math.max(...candidates.map((pkg) => pkg.selectionPriority));
   const top = candidates.filter((pkg) => pkg.selectionPriority === highestPriority);
@@ -897,6 +935,7 @@ export function selectExecutableMethodPackageV1(
   return {
     status: 'SELECTED',
     package: top[0]!,
-    reason: 'Selected the only applicable ACTIVE package at the highest explicit selection priority.'
+    reason:
+      'Selected the only applicable ACTIVE package at the highest explicit selection priority.'
   };
 }
