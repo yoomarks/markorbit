@@ -31,32 +31,50 @@ export const brainMethodLifecycleStates = [
 ] as const;
 export type BrainMethodLifecycleState = (typeof brainMethodLifecycleStates)[number];
 
-export interface KnowledgeResearchSourceRefV1 {
+export interface KnowledgeContentObjectRefV1 {
+  protocolVersion: '1.0';
+  objectType: 'CONTENT_OBJECT_REF';
+  objectId: string;
+  objectKind: string;
+  workspaceId: string;
+}
+
+/**
+ * Consumer-side lineage into the existing MarkOrbit Knowledge retrieval boundary.
+ * This is not a second Knowledge source registry or authority.
+ */
+export interface KnowledgeRetrievalLineageRefV1 {
   schemaVersion: 1;
-  documentId: string;
-  documentVersion: string;
+  sourceSystem: 'MARKORBIT_KNOWLEDGE';
+  content: Readonly<KnowledgeContentObjectRefV1>;
+  chunkId: string;
   contentSha256: string;
-  chunkId?: string;
-  section?: string;
-  authority: string;
-  observedAt?: string;
+  indexedAt: string;
+  indexMode: string;
+  headingPath: readonly string[];
   retrievalRationale: string;
 }
 
+/** Exact consumer mirror of Data Engine ResearchDatasetRefV1 wire identity. */
 export interface ResearchDatasetRefV1 {
-  schemaVersion: 1;
-  datasetRefId: string;
-  engineVersion: string;
-  factSchemaVersion: string;
+  contract_version: 1;
+  dataset_ref_id: `research-dataset_${string}`;
+  engine_version: string;
+  fact_schema_version: string;
   jurisdictions: readonly string[];
-  resourceKinds: readonly string[];
-  queryFingerprintSha256: string;
-  temporalBoundary: Readonly<
-    { kind: 'AS_OF'; value: string } | { kind: 'WATERMARK'; value: string }
-  >;
+  resource_kinds: readonly string[];
+  query: Readonly<Record<string, unknown>>;
+  as_of: string | null;
+  watermark: string | null;
   completeness: 'COMPLETE_BOUNDED' | 'COMPLETE_TO_WATERMARK' | 'PAGE_STREAM';
-  rowCount: number;
-  integritySha256: string;
+  pagination: Readonly<Record<string, unknown>> | null;
+  aggregation: Readonly<Record<string, unknown>> | null;
+  sampling: (Readonly<Record<string, unknown>> & { strategy: string; seed: number }) | null;
+  partition: Readonly<Record<string, unknown>> | null;
+  row_count: number;
+  generated_at: string;
+  query_fingerprint_sha256: string;
+  integrity_sha256: string;
 }
 
 export interface MethodApplicabilityV1 {
@@ -88,7 +106,7 @@ export interface BrainMethodFallbackV1 {
 }
 
 export interface BrainMethodLineageV1 {
-  knowledgeSources: readonly Readonly<KnowledgeResearchSourceRefV1>[];
+  knowledgeSources: readonly Readonly<KnowledgeRetrievalLineageRefV1>[];
   researchDatasets: readonly Readonly<ResearchDatasetRefV1>[];
 }
 
@@ -203,6 +221,10 @@ function record(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function nullableRecord(value: unknown, field: string): Record<string, unknown> | null {
+  return value === null ? null : record(value, field);
+}
+
 function exactKeys(
   value: Record<string, unknown>,
   allowed: readonly string[],
@@ -262,6 +284,13 @@ function finiteNumber(value: unknown, field: string): number {
   return value;
 }
 
+function integer(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value)) {
+    throw new BrainMethodContractError(`${field} must be a safe integer.`);
+  }
+  return value as number;
+}
+
 function prefixedId<T extends string>(value: unknown, prefix: string, field: string): T {
   const cleaned = text(value, field, 300);
   if (!cleaned.startsWith(prefix) || cleaned === prefix) {
@@ -295,48 +324,63 @@ function sha256(value: unknown, field: string): string {
   return digest;
 }
 
-export function parseKnowledgeResearchSourceRefV1(value: unknown): KnowledgeResearchSourceRefV1 {
-  const source = record(value, 'knowledgeResearchSourceRef');
+function parseKnowledgeContentObjectRefV1(value: unknown): KnowledgeContentObjectRefV1 {
+  const content = record(value, 'knowledgeRetrievalLineage.content');
+  exactKeys(
+    content,
+    ['protocolVersion', 'objectType', 'objectId', 'objectKind', 'workspaceId'],
+    'knowledgeRetrievalLineage.content'
+  );
+  if (content.protocolVersion !== '1.0' || content.objectType !== 'CONTENT_OBJECT_REF') {
+    throw new BrainMethodContractError(
+      'knowledgeRetrievalLineage.content must be a Knowledge CONTENT_OBJECT_REF v1.0.'
+    );
+  }
+  return {
+    protocolVersion: '1.0',
+    objectType: 'CONTENT_OBJECT_REF',
+    objectId: text(content.objectId, 'knowledgeRetrievalLineage.content.objectId', 500),
+    objectKind: text(content.objectKind, 'knowledgeRetrievalLineage.content.objectKind', 100),
+    workspaceId: text(content.workspaceId, 'knowledgeRetrievalLineage.content.workspaceId', 500)
+  };
+}
+
+export function parseKnowledgeRetrievalLineageRefV1(
+  value: unknown
+): KnowledgeRetrievalLineageRefV1 {
+  const source = record(value, 'knowledgeRetrievalLineage');
   exactKeys(
     source,
     [
       'schemaVersion',
-      'documentId',
-      'documentVersion',
-      'contentSha256',
+      'sourceSystem',
+      'content',
       'chunkId',
-      'section',
-      'authority',
-      'observedAt',
+      'contentSha256',
+      'indexedAt',
+      'indexMode',
+      'headingPath',
       'retrievalRationale'
     ],
-    'knowledgeResearchSourceRef'
+    'knowledgeRetrievalLineage'
   );
-  if (source.schemaVersion !== 1) {
-    throw new BrainMethodContractError('knowledgeResearchSourceRef.schemaVersion must be 1.');
+  if (source.schemaVersion !== 1 || source.sourceSystem !== 'MARKORBIT_KNOWLEDGE') {
+    throw new BrainMethodContractError(
+      'knowledgeRetrievalLineage must identify MARKORBIT_KNOWLEDGE schemaVersion 1.'
+    );
   }
   return {
     schemaVersion: 1,
-    documentId: text(source.documentId, 'knowledgeResearchSourceRef.documentId', 500),
-    documentVersion: text(
-      source.documentVersion,
-      'knowledgeResearchSourceRef.documentVersion',
-      300
-    ),
-    contentSha256: sha256(source.contentSha256, 'knowledgeResearchSourceRef.contentSha256'),
-    ...(source.chunkId === undefined
-      ? {}
-      : { chunkId: text(source.chunkId, 'knowledgeResearchSourceRef.chunkId', 500) }),
-    ...(source.section === undefined
-      ? {}
-      : { section: text(source.section, 'knowledgeResearchSourceRef.section', 1000) }),
-    authority: text(source.authority, 'knowledgeResearchSourceRef.authority', 300),
-    ...(source.observedAt === undefined
-      ? {}
-      : { observedAt: instant(source.observedAt, 'knowledgeResearchSourceRef.observedAt') }),
+    sourceSystem: 'MARKORBIT_KNOWLEDGE',
+    content: parseKnowledgeContentObjectRefV1(source.content),
+    chunkId: text(source.chunkId, 'knowledgeRetrievalLineage.chunkId', 500),
+    contentSha256: sha256(source.contentSha256, 'knowledgeRetrievalLineage.contentSha256'),
+    indexedAt: instant(source.indexedAt, 'knowledgeRetrievalLineage.indexedAt'),
+    indexMode: text(source.indexMode, 'knowledgeRetrievalLineage.indexMode', 300),
+    headingPath: stringArray(source.headingPath, 'knowledgeRetrievalLineage.headingPath'),
     retrievalRationale: text(
       source.retrievalRationale,
-      'knowledgeResearchSourceRef.retrievalRationale',
+      'knowledgeRetrievalLineage.retrievalRationale',
       1000
     )
   };
@@ -347,58 +391,97 @@ export function parseResearchDatasetRefV1(value: unknown): ResearchDatasetRefV1 
   exactKeys(
     dataset,
     [
-      'schemaVersion',
-      'datasetRefId',
-      'engineVersion',
-      'factSchemaVersion',
+      'contract_version',
+      'dataset_ref_id',
+      'engine_version',
+      'fact_schema_version',
       'jurisdictions',
-      'resourceKinds',
-      'queryFingerprintSha256',
-      'temporalBoundary',
+      'resource_kinds',
+      'query',
+      'as_of',
+      'watermark',
       'completeness',
-      'rowCount',
-      'integritySha256'
+      'pagination',
+      'aggregation',
+      'sampling',
+      'partition',
+      'row_count',
+      'generated_at',
+      'query_fingerprint_sha256',
+      'integrity_sha256'
     ],
     'researchDatasetRef'
   );
-  if (dataset.schemaVersion !== 1) {
-    throw new BrainMethodContractError('researchDatasetRef.schemaVersion must be 1.');
+  if (dataset.contract_version !== 1) {
+    throw new BrainMethodContractError('researchDatasetRef.contract_version must be 1.');
   }
-  const temporal = record(dataset.temporalBoundary, 'researchDatasetRef.temporalBoundary');
-  exactKeys(temporal, ['kind', 'value'], 'researchDatasetRef.temporalBoundary');
-  const kind = enumValue(
-    temporal.kind,
-    ['AS_OF', 'WATERMARK'] as const,
-    'researchDatasetRef.temporalBoundary.kind'
+
+  const queryFingerprint = sha256(
+    dataset.query_fingerprint_sha256,
+    'researchDatasetRef.query_fingerprint_sha256'
   );
-  const temporalValue =
-    kind === 'AS_OF'
-      ? instant(temporal.value, 'researchDatasetRef.temporalBoundary.value')
-      : text(temporal.value, 'researchDatasetRef.temporalBoundary.value', 500);
+  const datasetRefId = prefixedId<`research-dataset_${string}`>(
+    dataset.dataset_ref_id,
+    'research-dataset_',
+    'researchDatasetRef.dataset_ref_id'
+  );
+  if (datasetRefId !== `research-dataset_${queryFingerprint}`) {
+    throw new BrainMethodContractError(
+      'researchDatasetRef.dataset_ref_id must match query_fingerprint_sha256.'
+    );
+  }
+
+  const asOf = dataset.as_of === null ? null : instant(dataset.as_of, 'researchDatasetRef.as_of');
+  const watermark =
+    dataset.watermark === null
+      ? null
+      : text(dataset.watermark, 'researchDatasetRef.watermark', 500);
+  if ((asOf === null) === (watermark === null)) {
+    throw new BrainMethodContractError(
+      'researchDatasetRef requires exactly one of as_of or watermark.'
+    );
+  }
+
+  const samplingRecord = nullableRecord(dataset.sampling, 'researchDatasetRef.sampling');
+  let sampling: ResearchDatasetRefV1['sampling'] = null;
+  if (samplingRecord) {
+    const strategy = text(samplingRecord.strategy, 'researchDatasetRef.sampling.strategy', 300);
+    const seed = integer(samplingRecord.seed, 'researchDatasetRef.sampling.seed');
+    sampling = { ...samplingRecord, strategy, seed };
+  }
+
   return {
-    schemaVersion: 1,
-    datasetRefId: text(dataset.datasetRefId, 'researchDatasetRef.datasetRefId', 500),
-    engineVersion: text(dataset.engineVersion, 'researchDatasetRef.engineVersion', 200),
-    factSchemaVersion: text(dataset.factSchemaVersion, 'researchDatasetRef.factSchemaVersion', 200),
+    contract_version: 1,
+    dataset_ref_id: datasetRefId,
+    engine_version: text(dataset.engine_version, 'researchDatasetRef.engine_version', 200),
+    fact_schema_version: text(
+      dataset.fact_schema_version,
+      'researchDatasetRef.fact_schema_version',
+      200
+    ),
     jurisdictions: stringArray(dataset.jurisdictions, 'researchDatasetRef.jurisdictions', {
       nonEmpty: true,
       uppercase: true
     }),
-    resourceKinds: stringArray(dataset.resourceKinds, 'researchDatasetRef.resourceKinds', {
+    resource_kinds: stringArray(dataset.resource_kinds, 'researchDatasetRef.resource_kinds', {
       nonEmpty: true
     }),
-    queryFingerprintSha256: sha256(
-      dataset.queryFingerprintSha256,
-      'researchDatasetRef.queryFingerprintSha256'
-    ),
-    temporalBoundary: { kind, value: temporalValue },
+    query: record(dataset.query, 'researchDatasetRef.query'),
+    as_of: asOf,
+    watermark,
     completeness: enumValue(
       dataset.completeness,
       ['COMPLETE_BOUNDED', 'COMPLETE_TO_WATERMARK', 'PAGE_STREAM'] as const,
       'researchDatasetRef.completeness'
     ),
-    rowCount: nonNegativeInteger(dataset.rowCount, 'researchDatasetRef.rowCount'),
-    integritySha256: sha256(dataset.integritySha256, 'researchDatasetRef.integritySha256')
+    pagination: nullableRecord(dataset.pagination, 'researchDatasetRef.pagination'),
+    aggregation: nullableRecord(dataset.aggregation, 'researchDatasetRef.aggregation'),
+    sampling,
+    partition: nullableRecord(dataset.partition, 'researchDatasetRef.partition'),
+    row_count: nonNegativeInteger(dataset.row_count, 'researchDatasetRef.row_count'),
+    generated_at: instant(dataset.generated_at, 'researchDatasetRef.generated_at'),
+    query_fingerprint_sha256: queryFingerprint,
+    integrity_sha256: sha256(dataset.integrity_sha256, 'researchDatasetRef.integrity_sha256')
   };
 }
 
@@ -532,7 +615,7 @@ export function parseBrainMethodLineageV1(value: unknown): BrainMethodLineageV1 
   if (!Array.isArray(lineage.knowledgeSources) || !Array.isArray(lineage.researchDatasets)) {
     throw new BrainMethodContractError('lineage sources must be arrays.');
   }
-  const knowledgeSources = lineage.knowledgeSources.map(parseKnowledgeResearchSourceRefV1);
+  const knowledgeSources = lineage.knowledgeSources.map(parseKnowledgeRetrievalLineageRefV1);
   const researchDatasets = lineage.researchDatasets.map(parseResearchDatasetRefV1);
   if (!knowledgeSources.length && !researchDatasets.length) {
     throw new BrainMethodContractError(
