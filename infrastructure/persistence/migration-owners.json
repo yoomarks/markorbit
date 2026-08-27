@@ -49,7 +49,8 @@
     "capability_engine_implementation_profile_registry": "@markorbit/capability-engine",
     "capability_engine_governed_runtime_replays": "@markorbit/capability-engine",
     "capability_engine_managed_communication_foundation": "@markorbit/capability-engine",
-    "capability_engine_managed_communication_outbound": "@markorbit/capability-engine"
+    "capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
+    "core_brain_registry": "@markorbit/core-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -104,6 +105,7 @@
     "0067_capability_engine_governed_runtime_replays": "@markorbit/capability-engine",
     "0068_capability_engine_managed_communication_foundation": "@markorbit/capability-engine",
     "0069_markreg_knowledge_case_promotions": "@markorbit/markreg-service",
-    "0070_capability_engine_managed_communication_outbound": "@markorbit/capability-engine"
+    "0070_capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
+    "0071_core_brain_registry": "@markorbit/core-service"
   }
 }

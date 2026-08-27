@@ -1,0 +1,70 @@
+name: Brain Registry PostgreSQL Durability
+
+on:
+  pull_request:
+    paths:
+      - 'services/core/src/brain-asset-registry.ts'
+      - 'services/core/src/brain-asset-registry-postgres.ts'
+      - 'services/core/src/brain-build-runtime.ts'
+      - 'services/core/tests/brain-asset-registry-postgres.test.ts'
+      - 'services/core/package.json'
+      - 'packages/contracts/src/brain*.ts'
+      - 'infrastructure/persistence/migrations/0071_core_brain_registry.sql'
+      - 'infrastructure/persistence/migration-owners.json'
+      - '.github/workflows/brain-registry-postgres-durability.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'services/core/src/brain-asset-registry.ts'
+      - 'services/core/src/brain-asset-registry-postgres.ts'
+      - 'services/core/src/brain-build-runtime.ts'
+      - 'services/core/tests/brain-asset-registry-postgres.test.ts'
+      - 'services/core/package.json'
+      - 'packages/contracts/src/brain*.ts'
+      - 'infrastructure/persistence/migrations/0071_core_brain_registry.sql'
+      - 'infrastructure/persistence/migration-owners.json'
+      - '.github/workflows/brain-registry-postgres-durability.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brain-registry-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-durability:
+    name: PostgreSQL restart, replay and allocation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_brain
+          POSTGRES_PASSWORD: markorbit-brain-test-only
+          POSTGRES_DB: markorbit_brain_registry_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_brain -d markorbit_brain_registry_test"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      BRAIN_REGISTRY_TEST_DATABASE_URL: postgresql://markorbit_brain:markorbit-brain-test-only@127.0.0.1:5432/markorbit_brain_registry_test
+      BRAIN_REGISTRY_POSTGRES_TEST_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Build Brain dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/core-service...
+      - name: Validate Brain registry source
+        run: |
+          pnpm exec eslint services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/tests/brain-asset-registry-postgres.test.ts
+          pnpm --filter @markorbit/core-service typecheck
+      - name: Preserve Brain registry and Build Runtime regression
+        run: pnpm --filter @markorbit/core-service exec vitest run tests/brain-asset-registry.test.ts tests/brain-build-registry-admission.test.ts tests/brain-build-runtime.test.ts
+      - name: Prove PostgreSQL restart, replay and concurrent version allocation
+        run: pnpm --filter @markorbit/core-service test:brain-registry:postgres
