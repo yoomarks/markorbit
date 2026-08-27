@@ -8,7 +8,7 @@ function summary(
   id: string,
   authorityClass: 'CURRENT_OFFICIAL_PRIMARY' | 'SECONDARY_PROFESSIONAL',
   fingerprint = 'e'.repeat(64),
-  observedAt: string | undefined = '2026-08-20T00:00:00.000Z'
+  observedAt: string | null = '2026-08-20T00:00:00.000Z'
 ) {
   return {
     evidenceRef: {
@@ -40,6 +40,37 @@ function candidate(overrides: Partial<BrainEvidenceResolutionCandidate> = {}): B
     excludedAssertionCount: 0,
     explanation: 'test candidate',
     ...overrides
+  };
+}
+
+function noEvidenceCandidate(): BrainEvidenceResolutionCandidate {
+  return {
+    schemaVersion: 1,
+    domain: 'TRADEMARK',
+    jurisdiction: 'US',
+    concept: 'test.concept',
+    asOf: '2026-08-27T00:00:00.000Z',
+    status: 'NO_EVIDENCE',
+    supportingAssertions: [],
+    conflictingAssertions: [],
+    excludedAssertionCount: 0,
+    explanation: 'no evidence'
+  };
+}
+
+function conflictedCandidate(): BrainEvidenceResolutionCandidate {
+  return {
+    schemaVersion: 1,
+    domain: 'TRADEMARK',
+    jurisdiction: 'US',
+    concept: 'test.concept',
+    asOf: '2026-08-27T00:00:00.000Z',
+    status: 'CONFLICTED',
+    selectedAuthorityClass: 'CURRENT_OFFICIAL_PRIMARY',
+    supportingAssertions: [summary('official-a', 'CURRENT_OFFICIAL_PRIMARY')],
+    conflictingAssertions: [summary('official-b', 'CURRENT_OFFICIAL_PRIMARY', 'f'.repeat(64))],
+    excludedAssertionCount: 0,
+    explanation: 'highest authority conflict'
   };
 }
 
@@ -106,14 +137,19 @@ describe('Brain confidence engine', () => {
     const stale = evaluate(
       candidate({
         supportingAssertions: [
-          summary('official-a', 'CURRENT_OFFICIAL_PRIMARY', 'e'.repeat(64), '2020-01-01T00:00:00.000Z')
+          summary(
+            'official-a',
+            'CURRENT_OFFICIAL_PRIMARY',
+            'e'.repeat(64),
+            '2020-01-01T00:00:00.000Z'
+          )
         ]
       })
     );
     const missing = evaluate(
       candidate({
         supportingAssertions: [
-          summary('official-a', 'CURRENT_OFFICIAL_PRIMARY', 'e'.repeat(64), undefined)
+          summary('official-a', 'CURRENT_OFFICIAL_PRIMARY', 'e'.repeat(64), null)
         ]
       })
     );
@@ -122,26 +158,8 @@ describe('Brain confidence engine', () => {
   });
 
   it('fails closed for no evidence and highest-authority conflict', () => {
-    const noEvidence = evaluate(
-      candidate({
-        status: 'NO_EVIDENCE',
-        selectedAuthorityClass: undefined,
-        selectedValueKind: undefined,
-        selectedValue: undefined,
-        supportingAssertions: []
-      })
-    );
-    const conflicted = evaluate(
-      candidate({
-        status: 'CONFLICTED',
-        selectedValueKind: undefined,
-        selectedValue: undefined,
-        supportingAssertions: [summary('official-a', 'CURRENT_OFFICIAL_PRIMARY')],
-        conflictingAssertions: [
-          summary('official-b', 'CURRENT_OFFICIAL_PRIMARY', 'f'.repeat(64))
-        ]
-      })
-    );
+    const noEvidence = evaluate(noEvidenceCandidate());
+    const conflicted = evaluate(conflictedCandidate());
     expect(noEvidence.status).toBe('UNSCORABLE_NO_EVIDENCE');
     expect(noEvidence.confidence).toBeUndefined();
     expect(conflicted.status).toBe('UNSCORABLE_CONFLICTED');
