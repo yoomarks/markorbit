@@ -27,6 +27,7 @@
       "@markorbit/contracts/product-loop": ["packages/contracts/src/product-loop.ts"],
       "@markorbit/contracts/data-engine": ["packages/contracts/src/data-engine.ts"],
       "@markorbit/contracts/beta-readiness": ["packages/contracts/src/beta-readiness.ts"],
+      "@markorbit/contracts/brain": ["packages/contracts/src/brain.ts"],
       "@markorbit/*": ["packages/*/src", "services/*/src", "apps/*/src"]
     }
   }
