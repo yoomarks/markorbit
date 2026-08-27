@@ -106,10 +106,14 @@ function request(
   };
 }
 
-function authenticatedRequest(body: unknown = undefined): JsonRequest {
+function authenticatedRequest(
+  body: unknown = undefined,
+  headers: Record<string, string> = {}
+): JsonRequest {
   return request(body, 'https://app.example', {
     cookie: `mo_session=${result.rawToken}`,
-    'x-markorbit-csrf-token': csrfToken(result.session.sessionId, csrfSecret)
+    'x-markorbit-csrf-token': csrfToken(result.session.sessionId, csrfSecret),
+    ...headers
   });
 }
 
@@ -284,9 +288,10 @@ describe('Gateway real account access', () => {
     const route = routes(authenticationClient).find(
       (value) => value.path === '/api/auth/workspace-principal'
     )!;
-    const browserRequest = authenticatedRequest();
-    browserRequest.headers['x-markorbit-workspace-id'] = workspace.workspace.workspaceId;
-    browserRequest.headers['x-markorbit-principal'] = 'forged-browser-principal';
+    const browserRequest = authenticatedRequest(undefined, {
+      'x-markorbit-workspace-id': workspace.workspace.workspaceId,
+      'x-markorbit-principal': 'forged-browser-principal'
+    });
     const response = await route.handle(browserRequest);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ principal: workspacePrincipal });
@@ -315,8 +320,9 @@ describe('Gateway real account access', () => {
           )
       })
     ).find((value) => value.path === '/api/auth/workspace-principal')!;
-    const browserRequest = authenticatedRequest();
-    browserRequest.headers['x-markorbit-workspace-id'] = '018f0000-0000-7000-8000-000000000099';
+    const browserRequest = authenticatedRequest(undefined, {
+      'x-markorbit-workspace-id': '018f0000-0000-7000-8000-000000000099'
+    });
     await expect(route.handle(browserRequest)).rejects.toMatchObject({
       status: 401,
       code: 'MEMBERSHIP_REQUIRED'
