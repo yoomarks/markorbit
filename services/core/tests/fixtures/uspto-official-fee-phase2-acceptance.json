@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "operation": "USPTO_TM_NEW_APPLICATION_BASE_FEE_SECTION_1_44_ELECTRONIC_PER_CLASS",
+  "jurisdiction": "US",
+  "authority": "USPTO",
+  "resolvedFee": {
+    "currency": "USD",
+    "amountMinor": 35000,
+    "unit": "PER_CLASS",
+    "numericAuthority": {
+      "role": "NUMERIC_AUTHORITY",
+      "canonicalUri": "https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule",
+      "regulation": "37_CFR_2_6_A_1_III",
+      "feeCode": "7017",
+      "label": "base application, per class",
+      "knowledgeDocumentId": "art_01M12SPMTVMHPRBJXW0QAR3R6D",
+      "knowledgeDocumentContentSha256": "af2821298d3de7c6d2146b0e2e0a7c2963752d1cea2c9728db665164d74e7258",
+      "knowledgeChunkId": "rch_462a27b264a66de229d3d3309ff79941",
+      "knowledgeChunkContentSha256": "462a27b264a66de229d3d3309ff799410d13159998bd234488d095c11e1a0fda",
+      "knowledgeAcceptedMainSha": "cd51aa05398fe77d96de3c1f2ede840c1ccb3f94"
+    }
+  },
+  "temporalResolution": {
+    "status": "RESOLVED",
+    "effectiveFrom": "2025-01-18T00:00:00.000-05:00",
+    "authorityUri": "https://www.uspto.gov/about-us/news-updates/trademark-fee-changes-take-effect-january-18",
+    "authorityStatement": "USPTO trademark fee final rule effective January 18, 2025",
+    "evidenceRef": "USPTO_TRADEMARK_FEE_FINAL_RULE_EFFECTIVE_2025_01_18"
+  },
+  "conflictResolution": {
+    "status": "NONE",
+    "applicabilityAuthorityUri": "https://www.uspto.gov/trademarks/trademark-fee-information",
+    "knowledgeDocumentId": "art_01M127C5JTR5H69JT94XJBG8VA",
+    "knowledgeDocumentContentSha256": "f8e1e0360fe59754ff6dea23df6cf6fd5e1c16769f0b22ecbbc693b796b07a7b",
+    "knowledgeChunkId": "rch_8110a47a3bf17a82b248e1fb8e42b8d7",
+    "knowledgeChunkContentSha256": "8110a47a3bf17a82b248e1fb8e42b8d7e3f84e66578f840ace3a2f54a94e724f",
+    "evidenceRef": "USPTO_DUAL_SOURCE_AUTHORITY_RECONCILIATION_2026_08_28"
+  },
+  "observedAt": "2026-08-28T00:00:00.000Z",
+  "notes": [
+    "Acceptance evidence only; no live fee amount is embedded in Core or Brain production logic.",
+    "The temporal effective date is separately evidenced and is not inferred from Knowledge indexedAt, crawl time, publishedAt, or the general Fee Schedule page header.",
+    "Capability/product/quote/order wiring is out of scope."
+  ]
+}
