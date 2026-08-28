@@ -7,6 +7,7 @@ import {
   runCnDurationResearchEvidenceFileIntakeV1
 } from '../src/brain-cn-duration-evidence-intake.js';
 
+// Preserve and verify the exact target-host evidence bytes as acceptance truth.
 const evidencePath = join(
   dirname(fileURLToPath(import.meta.url)),
   'evidence',
