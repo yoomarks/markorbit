@@ -1,0 +1,28 @@
+name: Temporary Phase 3 CN Duration Prettier
+
+on:
+  push:
+    branches:
+      - phase3/298-cn-duration-evaluation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate exact Prettier diff
+        run: |
+          pnpm exec prettier --write packages/contracts/src/brain-cn-duration-research.ts
+          git diff -- packages/contracts/src/brain-cn-duration-research.ts
