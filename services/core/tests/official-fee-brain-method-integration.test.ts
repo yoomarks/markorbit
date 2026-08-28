@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE,
   compileUsptoOfficialFeeMethodPackageV1
-} from '../../../packages/contracts/src/brain-official-fee-method.js';
+} from '@markorbit/contracts/brain-official-fee-method';
 import {
   InMemoryOfficialFeeReferenceStore,
   OFFICIAL_FEE_PILOT_OPERATION
