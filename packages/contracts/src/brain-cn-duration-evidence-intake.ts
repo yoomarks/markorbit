@@ -3,7 +3,10 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { BrainMethodContractError } from './brain-method.js';
+import {
+  BrainMethodContractError,
+  type BrainMethodEvaluationV1
+} from './brain-method.js';
 import {
   compileCnDurationStatisticalMethodPackageV1,
   evaluateCnDurationResearchV1,
@@ -34,9 +37,7 @@ export type CnDurationResearchEvidenceIntakeResultV1 =
   | { status: 'REJECTED'; reason: 'EVIDENCE_BUNDLE_MISMATCH' }
   | {
       status: 'READY';
-      evaluation: ReturnType<typeof evaluateCnDurationResearchV1> extends infer Result
-        ? Extract<Result, { status: 'PASSED' }>['evaluation']
-        : never;
+      evaluation: Readonly<BrainMethodEvaluationV1>;
       method: Extract<CompileCnDurationStatisticalMethodResultV1, { status: 'READY' }>['method'];
       package: Extract<CompileCnDurationStatisticalMethodResultV1, { status: 'READY' }>['package'];
     };
