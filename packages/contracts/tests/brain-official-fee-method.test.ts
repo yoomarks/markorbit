@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { selectExecutableMethodPackageV1 } from '../src/brain-method.js';
+import {
+  selectExecutableMethodPackageV1,
+  type KnowledgeRetrievalLineageRefV1
+} from '../src/brain-method.js';
 import {
   USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE,
   USPTO_OFFICIAL_FEE_PILOT_OPERATION,
@@ -61,7 +64,9 @@ describe('USPTO Official Fee Brain Method compiler', () => {
       reason: 'LINEAGE_MISMATCH'
     });
 
-    const source = structuredClone(USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE[0]);
+    const source: KnowledgeRetrievalLineageRefV1 = structuredClone(
+      USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE[0]
+    );
     const tampered = resolvedInput();
     tampered.knowledgeSources = [
       {
