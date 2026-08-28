@@ -7,3 +7,6 @@ pnpm-lock.yaml
 .turbo/
 
 storybook-static
+
+# Immutable external acceptance evidence. Preserve exact source bytes / SHA-256.
+packages/contracts/tests/evidence/
