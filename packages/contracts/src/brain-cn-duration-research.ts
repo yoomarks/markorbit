@@ -31,12 +31,7 @@ export const CN_DURATION_RESEARCH_MISSION_V1: Readonly<BrainResearchMissionV1> =
       stages: ['HISTORICAL_FACT_RESEARCH'],
       filingBases: ['ANY'],
       segments: ['FILING_TO_PRELIM_PUBLICATION'],
-      requiredData: [
-        'CN_CASE_CURRENT',
-        'FILING_DATE',
-        'PRELIM_PUB_DATE',
-        'SOURCE_LINEAGE'
-      ],
+      requiredData: ['CN_CASE_CURRENT', 'FILING_DATE', 'PRELIM_PUB_DATE', 'SOURCE_LINEAGE'],
       effectiveFrom: '2026-08-28T00:00:00.000Z'
     },
     knowledgeResearchPlan: [],
@@ -70,17 +65,12 @@ export const CN_DURATION_RESEARCH_MISSION_V1: Readonly<BrainResearchMissionV1> =
       'invalid_date_order_explicit_rate=1',
       'raw_population_copy_to_core=0'
     ],
-    baselineMetrics: [
-      'valid_row_count_only_v1',
-      'no_prediction_no_legal_interpretation_v1'
-    ],
+    baselineMetrics: ['valid_row_count_only_v1', 'no_prediction_no_legal_interpretation_v1'],
     createdAt: '2026-08-28T00:00:00.000Z'
   });
 
 function exactStrings(value: unknown): readonly string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string')
-    ? [...value]
-    : [];
+  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? [...value] : [];
 }
 
 function assertExactArray(
@@ -107,9 +97,7 @@ function record(value: unknown): Readonly<Record<string, unknown>> {
  * Consumer-side scope guard only. Passing this guard does not mean the dataset is accepted.
  * Acceptance still requires the real target-host receipt recorded by the Phase 3 gate.
  */
-export function parseCnDurationResearchDatasetCandidateV1(
-  value: unknown
-): ResearchDatasetRefV1 {
+export function parseCnDurationResearchDatasetCandidateV1(value: unknown): ResearchDatasetRefV1 {
   const dataset = parseResearchDatasetRefV1(value);
 
   assertExactArray(dataset.jurisdictions, ['CN'], 'jurisdictions');
@@ -146,10 +134,14 @@ export function parseCnDurationResearchDatasetCandidateV1(
 
   const query = record(dataset.query);
   if (query.dataset !== CN_DURATION_RESEARCH_DATASET_NAME) {
-    throw new BrainMethodContractError('CN duration research dataset identity is outside the frozen pilot.');
+    throw new BrainMethodContractError(
+      'CN duration research dataset identity is outside the frozen pilot.'
+    );
   }
   if (query.source_table !== CN_DURATION_RESEARCH_SOURCE_TABLE) {
-    throw new BrainMethodContractError('CN duration research source table is outside the frozen pilot.');
+    throw new BrainMethodContractError(
+      'CN duration research source table is outside the frozen pilot.'
+    );
   }
   if (query.legal_conclusion !== false || query.actionability !== 'SOURCE_FACT_ONLY') {
     throw new BrainMethodContractError(
