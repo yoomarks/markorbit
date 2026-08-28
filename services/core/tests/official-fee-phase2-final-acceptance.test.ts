@@ -4,6 +4,7 @@ import {
   USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE,
   compileUsptoOfficialFeeMethodPackageV1
 } from '@markorbit/contracts/brain-official-fee-method';
+import type { KnowledgeRetrievalLineageRefV1 } from '@markorbit/contracts/brain-method';
 import {
   InMemoryOfficialFeeReferenceStore,
   OFFICIAL_FEE_PILOT_OPERATION
@@ -64,7 +65,7 @@ function evidence(): AcceptanceEvidence {
   ) as AcceptanceEvidence;
 }
 
-function sourceIdentity(source: (typeof USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE)[number]) {
+function sourceIdentity(source: Readonly<KnowledgeRetrievalLineageRefV1>) {
   return {
     documentId: source.content.objectId,
     chunkId: source.chunkId,
@@ -99,7 +100,9 @@ describe('Phase 2 Official Fee final acceptance', () => {
     );
 
     const lineageIdentities = USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE.map(sourceIdentity);
-    expect(lineageIdentities).toContainEqual(fixtureIdentity(accepted.resolvedFee.numericAuthority));
+    expect(lineageIdentities).toContainEqual(
+      fixtureIdentity(accepted.resolvedFee.numericAuthority)
+    );
     for (const temporal of accepted.temporalResolution.evidence) {
       expect(lineageIdentities).toContainEqual(fixtureIdentity(temporal));
     }
@@ -148,9 +151,11 @@ describe('Phase 2 Official Fee final acceptance', () => {
     expect(first.effectiveFrom).toBe(accepted.temporalResolution.effectiveFrom);
     expect(first.knowledgeSources).toHaveLength(4);
     expect(new Set(first.knowledgeSources.map((source) => source.content.objectId)).size).toBe(3);
-    expect(first.knowledgeSources.map(sourceIdentity).sort((a, b) => a.chunkId.localeCompare(b.chunkId))).toEqual(
-      lineageIdentities.sort((a, b) => a.chunkId.localeCompare(b.chunkId))
-    );
+    expect(
+      first.knowledgeSources
+        .map(sourceIdentity)
+        .sort((a, b) => a.chunkId.localeCompare(b.chunkId))
+    ).toEqual(lineageIdentities.sort((a, b) => a.chunkId.localeCompare(b.chunkId)));
     expect(
       store.resolveCurrent({
         operation: OFFICIAL_FEE_PILOT_OPERATION,
