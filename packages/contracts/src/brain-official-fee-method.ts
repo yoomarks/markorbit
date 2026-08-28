@@ -24,7 +24,7 @@ export const USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE = Object.freeze([
     contentSha256: '462a27b264a66de229d3d3309ff799410d13159998bd234488d095c11e1a0fda',
     indexedAt: '2026-08-27T23:43:22.580Z',
     indexMode: 'SQLITE_FTS5_BM25',
-    headingPath: Object.freeze([]) as readonly string[],
+    headingPath: Object.freeze([]),
     retrievalRationale:
       'NUMERIC_AUTHORITY: exact accepted USPTO Fee Schedule lexical chunk for 2.6(a)(1)(iii) / fee code 7017.'
   }),
@@ -42,7 +42,7 @@ export const USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE = Object.freeze([
     contentSha256: '8110a47a3bf17a82b248e1fb8e42b8d7e3f84e66578f840ace3a2f54a94e724f',
     indexedAt: '2026-08-27T18:23:04.916Z',
     indexMode: 'SQLITE_FTS5_BM25',
-    headingPath: Object.freeze([]) as readonly string[],
+    headingPath: Object.freeze([]),
     retrievalRationale:
       'APPLICABILITY_CONTEXT: exact accepted USPTO Trademark Fee Information lexical chunk for the frozen Section 1 / Section 44 pilot.'
   })
