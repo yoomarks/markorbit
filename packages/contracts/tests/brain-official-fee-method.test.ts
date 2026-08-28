@@ -60,11 +60,15 @@ describe('USPTO Official Fee Brain Method compiler', () => {
       reason: 'LINEAGE_MISMATCH'
     });
 
+    const source = structuredClone(USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE[0]);
     const tampered = resolvedInput();
-    tampered.knowledgeSources[0] = {
-      ...tampered.knowledgeSources[0]!,
-      contentSha256: 'a'.repeat(64)
-    };
+    tampered.knowledgeSources = [
+      {
+        ...source,
+        contentSha256: 'a'.repeat(64)
+      },
+      ...tampered.knowledgeSources.slice(1)
+    ];
     expect(compileUsptoOfficialFeeMethodPackageV1(tampered)).toEqual({
       status: 'REJECTED',
       reason: 'LINEAGE_MISMATCH'
