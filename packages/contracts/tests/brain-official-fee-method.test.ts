@@ -3,19 +3,20 @@ import { selectExecutableMethodPackageV1 } from '../src/brain-method.js';
 import {
   USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE,
   USPTO_OFFICIAL_FEE_PILOT_OPERATION,
-  compileUsptoOfficialFeeMethodPackageV1
+  compileUsptoOfficialFeeMethodPackageV1,
+  type CompileUsptoOfficialFeeMethodInputV1
 } from '../src/brain-official-fee-method.js';
 
-function resolvedInput() {
+function resolvedInput(): CompileUsptoOfficialFeeMethodInputV1 {
   return {
     knowledgeSources: structuredClone(USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE),
     temporalResolution: {
-      status: 'RESOLVED' as const,
+      status: 'RESOLVED',
       effectiveFrom: '2025-01-18T00:00:00.000Z',
       evidenceRef: 'USPTO_FY2025_TRADEMARK_FEE_APPLICABILITY'
     },
     conflictResolution: {
-      status: 'NONE' as const,
+      status: 'NONE',
       evidenceRef: 'USPTO_DUAL_SOURCE_AUTHORITY_RECONCILIATION'
     }
   };
