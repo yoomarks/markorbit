@@ -7,13 +7,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format-diff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: phase3/298-cn-duration-evaluation
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -22,7 +24,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Generate exact Prettier diff
+      - name: Apply exact Prettier format
         run: |
           pnpm exec prettier --write packages/contracts/src/brain-cn-duration-research.ts
+          if git diff --quiet -- packages/contracts/src/brain-cn-duration-research.ts; then
+            echo "No formatting changes required."
+            exit 0
+          fi
           git diff -- packages/contracts/src/brain-cn-duration-research.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/brain-cn-duration-research.ts
+          git commit -m "style(brain): apply exact Prettier format"
+          git push origin HEAD:phase3/298-cn-duration-evaluation
