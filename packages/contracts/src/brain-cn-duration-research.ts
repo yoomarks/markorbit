@@ -108,14 +108,14 @@ export function parseCnDurationResearchDatasetCandidateV1(value: unknown): Resea
       'CN duration research dataset engine_version must bind an exact git SHA.'
     );
   }
-  if (!dataset.watermark?.startsWith('cn-serving-epoch:')) {
-    throw new BrainMethodContractError(
-      'CN duration research dataset must use a cn-serving-epoch watermark.'
-    );
-  }
   if (dataset.as_of !== null) {
     throw new BrainMethodContractError(
       'CN duration research dataset must not claim historical as-of reconstruction.'
+    );
+  }
+  if (!dataset.watermark?.startsWith('cn-serving-epoch:')) {
+    throw new BrainMethodContractError(
+      'CN duration research dataset must use a cn-serving-epoch watermark.'
     );
   }
   if (!['COMPLETE_BOUNDED', 'COMPLETE_TO_WATERMARK'].includes(dataset.completeness)) {
