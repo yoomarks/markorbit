@@ -336,6 +336,18 @@ export function parseCnDurationResearchDatasetCandidateV1(value: unknown): Resea
     'selected_fields'
   );
 
+  const sourceColumnAliases = record(query.source_column_aliases);
+  exactKeys(
+    sourceColumnAliases,
+    ['source_package_id'],
+    'CN duration research dataset query.source_column_aliases'
+  );
+  if (sourceColumnAliases.source_package_id !== 'last_source_package_id') {
+    throw new BrainMethodContractError(
+      'CN duration research source_package_id must map to cn_case_current.last_source_package_id.'
+    );
+  }
+
   const pagination = record(dataset.pagination);
   if (
     pagination.strategy !== 'KEYSET' ||

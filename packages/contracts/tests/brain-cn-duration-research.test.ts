@@ -30,6 +30,9 @@ function dataset(overrides: Record<string, unknown> = {}) {
         'record_hash',
         'source_rank'
       ],
+      source_column_aliases: {
+        source_package_id: 'last_source_package_id'
+      },
       source_predicate: {
         is_deleted: 0,
         filing_date: 'NOT_NULL',
