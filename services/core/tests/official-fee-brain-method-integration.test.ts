@@ -3,6 +3,7 @@ import {
   USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE,
   compileUsptoOfficialFeeMethodPackageV1
 } from '@markorbit/contracts/brain-official-fee-method';
+import type { KnowledgeRetrievalLineageRefV1 } from '@markorbit/contracts/brain-method';
 import {
   InMemoryOfficialFeeReferenceStore,
   OFFICIAL_FEE_PILOT_OPERATION
@@ -25,6 +26,18 @@ function compiledPackage() {
   return result.package;
 }
 
+function canonicalLineage(
+  sources: readonly Readonly<KnowledgeRetrievalLineageRefV1>[]
+): Readonly<KnowledgeRetrievalLineageRefV1>[] {
+  return sources
+    .map((source) => structuredClone(source))
+    .sort((left, right) => {
+      const leftIdentity = `${left.content.objectId}:${left.chunkId}:${left.contentSha256}`;
+      const rightIdentity = `${right.content.objectId}:${right.chunkId}:${right.contentSha256}`;
+      return leftIdentity.localeCompare(rightIdentity);
+    });
+}
+
 describe('Official Fee Brain Method -> Core Reference materializer', () => {
   it('materializes and replays the accepted package without rerunning Knowledge', () => {
     const store = new InMemoryOfficialFeeReferenceStore();
@@ -43,7 +56,9 @@ describe('Official Fee Brain Method -> Core Reference materializer', () => {
 
     expect(replay).toEqual(first);
     expect(first.packageId).toBe(pkg.packageId);
-    expect(first.knowledgeSources).toEqual(pkg.lineage.knowledgeSources);
+    expect(canonicalLineage(first.knowledgeSources)).toEqual(
+      canonicalLineage(pkg.lineage.knowledgeSources)
+    );
     expect(
       store.resolveCurrent({
         operation: OFFICIAL_FEE_PILOT_OPERATION,
