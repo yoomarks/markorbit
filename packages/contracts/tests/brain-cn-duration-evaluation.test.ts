@@ -31,6 +31,9 @@ function dataset(overrides: Record<string, unknown> = {}) {
         'record_hash',
         'source_rank'
       ],
+      source_column_aliases: {
+        source_package_id: 'last_source_package_id'
+      },
       source_predicate: {
         is_deleted: 0,
         filing_date: 'NOT_NULL',
@@ -169,6 +172,34 @@ describe('CN duration Phase 3 evaluation gate', () => {
     );
     expect(result.package.executable.predictiveClaim).toBe(false);
     expect(result.package.executable.legalConclusion).toBe(false);
+  });
+
+  it('rejects missing or drifted physical source-package lineage aliases', () => {
+    const accepted = dataset();
+    const acceptedQuery = accepted.query as Record<string, unknown>;
+    const missingAliasQuery = { ...acceptedQuery };
+    delete missingAliasQuery.source_column_aliases;
+
+    const missingAlias = evaluateCnDurationResearchV1({
+      dataset: dataset({ query: missingAliasQuery }),
+      acceptanceReceipt: receipt(),
+      firstSummary: summary(),
+      replaySummary: summary()
+    });
+    expect(missingAlias).toEqual({ status: 'REJECTED', reason: 'DATASET_SCOPE_MISMATCH' });
+
+    const wrongAlias = evaluateCnDurationResearchV1({
+      dataset: dataset({
+        query: {
+          ...acceptedQuery,
+          source_column_aliases: { source_package_id: 'source_package_id' }
+        }
+      }),
+      acceptanceReceipt: receipt(),
+      firstSummary: summary(),
+      replaySummary: summary()
+    });
+    expect(wrongAlias).toEqual({ status: 'REJECTED', reason: 'DATASET_SCOPE_MISMATCH' });
   });
 
   it('rejects a target-host receipt that does not match the dataset identity', () => {
