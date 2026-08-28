@@ -1,8 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "operation": "USPTO_TM_NEW_APPLICATION_BASE_FEE_SECTION_1_44_ELECTRONIC_PER_CLASS",
   "jurisdiction": "US",
   "authority": "USPTO",
+  "knowledgeAcceptedMainSha": "d3a264255e5c45fc0ef6b548916d1bf57425fd9f",
+  "knowledgeWorkflowRunId": 33141319142,
+  "replayIdentical": true,
   "resolvedFee": {
     "currency": "USD",
     "amountMinor": 35000,
@@ -13,33 +16,52 @@
       "regulation": "37_CFR_2_6_A_1_III",
       "feeCode": "7017",
       "label": "base application, per class",
-      "knowledgeDocumentId": "art_01M12SPMTVMHPRBJXW0QAR3R6D",
-      "knowledgeDocumentContentSha256": "af2821298d3de7c6d2146b0e2e0a7c2963752d1cea2c9728db665164d74e7258",
-      "knowledgeChunkId": "rch_462a27b264a66de229d3d3309ff79941",
-      "knowledgeChunkContentSha256": "462a27b264a66de229d3d3309ff799410d13159998bd234488d095c11e1a0fda",
-      "knowledgeAcceptedMainSha": "cd51aa05398fe77d96de3c1f2ede840c1ccb3f94"
+      "knowledgeDocumentId": "art_01M139E6ANZXHGEWBVW35PME4K",
+      "knowledgeDocumentContentSha256": "ce172f292949649024744be64aa283ffba840550f3159733b15813e13452314e",
+      "knowledgeChunkId": "rch_186dc86dc9b2d2f609445c6683bceac6",
+      "knowledgeChunkContentSha256": "186dc86dc9b2d2f609445c6683bceac698e4a221bf33d0c6d3991b480bb6601e",
+      "indexedAt": "2026-08-28T04:18:22.805Z"
     }
   },
   "temporalResolution": {
     "status": "RESOLVED",
-    "effectiveFrom": "2025-01-18T00:00:00.000-05:00",
-    "authorityUri": "https://www.uspto.gov/about-us/news-updates/trademark-fee-changes-take-effect-january-18",
-    "authorityStatement": "USPTO trademark fee final rule effective January 18, 2025",
-    "evidenceRef": "USPTO_TRADEMARK_FEE_FINAL_RULE_EFFECTIVE_2025_01_18"
+    "effectiveFrom": "2025-01-18T00:00:00.000Z",
+    "authorityUri": "https://www.uspto.gov/trademarks/fees-payment-information/summary-2025-trademark-fee-changes",
+    "evidenceRef": "KNOWLEDGE_559_USPTO_TEMPORAL_RESOLUTION_2025_01_18",
+    "evidence": [
+      {
+        "knowledgeDocumentId": "art_01M139ED672D4XQZVC46SK4377",
+        "knowledgeDocumentContentSha256": "b993c19c9acb47a7ff5b0295269fee187219d9e2b273c456e46e42522edd1eb2",
+        "knowledgeChunkId": "rch_0690b135ca8d2ad8625cf5a080fcfcf2",
+        "knowledgeChunkContentSha256": "0690b135ca8d2ad8625cf5a080fcfcf2e0988f582a8a0d07cd610b55dd5934e0",
+        "indexedAt": "2026-08-28T04:18:29.782Z",
+        "role": "TEMPORAL_AUTHORITY"
+      },
+      {
+        "knowledgeDocumentId": "art_01M139ED672D4XQZVC46SK4377",
+        "knowledgeDocumentContentSha256": "b993c19c9acb47a7ff5b0295269fee187219d9e2b273c456e46e42522edd1eb2",
+        "knowledgeChunkId": "rch_d046a12a21945953e850803c202dd6c3",
+        "knowledgeChunkContentSha256": "d046a12a21945953e850803c202dd6c3bffd7ddd06b7b5cc5d8e0ace90cbee2a",
+        "indexedAt": "2026-08-28T04:18:29.782Z",
+        "role": "TEMPORAL_OPERATION_CONTEXT"
+      }
+    ]
   },
   "conflictResolution": {
     "status": "NONE",
     "applicabilityAuthorityUri": "https://www.uspto.gov/trademarks/trademark-fee-information",
-    "knowledgeDocumentId": "art_01M127C5JTR5H69JT94XJBG8VA",
-    "knowledgeDocumentContentSha256": "f8e1e0360fe59754ff6dea23df6cf6fd5e1c16769f0b22ecbbc693b796b07a7b",
-    "knowledgeChunkId": "rch_8110a47a3bf17a82b248e1fb8e42b8d7",
-    "knowledgeChunkContentSha256": "8110a47a3bf17a82b248e1fb8e42b8d7e3f84e66578f840ace3a2f54a94e724f",
-    "evidenceRef": "USPTO_DUAL_SOURCE_AUTHORITY_RECONCILIATION_2026_08_28"
+    "knowledgeDocumentId": "art_01M139ENHCJJK65BCQ786BKAZ4",
+    "knowledgeDocumentContentSha256": "eb0341c84179a46ab1cc2852b8924e9bf530b333cd8b3c62d67e84c53c5c1fbe",
+    "knowledgeChunkId": "rch_f3f366e8a5bd59b838d5c6b9cd46ae49",
+    "knowledgeChunkContentSha256": "f3f366e8a5bd59b838d5c6b9cd46ae492ce2578d2236eefa6c64784fafc8f742",
+    "indexedAt": "2026-08-28T04:18:38.334Z",
+    "evidenceRef": "KNOWLEDGE_559_USPTO_CROSS_SOURCE_RECONCILIATION"
   },
-  "observedAt": "2026-08-28T00:00:00.000Z",
+  "observedAt": "2026-08-28T04:18:44.000Z",
   "notes": [
-    "Acceptance evidence only; no live fee amount is embedded in Core or Brain production logic.",
-    "The temporal effective date is separately evidenced and is not inferred from Knowledge indexedAt, crawl time, publishedAt, or the general Fee Schedule page header.",
-    "Capability/product/quote/order wiring is out of scope."
+    "Acceptance evidence is copied from the successful Knowledge #559 live artifact; production Brain/Core code does not embed the live monetary value.",
+    "The effective date is extracted from explicit temporal source text and is not inferred from Knowledge indexedAt, crawl time, publishedAt, or a generic Fee Schedule page header.",
+    "The v2 executable method package binds four exact chunks across three canonical USPTO documents and supersedes the earlier v1 lineage snapshot.",
+    "Capability/product/quote/order wiring remains out of scope."
   ]
 }
