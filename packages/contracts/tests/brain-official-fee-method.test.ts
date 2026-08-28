@@ -106,6 +106,9 @@ describe('USPTO Official Fee Brain Method compiler', () => {
         ...baseContext,
         jurisdiction: 'CA'
       })
-    ).toEqual({ status: 'NOT_APPLICABLE', reason: 'No ACTIVE method package is applicable.' });
+    ).toEqual({
+      status: 'NOT_APPLICABLE',
+      reason: 'No ACTIVE executable method package matches the request scope and available data.'
+    });
   });
 });
