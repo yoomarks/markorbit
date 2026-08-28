@@ -3,10 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import {
-  BrainMethodContractError,
-  type BrainMethodEvaluationV1
-} from './brain-method.js';
+import { BrainMethodContractError, type BrainMethodEvaluationV1 } from './brain-method.js';
 import {
   compileCnDurationStatisticalMethodPackageV1,
   evaluateCnDurationResearchV1,
