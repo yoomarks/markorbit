@@ -50,8 +50,7 @@ function dataset(overrides: Record<string, unknown> = {}) {
       actionability: 'SOURCE_FACT_ONLY'
     },
     as_of: null,
-    watermark:
-      'cn-serving-epoch:coverage=2026-07-31:max-success-sequence=1234:success-count=99',
+    watermark: 'cn-serving-epoch:coverage=2026-07-31:max-success-sequence=1234:success-count=99',
     completeness: 'COMPLETE_BOUNDED',
     pagination: {
       strategy: 'KEYSET',
