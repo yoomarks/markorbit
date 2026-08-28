@@ -1,0 +1,159 @@
+{
+  "acceptance_receipt": {
+    "completeness": "COMPLETE_BOUNDED",
+    "data_engine_sha": "4ee0030dd77fac50f973573818225324888dc064",
+    "dataset_ref_id": "research-dataset_7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "engine_version": "git:4ee0030dd77fac50f973573818225324888dc064",
+    "first_batch_size": 5000,
+    "historic_as_of_reconstruction": false,
+    "integrity_sha256": "e09c3080154094ac90dff79ac2db657b7aff58179272b3293707f2f523b185e0",
+    "invalid_date_order_rows": 0,
+    "legal_conclusion": false,
+    "max_rows": 10000,
+    "objective_only": true,
+    "physical_batch_size_in_identity": false,
+    "population_scope": "DETERMINISTIC_ORDERED_PREFIX",
+    "query_fingerprint_sha256": "7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "raw_population_rows_emitted": false,
+    "receipt_version": "CN_FILING_TO_PRELIM_RESEARCH_ACCEPTANCE_V1",
+    "redacted": true,
+    "replay_batch_size": 1000,
+    "replay_match": true,
+    "replay_scope": "QUIESCENT_CURRENT_SERVING_EPOCH",
+    "row_count": 10000,
+    "status": "PASS",
+    "valid_rows": 10000,
+    "watermark": "cn-serving-epoch:coverage=2026-07-31:max-success-sequence=85:success-count=85"
+  },
+  "dataset": {
+    "aggregation": null,
+    "as_of": null,
+    "completeness": "COMPLETE_BOUNDED",
+    "contract_version": 1,
+    "dataset_ref_id": "research-dataset_7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "engine_version": "git:4ee0030dd77fac50f973573818225324888dc064",
+    "fact_schema_version": "CN_CASE_CURRENT_FILING_TO_PRELIM_DURATION_V1",
+    "generated_at": "2026-08-28T22:33:37.355214Z",
+    "integrity_sha256": "e09c3080154094ac90dff79ac2db657b7aff58179272b3293707f2f523b185e0",
+    "jurisdictions": [
+      "CN"
+    ],
+    "pagination": {
+      "cursor_field": "application_number",
+      "execution_batch_size_in_replay_identity": false,
+      "order_by": [
+        "application_number ASC"
+      ],
+      "strategy": "KEYSET"
+    },
+    "partition": null,
+    "query": {
+      "actionability": "SOURCE_FACT_ONLY",
+      "dataset": "CN_FILING_TO_PRELIM_PUBLICATION_DURATION_V1",
+      "derived_fields": {
+        "duration_days": "CALENDAR_DAYS(prelim_pub_date-filing_date)",
+        "quality": [
+          "VALID",
+          "INVALID_DATE_ORDER"
+        ]
+      },
+      "engine": "clickhouse",
+      "historic_as_of_reconstruction": false,
+      "invalid_date_order_policy": "RETAIN_WITH_NULL_DURATION_AND_QUALITY_FLAG",
+      "legal_conclusion": false,
+      "missing_temporal_policy": "EXCLUDE_DECLARED",
+      "ordering": [
+        "application_number ASC"
+      ],
+      "population_bound": {
+        "max_rows": 10000,
+        "strategy": "ORDERED_PREFIX"
+      },
+      "replay_scope": "QUIESCENT_CURRENT_SERVING_EPOCH",
+      "selected_fields": [
+        "application_number",
+        "filing_date",
+        "prelim_pub_date",
+        "source_package_id",
+        "source_effective_date",
+        "source_row_hash",
+        "record_hash",
+        "source_rank"
+      ],
+      "source_column_aliases": {
+        "source_package_id": "last_source_package_id"
+      },
+      "source_lineage": "PER_ROW_PACKAGE_AND_HASH_BOUND",
+      "source_predicate": {
+        "filing_date": "NOT_NULL",
+        "is_deleted": 0,
+        "prelim_pub_date": "NOT_NULL"
+      },
+      "source_table": "markorbit_facts.cn_case_current"
+    },
+    "query_fingerprint_sha256": "7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "resource_kinds": [
+      "cn_case_current"
+    ],
+    "row_count": 10000,
+    "sampling": null,
+    "watermark": "cn-serving-epoch:coverage=2026-07-31:max-success-sequence=85:success-count=85"
+  },
+  "evidence_version": "CN_FILING_TO_PRELIM_RESEARCH_EVIDENCE_V1",
+  "first_summary": {
+    "computed_at": "2026-08-28T22:33:37.355214Z",
+    "dataset_ref_id": "research-dataset_7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "engine_version": "git:4ee0030dd77fac50f973573818225324888dc064",
+    "integrity_sha256": "e09c3080154094ac90dff79ac2db657b7aff58179272b3293707f2f523b185e0",
+    "invalid_date_order_rows": 0,
+    "legal_conclusion": false,
+    "objective_only": true,
+    "predictive_claim": false,
+    "quantile_method": "NEAREST_RANK",
+    "query_fingerprint_sha256": "7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "raw_population_rows_emitted": false,
+    "row_count": 10000,
+    "schemaVersion": 1,
+    "sourceSystem": "MARKORBIT_DATA_ENGINE",
+    "statistics": {
+      "count": 10000,
+      "max_days": 3654,
+      "median_days": 336,
+      "min_days": 58,
+      "p25_days": 335,
+      "p75_days": 383
+    },
+    "valid_rows": 10000,
+    "watermark": "cn-serving-epoch:coverage=2026-07-31:max-success-sequence=85:success-count=85"
+  },
+  "objective_only": true,
+  "raw_population_rows_emitted": false,
+  "redacted": true,
+  "replay_summary": {
+    "computed_at": "2026-08-28T22:33:38.334354Z",
+    "dataset_ref_id": "research-dataset_7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "engine_version": "git:4ee0030dd77fac50f973573818225324888dc064",
+    "integrity_sha256": "e09c3080154094ac90dff79ac2db657b7aff58179272b3293707f2f523b185e0",
+    "invalid_date_order_rows": 0,
+    "legal_conclusion": false,
+    "objective_only": true,
+    "predictive_claim": false,
+    "quantile_method": "NEAREST_RANK",
+    "query_fingerprint_sha256": "7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d",
+    "raw_population_rows_emitted": false,
+    "row_count": 10000,
+    "schemaVersion": 1,
+    "sourceSystem": "MARKORBIT_DATA_ENGINE",
+    "statistics": {
+      "count": 10000,
+      "max_days": 3654,
+      "median_days": 336,
+      "min_days": 58,
+      "p25_days": 335,
+      "p75_days": 383
+    },
+    "valid_rows": 10000,
+    "watermark": "cn-serving-epoch:coverage=2026-07-31:max-success-sequence=85:success-count=85"
+  },
+  "status": "PASS"
+}
