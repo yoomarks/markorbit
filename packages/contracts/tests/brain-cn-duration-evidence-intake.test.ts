@@ -183,9 +183,10 @@ describe('CN duration Phase 3 evidence intake', () => {
       )
     ).toEqual({ status: 'REJECTED', reason: 'EVIDENCE_BUNDLE_MISMATCH' });
 
-    expect(
-      compileCnDurationResearchEvidenceBundleV1(evidence({ raw_rows: [] }))
-    ).toEqual({ status: 'REJECTED', reason: 'EVIDENCE_BUNDLE_MISMATCH' });
+    expect(compileCnDurationResearchEvidenceBundleV1(evidence({ raw_rows: [] }))).toEqual({
+      status: 'REJECTED',
+      reason: 'EVIDENCE_BUNDLE_MISMATCH'
+    });
   });
 
   it('delegates physical-lineage and replay drift to the frozen evaluator', () => {

@@ -27,10 +27,7 @@ export interface CnDurationResearchEvidenceBundleV1 {
   raw_population_rows_emitted: false;
 }
 
-type CompileRejection = Extract<
-  CompileCnDurationStatisticalMethodResultV1,
-  { status: 'REJECTED' }
->;
+type CompileRejection = Extract<CompileCnDurationStatisticalMethodResultV1, { status: 'REJECTED' }>;
 
 export type CnDurationResearchEvidenceIntakeResultV1 =
   | CompileRejection
@@ -40,14 +37,8 @@ export type CnDurationResearchEvidenceIntakeResultV1 =
       evaluation: ReturnType<typeof evaluateCnDurationResearchV1> extends infer Result
         ? Extract<Result, { status: 'PASSED' }>['evaluation']
         : never;
-      method: Extract<
-        CompileCnDurationStatisticalMethodResultV1,
-        { status: 'READY' }
-      >['method'];
-      package: Extract<
-        CompileCnDurationStatisticalMethodResultV1,
-        { status: 'READY' }
-      >['package'];
+      method: Extract<CompileCnDurationStatisticalMethodResultV1, { status: 'READY' }>['method'];
+      package: Extract<CompileCnDurationStatisticalMethodResultV1, { status: 'READY' }>['package'];
     };
 
 export type CnDurationResearchEvidenceFileIntakeResultV1 =
@@ -222,7 +213,8 @@ if (invokedPath && import.meta.url === pathToFileURL(resolve(invokedPath)).href)
   try {
     process.exitCode = main();
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown CN duration evidence intake error.';
+    const message =
+      error instanceof Error ? error.message : 'Unknown CN duration evidence intake error.';
     process.stderr.write(`${message}\n`);
     process.exitCode = 2;
   }
