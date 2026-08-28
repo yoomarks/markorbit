@@ -64,9 +64,9 @@ describe('USPTO Official Fee Brain Method compiler', () => {
       reason: 'LINEAGE_MISMATCH'
     });
 
-    const source: KnowledgeRetrievalLineageRefV1 = structuredClone(
-      USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE[0]
-    );
+    const [acceptedSource] = USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE;
+    if (!acceptedSource) throw new Error('Expected accepted Knowledge lineage fixture.');
+    const source: KnowledgeRetrievalLineageRefV1 = structuredClone(acceptedSource);
     const tampered = resolvedInput();
     tampered.knowledgeSources = [
       {
