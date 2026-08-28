@@ -395,12 +395,16 @@ export function parseCnDurationTargetHostAcceptanceReceiptV1(
     receipt.population_scope !== 'DETERMINISTIC_ORDERED_PREFIX' ||
     receipt.replay_scope !== 'QUIESCENT_CURRENT_SERVING_EPOCH'
   ) {
-    throw new BrainMethodContractError('CN duration target-host receipt is outside the frozen gate.');
+    throw new BrainMethodContractError(
+      'CN duration target-host receipt is outside the frozen gate.'
+    );
   }
   const dataEngineSha = exactGitSha(receipt.data_engine_sha, 'receipt.data_engine_sha');
   const engineVersion = text(receipt.engine_version, 'receipt.engine_version');
   if (engineVersion !== `git:${dataEngineSha}`) {
-    throw new BrainMethodContractError('CN duration target-host receipt engine identity is inconsistent.');
+    throw new BrainMethodContractError(
+      'CN duration target-host receipt engine identity is inconsistent.'
+    );
   }
   const rowCount = positiveInteger(receipt.row_count, 'receipt.row_count');
   const validRows = nonNegativeInteger(receipt.valid_rows, 'receipt.valid_rows');
@@ -409,7 +413,9 @@ export function parseCnDurationTargetHostAcceptanceReceiptV1(
     'receipt.invalid_date_order_rows'
   );
   if (validRows + invalidRows !== rowCount) {
-    throw new BrainMethodContractError('CN duration target-host receipt quality counts do not reconcile.');
+    throw new BrainMethodContractError(
+      'CN duration target-host receipt quality counts do not reconcile.'
+    );
   }
   const firstBatchSize = positiveInteger(receipt.first_batch_size, 'receipt.first_batch_size');
   const replayBatchSize = positiveInteger(receipt.replay_batch_size, 'receipt.replay_batch_size');
@@ -420,19 +426,15 @@ export function parseCnDurationTargetHostAcceptanceReceiptV1(
   }
   const maxRows = positiveInteger(receipt.max_rows, 'receipt.max_rows');
   if (rowCount > maxRows) {
-    throw new BrainMethodContractError('CN duration target-host receipt row_count exceeds max_rows.');
+    throw new BrainMethodContractError(
+      'CN duration target-host receipt row_count exceeds max_rows.'
+    );
   }
   exactTrue(receipt.redacted, 'receipt.redacted');
   exactTrue(receipt.objective_only, 'receipt.objective_only');
   exactTrue(receipt.replay_match, 'receipt.replay_match');
-  exactFalse(
-    receipt.physical_batch_size_in_identity,
-    'receipt.physical_batch_size_in_identity'
-  );
-  exactFalse(
-    receipt.historic_as_of_reconstruction,
-    'receipt.historic_as_of_reconstruction'
-  );
+  exactFalse(receipt.physical_batch_size_in_identity, 'receipt.physical_batch_size_in_identity');
+  exactFalse(receipt.historic_as_of_reconstruction, 'receipt.historic_as_of_reconstruction');
   exactFalse(receipt.legal_conclusion, 'receipt.legal_conclusion');
   exactFalse(receipt.raw_population_rows_emitted, 'receipt.raw_population_rows_emitted');
   if (!['COMPLETE_BOUNDED', 'COMPLETE_TO_WATERMARK'].includes(String(receipt.completeness))) {
@@ -527,11 +529,15 @@ export function parseCnDurationDescriptiveSummaryRunV1(
     summary.sourceSystem !== 'MARKORBIT_DATA_ENGINE' ||
     summary.quantile_method !== CN_DURATION_RESEARCH_QUANTILE_METHOD
   ) {
-    throw new BrainMethodContractError('CN duration descriptive summary is outside the frozen gate.');
+    throw new BrainMethodContractError(
+      'CN duration descriptive summary is outside the frozen gate.'
+    );
   }
   const engineVersion = text(summary.engine_version, 'summary.engine_version');
   if (!EXACT_ENGINE_SHA.test(engineVersion)) {
-    throw new BrainMethodContractError('CN duration descriptive summary requires exact engine git SHA.');
+    throw new BrainMethodContractError(
+      'CN duration descriptive summary requires exact engine git SHA.'
+    );
   }
   const rowCount = positiveInteger(summary.row_count, 'summary.row_count');
   const validRows = nonNegativeInteger(summary.valid_rows, 'summary.valid_rows');
@@ -540,7 +546,9 @@ export function parseCnDurationDescriptiveSummaryRunV1(
     'summary.invalid_date_order_rows'
   );
   if (validRows + invalidRows !== rowCount) {
-    throw new BrainMethodContractError('CN duration descriptive summary quality counts do not reconcile.');
+    throw new BrainMethodContractError(
+      'CN duration descriptive summary quality counts do not reconcile.'
+    );
   }
   const statistics = parseStatistics(summary.statistics);
   if (statistics.count !== validRows) {
@@ -774,7 +782,8 @@ export function compileCnDurationStatisticalMethodPackageV1(
       DESCRIPTIVE_DISTRIBUTION_REPRODUCED:
         'Accepted dataset lineage and objective descriptive statistics replayed deterministically.',
       NOT_APPLICABLE: 'Request is outside the exact CN duration research applicability.',
-      DATASET_LINEAGE_MISMATCH: 'Dataset or target-host acceptance evidence does not match lineage.',
+      DATASET_LINEAGE_MISMATCH:
+        'Dataset or target-host acceptance evidence does not match lineage.',
       REPLAY_MISMATCH: 'Descriptive statistics did not reproduce from the same dataset identity.'
     },
     fallback: { behavior: 'NOT_APPLICABLE' },
