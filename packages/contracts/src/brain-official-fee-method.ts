@@ -51,26 +51,21 @@ export const USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE = Object.freeze([
 const ACCEPTED_DOCUMENT_EVIDENCE = Object.freeze([
   Object.freeze({
     role: 'NUMERIC_AUTHORITY',
-    sourceUri:
-      'https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule',
+    sourceUri: 'https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule',
     documentId: 'art_01M12SPMTVMHPRBJXW0QAR3R6D',
     artifactVersion: 2,
-    documentContentSha256:
-      'af2821298d3de7c6d2146b0e2e0a7c2963752d1cea2c9728db665164d74e7258',
+    documentContentSha256: 'af2821298d3de7c6d2146b0e2e0a7c2963752d1cea2c9728db665164d74e7258',
     chunkId: 'rch_462a27b264a66de229d3d3309ff79941',
-    chunkContentSha256:
-      '462a27b264a66de229d3d3309ff799410d13159998bd234488d095c11e1a0fda'
+    chunkContentSha256: '462a27b264a66de229d3d3309ff799410d13159998bd234488d095c11e1a0fda'
   }),
   Object.freeze({
     role: 'APPLICABILITY_CONTEXT',
     sourceUri: 'https://www.uspto.gov/trademarks/trademark-fee-information',
     documentId: 'art_01M127C5JTR5H69JT94XJBG8VA',
     artifactVersion: 2,
-    documentContentSha256:
-      'f8e1e0360fe59754ff6dea23df6cf6fd5e1c16769f0b22ecbbc693b796b07a7b',
+    documentContentSha256: 'f8e1e0360fe59754ff6dea23df6cf6fd5e1c16769f0b22ecbbc693b796b07a7b',
     chunkId: 'rch_8110a47a3bf17a82b248e1fb8e42b8d7',
-    chunkContentSha256:
-      '8110a47a3bf17a82b248e1fb8e42b8d7e3f84e66578f840ace3a2f54a94e724f'
+    chunkContentSha256: '8110a47a3bf17a82b248e1fb8e42b8d7e3f84e66578f840ace3a2f54a94e724f'
   })
 ]);
 
@@ -84,8 +79,7 @@ export type OfficialFeeTemporalResolutionV1 =
     };
 
 export type OfficialFeeConflictResolutionV1 =
-  | { status: 'UNRESOLVED' }
-  | { status: 'NONE'; evidenceRef: string };
+  { status: 'UNRESOLVED' } | { status: 'NONE'; evidenceRef: string };
 
 export interface CompileUsptoOfficialFeeMethodInputV1 {
   knowledgeSources: readonly Readonly<KnowledgeRetrievalLineageRefV1>[];
@@ -202,8 +196,10 @@ export function compileUsptoOfficialFeeMethodPackageV1(
       'Both frozen USPTO authority roles passed real acquisition, exact lexical chunk retrieval, complete provenance, and deterministic replay. No fee amount is embedded in this method.'
   } as const;
   const methodId = 'brain-method_uspto-official-fee-resolution' as const;
-  const methodVersionId = `brain-method-version_uspto-official-fee-resolution-${versionKey}` as const;
-  const packageId = `executable-method-package_uspto-official-fee-resolution-${versionKey}` as const;
+  const methodVersionId =
+    `brain-method-version_uspto-official-fee-resolution-${versionKey}` as const;
+  const packageId =
+    `executable-method-package_uspto-official-fee-resolution-${versionKey}` as const;
   const executable = {
     kind: 'OFFICIAL_SOURCE_RESOLUTION',
     authorityOrder: ['NUMERIC_AUTHORITY', 'APPLICABILITY_CONTEXT'],
@@ -247,7 +243,8 @@ export function compileUsptoOfficialFeeMethodPackageV1(
       'The monetary value is an execution/materialization input derived from evidence and is not stored in the method.',
       'Temporal or cross-source ambiguity must reject compilation rather than infer from publication or crawl timestamps.'
     ],
-    coverage: 'US / USPTO / new trademark application / Section 1 or Section 44 / electronic / per class.',
+    coverage:
+      'US / USPTO / new trademark application / Section 1 or Section 44 / electronic / per class.',
     evaluation,
     fallback: { behavior: 'NOT_APPLICABLE' },
     lineage,
@@ -273,11 +270,13 @@ export function compileUsptoOfficialFeeMethodPackageV1(
     requiredData: applicability.requiredData,
     referenceDependencies: ['CORE_OFFICIAL_FEE_REFERENCE_STORE_V1'],
     reasonCodes: {
-      RESOLVED: 'Exact accepted authority lineage and explicit temporal/conflict resolution are present.',
+      RESOLVED:
+        'Exact accepted authority lineage and explicit temporal/conflict resolution are present.',
       NOT_APPLICABLE: 'Request is outside the frozen USPTO official-fee pilot.',
       TEMPORAL_UNRESOLVED: 'Authoritative fee applicability time is unresolved.',
       CONFLICT_UNRESOLVED: 'Cross-source authority conflict is unresolved.',
-      LINEAGE_MISMATCH: 'Knowledge source/chunk/version lineage does not match the accepted evidence.'
+      LINEAGE_MISMATCH:
+        'Knowledge source/chunk/version lineage does not match the accepted evidence.'
     },
     fallback: { behavior: 'NOT_APPLICABLE' },
     evaluation,
