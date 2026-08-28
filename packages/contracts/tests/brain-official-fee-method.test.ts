@@ -16,27 +16,36 @@ function resolvedInput(): CompileUsptoOfficialFeeMethodInputV1 {
     temporalResolution: {
       status: 'RESOLVED',
       effectiveFrom: '2025-01-18T00:00:00.000Z',
-      evidenceRef: 'USPTO_FY2025_TRADEMARK_FEE_APPLICABILITY'
+      evidenceRef: 'KNOWLEDGE_559_USPTO_TEMPORAL_RESOLUTION_2025_01_18'
     },
     conflictResolution: {
       status: 'NONE',
-      evidenceRef: 'USPTO_DUAL_SOURCE_AUTHORITY_RECONCILIATION'
+      evidenceRef: 'KNOWLEDGE_559_USPTO_CROSS_SOURCE_RECONCILIATION'
     }
   };
 }
 
 describe('USPTO Official Fee Brain Method compiler', () => {
-  it('compiles one ACTIVE package bound to the exact accepted Knowledge lineage without a fee amount', () => {
+  it('compiles one ACTIVE v2 package bound to the exact Knowledge #559 live lineage without a fee amount', () => {
     const result = compileUsptoOfficialFeeMethodPackageV1(resolvedInput());
     expect(result.status).toBe('READY');
     if (result.status !== 'READY') return;
 
     expect(result.package.lifecycle).toBe('ACTIVE');
-    expect(result.package.lineage.knowledgeSources).toHaveLength(2);
+    expect(result.package.packageVersion).toBe(2);
+    expect(result.method.version).toBe(2);
+    expect(result.method.supersedesMethodVersionIds).toContain(
+      'brain-method-version_uspto-official-fee-resolution-20250118'
+    );
+    expect(result.package.lineage.knowledgeSources).toHaveLength(4);
+    expect(new Set(result.package.lineage.knowledgeSources.map((source) => source.content.objectId)).size).toBe(
+      3
+    );
     expect(result.package.lineage.knowledgeSources.map((source) => source.chunkId).sort()).toEqual(
       USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE.map((source) => source.chunkId).sort()
     );
-    expect(JSON.stringify(result)).not.toContain('350');
+    expect(JSON.stringify(result)).not.toContain('35000');
+    expect(JSON.stringify(result)).not.toContain('$350');
     expect(JSON.stringify(result)).not.toContain('amountMinor');
   });
 
@@ -58,7 +67,7 @@ describe('USPTO Official Fee Brain Method compiler', () => {
 
   it('rejects missing or tampered accepted lineage', () => {
     const missing = resolvedInput();
-    missing.knowledgeSources = missing.knowledgeSources.slice(0, 1);
+    missing.knowledgeSources = missing.knowledgeSources.slice(0, 3);
     expect(compileUsptoOfficialFeeMethodPackageV1(missing)).toEqual({
       status: 'REJECTED',
       reason: 'LINEAGE_MISMATCH'
