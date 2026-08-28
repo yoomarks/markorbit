@@ -13,8 +13,7 @@ const evidencePath = join(
   'cn_filing_to_prelim_research_evidence_4ee0030dd77fac50f973573818225324888dc064.json'
 );
 
-const expectedEvidenceSha256 =
-  'de407eb5e5c0704c7e2817cf8ce67f14c381d1a587fb986a664425d8a3eb411c';
+const expectedEvidenceSha256 = 'de407eb5e5c0704c7e2817cf8ce67f14c381d1a587fb986a664425d8a3eb411c';
 const expectedDatasetRef =
   'research-dataset_7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d';
 
@@ -33,14 +32,10 @@ describe('Phase 3 real CN duration target-host evidence acceptance', () => {
     expect(result.evaluation.metrics.rawPopulationCopyToCore).toBe(0);
 
     expect(result.method.lifecycle).toBe('VALIDATED');
-    expect(result.method.lineage.researchDatasets[0]?.dataset_ref_id).toBe(
-      expectedDatasetRef
-    );
+    expect(result.method.lineage.researchDatasets[0]?.dataset_ref_id).toBe(expectedDatasetRef);
 
     expect(result.package.lifecycle).toBe('VALIDATED');
-    expect(result.package.lineage.researchDatasets[0]?.dataset_ref_id).toBe(
-      expectedDatasetRef
-    );
+    expect(result.package.lineage.researchDatasets[0]?.dataset_ref_id).toBe(expectedDatasetRef);
     expect(result.package.activatedAt).toBeUndefined();
     expect(result.package.executable.legalConclusion).toBe(false);
     expect(result.package.executable.predictiveClaim).toBe(false);
