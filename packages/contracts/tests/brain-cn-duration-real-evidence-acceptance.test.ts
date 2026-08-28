@@ -25,16 +25,22 @@ describe('Phase 3 real CN duration target-host evidence acceptance', () => {
     expect(result.intake_version).toBe(CN_DURATION_RESEARCH_CORE_INTAKE_VERSION);
     expect(result.evidence_sha256).toBe(expectedEvidenceSha256);
     expect(result.status).toBe('READY');
-    if (result.status !== 'READY') throw new Error(`expected READY, got ${result.status}`);
+    if (result.status !== 'READY') {
+      throw new Error(`expected READY, got ${result.status}`);
+    }
 
     expect(result.evaluation.status).toBe('PASSED');
     expect(result.evaluation.metrics.rawPopulationCopyToCore).toBe(0);
 
     expect(result.method.lifecycle).toBe('VALIDATED');
-    expect(result.method.lineage.researchDatasets[0]?.dataset_ref_id).toBe(expectedDatasetRef);
+    expect(result.method.lineage.researchDatasets[0]?.dataset_ref_id).toBe(
+      expectedDatasetRef
+    );
 
     expect(result.package.lifecycle).toBe('VALIDATED');
-    expect(result.package.lineage.researchDatasets[0]?.dataset_ref_id).toBe(expectedDatasetRef);
+    expect(result.package.lineage.researchDatasets[0]?.dataset_ref_id).toBe(
+      expectedDatasetRef
+    );
     expect(result.package.activatedAt).toBeUndefined();
     expect(result.package.executable.legalConclusion).toBe(false);
     expect(result.package.executable.predictiveClaim).toBe(false);
