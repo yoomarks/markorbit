@@ -6,7 +6,8 @@ import type {
 } from '@markorbit/contracts/capability-runtime';
 import {
   ExecutableMethodCapabilityExecutorV1,
-  executableMethodPackageEvidenceRefsV1
+  executableMethodPackageEvidenceRefsV1,
+  type ExecutableMethodPackageRunnerV1
 } from '../src/executable-method-runtime.js';
 
 const NOW = '2026-08-29T00:00:00.000Z';
@@ -60,9 +61,11 @@ function activePackage(
 }
 
 function validatedPackage(suffix = 'validated'): ExecutableMethodPackageV1 {
-  const pkg = activePackage(suffix, { lifecycle: 'VALIDATED' });
-  const { activatedAt: _activatedAt, ...validated } = pkg;
-  return validated;
+  return {
+    ...activePackage(suffix),
+    lifecycle: 'VALIDATED',
+    activatedAt: undefined
+  };
 }
 
 const request: CapabilityRequestV2 = {
@@ -120,13 +123,11 @@ const context = {
   asOf: NOW
 };
 
-function executor(packages: readonly unknown[], runner = vi.fn()) {
-  const run = runner.mockImplementation(() =>
-    Promise.resolve({
-      output: { statistic: 336 },
-      evidenceRefs: ['runner-evidence:test']
-    })
-  );
+function executor(packages: readonly unknown[]) {
+  const run = vi.fn<ExecutableMethodPackageRunnerV1['run']>(async () => ({
+    output: { statistic: 336 },
+    evidenceRefs: ['runner-evidence:test']
+  }));
   const instance = new ExecutableMethodCapabilityExecutorV1({
     packages: { list: vi.fn(() => Promise.resolve(packages)) },
     selectionContext: { resolve: vi.fn(() => context) },
@@ -146,11 +147,10 @@ describe('Phase 4 executable method package runtime bridge', () => {
 
     expect(result.output).toEqual({ statistic: 336 });
     expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith({
-      request,
-      binding,
-      package: expect.objectContaining({ packageId: pkg.packageId })
-    });
+    const invocation = run.mock.calls[0]![0];
+    expect(invocation.request).toBe(request);
+    expect(invocation.binding).toBe(binding);
+    expect(invocation.package.packageId).toBe(pkg.packageId);
     expect(result.evidenceRefs).toEqual(
       [...new Set([...executableMethodPackageEvidenceRefsV1(pkg), 'runner-evidence:test'])].sort()
     );
