@@ -77,9 +77,7 @@ export interface OfficialFeeReferenceReaderQueryV1 {
  * needed for this invocation and never becomes a second fee store.
  */
 export interface OfficialFeeReferenceReaderV1 {
-  resolveCurrent(
-    query: Readonly<OfficialFeeReferenceReaderQueryV1>
-  ): Promise<unknown> | unknown;
+  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): Promise<unknown> | unknown;
 }
 
 export interface UsptoOfficialFeeResolverReferenceV1 {
@@ -327,9 +325,11 @@ function referenceIntegrity(reference: Readonly<UsptoOfficialFeeResolverReferenc
     unit: reference.unit
   });
   if (
-    sourceIdentityFingerprintSha256 !== USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256 ||
+    sourceIdentityFingerprintSha256 !==
+      USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256 ||
     sourceIdentityFingerprintSha256 !== reference.sourceIdentityFingerprintSha256 ||
-    replayIdentityFingerprintSha256 !== USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256 ||
+    replayIdentityFingerprintSha256 !==
+      USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256 ||
     materializationFingerprintSha256 !==
       USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256 ||
     materializationFingerprintSha256 !== reference.materializationFingerprintSha256 ||
@@ -538,14 +538,18 @@ export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMetho
     const integrity = referenceIntegrity(reference);
     const asOf = Date.parse(requestInput.asOf);
     if (Date.parse(reference.effectiveFrom) > asOf) {
-      throw new TypeError('Accepted Official Fee reference is not effective at the requested time.');
+      throw new TypeError(
+        'Accepted Official Fee reference is not effective at the requested time.'
+      );
     }
     if (
       reference.packageId !== input.package.packageId ||
       reference.methodId !== input.package.methodId ||
       reference.methodVersionId !== input.package.methodVersionId
     ) {
-      throw new TypeError('Official Fee reference and executable package lineage do not match exactly.');
+      throw new TypeError(
+        'Official Fee reference and executable package lineage do not match exactly.'
+      );
     }
 
     const output: UsptoOfficialFeeResolverOutputV1 = {
@@ -603,8 +607,7 @@ export function createUsptoOfficialFeeResolverCapabilityExecutorV1(
     },
     selectionContext: new UsptoOfficialFeeMethodSelectionContextResolverV1(),
     runners: {
-      resolve: (kind) =>
-        kind === USPTO_OFFICIAL_FEE_RESOLVER_EXECUTABLE_KIND ? runner : undefined
+      resolve: (kind) => (kind === USPTO_OFFICIAL_FEE_RESOLVER_EXECUTABLE_KIND ? runner : undefined)
     }
   });
 }

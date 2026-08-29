@@ -67,8 +67,7 @@ function acceptedReference(overrides: Record<string, unknown> = {}) {
     methodVersionId: pkg.methodVersionId,
     knowledgeSources: structuredClone(pkg.lineage.knowledgeSources),
     sourceIdentityFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
-    materializationFingerprintSha256:
-      USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256,
+    materializationFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256,
     materializedAt: MATERIALIZED_AT,
     ...overrides
   };
@@ -275,14 +274,10 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
     };
     const { runtime, resolveCurrent } = runtimeWithReader(reader);
 
-    const result = await runtime.invoke(
-      command({ idempotencyKey: 'phase4-uspto-fee-conflict' })
-    );
+    const result = await runtime.invoke(command({ idempotencyKey: 'phase4-uspto-fee-conflict' }));
 
     expect(result.returnValue.status).toBe('FAILED');
-    expect(result.outcome.error?.message).toContain(
-      'Multiple CURRENT official fee references'
-    );
+    expect(result.outcome.error?.message).toContain('Multiple CURRENT official fee references');
     expect(resolveCurrent).toHaveBeenCalledTimes(1);
   });
 
@@ -333,8 +328,7 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
     );
 
     const fingerprintTampered = runtimeWithReader({
-      resolveCurrent: () =>
-        acceptedReference({ materializationFingerprintSha256: 'f'.repeat(64) })
+      resolveCurrent: () => acceptedReference({ materializationFingerprintSha256: 'f'.repeat(64) })
     });
     const fingerprintResult = await fingerprintTampered.runtime.invoke(
       command({ idempotencyKey: 'phase4-uspto-fee-materialization-mismatch' })
