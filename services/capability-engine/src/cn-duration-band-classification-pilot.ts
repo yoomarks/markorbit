@@ -192,7 +192,7 @@ export function parseCnDurationBandClassificationInputV1(
     segment: 'FILING_TO_PRELIM_PUBLICATION',
     availableData: [...input.availableData] as string[],
     acceptedResearchDatasetRef: CN_DURATION_BAND_ACCEPTED_DATASET_REF,
-    observedCompletedDurationDays: input.observedCompletedDurationDays as number
+    observedCompletedDurationDays: input.observedCompletedDurationDays
   };
 }
 
@@ -326,7 +326,9 @@ export class CnDurationBandClassificationRunnerV1 implements ExecutableMethodPac
   constructor(decisionValue: unknown) {
     this.decision = parseExecutableMethodPackageActivationDecisionV1(decisionValue);
     if (this.decision.decision !== 'APPROVED') {
-      throw new TypeError('CN duration historical-band runner requires an APPROVED activation decision.');
+      throw new TypeError(
+        'CN duration historical-band runner requires an APPROVED activation decision.'
+      );
     }
   }
 
@@ -353,8 +355,7 @@ export class CnDurationBandClassificationRunnerV1 implements ExecutableMethodPac
     if (
       !executable ||
       executable.kind !== CN_DURATION_BAND_EXECUTABLE_KIND ||
-      executable.semantics !==
-        'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION' ||
+      executable.semantics !== 'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION' ||
       executable.datasetRefId !== CN_DURATION_BAND_ACCEPTED_DATASET_REF ||
       executable.legalConclusion !== false ||
       executable.predictiveClaim !== false ||

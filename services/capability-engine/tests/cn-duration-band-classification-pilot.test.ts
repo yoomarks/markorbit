@@ -97,10 +97,7 @@ function input(overrides: Record<string, unknown> = {}) {
     stage: 'COMPLETED_INTERVAL_INTERPRETATION',
     filingBasis: 'ANY',
     segment: 'FILING_TO_PRELIM_PUBLICATION',
-    availableData: [
-      'OBSERVED_COMPLETED_DURATION_DAYS',
-      'ACCEPTED_CN_DURATION_DISTRIBUTION'
-    ],
+    availableData: ['OBSERVED_COMPLETED_DURATION_DAYS', 'ACCEPTED_CN_DURATION_DISTRIBUTION'],
     acceptedResearchDatasetRef: CN_DURATION_BAND_ACCEPTED_DATASET_REF,
     observedCompletedDurationDays: 336,
     ...overrides
@@ -118,7 +115,8 @@ function command(overrides: Partial<CapabilityRequestV2Command> = {}): Capabilit
       callerProduct: 'MARKREG',
       permissionContextRef: 'permission_phase4_cn_duration_band'
     },
-    purpose: 'Classify one already completed duration relative to the accepted historical distribution.',
+    purpose:
+      'Classify one already completed duration relative to the accepted historical distribution.',
     input: input(),
     inputSchemaId: CN_DURATION_BAND_CLASSIFICATION_INPUT_SCHEMA,
     outputSchemaId: CN_DURATION_BAND_CLASSIFICATION_OUTPUT_SCHEMA,
