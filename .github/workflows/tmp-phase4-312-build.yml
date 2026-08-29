@@ -91,7 +91,7 @@ jobs:
         run: |
           pnpm --filter @markorbit/contracts lint
           pnpm --filter @markorbit/contracts typecheck
-          pnpm --filter @markorbit/contracts test -- data-engine-discovery-contract.test.ts
+          pnpm --filter @markorbit/contracts exec vitest run tests/data-engine-discovery-contract.test.ts
       - name: Gateway checks
         run: |
           pnpm --filter @markorbit/gateway build
@@ -100,7 +100,7 @@ jobs:
             tests/data-engine-discovery-http.test.ts --fix
           pnpm --filter @markorbit/gateway lint
           pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/gateway test -- data-engine-discovery-http.test.ts
+          pnpm --filter @markorbit/gateway exec vitest run tests/data-engine-discovery-http.test.ts
       - name: Capability checks
         run: |
           pnpm --filter @markorbit/capability-engine build
@@ -109,7 +109,7 @@ jobs:
             tests/cn-preliminary-publication-discovery-pilot.test.ts --fix
           pnpm --filter @markorbit/capability-engine lint
           pnpm --filter @markorbit/capability-engine typecheck
-          pnpm --filter @markorbit/capability-engine test -- cn-preliminary-publication-discovery-pilot.test.ts
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/cn-preliminary-publication-discovery-pilot.test.ts
       - name: Commit validated slice and remove helper workflow
         run: |
           rm .github/workflows/tmp-phase4-312-build.yml
