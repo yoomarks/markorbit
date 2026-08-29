@@ -3,9 +3,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase } from '@markorbit/persistence';
 import { CN_DURATION_BAND_ACCEPTED_DATASET_REF } from '@markorbit/contracts/brain-cn-duration-band-classification';
 import {
-  MatterIntelligenceError,
   PostgresMatterIntelligenceRepository,
-  type MarkRegMatterIntelligenceObservationV1
+  type MarkRegMatterIntelligenceObservationV1,
+  type MatterIntelligenceError
 } from '../src/matter-intelligence.js';
 import {
   MARKREG_TEST_MIGRATION_NAMESPACE,
@@ -32,10 +32,7 @@ const evidenceRefs = [
   `research-dataset:${CN_DURATION_BAND_ACCEPTED_DATASET_REF}:accepted`
 ];
 
-function observation(
-  suffix: string,
-  days = 336
-): MarkRegMatterIntelligenceObservationV1 {
+function observation(suffix: string, days = 336): MarkRegMatterIntelligenceObservationV1 {
   return {
     schemaVersion: 1,
     matterIntelligenceObservationId: `matter-intelligence-observation_${suffix}`,
@@ -154,7 +151,10 @@ suite('PostgreSQL MarkReg Matter Intelligence persistence', () => {
     expect(replay?.requestFingerprintSha256).toBe('1'.repeat(64));
 
     const exactReplay = await store.record({
-      observation: { ...observation('other'), matterIntelligenceObservationId: 'matter-intelligence-observation_other' },
+      observation: {
+        ...observation('other'),
+        matterIntelligenceObservationId: 'matter-intelligence-observation_other'
+      },
       idempotencyKey: 'phase5-key-one',
       requestFingerprintSha256: '1'.repeat(64),
       correlationId: 'correlation-other',
@@ -170,11 +170,15 @@ suite('PostgreSQL MarkReg Matter Intelligence persistence', () => {
         correlationId: 'correlation-conflict',
         capabilityReplayed: false
       })
-    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' } satisfies Partial<MatterIntelligenceError>);
+    ).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT'
+    } satisfies Partial<MatterIntelligenceError>);
 
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_observations) AS observations,(SELECT count(*)::int FROM markreg_matter_intelligence_commands) AS commands'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_observations) AS observations,(SELECT count(*)::int FROM markreg_matter_intelligence_commands) AS commands'
+      );
     expect(counts.rows[0]).toMatchObject({ observations: 1, commands: 1 });
   });
 
@@ -217,9 +221,11 @@ suite('PostgreSQL MarkReg Matter Intelligence persistence', () => {
       'matter-intelligence-observation_two'
     );
 
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_observations) AS observations,(SELECT count(*)::int FROM markreg_matter_intelligence_commands) AS commands'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_observations) AS observations,(SELECT count(*)::int FROM markreg_matter_intelligence_commands) AS commands'
+      );
     expect(counts.rows[0]).toMatchObject({ observations: 2, commands: 3 });
   });
 
@@ -245,21 +251,27 @@ suite('PostgreSQL MarkReg Matter Intelligence persistence', () => {
     await expect(
       database
         .getPool()
-        .query('DELETE FROM markreg_matter_intelligence_commands WHERE workspace_id=$1', [workspaceId])
+        .query('DELETE FROM markreg_matter_intelligence_commands WHERE workspace_id=$1', [
+          workspaceId
+        ])
     ).rejects.toThrow(/append-only/i);
 
-    const matterState = await database.getPool().query(
-      'SELECT status,version,snapshot_sha256 FROM formal_matters WHERE formal_matter_id=$1',
-      [formalMatterId]
-    );
+    const matterState = await database
+      .getPool()
+      .query(
+        'SELECT status,version,snapshot_sha256 FROM formal_matters WHERE formal_matter_id=$1',
+        [formalMatterId]
+      );
     expect(matterState.rows[0]).toMatchObject({
       status: 'OPEN',
       version: 1,
       snapshot_sha256: 'a'.repeat(64)
     });
-    const neighbors = await database.getPool().query(
-      'SELECT (SELECT count(*)::int FROM markreg_recommended_actions) AS recommended_actions,(SELECT count(*)::int FROM markreg_formal_trademark_service_opportunities) AS formal_opportunities'
-    );
+    const neighbors = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_recommended_actions) AS recommended_actions,(SELECT count(*)::int FROM markreg_formal_trademark_service_opportunities) AS formal_opportunities'
+      );
     expect(neighbors.rows[0]).toMatchObject({ recommended_actions: 0, formal_opportunities: 0 });
   });
 });

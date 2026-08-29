@@ -20,6 +20,7 @@ import {
   type MatterIntelligenceCapabilityClient,
   type MatterIntelligenceDisposition,
   type MatterIntelligenceRepository,
+  type RecordMatterIntelligenceCommand,
   type ValidatedDurationBandCapabilityResult
 } from '../src/matter-intelligence.js';
 
@@ -34,7 +35,9 @@ const evidenceRefs = [
   `research-dataset:${datasetRef}:accepted`
 ];
 
-function principal(permissions: WorkspacePrincipal['permissions'] = ['workspace:read', 'matter:manage']) {
+function principal(
+  permissions: WorkspacePrincipal['permissions'] = ['workspace:read', 'matter:manage']
+) {
   return {
     kind: 'WORKSPACE',
     sessionId: 'session_phase5-one',
@@ -127,7 +130,11 @@ function exactInput(days: number) {
   };
 }
 
-function rawExecution(command: CapabilityRequestV2Command, suffix = 'one', output = durationOutput(336)) {
+function rawExecution(
+  command: CapabilityRequestV2Command,
+  suffix = 'one',
+  output: unknown = durationOutput(336)
+) {
   const capabilityRequestId = `capreq_phase5-${suffix}`;
   const invocationId = `capability-invocation_phase5-${suffix}`;
   const outcomeId = `capability-outcome_phase5-${suffix}`;
@@ -265,7 +272,9 @@ function resultFor(days = 336, suffix = 'one'): ValidatedDurationBandCapabilityR
     correlationId: `correlation-${suffix}`
   };
   const output = durationOutput(days);
-  const execution = parseGovernedCapabilityRuntimeExecutionV2(rawExecution(command, suffix, output));
+  const execution = parseGovernedCapabilityRuntimeExecutionV2(
+    rawExecution(command, suffix, output)
+  );
   return {
     execution,
     output,
@@ -292,10 +301,7 @@ function memoryRepository() {
   let writes = 0;
   const repository: MatterIntelligenceRepository = {
     findCommandReplay(requestWorkspaceId, idempotencyKey) {
-      if (
-        replay?.workspaceId === requestWorkspaceId &&
-        replay.idempotencyKey === idempotencyKey
-      ) {
+      if (replay?.workspaceId === requestWorkspaceId && replay.idempotencyKey === idempotencyKey) {
         return Promise.resolve({
           requestFingerprintSha256: replay.requestFingerprintSha256,
           result: structuredClone(replay.result)
@@ -323,7 +329,7 @@ function memoryRepository() {
   return { repository, writes: () => writes };
 }
 
-function command(days = 336, key = 'matter-intelligence-key-one') {
+function command(days = 336, key = 'matter-intelligence-key-one'): RecordMatterIntelligenceCommand {
   return {
     workspaceId,
     formalMatterId,
@@ -397,7 +403,9 @@ describe('MarkReg Matter Intelligence service boundary', () => {
       }
     );
     await service.recordCompletedDurationBand(command(336, 'same-key'));
-    await expect(service.recordCompletedDurationBand(command(337, 'same-key'))).rejects.toMatchObject({
+    await expect(
+      service.recordCompletedDurationBand(command(337, 'same-key'))
+    ).rejects.toMatchObject({
       code: 'IDEMPOTENCY_CONFLICT'
     } satisfies Partial<MatterIntelligenceError>);
     expect(capabilityCalls).toBe(1);
@@ -432,13 +440,17 @@ describe('MarkReg Matter Intelligence service boundary', () => {
         ...command(),
         workspaceId: '22222222-2222-4222-8222-222222222222'
       })
-    ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' } satisfies Partial<MatterIntelligenceError>);
+    ).rejects.toMatchObject({
+      code: 'WORKSPACE_MISMATCH'
+    } satisfies Partial<MatterIntelligenceError>);
     await expect(
       guarded.recordCompletedDurationBand({
         ...command(),
         principal: principal(['workspace:read'])
       })
-    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' } satisfies Partial<MatterIntelligenceError>);
+    ).rejects.toMatchObject({
+      code: 'PERMISSION_DENIED'
+    } satisfies Partial<MatterIntelligenceError>);
     expect(capabilityCalls).toBe(0);
     expect(memory.writes()).toBe(0);
   });
@@ -468,17 +480,24 @@ describe('MarkReg Matter Intelligence service boundary', () => {
   });
 });
 
+function requestBodyText(body: BodyInit | null | undefined): string {
+  if (typeof body !== 'string') throw new Error('Expected JSON string request body.');
+  return body;
+}
+
 describe('MarkReg governed Capability HTTP client', () => {
   it('sends exact MARKREG identity and accepts only the linked descriptive result', async () => {
     let capturedCommand: CapabilityRequestV2Command | undefined;
     let capturedHeaders: Headers | undefined;
-    const fetcher: typeof fetch = async (_input, init) => {
+    const fetcher: typeof fetch = (_input, init) => {
       capturedHeaders = new Headers(init?.headers);
-      capturedCommand = parseCapabilityRequestV2Command(JSON.parse(String(init?.body)));
-      return new Response(JSON.stringify(rawExecution(capturedCommand, 'http', durationOutput(336))), {
-        status: 201,
-        headers: { 'content-type': 'application/json' }
-      });
+      capturedCommand = parseCapabilityRequestV2Command(JSON.parse(requestBodyText(init?.body)));
+      return Promise.resolve(
+        new Response(JSON.stringify(rawExecution(capturedCommand, 'http', durationOutput(336))), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
     };
     const caller = principal();
     const client = new HttpCnDurationBandCapabilityClient(
@@ -516,13 +535,15 @@ describe('MarkReg governed Capability HTTP client', () => {
   });
 
   it('fails closed on an unsafe descriptive output', async () => {
-    const fetcher: typeof fetch = async (_input, init) => {
-      const commandValue = parseCapabilityRequestV2Command(JSON.parse(String(init?.body)));
+    const fetcher: typeof fetch = (_input, init) => {
+      const commandValue = parseCapabilityRequestV2Command(JSON.parse(requestBodyText(init?.body)));
       const unsafeOutput = { ...durationOutput(336), recommendation: true };
-      return new Response(JSON.stringify(rawExecution(commandValue, 'unsafe', unsafeOutput as never)), {
-        status: 201,
-        headers: { 'content-type': 'application/json' }
-      });
+      return Promise.resolve(
+        new Response(JSON.stringify(rawExecution(commandValue, 'unsafe', unsafeOutput)), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
     };
     const client = new HttpCnDurationBandCapabilityClient(
       'http://capability.test',
@@ -544,7 +565,7 @@ describe('MarkReg governed Capability HTTP client', () => {
   });
 
   it('maps runtime rejection, server failure and unreachable dependency without producing a result', async () => {
-    const input = {
+    const input: Parameters<MatterIntelligenceCapabilityClient['classifyCompletedDuration']>[0] = {
       workspaceId,
       formalMatterId,
       observedCompletedDurationDays: 336,
@@ -555,7 +576,10 @@ describe('MarkReg governed Capability HTTP client', () => {
     const rejected = new HttpCnDurationBandCapabilityClient(
       'http://capability.test',
       'phase5-test-internal-secret-long-enough-1234567890',
-      async () => new Response(JSON.stringify({ code: 'CALLER_NOT_ALLOWED' }), { status: 409 })
+      () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ code: 'CALLER_NOT_ALLOWED' }), { status: 409 })
+        )
     );
     await expect(rejected.classifyCompletedDuration(input)).rejects.toMatchObject({
       code: 'CAPABILITY_REJECTED',
@@ -565,7 +589,8 @@ describe('MarkReg governed Capability HTTP client', () => {
     const unavailable = new HttpCnDurationBandCapabilityClient(
       'http://capability.test',
       'phase5-test-internal-secret-long-enough-1234567890',
-      async () => new Response(JSON.stringify({ code: 'UPSTREAM_FAILED' }), { status: 503 })
+      () =>
+        Promise.resolve(new Response(JSON.stringify({ code: 'UPSTREAM_FAILED' }), { status: 503 }))
     );
     await expect(unavailable.classifyCompletedDuration(input)).rejects.toMatchObject({
       code: 'CAPABILITY_UNAVAILABLE',
@@ -575,9 +600,7 @@ describe('MarkReg governed Capability HTTP client', () => {
     const unreachable = new HttpCnDurationBandCapabilityClient(
       'http://capability.test',
       'phase5-test-internal-secret-long-enough-1234567890',
-      async () => {
-        throw new Error('connection refused');
-      }
+      () => Promise.reject(new Error('connection refused'))
     );
     await expect(unreachable.classifyCompletedDuration(input)).rejects.toMatchObject({
       code: 'CAPABILITY_UNAVAILABLE',
