@@ -1,0 +1,55 @@
+name: Phase 4 311 Export Format Verify
+
+on:
+  push:
+    branches:
+      - phase4/311-cn-duration-band-classification-capability
+    paths:
+      - .github/workflows/tmp-phase4-311-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase4/311-cn-duration-band-classification-capability
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Export, format and verify Phase 4 scoring pilot
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'services/capability-engine/src/index.ts';
+          let source = fs.readFileSync(path, 'utf8');
+          const line = "export * from './cn-duration-band-classification-pilot.js';";
+          if (!source.includes(line)) {
+            source = source.replace(
+              "export * from './cn-duration-analytical-pilot.js';",
+              "export * from './cn-duration-analytical-pilot.js';\n" + line
+            );
+          }
+          fs.writeFileSync(path, source);
+          NODE
+          pnpm exec prettier --write services/capability-engine/src/index.ts services/capability-engine/src/cn-duration-band-classification-pilot.ts services/capability-engine/tests/cn-duration-band-classification-pilot.test.ts
+          pnpm exec turbo run build --filter=@markorbit/capability-engine...
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+          pnpm --filter @markorbit/capability-engine test
+          rm .github/workflows/tmp-phase4-311-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/capability-engine/src/index.ts services/capability-engine/src/cn-duration-band-classification-pilot.ts services/capability-engine/tests/cn-duration-band-classification-pilot.test.ts .github/workflows/tmp-phase4-311-fix.yml
+          git commit -m 'fix: export and verify CN duration band Capability'
+          git push origin HEAD:phase4/311-cn-duration-band-classification-capability
