@@ -75,6 +75,7 @@ describe('Phase 4 governed executable method activation', () => {
     expect(predecessor.activatedAt).toBeUndefined();
 
     expect(activation.decision).toBe('APPROVED');
+    expect(activation.decisionId).toMatch(/^brain-method-activation_[0-9a-f]{64}$/);
     expect(activation.predecessor.packageFingerprintSha256).toBe(predecessorFingerprint);
     expect(activation.approval.authority).toBe('BRAIN_GOVERNANCE');
     expect(activation.approval.approvalTicketRef).toBe('github:yoomarks/markorbit#309');
