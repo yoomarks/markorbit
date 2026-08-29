@@ -88,7 +88,8 @@ describe('Phase 4 governed executable method activation', () => {
     expect(active.executable).toEqual(predecessor.executable);
     expect(active.lineage).toEqual(predecessor.lineage);
     expect(active.evaluation).toEqual(predecessor.evaluation);
-    expect(active.limitations).toEqual(ACTIVE_LIMITATIONS);
+    expect(active.limitations).toHaveLength(ACTIVE_LIMITATIONS.length);
+    expect(active.limitations).toEqual([...ACTIVE_LIMITATIONS].sort());
     expect(executableMethodActivationEvidenceRefV1(activation)).toContain(activation.decisionId);
 
     const selected = selectExecutableMethodPackageV1([predecessor, active], selectionContext);
