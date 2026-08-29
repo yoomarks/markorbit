@@ -1,7 +1,6 @@
 import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capability-learning';
 import type {
   CapabilityRequestV2,
-  ImplementationBinding,
   ImplementationProfile
 } from '@markorbit/contracts/capability-runtime';
 import {
@@ -192,7 +191,10 @@ export function validateCnDurationAnalyticalInputV1(value: unknown): boolean {
 
 function statistics(value: unknown): CnDurationAnalyticalOutputV1['statistics'] {
   const parsed = record(value);
-  if (!parsed || !exactKeys(parsed, ['count', 'min_days', 'p25_days', 'median_days', 'p75_days', 'max_days'])) {
+  if (
+    !parsed ||
+    !exactKeys(parsed, ['count', 'min_days', 'p25_days', 'median_days', 'p75_days', 'max_days'])
+  ) {
     throw new TypeError('CN duration executable statistics are invalid.');
   }
   const fields = ['count', 'min_days', 'p25_days', 'median_days', 'p75_days', 'max_days'] as const;
@@ -303,7 +305,7 @@ export class CnDurationDescriptiveDistributionRunnerV1 implements ExecutableMeth
     }
   }
 
-  async run(
+  run(
     input: Readonly<ExecutableMethodPackageRunnerInputV1>
   ): Promise<{ output: CnDurationAnalyticalOutputV1; evidenceRefs: readonly string[] }> {
     const requestInput = parseCnDurationAnalyticalInputV1(input.request.input);
@@ -356,7 +358,7 @@ export class CnDurationDescriptiveDistributionRunnerV1 implements ExecutableMeth
       predictiveClaim: false,
       rawPopulationRowsReadByCapability: false
     };
-    return {
+    return Promise.resolve({
       output,
       evidenceRefs: [
         executableMethodActivationEvidenceRefV1(this.decision),
@@ -364,7 +366,7 @@ export class CnDurationDescriptiveDistributionRunnerV1 implements ExecutableMeth
         'capability-runtime:brain-research-hot-path=absent',
         'capability-runtime:data-engine-population-read=absent'
       ]
-    };
+    });
   }
 }
 
