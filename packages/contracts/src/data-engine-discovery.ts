@@ -400,11 +400,7 @@ export function parseCnPreliminaryPublicationDiscoveryEnvelopeV2(
     return null;
   }
   const payload = parseCnPreliminaryPublicationDiscoveryPageV2(envelope.payload);
-  if (
-    !payload ||
-    payload.snapshot.source_version !== envelope.engine_version ||
-    payload.provenance.engine_version !== envelope.engine_version
-  ) {
+  if (!payload || payload.provenance.engine_version !== payload.snapshot.source_version) {
     return null;
   }
   return { ...envelope, payload };

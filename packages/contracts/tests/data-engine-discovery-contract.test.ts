@@ -154,9 +154,16 @@ describe('CN preliminary-publication Discovery V2 contract', () => {
     expect(parseCnPreliminaryPublicationDiscoveryPageV2(unordered)).toBeNull();
   });
 
-  it('rejects envelope engine-version drift', () => {
+  it('keeps integration release version separate from exact Discovery source version', () => {
     expect(
-      parseCnPreliminaryPublicationDiscoveryEnvelopeV2({ ...envelope(), engine_version: 'other' })
-    ).toBeNull();
+      parseCnPreliminaryPublicationDiscoveryEnvelopeV2({
+        ...envelope(),
+        engine_version: '0.4.0'
+      })
+    ).not.toBeNull();
+
+    const internalDrift = page();
+    internalDrift.provenance.engine_version = 'git:different';
+    expect(parseCnPreliminaryPublicationDiscoveryEnvelopeV2(envelope(internalDrift))).toBeNull();
   });
 });
