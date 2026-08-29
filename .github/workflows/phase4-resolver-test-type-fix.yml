@@ -1,0 +1,43 @@
+name: Phase 4 Resolver Test Type Fix
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'phase4/310-official-fee-resolver'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Preserve tampered packageId literal type and self-remove
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/capability-engine/tests/uspto-official-fee-resolver-pilot.test.ts')
+          s = p.read_text()
+          old = "    const tampered = { ...pkg, packageId: 'executable-method-package_tampered' };"
+          new = "    const tampered = { ...pkg, packageId: 'executable-method-package_tampered' as const };"
+          if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one type-fix target, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write services/capability-engine/tests/uspto-official-fee-resolver-pilot.test.ts
+          pnpm exec turbo run build --filter='@markorbit/capability-engine...'
+          pnpm --filter @markorbit/capability-engine typecheck
+          rm .github/workflows/phase4-resolver-test-type-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/capability-engine/tests/uspto-official-fee-resolver-pilot.test.ts .github/workflows/phase4-resolver-test-type-fix.yml
+          git diff --cached --check
+          git commit -m "test: preserve tampered package id literal type"
+          git push origin HEAD:${{ github.head_ref }}
