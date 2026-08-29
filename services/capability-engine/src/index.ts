@@ -34,6 +34,7 @@ export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
 export * from './capability-runtime-http.js';
 export * from './capability-runtime.js';
+export * from './executable-method-runtime.js';
 export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
