@@ -1,0 +1,42 @@
+name: Phase 4 Resolver Lint Fix
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'phase4/310-official-fee-resolver'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact lint fix and self-remove
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/capability-engine/src/uspto-official-fee-resolver-pilot.ts')
+          s = p.read_text()
+          old = '  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): Promise<unknown> | unknown;'
+          new = '  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): unknown;'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one lint-fix target, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write services/capability-engine/src/uspto-official-fee-resolver-pilot.ts
+          pnpm --filter @markorbit/capability-engine lint
+          rm .github/workflows/phase4-resolver-lint-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/capability-engine/src/uspto-official-fee-resolver-pilot.ts .github/workflows/phase4-resolver-lint-fix.yml
+          git diff --cached --check
+          git commit -m "fix: simplify Resolver reader return type"
+          git push origin HEAD:${{ github.head_ref }}
