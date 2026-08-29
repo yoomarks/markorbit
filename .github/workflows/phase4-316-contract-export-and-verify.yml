@@ -1,5 +1,6 @@
 name: Phase 4 316 Contract Export And Verify
 
+# synchronize trigger for open PR
 on:
   pull_request:
 
