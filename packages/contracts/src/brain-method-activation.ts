@@ -51,7 +51,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function sha256(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
 function text(value: unknown, field: string, maximum = 1000): string {
@@ -103,7 +105,11 @@ function record(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], field: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
   const allow = new Set(allowed);
   const unsupported = Object.keys(value).filter((key) => !allow.has(key));
   const missing = allowed.filter((key) => !(key in value));
@@ -336,7 +342,9 @@ export function activateExecutableMethodPackageV1(
     );
   }
   if (decision.decision !== 'APPROVED') {
-    throw new BrainMethodContractError('A REJECTED activation decision cannot produce ACTIVE state.');
+    throw new BrainMethodContractError(
+      'A REJECTED activation decision cannot produce ACTIVE state.'
+    );
   }
   if (
     decision.predecessor.packageId !== pkg.packageId ||
@@ -366,9 +374,7 @@ export function activateExecutableMethodPackageV1(
   });
 }
 
-export function executableMethodActivationEvidenceRefV1(
-  decisionValue: unknown
-): string {
+export function executableMethodActivationEvidenceRefV1(decisionValue: unknown): string {
   const decision = parseExecutableMethodPackageActivationDecisionV1(decisionValue);
   return `brain-method-activation:${decision.decisionId}:${decision.predecessor.packageFingerprintSha256}`;
 }

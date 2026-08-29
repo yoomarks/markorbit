@@ -92,16 +92,17 @@ describe('Phase 4 governed executable method activation', () => {
 
     const selected = selectExecutableMethodPackageV1([predecessor, active], selectionContext);
     expect(selected.status).toBe('SELECTED');
-    if (selected.status !== 'SELECTED') throw new Error(`expected SELECTED, got ${selected.status}`);
+    if (selected.status !== 'SELECTED')
+      throw new Error(`expected SELECTED, got ${selected.status}`);
     expect(selected.package.packageVersion).toBe(2);
     expect(selected.package.lifecycle).toBe('ACTIVE');
   });
 
   it('does not allow a REJECTED governance decision to create ACTIVE state', () => {
     const predecessor = realValidatedPackage();
-    expect(() => activateExecutableMethodPackageV1(predecessor, decision(predecessor, 'REJECTED'))).toThrow(
-      'REJECTED activation decision cannot produce ACTIVE state'
-    );
+    expect(() =>
+      activateExecutableMethodPackageV1(predecessor, decision(predecessor, 'REJECTED'))
+    ).toThrow('REJECTED activation decision cannot produce ACTIVE state');
   });
 
   it('rejects predecessor drift after the activation decision was recorded', () => {

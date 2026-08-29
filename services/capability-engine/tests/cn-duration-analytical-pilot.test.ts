@@ -192,7 +192,9 @@ describe('Phase 4 CN duration analytical Capability pilot', () => {
     expect(execution.receipt.evidenceRefs).toContain(
       `brain-method-package:${active.packageId}@${active.packageVersion}`
     );
-    expect(execution.receipt.evidenceRefs).toContain(executableMethodActivationEvidenceRefV1(activation));
+    expect(execution.receipt.evidenceRefs).toContain(
+      executableMethodActivationEvidenceRefV1(activation)
+    );
     expect(
       execution.receipt.evidenceRefs.some((ref) =>
         ref.startsWith(`research-dataset:${DATASET_REF}:`)
@@ -225,7 +227,9 @@ describe('Phase 4 CN duration analytical Capability pilot', () => {
     const { predecessor, activation } = activatedPackage();
     const { runtime, run } = runtimeWithPackages([predecessor], activation);
 
-    const execution = await runtime.invoke(command({ idempotencyKey: 'phase4-cn-duration-inactive' }));
+    const execution = await runtime.invoke(
+      command({ idempotencyKey: 'phase4-cn-duration-inactive' })
+    );
 
     expect(execution.returnValue.status).toBe('FAILED');
     expect(execution.outcome.error?.message).toContain('No ACTIVE executable method package');
@@ -243,7 +247,9 @@ describe('Phase 4 CN duration analytical Capability pilot', () => {
       command({ idempotencyKey: 'phase4-cn-duration-wrong-scope' })
     );
     expect(wrongScopeResult.returnValue.status).toBe('FAILED');
-    expect(wrongScopeResult.outcome.error?.message).toContain('No ACTIVE executable method package');
+    expect(wrongScopeResult.outcome.error?.message).toContain(
+      'No ACTIVE executable method package'
+    );
     expect(wrongScopeRuntime.run).not.toHaveBeenCalled();
 
     const ambiguousRuntime = runtimeWithPackages([active, structuredClone(active)], activation);

@@ -16,17 +16,16 @@ import {
   type ExecutableMethodPackageRunnerV1
 } from './executable-method-runtime.js';
 
-export const CN_DURATION_ANALYTICAL_CAPABILITY_ID = 'analytics.cn-filing-to-prelim-duration' as const;
+export const CN_DURATION_ANALYTICAL_CAPABILITY_ID =
+  'analytics.cn-filing-to-prelim-duration' as const;
 export const CN_DURATION_ANALYTICAL_CAPABILITY_VERSION = '1.0.0' as const;
 export const CN_DURATION_ANALYTICAL_INPUT_SCHEMA =
   'brain-input.cn-filing-to-prelim-duration.descriptive.v1' as const;
 export const CN_DURATION_ANALYTICAL_OUTPUT_SCHEMA =
   'brain.cn-filing-to-prelim-duration.descriptive.v1' as const;
-export const CN_DURATION_ANALYTICAL_EXECUTABLE_KIND =
-  'DESCRIPTIVE_EMPIRICAL_DISTRIBUTION' as const;
+export const CN_DURATION_ANALYTICAL_EXECUTABLE_KIND = 'DESCRIPTIVE_EMPIRICAL_DISTRIBUTION' as const;
 
-const PHASE3_EVIDENCE_SHA256 =
-  'de407eb5e5c0704c7e2817cf8ce67f14c381d1a587fb986a664425d8a3eb411c';
+const PHASE3_EVIDENCE_SHA256 = 'de407eb5e5c0704c7e2817cf8ce67f14c381d1a587fb986a664425d8a3eb411c';
 const REQUIRED_DATA = [
   'CN_CASE_CURRENT',
   'FILING_DATE',
@@ -319,7 +318,9 @@ export class CnDurationDescriptiveDistributionRunnerV1 implements ExecutableMeth
       pkg.evaluation.evaluationId !== this.decision.predecessor.evaluationId ||
       pkg.activatedAt !== this.decision.approval.approvedAt
     ) {
-      throw new TypeError('CN duration ACTIVE package does not match the governed activation decision.');
+      throw new TypeError(
+        'CN duration ACTIVE package does not match the governed activation decision.'
+      );
     }
 
     const executable = record(pkg.executable);
