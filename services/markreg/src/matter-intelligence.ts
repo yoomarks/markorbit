@@ -17,10 +17,7 @@ import {
   type GovernedCapabilityRuntimeExecutionV2
 } from '@markorbit/contracts/capability-runtime-execution';
 import type { QueryClient } from '@markorbit/persistence';
-import type {
-  FormalMatterRepository,
-  TransactionHost
-} from './formal-matter.js';
+import type { FormalMatterRepository, TransactionHost } from './formal-matter.js';
 
 export const MATTER_INTELLIGENCE_OBSERVATION_KIND =
   'CN_COMPLETED_DURATION_HISTORICAL_BAND' as const;
@@ -37,8 +34,7 @@ const REQUIRED_AVAILABLE_DATA = [
   'ACCEPTED_CN_DURATION_DISTRIBUTION'
 ] as const;
 const SHA256 = /^[0-9a-f]{64}$/;
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type MatterIntelligenceErrorCode =
   | 'INVALID_INPUT'
@@ -66,8 +62,7 @@ export class MatterIntelligenceError extends Error {
   }
 }
 
-export type MatterIntelligenceObservationId =
-  `matter-intelligence-observation_${string}`;
+export type MatterIntelligenceObservationId = `matter-intelligence-observation_${string}`;
 
 export interface MarkRegMatterIntelligenceObservationV1 {
   schemaVersion: 1;
@@ -146,9 +141,7 @@ export interface MatterIntelligenceRepository {
     workspaceId: string,
     idempotencyKey: string
   ): Promise<CommandReplay | undefined>;
-  record(
-    value: Readonly<ObservationWrite>
-  ): Promise<MatterIntelligenceDisposition>;
+  record(value: Readonly<ObservationWrite>): Promise<MatterIntelligenceDisposition>;
 }
 
 export interface MatterIntelligenceCapabilityClient {
@@ -262,10 +255,7 @@ function observedDays(value: number): number {
 function exactTimestamp(value: string, field: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    throw new MatterIntelligenceError(
-      'CAPABILITY_CONTRACT_MISMATCH',
-      `${field} is invalid.`
-    );
+    throw new MatterIntelligenceError('CAPABILITY_CONTRACT_MISMATCH', `${field} is invalid.`);
   }
   return parsed.toISOString();
 }
@@ -273,10 +263,7 @@ function exactTimestamp(value: string, field: string): string {
 function exactSha256(value: string, field: string): string {
   const cleaned = value.trim().toLowerCase();
   if (!SHA256.test(cleaned)) {
-    throw new MatterIntelligenceError(
-      'CAPABILITY_CONTRACT_MISMATCH',
-      `${field} is invalid.`
-    );
+    throw new MatterIntelligenceError('CAPABILITY_CONTRACT_MISMATCH', `${field} is invalid.`);
   }
   return cleaned;
 }
@@ -291,11 +278,7 @@ function record(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactEvidenceRef(
-  refs: readonly string[],
-  prefix: string,
-  field: string
-): string {
+function exactEvidenceRef(refs: readonly string[], prefix: string, field: string): string {
   const matches = refs.filter((ref) => ref.startsWith(prefix));
   if (matches.length !== 1) {
     throw new MatterIntelligenceError(
@@ -306,10 +289,7 @@ function exactEvidenceRef(
   return matches[0]!;
 }
 
-function parseDurationBandOutput(
-  value: unknown,
-  expectedDays: number
-): DurationBandOutput {
+function parseDurationBandOutput(value: unknown, expectedDays: number): DurationBandOutput {
   if (!validateCnDurationBandClassificationOutputV1(value)) {
     throw new MatterIntelligenceError(
       'CAPABILITY_CONTRACT_MISMATCH',
@@ -372,9 +352,7 @@ function assertExecution(
   }>
 ): ValidatedDurationBandCapabilityResult {
   const request = execution.request;
-  const expectedRequestInput = exactInput(
-    expected.observedCompletedDurationDays
-  );
+  const expectedRequestInput = exactInput(expected.observedCompletedDurationDays);
   if (
     request.capabilityId !== MATTER_INTELLIGENCE_CAPABILITY_ID ||
     request.capabilityVersion !== MATTER_INTELLIGENCE_CAPABILITY_VERSION ||
@@ -399,16 +377,14 @@ function assertExecution(
   }
 
   if (
-    execution.binding.runtimeCapability.capabilityId !==
-      MATTER_INTELLIGENCE_CAPABILITY_ID ||
+    execution.binding.runtimeCapability.capabilityId !== MATTER_INTELLIGENCE_CAPABILITY_ID ||
     execution.binding.runtimeCapability.capabilityVersion !==
       MATTER_INTELLIGENCE_CAPABILITY_VERSION ||
     execution.receipt.workspaceId !== expected.workspaceId ||
     execution.receipt.principalId !== expected.principal.userId ||
     execution.receipt.callerProduct !== 'MARKREG' ||
     execution.receipt.correlationId !== expected.correlationId ||
-    execution.receipt.runtimeCapability.capabilityId !==
-      MATTER_INTELLIGENCE_CAPABILITY_ID ||
+    execution.receipt.runtimeCapability.capabilityId !== MATTER_INTELLIGENCE_CAPABILITY_ID ||
     execution.receipt.runtimeCapability.capabilityVersion !==
       MATTER_INTELLIGENCE_CAPABILITY_VERSION ||
     execution.outcome.outputSchemaId !== MATTER_INTELLIGENCE_OUTPUT_SCHEMA ||
@@ -432,31 +408,13 @@ function assertExecution(
   }
 
   const refs = execution.receipt.evidenceRefs;
-  const methodPackageRef = exactEvidenceRef(
-    refs,
-    'brain-method-package:',
-    'evidenceRefs'
-  );
+  const methodPackageRef = exactEvidenceRef(refs, 'brain-method-package:', 'evidenceRefs');
   const methodRef = exactEvidenceRef(refs, 'brain-method:', 'evidenceRefs');
-  const methodVersionRef = exactEvidenceRef(
-    refs,
-    'brain-method-version:',
-    'evidenceRefs'
-  );
-  const evaluationRef = exactEvidenceRef(
-    refs,
-    'brain-method-evaluation:',
-    'evidenceRefs'
-  );
-  const researchDatasetRef = exactEvidenceRef(
-    refs,
-    'research-dataset:',
-    'evidenceRefs'
-  );
+  const methodVersionRef = exactEvidenceRef(refs, 'brain-method-version:', 'evidenceRefs');
+  const evaluationRef = exactEvidenceRef(refs, 'brain-method-evaluation:', 'evidenceRefs');
+  const researchDatasetRef = exactEvidenceRef(refs, 'research-dataset:', 'evidenceRefs');
   if (
-    !researchDatasetRef.startsWith(
-      `research-dataset:${CN_DURATION_BAND_ACCEPTED_DATASET_REF}:`
-    )
+    !researchDatasetRef.startsWith(`research-dataset:${CN_DURATION_BAND_ACCEPTED_DATASET_REF}:`)
   ) {
     throw new MatterIntelligenceError(
       'CAPABILITY_CONTRACT_MISMATCH',
@@ -478,9 +436,7 @@ function assertExecution(
   };
 }
 
-export class HttpCnDurationBandCapabilityClient
-  implements MatterIntelligenceCapabilityClient
-{
+export class HttpCnDurationBandCapabilityClient implements MatterIntelligenceCapabilityClient {
   constructor(
     private readonly capabilityUrl: string,
     private readonly internalServiceSecret: string,
@@ -506,8 +462,7 @@ export class HttpCnDurationBandCapabilityClient
         workspaceId: input.workspaceId,
         principalId: input.principal.userId,
         callerProduct: 'MARKREG',
-        permissionContextRef:
-          `core-workspace-membership:${input.principal.membershipId}`
+        permissionContextRef: `core-workspace-membership:${input.principal.membershipId}`
       },
       purpose: exactPurpose(input.formalMatterId),
       input: exactInput(input.observedCompletedDurationDays),
@@ -527,9 +482,7 @@ export class HttpCnDurationBandCapabilityClient
           headers: {
             'content-type': 'application/json',
             'x-markorbit-internal-authorization': this.internalServiceSecret,
-            'x-markorbit-principal': encodeInternalWorkspacePrincipal(
-              input.principal
-            ),
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(input.principal),
             'x-markorbit-workspace-id': input.workspaceId,
             'x-markorbit-caller-product': 'MARKREG',
             'idempotency-key': capabilityKey,
@@ -564,9 +517,7 @@ export class HttpCnDurationBandCapabilityClient
           : 'Governed Capability Runtime rejected the MarkReg request.',
         unavailable ? 503 : 409,
         unavailable,
-        details && typeof details === 'object'
-          ? (details as Record<string, unknown>)
-          : undefined
+        details && typeof details === 'object' ? (details as Record<string, unknown>) : undefined
       );
     }
 
@@ -616,9 +567,7 @@ function observationId(): MatterIntelligenceObservationId {
   return `matter-intelligence-observation_${randomUUID().replaceAll('-', '')}`;
 }
 
-export class PostgresMatterIntelligenceRepository
-  implements MatterIntelligenceRepository
-{
+export class PostgresMatterIntelligenceRepository implements MatterIntelligenceRepository {
   constructor(
     private readonly database: TransactionHost,
     private readonly query: QueryClient
@@ -651,9 +600,7 @@ export class PostgresMatterIntelligenceRepository
     }
   }
 
-  async record(
-    value: Readonly<ObservationWrite>
-  ): Promise<MatterIntelligenceDisposition> {
+  async record(value: Readonly<ObservationWrite>): Promise<MatterIntelligenceDisposition> {
     try {
       return await this.database.transact(
         async (client) => {
@@ -663,10 +610,7 @@ export class PostgresMatterIntelligenceRepository
           );
           if (replay.rowCount) {
             const row = replay.rows[0] as Row;
-            if (
-              String(row.request_fingerprint_sha256) !==
-              value.requestFingerprintSha256
-            ) {
+            if (String(row.request_fingerprint_sha256) !== value.requestFingerprintSha256) {
               throw new MatterIntelligenceError(
                 'IDEMPOTENCY_CONFLICT',
                 'Idempotency-Key was already used for a different request.'
@@ -675,14 +619,11 @@ export class PostgresMatterIntelligenceRepository
             return clone(row.result_snapshot as MatterIntelligenceDisposition);
           }
 
-          await client.query(
-            'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
-            [
-              `${value.observation.workspaceId}:` +
-                `${value.observation.capabilityReturnId}:` +
-                `${value.observation.sessionReceiptId}:matter-intelligence`
-            ]
-          );
+          await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+            `${value.observation.workspaceId}:` +
+              `${value.observation.capabilityReturnId}:` +
+              `${value.observation.sessionReceiptId}:matter-intelligence`
+          ]);
           const duplicate = await client.query(
             'SELECT * FROM markreg_matter_intelligence_observations WHERE workspace_id=$1 AND (capability_return_id=$2 OR session_receipt_id=$3) LIMIT 1',
             [
@@ -697,10 +638,8 @@ export class PostgresMatterIntelligenceRepository
           if (duplicate.rowCount) {
             observation = this.mapObservation(duplicate.rows[0] as Row);
             if (
-              observation.formalMatter.id !==
-                value.observation.formalMatter.id ||
-              observation.capabilityReturnId !==
-                value.observation.capabilityReturnId ||
+              observation.formalMatter.id !== value.observation.formalMatter.id ||
+              observation.capabilityReturnId !== value.observation.capabilityReturnId ||
               observation.sessionReceiptId !== value.observation.sessionReceiptId
             ) {
               throw new MatterIntelligenceError(
@@ -805,15 +744,9 @@ export class PostgresMatterIntelligenceRepository
         snapshotSha256: String(row.formal_matter_snapshot_sha256)
       },
       observationKind: MATTER_INTELLIGENCE_OBSERVATION_KIND,
-      observedCompletedDurationDays: Number(
-        row.observed_completed_duration_days
-      ),
-      historicalBand: String(
-        row.historical_band
-      ) as CnCompletedDurationHistoricalBandV1,
-      datasetRefId: String(
-        row.dataset_ref_id
-      ) as typeof CN_DURATION_BAND_ACCEPTED_DATASET_REF,
+      observedCompletedDurationDays: Number(row.observed_completed_duration_days),
+      historicalBand: String(row.historical_band) as CnCompletedDurationHistoricalBandV1,
+      datasetRefId: String(row.dataset_ref_id) as typeof CN_DURATION_BAND_ACCEPTED_DATASET_REF,
       capability: {
         id: MATTER_INTELLIGENCE_CAPABILITY_ID,
         version: MATTER_INTELLIGENCE_CAPABILITY_VERSION,
@@ -873,19 +806,9 @@ export class MatterIntelligenceService {
       'formalMatterId',
       300
     ) as FormalMatterId;
-    const durationDays = observedDays(
-      commandValue.observedCompletedDurationDays
-    );
-    const idempotencyKey = cleanText(
-      commandValue.idempotencyKey,
-      'idempotencyKey',
-      300
-    );
-    const correlationId = cleanText(
-      commandValue.correlationId,
-      'correlationId',
-      300
-    );
+    const durationDays = observedDays(commandValue.observedCompletedDurationDays);
+    const idempotencyKey = cleanText(commandValue.idempotencyKey, 'idempotencyKey', 300);
+    const correlationId = cleanText(commandValue.correlationId, 'correlationId', 300);
     const principal = commandValue.principal;
 
     if (principal.kind !== 'WORKSPACE') {
@@ -919,10 +842,7 @@ export class MatterIntelligenceService {
       observedCompletedDurationDays: durationDays,
       principalId: principal.userId
     });
-    const replay = await this.repository.findCommandReplay(
-      workspaceId,
-      idempotencyKey
-    );
+    const replay = await this.repository.findCommandReplay(workspaceId, idempotencyKey);
     if (replay) {
       if (replay.requestFingerprintSha256 !== requestFingerprintSha256) {
         throw new MatterIntelligenceError(
@@ -933,10 +853,7 @@ export class MatterIntelligenceService {
       return { ...clone(replay.result), replayed: true };
     }
 
-    const matter = await this.formalMatters.findById(
-      workspaceId,
-      formalMatterId
-    );
+    const matter = await this.formalMatters.findById(workspaceId, formalMatterId);
     if (!matter) {
       throw new MatterIntelligenceError(
         'FORMAL_MATTER_NOT_FOUND',
@@ -961,10 +878,7 @@ export class MatterIntelligenceService {
       formalMatter: {
         id: matter.formalMatterId,
         version: matter.version,
-        snapshotSha256: exactSha256(
-          matter.snapshotSha256,
-          'formalMatter.snapshotSha256'
-        )
+        snapshotSha256: exactSha256(matter.snapshotSha256, 'formalMatter.snapshotSha256')
       },
       observationKind: MATTER_INTELLIGENCE_OBSERVATION_KIND,
       observedCompletedDurationDays: durationDays,
@@ -977,16 +891,14 @@ export class MatterIntelligenceService {
         outputSchemaId: MATTER_INTELLIGENCE_OUTPUT_SCHEMA
       },
       capabilityRequestId: result.execution.request.capabilityRequestId,
-      capabilityInvocationId:
-        result.execution.invocation.capabilityInvocationId,
+      capabilityInvocationId: result.execution.invocation.capabilityInvocationId,
       capabilityOutcomeId: result.execution.outcome.capabilityOutcomeId,
       capabilityReturnId: result.execution.returnValue.capabilityReturnId,
       sessionReceiptId: result.execution.receipt.sessionReceiptId,
       implementation: {
         id: result.execution.receipt.implementation.id,
         version: result.execution.receipt.implementation.version,
-        implementationKey:
-          result.execution.receipt.implementation.implementationKey
+        implementationKey: result.execution.receipt.implementation.implementationKey
       },
       correlationId,
       methodPackageRef: result.methodPackageRef,

@@ -36,35 +36,20 @@ type RecordValue = Record<string, unknown>;
 
 function record(value: unknown, field: string): RecordValue {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} must be an object.`
-    );
+    throw new CapabilityRuntimeExecutionContractError(`${field} must be an object.`);
   }
   return value as RecordValue;
 }
 
-function exactKeys(
-  value: RecordValue,
-  keys: readonly string[],
-  field: string
-): void {
+function exactKeys(value: RecordValue, keys: readonly string[], field: string): void {
   const actual = Object.keys(value).sort();
   const expected = [...keys].sort();
-  if (
-    actual.length !== expected.length ||
-    actual.some((key, index) => key !== expected[index])
-  ) {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} has an unsupported shape.`
-    );
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new CapabilityRuntimeExecutionContractError(`${field} has an unsupported shape.`);
   }
 }
 
-function allowedKeys(
-  value: RecordValue,
-  keys: readonly string[],
-  field: string
-): void {
+function allowedKeys(value: RecordValue, keys: readonly string[], field: string): void {
   const allowed = new Set(keys);
   const unknown = Object.keys(value).filter((key) => !allowed.has(key));
   if (unknown.length) {
@@ -76,9 +61,7 @@ function allowedKeys(
 
 function text(value: unknown, field: string, maximum = 1000): string {
   if (typeof value !== 'string') {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} must be a string.`
-    );
+    throw new CapabilityRuntimeExecutionContractError(`${field} must be a string.`);
   }
   const cleaned = value.trim();
   if (!cleaned || cleaned.length > maximum) {
@@ -91,9 +74,7 @@ function text(value: unknown, field: string, maximum = 1000): string {
 
 function positiveInteger(value: unknown, field: string): number {
   if (!Number.isSafeInteger(value) || Number(value) < 1) {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} must be a positive integer.`
-    );
+    throw new CapabilityRuntimeExecutionContractError(`${field} must be a positive integer.`);
   }
   return Number(value);
 }
@@ -110,44 +91,28 @@ function nonNegativeNumber(value: unknown, field: string): number {
 function timestamp(value: unknown, field: string): string {
   const cleaned = text(value, field, 100);
   if (Number.isNaN(Date.parse(cleaned))) {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} must be an ISO timestamp.`
-    );
+    throw new CapabilityRuntimeExecutionContractError(`${field} must be an ISO timestamp.`);
   }
   return cleaned;
 }
 
 function stringList(value: unknown, field: string): readonly string[] {
   if (!Array.isArray(value) || value.length > 1000) {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} must be a bounded string array.`
-    );
+    throw new CapabilityRuntimeExecutionContractError(`${field} must be a bounded string array.`);
   }
-  const items = value.map((item, index) =>
-    text(item, `${field}[${index}]`, 2000)
-  );
+  const items = value.map((item, index) => text(item, `${field}[${index}]`, 2000));
   if (new Set(items).size !== items.length) {
-    throw new CapabilityRuntimeExecutionContractError(
-      `${field} must not contain duplicates.`
-    );
+    throw new CapabilityRuntimeExecutionContractError(`${field} must not contain duplicates.`);
   }
   return items;
 }
 
 function authority(value: unknown, field: string) {
   const parsed = record(value, field);
-  exactKeys(
-    parsed,
-    Object.keys(capabilityRuntimeNoAuthorityConsequences),
-    field
-  );
-  for (const [key, expected] of Object.entries(
-    capabilityRuntimeNoAuthorityConsequences
-  )) {
+  exactKeys(parsed, Object.keys(capabilityRuntimeNoAuthorityConsequences), field);
+  for (const [key, expected] of Object.entries(capabilityRuntimeNoAuthorityConsequences)) {
     if (parsed[key] !== expected) {
-      throw new CapabilityRuntimeExecutionContractError(
-        `${field}.${key} must remain false.`
-      );
+      throw new CapabilityRuntimeExecutionContractError(`${field}.${key} must remain false.`);
     }
   }
   return capabilityRuntimeNoAuthorityConsequences;
@@ -162,28 +127,16 @@ function usage(value: unknown): CapabilityUsage {
   );
   const result: CapabilityUsage = {};
   if (parsed.latencyMs !== undefined) {
-    result.latencyMs = nonNegativeNumber(
-      parsed.latencyMs,
-      'outcome.usage.latencyMs'
-    );
+    result.latencyMs = nonNegativeNumber(parsed.latencyMs, 'outcome.usage.latencyMs');
   }
   if (parsed.inputUnits !== undefined) {
-    result.inputUnits = nonNegativeNumber(
-      parsed.inputUnits,
-      'outcome.usage.inputUnits'
-    );
+    result.inputUnits = nonNegativeNumber(parsed.inputUnits, 'outcome.usage.inputUnits');
   }
   if (parsed.outputUnits !== undefined) {
-    result.outputUnits = nonNegativeNumber(
-      parsed.outputUnits,
-      'outcome.usage.outputUnits'
-    );
+    result.outputUnits = nonNegativeNumber(parsed.outputUnits, 'outcome.usage.outputUnits');
   }
   if (parsed.costMinor !== undefined) {
-    result.costMinor = nonNegativeNumber(
-      parsed.costMinor,
-      'outcome.usage.costMinor'
-    );
+    result.costMinor = nonNegativeNumber(parsed.costMinor, 'outcome.usage.costMinor');
   }
   if (parsed.currency !== undefined) {
     result.currency = text(parsed.currency, 'outcome.usage.currency', 20);
@@ -251,11 +204,7 @@ function parseEligibility(value: unknown): CapabilityEligibilityDecision {
     ],
     'eligibility'
   );
-  if (
-    item.schemaVersion !== 1 ||
-    item.decision !== 'ELIGIBLE' ||
-    item.eligible !== true
-  ) {
+  if (item.schemaVersion !== 1 || item.decision !== 'ELIGIBLE' || item.eligible !== true) {
     throw new CapabilityRuntimeExecutionContractError(
       'eligibility must be an accepted ELIGIBLE decision.'
     );
@@ -336,23 +285,15 @@ function parseBinding(value: unknown): ImplementationBinding {
     'binding'
   );
   if (item.schemaVersion !== 1) {
-    throw new CapabilityRuntimeExecutionContractError(
-      'binding.schemaVersion must be 1.'
-    );
+    throw new CapabilityRuntimeExecutionContractError('binding.schemaVersion must be 1.');
   }
-  const runtimeCapability = record(
-    item.runtimeCapability,
-    'binding.runtimeCapability'
-  );
+  const runtimeCapability = record(item.runtimeCapability, 'binding.runtimeCapability');
   exactKeys(
     runtimeCapability,
     ['id', 'version', 'capabilityId', 'capabilityVersion'],
     'binding.runtimeCapability'
   );
-  const implementation = record(
-    item.implementation,
-    'binding.implementation'
-  );
+  const implementation = record(item.implementation, 'binding.implementation');
   exactKeys(
     implementation,
     ['id', 'version', 'implementationKey', 'kind'],
@@ -360,13 +301,9 @@ function parseBinding(value: unknown): ImplementationBinding {
   );
   if (
     typeof implementation.kind !== 'string' ||
-    !(capabilityImplementationKinds as readonly string[]).includes(
-      implementation.kind
-    )
+    !(capabilityImplementationKinds as readonly string[]).includes(implementation.kind)
   ) {
-    throw new CapabilityRuntimeExecutionContractError(
-      'binding.implementation.kind is invalid.'
-    );
+    throw new CapabilityRuntimeExecutionContractError('binding.implementation.kind is invalid.');
   }
   return {
     schemaVersion: 1,
@@ -386,10 +323,7 @@ function parseBinding(value: unknown): ImplementationBinding {
         'binding.runtimeCapability.id',
         300
       ) as ImplementationBinding['runtimeCapability']['id'],
-      version: positiveInteger(
-        runtimeCapability.version,
-        'binding.runtimeCapability.version'
-      ),
+      version: positiveInteger(runtimeCapability.version, 'binding.runtimeCapability.version'),
       capabilityId: text(
         runtimeCapability.capabilityId,
         'binding.runtimeCapability.capabilityId',
@@ -407,10 +341,7 @@ function parseBinding(value: unknown): ImplementationBinding {
         'binding.implementation.id',
         300
       ) as ImplementationBinding['implementation']['id'],
-      version: positiveInteger(
-        implementation.version,
-        'binding.implementation.version'
-      ),
+      version: positiveInteger(implementation.version, 'binding.implementation.version'),
       implementationKey: text(
         implementation.implementationKey,
         'binding.implementation.implementationKey',
@@ -445,9 +376,7 @@ function parseInvocation(value: unknown): CapabilityInvocation {
     'invocation'
   );
   if (item.schemaVersion !== 1 || item.status !== 'COMPLETED') {
-    throw new CapabilityRuntimeExecutionContractError(
-      'invocation must be COMPLETED.'
-    );
+    throw new CapabilityRuntimeExecutionContractError('invocation must be COMPLETED.');
   }
   return {
     schemaVersion: 1,
@@ -493,11 +422,7 @@ function parseOutcome(value: unknown): CapabilityOutcome {
     ],
     'outcome'
   );
-  if (
-    item.schemaVersion !== 1 ||
-    item.status !== 'SUCCEEDED' ||
-    item.output === undefined
-  ) {
+  if (item.schemaVersion !== 1 || item.status !== 'SUCCEEDED' || item.output === undefined) {
     throw new CapabilityRuntimeExecutionContractError(
       'outcome must be a successful output-bearing result.'
     );
@@ -547,14 +472,8 @@ function parseReturn(value: unknown): CapabilityReturn {
     ],
     'returnValue'
   );
-  if (
-    item.schemaVersion !== 1 ||
-    item.status !== 'COMPLETED' ||
-    item.output === undefined
-  ) {
-    throw new CapabilityRuntimeExecutionContractError(
-      'returnValue must be COMPLETED with output.'
-    );
+  if (item.schemaVersion !== 1 || item.status !== 'COMPLETED' || item.output === undefined) {
+    throw new CapabilityRuntimeExecutionContractError('returnValue must be COMPLETED with output.');
   }
   return {
     schemaVersion: 1,
@@ -574,11 +493,7 @@ function parseReturn(value: unknown): CapabilityReturn {
       300
     ) as CapabilityReturn['capabilityOutcomeId'],
     status: 'COMPLETED',
-    outputSchemaId: text(
-      item.outputSchemaId,
-      'returnValue.outputSchemaId',
-      300
-    ),
+    outputSchemaId: text(item.outputSchemaId, 'returnValue.outputSchemaId', 300),
     output: structuredClone(item.output),
     evidenceRefs: stringList(item.evidenceRefs, 'returnValue.evidenceRefs'),
     returnedAt: timestamp(item.returnedAt, 'returnValue.returnedAt'),
@@ -610,28 +525,16 @@ function parseReceipt(value: unknown): SessionReceipt {
     'receipt'
   );
   if (item.schemaVersion !== 1) {
-    throw new CapabilityRuntimeExecutionContractError(
-      'receipt.schemaVersion must be 1.'
-    );
+    throw new CapabilityRuntimeExecutionContractError('receipt.schemaVersion must be 1.');
   }
-  const runtimeCapability = record(
-    item.runtimeCapability,
-    'receipt.runtimeCapability'
-  );
+  const runtimeCapability = record(item.runtimeCapability, 'receipt.runtimeCapability');
   exactKeys(
     runtimeCapability,
     ['id', 'version', 'capabilityId', 'capabilityVersion'],
     'receipt.runtimeCapability'
   );
-  const implementation = record(
-    item.implementation,
-    'receipt.implementation'
-  );
-  exactKeys(
-    implementation,
-    ['id', 'version', 'implementationKey'],
-    'receipt.implementation'
-  );
+  const implementation = record(item.implementation, 'receipt.implementation');
+  exactKeys(implementation, ['id', 'version', 'implementationKey'], 'receipt.implementation');
   return {
     schemaVersion: 1,
     sessionReceiptId: text(
@@ -654,10 +557,7 @@ function parseReceipt(value: unknown): SessionReceipt {
         'receipt.runtimeCapability.id',
         300
       ) as SessionReceipt['runtimeCapability']['id'],
-      version: positiveInteger(
-        runtimeCapability.version,
-        'receipt.runtimeCapability.version'
-      ),
+      version: positiveInteger(runtimeCapability.version, 'receipt.runtimeCapability.version'),
       capabilityId: text(
         runtimeCapability.capabilityId,
         'receipt.runtimeCapability.capabilityId',
@@ -675,10 +575,7 @@ function parseReceipt(value: unknown): SessionReceipt {
         'receipt.implementation.id',
         300
       ) as SessionReceipt['implementation']['id'],
-      version: positiveInteger(
-        implementation.version,
-        'receipt.implementation.version'
-      ),
+      version: positiveInteger(implementation.version, 'receipt.implementation.version'),
       implementationKey: text(
         implementation.implementationKey,
         'receipt.implementation.implementationKey',
@@ -706,14 +603,8 @@ function parseReceipt(value: unknown): SessionReceipt {
   };
 }
 
-function exactEvidence(
-  left: readonly string[],
-  right: readonly string[]
-): boolean {
-  return (
-    left.length === right.length &&
-    left.every((item, index) => item === right[index])
-  );
+function exactEvidence(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
 }
 
 export function parseGovernedCapabilityRuntimeExecutionV2(
@@ -736,9 +627,7 @@ export function parseGovernedCapabilityRuntimeExecutionV2(
     'execution'
   );
   if (typeof execution.replayed !== 'boolean') {
-    throw new CapabilityRuntimeExecutionContractError(
-      'execution.replayed must be boolean.'
-    );
+    throw new CapabilityRuntimeExecutionContractError('execution.replayed must be boolean.');
   }
 
   const request = parseRequest(execution.request);
@@ -780,14 +669,11 @@ export function parseGovernedCapabilityRuntimeExecutionV2(
     composition.primaryImplementationProfileId !== binding.implementation.id ||
     receipt.runtimeCapability.id !== binding.runtimeCapability.id ||
     receipt.runtimeCapability.version !== binding.runtimeCapability.version ||
-    receipt.runtimeCapability.capabilityId !==
-      binding.runtimeCapability.capabilityId ||
-    receipt.runtimeCapability.capabilityVersion !==
-      binding.runtimeCapability.capabilityVersion ||
+    receipt.runtimeCapability.capabilityId !== binding.runtimeCapability.capabilityId ||
+    receipt.runtimeCapability.capabilityVersion !== binding.runtimeCapability.capabilityVersion ||
     receipt.implementation.id !== binding.implementation.id ||
     receipt.implementation.version !== binding.implementation.version ||
-    receipt.implementation.implementationKey !==
-      binding.implementation.implementationKey
+    receipt.implementation.implementationKey !== binding.implementation.implementationKey
   ) {
     throw new CapabilityRuntimeExecutionContractError(
       'Capability binding and receipt are inconsistent.'

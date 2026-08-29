@@ -5,16 +5,8 @@ import {
   type FormalMatterId,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import {
-  HttpError,
-  json,
-  type JsonRequest,
-  type JsonRoute
-} from '@markorbit/service-kit';
-import {
-  MatterIntelligenceError,
-  type MatterIntelligenceService
-} from './matter-intelligence.js';
+import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import { MatterIntelligenceError, type MatterIntelligenceService } from './matter-intelligence.js';
 
 export interface MatterIntelligenceHttpOptions {
   internalServiceSecret: string;
@@ -42,9 +34,7 @@ function principalFor(request: JsonRequest, secret: string): WorkspacePrincipal 
 
   let principal: WorkspacePrincipal;
   try {
-    principal = parseInternalWorkspacePrincipal(
-      request.headers['x-markorbit-principal']
-    );
+    principal = parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
   } catch (error) {
     if (error instanceof AuthenticationError) {
       throw new HttpError(401, error.code, error.message);
@@ -74,11 +64,7 @@ function principalFor(request: JsonRequest, secret: string): WorkspacePrincipal 
 }
 
 function bodyOf(request: JsonRequest): Readonly<Record<string, unknown>> {
-  if (
-    !request.body ||
-    typeof request.body !== 'object' ||
-    Array.isArray(request.body)
-  ) {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body)) {
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
   }
   const body = request.body as Record<string, unknown>;
@@ -107,18 +93,10 @@ function durationDays(value: unknown): number {
 function idempotencyKey(request: JsonRequest): string {
   const key = request.headers['idempotency-key']?.trim();
   if (!key) {
-    throw new HttpError(
-      400,
-      'IDEMPOTENCY_KEY_REQUIRED',
-      'Idempotency-Key is required.'
-    );
+    throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
   }
   if (key.length > 300) {
-    throw new HttpError(
-      400,
-      'INVALID_REQUEST',
-      'Idempotency-Key exceeds 300 characters.'
-    );
+    throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key exceeds 300 characters.');
   }
   return key;
 }
@@ -126,31 +104,17 @@ function idempotencyKey(request: JsonRequest): string {
 function correlationId(request: JsonRequest): string {
   const value = request.headers['x-correlation-id']?.trim();
   if (!value) {
-    throw new HttpError(
-      400,
-      'CORRELATION_ID_REQUIRED',
-      'X-Correlation-Id is required.'
-    );
+    throw new HttpError(400, 'CORRELATION_ID_REQUIRED', 'X-Correlation-Id is required.');
   }
   if (value.length > 300) {
-    throw new HttpError(
-      400,
-      'INVALID_REQUEST',
-      'X-Correlation-Id exceeds 300 characters.'
-    );
+    throw new HttpError(400, 'INVALID_REQUEST', 'X-Correlation-Id exceeds 300 characters.');
   }
   return value;
 }
 
 function translate(error: unknown): never {
   if (!(error instanceof MatterIntelligenceError)) throw error;
-  throw new HttpError(
-    error.status,
-    error.code,
-    error.message,
-    error.retryable,
-    error.details
-  );
+  throw new HttpError(error.status, error.code, error.message, error.retryable, error.details);
 }
 
 export function createMatterIntelligenceRoutes(
@@ -159,23 +123,19 @@ export function createMatterIntelligenceRoutes(
   return [
     {
       method: 'POST',
-      path:
-        '/internal/v1/formal-matters/:formalMatterId/intelligence-observations/cn-duration-band',
+      path: '/internal/v1/formal-matters/:formalMatterId/intelligence-observations/cn-duration-band',
       async handle(request) {
         const principal = principalFor(request, options.internalServiceSecret);
         const body = bodyOf(request);
         try {
-          const disposition =
-            await options.service.recordCompletedDurationBand({
-              workspaceId: principal.workspaceId,
-              formalMatterId: request.params.formalMatterId! as FormalMatterId,
-              observedCompletedDurationDays: durationDays(
-                body.observedCompletedDurationDays
-              ),
-              principal,
-              idempotencyKey: idempotencyKey(request),
-              correlationId: correlationId(request)
-            });
+          const disposition = await options.service.recordCompletedDurationBand({
+            workspaceId: principal.workspaceId,
+            formalMatterId: request.params.formalMatterId! as FormalMatterId,
+            observedCompletedDurationDays: durationDays(body.observedCompletedDurationDays),
+            principal,
+            idempotencyKey: idempotencyKey(request),
+            correlationId: correlationId(request)
+          });
           return json(
             disposition.replayed || disposition.semanticDuplicate ? 200 : 201,
             disposition
