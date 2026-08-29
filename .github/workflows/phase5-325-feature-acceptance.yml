@@ -40,7 +40,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Repair focused test lint
+      - name: Repair focused test lint and typing
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -48,8 +48,18 @@ jobs:
           unit = Path('services/markreg/tests/matter-intelligence.test.ts')
           text = unit.read_text()
           text = text.replace(
+              "  type MatterIntelligenceRepository,\n  type ValidatedDurationBandCapabilityResult",
+              "  type MatterIntelligenceRepository,\n  type RecordMatterIntelligenceCommand,\n  type ValidatedDurationBandCapabilityResult",
+              1,
+          )
+          text = text.replace(
               "function rawExecution(command: CapabilityRequestV2Command, suffix = 'one', output = durationOutput(336)) {",
               "function rawExecution(\n  command: CapabilityRequestV2Command,\n  suffix = 'one',\n  output: unknown = durationOutput(336)\n) {",
+              1,
+          )
+          text = text.replace(
+              "function command(days = 336, key = 'matter-intelligence-key-one') {",
+              "function command(\n  days = 336,\n  key = 'matter-intelligence-key-one'\n): RecordMatterIntelligenceCommand {",
               1,
           )
           marker = "describe('MarkReg governed Capability HTTP client', () => {"
@@ -92,6 +102,11 @@ jobs:
           text = text.replace(
               "async () => {\n        throw new Error('connection refused');\n      }",
               "() => Promise.reject(new Error('connection refused'))",
+              1,
+          )
+          text = text.replace(
+              "    const input = {\n      workspaceId,\n      formalMatterId,",
+              "    const input: Parameters<\n      MatterIntelligenceCapabilityClient['classifyCompletedDuration']\n    >[0] = {\n      workspaceId,\n      formalMatterId,",
               1,
           )
           unit.write_text(text)
