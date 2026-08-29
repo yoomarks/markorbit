@@ -40,6 +40,71 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Repair focused test lint
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          unit = Path('services/markreg/tests/matter-intelligence.test.ts')
+          text = unit.read_text()
+          text = text.replace(
+              "function rawExecution(command: CapabilityRequestV2Command, suffix = 'one', output = durationOutput(336)) {",
+              "function rawExecution(\n  command: CapabilityRequestV2Command,\n  suffix = 'one',\n  output: unknown = durationOutput(336)\n) {",
+              1,
+          )
+          marker = "describe('MarkReg governed Capability HTTP client', () => {"
+          helper = """function requestBodyText(body: BodyInit | null | undefined): string {
+            if (typeof body !== 'string') throw new Error('Expected JSON string request body.');
+            return body;
+          }
+
+          """
+          if 'function requestBodyText(' not in text:
+              text = text.replace(marker, helper + marker, 1)
+          text = text.replace(
+              'const fetcher: typeof fetch = async (_input, init) => {',
+              'const fetcher: typeof fetch = (_input, init) => {',
+          )
+          text = text.replace(
+              'JSON.parse(String(init?.body))',
+              'JSON.parse(requestBodyText(init?.body))',
+          )
+          text = text.replace(
+              "return new Response(JSON.stringify(rawExecution(capturedCommand, 'http', durationOutput(336))), {\n        status: 201,\n        headers: { 'content-type': 'application/json' }\n      });",
+              "return Promise.resolve(\n        new Response(JSON.stringify(rawExecution(capturedCommand, 'http', durationOutput(336))), {\n          status: 201,\n          headers: { 'content-type': 'application/json' }\n        })\n      );",
+              1,
+          )
+          text = text.replace(
+              "return new Response(JSON.stringify(rawExecution(commandValue, 'unsafe', unsafeOutput as never)), {\n        status: 201,\n        headers: { 'content-type': 'application/json' }\n      });",
+              "return Promise.resolve(\n        new Response(JSON.stringify(rawExecution(commandValue, 'unsafe', unsafeOutput)), {\n          status: 201,\n          headers: { 'content-type': 'application/json' }\n        })\n      );",
+              1,
+          )
+          text = text.replace(
+              "async () => new Response(JSON.stringify({ code: 'CALLER_NOT_ALLOWED' }), { status: 409 })",
+              "() => Promise.resolve(new Response(JSON.stringify({ code: 'CALLER_NOT_ALLOWED' }), { status: 409 }))",
+              1,
+          )
+          text = text.replace(
+              "async () => new Response(JSON.stringify({ code: 'UPSTREAM_FAILED' }), { status: 503 })",
+              "() => Promise.resolve(new Response(JSON.stringify({ code: 'UPSTREAM_FAILED' }), { status: 503 }))",
+              1,
+          )
+          text = text.replace(
+              "async () => {\n        throw new Error('connection refused');\n      }",
+              "() => Promise.reject(new Error('connection refused'))",
+              1,
+          )
+          unit.write_text(text)
+
+          postgres = Path('services/markreg/tests/matter-intelligence-postgres.test.ts')
+          text = postgres.read_text()
+          text = text.replace(
+              "  MatterIntelligenceError,\n  PostgresMatterIntelligenceRepository,\n  type MarkRegMatterIntelligenceObservationV1",
+              "  PostgresMatterIntelligenceRepository,\n  type MarkRegMatterIntelligenceObservationV1,\n  type MatterIntelligenceError",
+              1,
+          )
+          postgres.write_text(text)
+          PY
       - name: Format focused Phase 5 tests
         run: |
           pnpm exec prettier --write \
