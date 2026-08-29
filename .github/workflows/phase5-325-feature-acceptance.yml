@@ -1,0 +1,73 @@
+name: Phase 5 PR 325 Feature Acceptance
+
+on:
+  push:
+    branches:
+      - phase5/324-markreg-matter-intelligence-observation
+    paths:
+      - .github/workflows/phase5-325-feature-acceptance.yml
+
+permissions:
+  contents: write
+
+jobs:
+  accept:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: markorbit
+          POSTGRES_PASSWORD: markorbit-phase5-test
+          POSTGRES_DB: markorbit_phase5_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U markorbit -d markorbit_phase5_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase5/324-markreg-matter-intelligence-observation
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format focused Phase 5 tests
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/tests/capability-runtime-execution.test.ts \
+            services/markreg/tests/matter-intelligence.test.ts \
+            services/markreg/tests/matter-intelligence-postgres.test.ts
+      - name: Validate focused contracts and MarkReg unit boundary
+        run: |
+          pnpm exec turbo run build --filter=@markorbit/markreg-service...
+          pnpm --filter @markorbit/contracts exec vitest run tests/capability-runtime-execution.test.ts
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
+          pnpm --filter @markorbit/markreg-service exec vitest run tests/matter-intelligence.test.ts
+      - name: Run PostgreSQL durability acceptance
+        env:
+          MARKREG_MATTER_INTELLIGENCE_TEST_DATABASE_URL: postgresql://markorbit:markorbit-phase5-test@127.0.0.1:5432/markorbit_phase5_test
+          MARKREG_MATTER_INTELLIGENCE_POSTGRES_REQUIRED: '1'
+        run: pnpm --filter @markorbit/markreg-service exec vitest run --no-file-parallelism tests/matter-intelligence-postgres.test.ts
+      - name: Self-clean and push accepted tests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase5-325-feature-acceptance.yml
+          printf '%s\n' 'phase5-pr-325-feature-acceptance-complete' > .phase5-325-feature-acceptance-trigger
+          git add \
+            packages/contracts/tests/capability-runtime-execution.test.ts \
+            services/markreg/tests/matter-intelligence.test.ts \
+            services/markreg/tests/matter-intelligence-postgres.test.ts \
+            .phase5-325-feature-acceptance-trigger
+          git commit -m "test: accept Phase 5 MarkReg intelligence slice"
+          git push origin HEAD:phase5/324-markreg-matter-intelligence-observation
