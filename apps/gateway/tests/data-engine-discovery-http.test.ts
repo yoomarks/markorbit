@@ -126,12 +126,12 @@ function response(body: unknown, requestId: string, correlationId: string) {
 
 describe('Gateway CN preliminary-publication Discovery adapter', () => {
   it('reuses the authenticated V1 transport and sends only the bounded V2 query', async () => {
-    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchImpl = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
       expect(headers.get('authorization')).toBe(`Bearer ${'k'.repeat(32)}`);
       expect(headers.get('x-request-id')).toBe('request-1');
       expect(headers.get('x-correlation-id')).toBe('correlation-1');
-      return response(envelope(), 'request-1', 'correlation-1');
+      return Promise.resolve(response(envelope(), 'request-1', 'correlation-1'));
     });
     const client = createDataEngineClient({
       dataEngineUrl: 'https://data-engine.test',
@@ -152,7 +152,14 @@ describe('Gateway CN preliminary-publication Discovery adapter', () => {
     );
 
     expect(result.payload.query.query_hash).toBe(QUERY_HASH);
-    const calledUrl = String(fetchImpl.mock.calls[0]?.[0]);
+    const calledInput = fetchImpl.mock.calls[0]?.[0];
+    if (calledInput === undefined) throw new Error('Data Engine Discovery fetch was not invoked.');
+    const calledUrl =
+      typeof calledInput === 'string'
+        ? calledInput
+        : calledInput instanceof URL
+          ? calledInput.href
+          : calledInput.url;
     expect(calledUrl).toContain('/api/v1/cn/discovery/preliminary-publications?');
     expect(calledUrl).toContain('application_number_start=10000000');
     expect(calledUrl).toContain('application_number_end=10001000');
@@ -172,7 +179,9 @@ describe('Gateway CN preliminary-publication Discovery adapter', () => {
         applicationNumberEnd: '10001000',
         pageSize: 25
       })
-    ).rejects.toMatchObject({ code: 'DATA_ENGINE_CONTRACT_MISMATCH' } satisfies Partial<DataEngineClientError>);
+    ).rejects.toMatchObject({
+      code: 'DATA_ENGINE_CONTRACT_MISMATCH'
+    } satisfies Partial<DataEngineClientError>);
   });
 
   it('rejects invalid bounds before touching the integration plane', async () => {
