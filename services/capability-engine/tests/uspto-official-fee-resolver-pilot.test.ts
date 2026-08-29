@@ -11,6 +11,7 @@ import {
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256,
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_PACKAGE_ID,
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REFERENCE_ID,
+  USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
   USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
   USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID,
@@ -190,6 +191,8 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
         methodVersionId: pkg.methodVersionId,
         sourceIdentityFingerprintSha256:
           USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
+        replayIdentityFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
         materializationFingerprintSha256:
           USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256
       },
@@ -202,6 +205,9 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
     );
     expect(execution.receipt.evidenceRefs).toContain(
       `official-fee-reference:${USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REFERENCE_ID}`
+    );
+    expect(execution.receipt.evidenceRefs).toContain(
+      `official-fee-replay-identity-sha256:${USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256}`
     );
     expect(execution.receipt.evidenceRefs).toContain(
       'capability-runtime:knowledge-research-hot-path=absent'
@@ -314,20 +320,32 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
     expect(resolveCurrent).not.toHaveBeenCalled();
   });
 
-  it('fails closed on materialization identity substitution and tampered package identity', async () => {
-    const reader: OfficialFeeReferenceReaderV1 = {
-      resolveCurrent: () =>
-        acceptedReference({ materializationFingerprintSha256: 'f'.repeat(64) })
-    };
-    const mismatched = runtimeWithReader(reader);
-    const result = await mismatched.runtime.invoke(
-      command({ idempotencyKey: 'phase4-uspto-fee-materialization-mismatch' })
+  it('recomputes materialization integrity and rejects payload or fingerprint substitution', async () => {
+    const amountTampered = runtimeWithReader({
+      resolveCurrent: () => acceptedReference({ amountMinor: 99999 })
+    });
+    const amountResult = await amountTampered.runtime.invoke(
+      command({ idempotencyKey: 'phase4-uspto-fee-amount-tamper' })
     );
-    expect(result.returnValue.status).toBe('FAILED');
-    expect(result.outcome.error?.message).toContain(
-      'outside the accepted Phase 4 Resolver identity'
+    expect(amountResult.returnValue.status).toBe('FAILED');
+    expect(amountResult.outcome.error?.message).toContain(
+      'Official Fee reference integrity verification failed'
     );
 
+    const fingerprintTampered = runtimeWithReader({
+      resolveCurrent: () =>
+        acceptedReference({ materializationFingerprintSha256: 'f'.repeat(64) })
+    });
+    const fingerprintResult = await fingerprintTampered.runtime.invoke(
+      command({ idempotencyKey: 'phase4-uspto-fee-materialization-mismatch' })
+    );
+    expect(fingerprintResult.returnValue.status).toBe('FAILED');
+    expect(fingerprintResult.outcome.error?.message).toContain(
+      'outside the accepted Phase 4 Resolver identity'
+    );
+  });
+
+  it('rejects a tampered executable package before Capability invocation', () => {
     const pkg = acceptedPackage();
     const tampered = { ...pkg, packageId: 'executable-method-package_tampered' };
     expect(() =>
