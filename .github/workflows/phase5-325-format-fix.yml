@@ -1,0 +1,43 @@
+name: Phase 5 PR 325 Format Fix
+
+on:
+  push:
+    branches:
+      - phase5/324-markreg-matter-intelligence-observation
+    paths:
+      - .github/workflows/phase5-325-format-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase5/324-markreg-matter-intelligence-observation
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format Phase 5 files
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/src/capability-runtime-execution.ts \
+            services/markreg/src/matter-intelligence-http.ts \
+            services/markreg/src/matter-intelligence.ts
+      - name: Self-clean and push formatted commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase5-325-format-fix.yml
+          printf '%s\n' 'phase5-pr-325-format-complete' > .phase5-325-format-trigger
+          git add packages/contracts/src/capability-runtime-execution.ts services/markreg/src/matter-intelligence-http.ts services/markreg/src/matter-intelligence.ts .phase5-325-format-trigger
+          git commit -m "style: format Phase 5 MarkReg intelligence slice"
+          git push origin HEAD:phase5/324-markreg-matter-intelligence-observation
