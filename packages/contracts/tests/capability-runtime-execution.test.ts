@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import {
+  CN_DURATION_BAND_ACCEPTED_DATASET_REF,
+  CN_DURATION_BAND_EXECUTABLE_KIND
+} from '../src/brain-cn-duration-band-classification.js';
 import { capabilityRuntimeNoAuthorityConsequences } from '../src/capability-runtime.js';
 import {
   CapabilityRuntimeExecutionContractError,
+  parseCnDurationBandClassificationOutputV1,
   parseGovernedCapabilityRuntimeExecutionV2
 } from '../src/capability-runtime-execution.js';
 
@@ -135,6 +140,28 @@ function fixture() {
   };
 }
 
+function durationBandOutput() {
+  return {
+    schemaVersion: 1,
+    kind: CN_DURATION_BAND_EXECUTABLE_KIND,
+    jurisdiction: 'CN',
+    procedure: 'FILING_TO_PRELIMINARY_PUBLICATION',
+    observedCompletedDurationDays: 336,
+    historicalBand: 'LOWER_INTERQUARTILE',
+    datasetRefId: CN_DURATION_BAND_ACCEPTED_DATASET_REF,
+    thresholds: { p25Days: 335, medianDays: 336, p75Days: 383 },
+    semantics: 'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION',
+    descriptiveInterpretationOnly: true,
+    legalConclusion: false,
+    predictiveClaim: false,
+    riskClaim: false,
+    probabilityClaim: false,
+    recommendation: false,
+    currentCaseStatusInferred: false,
+    productBusinessStateMutated: false
+  };
+}
+
 describe('Governed Capability Runtime execution response contract', () => {
   it('parses one exact linked successful execution', () => {
     const parsed = parseGovernedCapabilityRuntimeExecutionV2(fixture());
@@ -152,13 +179,49 @@ describe('Governed Capability Runtime execution response contract', () => {
   });
 
   it('fails closed if the execution claims an authority consequence', () => {
-    const value = fixture();
-    value.outcome.authority = {
-      ...capabilityRuntimeNoAuthorityConsequences,
-      filingSubmitted: true
+    const base = fixture();
+    const value = {
+      ...base,
+      outcome: {
+        ...base.outcome,
+        authority: {
+          ...capabilityRuntimeNoAuthorityConsequences,
+          filingSubmitted: true
+        }
+      }
     };
     expect(() => parseGovernedCapabilityRuntimeExecutionV2(value)).toThrow(
       CapabilityRuntimeExecutionContractError
     );
+  });
+});
+
+describe('CN completed-duration historical-band output contract', () => {
+  it('parses the exact descriptive Phase 4 output shape', () => {
+    expect(parseCnDurationBandClassificationOutputV1(durationBandOutput())).toEqual(
+      durationBandOutput()
+    );
+  });
+
+  it('fails closed if a recommendation or other product authority appears', () => {
+    const value = { ...durationBandOutput(), recommendation: true };
+    expect(() => parseCnDurationBandClassificationOutputV1(value)).toThrow(
+      CapabilityRuntimeExecutionContractError
+    );
+  });
+
+  it('fails closed on dataset or threshold drift', () => {
+    expect(() =>
+      parseCnDurationBandClassificationOutputV1({
+        ...durationBandOutput(),
+        datasetRefId: 'research-dataset_drift'
+      })
+    ).toThrow(CapabilityRuntimeExecutionContractError);
+    expect(() =>
+      parseCnDurationBandClassificationOutputV1({
+        ...durationBandOutput(),
+        thresholds: { p25Days: 334, medianDays: 336, p75Days: 383 }
+      })
+    ).toThrow(CapabilityRuntimeExecutionContractError);
   });
 });
