@@ -61,11 +61,10 @@ function activePackage(
 }
 
 function validatedPackage(suffix = 'validated'): ExecutableMethodPackageV1 {
-  return {
-    ...activePackage(suffix),
-    lifecycle: 'VALIDATED',
-    activatedAt: undefined
-  };
+  const pkg = activePackage(suffix);
+  pkg.lifecycle = 'VALIDATED';
+  delete pkg.activatedAt;
+  return pkg;
 }
 
 const request: CapabilityRequestV2 = {
