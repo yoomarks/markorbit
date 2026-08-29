@@ -11,6 +11,29 @@ import {
 } from '../src/executable-method-runtime.js';
 
 const NOW = '2026-08-29T00:00:00.000Z';
+const INTEGRITY_SHA = 'a'.repeat(64);
+const QUERY_SHA = 'b'.repeat(64);
+
+const researchDataset = {
+  contract_version: 1,
+  dataset_ref_id: `research-dataset_${QUERY_SHA}`,
+  engine_version: 'phase4-test',
+  fact_schema_version: 'cn-case-current-test-v1',
+  jurisdictions: ['CN'],
+  resource_kinds: ['cn_case_current'],
+  query: { resource: 'cn_case_current', scope: 'phase4-runtime-test' },
+  as_of: null,
+  watermark: 'cn-test:2026-08-28',
+  completeness: 'COMPLETE_TO_WATERMARK',
+  pagination: null,
+  aggregation: null,
+  sampling: { strategy: 'HASH', seed: 17 },
+  partition: null,
+  row_count: 100,
+  generated_at: '2026-08-28T00:00:00.000Z',
+  query_fingerprint_sha256: QUERY_SHA,
+  integrity_sha256: INTEGRITY_SHA
+} as const;
 
 function activePackage(
   suffix = 'primary',
@@ -52,7 +75,7 @@ function activePackage(
       metrics: { replay: 1 },
       evidenceSummary: 'Deterministic test evaluation.'
     },
-    lineage: { knowledgeSources: [], researchDatasets: [] },
+    lineage: { knowledgeSources: [], researchDatasets: [researchDataset] },
     limitations: ['Test-only fixture limitation.'],
     createdAt: '2026-08-28T00:00:00.000Z',
     activatedAt: NOW,
@@ -157,6 +180,9 @@ describe('Phase 4 executable method package runtime bridge', () => {
     );
     expect(result.evidenceRefs).toContain(`brain-method-package:${pkg.packageId}@1`);
     expect(result.evidenceRefs).toContain(`brain-method-evaluation:${pkg.evaluation.evaluationId}`);
+    expect(result.evidenceRefs).toContain(
+      `research-dataset:${researchDataset.dataset_ref_id}:${QUERY_SHA}:${INTEGRITY_SHA}`
+    );
   });
 
   it('does not execute a VALIDATED package before an explicit ACTIVE lifecycle version exists', async () => {
