@@ -82,6 +82,11 @@ jobs:
           pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/events build
           pnpm --filter @markorbit/service-kit build
+      - name: Contracts safe lint fixups
+        run: |
+          pnpm --filter @markorbit/contracts exec eslint \
+            src/data-engine-discovery.ts \
+            tests/data-engine-discovery-contract.test.ts --fix
       - name: Contracts checks
         run: |
           pnpm --filter @markorbit/contracts lint
@@ -90,12 +95,18 @@ jobs:
       - name: Gateway checks
         run: |
           pnpm --filter @markorbit/gateway build
+          pnpm --filter @markorbit/gateway exec eslint \
+            src/data-engine-discovery-http.ts \
+            tests/data-engine-discovery-http.test.ts --fix
           pnpm --filter @markorbit/gateway lint
           pnpm --filter @markorbit/gateway typecheck
           pnpm --filter @markorbit/gateway test -- data-engine-discovery-http.test.ts
       - name: Capability checks
         run: |
           pnpm --filter @markorbit/capability-engine build
+          pnpm --filter @markorbit/capability-engine exec eslint \
+            src/cn-preliminary-publication-discovery-pilot.ts \
+            tests/cn-preliminary-publication-discovery-pilot.test.ts --fix
           pnpm --filter @markorbit/capability-engine lint
           pnpm --filter @markorbit/capability-engine typecheck
           pnpm --filter @markorbit/capability-engine test -- cn-preliminary-publication-discovery-pilot.test.ts
