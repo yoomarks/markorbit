@@ -72,10 +72,15 @@ crossRepoDescribe('Phase 4 CN preliminary-publication Discovery cross-repo accep
 
     expect(replay.payload).toEqual(page1.payload);
 
+    const page1Cursor = page1.payload.next_cursor;
+    if (page1Cursor === null) {
+      throw new Error('expected page 1 to return a continuation cursor');
+    }
+
     const page2 = await discovery.discover(
       {
         ...page1Request,
-        cursor: page1.payload.next_cursor ?? undefined
+        cursor: page1Cursor
       },
       {
         requestId: 'phase4-discovery-page2',
