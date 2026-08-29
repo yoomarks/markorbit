@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capability-learning';
 import type { ExecutableMethodPackageV1 } from '@markorbit/contracts/brain-method';
 import type {
@@ -37,6 +39,8 @@ export const USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REFERENCE_ID =
   'official-fee-ref_6c8a4fd7a23fb9dbe0556a33c09652580c1c798a0e2238687cab1ecdd6fcfe81' as const;
 export const USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256 =
   '36ee7197cd03f9d5cb200bb24dc5bf55e673b26beec75d2ecdea9d50ff11e27c' as const;
+export const USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256 =
+  'f8598f8c5a021ca94b6b4db540adbd8c52f8ab71e5d223d04be218c237d3f887' as const;
 export const USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256 =
   '6c8a4fd7a23fb9dbe0556a33c09652580c1c798a0e2238687cab1ecdd6fcfe81' as const;
 
@@ -116,6 +120,7 @@ export interface UsptoOfficialFeeResolverOutputV1 {
     methodId: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_METHOD_ID;
     methodVersionId: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_METHOD_VERSION_ID;
     sourceIdentityFingerprintSha256: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256;
+    replayIdentityFingerprintSha256: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256;
     materializationFingerprintSha256: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256;
   }>;
   limitations: readonly string[];
@@ -186,6 +191,21 @@ function instant(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && !Number.isNaN(Date.parse(value));
 }
 
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right)
+    );
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
+}
+
+function digest(value: unknown): string {
+  return createHash('sha256').update(stable(value)).digest('hex');
+}
+
 function knowledgeIdentity(value: unknown): string | undefined {
   const source = record(value);
   const content = source ? record(source.content) : undefined;
@@ -199,6 +219,14 @@ function knowledgeIdentity(value: unknown): string | undefined {
     return undefined;
   }
   return `${content.objectId}:${source.chunkId}:${source.contentSha256}`;
+}
+
+function normalizedKnowledgeSources(values: readonly unknown[]): readonly unknown[] {
+  return [...values].sort((left, right) => {
+    const leftIdentity = knowledgeIdentity(left) ?? '';
+    const rightIdentity = knowledgeIdentity(right) ?? '';
+    return leftIdentity.localeCompare(rightIdentity);
+  });
 }
 
 function exactAcceptedKnowledgeLineage(values: readonly unknown[]): boolean {
@@ -272,6 +300,50 @@ export function validateUsptoOfficialFeeResolverInputV1(value: unknown): boolean
   }
 }
 
+function referenceIntegrity(reference: Readonly<UsptoOfficialFeeResolverReferenceV1>): Readonly<{
+  sourceIdentityFingerprintSha256: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256;
+  replayIdentityFingerprintSha256: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256;
+  materializationFingerprintSha256: typeof USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256;
+}> {
+  const knowledgeSources = normalizedKnowledgeSources(reference.knowledgeSources);
+  const sourceIdentityFingerprintSha256 = digest({
+    packageId: reference.packageId,
+    methodId: reference.methodId,
+    methodVersionId: reference.methodVersionId,
+    knowledgeSources
+  });
+  const replayIdentityFingerprintSha256 = digest({
+    operation: reference.operation,
+    jurisdiction: reference.jurisdiction,
+    authority: reference.authority,
+    sourceIdentityFingerprintSha256,
+    effectiveFrom: reference.effectiveFrom,
+    effectiveTo: null
+  });
+  const materializationFingerprintSha256 = digest({
+    replayIdentityFingerprintSha256,
+    currency: reference.currency,
+    amountMinor: reference.amountMinor,
+    unit: reference.unit
+  });
+  if (
+    sourceIdentityFingerprintSha256 !== USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256 ||
+    sourceIdentityFingerprintSha256 !== reference.sourceIdentityFingerprintSha256 ||
+    replayIdentityFingerprintSha256 !== USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256 ||
+    materializationFingerprintSha256 !==
+      USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256 ||
+    materializationFingerprintSha256 !== reference.materializationFingerprintSha256 ||
+    reference.referenceId !== `official-fee-ref_${materializationFingerprintSha256}`
+  ) {
+    throw new TypeError('Official Fee reference integrity verification failed.');
+  }
+  return {
+    sourceIdentityFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
+    replayIdentityFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
+    materializationFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256
+  };
+}
+
 function parseReference(value: unknown): UsptoOfficialFeeResolverReferenceV1 {
   const reference = record(value);
   if (
@@ -322,7 +394,9 @@ function parseReference(value: unknown): UsptoOfficialFeeResolverReferenceV1 {
       'Controlled Official Fee Reference Store returned a record outside the accepted Phase 4 Resolver identity.'
     );
   }
-  return reference as unknown as UsptoOfficialFeeResolverReferenceV1;
+  const parsed = reference as unknown as UsptoOfficialFeeResolverReferenceV1;
+  referenceIntegrity(parsed);
+  return parsed;
 }
 
 export function validateUsptoOfficialFeeResolverOutputV1(value: unknown): boolean {
@@ -355,6 +429,7 @@ export function validateUsptoOfficialFeeResolverOutputV1(value: unknown): boolea
       'methodId',
       'methodVersionId',
       'sourceIdentityFingerprintSha256',
+      'replayIdentityFingerprintSha256',
       'materializationFingerprintSha256'
     ]) ||
     output.schemaVersion !== 1 ||
@@ -376,6 +451,8 @@ export function validateUsptoOfficialFeeResolverOutputV1(value: unknown): boolea
     reference.methodVersionId !== USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_METHOD_VERSION_ID ||
     reference.sourceIdentityFingerprintSha256 !==
       USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256 ||
+    reference.replayIdentityFingerprintSha256 !==
+      USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256 ||
     reference.materializationFingerprintSha256 !==
       USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256 ||
     !Array.isArray(output.limitations) ||
@@ -458,6 +535,7 @@ export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMetho
         asOf: requestInput.asOf
       })
     );
+    const integrity = referenceIntegrity(reference);
     const asOf = Date.parse(requestInput.asOf);
     if (Date.parse(reference.effectiveFrom) > asOf) {
       throw new TypeError('Accepted Official Fee reference is not effective at the requested time.');
@@ -487,8 +565,9 @@ export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMetho
         packageId: reference.packageId,
         methodId: reference.methodId,
         methodVersionId: reference.methodVersionId,
-        sourceIdentityFingerprintSha256: reference.sourceIdentityFingerprintSha256,
-        materializationFingerprintSha256: reference.materializationFingerprintSha256
+        sourceIdentityFingerprintSha256: integrity.sourceIdentityFingerprintSha256,
+        replayIdentityFingerprintSha256: integrity.replayIdentityFingerprintSha256,
+        materializationFingerprintSha256: integrity.materializationFingerprintSha256
       },
       limitations: [...input.package.limitations],
       knowledgeResearchInvoked: false,
@@ -500,8 +579,9 @@ export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMetho
       output,
       evidenceRefs: [
         `official-fee-reference:${reference.referenceId}`,
-        `official-fee-source-identity-sha256:${reference.sourceIdentityFingerprintSha256}`,
-        `official-fee-materialization-sha256:${reference.materializationFingerprintSha256}`,
+        `official-fee-source-identity-sha256:${integrity.sourceIdentityFingerprintSha256}`,
+        `official-fee-replay-identity-sha256:${integrity.replayIdentityFingerprintSha256}`,
+        `official-fee-materialization-sha256:${integrity.materializationFingerprintSha256}`,
         'phase4-resolver-acceptance:github:yoomarks/markorbit#310',
         'capability-runtime:knowledge-research-hot-path=absent',
         'capability-runtime:reference-store-read=controlled',
