@@ -54,7 +54,7 @@ jobs:
       - name: Verify tsx runtime subpath resolution
         run: |
           pnpm --filter @markorbit/capability-engine exec tsx -e "import('@markorbit/contracts/data-engine-discovery').then((m) => { if (!m.DATA_ENGINE_DISCOVERY_CONTRACT_VERSION) process.exit(1); console.log('contracts discovery runtime export ok'); })"
-          pnpm --filter @markorbit/gateway exec tsx -e "import('@markorbit/gateway/data-engine-discovery').then((m) => { if (!m.DataEngineDiscoveryHttpClient) process.exit(1); console.log('gateway discovery runtime export ok'); })"
+          pnpm --filter @markorbit/gateway exec tsx -e "import('@markorbit/gateway/data-engine-discovery').then((m) => { if (!m.createCnPreliminaryPublicationDiscoveryClientV2) process.exit(1); console.log('gateway discovery runtime export ok'); })"
       - name: Remove helper and commit fix
         run: |
           rm .github/workflows/tmp-phase4-312-runtime-export.yml
