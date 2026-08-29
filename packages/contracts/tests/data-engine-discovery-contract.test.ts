@@ -127,7 +127,7 @@ describe('CN preliminary-publication Discovery V2 contract', () => {
     expect(parseCnPreliminaryPublicationDiscoveryPageV2(badQueryHash)).toBeNull();
 
     const badOrdering = page();
-    badOrdering.query.scope.ordering = ['application_number DESC'];
+    Object.assign(badOrdering.query.scope, { ordering: ['application_number DESC'] });
     expect(parseCnPreliminaryPublicationDiscoveryPageV2(badOrdering)).toBeNull();
 
     const badSnapshot = page();
