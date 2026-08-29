@@ -18,8 +18,7 @@ export const USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA =
   'brain-input.official-fee-resolution.v1' as const;
 export const USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA =
   'brain.official-fee-resolution.v1' as const;
-export const USPTO_OFFICIAL_FEE_RESOLVER_EXECUTABLE_KIND =
-  'OFFICIAL_SOURCE_RESOLUTION' as const;
+export const USPTO_OFFICIAL_FEE_RESOLVER_EXECUTABLE_KIND = 'OFFICIAL_SOURCE_RESOLUTION' as const;
 export const USPTO_OFFICIAL_FEE_RESOLVER_OPERATION =
   'USPTO_TM_NEW_APPLICATION_BASE_FEE_SECTION_1_44_ELECTRONIC_PER_CLASS' as const;
 
@@ -74,7 +73,9 @@ export interface OfficialFeeReferenceReaderQueryV1 {
  * needed for this invocation and never becomes a second fee store.
  */
 export interface OfficialFeeReferenceReaderV1 {
-  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): Promise<unknown> | unknown;
+  resolveCurrent(
+    query: Readonly<OfficialFeeReferenceReaderQueryV1>
+  ): Promise<unknown> | unknown;
 }
 
 export interface UsptoOfficialFeeResolverReferenceV1 {
@@ -201,14 +202,20 @@ function knowledgeIdentity(value: unknown): string | undefined {
 }
 
 function exactAcceptedKnowledgeLineage(values: readonly unknown[]): boolean {
-  const identities = values.map(knowledgeIdentity).filter((value): value is string => Boolean(value));
+  const identities = values
+    .map(knowledgeIdentity)
+    .filter((value): value is string => Boolean(value))
+    .sort();
+  const accepted = [...ACCEPTED_KNOWLEDGE_IDENTITIES].sort();
   return (
-    identities.length === ACCEPTED_KNOWLEDGE_IDENTITIES.length &&
-    identities.sort().every((identity, index) => identity === [...ACCEPTED_KNOWLEDGE_IDENTITIES].sort()[index])
+    identities.length === accepted.length &&
+    identities.every((identity, index) => identity === accepted[index])
   );
 }
 
-export function parseUsptoOfficialFeeResolverInputV1(value: unknown): UsptoOfficialFeeResolverInputV1 {
+export function parseUsptoOfficialFeeResolverInputV1(
+  value: unknown
+): UsptoOfficialFeeResolverInputV1 {
   const input = record(value);
   if (
     !input ||
@@ -434,9 +441,7 @@ function assertAcceptedPackage(pkg: Readonly<ExecutableMethodPackageV1>): void {
   }
 }
 
-export class UsptoOfficialFeeSourceResolutionRunnerV1
-  implements ExecutableMethodPackageRunnerV1
-{
+export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMethodPackageRunnerV1 {
   constructor(private readonly references: OfficialFeeReferenceReaderV1) {}
 
   async run(
