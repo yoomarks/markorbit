@@ -1,34 +1,48 @@
-name: Phase 4 Resolver Diagnostic
+name: Phase 4 Resolver Canonical Identity Fix
 
 on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  fix:
     if: github.head_ref == 'phase4/310-official-fee-resolver'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Build exact Resolver dependencies
-        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
-      - name: Print exact Resolver failure outcome
+      - name: Align Resolver identity with Core canonical materializer and self-remove
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('services/capability-engine/tests/uspto-official-fee-resolver-pilot.test.ts')
+          p = Path('services/capability-engine/src/uspto-official-fee-resolver-pilot.ts')
           s = p.read_text()
-          old = "    const execution = await runtime.invoke(command());\n\n    expect(execution.returnValue.status).toBe('COMPLETED');"
-          new = "    const execution = await runtime.invoke(command());\n    console.error('PHASE4_RESOLVER_DIAGNOSTIC', JSON.stringify({ returnValue: execution.returnValue, outcome: execution.outcome }, null, 2));\n\n    expect(execution.returnValue.status).toBe('COMPLETED');"
-          if old not in s:
-              raise SystemExit('diagnostic insertion point not found')
-          p.write_text(s.replace(old, new, 1))
+          replacements = {
+              '36ee7197cd03f9d5cb200bb24dc5bf55e673b26beec75d2ecdea9d50ff11e27c': '939d3b3c0bb0655a841bde8e73c4b19d33d90dce486cc6616d34d47b84894191',
+              'f8598f8c5a021ca94b6b4db540adbd8c52f8ab71e5d223d04be218c237d3f887': 'cccae26b7e90a8a7dde4302ae84aeb18401b7743ee028b5e9e16b08394371a24',
+              '6c8a4fd7a23fb9dbe0556a33c09652580c1c798a0e2238687cab1ecdd6fcfe81': 'f5aa68b190809b271729776c7fb99b65995708e5835cbd4f31e832d29efecbdc',
+          }
+          for old, new in replacements.items():
+              count = s.count(old)
+              if count < 1:
+                  raise SystemExit(f'expected canonical identity token not found: {old}')
+              s = s.replace(old, new)
+          p.write_text(s)
           PY
-          pnpm --filter @markorbit/capability-engine exec vitest run tests/uspto-official-fee-resolver-pilot.test.ts -t "resolves the exact accepted CURRENT" || true
+          pnpm exec prettier --write services/capability-engine/src/uspto-official-fee-resolver-pilot.ts
+          pnpm exec prettier --check services/capability-engine/src/uspto-official-fee-resolver-pilot.ts
+          rm .github/workflows/phase4-resolver-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/capability-engine/src/uspto-official-fee-resolver-pilot.ts .github/workflows/phase4-resolver-diagnostic.yml
+          git diff --cached --check
+          git commit -m "fix: bind Resolver to Core canonical reference identity"
+          git push origin HEAD:${{ github.head_ref }}
