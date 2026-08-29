@@ -1,0 +1,32 @@
+name: Phase 4 Resolver Diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'phase4/310-official-fee-resolver'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Resolver failure outcome
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/capability-engine/tests/uspto-official-fee-resolver-pilot.test.ts')
+          s = p.read_text()
+          old = "    const execution = await runtime.invoke(command());\n\n    expect(execution.returnValue.status).toBe('COMPLETED');"
+          new = "    const execution = await runtime.invoke(command());\n    console.error('PHASE4_RESOLVER_DIAGNOSTIC', JSON.stringify({ returnValue: execution.returnValue, outcome: execution.outcome }, null, 2));\n\n    expect(execution.returnValue.status).toBe('COMPLETED');"
+          if old not in s:
+              raise SystemExit('diagnostic insertion point not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/uspto-official-fee-resolver-pilot.test.ts -t "resolves the exact accepted CURRENT" || true
