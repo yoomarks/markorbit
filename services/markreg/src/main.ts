@@ -41,6 +41,12 @@ import { PostgresCommercialCatalogRepository } from './commercial-checkout-postg
 import { createCommercialCheckoutHttpRoutes } from './commercial-checkout-http.js';
 import { MarkRegCommercialAdminReadService } from './commercial-admin-read.js';
 import { createMarkRegCommercialAdminHttpRoutes } from './commercial-admin-http.js';
+import {
+  HttpCnDurationBandCapabilityClient,
+  MatterIntelligenceService,
+  PostgresMatterIntelligenceRepository
+} from './matter-intelligence.js';
+import { createMatterIntelligenceRoutes } from './matter-intelligence-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -68,9 +74,20 @@ if (fixtureRuntime) {
   const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
   const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const liteUrl = process.env.LITE_URL ?? 'http://127.0.0.1:4107';
+  const capabilityUrl = process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
   if (!internalServiceSecret)
     throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
   const formalMatterRepository = new PostgresFormalMatterRepository(database, pool);
+  const matterIntelligenceRepository = new PostgresMatterIntelligenceRepository(database, pool);
+  const matterIntelligenceService = new MatterIntelligenceService(
+    matterIntelligenceRepository,
+    formalMatterRepository,
+    new HttpCnDurationBandCapabilityClient(capabilityUrl, internalServiceSecret)
+  );
+  const matterIntelligenceRoutes = createMatterIntelligenceRoutes({
+    internalServiceSecret,
+    service: matterIntelligenceService
+  });
   const orderRepository = new PostgresOrderRepository(database, pool);
   const commercialRepository = new PostgresCommercialCatalogRepository(database, pool);
   const commercialCheckoutService = new CommercialCheckoutService(
@@ -186,6 +203,7 @@ if (fixtureRuntime) {
       ...lifecycleRoutes,
       ...lifecycleSurfaceRoutes,
       ...formalOpportunityRoutes,
+      ...matterIntelligenceRoutes,
       ...knowledgeCaseRoutes
     ]
   });
