@@ -6,7 +6,6 @@ import type {
 } from '@markorbit/contracts/capability-runtime';
 import {
   ExecutableMethodCapabilityExecutorV1,
-  ExecutableMethodRuntimeError,
   executableMethodPackageEvidenceRefsV1
 } from '../src/executable-method-runtime.js';
 
@@ -203,10 +202,8 @@ describe('Phase 4 executable method package runtime bridge', () => {
     const pkg = activePackage('missing-kind', { executable: { value: 42 } });
     const { instance, run } = executor([pkg]);
 
-    await expect(instance.execute(request, binding)).rejects.toBeInstanceOf(
-      ExecutableMethodRuntimeError
-    );
     await expect(instance.execute(request, binding)).rejects.toMatchObject({
+      name: 'ExecutableMethodRuntimeError',
       code: 'METHOD_EXECUTABLE_KIND_INVALID'
     });
     expect(run).not.toHaveBeenCalled();
