@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Build exact Resolver dependencies
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
       - name: Print exact Resolver failure outcome
         run: |
           python - <<'PY'
