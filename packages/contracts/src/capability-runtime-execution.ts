@@ -12,6 +12,113 @@ import {
   type ImplementationBinding,
   type SessionReceipt
 } from './capability-runtime.js';
+import {
+  CN_DURATION_BAND_ACCEPTED_DATASET_REF,
+  CN_DURATION_BAND_EXECUTABLE_KIND,
+  cnCompletedDurationHistoricalBands,
+  type CnCompletedDurationHistoricalBandV1
+} from './brain-cn-duration-band-classification.js';
+
+export interface CnDurationBandClassificationOutputV1 {
+  schemaVersion: 1;
+  kind: typeof CN_DURATION_BAND_EXECUTABLE_KIND;
+  jurisdiction: 'CN';
+  procedure: 'FILING_TO_PRELIMINARY_PUBLICATION';
+  observedCompletedDurationDays: number;
+  historicalBand: CnCompletedDurationHistoricalBandV1;
+  datasetRefId: typeof CN_DURATION_BAND_ACCEPTED_DATASET_REF;
+  thresholds: Readonly<{ p25Days: 335; medianDays: 336; p75Days: 383 }>;
+  semantics: 'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION';
+  descriptiveInterpretationOnly: true;
+  legalConclusion: false;
+  predictiveClaim: false;
+  riskClaim: false;
+  probabilityClaim: false;
+  recommendation: false;
+  currentCaseStatusInferred: false;
+  productBusinessStateMutated: false;
+}
+
+export function parseCnDurationBandClassificationOutputV1(
+  value: unknown
+): CnDurationBandClassificationOutputV1 {
+  const output = record(value, 'cnDurationBandClassificationOutput');
+  exactKeys(
+    output,
+    [
+      'schemaVersion',
+      'kind',
+      'jurisdiction',
+      'procedure',
+      'observedCompletedDurationDays',
+      'historicalBand',
+      'datasetRefId',
+      'thresholds',
+      'semantics',
+      'descriptiveInterpretationOnly',
+      'legalConclusion',
+      'predictiveClaim',
+      'riskClaim',
+      'probabilityClaim',
+      'recommendation',
+      'currentCaseStatusInferred',
+      'productBusinessStateMutated'
+    ],
+    'cnDurationBandClassificationOutput'
+  );
+  const thresholds = record(output.thresholds, 'cnDurationBandClassificationOutput.thresholds');
+  exactKeys(
+    thresholds,
+    ['p25Days', 'medianDays', 'p75Days'],
+    'cnDurationBandClassificationOutput.thresholds'
+  );
+  if (
+    output.schemaVersion !== 1 ||
+    output.kind !== CN_DURATION_BAND_EXECUTABLE_KIND ||
+    output.jurisdiction !== 'CN' ||
+    output.procedure !== 'FILING_TO_PRELIMINARY_PUBLICATION' ||
+    !Number.isSafeInteger(output.observedCompletedDurationDays) ||
+    Number(output.observedCompletedDurationDays) < 0 ||
+    typeof output.historicalBand !== 'string' ||
+    !(cnCompletedDurationHistoricalBands as readonly string[]).includes(output.historicalBand) ||
+    output.datasetRefId !== CN_DURATION_BAND_ACCEPTED_DATASET_REF ||
+    thresholds.p25Days !== 335 ||
+    thresholds.medianDays !== 336 ||
+    thresholds.p75Days !== 383 ||
+    output.semantics !== 'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION' ||
+    output.descriptiveInterpretationOnly !== true ||
+    output.legalConclusion !== false ||
+    output.predictiveClaim !== false ||
+    output.riskClaim !== false ||
+    output.probabilityClaim !== false ||
+    output.recommendation !== false ||
+    output.currentCaseStatusInferred !== false ||
+    output.productBusinessStateMutated !== false
+  ) {
+    throw new CapabilityRuntimeExecutionContractError(
+      'CN duration-band output is outside the accepted descriptive contract.'
+    );
+  }
+  return {
+    schemaVersion: 1,
+    kind: CN_DURATION_BAND_EXECUTABLE_KIND,
+    jurisdiction: 'CN',
+    procedure: 'FILING_TO_PRELIMINARY_PUBLICATION',
+    observedCompletedDurationDays: Number(output.observedCompletedDurationDays),
+    historicalBand: output.historicalBand as CnCompletedDurationHistoricalBandV1,
+    datasetRefId: CN_DURATION_BAND_ACCEPTED_DATASET_REF,
+    thresholds: { p25Days: 335, medianDays: 336, p75Days: 383 },
+    semantics: 'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION',
+    descriptiveInterpretationOnly: true,
+    legalConclusion: false,
+    predictiveClaim: false,
+    riskClaim: false,
+    probabilityClaim: false,
+    recommendation: false,
+    currentCaseStatusInferred: false,
+    productBusinessStateMutated: false
+  };
+}
 
 export interface GovernedCapabilityRuntimeExecutionV2 {
   request: Readonly<CapabilityRequestV2>;

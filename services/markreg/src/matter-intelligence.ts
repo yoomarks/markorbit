@@ -6,14 +6,14 @@ import {
 } from '@markorbit/contracts';
 import {
   CN_DURATION_BAND_ACCEPTED_DATASET_REF,
-  CN_DURATION_BAND_EXECUTABLE_KIND,
-  validateCnDurationBandClassificationOutputV1,
   type CnCompletedDurationHistoricalBandV1
 } from '@markorbit/contracts/brain-cn-duration-band-classification';
 import type { CapabilityRequestV2Command } from '@markorbit/contracts/capability-runtime';
 import {
   CapabilityRuntimeExecutionContractError,
+  parseCnDurationBandClassificationOutputV1,
   parseGovernedCapabilityRuntimeExecutionV2,
+  type CnDurationBandClassificationOutputV1,
   type GovernedCapabilityRuntimeExecutionV2
 } from '@markorbit/contracts/capability-runtime-execution';
 import type { QueryClient } from '@markorbit/persistence';
@@ -157,29 +157,7 @@ export interface MatterIntelligenceCapabilityClient {
   ): Promise<Readonly<ValidatedDurationBandCapabilityResult>>;
 }
 
-interface DurationBandOutput {
-  schemaVersion: 1;
-  kind: typeof CN_DURATION_BAND_EXECUTABLE_KIND;
-  jurisdiction: 'CN';
-  procedure: 'FILING_TO_PRELIMINARY_PUBLICATION';
-  observedCompletedDurationDays: number;
-  historicalBand: CnCompletedDurationHistoricalBandV1;
-  datasetRefId: typeof CN_DURATION_BAND_ACCEPTED_DATASET_REF;
-  thresholds: Readonly<{
-    p25Days: 335;
-    medianDays: 336;
-    p75Days: 383;
-  }>;
-  semantics: 'COMPLETED_INTERVAL_RELATIVE_TO_ACCEPTED_HISTORICAL_DISTRIBUTION';
-  descriptiveInterpretationOnly: true;
-  legalConclusion: false;
-  predictiveClaim: false;
-  riskClaim: false;
-  probabilityClaim: false;
-  recommendation: false;
-  currentCaseStatusInferred: false;
-  productBusinessStateMutated: false;
-}
+type DurationBandOutput = CnDurationBandClassificationOutputV1;
 
 export interface ValidatedDurationBandCapabilityResult {
   execution: GovernedCapabilityRuntimeExecutionV2;
@@ -268,16 +246,6 @@ function exactSha256(value: string, field: string): string {
   return cleaned;
 }
 
-function record(value: unknown, field: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new MatterIntelligenceError(
-      'CAPABILITY_CONTRACT_MISMATCH',
-      `${field} must be an object.`
-    );
-  }
-  return value as Record<string, unknown>;
-}
-
 function exactEvidenceRef(refs: readonly string[], prefix: string, field: string): string {
   const matches = refs.filter((ref) => ref.startsWith(prefix));
   if (matches.length !== 1) {
@@ -290,20 +258,26 @@ function exactEvidenceRef(refs: readonly string[], prefix: string, field: string
 }
 
 function parseDurationBandOutput(value: unknown, expectedDays: number): DurationBandOutput {
-  if (!validateCnDurationBandClassificationOutputV1(value)) {
+  let output: DurationBandOutput;
+  try {
+    output = parseCnDurationBandClassificationOutputV1(value);
+  } catch (error) {
     throw new MatterIntelligenceError(
       'CAPABILITY_CONTRACT_MISMATCH',
-      'Capability output is outside the accepted descriptive Phase 5 contract.'
+      'Capability output is outside the accepted descriptive Phase 5 contract.',
+      409,
+      false,
+      undefined,
+      { cause: error }
     );
   }
-  const output = record(value, 'Capability output');
   if (output.observedCompletedDurationDays !== expectedDays) {
     throw new MatterIntelligenceError(
       'CAPABILITY_CONTRACT_MISMATCH',
       'Capability output does not match the caller-supplied completed duration.'
     );
   }
-  return clone(value) as DurationBandOutput;
+  return output;
 }
 
 function capabilityIdempotencyKey(
