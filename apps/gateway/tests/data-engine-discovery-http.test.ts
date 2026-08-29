@@ -16,7 +16,8 @@ import {
 } from '@markorbit/contracts/data-engine';
 
 import { createCnPreliminaryPublicationDiscoveryClientV2 } from '../src/data-engine-discovery-http.js';
-import { createDataEngineClient, DataEngineClientError } from '../src/data-engine-http.js';
+import type { DataEngineClientError } from '../src/data-engine-http.js';
+import { createDataEngineClient } from '../src/data-engine-http.js';
 
 const QUERY_HASH = `sha256:${'a'.repeat(64)}`;
 

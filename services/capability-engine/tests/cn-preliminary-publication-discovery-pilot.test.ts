@@ -32,15 +32,17 @@ import { GovernedCapabilityRuntime } from '../src/capability-runtime.js';
 
 const QUERY_HASH = `sha256:${'a'.repeat(64)}`;
 
-function envelope(options: {
-  start?: string;
-  end?: string;
-  pageSize?: number;
-  pageNumber?: number;
-  emittedCount?: number;
-  applicationNumber?: string;
-  nextCursor?: string | null;
-} = {}): CnPreliminaryPublicationDiscoveryEnvelopeV2 {
+function envelope(
+  options: {
+    start?: string;
+    end?: string;
+    pageSize?: number;
+    pageNumber?: number;
+    emittedCount?: number;
+    applicationNumber?: string;
+    nextCursor?: string | null;
+  } = {}
+): CnPreliminaryPublicationDiscoveryEnvelopeV2 {
   const start = options.start ?? '10000000';
   const end = options.end ?? '10001000';
   const pageSize = options.pageSize ?? 25;
@@ -282,7 +284,10 @@ describe('Phase 4 CN preliminary-publication Discovery Capability', () => {
 
     expect(execution.returnValue.status).toBe('COMPLETED');
     expect(discover).toHaveBeenCalledTimes(1);
-    expect((execution.returnValue.output as { page: { provenance: { page_number: number } } }).page.provenance.page_number).toBe(2);
+    expect(
+      (execution.returnValue.output as { page: { provenance: { page_number: number } } }).page
+        .provenance.page_number
+    ).toBe(2);
   });
 
   it('fails closed on response scope drift', async () => {

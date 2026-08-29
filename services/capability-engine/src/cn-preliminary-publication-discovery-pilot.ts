@@ -90,8 +90,7 @@ export const CN_PRELIMINARY_PUBLICATION_DISCOVERY_CAPABILITY_DEFINITION: Readonl
     canonReference: {
       canonId: 'phase4-cn-preliminary-publication-discovery-v2',
       canonVersion: '1',
-      sourceFingerprintSha256:
-        '48bd9a35678fccedc0ae41eb32e04f1faa80b945b849401e245d4b0dbb2249cc'
+      sourceFingerprintSha256: '48bd9a35678fccedc0ae41eb32e04f1faa80b945b849401e245d4b0dbb2249cc'
     },
     acceptedCanonProjection: true,
     createdFromWorkEvidence: false,
@@ -155,7 +154,9 @@ export function parseCnPreliminaryPublicationDiscoveryCapabilityInputV2(
     (input.pageSize !== undefined && typeof input.pageSize !== 'number') ||
     (input.cursor !== undefined && typeof input.cursor !== 'string')
   ) {
-    throw new TypeError('CN preliminary-publication Discovery input is outside the Phase 4 V2 contract.');
+    throw new TypeError(
+      'CN preliminary-publication Discovery input is outside the Phase 4 V2 contract.'
+    );
   }
   const normalized = normalizeCnPreliminaryPublicationDiscoveryRequestV2({
     applicationNumberStart: input.applicationNumberStart,
@@ -176,7 +177,9 @@ export function parseCnPreliminaryPublicationDiscoveryCapabilityInputV2(
   };
 }
 
-export function validateCnPreliminaryPublicationDiscoveryCapabilityInputV2(value: unknown): boolean {
+export function validateCnPreliminaryPublicationDiscoveryCapabilityInputV2(
+  value: unknown
+): boolean {
   try {
     parseCnPreliminaryPublicationDiscoveryCapabilityInputV2(value);
     return true;
@@ -185,7 +188,9 @@ export function validateCnPreliminaryPublicationDiscoveryCapabilityInputV2(value
   }
 }
 
-export function validateCnPreliminaryPublicationDiscoveryCapabilityOutputV2(value: unknown): boolean {
+export function validateCnPreliminaryPublicationDiscoveryCapabilityOutputV2(
+  value: unknown
+): boolean {
   const output = record(value);
   const dataEngine = record(output?.dataEngine);
   if (
@@ -219,9 +224,7 @@ export function validateCnPreliminaryPublicationDiscoveryCapabilityOutputV2(valu
   );
 }
 
-export class CnPreliminaryPublicationDiscoveryCapabilityExecutorV2
-  implements CapabilityImplementationExecutor
-{
+export class CnPreliminaryPublicationDiscoveryCapabilityExecutorV2 implements CapabilityImplementationExecutor {
   constructor(private readonly client: CnPreliminaryPublicationDiscoveryClientV2) {}
 
   async execute(
@@ -233,7 +236,9 @@ export class CnPreliminaryPublicationDiscoveryCapabilityExecutorV2
       binding.implementation.implementationKey !==
         CN_PRELIMINARY_PUBLICATION_DISCOVERY_IMPLEMENTATION_KEY
     ) {
-      throw new TypeError('CN preliminary-publication Discovery implementation binding has drifted.');
+      throw new TypeError(
+        'CN preliminary-publication Discovery implementation binding has drifted.'
+      );
     }
     const input = parseCnPreliminaryPublicationDiscoveryCapabilityInputV2(request.input);
     const envelope = parseCnPreliminaryPublicationDiscoveryEnvelopeV2(
@@ -248,7 +253,9 @@ export class CnPreliminaryPublicationDiscoveryCapabilityExecutorV2
       )
     );
     if (!envelope) {
-      throw new TypeError('CN preliminary-publication Discovery client returned an invalid V2 fact envelope.');
+      throw new TypeError(
+        'CN preliminary-publication Discovery client returned an invalid V2 fact envelope.'
+      );
     }
     const scope = envelope.payload.query.scope.application_number;
     if (
@@ -256,7 +263,9 @@ export class CnPreliminaryPublicationDiscoveryCapabilityExecutorV2
       scope.end_exclusive !== input.applicationNumberEnd ||
       envelope.payload.query.limits.page_size !== input.pageSize
     ) {
-      throw new TypeError('CN preliminary-publication Discovery response scope does not match the requested range.');
+      throw new TypeError(
+        'CN preliminary-publication Discovery response scope does not match the requested range.'
+      );
     }
 
     const output: CnPreliminaryPublicationDiscoveryCapabilityOutputV2 = {

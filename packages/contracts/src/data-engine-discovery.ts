@@ -132,7 +132,8 @@ export interface CnPreliminaryPublicationDiscoveryPageV2 {
   };
 }
 
-export type CnPreliminaryPublicationDiscoveryEnvelopeV2 = DataEngineFactEnvelope<CnPreliminaryPublicationDiscoveryPageV2>;
+export type CnPreliminaryPublicationDiscoveryEnvelopeV2 =
+  DataEngineFactEnvelope<CnPreliminaryPublicationDiscoveryPageV2>;
 
 function record(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -142,7 +143,10 @@ function record(value: unknown): Record<string, unknown> | null {
 function exactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
   const keys = Object.keys(value).sort();
   const sortedExpected = [...expected].sort();
-  return keys.length === sortedExpected.length && keys.every((key, index) => key === sortedExpected[index]);
+  return (
+    keys.length === sortedExpected.length &&
+    keys.every((key, index) => key === sortedExpected[index])
+  );
 }
 
 function exactStrings(value: unknown, expected: readonly string[]): value is string[] {
@@ -224,14 +228,24 @@ export function normalizeCnPreliminaryPublicationDiscoveryRequestV2(
   const applicationNumberStart = value.applicationNumberStart?.trim();
   const applicationNumberEnd = value.applicationNumberEnd?.trim();
   const pageSize = value.pageSize ?? 50;
-  if (!applicationNumberStart || !applicationNumberEnd || applicationNumberStart >= applicationNumberEnd) {
-    throw new TypeError('CN preliminary-publication Discovery requires a non-empty lexical application-number range.');
+  if (
+    !applicationNumberStart ||
+    !applicationNumberEnd ||
+    applicationNumberStart >= applicationNumberEnd
+  ) {
+    throw new TypeError(
+      'CN preliminary-publication Discovery requires a non-empty lexical application-number range.'
+    );
   }
   if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
-    throw new TypeError('CN preliminary-publication Discovery pageSize must be an integer from 1 to 100.');
+    throw new TypeError(
+      'CN preliminary-publication Discovery pageSize must be an integer from 1 to 100.'
+    );
   }
   if (value.cursor !== undefined && !nonEmptyText(value.cursor, 8192)) {
-    throw new TypeError('CN preliminary-publication Discovery cursor must be an opaque non-empty string no longer than 8192 characters.');
+    throw new TypeError(
+      'CN preliminary-publication Discovery cursor must be an opaque non-empty string no longer than 8192 characters.'
+    );
   }
   return {
     applicationNumberStart,
@@ -286,7 +300,10 @@ export function parseCnPreliminaryPublicationDiscoveryPageV2(
     query.stream_id !== CN_PRELIMINARY_PUBLICATION_DISCOVERY_STREAM_ID ||
     query.source_schema_id !== CN_PRELIMINARY_PUBLICATION_DISCOVERY_SOURCE_SCHEMA_ID ||
     query.candidate_type !== CN_PRELIMINARY_PUBLICATION_DISCOVERY_CANDIDATE_TYPE ||
-    !exactStrings(query.projection_fields, CN_PRELIMINARY_PUBLICATION_DISCOVERY_PROJECTION_FIELDS) ||
+    !exactStrings(
+      query.projection_fields,
+      CN_PRELIMINARY_PUBLICATION_DISCOVERY_PROJECTION_FIELDS
+    ) ||
     scope.jurisdiction !== 'CN' ||
     scope.is_deleted !== 0 ||
     scope.prelim_pub_date_not_null !== true ||
@@ -332,7 +349,8 @@ export function parseCnPreliminaryPublicationDiscoveryPageV2(
     const current = candidates[index]!;
     if (
       previous.application_number > current.application_number ||
-      (previous.application_number === current.application_number && previous.case_id >= current.case_id)
+      (previous.application_number === current.application_number &&
+        previous.case_id >= current.case_id)
     ) {
       return null;
     }
@@ -389,5 +407,5 @@ export function parseCnPreliminaryPublicationDiscoveryEnvelopeV2(
   ) {
     return null;
   }
-  return { ...envelope, payload } as CnPreliminaryPublicationDiscoveryEnvelopeV2;
+  return { ...envelope, payload };
 }

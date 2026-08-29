@@ -36,6 +36,7 @@ export * from './capability-runtime-http.js';
 export * from './capability-runtime.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
+export * from './cn-preliminary-publication-discovery-pilot.js';
 export * from './executable-method-runtime.js';
 export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
