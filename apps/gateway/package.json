@@ -30,7 +30,8 @@
     },
     "./data-engine-discovery": {
       "types": "./dist/data-engine-discovery-http.d.ts",
-      "import": "./dist/data-engine-discovery-http.js"
+      "import": "./dist/data-engine-discovery-http.js",
+      "default": "./dist/data-engine-discovery-http.js"
     }
   }
 }
