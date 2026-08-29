@@ -274,7 +274,9 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
     );
 
     expect(result.returnValue.status).toBe('FAILED');
-    expect(result.outcome.error?.message).toContain('Multiple CURRENT official fee references');
+    expect(result.outcome.error?.message).toContain(
+      'Multiple CURRENT official fee references'
+    );
     expect(resolveCurrent).toHaveBeenCalledTimes(1);
   });
 
