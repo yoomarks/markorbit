@@ -131,18 +131,14 @@ export class ExecutableMethodCapabilityExecutorV1 implements CapabilityImplement
     const selection = selectExecutableMethodPackageV1(packages, context);
 
     if (selection.status === 'NOT_APPLICABLE') {
-      throw new ExecutableMethodRuntimeError(
-        'METHOD_NOT_APPLICABLE',
-        selection.reason,
-        { capabilityId: request.capabilityId }
-      );
+      throw new ExecutableMethodRuntimeError('METHOD_NOT_APPLICABLE', selection.reason, {
+        capabilityId: request.capabilityId
+      });
     }
     if (selection.status === 'AMBIGUOUS') {
-      throw new ExecutableMethodRuntimeError(
-        'METHOD_SELECTION_AMBIGUOUS',
-        selection.reason,
-        { packageIds: [...selection.packageIds] }
-      );
+      throw new ExecutableMethodRuntimeError('METHOD_SELECTION_AMBIGUOUS', selection.reason, {
+        packageIds: [...selection.packageIds]
+      });
     }
 
     const pkg = selection.package;
@@ -177,10 +173,7 @@ export class ExecutableMethodCapabilityExecutorV1 implements CapabilityImplement
     return {
       ...result,
       evidenceRefs: [
-        ...new Set([
-          ...executableMethodPackageEvidenceRefsV1(pkg),
-          ...(result.evidenceRefs ?? [])
-        ])
+        ...new Set([...executableMethodPackageEvidenceRefsV1(pkg), ...(result.evidenceRefs ?? [])])
       ].sort()
     };
   }

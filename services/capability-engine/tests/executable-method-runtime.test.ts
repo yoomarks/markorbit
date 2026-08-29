@@ -147,7 +147,11 @@ describe('Phase 4 executable method package runtime bridge', () => {
 
     expect(result.output).toEqual({ statistic: 336 });
     expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith({ request, binding, package: expect.objectContaining({ packageId: pkg.packageId }) });
+    expect(run).toHaveBeenCalledWith({
+      request,
+      binding,
+      package: expect.objectContaining({ packageId: pkg.packageId })
+    });
     expect(result.evidenceRefs).toEqual(
       [...new Set([...executableMethodPackageEvidenceRefsV1(pkg), 'runner-evidence:test'])].sort()
     );
