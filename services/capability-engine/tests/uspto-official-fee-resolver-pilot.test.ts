@@ -341,7 +341,7 @@ describe('Phase 4 USPTO Official Fee Resolver Capability pilot', () => {
 
   it('rejects a tampered executable package before Capability invocation', () => {
     const pkg = acceptedPackage();
-    const tampered = { ...pkg, packageId: 'executable-method-package_tampered' };
+    const tampered = { ...pkg, packageId: 'executable-method-package_tampered' as const };
     expect(() =>
       createUsptoOfficialFeeResolverCapabilityExecutorV1(tampered, {
         resolveCurrent: () => acceptedReference()
