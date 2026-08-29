@@ -18,8 +18,10 @@ if (url) {
   const database = new ManagedDatabase(config);
   await database.start();
   try {
-    const identity = await database.getPool().query('SELECT current_database() database_name');
-    const databaseName = identity.rows[0]?.database_name as string | undefined;
+    const identity = await database
+      .getPool()
+      .query<{ database_name: string }>('SELECT current_database() database_name');
+    const databaseName = identity.rows[0]?.database_name;
     const systemDatabases = new Set(['postgres', 'template0', 'template1']);
     if (!databaseName || systemDatabases.has(databaseName))
       throw new Error('Capability PostgreSQL test reset requires a dedicated non-system database.');
