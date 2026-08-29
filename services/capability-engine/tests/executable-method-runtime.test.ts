@@ -124,10 +124,12 @@ const context = {
 };
 
 function executor(packages: readonly unknown[]) {
-  const run = vi.fn<ExecutableMethodPackageRunnerV1['run']>(async () => ({
-    output: { statistic: 336 },
-    evidenceRefs: ['runner-evidence:test']
-  }));
+  const run = vi.fn<ExecutableMethodPackageRunnerV1['run']>(() =>
+    Promise.resolve({
+      output: { statistic: 336 },
+      evidenceRefs: ['runner-evidence:test']
+    })
+  );
   const instance = new ExecutableMethodCapabilityExecutorV1({
     packages: { list: vi.fn(() => Promise.resolve(packages)) },
     selectionContext: { resolve: vi.fn(() => context) },
