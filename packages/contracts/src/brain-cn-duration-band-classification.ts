@@ -221,7 +221,8 @@ export function evaluateCnDurationBandClassificationV1(
     evaluationId: `evaluation_cn-completed-duration-historical-band-${dataset.query_fingerprint_sha256.slice(0, 16)}`,
     evaluatedAt: source.evaluation.evaluatedAt,
     status: 'PASSED',
-    baseline: 'three-threshold-deterministic-comparator-v1 / no-prediction-no-legal-risk-recommendation-v1',
+    baseline:
+      'three-threshold-deterministic-comparator-v1 / no-prediction-no-legal-risk-recommendation-v1',
     metrics: {
       sourceStatisticalEvaluationPassRate: 1,
       acceptedDatasetIdentityMatchRate: 1,
@@ -344,11 +345,11 @@ export function compileCnDurationBandClassificationMethodPackageV1(
     reasonCodes: {
       HISTORICAL_BAND_CLASSIFIED:
         'Completed factual duration was classified relative to the accepted historical p25/median/p75 distribution.',
-      NOT_APPLICABLE: 'Request is outside the exact completed-duration classification applicability.',
+      NOT_APPLICABLE:
+        'Request is outside the exact completed-duration classification applicability.',
       SOURCE_EVIDENCE_MISMATCH:
         'Accepted Phase 3 dataset identity or descriptive thresholds do not match the frozen method.',
-      INVALID_COMPLETED_DURATION:
-        'Observed completed duration must be a non-negative safe integer.'
+      INVALID_COMPLETED_DURATION: 'Observed completed duration must be a non-negative safe integer.'
     },
     fallback: { behavior: 'NOT_APPLICABLE' },
     evaluation: evaluated.evaluation,
