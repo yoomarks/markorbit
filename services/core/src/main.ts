@@ -22,6 +22,10 @@ import {
   MethodOutcomeEvidenceAdmissionServiceV1,
   PostgresMethodOutcomeEvidenceAdmissionRepositoryV1
 } from './method-outcome-evidence.js';
+import {
+  MethodOutcomeReportServiceV1,
+  PostgresMethodOutcomeReportReaderV1
+} from './method-outcome-report.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -47,6 +51,9 @@ const accountOnboarding = new AccountOnboardingService(
 const methodOutcomeEvidenceAdmissions = new MethodOutcomeEvidenceAdmissionServiceV1({
   repository: new PostgresMethodOutcomeEvidenceAdmissionRepositoryV1(database)
 });
+const methodOutcomeReports = new MethodOutcomeReportServiceV1(
+  new PostgresMethodOutcomeReportReaderV1(database)
+);
 const runtime = createRuntime({
   authentication,
   accountAccess,
@@ -56,6 +63,7 @@ const runtime = createRuntime({
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
   methodOutcomeEvidenceAdmissions,
+  methodOutcomeReports,
   internalServiceSecret: secret
 });
 
