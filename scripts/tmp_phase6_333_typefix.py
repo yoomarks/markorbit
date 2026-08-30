@@ -38,8 +38,12 @@ new = '''            ...(body.reasonCode === undefined
                     'reasonCode'
                   ) as MatterIntelligenceReviewReasonCode
                 }),
-            ...(body.rationale === undefined ? {} : { rationale: rationale(body.rationale) }),
-            ...(body.supersedes === undefined ? {} : { supersedes: supersedes(body.supersedes) }),
+            ...(body.rationale === undefined
+              ? {}
+              : { rationale: rationale(body.rationale)! }),
+            ...(body.supersedes === undefined
+              ? {}
+              : { supersedes: supersedes(body.supersedes)! }),
 '''
 if old not in s:
     raise SystemExit('missing HTTP optional command block')
@@ -68,6 +72,7 @@ p = Path('services/markreg/tests/matter-intelligence-review-postgres.test.ts')
 s = p.read_text()
 s = s.replace("const formalMatterId = 'formal-matter_phase6-review';", "const formalMatterId = 'formal-matter_phase6-review' as const;")
 s = s.replace("const observationId = 'matter-intelligence-observation_phase6-review';", "const observationId = 'matter-intelligence-observation_phase6-review' as const;")
+s = s.replace("        rationale: undefined,\n", "")
 p.write_text(s)
 
 p = Path('services/markreg/tests/matter-intelligence-review-http.test.ts')
