@@ -13,12 +13,14 @@ const OBSERVATION_ID = 'matter-intelligence-observation_phase6_review';
 function principal(workspaceId = WORKSPACE_ID): WorkspacePrincipal {
   return {
     kind: 'WORKSPACE',
-    workspaceId,
+    sessionId: 'session_phase6-review',
     userId: 'principal_phase6_reviewer',
+    workspaceId,
     membershipId: 'membership_phase6_reviewer',
-    roles: ['OWNER'],
-    permissions: ['workspace:read', 'matter:manage']
-  } as WorkspacePrincipal;
+    role: 'MATTER_MANAGER',
+    permissions: ['workspace:read', 'matter:read', 'matter:manage'],
+    sessionExpiresAt: '2026-08-31T00:00:00.000Z'
+  };
 }
 
 function repository() {
