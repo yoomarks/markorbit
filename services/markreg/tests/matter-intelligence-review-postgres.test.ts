@@ -287,7 +287,9 @@ suite('PostgreSQL MarkReg Matter Intelligence Review source authority', () => {
         outcome: 'CONFIRMED_AS_PRESENTED',
         reasonCode: 'METHOD_OUTPUT_INCORRECT'
       })
-    ).rejects.toMatchObject({ code: 'INVALID_INPUT' } satisfies Partial<MatterIntelligenceReviewError>);
+    ).rejects.toMatchObject({
+      code: 'INVALID_INPUT'
+    } satisfies Partial<MatterIntelligenceReviewError>);
 
     await expect(
       service.record({ ...command(), workspaceId: otherWorkspaceId })
@@ -342,7 +344,9 @@ suite('PostgreSQL MarkReg Matter Intelligence Review source authority', () => {
 
     const matter = await database
       .getPool()
-      .query('SELECT status,version FROM formal_matters WHERE formal_matter_id=$1', [formalMatterId]);
+      .query('SELECT status,version FROM formal_matters WHERE formal_matter_id=$1', [
+        formalMatterId
+      ]);
     expect(matter.rows[0]).toMatchObject({ status: 'OPEN', version: 1 });
     const neighbors = await database
       .getPool()

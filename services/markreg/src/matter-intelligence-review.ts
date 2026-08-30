@@ -477,7 +477,9 @@ export class PostgresMatterIntelligenceReviewRepository {
   private mapReview(row: Row): MarkRegMatterIntelligenceReviewV1 {
     return {
       schemaVersion: 1,
-      matterIntelligenceReviewId: String(row.matter_intelligence_review_id) as MatterIntelligenceReviewId,
+      matterIntelligenceReviewId: String(
+        row.matter_intelligence_review_id
+      ) as MatterIntelligenceReviewId,
       version: 1,
       workspaceId: String(row.workspace_id),
       formalMatter: {
@@ -486,7 +488,10 @@ export class PostgresMatterIntelligenceReviewRepository {
       },
       reviewedObservation: {
         id: String(row.matter_intelligence_observation_id) as MatterIntelligenceObservationId,
-        fingerprintSha256: sha256(row.observation_fingerprint_sha256, 'observationFingerprintSha256'),
+        fingerprintSha256: sha256(
+          row.observation_fingerprint_sha256,
+          'observationFingerprintSha256'
+        ),
         outputFingerprintSha256: sha256(row.output_fingerprint_sha256, 'outputFingerprintSha256')
       },
       outcome: String(row.outcome) as MatterIntelligenceReviewOutcome,

@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
 import { createMatterIntelligenceReviewRoutes } from '../src/matter-intelligence-review-http.js';
 import type { MatterIntelligenceReviewService } from '../src/matter-intelligence-review.js';
@@ -195,7 +192,8 @@ describe('Phase 6 MarkReg Matter Intelligence Review HTTP', () => {
     expect(noManage.status).toBe(403);
 
     const badSecretHeaders = headers(principal(), true);
-    badSecretHeaders['x-markorbit-internal-authorization'] = 'wrong-secret-that-is-still-long-enough-to-send';
+    badSecretHeaders['x-markorbit-internal-authorization'] =
+      'wrong-secret-that-is-still-long-enough-to-send';
     const unauthenticated = await fetch(
       `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence-observations/${observationId}/review`,
       {
@@ -225,7 +223,11 @@ describe('Phase 6 MarkReg Matter Intelligence Review HTTP', () => {
     });
     expect(JSON.stringify(body)).not.toContain('customer');
     expect(JSON.stringify(body)).not.toContain('payment');
-    expect(calls[0]).toEqual({ requestedWorkspace: workspaceId, requestedReviewId: reviewId, version: 1 });
+    expect(calls[0]).toEqual({
+      requestedWorkspace: workspaceId,
+      requestedReviewId: reviewId,
+      version: 1
+    });
 
     const other = await fetch(
       `${base}/internal/v1/matter-intelligence-reviews/${reviewId}/versions/1/source-authority`,

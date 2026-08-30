@@ -87,11 +87,7 @@ function bodyRecord(request: JsonRequest): Readonly<Record<string, unknown>> {
   return body;
 }
 
-function enumValue<T extends string>(
-  value: unknown,
-  values: readonly T[],
-  field: string
-): T {
+function enumValue<T extends string>(value: unknown, values: readonly T[], field: string): T {
   if (typeof value !== 'string' || !(values as readonly string[]).includes(value))
     throw new HttpError(400, 'INVALID_REQUEST', `${field} is invalid.`);
   return value as T;
@@ -166,7 +162,10 @@ export function createMatterIntelligenceReviewRoutes(
             idempotencyKey: idempotencyKey(request),
             correlationId: correlationId(request)
           });
-          return json(disposition.replayed || disposition.semanticDuplicate ? 200 : 201, disposition);
+          return json(
+            disposition.replayed || disposition.semanticDuplicate ? 200 : 201,
+            disposition
+          );
         } catch (error) {
           return translate(error);
         }

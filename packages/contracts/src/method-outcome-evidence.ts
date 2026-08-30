@@ -175,7 +175,15 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
   const root = record(value, 'assertion');
   exactKeys(
     root,
-    ['schemaVersion', 'source', 'workspaceId', 'formalMatter', 'reviewedObservation', 'review', 'production'],
+    [
+      'schemaVersion',
+      'source',
+      'workspaceId',
+      'formalMatter',
+      'reviewedObservation',
+      'review',
+      'production'
+    ],
     'assertion'
   );
   if (root.schemaVersion !== 1)
@@ -207,7 +215,14 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
   const review = record(root.review, 'review');
   exactKeys(
     review,
-    ['outcome', 'reasonCode', 'rationale', 'reviewerPrincipalId', 'reviewerMembershipId', 'reviewedAt'],
+    [
+      'outcome',
+      'reasonCode',
+      'rationale',
+      'reviewerPrincipalId',
+      'reviewerMembershipId',
+      'reviewedAt'
+    ],
     'review'
   );
   const outcome = reviewOutcome(review.outcome);
@@ -233,11 +248,7 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
     'production'
   );
   const capability = record(production.capability, 'production.capability');
-  exactKeys(
-    capability,
-    ['id', 'version', 'returnId', 'sessionReceiptId'],
-    'production.capability'
-  );
+  exactKeys(capability, ['id', 'version', 'returnId', 'sessionReceiptId'], 'production.capability');
 
   const reviewedOutputFingerprint = sha256(
     reviewedObservation.outputFingerprintSha256,
