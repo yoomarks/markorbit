@@ -42,12 +42,14 @@ const evidenceRefs = [
 function principal(workspace = workspaceId): WorkspacePrincipal {
   return {
     kind: 'WORKSPACE',
-    workspaceId: workspace,
+    sessionId: 'session_phase6-review-postgres',
     userId: 'principal_phase6-review-postgres',
+    workspaceId: workspace,
     membershipId: 'membership_phase6-review-postgres',
-    roles: ['OWNER'],
-    permissions: ['workspace:read', 'matter:manage']
-  } as WorkspacePrincipal;
+    role: 'MATTER_MANAGER',
+    permissions: ['workspace:read', 'matter:read', 'matter:manage'],
+    sessionExpiresAt: '2026-08-31T00:00:00.000Z'
+  };
 }
 
 function observation(): MarkRegMatterIntelligenceObservationV1 {
