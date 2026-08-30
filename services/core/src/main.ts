@@ -18,6 +18,10 @@ import { createRuntime } from './index.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
+import {
+  MethodOutcomeEvidenceAdmissionServiceV1,
+  PostgresMethodOutcomeEvidenceAdmissionRepositoryV1
+} from './method-outcome-evidence.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -40,6 +44,9 @@ const accountAccess = new AccountAccessService(
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)
 );
+const methodOutcomeEvidenceAdmissions = new MethodOutcomeEvidenceAdmissionServiceV1({
+  repository: new PostgresMethodOutcomeEvidenceAdmissionRepositoryV1(database)
+});
 const runtime = createRuntime({
   authentication,
   accountAccess,
@@ -48,6 +55,7 @@ const runtime = createRuntime({
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
+  methodOutcomeEvidenceAdmissions,
   internalServiceSecret: secret
 });
 
