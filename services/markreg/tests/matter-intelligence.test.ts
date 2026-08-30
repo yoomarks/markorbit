@@ -371,6 +371,8 @@ describe('MarkReg Matter Intelligence service boundary', () => {
       observedCompletedDurationDays: 336,
       historicalBand: 'LOWER_INTERQUARTILE',
       datasetRefId: datasetRef,
+      correlationId: 'correlation-one',
+      capabilityCorrelationId: 'correlation-one',
       methodPackageRef: evidenceRefs[0],
       methodRef: evidenceRefs[1],
       methodVersionRef: evidenceRefs[2],
@@ -524,14 +526,59 @@ describe('MarkReg governed Capability HTTP client', () => {
       },
       inputSchemaId: 'brain-input.cn-completed-duration-historical-band.v1',
       outputSchemaId: 'brain.cn-completed-duration-historical-band.v1',
-      riskClass: 'LOW',
-      correlationId: 'correlation-http'
+      riskClass: 'LOW'
     });
+    expect(capturedCommand?.idempotencyKey).toMatch(
+      /^markreg-matter-intelligence:[0-9a-f]{64}$/
+    );
+    expect(capturedCommand?.correlationId).toMatch(
+      /^markreg-matter-intelligence-capability:[0-9a-f]{64}$/
+    );
+    expect(capturedCommand?.correlationId).not.toBe('correlation-http');
     expect(capturedHeaders?.get('x-markorbit-caller-product')).toBe('MARKREG');
     expect(capturedHeaders?.get('x-markorbit-workspace-id')).toBe(workspaceId);
     expect(capturedHeaders?.get('idempotency-key')).toBe(capturedCommand?.idempotencyKey);
+    expect(capturedHeaders?.get('x-correlation-id')).toBe(capturedCommand?.correlationId);
     expect(result.output.recommendation).toBe(false);
     expect(result.researchDatasetRef).toBe(evidenceRefs[4]);
+  });
+
+  it('keeps upstream Capability replay identity stable when only the product trace correlation changes', async () => {
+    const captured: CapabilityRequestV2Command[] = [];
+    const fetcher: typeof fetch = (_input, init) => {
+      const sent = parseCapabilityRequestV2Command(JSON.parse(requestBodyText(init?.body)));
+      captured.push(sent);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify(rawExecution(sent, `stable-${captured.length}`, durationOutput(336))),
+          {
+            status: 201,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      );
+    };
+    const client = new HttpCnDurationBandCapabilityClient(
+      'http://capability.test',
+      'phase5-test-internal-secret-long-enough-1234567890',
+      fetcher
+    );
+    const base = {
+      workspaceId,
+      formalMatterId,
+      observedCompletedDurationDays: 336,
+      principal: principal(),
+      productIdempotencyKey: 'stable-product-key'
+    } as const;
+
+    await client.classifyCompletedDuration({ ...base, correlationId: 'product-trace-one' });
+    await client.classifyCompletedDuration({ ...base, correlationId: 'product-trace-two' });
+
+    expect(captured).toHaveLength(2);
+    expect(captured[0]?.idempotencyKey).toBe(captured[1]?.idempotencyKey);
+    expect(captured[0]?.correlationId).toBe(captured[1]?.correlationId);
+    expect(captured[0]?.correlationId).not.toBe('product-trace-one');
+    expect(captured[1]?.correlationId).not.toBe('product-trace-two');
   });
 
   it('fails closed on an unsafe descriptive output', async () => {
