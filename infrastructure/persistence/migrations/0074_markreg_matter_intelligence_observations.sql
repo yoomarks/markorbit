@@ -1,8 +1,12 @@
+ALTER TABLE formal_matters
+  ADD CONSTRAINT formal_matters_workspace_identity_unique
+  UNIQUE (workspace_id, formal_matter_id);
+
 CREATE TABLE markreg_matter_intelligence_observations (
   matter_intelligence_observation_id text PRIMARY KEY
     CHECK (matter_intelligence_observation_id ~ '^matter-intelligence-observation_[A-Za-z0-9_-]+$'),
   workspace_id uuid NOT NULL,
-  formal_matter_id text NOT NULL REFERENCES formal_matters(formal_matter_id),
+  formal_matter_id text NOT NULL,
   formal_matter_version integer NOT NULL CHECK (formal_matter_version >= 1),
   formal_matter_snapshot_sha256 char(64) NOT NULL
     CHECK (formal_matter_snapshot_sha256 ~ '^[0-9a-f]{64}$'),
@@ -34,6 +38,7 @@ CREATE TABLE markreg_matter_intelligence_observations (
   implementation_version integer NOT NULL CHECK (implementation_version >= 1),
   implementation_key text NOT NULL CHECK (char_length(implementation_key) BETWEEN 1 AND 500),
   correlation_id text NOT NULL CHECK (char_length(correlation_id) BETWEEN 1 AND 300),
+  capability_correlation_id text NOT NULL CHECK (char_length(capability_correlation_id) BETWEEN 1 AND 300),
   method_package_ref text NOT NULL CHECK (method_package_ref LIKE 'brain-method-package:%'),
   method_ref text NOT NULL CHECK (method_ref LIKE 'brain-method:%'),
   method_version_ref text NOT NULL CHECK (method_version_ref LIKE 'brain-method-version:%'),
@@ -45,8 +50,11 @@ CREATE TABLE markreg_matter_intelligence_observations (
   output_fingerprint_sha256 char(64) NOT NULL CHECK (output_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
   recorded_by_principal_id text NOT NULL CHECK (char_length(recorded_by_principal_id) BETWEEN 1 AND 300),
   recorded_at timestamptz NOT NULL,
+  UNIQUE (workspace_id, matter_intelligence_observation_id),
   UNIQUE (workspace_id, capability_return_id),
-  UNIQUE (workspace_id, session_receipt_id)
+  UNIQUE (workspace_id, session_receipt_id),
+  FOREIGN KEY (workspace_id, formal_matter_id)
+    REFERENCES formal_matters(workspace_id, formal_matter_id)
 );
 
 CREATE INDEX markreg_matter_intelligence_observations_matter_idx
@@ -61,12 +69,13 @@ CREATE TABLE markreg_matter_intelligence_commands (
   workspace_id uuid NOT NULL,
   idempotency_key text NOT NULL CHECK (char_length(idempotency_key) BETWEEN 1 AND 300),
   request_fingerprint_sha256 char(64) NOT NULL CHECK (request_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
-  matter_intelligence_observation_id text NOT NULL
-    REFERENCES markreg_matter_intelligence_observations(matter_intelligence_observation_id),
+  matter_intelligence_observation_id text NOT NULL,
   result_snapshot jsonb NOT NULL,
   correlation_id text NOT NULL CHECK (char_length(correlation_id) BETWEEN 1 AND 300),
   created_at timestamptz NOT NULL,
-  PRIMARY KEY (workspace_id, idempotency_key)
+  PRIMARY KEY (workspace_id, idempotency_key),
+  FOREIGN KEY (workspace_id, matter_intelligence_observation_id)
+    REFERENCES markreg_matter_intelligence_observations(workspace_id, matter_intelligence_observation_id)
 );
 
 CREATE INDEX markreg_matter_intelligence_commands_observation_idx
