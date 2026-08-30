@@ -1,0 +1,49 @@
+name: tmp-343-wire-report
+
+on:
+  push:
+    branches:
+      - phase6/343-bounded-method-outcome-reporting
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6/343-bounded-method-outcome-reporting
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire Core runtime and format scoped files
+        run: |
+          node scripts/tmp-343-wire-report.mjs
+          pnpm exec prettier --write \
+            infrastructure/persistence/migration-owners.json \
+            infrastructure/persistence/migrations/0077_core_method_outcome_evidence_reporting_watermark.sql \
+            services/core/package.json \
+            services/core/src/index.ts \
+            services/core/src/main.ts \
+            services/core/src/method-outcome-report.ts \
+            services/core/src/method-outcome-report-http.ts \
+            services/core/tests/method-outcome-report.test.ts \
+            services/core/tests/method-outcome-report-http.test.ts \
+            services/core/tests/method-outcome-report-postgres.test.ts
+      - name: Commit scoped wiring
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add infrastructure/persistence/migration-owners.json infrastructure/persistence/migrations/0077_core_method_outcome_evidence_reporting_watermark.sql services/core/package.json services/core/src/index.ts services/core/src/main.ts services/core/src/method-outcome-report.ts services/core/src/method-outcome-report-http.ts services/core/tests/method-outcome-report.test.ts services/core/tests/method-outcome-report-http.test.ts services/core/tests/method-outcome-report-postgres.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'Phase 6: wire bounded method outcome reporting'
+          git push origin HEAD:phase6/343-bounded-method-outcome-reporting
