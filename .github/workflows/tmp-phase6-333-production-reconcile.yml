@@ -28,7 +28,7 @@ jobs:
         run: python scripts/tmp_phase6_333_production_reconcile.py
       - name: Format and validate production layer
         run: |
-          pnpm exec prettier --write infrastructure/persistence/migrations/0075_markreg_matter_intelligence_reviews.sql services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts
+          pnpm exec prettier --write services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts
           pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/markreg-service build
           pnpm --filter @markorbit/markreg-service typecheck
