@@ -85,9 +85,7 @@ describe('MethodOutcomeEvidenceAdmissionServiceV1', () => {
     expect(result.evidence.methodOutcomeEvidenceId).toBe('method-outcome-evidence_phase6-core');
     expect(result.evidence.admittedAt).toBe('2026-08-30T20:01:00.000Z');
     expect(result.evidence.admissionFingerprintSha256).toMatch(/^[0-9a-f]{64}$/u);
-    expect(fake.admit.mock.calls[0]![0].sourceIdentityFingerprintSha256).toMatch(
-      /^[0-9a-f]{64}$/u
-    );
+    expect(fake.admit.mock.calls[0]![0].sourceIdentityFingerprintSha256).toMatch(/^[0-9a-f]{64}$/u);
   });
 
   it('fails before persistence when trusted workspace context does not match evidence', async () => {

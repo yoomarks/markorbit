@@ -73,8 +73,7 @@ function admission(
       outcome: reviewVersion === 1 ? 'CONFIRMED' : 'OVERRIDDEN',
       ...(reviewVersion === 1 ? {} : { reason: 'METHOD_ERROR' }),
       reviewedByPrincipalId: 'principal_phase6-core-pg',
-      reviewedAt:
-        reviewVersion === 1 ? '2026-08-30T20:00:00.000Z' : '2026-08-30T20:10:00.000Z'
+      reviewedAt: reviewVersion === 1 ? '2026-08-30T20:00:00.000Z' : '2026-08-30T20:10:00.000Z'
     },
     capability: {
       id: 'interpretation.cn-completed-duration-historical-band',

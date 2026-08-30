@@ -13,11 +13,7 @@ export interface MethodOutcomeEvidenceHttpOptionsV1 {
 function workspaceId(headers: Readonly<Record<string, string | undefined>>): string {
   const value = headers['x-markorbit-workspace-id']?.trim().toLowerCase();
   if (!value)
-    throw new HttpError(
-      400,
-      'WORKSPACE_CONTEXT_REQUIRED',
-      'x-markorbit-workspace-id is required.'
-    );
+    throw new HttpError(400, 'WORKSPACE_CONTEXT_REQUIRED', 'x-markorbit-workspace-id is required.');
   return value;
 }
 

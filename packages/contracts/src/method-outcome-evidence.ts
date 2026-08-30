@@ -179,9 +179,12 @@ export function assertMethodOutcomeEvidenceReviewTaxonomy(
     (outcome === 'INCONCLUSIVE' && reason === 'INCONCLUSIVE_EVIDENCE') ||
     (outcome === 'OVERRIDDEN' &&
       reason !== undefined &&
-      ['METHOD_ERROR', 'INPUT_DATA_ERROR', 'APPLICABILITY_ERROR', 'PRODUCT_USER_PREFERENCE'].includes(
-        reason
-      ));
+      [
+        'METHOD_ERROR',
+        'INPUT_DATA_ERROR',
+        'APPLICABILITY_ERROR',
+        'PRODUCT_USER_PREFERENCE'
+      ].includes(reason));
   if (!valid)
     throw new MethodOutcomeEvidenceContractError(
       `Review outcome ${outcome} cannot use reason ${String(reason)}.`
@@ -210,7 +213,15 @@ function parseAdmissionRoot(root: RecordValue): MethodOutcomeEvidenceAdmissionV1
   const review = record(root.review, 'review');
   exactKeys(
     review,
-    ['id', 'version', 'fingerprintSha256', 'outcome', 'reason', 'reviewedByPrincipalId', 'reviewedAt'],
+    [
+      'id',
+      'version',
+      'fingerprintSha256',
+      'outcome',
+      'reason',
+      'reviewedByPrincipalId',
+      'reviewedAt'
+    ],
     'review'
   );
   const capability = record(root.capability, 'capability');
@@ -306,7 +317,11 @@ function parseAdmissionRoot(root: RecordValue): MethodOutcomeEvidenceAdmissionV1
       fingerprintSha256: sha256(review.fingerprintSha256, 'review.fingerprintSha256'),
       outcome,
       ...(reason === undefined ? {} : { reason }),
-      reviewedByPrincipalId: text(review.reviewedByPrincipalId, 'review.reviewedByPrincipalId', 300),
+      reviewedByPrincipalId: text(
+        review.reviewedByPrincipalId,
+        'review.reviewedByPrincipalId',
+        300
+      ),
       reviewedAt: timestamp(review.reviewedAt, 'review.reviewedAt')
     },
     capability: {
@@ -314,7 +329,11 @@ function parseAdmissionRoot(root: RecordValue): MethodOutcomeEvidenceAdmissionV1
       version: text(capability.version, 'capability.version', 120),
       requestId: prefixed<string>(capability.requestId, 'capreq_', 'capability.requestId'),
       returnId: prefixed<string>(capability.returnId, 'capability-return_', 'capability.returnId'),
-      outcomeId: prefixed<string>(capability.outcomeId, 'capability-outcome_', 'capability.outcomeId'),
+      outcomeId: prefixed<string>(
+        capability.outcomeId,
+        'capability-outcome_',
+        'capability.outcomeId'
+      ),
       invocationId: prefixed<string>(
         capability.invocationId,
         'capability-invocation_',

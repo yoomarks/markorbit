@@ -9,10 +9,7 @@ import {
 import type { ManagedDatabase } from '@markorbit/persistence';
 
 export type MethodOutcomeEvidenceAdmissionErrorCode =
-  | 'INVALID_EVIDENCE'
-  | 'WORKSPACE_MISMATCH'
-  | 'EVIDENCE_CONFLICT'
-  | 'PERSISTENCE_UNAVAILABLE';
+  'INVALID_EVIDENCE' | 'WORKSPACE_MISMATCH' | 'EVIDENCE_CONFLICT' | 'PERSISTENCE_UNAVAILABLE';
 
 export class MethodOutcomeEvidenceAdmissionError extends Error {
   constructor(
@@ -32,7 +29,9 @@ export interface MethodOutcomeEvidenceAdmissionResultV1 {
 }
 
 export interface MethodOutcomeEvidenceAdmissionRepositoryV1 {
-  admit(input: Readonly<PreparedMethodOutcomeEvidenceAdmissionV1>): Promise<MethodOutcomeEvidenceAdmissionResultV1>;
+  admit(
+    input: Readonly<PreparedMethodOutcomeEvidenceAdmissionV1>
+  ): Promise<MethodOutcomeEvidenceAdmissionResultV1>;
 }
 
 export interface PreparedMethodOutcomeEvidenceAdmissionV1 {
@@ -60,10 +59,14 @@ function canonicalize(value: unknown): unknown {
 }
 
 function fingerprint(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
-function admissionFromEvidence(value: Readonly<MethodOutcomeEvidenceV1>): MethodOutcomeEvidenceAdmissionV1 {
+function admissionFromEvidence(
+  value: Readonly<MethodOutcomeEvidenceV1>
+): MethodOutcomeEvidenceAdmissionV1 {
   return {
     schemaVersion: value.schemaVersion,
     workspaceId: value.workspaceId,
@@ -113,8 +116,12 @@ function stored(row: EvidenceRow): MethodOutcomeEvidenceV1 {
       { cause: error instanceof Error ? error : undefined }
     );
   }
-  const expectedAdmission = methodOutcomeEvidenceAdmissionFingerprint(admissionFromEvidence(evidence));
-  const expectedIdentity = methodOutcomeEvidenceSourceIdentityFingerprint(admissionFromEvidence(evidence));
+  const expectedAdmission = methodOutcomeEvidenceAdmissionFingerprint(
+    admissionFromEvidence(evidence)
+  );
+  const expectedIdentity = methodOutcomeEvidenceSourceIdentityFingerprint(
+    admissionFromEvidence(evidence)
+  );
   if (
     row.admission_fingerprint_sha256 !== expectedAdmission ||
     row.source_identity_fingerprint_sha256 !== expectedIdentity ||
@@ -133,9 +140,7 @@ function postgresCode(error: unknown): string | undefined {
     : undefined;
 }
 
-export class PostgresMethodOutcomeEvidenceAdmissionRepositoryV1
-  implements MethodOutcomeEvidenceAdmissionRepositoryV1
-{
+export class PostgresMethodOutcomeEvidenceAdmissionRepositoryV1 implements MethodOutcomeEvidenceAdmissionRepositoryV1 {
   constructor(private readonly database: ManagedDatabase) {}
 
   async admit(
@@ -279,7 +284,8 @@ export class MethodOutcomeEvidenceAdmissionServiceV1 {
       );
 
     const admissionFingerprintSha256 = methodOutcomeEvidenceAdmissionFingerprint(admission);
-    const sourceIdentityFingerprintSha256 = methodOutcomeEvidenceSourceIdentityFingerprint(admission);
+    const sourceIdentityFingerprintSha256 =
+      methodOutcomeEvidenceSourceIdentityFingerprint(admission);
     const evidence = parseMethodOutcomeEvidenceV1({
       ...admission,
       methodOutcomeEvidenceId: `method-outcome-evidence_${this.evidenceIdFactory()}`,
