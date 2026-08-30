@@ -71,7 +71,12 @@ function matter(): FormalMatter {
         version: 1,
         status: 'CONFIRMED'
       },
-      quote: { id: 'quote_phase5-one', version: 'quote-v1', currency: 'USD', totalMinor: 100 },
+      quote: {
+        id: 'quote_phase5-one',
+        version: 'quote-v1',
+        currency: 'USD',
+        totalMinor: 100
+      },
       matterDraft: {
         id: 'matter-draft_phase5-one',
         version: 1,
