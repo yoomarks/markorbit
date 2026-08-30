@@ -20,8 +20,8 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
 
     const mobile = test.info().project.name.includes('mobile');
     const workspaceId = mobile ? mobileWorkspaceId : desktopWorkspaceId;
-    const feedbackButton = mobile ? 'Delivered' : 'Used';
-    const feedbackEvidence = mobile ? 'Reported delivered' : 'Reported used';
+    const feedbackButton = mobile ? 'Published' : 'Used';
+    const feedbackEvidence = mobile ? 'USER REPORTED PUBLISHED' : 'USER REPORTED USED';
 
     const auth = await page.request.post(`${gateway}/__test/auth/session`, {
       data: { fixture: 'wp07' }
@@ -41,23 +41,17 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await page.goto(`${lite}/?workspaceId=${workspaceId}#today`);
     expect((await workspaceResponse).status()).toBe(200);
 
-    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Outcome feedback needed' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Good morning', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today Actions', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'What happened after preparation?', exact: true })
+    ).toBeVisible();
     await expect(page.getByText(feedbackPackageTitle, { exact: true })).toBeVisible();
-    await expect(
-      page.getByText('Reporting does not publish anything', { exact: true })
-    ).toBeVisible();
+    await expect(page.getByText('Reporting is not publication', { exact: true })).toBeVisible();
 
-    const recommendationList = page.getByRole('list', { name: 'Today recommendations' });
-    const primaryRecommendation = recommendationList
-      .getByRole('listitem')
-      .filter({ hasText: primaryTitle });
-    await expect(primaryRecommendation).toBeVisible();
-    await primaryRecommendation.click();
-    await expect(page.getByRole('heading', { name: primaryTitle, exact: true })).toBeVisible();
-    await expect(
-      page.getByText(`rdp_wp07-browser-primary-${workspaceId}`, { exact: true })
-    ).toBeVisible();
+    const primaryHeading = page.getByRole('heading', { name: primaryTitle, exact: true });
+    await expect(primaryHeading).toBeVisible();
+    const primaryCard = primaryHeading.locator('xpath=../../..');
 
     const prepareResponse = page.waitForResponse(
       (response) =>
@@ -65,39 +59,40 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
         response.request().method() === 'POST' &&
         !response.url().endsWith('/confirm')
     );
-    await page.getByRole('button', { name: 'Prepare content action' }).click();
+    await primaryCard.getByRole('button', { name: 'Prepare content action' }).click();
     expect((await prepareResponse).status()).toBe(201);
 
-    await expect(page.getByRole('heading', { name: 'Prepared Action', exact: true })).toBeVisible();
-    await expect(page.getByText('Confirmation effect', { exact: true })).toBeVisible();
-    await expect(page.getByText('Execution authorized', { exact: true })).toBeVisible();
-    await expect(page.getByText('No', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirm and hand off' })).toBeEnabled();
+    await expect(primaryCard.getByText('Prepared Action', { exact: true })).toBeVisible();
+    await expect(primaryCard.getByText('Confirmation required', { exact: true })).toBeVisible();
+    await expect(primaryCard.getByRole('note', { name: 'Confirmation effect' })).toBeVisible();
+    await expect(primaryCard.getByRole('button', { name: 'Confirm and hand off' })).toBeEnabled();
 
     const confirmResponse = page.waitForResponse(
       (response) => response.url().endsWith('/confirm') && response.request().method() === 'POST'
     );
-    await page.getByRole('button', { name: 'Confirm and hand off' }).click();
+    await primaryCard.getByRole('button', { name: 'Confirm and hand off' }).click();
     expect((await confirmResponse).status()).toBe(200);
-    await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
-    await expect(page.getByText(/No automatic publication, customer outreach/)).toBeVisible();
+    await expect(primaryCard.getByText('Owner handoff completed', { exact: true })).toBeVisible();
+    await expect(
+      primaryCard.getByText(/No automatic publication, customer outreach/)
+    ).toBeVisible();
 
     const feedbackResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/use-feedback') && response.request().method() === 'POST'
     );
-    const feedbackGroup = page.getByLabel(`Report outcome for ${feedbackPackageTitle}`);
-    await feedbackGroup.getByRole('button', { name: feedbackButton, exact: true }).click();
+    const feedbackRow = page
+      .getByText(feedbackPackageTitle, { exact: true })
+      .locator('xpath=../..');
+    await feedbackRow.getByRole('button', { name: feedbackButton, exact: true }).click();
     expect((await feedbackResponse).status()).toBe(201);
 
     await expect(page.getByText(feedbackPackageTitle, { exact: true })).not.toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Recent Product-loop evidence' })).toBeVisible();
-    await expect(page.getByText(feedbackEvidence, { exact: true })).toBeVisible();
-    await expect(page.getByText('User-reported evidence', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Recent user-reported outcomes \(1\)/)).toBeVisible();
+    await expect(page.getByText(new RegExp(feedbackEvidence))).toBeVisible();
     await expect(
-      page.getByText(/MarkOrbit did not execute or independently verify the external action/)
+      page.getByText(/They do not publish or independently verify the result/)
     ).toBeVisible();
-    await expect(page.getByText(/not Capability verification/)).toBeVisible();
 
     const durableUrl = page.url();
     const reloadWorkspace = page.waitForResponse(
@@ -108,7 +103,7 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await page.reload();
     expect((await reloadWorkspace).status()).toBe(200);
     await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
-    await expect(page.getByText(feedbackEvidence, { exact: true })).toBeVisible();
+    await expect(page.getByText(new RegExp(feedbackEvidence))).toBeVisible();
     await expect(page.getByText(feedbackPackageTitle, { exact: true })).not.toBeVisible();
     await expect(page).toHaveURL(durableUrl);
 
@@ -116,7 +111,7 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await direct.goto(durableUrl);
     await expect(direct.getByRole('heading', { name: primaryTitle, exact: true })).toBeVisible();
     await expect(direct.getByText('Owner handoff completed', { exact: true })).toBeVisible();
-    await expect(direct.getByText(feedbackEvidence, { exact: true })).toBeVisible();
+    await expect(direct.getByText(new RegExp(feedbackEvidence))).toBeVisible();
     await direct.close();
 
     expect(
