@@ -1,0 +1,46 @@
+name: Temporary Phase 6 331 Prettier
+
+on:
+  push:
+    branches:
+      - phase6/331-markreg-intelligence-review-source
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6/331-markreg-intelligence-review-source
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format Phase 6 files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/package.json
+          packages/contracts/src/method-outcome-evidence.ts
+          services/markreg/src/matter-intelligence-review-http.ts
+          services/markreg/src/matter-intelligence-review.ts
+          services/markreg/tests/matter-intelligence-review-http.test.ts
+          services/markreg/tests/matter-intelligence-review-postgres.test.ts
+      - name: Commit formatting if needed
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/package.json packages/contracts/src/method-outcome-evidence.ts services/markreg/src/matter-intelligence-review-http.ts services/markreg/src/matter-intelligence-review.ts services/markreg/tests/matter-intelligence-review-http.test.ts services/markreg/tests/matter-intelligence-review-postgres.test.ts
+          git commit -m "style: format Phase 6 review source"
+          git push origin HEAD:phase6/331-markreg-intelligence-review-source
