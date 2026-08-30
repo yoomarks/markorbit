@@ -4,6 +4,7 @@
     "core": "@markorbit/core-service",
     "core_sessions": "@markorbit/core-service",
     "core_account_access": "@markorbit/core-service",
+    "core_method_outcome_evidence": "@markorbit/core-service",
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
     "markreg_formal_matters": "@markorbit/markreg-service",
@@ -116,6 +117,7 @@
     "0072_capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
     "0073_core_official_fee_references": "@markorbit/core-service",
     "0074_markreg_matter_intelligence_observations": "@markorbit/markreg-service",
-    "0075_markreg_matter_intelligence_reviews": "@markorbit/markreg-service"
+    "0075_markreg_matter_intelligence_reviews": "@markorbit/markreg-service",
+    "0076_core_method_outcome_evidence": "@markorbit/core-service"
   }
 }
