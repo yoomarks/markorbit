@@ -34,6 +34,7 @@ jobs:
           pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/markreg-service build
           pnpm --filter @markorbit/markreg-service typecheck
+          pnpm --filter @markorbit/markreg-service exec eslint src tests --fix
           pnpm --filter @markorbit/markreg-service lint
       - name: Commit and self-remove
         run: |
