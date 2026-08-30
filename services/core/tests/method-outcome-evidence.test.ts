@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  MethodOutcomeEvidenceAdmissionError,
   MethodOutcomeEvidenceAdmissionServiceV1,
+  type MethodOutcomeEvidenceAdmissionError,
   type MethodOutcomeEvidenceAdmissionRepositoryV1,
   type PreparedMethodOutcomeEvidenceAdmissionV1
 } from '../src/method-outcome-evidence.js';
@@ -60,9 +60,9 @@ function admission() {
   };
 }
 
-function repository() {
+function repository(replayed = false) {
   const admit = vi.fn((input: Readonly<PreparedMethodOutcomeEvidenceAdmissionV1>) =>
-    Promise.resolve({ evidence: input.evidence, replayed: false })
+    Promise.resolve({ evidence: input.evidence, replayed })
   );
   return {
     admit,
@@ -70,8 +70,8 @@ function repository() {
   };
 }
 
-describe('MethodOutcomeEvidenceAdmissionServiceV1', () => {
-  it('creates server-owned evidence identity and deterministic bounded fingerprints', async () => {
+describe('Method Outcome Evidence admission service', () => {
+  it('prepares server-owned identity and immutable fingerprints before persistence', async () => {
     const fake = repository();
     const service = new MethodOutcomeEvidenceAdmissionServiceV1({
       repository: fake.repository,
