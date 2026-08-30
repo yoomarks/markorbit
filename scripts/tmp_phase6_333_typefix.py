@@ -77,7 +77,8 @@ old_import = '''import {
 '''
 new_import = '''import {
   matterIntelligenceReviewOutcomes,
-  matterIntelligenceReviewReasonCodes
+  matterIntelligenceReviewReasonCodes,
+  type MatterIntelligenceReviewOutcome
 } from '@markorbit/contracts/method-outcome-evidence';
 '''
 if old_import not in s:
