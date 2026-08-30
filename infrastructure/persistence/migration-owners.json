@@ -13,6 +13,7 @@
     "markreg_orders": "@markorbit/markreg-service",
     "markreg_commercial_checkout": "@markorbit/markreg-service",
     "markreg_knowledge_case_promotions": "@markorbit/markreg-service",
+    "markreg_matter_intelligence_observations": "@markorbit/markreg-service",
     "payment_foundation": "@markorbit/payment-service",
     "execution_filing_governance": "@markorbit/execution-service",
     "execution_trademark_service_sessions": "@markorbit/execution-service",
@@ -52,7 +53,8 @@
     "capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
     "capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
     "core_brain_registry": "@markorbit/core-service",
-    "core_official_fee_reference": "@markorbit/core-service"
+    "core_official_fee_reference": "@markorbit/core-service",
+    "markreg_matter_intelligence_commands": "@markorbit/markreg-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -110,6 +112,7 @@
     "0070_capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
     "0071_core_brain_registry": "@markorbit/core-service",
     "0072_capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
-    "0073_core_official_fee_references": "@markorbit/core-service"
+    "0073_core_official_fee_references": "@markorbit/core-service",
+    "0074_markreg_matter_intelligence_observations": "@markorbit/markreg-service"
   }
 }
