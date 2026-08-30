@@ -16,6 +16,56 @@ rep(
     'review match exact optional helper'
 )
 
+p = Path('services/markreg/src/matter-intelligence-review.ts')
+s = p.read_text()
+old_sha = '''function sha256(value: unknown, field: string): string {
+  const cleaned = String(value).trim().toLowerCase();
+  if (!SHA256.test(cleaned))
+    throw new MatterIntelligenceReviewError('PERSISTENCE_UNAVAILABLE', `${field} is invalid.`, 503);
+  return cleaned;
+}
+
+function evidenceRefs(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string'))
+    throw new MatterIntelligenceReviewError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Persisted observation evidenceRefs are invalid.',
+      503
+    );
+  return [...value] as string[];
+}
+'''
+new_sha = '''function sha256(value: unknown, field: string): string {
+  const cleaned = String(value).trim().toLowerCase();
+  if (!SHA256.test(cleaned))
+    throw new MatterIntelligenceReviewError('PERSISTENCE_UNAVAILABLE', `${field} is invalid.`, 503);
+  return cleaned;
+}
+
+function persistedString(value: unknown, field: string): string {
+  if (typeof value !== 'string')
+    throw new MatterIntelligenceReviewError('PERSISTENCE_UNAVAILABLE', `${field} is invalid.`, 503);
+  return value;
+}
+
+function evidenceRefs(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string'))
+    throw new MatterIntelligenceReviewError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Persisted observation evidenceRefs are invalid.',
+      503
+    );
+  return value.filter((entry): entry is string => typeof entry === 'string');
+}
+'''
+if old_sha not in s:
+    raise SystemExit('missing persistence helper block')
+s = s.replace(old_sha, new_sha, 1)
+s = s.replace('String(row.reason_code) as MatterIntelligenceReviewReasonCode', "persistedString(row.reason_code, 'reasonCode') as MatterIntelligenceReviewReasonCode")
+s = s.replace("String(row.rationale)", "persistedString(row.rationale, 'rationale')")
+s = s.replace("String(row.supersedes_review_id) as MatterIntelligenceReviewId", "persistedString(row.supersedes_review_id, 'supersedesReviewId') as MatterIntelligenceReviewId")
+p.write_text(s)
+
 p = Path('services/markreg/src/matter-intelligence-review-http.ts')
 s = p.read_text()
 old = '''            reasonCode:
