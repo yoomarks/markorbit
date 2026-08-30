@@ -3,7 +3,6 @@ import type { JsonRequest } from '@markorbit/service-kit';
 import { createMethodOutcomeEvidenceRoutesV1 } from '../src/method-outcome-evidence-http.js';
 import {
   MethodOutcomeEvidenceAdmissionServiceV1,
-  type MethodOutcomeEvidenceAdmissionRepositoryV1,
   type PreparedMethodOutcomeEvidenceAdmissionV1
 } from '../src/method-outcome-evidence.js';
 
@@ -67,7 +66,7 @@ function fixture(replayed = false) {
     Promise.resolve({ evidence: input.evidence, replayed })
   );
   const service = new MethodOutcomeEvidenceAdmissionServiceV1({
-    repository: { admit } as MethodOutcomeEvidenceAdmissionRepositoryV1,
+    repository: { admit },
     now: () => '2026-08-30T20:01:00.000Z',
     evidenceIdFactory: () => 'phase6-core-http'
   });
