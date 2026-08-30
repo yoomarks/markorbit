@@ -94,6 +94,7 @@ export interface MarkRegMatterIntelligenceObservationV1 {
     implementationKey: string;
   }>;
   correlationId: string;
+  capabilityCorrelationId: string;
   methodPackageRef: string;
   methodRef: string;
   methodVersionRef: string;
@@ -280,15 +281,46 @@ function parseDurationBandOutput(value: unknown, expectedDays: number): Duration
   return output;
 }
 
+function capabilityCommandIdentity(
+  input: Readonly<{
+    workspaceId: string;
+    formalMatterId: FormalMatterId;
+    productIdempotencyKey: string;
+    observedCompletedDurationDays: number;
+    principal: WorkspacePrincipal;
+  }>
+) {
+  return {
+    workspaceId: input.workspaceId,
+    formalMatterId: input.formalMatterId,
+    productIdempotencyKey: input.productIdempotencyKey,
+    observedCompletedDurationDays: input.observedCompletedDurationDays,
+    principalId: input.principal.userId
+  };
+}
+
 function capabilityIdempotencyKey(
   input: Readonly<{
     workspaceId: string;
     formalMatterId: FormalMatterId;
     productIdempotencyKey: string;
     observedCompletedDurationDays: number;
+    principal: WorkspacePrincipal;
   }>
 ): string {
-  return `markreg-matter-intelligence:${fingerprint(input)}`;
+  return `markreg-matter-intelligence:${fingerprint(capabilityCommandIdentity(input))}`;
+}
+
+function capabilityCorrelationId(
+  input: Readonly<{
+    workspaceId: string;
+    formalMatterId: FormalMatterId;
+    productIdempotencyKey: string;
+    observedCompletedDurationDays: number;
+    principal: WorkspacePrincipal;
+  }>
+): string {
+  return `markreg-matter-intelligence-capability:${fingerprint(capabilityCommandIdentity(input))}`;
 }
 
 function exactInput(observedCompletedDurationDays: number) {
@@ -322,7 +354,7 @@ function assertExecution(
     observedCompletedDurationDays: number;
     principal: WorkspacePrincipal;
     capabilityIdempotencyKey: string;
-    correlationId: string;
+    capabilityCorrelationId: string;
   }>
 ): ValidatedDurationBandCapabilityResult {
   const request = execution.request;
@@ -334,7 +366,7 @@ function assertExecution(
     request.outputSchemaId !== MATTER_INTELLIGENCE_OUTPUT_SCHEMA ||
     request.riskClass !== 'LOW' ||
     request.idempotencyKey !== expected.capabilityIdempotencyKey ||
-    request.correlationId !== expected.correlationId ||
+    request.correlationId !== expected.capabilityCorrelationId ||
     request.purpose !== exactPurpose(expected.formalMatterId) ||
     request.caller.workspaceId !== expected.workspaceId ||
     request.caller.principalId !== expected.principal.userId ||
@@ -357,7 +389,7 @@ function assertExecution(
     execution.receipt.workspaceId !== expected.workspaceId ||
     execution.receipt.principalId !== expected.principal.userId ||
     execution.receipt.callerProduct !== 'MARKREG' ||
-    execution.receipt.correlationId !== expected.correlationId ||
+    execution.receipt.correlationId !== expected.capabilityCorrelationId ||
     execution.receipt.runtimeCapability.capabilityId !== MATTER_INTELLIGENCE_CAPABILITY_ID ||
     execution.receipt.runtimeCapability.capabilityVersion !==
       MATTER_INTELLIGENCE_CAPABILITY_VERSION ||
@@ -428,6 +460,7 @@ export class HttpCnDurationBandCapabilityClient implements MatterIntelligenceCap
     }>
   ): Promise<Readonly<ValidatedDurationBandCapabilityResult>> {
     const capabilityKey = capabilityIdempotencyKey(input);
+    const capabilityCorrelation = capabilityCorrelationId(input);
     const command: CapabilityRequestV2Command = {
       schemaVersion: 2,
       capabilityId: MATTER_INTELLIGENCE_CAPABILITY_ID,
@@ -444,7 +477,7 @@ export class HttpCnDurationBandCapabilityClient implements MatterIntelligenceCap
       outputSchemaId: MATTER_INTELLIGENCE_OUTPUT_SCHEMA,
       riskClass: 'LOW',
       idempotencyKey: capabilityKey,
-      correlationId: input.correlationId
+      correlationId: capabilityCorrelation
     };
 
     let response: Response;
@@ -460,7 +493,7 @@ export class HttpCnDurationBandCapabilityClient implements MatterIntelligenceCap
             'x-markorbit-workspace-id': input.workspaceId,
             'x-markorbit-caller-product': 'MARKREG',
             'idempotency-key': capabilityKey,
-            'x-correlation-id': input.correlationId
+            'x-correlation-id': capabilityCorrelation
           },
           body: JSON.stringify(command)
         }
@@ -532,7 +565,7 @@ export class HttpCnDurationBandCapabilityClient implements MatterIntelligenceCap
       observedCompletedDurationDays: input.observedCompletedDurationDays,
       principal: input.principal,
       capabilityIdempotencyKey: capabilityKey,
-      correlationId: input.correlationId
+      capabilityCorrelationId: capabilityCorrelation
     });
   }
 }
@@ -666,7 +699,7 @@ export class PostgresMatterIntelligenceRepository implements MatterIntelligenceR
     value: MarkRegMatterIntelligenceObservationV1
   ) {
     await client.query(
-      'INSERT INTO markreg_matter_intelligence_observations (matter_intelligence_observation_id,workspace_id,formal_matter_id,formal_matter_version,formal_matter_snapshot_sha256,observation_kind,observed_completed_duration_days,historical_band,dataset_ref_id,capability_id,capability_version,input_schema_id,output_schema_id,capability_request_id,capability_invocation_id,capability_outcome_id,capability_return_id,session_receipt_id,implementation_profile_id,implementation_version,implementation_key,correlation_id,method_package_ref,method_ref,method_version_ref,evaluation_ref,research_dataset_ref,evidence_refs,evidence_fingerprint_sha256,input_fingerprint_sha256,output_fingerprint_sha256,recorded_by_principal_id,recorded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28::jsonb,$29,$30,$31,$32,$33)',
+      'INSERT INTO markreg_matter_intelligence_observations (matter_intelligence_observation_id,workspace_id,formal_matter_id,formal_matter_version,formal_matter_snapshot_sha256,observation_kind,observed_completed_duration_days,historical_band,dataset_ref_id,capability_id,capability_version,input_schema_id,output_schema_id,capability_request_id,capability_invocation_id,capability_outcome_id,capability_return_id,session_receipt_id,implementation_profile_id,implementation_version,implementation_key,correlation_id,capability_correlation_id,method_package_ref,method_ref,method_version_ref,evaluation_ref,research_dataset_ref,evidence_refs,evidence_fingerprint_sha256,input_fingerprint_sha256,output_fingerprint_sha256,recorded_by_principal_id,recorded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29::jsonb,$30,$31,$32,$33,$34)',
       [
         value.matterIntelligenceObservationId,
         value.workspaceId,
@@ -690,6 +723,7 @@ export class PostgresMatterIntelligenceRepository implements MatterIntelligenceR
         value.implementation.version,
         value.implementation.implementationKey,
         value.correlationId,
+        value.capabilityCorrelationId,
         value.methodPackageRef,
         value.methodRef,
         value.methodVersionRef,
@@ -738,6 +772,7 @@ export class PostgresMatterIntelligenceRepository implements MatterIntelligenceR
         implementationKey: String(row.implementation_key)
       },
       correlationId: String(row.correlation_id),
+      capabilityCorrelationId: String(row.capability_correlation_id),
       methodPackageRef: String(row.method_package_ref),
       methodRef: String(row.method_ref),
       methodVersionRef: String(row.method_version_ref),
@@ -875,6 +910,7 @@ export class MatterIntelligenceService {
         implementationKey: result.execution.receipt.implementation.implementationKey
       },
       correlationId,
+      capabilityCorrelationId: result.execution.receipt.correlationId,
       methodPackageRef: result.methodPackageRef,
       methodRef: result.methodRef,
       methodVersionRef: result.methodVersionRef,
