@@ -9,225 +9,56 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./order": {
-      "types": "./dist/order.d.ts",
-      "import": "./dist/order.js"
-    },
-    "./commercial": {
-      "types": "./dist/commercial.d.ts",
-      "import": "./dist/commercial.js"
-    },
-    "./payment": {
-      "types": "./dist/payment.d.ts",
-      "import": "./dist/payment.js"
-    },
-    "./provider-execution": {
-      "types": "./dist/provider-execution.d.ts",
-      "import": "./dist/provider-execution.js"
-    },
-    "./evidence-lifecycle": {
-      "types": "./dist/evidence-lifecycle.d.ts",
-      "import": "./dist/evidence-lifecycle.js"
-    },
-    "./knowledge-content-export": {
-      "types": "./dist/knowledge-content-export.d.ts",
-      "import": "./dist/knowledge-content-export.js"
-    },
-    "./knowledge-ready-package-v2": {
-      "types": "./dist/knowledge-ready-package-v2.d.ts",
-      "import": "./dist/knowledge-ready-package-v2.js"
-    },
-    "./product-loop": {
-      "types": "./dist/product-loop.d.ts",
-      "import": "./dist/product-loop.js",
-      "default": "./dist/product-loop.js"
-    },
-    "./daily-workspace": {
-      "types": "./dist/daily-workspace.d.ts",
-      "import": "./dist/daily-workspace.js",
-      "default": "./dist/daily-workspace.js"
-    },
-    "./trademark-asset-workspace": {
-      "types": "./dist/trademark-asset-workspace.d.ts",
-      "import": "./dist/trademark-asset-workspace.js",
-      "default": "./dist/trademark-asset-workspace.js"
-    },
-    "./trademark-asset-composition": {
-      "types": "./dist/trademark-asset-composition.d.ts",
-      "import": "./dist/trademark-asset-composition.js",
-      "default": "./dist/trademark-asset-composition.js"
-    },
-    "./trademark-asset-portfolio": {
-      "types": "./dist/trademark-asset-portfolio.d.ts",
-      "import": "./dist/trademark-asset-portfolio.js",
-      "default": "./dist/trademark-asset-portfolio.js"
-    },
-    "./trademark-asset-commerce": {
-      "types": "./dist/trademark-asset-commerce.d.ts",
-      "import": "./dist/trademark-asset-commerce.js",
-      "default": "./dist/trademark-asset-commerce.js"
-    },
-    "./trademark-asset-marketplace-reference": {
-      "types": "./dist/trademark-asset-marketplace-reference.d.ts",
-      "import": "./dist/trademark-asset-marketplace-reference.js",
-      "default": "./dist/trademark-asset-marketplace-reference.js"
-    },
-    "./trademark-asset-ai-guide": {
-      "types": "./dist/trademark-asset-ai-guide.d.ts",
-      "import": "./dist/trademark-asset-ai-guide.js",
-      "default": "./dist/trademark-asset-ai-guide.js"
-    },
-    "./trademark-asset-management": {
-      "types": "./dist/trademark-asset-management.d.ts",
-      "import": "./dist/trademark-asset-management.js",
-      "default": "./dist/trademark-asset-management.js"
-    },
-    "./trademark-service-workbench": {
-      "types": "./dist/trademark-service-workbench.d.ts",
-      "import": "./dist/trademark-service-workbench.js",
-      "default": "./dist/trademark-service-workbench.js"
-    },
-    "./trademark-service-execution": {
-      "types": "./dist/trademark-service-execution.d.ts",
-      "import": "./dist/trademark-service-execution.js",
-      "default": "./dist/trademark-service-execution.js"
-    },
-    "./trademark-service-execution-sandbox": {
-      "types": "./dist/trademark-service-execution-sandbox.d.ts",
-      "import": "./dist/trademark-service-execution-sandbox.js",
-      "default": "./dist/trademark-service-execution-sandbox.js"
-    },
-    "./trademark-service-execution-connector": {
-      "types": "./dist/trademark-service-execution-connector.d.ts",
-      "import": "./dist/trademark-service-execution-connector.js",
-      "default": "./dist/trademark-service-execution-connector.js"
-    },
-    "./trademark-service-execution-isolation": {
-      "types": "./dist/trademark-service-execution-isolation.d.ts",
-      "import": "./dist/trademark-service-execution-isolation.js",
-      "default": "./dist/trademark-service-execution-isolation.js"
-    },
-    "./trademark-service-execution-simulation": {
-      "types": "./dist/trademark-service-execution-simulation.d.ts",
-      "import": "./dist/trademark-service-execution-simulation.js",
-      "default": "./dist/trademark-service-execution-simulation.js"
-    },
-    "./trademark-service-execution-readiness-bundle": {
-      "types": "./dist/trademark-service-execution-readiness-bundle.d.ts",
-      "import": "./dist/trademark-service-execution-readiness-bundle.js",
-      "default": "./dist/trademark-service-execution-readiness-bundle.js"
-    },
-    "./trademark-service-execution-observability": {
-      "types": "./dist/trademark-service-execution-observability.d.ts",
-      "import": "./dist/trademark-service-execution-observability.js",
-      "default": "./dist/trademark-service-execution-observability.js"
-    },
-    "./daily-source": {
-      "types": "./dist/daily-source.d.ts",
-      "import": "./dist/daily-source.js"
-    },
-    "./data-engine": {
-      "types": "./dist/data-engine.d.ts",
-      "import": "./dist/data-engine.js"
-    },
-    "./data-engine-discovery": {
-      "types": "./dist/data-engine-discovery.d.ts",
-      "import": "./dist/data-engine-discovery.js",
-      "default": "./dist/data-engine-discovery.js"
-    },
-    "./capability-learning": {
-      "types": "./dist/capability-learning.d.ts",
-      "import": "./dist/capability-learning.js"
-    },
-    "./capability-runtime": {
-      "types": "./dist/capability-runtime.d.ts",
-      "import": "./dist/capability-runtime.js",
-      "default": "./dist/capability-runtime.js"
-    },
-    "./capability-runtime-execution": {
-      "types": "./dist/capability-runtime-execution.d.ts",
-      "import": "./dist/capability-runtime-execution.js",
-      "default": "./dist/capability-runtime-execution.js"
-    },
-    "./brain": {
-      "types": "./dist/brain.d.ts",
-      "import": "./dist/brain.js",
-      "default": "./dist/brain.js"
-    },
-    "./brain-evidence": {
-      "types": "./dist/brain-evidence.d.ts",
-      "import": "./dist/brain-evidence.js",
-      "default": "./dist/brain-evidence.js"
-    },
-    "./brain-method": {
-      "types": "./dist/brain-method.d.ts",
-      "import": "./dist/brain-method.js",
-      "default": "./dist/brain-method.js"
-    },
-    "./brain-method-activation": {
-      "types": "./dist/brain-method-activation.d.ts",
-      "import": "./dist/brain-method-activation.js",
-      "default": "./dist/brain-method-activation.js"
-    },
-    "./brain-cn-duration-research": {
-      "types": "./dist/brain-cn-duration-research.d.ts",
-      "import": "./dist/brain-cn-duration-research.js",
-      "default": "./dist/brain-cn-duration-research.js"
-    },
-    "./brain-cn-duration-evidence-intake": {
-      "types": "./dist/brain-cn-duration-evidence-intake.d.ts",
-      "import": "./dist/brain-cn-duration-evidence-intake.js",
-      "default": "./dist/brain-cn-duration-evidence-intake.js"
-    },
-    "./brain-method-fallback": {
-      "types": "./dist/brain-method-fallback.d.ts",
-      "import": "./dist/brain-method-fallback.js",
-      "default": "./dist/brain-method-fallback.js"
-    },
-    "./brain-official-fee-method": {
-      "types": "./dist/brain-official-fee-method.d.ts",
-      "import": "./dist/brain-official-fee-method.js",
-      "default": "./dist/brain-official-fee-method.js"
-    },
-    "./beta-readiness": {
-      "types": "./dist/beta-readiness.d.ts",
-      "import": "./dist/beta-readiness.js",
-      "default": "./dist/beta-readiness.js"
-    },
-    "./managed-ai-execution": {
-      "types": "./dist/managed-ai-execution.d.ts",
-      "import": "./dist/managed-ai-execution.js",
-      "default": "./dist/managed-ai-execution.js"
-    },
-    "./managed-communication": {
-      "types": "./dist/managed-communication.d.ts",
-      "import": "./dist/managed-communication.js",
-      "default": "./dist/managed-communication.js"
-    },
-    "./brain-confidence": {
-      "types": "./dist/brain-confidence.d.ts",
-      "import": "./dist/brain-confidence.js",
-      "default": "./dist/brain-confidence.js"
-    },
-    "./brain-build": {
-      "types": "./dist/brain-build.d.ts",
-      "import": "./dist/brain-build.js",
-      "default": "./dist/brain-build.js"
-    },
-    "./brain-gap": {
-      "types": "./dist/brain-gap.d.ts",
-      "import": "./dist/brain-gap.js",
-      "default": "./dist/brain-gap.js"
-    },
-    "./brain-cn-duration-band-classification": {
-      "types": "./dist/brain-cn-duration-band-classification.d.ts",
-      "import": "./dist/brain-cn-duration-band-classification.js",
-      "default": "./dist/brain-cn-duration-band-classification.js"
-    }
+    "./order": { "types": "./dist/order.d.ts", "import": "./dist/order.js" },
+    "./commercial": { "types": "./dist/commercial.d.ts", "import": "./dist/commercial.js" },
+    "./payment": { "types": "./dist/payment.d.ts", "import": "./dist/payment.js" },
+    "./provider-execution": { "types": "./dist/provider-execution.d.ts", "import": "./dist/provider-execution.js" },
+    "./evidence-lifecycle": { "types": "./dist/evidence-lifecycle.d.ts", "import": "./dist/evidence-lifecycle.js" },
+    "./knowledge-content-export": { "types": "./dist/knowledge-content-export.d.ts", "import": "./dist/knowledge-content-export.js" },
+    "./knowledge-ready-package-v2": { "types": "./dist/knowledge-ready-package-v2.d.ts", "import": "./dist/knowledge-ready-package-v2.js" },
+    "./product-loop": { "types": "./dist/product-loop.d.ts", "import": "./dist/product-loop.js", "default": "./dist/product-loop.js" },
+    "./daily-workspace": { "types": "./dist/daily-workspace.d.ts", "import": "./dist/daily-workspace.js", "default": "./dist/daily-workspace.js" },
+    "./trademark-asset-workspace": { "types": "./dist/trademark-asset-workspace.d.ts", "import": "./dist/trademark-asset-workspace.js", "default": "./dist/trademark-asset-workspace.js" },
+    "./trademark-asset-composition": { "types": "./dist/trademark-asset-composition.d.ts", "import": "./dist/trademark-asset-composition.js", "default": "./dist/trademark-asset-composition.js" },
+    "./trademark-asset-portfolio": { "types": "./dist/trademark-asset-portfolio.d.ts", "import": "./dist/trademark-asset-portfolio.js", "default": "./dist/trademark-asset-portfolio.js" },
+    "./trademark-asset-commerce": { "types": "./dist/trademark-asset-commerce.d.ts", "import": "./dist/trademark-asset-commerce.js", "default": "./dist/trademark-asset-commerce.js" },
+    "./trademark-asset-marketplace-reference": { "types": "./dist/trademark-asset-marketplace-reference.d.ts", "import": "./dist/trademark-asset-marketplace-reference.js", "default": "./dist/trademark-asset-marketplace-reference.js" },
+    "./trademark-asset-ai-guide": { "types": "./dist/trademark-asset-ai-guide.d.ts", "import": "./dist/trademark-asset-ai-guide.js", "default": "./dist/trademark-asset-ai-guide.js" },
+    "./trademark-asset-management": { "types": "./dist/trademark-asset-management.d.ts", "import": "./dist/trademark-asset-management.js", "default": "./dist/trademark-asset-management.js" },
+    "./trademark-service-workbench": { "types": "./dist/trademark-service-workbench.d.ts", "import": "./dist/trademark-service-workbench.js", "default": "./dist/trademark-service-workbench.js" },
+    "./trademark-service-execution": { "types": "./dist/trademark-service-execution.d.ts", "import": "./dist/trademark-service-execution.js", "default": "./dist/trademark-service-execution.js" },
+    "./trademark-service-execution-sandbox": { "types": "./dist/trademark-service-execution-sandbox.d.ts", "import": "./dist/trademark-service-execution-sandbox.js", "default": "./dist/trademark-service-execution-sandbox.js" },
+    "./trademark-service-execution-connector": { "types": "./dist/trademark-service-execution-connector.d.ts", "import": "./dist/trademark-service-execution-connector.js", "default": "./dist/trademark-service-execution-connector.js" },
+    "./trademark-service-execution-isolation": { "types": "./dist/trademark-service-execution-isolation.d.ts", "import": "./dist/trademark-service-execution-isolation.js", "default": "./dist/trademark-service-execution-isolation.js" },
+    "./trademark-service-execution-simulation": { "types": "./dist/trademark-service-execution-simulation.d.ts", "import": "./dist/trademark-service-execution-simulation.js", "default": "./dist/trademark-service-execution-simulation.js" },
+    "./trademark-service-execution-readiness-bundle": { "types": "./dist/trademark-service-execution-readiness-bundle.d.ts", "import": "./dist/trademark-service-execution-readiness-bundle.js", "default": "./dist/trademark-service-execution-readiness-bundle.js" },
+    "./trademark-service-execution-observability": { "types": "./dist/trademark-service-execution-observability.d.ts", "import": "./dist/trademark-service-execution-observability.js", "default": "./dist/trademark-service-execution-observability.js" },
+    "./daily-source": { "types": "./dist/daily-source.d.ts", "import": "./dist/daily-source.js" },
+    "./data-engine": { "types": "./dist/data-engine.d.ts", "import": "./dist/data-engine.js" },
+    "./data-engine-discovery": { "types": "./dist/data-engine-discovery.d.ts", "import": "./dist/data-engine-discovery.js", "default": "./dist/data-engine-discovery.js" },
+    "./capability-learning": { "types": "./dist/capability-learning.d.ts", "import": "./dist/capability-learning.js" },
+    "./capability-runtime": { "types": "./dist/capability-runtime.d.ts", "import": "./dist/capability-runtime.js", "default": "./dist/capability-runtime.js" },
+    "./capability-runtime-execution": { "types": "./dist/capability-runtime-execution.d.ts", "import": "./dist/capability-runtime-execution.js", "default": "./dist/capability-runtime-execution.js" },
+    "./method-outcome-evidence": { "types": "./dist/method-outcome-evidence.d.ts", "import": "./dist/method-outcome-evidence.js", "default": "./dist/method-outcome-evidence.js" },
+    "./brain": { "types": "./dist/brain.d.ts", "import": "./dist/brain.js", "default": "./dist/brain.js" },
+    "./brain-evidence": { "types": "./dist/brain-evidence.d.ts", "import": "./dist/brain-evidence.js", "default": "./dist/brain-evidence.js" },
+    "./brain-method": { "types": "./dist/brain-method.d.ts", "import": "./dist/brain-method.js", "default": "./dist/brain-method.js" },
+    "./brain-method-activation": { "types": "./dist/brain-method-activation.d.ts", "import": "./dist/brain-method-activation.js", "default": "./dist/brain-method-activation.js" },
+    "./brain-cn-duration-research": { "types": "./dist/brain-cn-duration-research.d.ts", "import": "./dist/brain-cn-duration-research.js", "default": "./dist/brain-cn-duration-research.js" },
+    "./brain-cn-duration-evidence-intake": { "types": "./dist/brain-cn-duration-evidence-intake.d.ts", "import": "./dist/brain-cn-duration-evidence-intake.js", "default": "./dist/brain-cn-duration-evidence-intake.js" },
+    "./brain-method-fallback": { "types": "./dist/brain-method-fallback.d.ts", "import": "./dist/brain-method-fallback.js", "default": "./dist/brain-method-fallback.js" },
+    "./brain-official-fee-method": { "types": "./dist/brain-official-fee-method.d.ts", "import": "./dist/brain-official-fee-method.js", "default": "./dist/brain-official-fee-method.js" },
+    "./beta-readiness": { "types": "./dist/beta-readiness.d.ts", "import": "./dist/beta-readiness.js", "default": "./dist/beta-readiness.js" },
+    "./managed-ai-execution": { "types": "./dist/managed-ai-execution.d.ts", "import": "./dist/managed-ai-execution.js", "default": "./dist/managed-ai-execution.js" },
+    "./managed-communication": { "types": "./dist/managed-communication.d.ts", "import": "./dist/managed-communication.js", "default": "./dist/managed-communication.js" },
+    "./brain-confidence": { "types": "./dist/brain-confidence.d.ts", "import": "./dist/brain-confidence.js", "default": "./dist/brain-confidence.js" },
+    "./brain-build": { "types": "./dist/brain-build.d.ts", "import": "./dist/brain-build.js", "default": "./dist/brain-build.js" },
+    "./brain-gap": { "types": "./dist/brain-gap.d.ts", "import": "./dist/brain-gap.js", "default": "./dist/brain-gap.js" },
+    "./brain-cn-duration-band-classification": { "types": "./dist/brain-cn-duration-band-classification.d.ts", "import": "./dist/brain-cn-duration-band-classification.js", "default": "./dist/brain-cn-duration-band-classification.js" }
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/trademark-asset-composition.ts src/trademark-asset-portfolio.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-management.ts src/trademark-service-workbench.ts src/trademark-service-execution.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-connector.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/trademark-service-execution-observability.ts src/daily-source.ts src/data-engine.ts src/data-engine-discovery.ts src/capability-learning.ts src/capability-runtime.ts src/capability-runtime-execution.ts src/brain.ts src/brain-evidence.ts src/brain-method.ts src/brain-method-activation.ts src/brain-cn-duration-research.ts src/brain-cn-duration-band-classification.ts src/brain-cn-duration-evidence-intake.ts src/brain-method-fallback.ts src/brain-official-fee-method.ts src/brain-confidence.ts src/brain-gap.ts src/brain-build.ts src/managed-ai-execution.ts src/managed-communication.ts src/beta-readiness.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/trademark-asset-composition.ts src/trademark-asset-portfolio.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-management.ts src/trademark-service-workbench.ts src/trademark-service-execution.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-connector.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/trademark-service-execution-observability.ts src/daily-source.ts src/data-engine.ts src/data-engine-discovery.ts src/capability-learning.ts src/capability-runtime.ts src/capability-runtime-execution.ts src/method-outcome-evidence.ts src/brain.ts src/brain-evidence.ts src/brain-method.ts src/brain-method-activation.ts src/brain-cn-duration-research.ts src/brain-cn-duration-band-classification.ts src/brain-cn-duration-evidence-intake.ts src/brain-method-fallback.ts src/brain-official-fee-method.ts src/brain-confidence.ts src/brain-gap.ts src/brain-build.ts src/managed-ai-execution.ts src/managed-communication.ts src/beta-readiness.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -235,7 +66,5 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ]
+  "files": ["dist"]
 }
