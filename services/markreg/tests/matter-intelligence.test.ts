@@ -533,9 +533,7 @@ describe('MarkReg governed Capability HTTP client', () => {
       outputSchemaId: 'brain.cn-completed-duration-historical-band.v1',
       riskClass: 'LOW'
     });
-    expect(capturedCommand?.idempotencyKey).toMatch(
-      /^markreg-matter-intelligence:[0-9a-f]{64}$/
-    );
+    expect(capturedCommand?.idempotencyKey).toMatch(/^markreg-matter-intelligence:[0-9a-f]{64}$/);
     expect(capturedCommand?.correlationId).toMatch(
       /^markreg-matter-intelligence-capability:[0-9a-f]{64}$/
     );
