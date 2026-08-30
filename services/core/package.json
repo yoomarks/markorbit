@@ -8,7 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsup src/index.ts src/main.ts src/brain-asset-registry.ts src/brain-asset-registry-postgres.ts src/brain-evidence-resolver.ts src/brain-confidence-engine.ts src/brain-build-runtime.ts src/brain-self-audit.ts src/brain-gap-registry.ts src/official-fee-reference-store.ts src/official-fee-reference-store-postgres.ts --format esm --dts --clean",
     "test": "vitest run",
-    "test:postgres": "vitest run tests/identity-postgres.test.ts && vitest run tests/method-outcome-evidence-postgres.test.ts",
+    "test:postgres": "vitest run tests/identity-postgres.test.ts && vitest run tests/method-outcome-evidence-postgres.test.ts && vitest run tests/method-outcome-report-postgres.test.ts",
     "test:auth:postgres": "vitest run tests/session-postgres.test.ts && vitest run tests/account-access-postgres.test.ts && vitest run tests/account-onboarding-postgres.test.ts",
     "test:knowledge-intake:postgres": "vitest run tests/knowledge-intake-postgres.test.ts",
     "test:knowledge-v2-delivery:postgres": "vitest run tests/knowledge-v2-delivery-postgres.test.ts",
