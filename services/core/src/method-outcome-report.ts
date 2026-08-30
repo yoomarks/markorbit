@@ -61,10 +61,7 @@ export interface MethodOutcomeReportV1 {
 }
 
 export type MethodOutcomeReportErrorCode =
-  | 'INVALID_QUERY'
-  | 'WORKSPACE_MISMATCH'
-  | 'WATERMARK_MISMATCH'
-  | 'PERSISTENCE_UNAVAILABLE';
+  'INVALID_QUERY' | 'WORKSPACE_MISMATCH' | 'WATERMARK_MISMATCH' | 'PERSISTENCE_UNAVAILABLE';
 
 export class MethodOutcomeReportError extends Error {
   constructor(
@@ -169,7 +166,14 @@ export function parseMethodOutcomeReportQueryV1(value: unknown): MethodOutcomeRe
   const root = record(value, 'query');
   exactKeys(
     root,
-    ['schemaVersion', 'workspaceId', 'methodPackageRef', 'methodVersionRef', 'segment', 'watermark'],
+    [
+      'schemaVersion',
+      'workspaceId',
+      'methodPackageRef',
+      'methodVersionRef',
+      'segment',
+      'watermark'
+    ],
     'query'
   );
   if (root.schemaVersion !== 1) invalid('query.schemaVersion must be 1.');
@@ -177,11 +181,7 @@ export function parseMethodOutcomeReportQueryV1(value: unknown): MethodOutcomeRe
     schemaVersion: 1,
     workspaceId: workspace(root.workspaceId),
     methodPackageRef: prefixed(root.methodPackageRef, 'brain-method-package:', 'methodPackageRef'),
-    methodVersionRef: prefixed(
-      root.methodVersionRef,
-      'brain-method-version:',
-      'methodVersionRef'
-    ),
+    methodVersionRef: prefixed(root.methodVersionRef, 'brain-method-version:', 'methodVersionRef'),
     ...(root.segment === undefined ? {} : { segment: parseSegment(root.segment) }),
     ...(root.watermark === undefined ? {} : { watermark: parseWatermark(root.watermark) })
   };
@@ -258,7 +258,8 @@ function sampleRefs(value: unknown): MethodOutcomeReportSampleRefV1[] {
       !OUTCOMES.has(row.outcome as MethodOutcomeEvidenceReviewOutcome) ||
       (row.reason !== null &&
         row.reason !== undefined &&
-        (typeof row.reason !== 'string' || !REASONS.has(row.reason as MethodOutcomeEvidenceReasonCode)))
+        (typeof row.reason !== 'string' ||
+          !REASONS.has(row.reason as MethodOutcomeEvidenceReasonCode)))
     )
       throw new MethodOutcomeReportError(
         'PERSISTENCE_UNAVAILABLE',
@@ -291,7 +292,9 @@ export interface MethodOutcomeReportReaderV1 {
 export class PostgresMethodOutcomeReportReaderV1 implements MethodOutcomeReportReaderV1 {
   constructor(private readonly database: ManagedDatabase) {}
 
-  async report(query: Readonly<MethodOutcomeReportQueryV1>): Promise<Readonly<MethodOutcomeReportV1>> {
+  async report(
+    query: Readonly<MethodOutcomeReportQueryV1>
+  ): Promise<Readonly<MethodOutcomeReportV1>> {
     const segmentKind = query.segment?.kind ?? null;
     const segmentValue = query.segment?.value ?? null;
     const watermarkSequence = query.watermark?.admissionSequence ?? null;

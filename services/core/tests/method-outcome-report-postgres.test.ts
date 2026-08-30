@@ -153,7 +153,10 @@ function query(
     methodPackageRef: string;
     methodVersionRef: string;
     segment: { kind: 'RESEARCH_DATASET' | 'IMPLEMENTATION_KEY'; value: string };
-    watermark: { admissionSequence: number; methodOutcomeEvidenceId: `method-outcome-evidence_${string}` };
+    watermark: {
+      admissionSequence: number;
+      methodOutcomeEvidenceId: `method-outcome-evidence_${string}`;
+    };
   }> = {}
 ) {
   return {
@@ -242,7 +245,9 @@ integration('PostgreSQL bounded Method Outcome reporting', () => {
 
     expect(replay).toEqual(first);
     expect(current.admittedReviews).toBe(2);
-    expect(current.watermark!.admissionSequence).toBeGreaterThan(first.watermark!.admissionSequence);
+    expect(current.watermark!.admissionSequence).toBeGreaterThan(
+      first.watermark!.admissionSequence
+    );
   });
 
   it('fails closed when a supplied watermark belongs to another workspace or filter', async () => {
@@ -267,8 +272,7 @@ integration('PostgreSQL bounded Method Outcome reporting', () => {
   });
 
   it('returns a bounded deterministic sample and zero metrics for an empty set', async () => {
-    for (let index = 1; index <= 23; index += 1)
-      await admit(`sample-${index}`, 'CONFIRMED');
+    for (let index = 1; index <= 23; index += 1) await admit(`sample-${index}`, 'CONFIRMED');
 
     const populated = await reader().report(query());
     expect(populated.sampleEvidenceRefs).toHaveLength(20);

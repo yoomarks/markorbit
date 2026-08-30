@@ -68,9 +68,7 @@ describe('Method Outcome report HTTP boundary', () => {
   it('rejects untrusted internal callers before report execution', async () => {
     const f = fixture();
     await expect(
-      f.route.handle(
-        request({ 'x-markorbit-internal-authorization': 'not-the-configured-secret' })
-      )
+      f.route.handle(request({ 'x-markorbit-internal-authorization': 'not-the-configured-secret' }))
     ).rejects.toMatchObject({ status: 401, code: 'INTERNAL_SERVICE_UNAUTHORIZED' });
     expect(f.reportMethod).not.toHaveBeenCalled();
   });

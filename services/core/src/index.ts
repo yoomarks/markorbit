@@ -41,6 +41,8 @@ import {
 import type { KnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 import { createMethodOutcomeEvidenceRoutesV1 } from './method-outcome-evidence-http.js';
 import type { MethodOutcomeEvidenceAdmissionServiceV1 } from './method-outcome-evidence.js';
+import { createMethodOutcomeReportRoutesV1 } from './method-outcome-report-http.js';
+import type { MethodOutcomeReportServiceV1 } from './method-outcome-report.js';
 
 export const serviceManifest = Object.freeze({
   name: 'core',
@@ -58,6 +60,7 @@ export interface CoreRuntimeOptions {
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
+  methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -94,6 +97,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for account onboarding routes.');
   if (options.methodOutcomeEvidenceAdmissions && !secret)
     throw new Error('internalServiceSecret is required for Method Outcome Evidence admission.');
+  if (options.methodOutcomeReports && !secret)
+    throw new Error('internalServiceSecret is required for Method Outcome reporting.');
   const onboardingRoutes =
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({
@@ -105,6 +110,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.methodOutcomeEvidenceAdmissions && secret
       ? createMethodOutcomeEvidenceRoutesV1({
           service: options.methodOutcomeEvidenceAdmissions,
+          internalServiceSecret: secret
+        })
+      : [];
+  const methodOutcomeReportRoutes =
+    options.methodOutcomeReports && secret
+      ? createMethodOutcomeReportRoutesV1({
+          service: options.methodOutcomeReports,
           internalServiceSecret: secret
         })
       : [];
@@ -602,7 +614,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         }
       ]
     : [];
-  routes.push(...methodOutcomeEvidenceRoutes);
+  routes.push(...methodOutcomeEvidenceRoutes, ...methodOutcomeReportRoutes);
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     { routes }
@@ -618,4 +630,5 @@ export * from './knowledge-daily-source.js';
 export * from './knowledge-v2-delivery.js';
 export * from './knowledge-v2-ingress.js';
 export * from './method-outcome-evidence.js';
+export * from './method-outcome-report.js';
 export * from './method-outcome-evidence-http.js';

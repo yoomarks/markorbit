@@ -1,6 +1,9 @@
 import { HttpError, json, type JsonRoute } from '@markorbit/service-kit';
 import { validateInternalServiceSecret } from './auth.js';
-import { MethodOutcomeReportError, type MethodOutcomeReportServiceV1 } from './method-outcome-report.js';
+import {
+  MethodOutcomeReportError,
+  type MethodOutcomeReportServiceV1
+} from './method-outcome-report.js';
 
 export interface MethodOutcomeReportHttpOptionsV1 {
   internalServiceSecret: string;
