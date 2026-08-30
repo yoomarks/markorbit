@@ -30,7 +30,6 @@ jobs:
           node scripts/tmp-343-wire-report.mjs
           pnpm exec prettier --write \
             infrastructure/persistence/migration-owners.json \
-            infrastructure/persistence/migrations/0077_core_method_outcome_evidence_reporting_watermark.sql \
             services/core/package.json \
             services/core/src/index.ts \
             services/core/src/main.ts \
