@@ -22,8 +22,8 @@ function principal(workspaceId = WORKSPACE_ID): WorkspacePrincipal {
 }
 
 function repository() {
-  const record = vi.fn((command: Parameters<MatterIntelligenceReviewRepository['record']>[0]) => {
-    return Promise.resolve({
+  const record = vi.fn((command: Parameters<MatterIntelligenceReviewRepository['record']>[0]) =>
+    Promise.resolve({
       review: {
         schemaVersion: 1 as const,
         matterIntelligenceReviewId: 'matter-intelligence-review_test',
@@ -45,8 +45,8 @@ function repository() {
       },
       replayed: false,
       semanticDuplicate: false
-    });
-  });
+    })
+  );
   return { record, repository: { record } as MatterIntelligenceReviewRepository };
 }
 
@@ -129,55 +129,49 @@ describe('MatterIntelligenceReviewService', () => {
     });
   });
 
-  it(
-    'fails before persistence when Workspace Principal truth does not match the command',
-    async () => {
-      const fake = repository();
-      const service = new MatterIntelligenceReviewService(fake.repository);
+  it('fails before persistence when Workspace Principal truth does not match the command', async () => {
+    const fake = repository();
+    const service = new MatterIntelligenceReviewService(fake.repository);
 
-      await expect(
-        service.recordReview(
-          command({
-            principal: principal('22222222-2222-4222-8222-222222222222')
-          })
-        )
-      ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
-      expect(fake.record).not.toHaveBeenCalled();
-    }
-  );
-
-  it(
-    'binds explicit supersession into the request fingerprint but not the semantic payload fingerprint',
-    async () => {
-      const first = repository();
-      const second = repository();
-      const serviceA = new MatterIntelligenceReviewService(
-        first.repository,
-        () => '2026-08-30T04:00:00.000Z'
-      );
-      const serviceB = new MatterIntelligenceReviewService(
-        second.repository,
-        () => '2026-08-30T04:00:00.000Z'
-      );
-
-      await serviceA.recordReview(command({ outcome: 'OVERRIDDEN', reason: 'METHOD_ERROR' }));
-      await serviceB.recordReview(
+    await expect(
+      service.recordReview(
         command({
-          outcome: 'OVERRIDDEN',
-          reason: 'METHOD_ERROR',
-          supersedes: {
-            reviewId: 'matter-intelligence-review_prior',
-            reviewVersion: 1
-          }
+          principal: principal('22222222-2222-4222-8222-222222222222')
         })
-      );
+      )
+    ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
+    expect(fake.record).not.toHaveBeenCalled();
+  });
 
-      const plain = first.record.mock.calls[0]![0];
-      const superseding = second.record.mock.calls[0]![0];
-      expect(superseding.reviewPayloadFingerprintSha256).toBe(plain.reviewPayloadFingerprintSha256);
-      expect(superseding.requestFingerprintSha256).not.toBe(plain.requestFingerprintSha256);
-    }
-  );
+  it('binds explicit supersession into the request fingerprint but not the semantic payload fingerprint', async () => {
+    const first = repository();
+    const second = repository();
+    const serviceA = new MatterIntelligenceReviewService(
+      first.repository,
+      () => '2026-08-30T04:00:00.000Z'
+    );
+    const serviceB = new MatterIntelligenceReviewService(
+      second.repository,
+      () => '2026-08-30T04:00:00.000Z'
+    );
+
+    await serviceA.recordReview(command({ outcome: 'OVERRIDDEN', reason: 'METHOD_ERROR' }));
+    await serviceB.recordReview(
+      command({
+        outcome: 'OVERRIDDEN',
+        reason: 'METHOD_ERROR',
+        supersedes: {
+          reviewId: 'matter-intelligence-review_prior',
+          reviewVersion: 1
+        }
+      })
+    );
+
+    const plain = first.record.mock.calls[0]![0];
+    const superseding = second.record.mock.calls[0]![0];
+    expect(superseding.reviewPayloadFingerprintSha256).toBe(plain.reviewPayloadFingerprintSha256);
+    expect(superseding.requestFingerprintSha256).not.toBe(plain.requestFingerprintSha256);
+  });
 
   it('trims bounded rationale before fingerprinting and persistence', async () => {
     const fake = repository();
