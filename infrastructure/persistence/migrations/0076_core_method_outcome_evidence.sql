@@ -1,4 +1,4 @@
-CREATE TABLE core_method_outcome_evidence (
+CREATE TABLE IF NOT EXISTS core_method_outcome_evidence (
   method_outcome_evidence_id text PRIMARY KEY
     CHECK (method_outcome_evidence_id ~ '^method-outcome-evidence_[A-Za-z0-9_-]+$'),
   workspace_id uuid NOT NULL,
@@ -78,7 +78,7 @@ CREATE TABLE core_method_outcome_evidence (
   UNIQUE (workspace_id, source_identity_fingerprint_sha256)
 );
 
-CREATE INDEX core_method_outcome_evidence_method_version_idx
+CREATE INDEX IF NOT EXISTS core_method_outcome_evidence_method_version_idx
   ON core_method_outcome_evidence (
     workspace_id,
     method_version_ref,
@@ -94,6 +94,9 @@ BEGIN
   RAISE EXCEPTION 'core_method_outcome_evidence is append-only';
 END;
 $$;
+
+DROP TRIGGER IF EXISTS core_method_outcome_evidence_append_only
+  ON core_method_outcome_evidence;
 
 CREATE TRIGGER core_method_outcome_evidence_append_only
   BEFORE UPDATE OR DELETE ON core_method_outcome_evidence
