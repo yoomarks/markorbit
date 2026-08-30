@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FormalMatterId, WorkspacePrincipal } from '@markorbit/contracts';
 import {
-  MatterIntelligenceReviewError,
   MatterIntelligenceReviewService,
-  type MatterIntelligenceReviewRepository,
-  type MatterIntelligenceReviewId
+  type MatterIntelligenceReviewError,
+  type MatterIntelligenceReviewRepository
 } from '../src/matter-intelligence-review.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
@@ -24,29 +23,30 @@ function principal(workspaceId = WORKSPACE_ID): WorkspacePrincipal {
 
 function repository() {
   const record = vi.fn(
-    async (command: Parameters<MatterIntelligenceReviewRepository['record']>[0]) => ({
-      review: {
-        schemaVersion: 1 as const,
-        matterIntelligenceReviewId: 'matter-intelligence-review_test' as MatterIntelligenceReviewId,
-        workspaceId: command.workspaceId,
-        formalMatterId: command.formalMatterId,
-        matterIntelligenceObservationId: command.matterIntelligenceObservationId,
-        observationFingerprintSha256: 'a'.repeat(64),
-        reviewVersion: 1,
-        outcome: command.outcome,
-        ...(command.reason === undefined ? {} : { reason: command.reason }),
-        ...(command.rationale === undefined ? {} : { rationale: command.rationale }),
-        reviewedByPrincipalId: command.reviewedByPrincipalId,
-        reviewedAt: command.reviewedAt,
-        ...(command.supersedes === undefined ? {} : { supersedes: command.supersedes }),
-        reviewPayloadFingerprintSha256: command.reviewPayloadFingerprintSha256,
-        reviewFingerprintSha256: 'b'.repeat(64),
-        productSourceFingerprintSha256: 'c'.repeat(64),
-        correlationId: command.correlationId
-      },
-      replayed: false,
-      semanticDuplicate: false
-    })
+    (command: Parameters<MatterIntelligenceReviewRepository['record']>[0]) =>
+      Promise.resolve({
+        review: {
+          schemaVersion: 1 as const,
+          matterIntelligenceReviewId: 'matter-intelligence-review_test',
+          workspaceId: command.workspaceId,
+          formalMatterId: command.formalMatterId,
+          matterIntelligenceObservationId: command.matterIntelligenceObservationId,
+          observationFingerprintSha256: 'a'.repeat(64),
+          reviewVersion: 1,
+          outcome: command.outcome,
+          ...(command.reason === undefined ? {} : { reason: command.reason }),
+          ...(command.rationale === undefined ? {} : { rationale: command.rationale }),
+          reviewedByPrincipalId: command.reviewedByPrincipalId,
+          reviewedAt: command.reviewedAt,
+          ...(command.supersedes === undefined ? {} : { supersedes: command.supersedes }),
+          reviewPayloadFingerprintSha256: command.reviewPayloadFingerprintSha256,
+          reviewFingerprintSha256: 'b'.repeat(64),
+          productSourceFingerprintSha256: 'c'.repeat(64),
+          correlationId: command.correlationId
+        },
+        replayed: false,
+        semanticDuplicate: false
+      })
   );
   return { record, repository: { record } as MatterIntelligenceReviewRepository };
 }

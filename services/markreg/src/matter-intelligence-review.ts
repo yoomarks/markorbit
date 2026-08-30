@@ -106,7 +106,11 @@ export interface MatterIntelligenceReviewRepository {
   record(command: Readonly<NormalizedReviewCommand>): Promise<MatterIntelligenceReviewDisposition>;
 }
 
-type Row = Record<string, unknown>;
+type Row = Record<string, unknown> & {
+  reason?: string | null;
+  rationale?: string | null;
+  supersedes_review_id?: string | null;
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REVIEW_ID = /^matter-intelligence-review_[A-Za-z0-9_-]+$/;
