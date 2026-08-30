@@ -68,6 +68,21 @@ p.write_text(s)
 
 p = Path('services/markreg/src/matter-intelligence-review-http.ts')
 s = p.read_text()
+old_import = '''import {
+  matterIntelligenceReviewOutcomes,
+  matterIntelligenceReviewReasonCodes,
+  type MatterIntelligenceReviewOutcome,
+  type MatterIntelligenceReviewReasonCode
+} from '@markorbit/contracts/method-outcome-evidence';
+'''
+new_import = '''import {
+  matterIntelligenceReviewOutcomes,
+  matterIntelligenceReviewReasonCodes
+} from '@markorbit/contracts/method-outcome-evidence';
+'''
+if old_import not in s:
+    raise SystemExit('missing HTTP review taxonomy import block')
+s = s.replace(old_import, new_import, 1)
 old = '''            reasonCode:
               body.reasonCode === undefined
                 ? undefined
@@ -86,7 +101,7 @@ new = '''            ...(body.reasonCode === undefined
                     body.reasonCode,
                     matterIntelligenceReviewReasonCodes,
                     'reasonCode'
-                  ) as MatterIntelligenceReviewReasonCode
+                  )
                 }),
             ...(body.rationale === undefined
               ? {}
