@@ -332,7 +332,8 @@ async function main() {
     {
       env: {
         ...process.env,
-        VITE_LITE_GATEWAY_URL: `http://127.0.0.1:${gatewayPort}`
+        VITE_LITE_GATEWAY_URL: `http://127.0.0.1:${gatewayPort}`,
+        VITE_MARKORBIT_FIXTURE_ENTRY: '1'
       },
       stdio: 'inherit'
     }
