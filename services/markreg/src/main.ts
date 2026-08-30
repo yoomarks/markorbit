@@ -47,6 +47,11 @@ import {
   PostgresMatterIntelligenceRepository
 } from './matter-intelligence.js';
 import { createMatterIntelligenceRoutes } from './matter-intelligence-http.js';
+import {
+  MatterIntelligenceReviewService,
+  PostgresMatterIntelligenceReviewRepository
+} from './matter-intelligence-review.js';
+import { createMatterIntelligenceReviewRoutes } from './matter-intelligence-review-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -87,6 +92,17 @@ if (fixtureRuntime) {
   const matterIntelligenceRoutes = createMatterIntelligenceRoutes({
     internalServiceSecret,
     service: matterIntelligenceService
+  });
+  const matterIntelligenceReviewRepository = new PostgresMatterIntelligenceReviewRepository(
+    database,
+    pool
+  );
+  const matterIntelligenceReviewService = new MatterIntelligenceReviewService(
+    matterIntelligenceReviewRepository
+  );
+  const matterIntelligenceReviewRoutes = createMatterIntelligenceReviewRoutes({
+    internalServiceSecret,
+    service: matterIntelligenceReviewService
   });
   const orderRepository = new PostgresOrderRepository(database, pool);
   const commercialRepository = new PostgresCommercialCatalogRepository(database, pool);
@@ -204,6 +220,7 @@ if (fixtureRuntime) {
       ...lifecycleSurfaceRoutes,
       ...formalOpportunityRoutes,
       ...matterIntelligenceRoutes,
+      ...matterIntelligenceReviewRoutes,
       ...knowledgeCaseRoutes
     ]
   });
