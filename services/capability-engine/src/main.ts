@@ -10,10 +10,14 @@ import {
 import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
+import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
 let runtime: ReturnType<typeof createRuntime>;
+let managedCommunicationRuntime:
+  | Awaited<ReturnType<typeof createManagedCommunicationRuntimeBindingsV1>>
+  | undefined;
 
 if (milestoneFixtureMode) {
   runtime = createRuntime({ milestoneFixtureRequestPath: true });
@@ -66,6 +70,11 @@ if (milestoneFixtureMode) {
     database,
     query: pool
   });
+  managedCommunicationRuntime = await createManagedCommunicationRuntimeBindingsV1({
+    environment: process.env,
+    database,
+    query: pool
+  });
   const governedCapabilityRuntime = createGovernedProductionRuntimeV1({
     definitions: registry,
     implementationProfiles,
@@ -78,6 +87,15 @@ if (milestoneFixtureMode) {
     privateReflectionCandidates,
     reflectionDispositionProfiles,
     ...(managedAiRuntime ?? {}),
+    ...(managedCommunicationRuntime
+      ? {
+          managedCommunicationExchange: managedCommunicationRuntime.managedCommunicationExchange,
+          managedCommunicationThreadReader:
+            managedCommunicationRuntime.managedCommunicationThreadReader,
+          managedCommunicationExactEvidence:
+            managedCommunicationRuntime.managedCommunicationExactEvidence
+        }
+      : {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),
     internalServiceSecret
   });
@@ -85,6 +103,7 @@ if (milestoneFixtureMode) {
 
 async function shutdown(signal: string) {
   process.stdout.write(`${runtime.manifest.name}: received ${signal}, stopping.\n`);
+  managedCommunicationRuntime?.stop();
   await runtime.stop();
   await database?.close();
 }
@@ -94,7 +113,10 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'));
 
 try {
   await runtime.start();
+  await managedCommunicationRuntime?.start();
 } catch (error) {
+  managedCommunicationRuntime?.stop();
+  await runtime.stop();
   await database?.close();
   throw error;
 }
