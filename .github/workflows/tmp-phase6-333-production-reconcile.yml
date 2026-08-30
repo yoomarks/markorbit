@@ -25,19 +25,21 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Apply production reconciliation
-        run: python scripts/tmp_phase6_333_production_reconcile.py
+        run: |
+          python scripts/tmp_phase6_333_production_reconcile.py
+          python scripts/tmp_phase6_333_typefix.py
       - name: Format and validate production layer
         run: |
-          pnpm exec prettier --write services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts
+          pnpm exec prettier --write services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts services/markreg/tests/matter-intelligence-review-http.test.ts services/markreg/tests/matter-intelligence-review-postgres.test.ts
           pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/markreg-service build
           pnpm --filter @markorbit/markreg-service typecheck
           pnpm --filter @markorbit/markreg-service lint
       - name: Commit and self-remove
         run: |
-          rm scripts/tmp_phase6_333_production_reconcile.py .github/workflows/tmp-phase6-333-production-reconcile.yml
+          rm scripts/tmp_phase6_333_production_reconcile.py scripts/tmp_phase6_333_typefix.py .github/workflows/tmp-phase6-333-production-reconcile.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add infrastructure/persistence/migrations/0075_markreg_matter_intelligence_reviews.sql services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts scripts/tmp_phase6_333_production_reconcile.py .github/workflows/tmp-phase6-333-production-reconcile.yml
+          git add infrastructure/persistence/migrations/0075_markreg_matter_intelligence_reviews.sql services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts services/markreg/tests/matter-intelligence-review-http.test.ts services/markreg/tests/matter-intelligence-review-postgres.test.ts scripts/tmp_phase6_333_production_reconcile.py scripts/tmp_phase6_333_typefix.py .github/workflows/tmp-phase6-333-production-reconcile.yml
           git commit -m "fix: implement Phase 6 review supersession model"
           git push origin HEAD:phase6/331-markreg-intelligence-review-source
