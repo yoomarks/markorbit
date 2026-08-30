@@ -33,12 +33,13 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
       .context()
       .addCookies([{ name: 'mo_session', value: sessionCookie!, domain: '127.0.0.1', path: '/' }]);
 
-    const todayResponse = page.waitForResponse(
+    const workspaceResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lite/today') && response.request().method() === 'GET'
+        response.url().includes('/api/lite/daily-workspace') &&
+        response.request().method() === 'GET'
     );
     await page.goto(`${lite}/?workspaceId=${workspaceId}#today`);
-    expect((await todayResponse).status()).toBe(200);
+    expect((await workspaceResponse).status()).toBe(200);
 
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Outcome feedback needed' })).toBeVisible();
@@ -99,12 +100,13 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await expect(page.getByText(/not Capability verification/)).toBeVisible();
 
     const durableUrl = page.url();
-    const reloadToday = page.waitForResponse(
+    const reloadWorkspace = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lite/today') && response.request().method() === 'GET'
+        response.url().includes('/api/lite/daily-workspace') &&
+        response.request().method() === 'GET'
     );
     await page.reload();
-    expect((await reloadToday).status()).toBe(200);
+    expect((await reloadWorkspace).status()).toBe(200);
     await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
     await expect(page.getByText(feedbackEvidence, { exact: true })).toBeVisible();
     await expect(page.getByText(feedbackPackageTitle, { exact: true })).not.toBeVisible();
@@ -119,7 +121,7 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
 
     expect(
       productLoopRequests.some(
-        ({ method, url }) => method === 'GET' && url.includes('/api/lite/today')
+        ({ method, url }) => method === 'GET' && url.includes('/api/lite/daily-workspace')
       )
     ).toBe(true);
     expect(
