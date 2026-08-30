@@ -1,18 +1,16 @@
 export const matterIntelligenceReviewOutcomes = [
-  'CONFIRMED_AS_PRESENTED',
+  'CONFIRMED',
   'OVERRIDDEN',
   'INCONCLUSIVE'
 ] as const;
 export type MatterIntelligenceReviewOutcome = (typeof matterIntelligenceReviewOutcomes)[number];
 
 export const matterIntelligenceReviewReasonCodes = [
-  'INDEPENDENT_REVIEW_CONFIRMED',
-  'METHOD_OUTPUT_INCORRECT',
-  'APPLICABILITY_MISMATCH',
-  'INPUT_FACT_INCORRECT',
-  'SOURCE_DATA_OR_REFERENCE_STALE',
-  'PRODUCT_OR_WORKFLOW_PREFERENCE',
-  'INSUFFICIENT_EVIDENCE'
+  'METHOD_ERROR',
+  'INPUT_DATA_ERROR',
+  'APPLICABILITY_ERROR',
+  'PRODUCT_USER_PREFERENCE',
+  'INCONCLUSIVE_EVIDENCE'
 ] as const;
 export type MatterIntelligenceReviewReasonCode =
   (typeof matterIntelligenceReviewReasonCodes)[number];
@@ -26,7 +24,7 @@ export interface MarkRegMatterIntelligenceReviewSourceAssertionV1 {
     owner: 'MARKREG';
     kind: 'MATTER_INTELLIGENCE_REVIEW';
     sourceId: MatterIntelligenceReviewId;
-    sourceVersion: 1;
+    sourceVersion: number;
     sourceFingerprintSha256: string;
     observedAt: string;
   }>;
@@ -42,7 +40,7 @@ export interface MarkRegMatterIntelligenceReviewSourceAssertionV1 {
   }>;
   review: Readonly<{
     outcome: MatterIntelligenceReviewOutcome;
-    reasonCode: MatterIntelligenceReviewReasonCode;
+    reasonCode?: MatterIntelligenceReviewReasonCode;
     rationale?: string;
     reviewerPrincipalId: string;
     reviewerMembershipId: string;
@@ -132,22 +130,22 @@ function prefixed<T extends string>(value: unknown, prefix: string, field: strin
 
 export function assertMatterIntelligenceReviewTaxonomy(
   outcome: MatterIntelligenceReviewOutcome,
-  reasonCode: MatterIntelligenceReviewReasonCode
+  reasonCode?: MatterIntelligenceReviewReasonCode
 ): void {
   const valid =
-    (outcome === 'CONFIRMED_AS_PRESENTED' && reasonCode === 'INDEPENDENT_REVIEW_CONFIRMED') ||
-    (outcome === 'INCONCLUSIVE' && reasonCode === 'INSUFFICIENT_EVIDENCE') ||
+    (outcome === 'CONFIRMED' && reasonCode === undefined) ||
+    (outcome === 'INCONCLUSIVE' && reasonCode === 'INCONCLUSIVE_EVIDENCE') ||
     (outcome === 'OVERRIDDEN' &&
+      reasonCode !== undefined &&
       [
-        'METHOD_OUTPUT_INCORRECT',
-        'APPLICABILITY_MISMATCH',
-        'INPUT_FACT_INCORRECT',
-        'SOURCE_DATA_OR_REFERENCE_STALE',
-        'PRODUCT_OR_WORKFLOW_PREFERENCE'
+        'METHOD_ERROR',
+        'INPUT_DATA_ERROR',
+        'APPLICABILITY_ERROR',
+        'PRODUCT_USER_PREFERENCE'
       ].includes(reasonCode));
   if (!valid)
     throw new MethodOutcomeEvidenceContractError(
-      `Review outcome ${outcome} cannot use reason ${reasonCode}.`
+      `Review outcome ${outcome} cannot use reason ${String(reasonCode)}.`
     );
 }
 
@@ -195,13 +193,9 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
     ['owner', 'kind', 'sourceId', 'sourceVersion', 'sourceFingerprintSha256', 'observedAt'],
     'source'
   );
-  if (
-    source.owner !== 'MARKREG' ||
-    source.kind !== 'MATTER_INTELLIGENCE_REVIEW' ||
-    source.sourceVersion !== 1
-  )
+  if (source.owner !== 'MARKREG' || source.kind !== 'MATTER_INTELLIGENCE_REVIEW')
     throw new MethodOutcomeEvidenceContractError(
-      'source must identify a MARKREG MATTER_INTELLIGENCE_REVIEW version 1.'
+      'source must identify a MARKREG MATTER_INTELLIGENCE_REVIEW.'
     );
 
   const formalMatter = record(root.formalMatter, 'formalMatter');
@@ -226,7 +220,7 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
     'review'
   );
   const outcome = reviewOutcome(review.outcome);
-  const reasonCode = reviewReason(review.reasonCode);
+  const reasonCode = review.reasonCode === undefined ? undefined : reviewReason(review.reasonCode);
   assertMatterIntelligenceReviewTaxonomy(outcome, reasonCode);
   const rationale =
     review.rationale === undefined ? undefined : text(review.rationale, 'review.rationale', 2000);
@@ -273,7 +267,7 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
         'matter-intelligence-review_',
         'source.sourceId'
       ),
-      sourceVersion: 1,
+      sourceVersion: positiveInteger(source.sourceVersion, 'source.sourceVersion'),
       sourceFingerprintSha256: sha256(
         source.sourceFingerprintSha256,
         'source.sourceFingerprintSha256'
@@ -299,7 +293,7 @@ export function parseMarkRegMatterIntelligenceReviewSourceAssertionV1(
     },
     review: {
       outcome,
-      reasonCode,
+      ...(reasonCode ? { reasonCode } : {}),
       ...(rationale ? { rationale } : {}),
       reviewerPrincipalId: text(review.reviewerPrincipalId, 'review.reviewerPrincipalId', 300),
       reviewerMembershipId: text(review.reviewerMembershipId, 'review.reviewerMembershipId', 300),

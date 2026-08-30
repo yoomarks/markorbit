@@ -25,7 +25,7 @@ function assertion() {
     },
     review: {
       outcome: 'OVERRIDDEN',
-      reasonCode: 'METHOD_OUTPUT_INCORRECT',
+      reasonCode: 'METHOD_ERROR',
       rationale: 'Independent review found a deterministic band mismatch.',
       reviewerPrincipalId: 'user_reviewer',
       reviewerMembershipId: 'membership_reviewer',
@@ -60,7 +60,7 @@ describe('Method Outcome Evidence source contract', () => {
     });
     expect(parsed.review).toMatchObject({
       outcome: 'OVERRIDDEN',
-      reasonCode: 'METHOD_OUTPUT_INCORRECT'
+      reasonCode: 'METHOD_ERROR'
     });
     expect(parsed.production.capability.returnId).toBe('capability-return_one');
     expect(parsed).not.toHaveProperty('customer');
@@ -70,23 +70,18 @@ describe('Method Outcome Evidence source contract', () => {
   });
 
   it('enforces the review outcome/reason taxonomy', () => {
+    expect(() => assertMatterIntelligenceReviewTaxonomy('CONFIRMED')).not.toThrow();
     expect(() =>
-      assertMatterIntelligenceReviewTaxonomy(
-        'CONFIRMED_AS_PRESENTED',
-        'INDEPENDENT_REVIEW_CONFIRMED'
-      )
+      assertMatterIntelligenceReviewTaxonomy('INCONCLUSIVE', 'INCONCLUSIVE_EVIDENCE')
     ).not.toThrow();
     expect(() =>
-      assertMatterIntelligenceReviewTaxonomy('INCONCLUSIVE', 'INSUFFICIENT_EVIDENCE')
+      assertMatterIntelligenceReviewTaxonomy('OVERRIDDEN', 'PRODUCT_USER_PREFERENCE')
     ).not.toThrow();
+    expect(() => assertMatterIntelligenceReviewTaxonomy('CONFIRMED', 'METHOD_ERROR')).toThrow(
+      MethodOutcomeEvidenceContractError
+    );
     expect(() =>
-      assertMatterIntelligenceReviewTaxonomy('OVERRIDDEN', 'PRODUCT_OR_WORKFLOW_PREFERENCE')
-    ).not.toThrow();
-    expect(() =>
-      assertMatterIntelligenceReviewTaxonomy('CONFIRMED_AS_PRESENTED', 'METHOD_OUTPUT_INCORRECT')
-    ).toThrow(MethodOutcomeEvidenceContractError);
-    expect(() =>
-      assertMatterIntelligenceReviewTaxonomy('OVERRIDDEN', 'INSUFFICIENT_EVIDENCE')
+      assertMatterIntelligenceReviewTaxonomy('OVERRIDDEN', 'INCONCLUSIVE_EVIDENCE')
     ).toThrow(MethodOutcomeEvidenceContractError);
   });
 
