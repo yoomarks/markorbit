@@ -53,7 +53,8 @@
     "capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
     "capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
     "core_brain_registry": "@markorbit/core-service",
-    "core_official_fee_reference": "@markorbit/core-service"
+    "core_official_fee_reference": "@markorbit/core-service",
+    "markreg_matter_intelligence_commands": "@markorbit/markreg-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
