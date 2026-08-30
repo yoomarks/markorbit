@@ -27,6 +27,9 @@ import {
   type ProductLoopSourceAuthority
 } from '../services/lite/src/content-preparation.js';
 import { PostgresLiteCandidateQualificationStore } from '../services/lite/src/candidate-qualification.js';
+import { PostgresProductConversionAnalyticsStore } from '../services/lite/src/conversion-analytics.js';
+import { createDailyWorkspaceRoutes } from '../services/lite/src/daily-workspace-http.js';
+import { DailyWorkspaceSnapshotService } from '../services/lite/src/daily-workspace-snapshot.js';
 import { PostgresProductLoopFeedbackStore } from '../services/lite/src/feedback.js';
 import {
   handoffResult,
@@ -264,6 +267,7 @@ async function main() {
     () => at
   );
   const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool, () => at);
+  const analyticsStore = new PostgresProductConversionAnalyticsStore(pool);
   const preparedStore = new PostgresPreparedActionStore(database, pool, () => at);
   const handoffAuthority: PreparedActionHandoffAuthority = {
     async perform(action, plan, _confirmation, idempotencyKey) {
@@ -288,6 +292,25 @@ async function main() {
       });
     }
   };
+  const journeyService = new PreparedActionJourneyService(preparedStore, handoffAuthority);
+  const dailyWorkspaceService = new DailyWorkspaceSnapshotService(
+    {
+      snapshot() {
+        return Promise.reject(new Error('SEE_CREATE_UNAVAILABLE_IN_WP07_PRODUCT_LOOP_FIXTURE'));
+      }
+    },
+    {
+      async listToday(workspaceId) {
+        const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
+          journeyService.listToday(workspaceId),
+          feedbackStore.listRecent(workspaceId),
+          feedbackStore.listPendingPackages(workspaceId)
+        ]);
+        return { ...snapshot, recentFeedback, feedbackPendingPackages };
+      }
+    },
+    () => at
+  );
 
   const desktopSeed = await seedWorkspace(contentStore, desktopWorkspaceId, 'wp07-browser-desktop');
   const mobileSeed = await seedWorkspace(contentStore, mobileWorkspaceId, 'wp07-browser-mobile');
@@ -296,12 +319,19 @@ async function main() {
   liteRuntime = createServiceRuntime(
     { name: 'wp07-lite', port: litePort, version: '0.1.0' },
     {
-      routes: createLiteProductLoopRoutes({
-        internalServiceSecret: secret,
-        journeyService: new PreparedActionJourneyService(preparedStore, handoffAuthority),
-        candidateStore,
-        feedbackStore
-      })
+      routes: [
+        ...createDailyWorkspaceRoutes({
+          internalServiceSecret: secret,
+          service: dailyWorkspaceService
+        }),
+        ...createLiteProductLoopRoutes({
+          internalServiceSecret: secret,
+          journeyService,
+          candidateStore,
+          feedbackStore,
+          analyticsStore
+        })
+      ]
     }
   );
   await liteRuntime.start();
