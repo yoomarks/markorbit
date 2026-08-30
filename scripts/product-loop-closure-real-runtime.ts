@@ -177,7 +177,8 @@ async function seedWorkspace(
       id: feedbackRecommendation.todayRecommendationId,
       version: feedbackRecommendation.version
     },
-    expectedRecommendationFingerprintSha256: feedbackRecommendation.recommendationFingerprintSha256,
+    expectedRecommendationFingerprintSha256:
+      feedbackRecommendation.recommendationFingerprintSha256,
     title: 'Prepare reviewed manual-use package',
     rationale: 'Seed the real pending-feedback path from exact accepted Knowledge.',
     idempotencyKey: `wp07-browser-feedback-opportunity-${workspaceId}`
@@ -275,7 +276,8 @@ async function main() {
           id: action.recommendation.id,
           version: Number(action.recommendation.version)
         },
-        expectedRecommendationFingerprintSha256: action.recommendationFingerprintSha256,
+        expectedRecommendationFingerprintSha256:
+          action.recommendationFingerprintSha256,
         title: plan.title,
         rationale: plan.rationale,
         idempotencyKey
@@ -289,8 +291,16 @@ async function main() {
     }
   };
 
-  const desktopSeed = await seedWorkspace(contentStore, desktopWorkspaceId, 'wp07-browser-desktop');
-  const mobileSeed = await seedWorkspace(contentStore, mobileWorkspaceId, 'wp07-browser-mobile');
+  const desktopSeed = await seedWorkspace(
+    contentStore,
+    desktopWorkspaceId,
+    'wp07-browser-desktop'
+  );
+  const mobileSeed = await seedWorkspace(
+    contentStore,
+    mobileWorkspaceId,
+    'wp07-browser-mobile'
+  );
 
   await core.start();
   liteRuntime = createServiceRuntime(
@@ -308,7 +318,10 @@ async function main() {
   gateway = createGateway({
     port: gatewayPort,
     liteUrl: `http://127.0.0.1:${litePort}`,
-    authenticationClient: new HttpCoreAuthenticationClient(`http://127.0.0.1:${corePort}`, secret),
+    authenticationClient: new HttpCoreAuthenticationClient(
+      `http://127.0.0.1:${corePort}`,
+      secret
+    ),
     internalServiceSecret: secret,
     milestoneTestRuntime: true,
     fixtureUsers: { wp07: 'user_wp07_browser' },
@@ -332,7 +345,8 @@ async function main() {
     {
       env: {
         ...process.env,
-        VITE_LITE_GATEWAY_URL: `http://127.0.0.1:${gatewayPort}`
+        VITE_LITE_GATEWAY_URL: `http://127.0.0.1:${gatewayPort}`,
+        VITE_MARKORBIT_FIXTURE_ENTRY: '1'
       },
       stdio: 'inherit'
     }
