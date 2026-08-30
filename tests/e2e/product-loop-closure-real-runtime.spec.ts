@@ -73,13 +73,17 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await primaryCard.getByRole('button', { name: 'Confirm and hand off' }).click();
     expect((await confirmResponse).status()).toBe(200);
     await expect(primaryCard.getByText('Owner handoff completed', { exact: true })).toBeVisible();
-    await expect(primaryCard.getByText(/No automatic publication, customer outreach/)).toBeVisible();
+    await expect(
+      primaryCard.getByText(/No automatic publication, customer outreach/)
+    ).toBeVisible();
 
     const feedbackResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/use-feedback') && response.request().method() === 'POST'
     );
-    const feedbackRow = page.getByText(feedbackPackageTitle, { exact: true }).locator('xpath=../..');
+    const feedbackRow = page
+      .getByText(feedbackPackageTitle, { exact: true })
+      .locator('xpath=../..');
     await feedbackRow.getByRole('button', { name: feedbackButton, exact: true }).click();
     expect((await feedbackResponse).status()).toBe(201);
 
