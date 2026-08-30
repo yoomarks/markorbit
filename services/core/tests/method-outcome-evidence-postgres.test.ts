@@ -11,17 +11,21 @@ import {
   PostgresMethodOutcomeEvidenceAdmissionRepositoryV1
 } from '../src/method-outcome-evidence.js';
 
-const url = process.env.CORE_METHOD_OUTCOME_EVIDENCE_TEST_DATABASE_URL;
-const required = process.env.CORE_METHOD_OUTCOME_EVIDENCE_POSTGRES_REQUIRED === '1';
+const dedicatedUrl = process.env.CORE_METHOD_OUTCOME_EVIDENCE_TEST_DATABASE_URL;
+const url = dedicatedUrl ?? process.env.IDENTITY_TEST_DATABASE_URL;
+const required =
+  process.env.CORE_METHOD_OUTCOME_EVIDENCE_POSTGRES_REQUIRED === '1' ||
+  process.env.IDENTITY_POSTGRES_TEST_REQUIRED === '1';
 if (required && !url)
   throw new Error(
-    'CORE_METHOD_OUTCOME_EVIDENCE_POSTGRES_REQUIRED=1 requires CORE_METHOD_OUTCOME_EVIDENCE_TEST_DATABASE_URL.'
+    'Method Outcome Evidence PostgreSQL acceptance requires CORE_METHOD_OUTCOME_EVIDENCE_TEST_DATABASE_URL or IDENTITY_TEST_DATABASE_URL.'
   );
 const integration = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 const coreMigrations = () =>
   loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/core-service');
+const migrationNamespace = dedicatedUrl ? 'core_method_outcome_evidence' : 'core_identity';
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const otherWorkspaceId = '22222222-2222-4222-8222-222222222222';
 
@@ -29,19 +33,21 @@ function databaseConfig() {
   return parseDatabaseConfig({
     NODE_ENV: 'test',
     DATABASE_URL: url,
-    DB_MIGRATION_NAMESPACE: 'core_method_outcome_evidence',
+    DB_MIGRATION_NAMESPACE: migrationNamespace,
     DB_APPLICATION_NAME: 'markorbit-phase6-method-outcome-evidence-tests'
   });
 }
 
-function admission(options: {
-  reviewId?: string;
-  reviewVersion?: number;
-  sourceFingerprint?: string;
-  reviewFingerprint?: string;
-  invocationId?: string;
-  workspace?: string;
-} = {}) {
+function admission(
+  options: {
+    reviewId?: string;
+    reviewVersion?: number;
+    sourceFingerprint?: string;
+    reviewFingerprint?: string;
+    invocationId?: string;
+    workspace?: string;
+  } = {}
+) {
   const reviewId = options.reviewId ?? 'matter-intelligence-review_phase6-core-pg-v1';
   const reviewVersion = options.reviewVersion ?? 1;
   return {
@@ -67,7 +73,8 @@ function admission(options: {
       outcome: reviewVersion === 1 ? 'CONFIRMED' : 'OVERRIDDEN',
       ...(reviewVersion === 1 ? {} : { reason: 'METHOD_ERROR' }),
       reviewedByPrincipalId: 'principal_phase6-core-pg',
-      reviewedAt: reviewVersion === 1 ? '2026-08-30T20:00:00.000Z' : '2026-08-30T20:10:00.000Z'
+      reviewedAt:
+        reviewVersion === 1 ? '2026-08-30T20:00:00.000Z' : '2026-08-30T20:10:00.000Z'
     },
     capability: {
       id: 'interpretation.cn-completed-duration-historical-band',
@@ -110,7 +117,7 @@ integration('PostgreSQL Method Outcome Evidence admission', () => {
   beforeAll(async () => {
     database = new ManagedDatabase(databaseConfig());
     await database.start();
-    await migrate(database.getPool(), 'core_method_outcome_evidence', await coreMigrations());
+    await migrate(database.getPool(), migrationNamespace, await coreMigrations());
   });
 
   beforeEach(async () => {
@@ -129,7 +136,9 @@ integration('PostgreSQL Method Outcome Evidence admission', () => {
     expect(first.replayed).toBe(false);
     expect(replay.replayed).toBe(true);
     expect(replay.evidence).toEqual(first.evidence);
-    const rows = await database.getPool().query('SELECT method_outcome_evidence_id FROM core_method_outcome_evidence');
+    const rows = await database
+      .getPool()
+      .query('SELECT method_outcome_evidence_id FROM core_method_outcome_evidence');
     expect(rows.rows).toHaveLength(1);
   });
 
@@ -164,7 +173,9 @@ integration('PostgreSQL Method Outcome Evidence admission', () => {
       outcome: 'OVERRIDDEN',
       reason: 'METHOD_ERROR'
     });
-    expect(corrected.evidence.methodOutcomeEvidenceId).not.toBe(first.evidence.methodOutcomeEvidenceId);
+    expect(corrected.evidence.methodOutcomeEvidenceId).not.toBe(
+      first.evidence.methodOutcomeEvidenceId
+    );
     const versions = await database
       .getPool()
       .query<{ review_version: number }>(
@@ -177,7 +188,9 @@ integration('PostgreSQL Method Outcome Evidence admission', () => {
     await expect(
       service().admit({ workspaceId: otherWorkspaceId, evidence: admission() })
     ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
-    expect((await database.getPool().query('SELECT 1 FROM core_method_outcome_evidence')).rows).toHaveLength(0);
+    expect(
+      (await database.getPool().query('SELECT 1 FROM core_method_outcome_evidence')).rows
+    ).toHaveLength(0);
   });
 
   it('rejects update and delete so admitted evidence remains append-only', async () => {
