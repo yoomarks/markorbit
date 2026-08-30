@@ -23,8 +23,8 @@ function principal(workspaceId = WORKSPACE_ID): WorkspacePrincipal {
 
 function repository() {
   const record = vi.fn(
-    (command: Parameters<MatterIntelligenceReviewRepository['record']>[0]) =>
-      Promise.resolve({
+    (command: Parameters<MatterIntelligenceReviewRepository['record']>[0]) => {
+      return Promise.resolve({
         review: {
           schemaVersion: 1 as const,
           matterIntelligenceReviewId: 'matter-intelligence-review_test',
@@ -46,7 +46,8 @@ function repository() {
         },
         replayed: false,
         semanticDuplicate: false
-      })
+      });
+    }
   );
   return { record, repository: { record } as MatterIntelligenceReviewRepository };
 }
