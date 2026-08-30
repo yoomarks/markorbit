@@ -23,6 +23,7 @@ if (required && !url) {
 }
 const suite = url ? describe : describe.skip;
 const workspaceId = '33333333-3333-4333-8333-333333333333';
+const otherWorkspaceId = '44444444-4444-4444-8444-444444444444';
 const formalMatterId = 'formal-matter_phase5-postgres';
 const evidenceRefs = [
   'brain-method-package:package_cn-duration@1',
@@ -63,6 +64,7 @@ function observation(suffix: string, days = 336): MarkRegMatterIntelligenceObser
       implementationKey: 'brain-method-package-runtime.cn-duration-band-classification.v1'
     },
     correlationId: `correlation-${suffix}`,
+    capabilityCorrelationId: `capability-correlation-${suffix}`,
     methodPackageRef: evidenceRefs[0]!,
     methodRef: evidenceRefs[1]!,
     methodVersionRef: evidenceRefs[2]!,
@@ -180,6 +182,32 @@ suite('PostgreSQL MarkReg Matter Intelligence persistence', () => {
         'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_observations) AS observations,(SELECT count(*)::int FROM markreg_matter_intelligence_commands) AS commands'
       );
     expect(counts.rows[0]).toMatchObject({ observations: 1, commands: 1 });
+  });
+
+  it('enforces Formal Matter workspace ownership in the database, not only in service code', async () => {
+    const store = repository();
+    const crossWorkspace = {
+      ...observation('cross-workspace'),
+      workspaceId: otherWorkspaceId
+    };
+    await expect(
+      store.record({
+        observation: crossWorkspace,
+        idempotencyKey: 'phase5-cross-workspace',
+        requestFingerprintSha256: '9'.repeat(64),
+        correlationId: crossWorkspace.correlationId,
+        capabilityReplayed: false
+      })
+    ).rejects.toMatchObject({
+      code: 'PERSISTENCE_UNAVAILABLE'
+    } satisfies Partial<MatterIntelligenceError>);
+
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_observations) AS observations,(SELECT count(*)::int FROM markreg_matter_intelligence_commands) AS commands'
+      );
+    expect(counts.rows[0]).toMatchObject({ observations: 0, commands: 0 });
   });
 
   it('semantically dedupes an exact Capability return/session across product keys and appends a changed execution', async () => {
