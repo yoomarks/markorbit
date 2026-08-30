@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const gateway = 'http://127.0.0.1:4490';
 const lite = 'http://127.0.0.1:4495';
@@ -6,6 +6,16 @@ const desktopWorkspaceId = '43434343-4343-4434-8434-434343434343';
 const mobileWorkspaceId = '44444444-4444-4444-8444-444444444444';
 const primaryTitle = 'Prepare the reviewed trademark maintenance update';
 const feedbackPackageTitle = 'WP07 reviewed manual-use package';
+
+async function expectFeedbackEvidenceVisible(page: Page, feedbackEvidence: string) {
+  const disclosure = page
+    .locator('details.daily-provenance')
+    .filter({ hasText: new RegExp(feedbackEvidence) });
+  await expect(disclosure).toBeVisible();
+  const evidence = disclosure.getByText(new RegExp(feedbackEvidence));
+  if (!(await evidence.isVisible())) await disclosure.locator('summary').click();
+  await expect(evidence).toBeVisible();
+}
 
 test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
   test('closes Today handoff and manual feedback through real runtime without interception', async ({
@@ -89,7 +99,7 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
 
     await expect(page.getByText(feedbackPackageTitle, { exact: true })).not.toBeVisible();
     await expect(page.getByText(/Recent user-reported outcomes \(1\)/)).toBeVisible();
-    await expect(page.getByText(new RegExp(feedbackEvidence))).toBeVisible();
+    await expectFeedbackEvidenceVisible(page, feedbackEvidence);
     await expect(
       page.getByText(/They do not publish or independently verify the result/)
     ).toBeVisible();
@@ -103,7 +113,7 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await page.reload();
     expect((await reloadWorkspace).status()).toBe(200);
     await expect(page.getByText('Owner handoff completed', { exact: true })).toBeVisible();
-    await expect(page.getByText(new RegExp(feedbackEvidence))).toBeVisible();
+    await expectFeedbackEvidenceVisible(page, feedbackEvidence);
     await expect(page.getByText(feedbackPackageTitle, { exact: true })).not.toBeVisible();
     await expect(page).toHaveURL(durableUrl);
 
@@ -111,7 +121,7 @@ test.describe('PLC-WP-07 real Product-loop browser matrix', () => {
     await direct.goto(durableUrl);
     await expect(direct.getByRole('heading', { name: primaryTitle, exact: true })).toBeVisible();
     await expect(direct.getByText('Owner handoff completed', { exact: true })).toBeVisible();
-    await expect(direct.getByText(new RegExp(feedbackEvidence))).toBeVisible();
+    await expectFeedbackEvidenceVisible(direct, feedbackEvidence);
     await direct.close();
 
     expect(
