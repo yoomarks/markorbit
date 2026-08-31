@@ -41,6 +41,7 @@ import {
   ProductPreferenceService
 } from './preference-target.js';
 import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';
+import { PostgresTrademarkAssetCommerceStore } from './trademark-asset-commerce.js';
 import { PostgresTrademarkServiceWorkPackageStore } from './trademark-service-work-package.js';
 import { createTrademarkServiceWorkbenchRoutes } from './trademark-service-workbench-http.js';
 import { TrademarkAssetPortfolioService } from './trademark-asset-portfolio.js';
@@ -87,6 +88,11 @@ const dailySignalStore = new PostgresLiteDailySignalStore(
   new HttpCoreDailyKnowledgeSourceAuthority(coreUrl, internalServiceSecret)
 );
 const trademarkAssetStore = new PostgresLiteTrademarkAssetStore(database, pool);
+const trademarkAssetCommerceStore = new PostgresTrademarkAssetCommerceStore(
+  database,
+  pool,
+  trademarkAssetStore
+);
 const trademarkAssetPortfolio = new TrademarkAssetPortfolioService(pool, trademarkAssetStore);
 const trademarkAssetRefreshLedger = new PostgresTrademarkAssetRefreshLedger(database, pool);
 const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStore(database, pool);
@@ -297,6 +303,7 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createTrademarkAssetReadRoutes({
       internalServiceSecret,
       assets: trademarkAssetStore,
+      commerce: trademarkAssetCommerceStore,
       portfolio: trademarkAssetPortfolio,
       refreshLedger: trademarkAssetRefreshLedger
     }),

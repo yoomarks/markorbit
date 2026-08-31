@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import type { UpsertTrademarkAssetCommerceProfileInput } from '@markorbit/contracts/trademark-asset-commerce';
 import type {
   TrademarkAssetId,
   TrademarkAssetWorkspaceRelationshipKind
@@ -19,12 +20,17 @@ import {
 } from './trademark-asset-refresh.js';
 import { composeTrademarkAssetView } from './trademark-asset-view.js';
 import { createTrademarkAssetCompositionRoutes } from './trademark-asset-composition-http.js';
+import {
+  TrademarkAssetCommerceError,
+  type PostgresTrademarkAssetCommerceStore
+} from './trademark-asset-commerce.js';
 
 export interface TrademarkAssetReadRouteOptions {
   internalServiceSecret: string;
   assets: PostgresLiteTrademarkAssetStore;
   portfolio: TrademarkAssetPortfolioService;
   refreshLedger: PostgresTrademarkAssetRefreshLedger;
+  commerce: PostgresTrademarkAssetCommerceStore;
   now?: () => string;
 }
 
@@ -82,10 +88,65 @@ function positiveLimit(value: string | undefined): number | undefined {
 function mapError(error: unknown): never {
   if (
     error instanceof TrademarkAssetPersistenceError ||
-    error instanceof TrademarkAssetRefreshError
+    error instanceof TrademarkAssetRefreshError ||
+    error instanceof TrademarkAssetCommerceError
   )
     throw new HttpError(error.status, error.code, error.message, error.retryable);
   throw error;
+}
+
+function commerceInput(
+  request: JsonRequest,
+  principal: WorkspacePrincipal
+): UpsertTrademarkAssetCommerceProfileInput {
+  if (!principal.permissions.includes('matter:manage'))
+    throw new HttpError(403, 'PERMISSION_DENIED', 'matter:manage permission is required.');
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const body = request.body as Record<string, unknown>;
+  const fields = [
+    'expectedTrademarkAssetVersion',
+    'expectedCommerceProfileVersion',
+    'saleIntent',
+    'askingPrice',
+    'negotiable',
+    'saleTerritories',
+    'sellerRole',
+    'headline',
+    'sellingPoints',
+    'aiTags',
+    'showcaseTemplateReference',
+    'mediaAssetReferences'
+  ] satisfies readonly (keyof UpsertTrademarkAssetCommerceProfileInput)[];
+  if (Object.keys(body).some((field) => !fields.includes(field as (typeof fields)[number])))
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only Commerce Profile fields are accepted; identity and authority come from trusted context.'
+    );
+  if (Object.values(body).some((value) => value === null))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Omit optional fields instead of sending null.');
+  if (body.negotiable !== undefined && typeof body.negotiable !== 'boolean')
+    throw new HttpError(400, 'INVALID_REQUEST', 'negotiable must be a boolean.');
+  for (const field of ['saleTerritories', 'sellingPoints', 'aiTags', 'mediaAssetReferences']) {
+    if (body[field] !== undefined && !Array.isArray(body[field]))
+      throw new HttpError(400, 'INVALID_REQUEST', `${field} must be an array.`);
+  }
+  if (
+    body.askingPrice !== undefined &&
+    (typeof body.askingPrice !== 'object' || Array.isArray(body.askingPrice))
+  )
+    throw new HttpError(400, 'INVALID_REQUEST', 'askingPrice must be an object.');
+  const key = request.headers['idempotency-key'];
+  if (!key?.trim())
+    throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+  // The existing store validates domain values, versions and exact-asset editability.
+  return {
+    ...body,
+    workspaceId: principal.workspaceId,
+    trademarkAssetId: request.params.trademarkAssetId! as TrademarkAssetId,
+    idempotencyKey: key
+  } as UpsertTrademarkAssetCommerceProfileInput;
 }
 
 export function createTrademarkAssetReadRoutes(
@@ -181,6 +242,10 @@ export function createTrademarkAssetReadRoutes(
         try {
           const trademarkAssetId = request.params.trademarkAssetId! as TrademarkAssetId;
           const anchor = await options.assets.get(principal.workspaceId, trademarkAssetId);
+          const commerceProfile = await options.commerce.get(
+            principal.workspaceId,
+            trademarkAssetId
+          );
           const composedAt = now();
           const view = composeTrademarkAssetView({ anchor, composedAt });
           const latestRefresh = (
@@ -198,11 +263,26 @@ export function createTrademarkAssetReadRoutes(
           });
           return json(200, {
             view,
+            commerceProfile: commerceProfile ?? null,
             attention: deriveTrademarkAssetAttention(view, composedAt),
             latestRefresh,
             managementSignals,
             recommendations
           });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trademark-assets/:trademarkAssetId/commerce-profile',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        const input = commerceInput(request, principal);
+        try {
+          const commerceProfile = await options.commerce.upsert(input);
+          return json(200, { commerceProfile });
         } catch (error) {
           return mapError(error);
         }
