@@ -118,6 +118,7 @@
     "0073_core_official_fee_references": "@markorbit/core-service",
     "0074_markreg_matter_intelligence_observations": "@markorbit/markreg-service",
     "0075_markreg_matter_intelligence_reviews": "@markorbit/markreg-service",
-    "0076_core_method_outcome_evidence": "@markorbit/core-service"
+    "0076_core_method_outcome_evidence": "@markorbit/core-service",
+    "0077_core_method_outcome_evidence_reporting_watermark": "@markorbit/core-service"
   }
 }
