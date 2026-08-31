@@ -8,106 +8,115 @@ First product consumer question: #388
 
 Shared contract dependency: #385
 
-Original audit base commit: `7fb6c2cf6967b2fc17aba2f47374c19e6e592e5d`
+Original audit base: `7fb6c2cf6967b2fc17aba2f47374c19e6e592e5d`
 
-Closure revalidation main commit: `3318e7deffde6936ae60f986a90c10b6fd8ede36`
+Closure revalidation main: `3318e7deffde6936ae60f986a90c10b6fd8ede36`
 
 ## 1. Executive freeze
 
-Capability Engine already has a governed execution substrate. A successful governed invocation can prove the exact accepted Capability definition, an approved Implementation Profile, the request, invocation, outcome, return and session receipt, and method identity when the selected implementation is method-backed. Durable replay preserves those governed identities and does not execute a second time.
+Capability Engine already has a governed execution substrate.
+
+A governed invocation can prove the exact accepted Capability definition and implementation.
+
+It can also preserve request, invocation, outcome, return, receipt and method lineage.
+
+Durable replay preserves those identities without executing the implementation a second time.
 
 That is **not yet the same thing as a production-admissible product source**.
 
-At this checkpoint there is no generic producer-side decision that answers, at the time a product wants to consume a previously issued Capability result, whether all required source bindings are still acceptable for new consumption. A historically valid runtime return does not itself prove that the Capability definition/version, Implementation Profile version, method/package/activation, reference or dataset remains the producer-approved source for the requested applicability at the later consumption time.
+A historical runtime return proves what ran at that time.
+
+It does not prove that the same source remains admissible for a later product consumption.
 
 Therefore:
 
-- no analytical Capability surface is upgraded to `PRODUCTION_ADMISSIBLE` merely because invocation succeeds;
-- a producer-issued historical runtime return remains immutable historical execution evidence, but is not by itself a current source-admission decision;
-- new product consumption fails closed if current-source admission cannot be established;
-- product consumers do not inspect Capability internal catalog/profile state or reconstruct producer lifecycle/currentness rules;
-- observation, reflection and learning artifacts remain private, non-authoritative learning material and never become product source truth by implication;
-- successful runtime execution and product source admission remain separate producer decisions;
-- runtime failure, Capability Gap, Coverage Gap and method/product correctness feedback remain distinct;
-- raw runtime failures must not be transformed directly into Phase 7 Method Improvement triggers.
+- execution success does not imply production source admission;
+- historical runtime evidence remains immutable historical evidence;
+- new product consumption needs a producer-owned current-source admission decision;
+- products do not inspect Capability registries to recreate producer policy;
+- Observation, reflection and telemetry remain non-authoritative;
+- runtime failure, Coverage Gap and Method Performance Gap remain distinct;
+- runtime failure does not create a Phase 7 Method Improvement trigger.
 
-## 2. Authoritative maturity vocabulary
+## 2. Maturity vocabulary
 
-This checkpoint uses the #393 classifications exactly:
+`PRODUCTION_ADMISSIBLE` means one bounded source is admitted for product consumption.
 
-- `PRODUCTION_ADMISSIBLE` — producer can prove that one bounded source is admissible for the requested product consumption without consumer reinterpretation.
-- `PRODUCTION_RUNTIME_BUT_NARROW` — production-grade governed runtime infrastructure exists, but it does not by itself prove source admission for arbitrary or historical results.
-- `PILOT` — bounded accepted pilot surface whose code may run through governed runtime but remains pilot-scoped by implementation contract, policy or source assumptions.
-- `FIXTURE/TEST` — fixture-only or test-only surface.
-- `INTERNAL_ONLY` — internal governance, learning, audit, registry or operational surface not intended as product source material.
-- `DEFERRED/UNSUPPORTED` — requested applicability or behavior with no truthful accepted producer implementation.
+`PRODUCTION_RUNTIME_BUT_NARROW` means governed runtime exists without generic source admission.
+
+`PILOT` means an accepted implementation remains bounded by explicit pilot policy.
+
+`FIXTURE/TEST` means a surface is test-only or fixture-only.
+
+`INTERNAL_ONLY` means a surface is for internal governance, learning, audit or operations.
+
+`DEFERRED/UNSUPPORTED` means no truthful accepted implementation exists for the request.
 
 ## 3. Registry truth that #397 must preserve
 
-### 3.1 Runtime Capability definition registry
+### 3.1 Runtime Capability definitions
 
-The current `RuntimeCapabilityDefinition` registry does **not** expose an independent `ACTIVE` / `RETIRED` lifecycle model.
+`RuntimeCapabilityDefinition` has no independent `ACTIVE` or `RETIRED` lifecycle.
 
-Current code truth is:
+Definitions are admitted from accepted Capability Canon projection.
 
-- definitions are admitted only from accepted Capability Canon projection;
-- a Capability identity owns an immutable version line;
-- `findCurrent(capabilityId)` returns the latest accepted runtime definition by version;
-- `findVersion(...)` preserves exact historical definition lookup;
-- exact Canon/version and Capability/version conflicts fail closed.
+A Capability identity owns an immutable version line.
 
-Therefore #397 may ask whether the exact historical definition still matches the producer's current accepted projection for the requested consumption, but it must not invent an `ACTIVE`, `RETIRED`, `SUPERSEDED` or equivalent registry enum that does not exist.
+`findCurrent(capabilityId)` returns the latest accepted runtime definition by version.
 
-### 3.2 Implementation Profile registry
+`findVersion(...)` preserves exact historical definition lookup.
 
-The current Implementation Profile model is an immutable version line with an explicit status of:
+Canon/version and Capability/version conflicts fail closed.
 
-```text
-APPROVED
-RETIRED
-```
+#397 must not invent `ACTIVE`, `RETIRED` or `SUPERSEDED` definition states.
 
-Current code truth is:
+### 3.2 Implementation Profiles
 
-- `findCurrent(implementationProfileId)` means the latest registered version in that profile lineage;
-- new versions must advance the immutable version line;
-- lineage fields cannot silently change across versions;
-- runtime selection requires the latest candidate profile to be `APPROVED` and to satisfy capability/version, implementation kind, caller, risk and schema constraints;
-- the registry does not expose separate `CURRENT`, `SUPERSEDED` or `SUNSET` lifecycle states.
+Implementation Profiles use an immutable version line.
 
-Therefore #397 should determine whether the exact historical profile is still the latest applicable `APPROVED` producer binding for new consumption. It must not fabricate `CURRENT`, `SUPERSEDED` or `SUNSET` enum semantics.
+The only current status values are `APPROVED` and `RETIRED`.
 
-### 3.3 Method runtime distinction
+`findCurrent(implementationProfileId)` means the latest registered profile version.
 
-Executable Method runtime does have explicit package activation semantics. Its immutable runtime source selects only accepted `ACTIVE` packages at execution time. That method/package activation model must remain separate from Runtime Capability definition and Implementation Profile registry semantics.
+A new profile version must preserve its governed lineage fields.
 
-## 4. Current Capability/runtime maturity freeze
+Runtime selection only admits an applicable latest profile with status `APPROVED`.
+
+A latest `RETIRED` version does not fall back to an older `APPROVED` version.
+
+The registry has no separate `CURRENT`, `SUPERSEDED` or `SUNSET` states.
+
+#397 must evaluate current binding with these actual registry semantics.
+
+### 3.3 Executable Method runtime
+
+Executable Method runtime has separate package activation semantics.
+
+Its immutable runtime source selects accepted `ACTIVE` packages for execution.
+
+That `ACTIVE` state must not be projected onto the other registries.
+
+## 4. Current maturity freeze
 
 ### `PRODUCTION_RUNTIME_BUT_NARROW`
 
-The following are mature governed runtime substrate but are not, by themselves, generic production source admission:
-
-- Runtime Capability registry/catalog;
+- Runtime Capability registry and catalog;
 - Implementation Profile registry and governed binding;
 - governed Capability runtime;
 - durable replay and idempotency;
 - Executable Method runtime;
-- request, invocation, outcome, return and session receipt lineage;
+- request, invocation, outcome, return and receipt lineage;
 - Managed AI governed runtime.
 
 ### `INTERNAL_ONLY`
 
-The following remain internal governance, audit or learning surfaces:
-
 - Capability audit telemetry;
-- Capability Observation source/ledger;
+- Capability Observation source and ledger;
 - private reflection;
-- disposition/profile/twin surfaces;
-- Capability Center learning/governance surfaces.
+- disposition, profile and twin surfaces;
+- Capability Center learning and governance surfaces.
 
 ### `PILOT`
-
-The following remain explicitly pilot-scoped:
 
 - CN filing to preliminary-publication descriptive analytical pilot;
 - CN completed-duration historical-band classification pilot;
@@ -120,300 +129,358 @@ The following remain explicitly pilot-scoped:
 
 ### `DEFERRED/UNSUPPORTED`
 
-- generic fallback or automatic provider/method authority;
-- unsupported applicability without an accepted source/method.
+- generic automatic fallback authority;
+- unsupported applicability without an accepted source or method.
 
-No analytical Capability surface is classified `PRODUCTION_ADMISSIBLE` by this checkpoint.
+No current analytical Capability is classified `PRODUCTION_ADMISSIBLE` by this checkpoint.
 
-## 5. Important evidence behind the maturity freeze
+## 5. Evidence behind the freeze
 
-### Runtime Capability registry/catalog
+### Runtime Capability registry
 
-The registry imports accepted Capability Canon projections into immutable versioned runtime definitions. Internal registry reachability and `findCurrent()` are producer-owned implementation details. A product must not query the registry to infer admission.
+The registry imports accepted Canon projections into immutable runtime definition versions.
 
-### Implementation Profile registry/binding
+Registry reachability and latest-version lookup are producer-owned implementation details.
 
-Invocation selects from producer-owned profile state and requires an `APPROVED` profile satisfying exact capability/version, implementation kind, caller, risk and schema constraints. Exact binding is strong execution provenance, but a historical profile identity is not proof that the same version remains the latest applicable approved binding for later product consumption.
+A product must not query those details to infer source admission.
+
+### Implementation Profile registry
+
+Runtime selection requires an applicable `APPROVED` profile.
+
+The profile must match Capability version, implementation kind, caller, risk and schemas.
+
+Exact binding is strong execution provenance.
+
+A historical profile is not proof that it remains the latest applicable approved binding.
 
 ### Governed Capability runtime
 
-The runtime validates accepted Capability definition/version, caller/risk/schema constraints and exact implementation binding, then emits governed request, invocation, outcome, return and session receipt identities. Successful execution proves what ran at that time. It does not issue a separate product-source admission verdict for future consumption.
+The runtime validates accepted definition, request envelope and exact implementation binding.
 
-### Durable replay/idempotency
+It emits governed request, invocation, outcome, return and session receipt identities.
 
-Replay returns the historical governed execution without a second implementation call. Exact request conflicts fail closed and stored identity/integrity is preserved.
+That proves what executed then.
 
-```text
-Replay != current source re-admission
-```
+It does not issue a later product-source admission verdict.
 
-A later denial for new consumption must never mutate the historical invocation, outcome, return or session receipt.
+### Durable replay
+
+Replay returns the historical governed execution without a second implementation call.
+
+Request conflicts fail closed and stored identities remain immutable.
+
+`Replay != current source re-admission`.
 
 ### Executable Method runtime
 
-Method-backed execution selects only accepted `ACTIVE` packages from the immutable runtime source, and execution receipts preserve package/method identities. That is a strong execution-time gate, but an old execution receipt still requires a bounded producer currentness/admission check when reused later.
+Method-backed execution records the selected package and method identities.
+
+The selected package must be `ACTIVE` at execution time.
+
+A historical method receipt still needs producer currentness evaluation when reused later.
 
 ### Managed AI
 
-Provider dispatch requires explicit runtime and provider-dispatch authorization plus provider credentials. Managed provider/model execution success remains governed execution evidence only.
+Provider dispatch requires explicit runtime and provider-dispatch authorization.
 
-```text
-provider/model execution success != semantic production admission
-```
+Provider execution success remains governed execution evidence only.
 
-### Observation/reflection
+`Provider success != semantic production admission`.
 
-Capability Observation and reflection remain private, governed, append-only/no-authority learning or audit evidence. They never self-promote into Product Truth, Recommendation authority, Brain activation or Official Truth.
+### Observation and reflection
+
+Observation and reflection remain private, governed and non-authoritative.
+
+They do not self-promote into Product Truth, Brain activation or Official Truth.
 
 ## 6. Consumer map
 
 ### MarkReg
 
-MarkReg #388 is the first concrete product need. Current pilot profiles may allow `MARKREG`, but allow-list membership only proves caller eligibility for that implementation policy. It does not prove that MarkReg has a production source-admission contract.
+MarkReg #388 is the first concrete product consumer need.
 
-MarkReg must not inspect Capability internal registry/profile state or create a second source-admission algorithm.
+A profile allowing `MARKREG` proves caller eligibility only.
+
+It does not prove that MarkReg has a production source-admission contract.
+
+MarkReg must not inspect Capability internal registry state.
+
+MarkReg must not create a second source-admission algorithm.
 
 ### Lite, MGSN and other products
 
-This audit creates no new generic production analytical source contract for other products. Any existing product-specific use remains bounded by its own accepted contract and cannot be upgraded from runtime reachability alone.
+This audit creates no new generic production analytical source contract.
+
+Existing product uses remain bounded by their own accepted contracts.
 
 ### Capability internal learning
 
-Observation/reflection paths may consume reviewed governed work evidence while preserving explicit non-authority semantics.
+Internal learning may consume reviewed governed evidence.
 
-## 7. Producer/source/admission truth
+Its contracts must preserve explicit non-authority semantics.
 
-The producer-side decision is evaluated when new product consumption occurs, even if the underlying runtime execution completed earlier.
+## 7. Producer source-admission truth
 
-Admission must fail closed when any required condition cannot be established.
+Admission is evaluated when new product consumption occurs.
 
-At minimum:
+This remains true even when the underlying execution completed earlier.
 
-- non-producer-issued result or missing/inconsistent runtime identity/integrity -> deny;
-- Capability identity/version missing or inconsistent with producer records -> deny;
-- exact historical Capability definition no longer matches the producer's latest accepted projection required for the requested applicability -> deny for new consumption while preserving historical evidence;
-- Implementation Profile identity missing -> deny;
-- historical Implementation Profile version is no longer the latest applicable `APPROVED` binding, the latest version is `RETIRED`, or exact binding cannot be established -> deny for new consumption;
-- method-backed result missing exact method/package/method-version/activation/evaluation identities -> deny;
-- required method/package is not producer-admissible for the requested new consumption -> deny without mutating historical receipts;
-- required dataset/query/reference/evidence identity missing or integrity cannot be proven -> deny;
-- time-sensitive or replaceable source is outside its effective/current window or currentness cannot be established -> deny;
-- applicability does not cover the request or required source data is unavailable -> Coverage Gap / deny, never fallback inference;
-- runtime/dependency inability prevents admission from being established -> deny and classify separately from Capability/Method correctness;
-- all exact identities, integrity, current binding, applicability, limitations and semantic-safety conditions pass -> producer may issue a `PRODUCTION_ADMISSIBLE` decision for that exact bounded source and consumption context.
+Admission fails closed when required evidence cannot be established.
 
-The evaluator must distinguish historical execution validity from current admission. Historical evidence is immutable. A later denial only prevents new product consumption from treating the old result as currently admissible source material.
+Minimum denial conditions include:
 
-## 8. Minimum producer proof for product-admissible source material
+- result is not producer-issued or runtime identity is inconsistent;
+- Capability identity or version cannot be proven;
+- historical definition no longer matches the required latest accepted projection;
+- Implementation Profile identity cannot be proven;
+- historical profile is not the latest applicable `APPROVED` binding;
+- latest profile version is `RETIRED`;
+- method-backed source lacks exact governed method and package lineage;
+- required method or package is not admissible for the new consumption;
+- required dataset, query, reference or evidence identity is missing;
+- source integrity cannot be proven;
+- a time-sensitive source is outside its effective window;
+- source currentness cannot be proven;
+- applicability does not cover the requested use;
+- required source data is unavailable;
+- runtime or dependency inability prevents a truthful admission decision.
 
-Capability must be able to prove or reference, without making products inspect internal registries:
+Unsupported applicability or missing required data is a Coverage Gap.
 
-1. exact Capability ID/version and exact runtime definition identity/version;
-2. exact implementation ID/version/key and Implementation Profile ID/version;
-3. exact method ID, method-version ID, package ID/version and activation/evaluation identity when method-backed;
-4. exact dataset/query/reference/evidence identities and integrity fingerprints where applicable;
-5. exact request/input/output/evidence fingerprints;
-6. exact invocation/outcome/return/session receipt identities;
-7. explicit source class and admission class;
-8. exact applicability and limitations;
-9. effective/current/freshness evaluation and the producer authorities checked;
-10. assumptions and unknowns;
-11. explicit semantic-safety and no-authority consequences;
-12. admission decision timestamp/version/fingerprint so a product can reference one immutable producer decision instead of reproducing producer logic.
+It is not permission to fabricate a fallback result.
 
-Missing or ambiguous proof is a denial, never an implied production default.
+When all required checks pass, Capability may issue one bounded admission decision.
 
-## 9. What remains producer-internal
+That decision may classify the exact source as `PRODUCTION_ADMISSIBLE`.
 
-Products should reference, not serialize or independently interpret:
+Historical evidence remains immutable even if a later admission is denied.
+
+## 8. Minimum producer proof
+
+A product-admissible source needs enough producer proof to reference:
+
+1. exact Capability identity and version;
+2. exact runtime definition identity and version;
+3. exact implementation identity, version, key and Implementation Profile version;
+4. exact method and package lineage when method-backed;
+5. exact dataset, query, reference or evidence identities when applicable;
+6. exact integrity fingerprints where applicable;
+7. exact request, invocation, outcome, return and receipt identities;
+8. explicit source class and admission class;
+9. exact applicability and limitations;
+10. effective, freshness and currentness evaluation;
+11. assumptions and unknowns;
+12. explicit semantic-safety and no-authority consequences;
+13. immutable admission decision identity, version, timestamp and fingerprint.
+
+Missing or ambiguous proof is a denial.
+
+Missing proof never defaults to production admission.
+
+## 9. Producer-internal state
+
+Products should reference, not independently interpret:
 
 - full Runtime Capability catalog rows and version history;
-- full Implementation Profile registry records and version-selection mechanics;
-- executable package contents and internal package-selection machinery;
+- full Implementation Profile registry records;
+- profile version-selection mechanics;
+- executable package contents and package-selection machinery;
 - raw Data Engine populations or research rows;
-- full Knowledge source material when an immutable source/reference identity is sufficient;
-- private Capability Observation, reflection and learning ledgers;
+- full Knowledge source material when a durable source reference is sufficient;
+- private Observation, reflection and learning ledgers;
 - provider secrets and internal Managed AI routing configuration;
-- exact sensitive output payloads when a durable evidence ref/hash is sufficient;
-- internal retry/fallback mechanics;
-- raw audit telemetry not required to prove the bounded source decision.
+- sensitive payloads when a durable evidence reference or hash is sufficient;
+- retry and fallback implementation mechanics;
+- raw audit telemetry not required for the bounded admission decision.
 
 ## 10. Exact answer for MarkReg #388
 
-### 10.1 What Capability can already provide
+### 10.1 What Capability already provides
 
-Capability can already provide provenance-rich governed runtime execution and immutable replay for exact accepted definitions and approved implementations. Method-backed execution can additionally prove the exact `ACTIVE` package/method selected at execution time.
+Capability provides provenance-rich governed execution and immutable replay.
 
-It cannot yet provide the complete current producer-side source-admission verdict required by #388. Therefore no existing pilot should be consumed by MarkReg as production-admissible analytical source merely by parsing a runtime return.
+Method-backed execution also proves the exact package and method selected at execution time.
 
-### 10.2 Why current `0.1.0-fixture` behavior remains fixture
+Capability does not yet provide the complete current-source admission verdict required by #388.
 
-There are two independent reasons:
+Therefore MarkReg cannot promote an existing pilot by parsing a runtime return.
 
-- **MarkReg/shared-contract limitation:** current early-funnel shared shapes explicitly encode fixture semantics and cannot be silently reinterpreted as production. #385 owns the additive/versioned shared vocabulary.
-- **Capability producer limitation:** current Capability pilots lack the generic current source-admission decision described here. Runtime success and exact provenance are necessary but not sufficient.
+### 10.2 Why `0.1.0-fixture` remains fixture
 
-Removing only one limitation would still leave #388 untruthful.
+The current early-funnel shared contract explicitly encodes fixture semantics.
 
-### 10.3 Owner-local Capability changes required before #388
+#385 owns additive and versioned production-capable shared vocabulary.
 
-P0 owner-local work is #397:
+Capability also lacks the generic current-source admission decision described here.
 
-- implement a read-only producer-side current-source admission evaluator under `services/capability-engine/**`;
+Removing only one of those limitations would still leave #388 incomplete.
+
+### 10.3 Owner-local work before #388
+
+P0 owner-local work is #397.
+
+#397 must:
+
+- implement a read-only producer-side current-source admission evaluator;
+- stay under `services/capability-engine/**`;
 - accept one exact producer-issued governed runtime result;
-- validate immutable runtime identity/integrity;
-- re-check the exact Runtime Capability definition against producer-owned current accepted projection semantics;
-- re-check the exact Implementation Profile against the latest applicable immutable version line and `APPROVED` / `RETIRED` truth;
-- plug bounded optional method currentness authority for method/package/method-version/activation/evaluation identities;
-- plug bounded optional reference/dataset/evidence currentness authority;
-- distinguish invalid evidence, non-current binding, source/reference currentness failure, unsupported applicability/Coverage Gap and dependency/runtime inability;
-- preserve historical receipt immutability;
-- keep the evaluator transport-neutral until Integration provides the shared contract;
-- emit no Product business state, Official Truth or automatic Method Improvement trigger.
+- validate immutable runtime identity and integrity;
+- re-check the Runtime Capability definition with actual registry semantics;
+- re-check the Implementation Profile with actual version and status semantics;
+- support a bounded optional method currentness authority;
+- support a bounded optional source currentness authority;
+- distinguish invalid evidence from non-current binding;
+- distinguish source currentness failure from Coverage Gap;
+- distinguish dependency inability from Capability or Method correctness;
+- preserve historical runtime evidence without mutation;
+- remain transport-neutral until Integration supplies the shared vocabulary;
+- emit no Product business state or Official Truth;
+- emit no automatic Method Improvement trigger.
 
-No new analytical Capability is required for this task.
+No new analytical Capability is required for #397.
 
-### 10.4 Shared fields requested from Integration under #385
+### 10.4 Shared dependency #385
 
-Integration should expose additive/versioned transport vocabulary capable of carrying a producer-issued admission reference/decision with at least:
+Integration owns the additive and versioned cross-service vocabulary.
+
+Capability requests enough vocabulary to reference:
 
 - producer identity;
-- admission decision identity/version/fingerprint/timestamp;
-- Capability ID/version;
-- runtime definition identity/version when needed for exact lineage;
-- implementation ID/version/key and Implementation Profile ID/version;
-- optional method/package/method-version/activation/evaluation identities;
-- optional dataset/query/reference/evidence identities and integrity fingerprints;
-- runtime request/invocation/outcome/return/session receipt references and relevant fingerprints;
-- explicit source class and admission class with no production default by omission;
-- applicability, limitations, assumptions and unknowns;
-- freshness/effective/current-source result and bounded denial reason vocabulary;
-- semantic-safety and no-authority consequences;
-- enough immutable lineage for MarkReg Recommendation to reference the producer decision without serializing Capability internals.
+- admission decision identity, version, fingerprint and timestamp;
+- exact Capability identity and version;
+- exact implementation and Implementation Profile identity;
+- optional method, package, activation and evaluation lineage;
+- optional dataset, query, reference and evidence lineage;
+- integrity fingerprints where applicable;
+- runtime request, invocation, outcome, return and receipt references;
+- explicit source class and admission class;
+- applicability and limitations;
+- assumptions and unknowns;
+- freshness, effective-state and current-source result;
+- bounded denial or currentness reason;
+- semantic-safety and no-authority consequences.
 
-Exact shared type names and enums remain Integration-owned. Capability must not create a parallel cross-service wire contract.
+Exact shared type names and enums remain Integration-owned.
 
-## 11. Runtime quality and observability audit
+Capability must not create a competing cross-service wire contract.
 
-### Latency and cost
+## 11. Runtime quality and observability
 
-Managed AI audit telemetry can record latency, token/unit and cost fields when supplied. Generic governed Capability runtime does not yet provide one normalized product-independent runtime-quality record for every implementation.
+Managed AI telemetry can record supplied latency, token, unit and cost fields.
 
-P1 candidate: normalized non-authoritative runtime quality observation.
+There is no normalized quality record for every Capability implementation today.
 
-### Deterministic replay
+That is a P1 candidate after #397 and only if operational evidence justifies it.
 
-Governed runtime replay is strong: the same immutable request replays stored evidence, request conflicts fail closed and no second implementation execution occurs.
+Deterministic replay is already strong and must keep historical semantics.
 
-Preserve that historical semantic. Do not reinterpret replay as current re-admission.
+There is no generic automatic fallback authority.
 
-### Dependency failure classification
+Any fallback authority must be explicit policy and fail closed otherwise.
 
-Governed failure outcomes exist, but there is no single producer admission/coverage taxonomy across all Capability kinds.
+Historical results are not re-evaluated for new product consumption today.
 
-#397 should introduce only the bounded admission denial distinctions needed for owner-local evaluation. Broader observability taxonomy remains a later evidence-driven task.
+That stale or non-current binding gap is the primary P0 addressed by #397.
 
-### Implementation fallback
+A cross-service Coverage Gap vocabulary is not owned by #397.
 
-No generic automatic fallback authority exists. Managed AI telemetry can record fallback counts, but provider/model dispatch remains separately governed.
-
-Preserve fail-closed behavior. Any fallback authority must be explicit policy, never inferred.
-
-### Stale/non-current binding detection
-
-Invocation resolves producer-owned current definitions/profiles for execution, but a historical replay/return is not independently re-evaluated for later product consumption.
-
-This is the primary P0 gap addressed by #397.
-
-### Coverage and unsupported applicability
-
-Individual pilots validate exact bounded applicability and fail outside it. A unified cross-service product-facing Coverage Gap vocabulary is not owned by this issue.
-
-#397 may use bounded owner-local denial semantics. Shared exposure remains Integration-owned.
+#397 may use bounded owner-local denial semantics only.
 
 ## 12. Owner-local backlog
 
 ### P0 — #397 Current Capability Source Admission Evaluator
 
-This is the highest-value unblocked next task.
-
 Allowed scope:
 
-```text
-services/capability-engine/src/**
-services/capability-engine/tests/**
-```
+- `services/capability-engine/src/**`;
+- `services/capability-engine/tests/**`.
 
 Required properties:
 
 - transport-neutral;
 - read-only;
-- exact producer-issued runtime identity input;
+- exact producer-issued runtime evidence input;
 - immutable historical evidence verification;
-- producer-owned Capability definition and Implementation Profile currentness checks based on actual registry semantics;
-- bounded optional method/reference authorities;
+- actual Capability definition currentness semantics;
+- actual Implementation Profile currentness semantics;
+- bounded optional method and source currentness authorities;
 - deterministic fail-closed denial classes;
-- no cross-service DB reads;
-- no product state;
+- no cross-service database reads;
+- no Product state;
 - no Official Truth;
 - no automatic fallback;
 - no Method Improvement trigger emission.
 
-### P1 — Generic Capability runtime quality observation
+### P1 — Runtime quality observation
 
-Consider only after #397 and only if operational evidence supports it:
+Possible later work must be driven by real operational evidence.
 
-- normalized latency;
-- retry/dependency failure class;
-- execution cost/unit metadata;
-- source-admission denial telemetry;
-- no sensitive raw payload retention;
-- no authority semantics.
+It may normalize latency, retry class, dependency class and execution cost metadata.
+
+It must remain non-authoritative and avoid sensitive raw payload retention.
 
 ### P1 — Coverage Gap normalization
 
-Consider only from real product/runtime evidence:
+Possible later work may normalize unsupported applicability and unavailable data.
 
-- distinguish unsupported applicability/data from execution/dependency failure;
-- support producer admission and roadmap analysis;
-- do not fabricate fallback outputs;
-- do not equate Coverage Gap with Method Performance Gap;
-- shared cross-service vocabulary remains Integration-owned.
+It must not fabricate fallback output.
 
-## 13. Brain Research / Phase 7 dependency
+It must not equate Coverage Gap with Method Performance Gap.
 
-A requested analytical Capability with no accepted method/evidence remains `DEFERRED/UNSUPPORTED` or a Coverage Gap. It must not be fabricated from generic AI output or historical fixture data.
+Shared cross-service vocabulary remains Integration-owned.
 
-For CN completed-duration historical-band work, Phase 7 #347 remains the governed Method Improvement path. #384 has code-path readiness, but a real candidate still requires new accepted reproducible Data Engine research evidence that materially differs from the predecessor evidence and passes the existing research gate.
+## 13. Brain Research and Phase 7
 
-The current predecessor remains immutable until explicit `BRAIN_GOVERNANCE` changes the active method.
+A requested analytical Capability without accepted evidence remains unsupported or a Coverage Gap.
 
-The source-admission evaluator may consume bounded method governance/currentness authority. It must never create, validate, activate, retire or degrade a method itself.
+Generic AI output or historical fixture data must not fabricate the missing method.
+
+Phase 7 #347 remains the governed Method Improvement path for the CN duration work.
+
+#384 has code-path readiness but still lacks real new accepted Data Engine research evidence.
+
+A real candidate must materially differ from the frozen predecessor evidence.
+
+The predecessor remains immutable until explicit `BRAIN_GOVERNANCE` changes active method state.
+
+The source-admission evaluator may read bounded method currentness authority.
+
+It must never create, validate, activate, retire or degrade a method.
 
 ## 14. Frozen invariants
 
 1. `Capability execution success != production source admission`.
 2. `Historical receipt validity != current source admissibility`.
-3. `latest accepted RuntimeCapabilityDefinition != an invented ACTIVE/RETIRED lifecycle`.
-4. `latest Implementation Profile version + APPROVED/RETIRED != invented CURRENT/SUPERSEDED/SUNSET states`.
-5. `APPROVED implementation at invocation != perpetual product-source admissibility`.
-6. `ACTIVE method package at invocation != perpetual current method source`.
+3. Runtime Capability definitions do not have an invented active lifecycle.
+4. Implementation Profiles use `APPROVED` and `RETIRED` only.
+5. An approved implementation at invocation is not perpetual source admission.
+6. An active method package at invocation is not perpetual current source proof.
 7. `Observation/reflection/telemetry != authority`.
 8. `Coverage Gap != runtime failure != Method Performance Gap`.
 9. `Recommendation != authorization`.
-10. Product consumers do not inspect Capability internal DB/catalog state.
-11. Missing provenance/currentness/source classification fails closed.
-12. Shared transport vocabulary is Integration-owned; Capability owns producer decision semantics and evaluation.
-13. No cross-service database ownership and no Product business-state mutation.
-14. No Official Truth claim is created by this checkpoint.
+10. Product consumers do not inspect Capability internal registry state.
+11. Missing provenance or currentness fails closed.
+12. Integration owns shared transport vocabulary.
+13. Capability owns producer admission decision semantics.
+14. No cross-service database ownership is introduced.
+15. No Product business-state mutation is introduced.
+16. No Official Truth claim is created by this checkpoint.
 
 ## 15. #393 acceptance result
 
-This audit establishes the current-code maturity freeze, producer/source/admission truth, exact #388 producer-side gap, #385 shared dependency and the next owner-local P0.
+This audit freezes current Capability maturity and source-admission boundaries.
 
-The closure revalidation also corrects two important registry facts:
+It answers the Capability side of MarkReg #388 without consumer reinterpretation.
 
-- Runtime Capability definitions use accepted Canon projection plus latest-version lookup, not an `ACTIVE` / `RETIRED` lifecycle;
-- Implementation Profiles use immutable version lines plus `APPROVED` / `RETIRED`, not `CURRENT` / `SUPERSEDED` / `SUNSET` states.
+It records #385 as the Integration-owned shared dependency.
 
-No existing analytical pilot is promoted to production-admissible source material by this checkpoint. The next implementation step is #397.
+It derives #397 as the highest-value unblocked owner-local P0.
+
+It also corrects two registry facts required by #397.
+
+Runtime Capability definitions use accepted Canon projection and latest-version lookup.
+
+Implementation Profiles use immutable version lines with `APPROVED` and `RETIRED` status.
+
+No current analytical pilot is promoted to production-admissible source material.
