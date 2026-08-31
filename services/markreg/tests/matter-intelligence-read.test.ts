@@ -5,9 +5,7 @@ import {
   type FormalMatterId,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import {
-  CN_DURATION_BAND_ACCEPTED_DATASET_REF
-} from '@markorbit/contracts/brain-cn-duration-band-classification';
+import { CN_DURATION_BAND_ACCEPTED_DATASET_REF } from '@markorbit/contracts/brain-cn-duration-band-classification';
 import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
 import { createMatterIntelligenceReadRoutes } from '../src/matter-intelligence-read-http.js';
 import {
@@ -183,9 +181,7 @@ describe('governed MarkReg Matter Intelligence reads', () => {
     const base = await stack(repository());
     const response = await fetch(
       `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
-      {
-        headers: headers(principal())
-      }
+      { headers: headers(principal()) }
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
@@ -210,76 +206,63 @@ describe('governed MarkReg Matter Intelligence reads', () => {
     });
   });
 
-  it(
-    'requires only workspace:read, rejects wrong Workspace without disclosure and enforces query bounds',
-    async () => {
-      const base = await stack(repository());
+  it('requires only workspace:read, rejects wrong Workspace without disclosure and enforces query bounds', async () => {
+    const base = await stack(repository());
 
-      const denied = await fetch(
-        `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
-        {
-          headers: headers(principal([]))
+    const denied = await fetch(
+      `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
+      { headers: headers(principal([])) }
+    );
+    expect(denied.status).toBe(403);
+
+    const wrongHeaders = {
+      ...headers(principal(['workspace:read'], otherWorkspaceId)),
+      'x-markorbit-workspace-id': workspaceId
+    };
+    const wrongWorkspace = await fetch(
+      `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
+      { headers: wrongHeaders }
+    );
+    expect(wrongWorkspace.status).toBe(404);
+
+    const invalidPageSize = await fetch(
+      `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence?pageSize=51`,
+      { headers: headers(principal()) }
+    );
+    expect(invalidPageSize.status).toBe(422);
+  });
+
+  it('distinguishes unknown Matter and persistence failure from a successful empty read', async () => {
+    const missingBase = await stack(repository({ missing: true }));
+    const missing = await fetch(
+      `${missingBase}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
+      { headers: headers(principal()) }
+    );
+    expect(missing.status).toBe(404);
+
+    const failureBase = await stack(repository({ failure: true }));
+    const failure = await fetch(
+      `${failureBase}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
+      { headers: headers(principal()) }
+    );
+    expect(failure.status).toBe(503);
+  });
+
+  it('fails closed when a persisted Human Review is not fingerprint-bound to the exact observation', async () => {
+    const item = observation();
+    const review = mismatchedReview(item);
+    const base = await stack(
+      repository({
+        observations: [item],
+        reviews: {
+          [item.matterIntelligenceObservationId]: { items: [review], total: 1 }
         }
-      );
-      expect(denied.status).toBe(403);
-
-      const wrongHeaders = {
-        ...headers(principal(['workspace:read'], otherWorkspaceId)),
-        'x-markorbit-workspace-id': workspaceId
-      };
-      const wrongWorkspace = await fetch(
-        `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
-        { headers: wrongHeaders }
-      );
-      expect(wrongWorkspace.status).toBe(404);
-
-      const invalidPageSize = await fetch(
-        `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence?pageSize=51`,
-        { headers: headers(principal()) }
-      );
-      expect(invalidPageSize.status).toBe(422);
-    }
-  );
-
-  it(
-    'distinguishes unknown Matter and persistence failure from a successful empty read',
-    async () => {
-      const missingBase = await stack(repository({ missing: true }));
-      const missing = await fetch(
-        `${missingBase}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
-        { headers: headers(principal()) }
-      );
-      expect(missing.status).toBe(404);
-
-      const failureBase = await stack(repository({ failure: true }));
-      const failure = await fetch(
-        `${failureBase}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
-        { headers: headers(principal()) }
-      );
-      expect(failure.status).toBe(503);
-    }
-  );
-
-  it(
-    'fails closed when a persisted Human Review is not fingerprint-bound to the exact observation',
-    async () => {
-      const item = observation();
-      const review = mismatchedReview(item);
-      const base = await stack(
-        repository({
-          observations: [item],
-          reviews: {
-            [item.matterIntelligenceObservationId]: { items: [review], total: 1 }
-          }
-        })
-      );
-      const response = await fetch(
-        `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
-        {
-          headers: headers(principal())
-        }
-      );
-      expect(response.status).toBe(503);
-    }
-  );
+      })
+    );
+    const response = await fetch(
+      `${base}/internal/v1/formal-matters/${formalMatterId}/intelligence`,
+      { headers: headers(principal()) }
+    );
+    expect(response.status).toBe(503);
+  });
 });
