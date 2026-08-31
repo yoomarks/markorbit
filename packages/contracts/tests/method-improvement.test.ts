@@ -31,11 +31,19 @@ const mission = {
     requiredData: ['COMPLETED_DURATION_FACTS'],
     effectiveFrom: '2026-08-31T00:00:00.000Z'
   },
-  knowledgeResearchPlan: ['Resolve bounded authoritative CN duration sources with exact lineage.'],
+  knowledgeResearchPlan: [
+    'Resolve bounded authoritative CN duration sources with exact lineage.'
+  ],
   dataEngineResearchPlan: ['Rebuild the accepted reproducible CN duration research cohort.'],
-  hypotheses: ['The admitted method error may be explained by a bounded duration-band edge case.'],
-  featurePlan: ['Evaluate only deterministic completed-duration features already allowed by the method family.'],
-  evaluationPlan: ['Compare a candidate against the exact predecessor on a reproducible bounded cohort.'],
+  hypotheses: [
+    'The admitted method error may be explained by a bounded duration-band edge case.'
+  ],
+  featurePlan: [
+    'Evaluate only deterministic completed-duration features already allowed by the method family.'
+  ],
+  evaluationPlan: [
+    'Compare a candidate against the exact predecessor on a reproducible bounded cohort.'
+  ],
   successMetrics: ['bounded predecessor comparison'],
   baselineMetrics: ['brain-method-evaluation:evaluation_cn-duration'],
   createdAt: '2026-08-31T04:00:00.000Z'
@@ -113,27 +121,41 @@ describe('Method Improvement V1 contracts', () => {
     expect(parsedTrigger.triggerType).toBe('PERFORMANCE_GAP');
     expect(parsedTrigger.source.counts.methodError).toBe(1);
     expect(parsedMission.mission.targetMethodFamily).toBe('CLASSIFICATION');
-    expect(() => assertMethodImprovementMissionBinding(parsedTrigger, parsedMission)).not.toThrow();
+    expect(() =>
+      assertMethodImprovementMissionBinding(parsedTrigger, parsedMission)
+    ).not.toThrow();
   });
 
   it('rejects extra unbounded product/customer snapshot fields', () => {
     expect(() =>
-      parseMethodImprovementTriggerV1({ ...trigger(), formalMatter: { id: 'formal-matter_forbidden' } })
+      parseMethodImprovementTriggerV1({
+        ...trigger(),
+        formalMatter: { id: 'formal-matter_forbidden' }
+      })
     ).toThrow(/unsupported fields/u);
     expect(() =>
       parseMethodImprovementTriggerV1({
         ...trigger(),
-        source: { ...trigger().source, customerSnapshot: { customerId: 'customer_forbidden' } }
+        source: {
+          ...trigger().source,
+          customerSnapshot: { customerId: 'customer_forbidden' }
+        }
       })
     ).toThrow(/unsupported fields/u);
   });
 
   it('rejects non-pilot taxonomy runtime admission', () => {
     expect(() =>
-      parseMethodImprovementTriggerV1({ ...trigger(), triggerType: 'CAPABILITY_GAP' })
+      parseMethodImprovementTriggerV1({
+        ...trigger(),
+        triggerType: 'CAPABILITY_GAP'
+      })
     ).toThrow(/PERFORMANCE_GAP only/u);
     expect(() =>
-      parseMethodImprovementTriggerV1({ ...trigger(), triggerType: 'AUTONOMOUS_RETRAIN' })
+      parseMethodImprovementTriggerV1({
+        ...trigger(),
+        triggerType: 'AUTONOMOUS_RETRAIN'
+      })
     ).toThrow(/triggerType is invalid/u);
   });
 
@@ -163,7 +185,10 @@ describe('Method Improvement V1 contracts', () => {
       }
     };
     expect(() =>
-      parseMethodImprovementTriggerV1({ ...trigger(), source: sourceWithoutWatermark })
+      parseMethodImprovementTriggerV1({
+        ...trigger(),
+        source: sourceWithoutWatermark
+      })
     ).toThrow(/watermark must be an object/u);
   });
 
@@ -213,8 +238,8 @@ describe('Method Improvement V1 contracts', () => {
         evaluationRef: 'brain-method-evaluation:evaluation_other'
       }
     });
-    expect(() => assertMethodImprovementMissionBinding(parsedTrigger, wrongPredecessor)).toThrow(
-      /does not match/u
-    );
+    expect(() =>
+      assertMethodImprovementMissionBinding(parsedTrigger, wrongPredecessor)
+    ).toThrow(/does not match/u);
   });
 });
