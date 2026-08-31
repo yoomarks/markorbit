@@ -96,10 +96,16 @@ describe('Method Improvement HTTP admission', () => {
     const f = fixture();
     await expect(
       f.route.handle(
-        request({}, {
-          schemaVersion: 1,
-          predecessor: { ...predecessor, methodRef: 'brain-method:method_cn-duration-other' }
-        })
+        request(
+          {},
+          {
+            schemaVersion: 1,
+            predecessor: {
+              ...predecessor,
+              methodRef: 'brain-method:method_cn-duration-other'
+            }
+          }
+        )
       )
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
     expect(f.admit).not.toHaveBeenCalled();
