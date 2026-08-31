@@ -95,7 +95,9 @@ export type CapabilityCatalogIntegrityAvailableResultV1 = Readonly<{
 export type CapabilityCatalogIntegrityUnavailableResultV1 = Readonly<{
   schemaVersion: 1;
   status: 'CATALOG_AUDIT_UNAVAILABLE';
-  unavailableDependency: 'CURRENT_CAPABILITY_CATALOG_AUTHORITY' | 'CURRENT_IMPLEMENTATION_CATALOG_AUTHORITY';
+  unavailableDependency:
+    | 'CURRENT_CAPABILITY_CATALOG_AUTHORITY'
+    | 'CURRENT_IMPLEMENTATION_CATALOG_AUTHORITY';
   findings: readonly [];
   authority: Readonly<CapabilityCatalogIntegrityNoAuthorityV1>;
 }>;
@@ -260,7 +262,9 @@ function findingSort(
 }
 
 export class CapabilityCatalogIntegrityAuditorV1 {
-  constructor(private readonly options: Readonly<CapabilityCatalogIntegrityAuditorOptionsV1>) {}
+  constructor(
+    private readonly options: Readonly<CapabilityCatalogIntegrityAuditorOptionsV1>
+  ) {}
 
   async audit(): Promise<CapabilityCatalogIntegrityAuditResultV1> {
     let capabilities: readonly Readonly<RuntimeCapabilityDefinition>[];
@@ -350,7 +354,8 @@ export class CapabilityCatalogIntegrityAuditorV1 {
 
     findings.sort(findingSort);
     const snapshot = buildSnapshot(sortedCapabilities, sortedProfiles);
-    const status = findings.length === 0 ? 'CATALOG_HEALTHY' : 'CATALOG_INTEGRITY_FINDINGS';
+    const status =
+      findings.length === 0 ? 'CATALOG_HEALTHY' : 'CATALOG_INTEGRITY_FINDINGS';
     const auditFingerprintSha256 = sha256({
       status,
       snapshotFingerprintSha256: snapshot.snapshotFingerprintSha256,
