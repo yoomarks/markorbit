@@ -14,10 +14,12 @@ export const methodImprovementTriggerTypes = [
   'COVERAGE_GAP',
   'BRAIN_RESEARCH_DISCOVERY'
 ] as const;
-export type MethodImprovementTriggerType = (typeof methodImprovementTriggerTypes)[number];
+export type MethodImprovementTriggerType =
+  (typeof methodImprovementTriggerTypes)[number];
 
 export type MethodImprovementTriggerId = `method-improvement-trigger_${string}`;
-export type MethodImprovementResearchMissionId = `method-improvement-research-mission_${string}`;
+export type MethodImprovementResearchMissionId =
+  `method-improvement-research-mission_${string}`;
 
 export interface MethodImprovementPredecessorV1 {
   methodPackageRef: string;
@@ -153,7 +155,8 @@ function prefixed(value: unknown, prefix: string, field: string): string {
 
 function sha256(value: unknown, field: string): string {
   const cleaned = text(value, field, 64).toLowerCase();
-  if (!SHA256.test(cleaned)) return invalid(`${field} must be a lowercase SHA-256 digest.`);
+  if (!SHA256.test(cleaned))
+    return invalid(`${field} must be a lowercase SHA-256 digest.`);
   return cleaned;
 }
 
@@ -234,7 +237,10 @@ function parseSegment(
   if (segment.kind !== 'RESEARCH_DATASET' && segment.kind !== 'IMPLEMENTATION_KEY')
     return invalid('source.query.segment.kind is invalid.');
   const segmentValue = text(segment.value, 'source.query.segment.value');
-  if (segment.kind === 'RESEARCH_DATASET' && !segmentValue.startsWith('research-dataset:'))
+  if (
+    segment.kind === 'RESEARCH_DATASET' &&
+    !segmentValue.startsWith('research-dataset:')
+  )
     return invalid('RESEARCH_DATASET segment must be a research-dataset reference.');
   return { kind: segment.kind, value: segmentValue };
 }
@@ -243,7 +249,14 @@ function parseReportQuery(value: unknown): MethodImprovementPerformanceReportQue
   const query = record(value, 'source.query');
   exactKeys(
     query,
-    ['schemaVersion', 'workspaceId', 'methodPackageRef', 'methodVersionRef', 'segment', 'watermark'],
+    [
+      'schemaVersion',
+      'workspaceId',
+      'methodPackageRef',
+      'methodVersionRef',
+      'segment',
+      'watermark'
+    ],
     'source.query'
   );
   if (query.schemaVersion !== 1) invalid('source.query.schemaVersion must be 1.');
@@ -281,7 +294,10 @@ function parseReportQuery(value: unknown): MethodImprovementPerformanceReportQue
   };
 }
 
-function parseSample(value: unknown, index: number): MethodImprovementPerformanceReportSampleV1 {
+function parseSample(
+  value: unknown,
+  index: number
+): MethodImprovementPerformanceReportSampleV1 {
   const field = `source.sampleEvidenceRefs[${index}]`;
   const sample = record(value, field);
   exactKeys(
@@ -317,7 +333,11 @@ function parseSample(value: unknown, index: number): MethodImprovementPerformanc
       'method-outcome-evidence_',
       `${field}.methodOutcomeEvidenceId`
     ) as MethodOutcomeEvidenceId,
-    reviewId: prefixed(sample.reviewId, 'matter-intelligence-review_', `${field}.reviewId`),
+    reviewId: prefixed(
+      sample.reviewId,
+      'matter-intelligence-review_',
+      `${field}.reviewId`
+    ),
     reviewVersion: positiveInteger(sample.reviewVersion, `${field}.reviewVersion`),
     outcome: sample.outcome as MethodOutcomeEvidenceReviewOutcome,
     ...(sample.reason === undefined
@@ -327,7 +347,10 @@ function parseSample(value: unknown, index: number): MethodImprovementPerformanc
   };
 }
 
-function parseCounts(value: unknown, admittedReviews: number): MethodImprovementPerformanceReportCountsV1 {
+function parseCounts(
+  value: unknown,
+  admittedReviews: number
+): MethodImprovementPerformanceReportCountsV1 {
   const counts = record(value, 'source.counts');
   const keys = [
     'confirmed',
@@ -373,7 +396,10 @@ export function parseMethodImprovementPerformanceReportSourceV1(
   );
   if (source.kind !== 'CORE_METHOD_OUTCOME_REPORT_V1')
     return invalid('source.kind must be CORE_METHOD_OUTCOME_REPORT_V1.');
-  const admittedReviews = positiveInteger(source.admittedReviews, 'source.admittedReviews');
+  const admittedReviews = positiveInteger(
+    source.admittedReviews,
+    'source.admittedReviews'
+  );
   if (!Array.isArray(source.sampleEvidenceRefs) || source.sampleEvidenceRefs.length > 20)
     return invalid('source.sampleEvidenceRefs must be an array with at most 20 entries.');
   return {
@@ -389,7 +415,9 @@ export function parseMethodImprovementPerformanceReportSourceV1(
   };
 }
 
-export function parseMethodImprovementTriggerV1(value: unknown): MethodImprovementTriggerV1 {
+export function parseMethodImprovementTriggerV1(
+  value: unknown
+): MethodImprovementTriggerV1 {
   const trigger = record(value, 'methodImprovementTrigger');
   exactKeys(
     trigger,
@@ -407,7 +435,8 @@ export function parseMethodImprovementTriggerV1(value: unknown): MethodImproveme
     ],
     'methodImprovementTrigger'
   );
-  if (trigger.schemaVersion !== 1) invalid('methodImprovementTrigger.schemaVersion must be 1.');
+  if (trigger.schemaVersion !== 1)
+    invalid('methodImprovementTrigger.schemaVersion must be 1.');
   if (
     typeof trigger.triggerType !== 'string' ||
     !(methodImprovementTriggerTypes as readonly string[]).includes(trigger.triggerType)
@@ -426,7 +455,9 @@ export function parseMethodImprovementTriggerV1(value: unknown): MethodImproveme
   )
     return invalid('source query must match predecessor package/version refs.');
   if (source.counts.methodError < 1)
-    return invalid('PERFORMANCE_GAP source must contain at least one METHOD_ERROR signal.');
+    return invalid(
+      'PERFORMANCE_GAP source must contain at least one METHOD_ERROR signal.'
+    );
   return {
     schemaVersion: 1,
     triggerId: prefixed(
@@ -448,7 +479,10 @@ export function parseMethodImprovementTriggerV1(value: unknown): MethodImproveme
       trigger.triggerFingerprintSha256,
       'methodImprovementTrigger.triggerFingerprintSha256'
     ),
-    admittedAt: instant(trigger.admittedAt, 'methodImprovementTrigger.admittedAt')
+    admittedAt: instant(
+      trigger.admittedAt,
+      'methodImprovementTrigger.admittedAt'
+    )
   };
 }
 
@@ -489,9 +523,14 @@ export function parseMethodImprovementResearchMissionV1(
     invalid('methodImprovementResearchMission.schemaVersion must be 1.');
   const mission = parseBrainResearchMissionV1(wrapper.mission);
   const predecessor = parseMethodImprovementPredecessorV1(wrapper.predecessor);
-  const createdAt = instant(wrapper.createdAt, 'methodImprovementResearchMission.createdAt');
+  const createdAt = instant(
+    wrapper.createdAt,
+    'methodImprovementResearchMission.createdAt'
+  );
   if (mission.createdAt !== createdAt)
-    return invalid('mission.createdAt must match methodImprovementResearchMission.createdAt.');
+    return invalid(
+      'mission.createdAt must match methodImprovementResearchMission.createdAt.'
+    );
   return {
     schemaVersion: 1,
     researchMissionId: prefixed(
@@ -535,5 +574,7 @@ export function assertMethodImprovementMissionBinding(
     mission.createdByPrincipalId !== trigger.createdByPrincipalId ||
     !samePredecessor(mission.predecessor, trigger.predecessor)
   )
-    invalid('Research mission wrapper does not match its immutable Method Improvement trigger.');
+    invalid(
+      'Research mission wrapper does not match its immutable Method Improvement trigger.'
+    );
 }
