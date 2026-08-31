@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 // Kept in the Lite-owned tree: this shell regression suite needs no backend runtime.
 export default defineConfig({
   testDir: './tests',
-  testMatch: '**/*.pw.ts',
+  testMatch: '**/navigation.pw.ts',
   outputDir: './test-results/navigation',
   forbidOnly: Boolean(process.env.CI),
   retries: 0,

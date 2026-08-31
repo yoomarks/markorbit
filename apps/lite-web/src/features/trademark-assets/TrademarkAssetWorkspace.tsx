@@ -10,6 +10,8 @@ import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trad
 import type { TrademarkAssetAttentionSignal } from '@markorbit/contracts/trademark-asset-workspace';
 import { Button } from '@markorbit/ui';
 import type { TrademarkAssetRefreshSummary } from '../../api/trademark-assets.js';
+import type { SaveTrademarkAssetCommerceProfileInput } from '../../api/trademark-assets.js';
+import { TrademarkAssetCommerceProfileSection } from './TrademarkAssetCommerceProfile.js';
 import './trademark-asset-workspace.css';
 
 export interface TrademarkAssetWorkspaceProps {
@@ -19,6 +21,10 @@ export interface TrademarkAssetWorkspaceProps {
   managementSignals?: readonly Readonly<TrademarkAssetManagementSignal>[];
   recommendations?: readonly Readonly<TrademarkAssetManagementRecommendation>[];
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
+  onSaveCommerceProfile?: (
+    input: Readonly<SaveTrademarkAssetCommerceProfileInput>
+  ) => Promise<TrademarkAssetCommerceProfile>;
+  onReloadCommerceProfile?: () => void | Promise<void>;
   marketplaceOverlay?: Readonly<TrademarkAssetMarketplaceOverlay>;
   aiGuide?: Readonly<TrademarkAssetAiGuidePreparedResult>;
 }
@@ -47,6 +53,8 @@ export function TrademarkAssetWorkspace({
   managementSignals = [],
   recommendations = [],
   commerceProfile,
+  onSaveCommerceProfile,
+  onReloadCommerceProfile,
   marketplaceOverlay,
   aiGuide
 }: TrademarkAssetWorkspaceProps) {
@@ -305,22 +313,13 @@ export function TrademarkAssetWorkspace({
         </ul>
       </section>
 
-      {commerceProfile ? (
-        <section aria-labelledby="commerce-context-heading">
-          <div className="trademark-asset-workspace__section-heading">
-            <div>
-              <p>Workspace-owned context</p>
-              <h2 id="commerce-context-heading">Commerce profile</h2>
-            </div>
-            <span>Not a Marketplace listing</span>
-          </div>
-          <p>{commerceProfile.headline || 'No commerce headline.'}</p>
-          <p>
-            Sale intent: {commerceProfile.saleIntent} · Seller role: {commerceProfile.sellerRole} ·
-            Negotiable: {commerceProfile.negotiable ? 'Yes' : 'No'}
-          </p>
-        </section>
-      ) : null}
+      <TrademarkAssetCommerceProfileSection
+        assetVersion={view.anchor.version}
+        {...(commerceProfile ? { profile: commerceProfile } : {})}
+        readOnly={isMarketplaceReference}
+        {...(onSaveCommerceProfile ? { onSave: onSaveCommerceProfile } : {})}
+        {...(onReloadCommerceProfile ? { onReload: onReloadCommerceProfile } : {})}
+      />
 
       {marketplaceOverlay ? (
         <section aria-labelledby="marketplace-overlay-heading">

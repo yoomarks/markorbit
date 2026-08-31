@@ -18,6 +18,7 @@ import {
 } from '@markorbit/ui';
 import {
   createTrademarkAssetClient,
+  TrademarkAssetHttpError,
   type TrademarkAssetClient,
   type TrademarkAssetDetailResponse,
   type TrademarkAssetPortfolioManagementEntry,
@@ -72,6 +73,7 @@ export function TrademarkAssetPortfolio({
   const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();
   const [serviceWorkPackage, setServiceWorkPackage] = useState<TrademarkServiceWorkPackage>();
   const [detailState, setDetailState] = useState<LoadState>('ready');
+  const [detailErrorStatus, setDetailErrorStatus] = useState<number>();
 
   const loadPortfolio = useCallback(async () => {
     setLoadState('loading');
@@ -99,6 +101,7 @@ export function TrademarkAssetPortfolio({
     setDetail(undefined);
     setServiceWorkPackage(undefined);
     setDetailState('loading');
+    setDetailErrorStatus(undefined);
     try {
       const [loadedDetail, loadedWorkPackage] = await Promise.all([
         client.load(trademarkAssetId),
@@ -107,7 +110,8 @@ export function TrademarkAssetPortfolio({
       setDetail(loadedDetail);
       setServiceWorkPackage(loadedWorkPackage);
       setDetailState('ready');
-    } catch {
+    } catch (error) {
+      setDetailErrorStatus(error instanceof TrademarkAssetHttpError ? error.status : 503);
       setDetailState('error');
     }
   };
@@ -117,14 +121,27 @@ export function TrademarkAssetPortfolio({
 
   if (selectedId) {
     if (detailState === 'loading') return <LoadingState label="Loading Trademark Asset" />;
-    if (detailState === 'error')
+    if (detailState === 'error') {
+      const title =
+        detailErrorStatus === 403
+          ? 'Trademark Asset permission required'
+          : detailErrorStatus === 404
+            ? 'Trademark Asset unavailable'
+            : 'Trademark Asset service unavailable';
+      const description =
+        detailErrorStatus === 403
+          ? 'You do not have permission to view this Workspace Asset.'
+          : detailErrorStatus === 404
+            ? 'This Asset is unavailable in the current Workspace.'
+            : 'The durable Trademark Asset service or persistence boundary is unavailable. This is not an empty Commerce Profile.';
       return (
         <ErrorState
-          title="Trademark Asset unavailable"
-          description="This workspace-scoped asset could not be loaded. No source record was changed."
+          title={title}
+          description={description}
           onRetry={() => void openAsset(selectedId)}
         />
       );
+    }
     if (detail)
       return (
         <div className="trademark-asset-portfolio__detail">
@@ -137,6 +154,13 @@ export function TrademarkAssetPortfolio({
             {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
+            {...(detail.commerceProfile ? { commerceProfile: detail.commerceProfile } : {})}
+            onSaveCommerceProfile={async (input) => {
+              const commerceProfile = await client.saveCommerceProfile(selectedId, input);
+              setDetail((current) => (current ? { ...current, commerceProfile } : current));
+              return commerceProfile;
+            }}
+            onReloadCommerceProfile={() => void openAsset(selectedId)}
           />
           <TrademarkServiceWorkbench
             jurisdiction={detail.view.anchor.identity.jurisdiction}
