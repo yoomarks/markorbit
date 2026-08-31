@@ -32,15 +32,15 @@ export interface MarkRegMethodOutcomeEvidenceSourceV1 {
 type ObservationRow = Record<string, unknown>;
 
 function text(row: ObservationRow, field: string): string {
-  const value = String(row[field] ?? '').trim();
-  if (!value) {
+  const value = row[field];
+  if (typeof value !== 'string' || !value.trim()) {
     throw new MatterIntelligenceReviewError(
       'OUTCOME_EVIDENCE_CONTRACT_MISMATCH',
       `Persisted MarkReg observation field ${field} is missing.`,
       502
     );
   }
-  return value;
+  return value.trim();
 }
 
 function positiveInteger(row: ObservationRow, field: string): number {

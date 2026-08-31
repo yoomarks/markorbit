@@ -286,10 +286,8 @@ function observationIdentity(row: Row): Readonly<Record<string, unknown>> {
   };
 }
 
-export function matterIntelligenceObservationFingerprintFromRow(
-  row: Readonly<Record<string, unknown>>
-): string {
-  return fingerprint(observationIdentity(row as Row));
+export function matterIntelligenceObservationFingerprintFromRow(row: Readonly<Row>): string {
+  return fingerprint(observationIdentity(row));
 }
 
 function newReviewId(): MatterIntelligenceReviewId {
