@@ -117,7 +117,9 @@ function evidence(suffix: string, outcome: Outcome, reason?: Reason) {
   };
 }
 
-function mission(hypothesis = 'A bounded duration-band edge case may explain the reviewed method error.') {
+function mission(
+  hypothesis = 'A bounded duration-band edge case may explain the reviewed method error.'
+) {
   return {
     schemaVersion: 1,
     missionId: 'brain-research-mission_phase7-cn-duration-postgres',
@@ -136,11 +138,15 @@ function mission(hypothesis = 'A bounded duration-band edge case may explain the
       requiredData: ['COMPLETED_DURATION_FACTS'],
       effectiveFrom: '2026-08-31T00:00:00.000Z'
     },
-    knowledgeResearchPlan: ['Resolve exact authoritative CN duration sources with bounded lineage.'],
+    knowledgeResearchPlan: [
+      'Resolve exact authoritative CN duration sources with bounded lineage.'
+    ],
     dataEngineResearchPlan: ['Rebuild the accepted reproducible CN duration research cohort.'],
     hypotheses: [hypothesis],
     featurePlan: ['Evaluate deterministic completed-duration features only.'],
-    evaluationPlan: ['Compare a candidate with the exact predecessor on reproducible bounded inputs.'],
+    evaluationPlan: [
+      'Compare a candidate with the exact predecessor on reproducible bounded inputs.'
+    ],
     successMetrics: ['bounded predecessor comparison'],
     baselineMetrics: [evaluationRef],
     createdAt: '2026-08-31T04:21:00.000Z'
@@ -182,7 +188,10 @@ async function exactReport() {
 }
 
 function command(
-  reportWatermark: { admissionSequence: number; methodOutcomeEvidenceId: `method-outcome-evidence_${string}` },
+  reportWatermark: {
+    admissionSequence: number;
+    methodOutcomeEvidenceId: `method-outcome-evidence_${string}`;
+  },
   overrides: Record<string, unknown> = {}
 ) {
   return {
@@ -222,7 +231,11 @@ function improvementService(idSuffix: string) {
 async function admitImprovement(
   service: MethodImprovementAdmissionServiceV1,
   body: unknown,
-  requestOverrides: Partial<{ workspaceId: string; idempotencyKey: string; correlationId: string }> = {}
+  requestOverrides: Partial<{
+    workspaceId: string;
+    idempotencyKey: string;
+    correlationId: string;
+  }> = {}
 ) {
   return service.admit({
     workspaceId: requestOverrides.workspaceId ?? workspaceId,
@@ -257,7 +270,9 @@ integration('PostgreSQL governed Method Improvement admission', () => {
 
     const lifecycleBefore = await database
       .getPool()
-      .query('SELECT brain_asset_version_id,status FROM brain_asset_versions ORDER BY brain_asset_version_id');
+      .query(
+        'SELECT brain_asset_version_id,status FROM brain_asset_versions ORDER BY brain_asset_version_id'
+      );
     const result = await admitImprovement(
       improvementService('first'),
       command(source.watermark!)
@@ -297,12 +312,16 @@ integration('PostgreSQL governed Method Improvement admission', () => {
     expect(boundedJson).not.toMatch(
       /formalMatter|customerSnapshot|productSnapshot|rawDataEngineRows|capabilityPackageBody|brainPackageBody/u
     );
-    expect((stored.rows[0]!.trigger_json as { source: { sampleEvidenceRefs: unknown[] } }).source.sampleEvidenceRefs)
-      .toHaveLength(1);
+    expect(
+      (stored.rows[0]!.trigger_json as { source: { sampleEvidenceRefs: unknown[] } }).source
+        .sampleEvidenceRefs
+    ).toHaveLength(1);
 
     const lifecycleAfter = await database
       .getPool()
-      .query('SELECT brain_asset_version_id,status FROM brain_asset_versions ORDER BY brain_asset_version_id');
+      .query(
+        'SELECT brain_asset_version_id,status FROM brain_asset_versions ORDER BY brain_asset_version_id'
+      );
     expect(lifecycleAfter.rows).toEqual(lifecycleBefore.rows);
   });
 
@@ -339,7 +358,7 @@ integration('PostgreSQL governed Method Improvement admission', () => {
         }),
         { idempotencyKey: 'phase7-postgres-other-key' }
       )
-    ).rejects.toMatchObject({ code: 'TRIGGER_CONFLICT' });
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
 
     const counts = await database.getPool().query(
       `SELECT
@@ -355,7 +374,9 @@ integration('PostgreSQL governed Method Improvement admission', () => {
     const service = improvementService('guards');
 
     await expect(
-      admitImprovement(service, command(source.watermark!), { workspaceId: otherWorkspaceId })
+      admitImprovement(service, command(source.watermark!), {
+        workspaceId: otherWorkspaceId
+      })
     ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
 
     await expect(
@@ -400,9 +421,9 @@ integration('PostgreSQL governed Method Improvement admission', () => {
       )
     ).rejects.toMatchObject({ code: 'REPORT_MISMATCH' });
 
-    const persisted = await database.getPool().query(
-      'SELECT count(*)::int AS count FROM core_method_improvement_triggers'
-    );
+    const persisted = await database
+      .getPool()
+      .query('SELECT count(*)::int AS count FROM core_method_improvement_triggers');
     expect(persisted.rows[0]?.count).toBe(0);
   });
 
@@ -417,10 +438,10 @@ integration('PostgreSQL governed Method Improvement admission', () => {
     await expect(
       database
         .getPool()
-        .query('UPDATE core_method_improvement_triggers SET reason=$1 WHERE trigger_id=$2', [
-          'mutated',
-          result.trigger.triggerId
-        ])
+        .query(
+          'UPDATE core_method_improvement_triggers SET correlation_id=$1 WHERE trigger_id=$2',
+          ['mutated', result.trigger.triggerId]
+        )
     ).rejects.toThrow(/append-only/u);
     await expect(
       database
@@ -440,9 +461,10 @@ integration('PostgreSQL governed Method Improvement admission', () => {
     await expect(
       database
         .getPool()
-        .query('DELETE FROM core_method_improvement_research_missions WHERE research_mission_id=$1', [
-          result.researchMission.researchMissionId
-        ])
+        .query(
+          'DELETE FROM core_method_improvement_research_missions WHERE research_mission_id=$1',
+          [result.researchMission.researchMissionId]
+        )
     ).rejects.toThrow(/append-only/u);
   });
 });
