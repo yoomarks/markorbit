@@ -626,7 +626,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         }
       ]
     : [];
-  routes.push(...methodOutcomeEvidenceRoutes, ...methodOutcomeReportRoutes, ...methodImprovementRoutes);
+  routes.push(
+    ...methodOutcomeEvidenceRoutes,
+    ...methodOutcomeReportRoutes,
+    ...methodImprovementRoutes
+  );
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     { routes }
@@ -644,6 +648,5 @@ export * from './knowledge-v2-ingress.js';
 export * from './method-outcome-evidence.js';
 export * from './method-outcome-report.js';
 export * from './method-outcome-evidence-http.js';
-export * from './method-outcome-report-http.js';
 export * from './method-improvement.js';
 export * from './method-improvement-http.js';
