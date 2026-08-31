@@ -7,6 +7,7 @@ import {
 } from '@markorbit/contracts/capability-runtime';
 import type { CapabilityRuntimeExecution } from './capability-runtime.js';
 
+const SHA256 = /^[0-9a-f]{64}$/;
 const RISK_RANK: Readonly<Record<CapabilityRiskClass, number>> = Object.freeze({
   LOW: 0,
   MODERATE: 1,
@@ -93,7 +94,15 @@ export type CapabilityMethodCurrentnessResult =
       identity: Readonly<ExactMethodSourceIdentity>;
     }>
   | Readonly<{
-      status: 'NOT_CURRENT' | 'UNSUPPORTED_APPLICABILITY' | 'UNAVAILABLE';
+      status: 'NOT_CURRENT';
+      reason: string;
+    }>
+  | Readonly<{
+      status: 'UNSUPPORTED_APPLICABILITY';
+      reason: string;
+    }>
+  | Readonly<{
+      status: 'UNAVAILABLE';
       reason: string;
     }>;
 
@@ -116,7 +125,15 @@ export type CapabilityReferenceCurrentnessResult =
       references: readonly Readonly<ExactReferenceSourceIdentity>[];
     }>
   | Readonly<{
-      status: 'NOT_CURRENT' | 'UNSUPPORTED_APPLICABILITY' | 'UNAVAILABLE';
+      status: 'NOT_CURRENT';
+      reason: string;
+    }>
+  | Readonly<{
+      status: 'UNSUPPORTED_APPLICABILITY';
+      reason: string;
+    }>
+  | Readonly<{
+      status: 'UNAVAILABLE';
       reason: string;
     }>;
 
@@ -524,7 +541,7 @@ function exactReferenceIdentity(value: Readonly<ExactReferenceSourceIdentity>): 
     nonEmptyText(value.evidenceRef) &&
     nonEmptyText(value.sourceId) &&
     (nonEmptyText(value.sourceVersion) || positiveInteger(value.sourceVersion)) &&
-    (value.sourceFingerprintSha256 === undefined || nonEmptyText(value.sourceFingerprintSha256))
+    (value.sourceFingerprintSha256 === undefined || SHA256.test(value.sourceFingerprintSha256))
   );
 }
 
@@ -568,7 +585,7 @@ export class CurrentCapabilitySourceAdmissionEvaluator {
         'Current Capability definition authority is unavailable.'
       );
     }
-    if (!currentCapabilityMatches(execution, currentCapability as RuntimeCapabilityDefinition)) {
+    if (!currentCapability || !currentCapabilityMatches(execution, currentCapability)) {
       return denial(
         historical,
         'NON_CURRENT_CAPABILITY_BINDING',
