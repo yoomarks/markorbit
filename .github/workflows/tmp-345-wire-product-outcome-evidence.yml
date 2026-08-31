@@ -25,21 +25,21 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Wire production path and canonical MarkReg persistence lane
+      - name: Wire production path and format formal files
         run: |
           node scripts/tmp-345-wire-product-outcome-evidence.mjs
+          git checkout -- .github/workflows/ci.yml
           pnpm exec prettier --write \
-            .github/workflows/ci.yml \
             services/markreg/src/main.ts \
             services/markreg/src/matter-intelligence-review.ts \
             services/markreg/src/matter-intelligence-review-http.ts \
             services/markreg/src/method-outcome-evidence-emission.ts \
             services/markreg/tests/method-outcome-evidence-emission-postgres.test.ts
-      - name: Commit scoped wiring
+      - name: Commit scoped source wiring
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/ci.yml services/markreg/src/main.ts services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts services/markreg/src/method-outcome-evidence-emission.ts services/markreg/tests/method-outcome-evidence-emission-postgres.test.ts
+          git add services/markreg/src/main.ts services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts services/markreg/src/method-outcome-evidence-emission.ts services/markreg/tests/method-outcome-evidence-emission-postgres.test.ts
           git diff --cached --quiet && exit 0
           git commit -m 'Phase 6: wire product outcome evidence loop'
           git push origin HEAD:phase6/345-product-outcome-evidence-loop
