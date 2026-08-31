@@ -26,7 +26,8 @@ import {
   PostgresLiteDailySignalStore
 } from './daily-signal.js';
 import { PostgresProductLoopFeedbackStore } from './feedback.js';
-import { createLiteProductLoopRoutes } from './http.js';
+import { createContentStudioRoutes, createLiteProductLoopRoutes } from './http.js';
+import { PostgresContentStudioReader } from './content-studio.js';
 import {
   handoffResult,
   PostgresPreparedActionStore,
@@ -286,6 +287,10 @@ const visualBridgeService = new VisualBridgeService(
 );
 const runtime = createServiceRuntime(serviceManifest, {
   routes: [
+    ...createContentStudioRoutes({
+      internalServiceSecret,
+      reader: new PostgresContentStudioReader(database)
+    }),
     ...createDailyWorkspaceRoutes({
       internalServiceSecret,
       service: dailyWorkspaceSnapshotService
