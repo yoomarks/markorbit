@@ -116,8 +116,7 @@ function fail(code: MethodImprovementCandidateErrorCode, message: string, cause?
 
 function exactStrings(actual: readonly string[], expected: readonly string[]): boolean {
   return (
-    actual.length === expected.length &&
-    actual.every((value, index) => value === expected[index])
+    actual.length === expected.length && actual.every((value, index) => value === expected[index])
   );
 }
 
@@ -163,7 +162,10 @@ function assertAdmissionFingerprints(
     createdAt: researchMission.createdAt
   });
   if (researchMission.missionFingerprintSha256 !== expectedMission) {
-    fail('MISSION_MISMATCH', 'Method Improvement research mission fingerprint verification failed.');
+    fail(
+      'MISSION_MISMATCH',
+      'Method Improvement research mission fingerprint verification failed.'
+    );
   }
 }
 
