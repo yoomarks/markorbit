@@ -11,12 +11,16 @@ import {
   type MatterIntelligenceReviewId,
   type MatterIntelligenceReviewOutcome,
   type MatterIntelligenceReviewReason,
-  type MatterIntelligenceReviewService
+  type MatterIntelligenceReviewService,
+  type MarkRegMatterIntelligenceReviewV1
 } from './matter-intelligence-review.js';
 
 export interface MatterIntelligenceReviewHttpOptions {
   internalServiceSecret: string;
   service: Pick<MatterIntelligenceReviewService, 'recordReview'>;
+  evidenceEmitter?: Readonly<{
+    emit(review: Readonly<MarkRegMatterIntelligenceReviewV1>): Promise<unknown>;
+  }>;
 }
 
 const OUTCOMES = new Set<MatterIntelligenceReviewOutcome>([
@@ -189,6 +193,7 @@ export function createMatterIntelligenceReviewRoutes(
             idempotencyKey: requiredHeader(request, 'idempotency-key', 'IDEMPOTENCY_KEY_REQUIRED'),
             correlationId: requiredHeader(request, 'x-correlation-id', 'CORRELATION_ID_REQUIRED')
           });
+          if (options.evidenceEmitter) await options.evidenceEmitter.emit(disposition.review);
           return json(
             disposition.replayed || disposition.semanticDuplicate ? 200 : 201,
             disposition

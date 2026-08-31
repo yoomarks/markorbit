@@ -21,6 +21,9 @@ export type MatterIntelligenceReviewErrorCode =
   | 'REVIEW_SUPERSESSION_REQUIRED'
   | 'REVIEW_SUPERSESSION_CONFLICT'
   | 'IDEMPOTENCY_CONFLICT'
+  | 'OUTCOME_EVIDENCE_UNAVAILABLE'
+  | 'OUTCOME_EVIDENCE_REJECTED'
+  | 'OUTCOME_EVIDENCE_CONTRACT_MISMATCH'
   | 'PERSISTENCE_UNAVAILABLE';
 
 export class MatterIntelligenceReviewError extends Error {
@@ -283,6 +286,12 @@ function observationIdentity(row: Row): Readonly<Record<string, unknown>> {
   };
 }
 
+export function matterIntelligenceObservationFingerprintFromRow(
+  row: Readonly<Record<string, unknown>>
+): string {
+  return fingerprint(observationIdentity(row as Row));
+}
+
 function newReviewId(): MatterIntelligenceReviewId {
   return `matter-intelligence-review_${randomUUID().replaceAll('-', '')}`;
 }
@@ -388,7 +397,8 @@ export class PostgresMatterIntelligenceReviewRepository implements MatterIntelli
       );
     }
     const observationRow = observationResult.rows[0] as Row;
-    const observationFingerprintSha256 = fingerprint(observationIdentity(observationRow));
+    const observationFingerprintSha256 =
+      matterIntelligenceObservationFingerprintFromRow(observationRow);
 
     const latestResult = await client.query(
       'SELECT * FROM markreg_matter_intelligence_reviews WHERE workspace_id=$1 AND matter_intelligence_observation_id=$2 ORDER BY review_version DESC,matter_intelligence_review_id ASC LIMIT 1 FOR UPDATE',

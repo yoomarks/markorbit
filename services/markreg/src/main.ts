@@ -52,6 +52,11 @@ import {
   PostgresMatterIntelligenceReviewRepository
 } from './matter-intelligence-review.js';
 import { createMatterIntelligenceReviewRoutes } from './matter-intelligence-review-http.js';
+import {
+  HttpCoreMethodOutcomeEvidenceAdmissionClientV1,
+  MarkRegMethodOutcomeEvidenceEmitterV1,
+  PostgresMarkRegMethodOutcomeEvidenceSourceV1
+} from './method-outcome-evidence-emission.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -80,6 +85,7 @@ if (fixtureRuntime) {
   const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
   const liteUrl = process.env.LITE_URL ?? 'http://127.0.0.1:4107';
   const capabilityUrl = process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
+  const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
   if (!internalServiceSecret)
     throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
   const formalMatterRepository = new PostgresFormalMatterRepository(database, pool);
@@ -96,9 +102,14 @@ if (fixtureRuntime) {
   const matterIntelligenceReviewService = new MatterIntelligenceReviewService(
     new PostgresMatterIntelligenceReviewRepository(database)
   );
+  const methodOutcomeEvidenceEmitter = new MarkRegMethodOutcomeEvidenceEmitterV1(
+    new PostgresMarkRegMethodOutcomeEvidenceSourceV1(pool),
+    new HttpCoreMethodOutcomeEvidenceAdmissionClientV1(coreUrl, internalServiceSecret)
+  );
   const matterIntelligenceReviewRoutes = createMatterIntelligenceReviewRoutes({
     internalServiceSecret,
-    service: matterIntelligenceReviewService
+    service: matterIntelligenceReviewService,
+    evidenceEmitter: methodOutcomeEvidenceEmitter
   });
   const orderRepository = new PostgresOrderRepository(database, pool);
   const commercialRepository = new PostgresCommercialCatalogRepository(database, pool);

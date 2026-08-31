@@ -282,22 +282,20 @@ suite('Phase 6 product outcome -> evidence -> report PostgreSQL acceptance', () 
     const replayedReport = await report();
     expect(replayedReport).toEqual(firstReport);
 
-    const counts = await database.getPool().query(
-      'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_reviews) AS reviews,(SELECT count(*)::int FROM core_method_outcome_evidence) AS evidence'
-    );
+    const counts = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_reviews) AS reviews,(SELECT count(*)::int FROM core_method_outcome_evidence) AS evidence'
+      );
     expect(counts.rows[0]).toEqual({ reviews: 1, evidence: 1 });
   });
 
   it('persists product truth when Core is unavailable and safely completes admission on exact retry', async () => {
     const unavailable = new MarkRegMethodOutcomeEvidenceEmitterV1(
       new PostgresMarkRegMethodOutcomeEvidenceSourceV1(database.getPool()),
-      new HttpCoreMethodOutcomeEvidenceAdmissionClientV1(
-        coreUrl,
-        secret,
-        async () => {
-          throw new Error('simulated Core outage');
-        }
-      )
+      new HttpCoreMethodOutcomeEvidenceAdmissionClientV1(coreUrl, secret, async () => {
+        throw new Error('simulated Core outage');
+      })
     );
 
     await expect(reviewRoute(unavailable).handle(request())).rejects.toMatchObject({
@@ -305,9 +303,11 @@ suite('Phase 6 product outcome -> evidence -> report PostgreSQL acceptance', () 
       code: 'OUTCOME_EVIDENCE_UNAVAILABLE',
       retryable: true
     });
-    const afterFailure = await database.getPool().query(
-      'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_reviews) AS reviews,(SELECT count(*)::int FROM core_method_outcome_evidence) AS evidence'
-    );
+    const afterFailure = await database
+      .getPool()
+      .query(
+        'SELECT (SELECT count(*)::int FROM markreg_matter_intelligence_reviews) AS reviews,(SELECT count(*)::int FROM core_method_outcome_evidence) AS evidence'
+      );
     expect(afterFailure.rows[0]).toEqual({ reviews: 1, evidence: 0 });
 
     const retry = await reviewRoute().handle(request());

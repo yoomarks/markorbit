@@ -55,9 +55,7 @@ function positiveInteger(row: ObservationRow, field: string): number {
   return value;
 }
 
-export class PostgresMarkRegMethodOutcomeEvidenceSourceV1
-  implements MarkRegMethodOutcomeEvidenceSourceV1
-{
+export class PostgresMarkRegMethodOutcomeEvidenceSourceV1 implements MarkRegMethodOutcomeEvidenceSourceV1 {
   constructor(private readonly query: QueryClient) {}
 
   async build(
@@ -167,9 +165,7 @@ export class PostgresMarkRegMethodOutcomeEvidenceSourceV1
   }
 }
 
-export class HttpCoreMethodOutcomeEvidenceAdmissionClientV1
-  implements MethodOutcomeEvidenceAdmissionClientV1
-{
+export class HttpCoreMethodOutcomeEvidenceAdmissionClientV1 implements MethodOutcomeEvidenceAdmissionClientV1 {
   constructor(
     private readonly coreUrl: string,
     private readonly internalServiceSecret: string,
