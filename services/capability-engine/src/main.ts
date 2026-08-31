@@ -7,6 +7,11 @@ import {
   PostgresReflectionDispositionProfileService,
   PostgresRuntimeCapabilityRegistry
 } from './index.js';
+import { ObservedManagedAiExecutionAuthorityV1 } from './capability-audit-telemetry.js';
+import {
+  createCapabilityAuditTelemetrySinkFromEnvironmentV1,
+  ObservedGovernedCapabilityRuntimeV1
+} from './capability-runtime-quality-telemetry.js';
 import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
@@ -61,17 +66,32 @@ if (milestoneFixtureMode) {
     database,
     pool
   );
-  const managedAiRuntime = createManagedAiRuntimeBindingsV1({
+  const telemetrySink = createCapabilityAuditTelemetrySinkFromEnvironmentV1(process.env);
+  const rawManagedAiRuntime = createManagedAiRuntimeBindingsV1({
     environment: process.env,
     database,
     query: pool
   });
-  const governedCapabilityRuntime = createGovernedProductionRuntimeV1({
+  const managedAiRuntime =
+    rawManagedAiRuntime && telemetrySink
+      ? {
+          ...rawManagedAiRuntime,
+          managedAiExecutor: new ObservedManagedAiExecutionAuthorityV1(
+            rawManagedAiRuntime.managedAiExecutor,
+            telemetrySink
+          )
+        }
+      : rawManagedAiRuntime;
+  const rawGovernedCapabilityRuntime = createGovernedProductionRuntimeV1({
     definitions: registry,
     implementationProfiles,
     managedAiRuntime,
     internalServiceSecret
   });
+  const governedCapabilityRuntime =
+    rawGovernedCapabilityRuntime && telemetrySink
+      ? new ObservedGovernedCapabilityRuntimeV1(rawGovernedCapabilityRuntime, telemetrySink)
+      : rawGovernedCapabilityRuntime;
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
