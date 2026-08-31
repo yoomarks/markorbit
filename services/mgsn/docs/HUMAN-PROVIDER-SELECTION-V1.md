@@ -4,6 +4,10 @@
 
 **MGSN-P0-003 / #382, parent #358.**
 
+Audited against fetched `origin/main` at `eae62894b74ed5bd50ae589b906d77eb46afa771` in the dedicated `mgsn-c` worktree. The existing #382 branch draft is retained and reconciled here; no other Lane is changed.
+
+**Implemented** refers only to the existing M4/M12/M13 source references below. All Selection semantics in this document are a **V1 Boundary / Not Implemented**; shared contracts and durable enforcement are **Future / Shared Dependency**. Contracts changed: **NONE**. Events emitted or consumed by #382: **NONE**.
+
 This document freezes the MGSN-owned boundary between a Provider Discovery candidate and any later routing, Allocation, or Controlled Handoff action.
 
 The V1 path is:
@@ -45,6 +49,7 @@ It does not implement a selection service, database, API, Gateway route, UI, or 
 The permanent MGSN authority model remains unchanged.
 
 ```text
+Capability Need != Provider Appointment
 Provider Candidate != Provider Selection
 Provider Selection != Allocation
 Eligibility != Allocation
@@ -73,7 +78,23 @@ AI must not create the selection action.
 
 Only an explicitly authorized human action may create a Provider Selection.
 
+AI must not allocate, appoint, accept on behalf of a Provider, contact a Provider, file, pay, or create Official Truth. Provider Supply Capability remains private supply-side operating truth, not user Capability verification.
+
 ## 3. Existing boundaries that Selection consumes
+
+Read-only evidence for this freeze:
+
+| Source                                                                                                                                                                                        | Reused boundary / limitation                                                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [AGENTS.md](../../../AGENTS.md) and [Network Participation & Visibility V1](NETWORK-PARTICIPATION-VISIBILITY-V1.md)                                                                           | Core owns Workspace identity; no-row participation is NOT_PARTICIPATING/PRIVATE; historical authorization is not current exposure permission.                                                                                     |
+| [Discovery boundary at PR #374 head](https://github.com/yoomarks/markorbit/blob/78e6f91a4fb5d85581245f31caa88e7b82d3d7b3/services/mgsn/docs/PROVIDER-DISCOVERY-EXPLAINABILITY-V1.md) for #371 | Reviewed from that exact PR context; not present on this base's main. Candidate-only authorized projections, separate exposure/suitability gates and exact source lineage. #382 does not merge or redefine that pending boundary. |
+| [provider-registry.ts](../src/provider-registry.ts), [provider-registry-postgres.ts](../src/provider-registry-postgres.ts)                                                                    | Existing `providerId` / `providerWorkspaceId`, ACTIVE creation, exact versions and transactional audit/replay; no human Selection or final-executor proof.                                                                        |
+| [service-package-eligibility.ts](../src/service-package-eligibility.ts)                                                                                                                       | Private candidate-supply listing and exact Service Package/Eligibility checks are not canonical Discovery candidates or human Selection.                                                                                          |
+| [allocation-provider-acceptance.ts](../src/allocation-provider-acceptance.ts), [provider-execution.ts](../../../packages/contracts/src/provider-execution.ts)                                 | Allocation is an explicit operational decision; Provider Acceptance uses authenticated Provider Workspace identity and exact Allocation lineage. Neither supplies the missing Selection record.                                   |
+| [http.ts](../src/http.ts), [http-boundary.test.ts](../tests/http-boundary.test.ts)                                                                                                            | Trusted internal Principal, permissions, Workspace isolation and idempotency patterns; existing `execution:manage` is not by itself a new Selection permission or evidence of human confirmation.                                 |
+| [M12 matching](../../lite/src/trademark-service-candidate-matching.ts), [M13 execution](../../execution/src/trademark-service-execution.ts)                                                   | Candidate-only results and separately protected Provider handoff; no Selection runtime in either source.                                                                                                                          |
+
+The inspected [Registry](../tests/provider-registry-postgres.test.ts), [Eligibility](../tests/service-package-eligibility-postgres.test.ts) and [Allocation/Acceptance](../tests/allocation-provider-acceptance-postgres.test.ts) tests cover Core-reference isolation, stale lineage, replay, concurrent Allocation and authenticated Provider responses. They are evidence for M4 behavior, not tests of Selection enforcement. #367, #381 and #375 remain separate shared dependencies; no corresponding Selection, Discovery or responsibility contract is implemented in the audited MGSN source.
 
 Provider Selection consumes a Provider Discovery candidate.
 
@@ -99,31 +120,23 @@ Missing direct-executor proof must fail closed where that proof is required.
 
 ## 4. Selection input boundary
 
-A selection command must reference one exact discovery candidate.
+A selection command must reference exactly one canonical Discovery candidate from #381, not a Provider ID alone, list index, display name or whole Provider record. Required inputs and retained references are:
 
-The candidate reference must include or resolve to an exact discovery result version or fingerprint.
+| Input / lineage               | Required meaning                                                                                                                                                                                                                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Requester and selection scope | Trusted originating Core Workspace reference plus consumer owner, Need/work-package reference and exact source version. The scope is bounded to that Workspace and purpose; MGSN creates no second customer workflow.                                       |
+| Discovery request and result  | Exact request reference and result version/fingerprint, requester, Need version, purpose, audience/context, generation time and evaluation policy version.                                                                                                  |
+| Exact candidate               | Candidate identity and exact version/fingerprint within that result, preserving existing `providerId` and `providerWorkspaceId`. Provider Workspace is not the requester Workspace.                                                                         |
+| Exposure lineage              | Participation authorization/reference/version, visibility policy version and authorized projection/purpose/context; current Trusted relationship authority reference/version when applicable.                                                               |
+| Suitability lineage           | Exact Provider and relevant Supply IDs/versions/fingerprints, source authority, effective period and freshness bounds; relevant Capability/evidence versions; existing Eligibility/Service Package exact references only when that flow uses them.          |
+| Responsibility lineage        | Canonical #375 disclosure reference/version, evidence/attestation source, effective period and current state where direct-executor proof is required. Missing proof never defaults to true.                                                                 |
+| Human decision                | Affirmative confirmation bound to the reviewed candidate, scope and source versions; acknowledgement that Selection does not appoint, contact, allocate or bind the Provider. Optional bounded rationale/reason code cannot carry private customer content. |
+| Trusted attribution           | Authenticated selecting user/Principal, current Workspace membership and Selection authority basis, and service-recorded `selectedAt`. A payload timestamp or actor label is not authority.                                                                 |
+| Mutation control              | Mandatory idempotency key, correlation reference and expected current selection/scope version (or explicit absence for first creation). Replacement/revocation targets exact Selection ID/version.                                                          |
 
-The selection must identify the originating requester Workspace through trusted Principal or session context.
+Selection retains bounded exact references, not copies of source objects, customer documents or raw evidence. Immutable canonical source references may resolve this lineage instead of duplicating it; unresolved or contradictory mandatory lineage denies Selection.
 
-The selecting actor identity must come from trusted authentication context.
-
-The service must not trust a request-body `selectedBy` value as authority.
-
-The selection scope must reference the consumer-owned Need or work-package scope.
-
-MGSN must not create a second customer workflow object merely to store Selection.
-
-The command must identify the chosen Provider through the candidate lineage.
-
-The command must include an explicit human confirmation.
-
-The command must include an acknowledgement that Selection does not appoint, contact, allocate, or bind the Provider.
-
-The command may include a bounded human rationale or reason code.
-
-The command must include an idempotency key and correlation reference when the canonical shared contract supports them.
-
-The command must not contain raw end-client contact, originating margin, unrelated customer data, or copied evidence artifacts.
+**Trusted actor rule:** authenticate and authorize before private candidate reads or replay. Resolve current user, Workspace and membership through the existing Core/Principal boundary. A payload actor reference describes a claim; only the trusted authenticated Principal can authorize Selection. Reject a mismatched/spoofed `selectedBy`, actor or Workspace claim even if the caller otherwise has permission. Do not act as the named user, silently accept the mismatch or infer consent from a service credential. Permission is necessary but not sufficient: the affirmative human action must also be established. The shared API must define the Selection permission mapping; this document grants no new role authority.
 
 ## 5. Explicit human action
 
@@ -144,6 +157,8 @@ A previous selection for another Need does not select a candidate for the curren
 A system retry may replay an already committed selection idempotently.
 
 A system retry may not create a new selection from an uncommitted recommendation.
+
+Highest score, first/only/cheapest candidate, previous success, previous Allocation, automatic workflow progression, Eligibility, Provider ACTIVE, network participation, payment and prior Provider Return are never affirmative human actions. A payload `humanConfirmed = true` alone cannot prove one; the authenticated action must be attributable to the human and bound to the exact reviewed candidate/scope. If refreshed evidence changes that candidate or its decision-relevant lineage, return it for new human review rather than silently moving the confirmation to a new version.
 
 ## 6. One current selection per V1 scope
 
@@ -190,6 +205,16 @@ A revoked selection remains historical evidence and cannot authorize a new hando
 A revoked selection cannot be resumed by changing Provider operational state, participation state, or visibility policy.
 
 A new choice after revocation creates a new Selection authority record.
+
+| From                  | Authorized action                                                                                   | Result                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| No Selection in scope | Human confirms exact candidate; current checks pass; expected absence matches                       | New CURRENT Selection. Absence creates no choice.                                                                                 |
+| CURRENT               | Human confirms a replacement after review; expected current ID/version matches; current checks pass | Atomically append old SUPERSEDED transition and create a new CURRENT record. A second candidate never leaves two current choices. |
+| CURRENT               | Authorized human explicitly revokes the exact current ID/version                                    | REVOKED; no replacement or downstream authority. Revocation does not require the candidate to remain eligible/visible.            |
+| SUPERSEDED or REVOKED | Attempt to resume/reuse old record                                                                  | Deny. A new human choice creates a new record after full current validation.                                                      |
+| Any                   | Exact committed action replay with current caller authorization                                     | Same historical action result; no new transition and no claim of present usability.                                               |
+
+All unspecified lifecycle transitions are denied. The original decision, timestamps, acknowledgement and audit entries are immutable. Later status transitions append attributable history and update only the current-state projection; they do not overwrite the original choice. A failed replacement leaves the prior lifecycle state unchanged, without implying that it still passes current usability checks. A separate explicit reconfirmation of the same Provider is a new decision, not a replay; it must name current candidate lineage and may supersede the previous record.
 
 ## 8. Record state is separate from current usability
 
@@ -247,6 +272,12 @@ If any mandatory current authority cannot be verified, the selection must fail c
 
 A stale positive discovery cache is not sufficient selection authority.
 
+Revalidation must verify the exact candidate/source tuple in section 4 against authoritative owner contracts, not merely accept cached `current`/`operational` flags. No-row participation, PRIVATE or insufficient field/purpose/audience grants, archived/missing Core Workspace, inactive membership, Provider SUSPENDED/INACTIVE, expired effective periods, mismatched versions/fingerprints and unavailable authority dependencies all deny creation of a current usable Selection.
+
+The selection policy must name its version and source freshness bounds; unknown freshness is not unlimited validity. Required Supply/eligibility facts include jurisdiction, service type, applicable effective period and operational constraints. An M4 Eligibility record is required only where the flow actually consumes one: do not create a Service Package or Eligibility evaluation merely to make pre-Allocation Selection exist. Its absence is not a fabricated ELIGIBLE result. Mandatory unknowns fail closed; optional limitations remain explicit and cannot be promoted to positive evidence.
+
+Recheck authoritative versions at the decision/commit boundary. If a concurrent pause, revoke, contraction or source revision invalidates the reviewed tuple, reject or require fresh review; do not commit a usable choice from a prior positive read. This is a later bounded owner-contract/persistence requirement, not permission for cross-service SQL.
+
 ## 10. Handoff-time revalidation
 
 A `CURRENT` selection is not a durable permit to hand off data forever.
@@ -269,6 +300,8 @@ The later protected-action path must independently authorize external contact or
 
 Historical Selection alone cannot bypass those controls.
 
+Handoff-time validation must also verify the consuming actor's current authority for the originating Workspace, exact current Need/scope and applicable Supply/eligibility/effective-period facts. A successful validation is purpose-, requester- and version-bound evidence for that attempted review, not a reusable protected-action permit. A validation-to-use race must fail closed or be revalidated at consumption. Supersession/revocation affects future reliance; it does not cancel, rewrite or reverse any already separately authorized M4/M13 action.
+
 ## 11. Visibility withdrawal after selection
 
 Selection does not freeze a Provider's visibility grant.
@@ -284,6 +317,8 @@ A separately valid already-existing collaboration obligation may have its own au
 That separate authority must be evaluated independently.
 
 The withdrawn discovery grant cannot be reused as the authority for a new collaboration action.
+
+#382 grants no existing-collaboration exception to Selection creation or consumption. If another action claims a separate existing-collaboration authority, its owner must establish it in a later scoped contract; neither this document nor a Selection record invents it. Historical Selection reads and audit/evidence dereferences remain permission-controlled and must not republish withdrawn Provider projections.
 
 ## 12. Selection authority consequences
 
@@ -304,6 +339,7 @@ providerAccepted = false
 providerEngaged = false
 professionalAppointmentCreated = false
 externalContactAuthorized = false
+protectedActionReleased = false
 servicePackageCreated = false
 filingAuthorized = false
 filingSubmitted = false
@@ -379,6 +415,13 @@ That validation must not allow M13 to create or rewrite Selection.
 
 The protected-action release still needs its own user authority and evidence.
 
+```text
+Human Selection != M13 release
+M13 release != Provider Acceptance
+```
+
+Current M13 `createTrademarkServiceProviderHandoff` preserves `targetOwner = MGSN`, `providerEngagementCreatedByExecution = false` and `providerAcceptanceCreatedByExecution = false`. Selection changes none of these. M12 matching continues to return `providerEngagedByLite = false`, `providerSelectedByLite = false`, `servicePackageSelectedByLite = false` and `protectedActionAuthorized = false`; recording a separate MGSN Selection must not mutate the historical candidate's false consequences.
+
 ## 17. Privacy model
 
 Selection stores bounded references and audit evidence.
@@ -398,6 +441,8 @@ It may retain selection time, reason code, bounded rationale, correlation, and i
 It may retain current and historical lifecycle versions.
 
 It must not retain end-client contacts merely because they existed in the consumer workflow.
+
+This includes client email, phone and CRM details. Rationale, acknowledgements, audit metadata and reference labels are subject to the same restrictions; free text is not a privacy bypass. Raw private evidence artifacts are excluded even when the actor can view them elsewhere.
 
 It must not retain the Originating Workplace's quote, margin, or profit.
 
@@ -439,306 +484,132 @@ A legally required distinct signer or filing entity must be transparently disclo
 
 Transparent legal necessity is not the same as hidden rebrokering.
 
+```text
+Allowed: Originating Workplace → MGSN → Final Execution Provider
+Denied:  Originating Workplace → Broker → Sub-agent → Final Provider
+```
+
+The requirement for proof comes from the authoritative flow/policy, not an optional caller flag. Unknown, stale, suspended, revoked or prohibited/rebrokering disclosure cannot satisfy that requirement. #375 must establish final-executor status, direct responsibility, no-rebrokering state and any required distinct signer, with current source evidence; #382 must not infer these from existing Registry fields.
+
 ## 20. Idempotency and concurrency
 
-Selection creation must be idempotent.
+All Selection mutations require idempotency and exact expected versions. Scope keys include the originating Workspace and consumer-owned selection scope; request fingerprints bind the action, exact candidate/source tuple, acknowledgement, actor and authority basis. The same authorized committed action replays once; a different candidate, scope, actor or payload under the same key is a conflict.
 
-The same idempotency key with the same exact request may replay the same Selection result.
+Authenticate and check current caller access before replay. Return the original historical action result without asserting current usability or restoring any prior status. No new decision, supersession, revocation or audit mutation is created by replay. An uncommitted recommendation is not replayable human authority.
 
-The same idempotency key with a different candidate, scope, actor authority, or payload must fail with conflict.
+At most one CURRENT Selection may exist for a V1 Workspace/scope. First creation asserts absence; replacement names the expected current Selection ID/version and scope version. Revoke names the exact current Selection. Commit the new record, prior SUPERSEDED transition, scope version, command result and privacy-safe audit atomically. Do not promote an old SUPERSEDED/REVOKED record back to CURRENT.
 
-Two concurrent attempts to create different current Selections for the same V1 scope must not leave two current winners.
-
-The persistence contract must enforce one current Selection per V1 selection scope.
-
-A valid supersession must atomically create or promote the new current Selection and retire the previous current Selection as historical `SUPERSEDED`.
-
-A concurrent revoke must not be lost behind a stale supersession request.
-
-Exact expected versions or equivalent optimistic concurrency semantics are required.
-
-Historical idempotent replay cannot undo revocation or supersession.
+Concurrent replacement/revoke or competing choices must serialize or reject stale expected versions; they cannot lose a revocation or leave two current choices. Rejected revalidation/transaction failure creates no partial Selection authority and does not supersede the prior record. Its continuing usability still requires current checks. These are future persistence requirements, not a distributed transaction or Execution workflow designed in #382.
 
 ## 21. Audit and provenance
 
-Every Selection mutation must be attributable.
+Every mutation must establish the originating Workspace, consumer-owned scope, trusted actor/authority basis, affirmative human action and acknowledgement, exact Discovery request/result/candidate, relevant source versions/fingerprints and validation policy/time, previous/new lifecycle state and versions, bounded reason, service-recorded occurrence/selection time, correlation, idempotency and supersession/revocation references.
 
-A future durable record must establish the requester Workspace.
-
-It must establish the trusted selecting actor and authority basis.
-
-It must establish the selection scope.
-
-It must establish the exact discovery result and candidate lineage.
-
-It must establish relevant source versions or fingerprints.
-
-It must establish previous and new Selection state.
-
-It must establish reason or bounded rationale.
-
-It must establish authorization or acknowledgement references where required.
-
-It must establish correlation, idempotency, and mutation time.
-
-It must preserve supersession and revocation lineage.
-
-The audit record must remain privacy-safe.
-
-Historical audit must never reactivate a Selection.
+Preserve the original human choice and append-only mutation evidence. Selected-at time belongs to the committed decision; later updates and replay do not rewrite it. Audit retention is private and permission-controlled, not a rediscovery channel or a permit to dereference private evidence. Do not store raw Provider/Supply records or customer content in audit, rationale or reference labels. Retention never reactivates authority.
 
 ## 22. Negative acceptance cases
 
-AI recommends a Provider but no human confirms.
+These are required future contract/runtime acceptance cases, not tests of an implemented Selection service in #382.
 
-Required result: no Selection.
+| Case                                                                                                                                 | Required result                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| AI recommends Provider A; human has not confirmed                                                                                    | No Selection. AI cannot execute the decision.                                                                                        |
+| Highest score, first/only/cheapest candidate, prior success, Allocation or Provider Return                                           | No Selection by inference; affirmative review/confirmation required.                                                                 |
+| Eligibility, Provider ACTIVE, participation, payment or automatic workflow transition                                                | No Selection by inference.                                                                                                           |
+| Candidate/result identity or source version/fingerprint is stale/mismatched                                                          | Do not create a current usable Selection; refresh and obtain human confirmation for changed decision-relevant lineage.               |
+| Candidate belongs to another requester, Need or scope                                                                                | Reject; do not disclose private candidate state.                                                                                     |
+| Participation NOT_PARTICIPATING/no-row, PAUSED or REVOKED                                                                            | Deny creation/use based on network authority, including cached positive candidates.                                                  |
+| Visibility contracted/withdrawn or entirely PRIVATE for this requester/purpose                                                       | Historical candidate/Selection does not restore exposure or handoff authority.                                                       |
+| Required TRUSTED relationship evidence missing/stale                                                                                 | Deny creation/use.                                                                                                                   |
+| Wrong Workspace Principal, archived Workspace, expired session or inactive membership                                                | Reject before private state disclosure or mutation.                                                                                  |
+| Payload spoofs another actor/selectedBy or Workspace, even for an otherwise privileged caller                                        | Reject the mismatch; do not ignore it and accept the action as authorized.                                                           |
+| Service credential or payload human-confirmation flag without an attributable human action                                           | No Selection. Authentication/permissions alone are insufficient.                                                                     |
+| Provider SUSPENDED/INACTIVE or relevant Supply/eligibility/effective-period facts fail                                               | Do not create/use a current usable Selection.                                                                                        |
+| Direct-executor proof required but unknown/missing/stale/revoked; hidden broker chain                                                | Fail closed through #375 dependency; never default to proven.                                                                        |
+| A distinct signer is legally required                                                                                                | Require current transparent disclosure; do not silently treat it as proof or as hidden rebrokering.                                  |
+| Authority source unavailable or freshness bounds unknown                                                                             | Deny current usable Selection; no permissive cache fallback.                                                                         |
+| Same exact committed human action replayed idempotently                                                                              | Same historical result, no duplicate conflicting authority record; revalidate before any future use.                                 |
+| Same key reused with changed candidate, actor, scope or payload                                                                      | Conflict, no mutation.                                                                                                               |
+| User affirmatively selects a second valid candidate for the same scope                                                               | Atomically supersede prior CURRENT Selection using exact expected versions; retain immutable choice history.                         |
+| Concurrent choices, replacement/revoke, or source/visibility change between check and use                                            | At most one CURRENT record; reject stale mutations/revalidate consumption; no lost revocation or stale usable choice.                |
+| Selection SUPERSEDED or REVOKED; an old create action is replayed                                                                    | Cannot be consumed as current authority; replay cannot restore it.                                                                   |
+| CURRENT Selection whose current authority has since changed                                                                          | Preserve historical choice but deny downstream use; CURRENT alone is insufficient.                                                   |
+| Valid Selection exists                                                                                                               | Allocation remains not created by Selection; existing M4 history is unchanged.                                                       |
+| Valid Selection exists                                                                                                               | Provider Acceptance and engagement remain not created; appointment remains false.                                                    |
+| Valid Selection exists                                                                                                               | External Provider contact and M13 protected-action release remain unauthorized by Selection.                                         |
+| Valid Selection exists                                                                                                               | Filing authorization/submission, Payment authorization/creation and Official Truth remain false.                                     |
+| Client email/phone/CRM, quote/margin/profit, unrelated data, Applicant/Owner details or raw evidence supplied in Selection/rationale | Reject prohibited content; no copying into decision/audit or generic Provider exposure.                                              |
+| Human revokes after candidate visibility or suitability is lost                                                                      | Permit withdrawal with current actor/scope authority and exact Selection version; no positive candidate validation needed to revoke. |
 
-The UI displays one candidate first.
+## 23. Controlled Handoff boundary
 
-Required result: display order does not create Selection.
+A future Controlled Handoff consumes a currently valid Selection plus separate purpose, data-class, permission, expiry/revocation and privacy authorization. Selection cannot supply that envelope or authorize Provider instruction/contact. Handoff must independently respect current actor, Provider and direct-executor authority and preserve the M13 protected-action gate and M4 Allocation boundary.
 
-The user previously selected the Provider for another Need.
+No existing-collaboration exception or complete Handoff contract is created here. A later separately authorized action and any cancellation/obligation it creates remain owned by that later boundary.
 
-Required result: no Selection for the current scope.
+## 24. Explicit non-goals
 
-The candidate is stale.
+No Selection runtime/API/database/migration, Gateway endpoint, UI, Provider Discovery runtime, Controlled Handoff or Provider Workspace implementation. No shared contract, migration ownership, root CI/config or lockfile changes. No Core, Lite, Execution, Capability, Payment or MarkReg edits.
 
-Required result: reject or require current reevaluation before Selection.
+No change to M4 Provider Registry, Supply, Service Package, Eligibility, Allocation, Acceptance, Return or Evidence Handoff. No second identity/Provider/Capability/Execution system; no Provider engagement, live contact, production credentials/egress, ranking algorithm, universal score, marketplace or bidding. No filing, payment or Official Truth.
 
-Participation is PAUSED.
+#382 stops at the MGSN-owned boundary PR, validation/review evidence and the dependency request below; it does not implement the dependencies.
 
-Required result: deny a new Selection based on network exposure.
-
-Participation is REVOKED.
-
-Required result: deny a new Selection based on the revoked network authority.
-
-Visibility has been contracted since candidate generation.
-
-Required result: stale candidate exposure cannot create a new Selection.
-
-TRUSTED authority is no longer current.
-
-Required result: deny the Selection where the candidate depended on that authority.
-
-Provider operational state is incompatible.
-
-Required result: deny the Selection as currently usable.
-
-Required Supply source is stale or incompatible.
-
-Required result: deny current Selection creation until reevaluated.
-
-Direct-executor proof is required but missing.
-
-Required result: fail closed.
-
-The request body supplies another user's `selectedBy` identity.
-
-Required result: ignore payload identity and deny unless trusted Principal authority independently permits the action.
-
-A user without authority for the requester Workspace submits a Selection.
-
-Required result: deny without disclosing private candidate state.
-
-The same idempotency key is replayed with the same payload.
-
-Required result: return the same committed Selection result.
-
-The same idempotency key is replayed with a different Provider.
-
-Required result: conflict.
-
-Two users concurrently select different Providers for the same V1 scope.
-
-Required result: exact concurrency rules leave at most one `CURRENT` Selection.
-
-A Selection is `SUPERSEDED`.
-
-Required result: it cannot authorize a new handoff.
-
-A Selection is `REVOKED`.
-
-Required result: it cannot authorize a new handoff.
-
-A `CURRENT` Selection references a Provider whose current authority has changed.
-
-Required result: preserve historical Selection but fail current handoff validation.
-
-A current Selection exists.
-
-Required result: no automatic Allocation, Acceptance, appointment, external contact, filing, payment, or Official Truth.
-
-## 23. Shared Dependency Request: Human Provider Selection V1 contract
+## 25. Shared Dependency Request: Human Provider Selection V1
 
 ### Goal
 
-Create a canonical cross-lane Human Provider Selection contract that preserves explicit human authority and separates Selection from Candidate, Allocation, Acceptance, appointment, and protected action.
+Implement the minimum canonical Human Provider Selection contract and, in separately scoped Integration work, MGSN-owned persistence and authenticated management wiring. Preserve explicit human choice between Candidate and later Controlled Handoff/Allocation.
 
 ### Why
 
-MGSN owns the Provider Selection truth, but Discovery candidates and later Controlled Handoff or Execution references cross product boundaries.
-
-A shared contract is required so consumers cannot infer stronger authority from the Selection record.
+Current M4 contains operational Allocation and Provider Acceptance, not an independent Selection authority record. #382 freezes Selection semantics but cannot safely create cross-lane types, migrations/ownership registration or trusted Gateway wiring under MGSN-owned paths alone. Existing Discovery, participation and direct-executor dependencies must be consumed rather than duplicated.
 
 ### Producer
 
-MGSN.
+MGSN owns Selection decisions, lifecycle, validation and privacy-safe provenance. Core remains authoritative for authenticated user/Workspace membership; the originating consumer owns the Need/work-package scope. Reuse existing `providerId` / `providerWorkspaceId`, distinct from originating `workspaceId`; no second identity registry or cross-service SQL.
 
-### Consumers
+### Consumer
 
-Future Controlled Handoff is a consumer.
+Future Controlled Handoff consumes currently valid Selection references with separate privacy/action authorization. A later MGSN adapter for human-choice Allocation flows may require a Selection without redefining M4. Execution M13 may validate matching Provider/Selection references through a separately authorized integration; it does not create Selection. Lite/Workplace surfaces may display authorized Selection state without owning it or changing M12 candidate consequences.
 
-A future MGSN Allocation adapter for human-choice flows may consume the Selection reference without changing M4 Allocation semantics.
+### Proposed Contract
 
-Execution M13 may later validate a matching Provider reference through a separate integration boundary.
+Names below are proposals; reuse shared primitives and accepted dependency contracts rather than adding equivalent parallel types.
 
-Lite or another Workplace UI may consume Selection state for display without becoming the owner of Selection truth.
+| Concept                                  | Minimum semantics                                                                                                                                                                                                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ProviderSelection` and identifier       | One exact human choice; originating Workspace, consumer-owned selection scope, chosen existing Provider, trusted actor/authority, service-recorded selectedAt, human acknowledgement, bounded rationale, source lineage, version and lifecycle. No whole-record snapshot. |
+| `ProviderSelectionStatus`                | CURRENT / SUPERSEDED / REVOKED; original decision/audit immutable, latest projection distinct from current usability.                                                                                                                                                     |
+| `ProviderSelectionSourceLineage`         | Section 4 exact Discovery request/result/candidate and relevant owner/source versions, fingerprints, freshness/effective periods, purpose/context and human-reviewed scope. Reuse #381 references; do not define a second Discovery candidate.                            |
+| `ProviderSelectionAuthorityConsequences` | Only explicit human selection recorded; all section 12 downstream consequences false, including engagement, protected-action release and external contact. Do not rewrite historical candidate consequences.                                                              |
+| Selection mutation command               | Create/replace/revoke semantics with trusted actor context, mandatory idempotency/correlation, exact expected current ID/version or absence and explicit acknowledgement. Replacement uses the creation path with expected prior reference, not a separate workflow.      |
+| Selection validation result              | Lifecycle plus current usable/denied result, purpose/requester, exact versions, validation policy/time and privacy-safe reason. No reusable permit or extra persisted Execution lifecycle.                                                                                |
 
-### Contract
+Consume [#367](https://github.com/yoomarks/markorbit/issues/367) for participation/visibility, [#381](https://github.com/yoomarks/markorbit/issues/381) for Discovery candidate lineage, and [#375](https://github.com/yoomarks/markorbit/issues/375) for direct-executor evidence. Missing required authority/proof denies runtime use; it does not block the #382 documentation freeze.
 
-Minimum proposed concepts are:
+### Requested Paths
 
-```text
-ProviderSelectionId
-ProviderSelectionState
-ProviderSelectionScopeReference
-ProviderDiscoveryCandidateReference
-ProviderSelectionSourceSnapshot
-ProviderSelection
-ProviderSelectionValidationResult
-CreateProviderSelectionCommand
-SupersedeProviderSelectionCommand
-RevokeProviderSelectionCommand
-ProviderSelectionAuthorityConsequences
-```
+- `packages/contracts/**`: Selection vocabulary/exports and fixtures, composed with the canonical dependency references.
+- `infrastructure/persistence/**`: separately authorized MGSN migration and ownership-map registration, owned by `@markorbit/mgsn-service`. Guarantee one current Selection per Workspace/scope, exact versions, idempotency conflicts/replay, atomic replacement/revoke/audit, restart durability and immutable history. No backfill from Allocations, recommendations, active Providers or prior work.
+- `apps/gateway/**`: separately scoped authenticated read/create-or-replace/revoke management wiring and negative authorization tests. Resolve Core session/Workspace Principal, define explicit Selection permissions, reject spoofed actor/Workspace claims, require applicable CSRF/origin checks and idempotency, and forward trusted context to MGSN. Reuse existing Core contracts; any additional Core/consumer change requires its own scope authorization.
 
-`ProviderSelectionState` must preserve semantics equivalent to:
-
-```text
-CURRENT
-SUPERSEDED
-REVOKED
-```
-
-The contract must keep current usability separate from lifecycle history.
-
-The contract must reference exact discovery candidate and source lineage.
-
-The actor must come from trusted Principal context at runtime rather than an untrusted payload field.
-
-The contract must support exact versions, idempotency, correlation, and bounded human rationale.
-
-The authority consequences must explicitly remain false for Allocation, Acceptance, appointment, external contact, filing, payment, and Official Truth.
-
-### Requested paths
-
-The shared contract belongs under:
-
-```text
-packages/contracts/**
-```
-
-Durable Selection persistence and migration ownership will require a separate Integration issue under:
-
-```text
-infrastructure/persistence/**
-```
-
-Authenticated Gateway or consumer wiring must remain separately scoped.
+Later runtime/repository tests belong under `services/mgsn/**` after these contracts are accepted. No public Selection/Discovery endpoint, live Provider contact or consumer/UI implementation is requested as part of the shared contract change. No Shared Zone path is edited by #382.
 
 ### Compatibility
 
-The contract must preserve #371 Candidate semantics.
-
-It must preserve #359 participation and visibility semantics.
-
-It must preserve #375 direct-executor responsibility as a separate source of evidence.
-
-It must not change M4 Allocation, Acceptance, or Return contracts.
-
-It must not create a second Provider Registry, Workspace identity, Capability Engine, or Execution workflow.
-
-It must preserve M13 as a separate protected-action boundary.
+Preserve #359/#367 Private First participation and visibility, #371/#381 candidate-only authorized projections, and #375 independent responsibility evidence. Missing participation or unknown proof never establishes a positive decision. M4 Allocation and authenticated Provider Acceptance remain separate; an existing Allocation is not a historical human Selection. M13 release remains separately protected and does not imply Acceptance. M12 retains its four false candidate consequences. Selection never expands visibility, permits customer exposure or verifies user Capability.
 
 ### Acceptance
 
-Shared fixtures must prove Candidate is not Selection.
+Contract fixtures must cover the exact lineage, status/usability distinction, human acknowledgement/trusted actor and all false consequences. Future MGSN unit/HTTP/PostgreSQL checks must cover section 22, especially payload spoofing despite privilege, wrong Workspace, stale/missing authority, visibility withdrawal, missing direct-executor proof, idempotent historical replay and concurrent replacement/revoke with one-current-per-scope enforcement.
 
-Shared fixtures must prove Selection is not Allocation.
-
-Shared fixtures must prove Selection is not Acceptance or appointment.
-
-The contract must represent exact candidate lineage and current-validation requirements.
-
-The contract must represent supersession and revocation without destructive history mutation.
-
-The contract must support one current Selection per V1 selection scope.
-
-The consequence fixture must create no protected external action.
-
-Exact-head CI must be green.
+Prove denied revalidation leaves no partial choice/supersession; revocation remains available when candidate exposure is withdrawn; cached validation cannot authorize stale downstream use; no private data leaks through errors, reasons or references. Migration/restart tests must prove existing M4 data remains intact, zero inferred/backfilled Selections and retained revocation/supersession history. Required affected-scope and exact-head hosted CI must pass.
 
 ### Risk
 
-The primary risk is using the existing M4 Allocation object as a shortcut for Human Selection.
+Primary risks are reinterpreting Allocation as Selection, trusting payload actor/confirmation as human authority, and treating historical CURRENT/replay as durable permission after privacy or source changes. Further risks are source-check/use races, lost revocation, two concurrent current choices, raw customer content in rationale/audit and assuming existing Providers are direct executors. Mitigate with bounded canonical references, trusted affirmative action, exact versions, atomic local writes, current owner revalidation and fail-closed unknowns; do not weaken permanent invariants or introduce cross-service SQL.
 
-That would erase the permanent Candidate-to-Selection-to-Allocation authority separation.
+### Blocked MGSN work
 
-Another risk is treating a historical Selection as durable permission after participation, visibility, Provider, or direct-executor authority changes.
-
-## 24. Future persistence dependency
-
-Selection requires durable MGSN-owned state after the shared contract is accepted.
-
-The persistence owner should remain `@markorbit/mgsn-service`.
-
-No migration is implemented in #382.
-
-A later migration must not derive or backfill Selections from existing Allocations.
-
-Existing M4 Allocations must not become historical Human Selections by migration.
-
-The migration must preserve one-current-selection-per-scope semantics, exact versions, idempotency replay, supersession, revocation, and privacy-safe audit.
-
-## 25. Controlled Handoff boundary
-
-Controlled Handoff is the next separate authority boundary after Selection.
-
-It must consume a currently valid Selection.
-
-It must separately define purpose, scope, data classes, permissions, expiry, revocation, and audit.
-
-It must enforce data minimization and customer-relationship protection.
-
-It must revalidate direct-executor and current Provider authority where required.
-
-It must remain separate from M13 protected external action and from M4 Allocation.
-
-This document does not freeze the complete Handoff contract.
-
-## 26. Explicit non-goals
-
-No Selection runtime is implemented here.
-
-No Selection HTTP API is implemented here.
-
-No Selection database or migration is implemented here.
-
-No Gateway route is implemented here.
-
-No shared contract is edited here.
-
-No Core, Lite, Execution, Capability, Payment, or MarkReg code is edited here.
-
-No Allocation, Acceptance, or Return behavior is changed here.
-
-No Controlled Handoff runtime is implemented here.
-
-No Provider engagement or live contact is authorized here.
-
-No ranking score, marketplace, or bidding system is created here.
-
-No filing, payment, or Official Truth is created here.
-
-#382 stops at an accepted MGSN-owned Selection boundary and a precise Shared Dependency Request.
+This request blocks durable Selection runtime/API and cross-lane Selection consumption, not this boundary freeze. #367/#381/#375 and later authorized persistence/Gateway work must supply current authority and exact lineage before runtime can make a usable Selection. Controlled Handoff and M13/Allocation integration require their own protected-purpose contracts and authorization. No dependent implementation or next issue is started by #382.
