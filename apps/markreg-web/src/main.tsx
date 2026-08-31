@@ -4,6 +4,7 @@ import './markreg.css';
 import { MarkregApp } from './App.js';
 import { MarkregAccountEntry } from './AccountEntry.js';
 import { GovernedRouteEntry } from './routing/GovernedRouteEntry.js';
+import { MarkregWorkspaceHome } from './WorkspaceHome.js';
 const root = document.querySelector('#root');
 if (!root) throw new Error('Root element missing');
 const parameters = new URLSearchParams(window.location.search);
@@ -14,6 +15,6 @@ createRoot(root).render(
   ) : fixtureEntry ? (
     <MarkregApp />
   ) : (
-    <MarkregAccountEntry />
+    <MarkregAccountEntry renderProduct={() => <MarkregWorkspaceHome />} />
   )
 );

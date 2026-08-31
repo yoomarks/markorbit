@@ -13,6 +13,45 @@
   overflow-wrap: anywhere;
 }
 
+.markreg-workspace-home {
+  display: grid;
+  gap: var(--mo-space-lg);
+  min-width: 0;
+  max-width: 72rem;
+  margin: auto;
+  padding: var(--mo-space-lg);
+}
+.markreg-workspace-home .mo-card,
+.markreg-workspace-home dd,
+.markreg-workspace-home li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.markreg-workspace-list {
+  display: grid;
+  gap: var(--mo-space-md);
+}
+.markreg-workspace-primary-actions,
+.markreg-workspace-order-actions,
+.markreg-workspace-pagination,
+.markreg-workspace-planning-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mo-space-md);
+}
+.markreg-workspace-order-actions a {
+  font-weight: 700;
+}
+.markreg-workspace-pagination {
+  justify-content: space-between;
+}
+.markreg-workspace-planning-nav {
+  max-width: 72rem;
+  margin: auto;
+  padding: var(--mo-space-lg) var(--mo-space-lg) 0;
+}
+
 .confirmation-matter-flow,
 .matter-draft-layout,
 .readiness-check-list,
@@ -58,6 +97,15 @@
   letter-spacing: 0.05em;
 }
 @media (max-width: 640px) {
+  .markreg-workspace-home {
+    padding: var(--mo-space-md);
+  }
+  .markreg-workspace-pagination {
+    justify-content: flex-start;
+  }
+  .markreg-workspace-planning-nav {
+    padding: var(--mo-space-md) var(--mo-space-md) 0;
+  }
   .preparation-workspace {
     padding: var(--mo-space-md);
   }

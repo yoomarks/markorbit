@@ -18,6 +18,7 @@ import {
   type PostgresProductConversionAnalyticsStore
 } from './conversion-analytics.js';
 import { DailyOrbitError, type DailyOrbitService } from './daily-orbit.js';
+import { ContentStudioError, type PostgresContentStudioReader } from './content-studio.js';
 import { DailySignalImportError, type PostgresLiteDailySignalStore } from './daily-signal.js';
 import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
@@ -132,6 +133,7 @@ function planOf(value: unknown): PreparedActionPlan {
 
 function mapError(error: unknown): never {
   if (
+    error instanceof ContentStudioError ||
     error instanceof PreparedActionJourneyError ||
     error instanceof LiteCandidateQualificationError ||
     error instanceof ProductLoopFeedbackError ||
@@ -147,6 +149,63 @@ function mapError(error: unknown): never {
       'details' in error ? error.details : undefined
     );
   throw error;
+}
+
+export function createContentStudioRoutes(
+  options: Readonly<{
+    internalServiceSecret: string;
+    reader: Pick<PostgresContentStudioReader, 'list' | 'find'>;
+  }>
+): JsonRoute[] {
+  return [
+    {
+      method: 'GET',
+      path: '/v1/content-studio/works',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        const { limit, after } = request.query;
+        if (Object.keys(request.query).some((key) => key !== 'limit' && key !== 'after'))
+          throw new HttpError(400, 'INVALID_REQUEST', 'Only limit and after are supported.');
+        if (limit !== undefined && !/^[1-9]\d*$/u.test(limit))
+          throw new HttpError(400, 'INVALID_REQUEST', 'limit must be a positive integer.');
+        try {
+          return json(
+            200,
+            await options.reader.list(principal.workspaceId, {
+              ...(limit === undefined ? {} : { limit: Number(limit) }),
+              ...(after === undefined ? {} : { after })
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/content-studio/works/:contentOpportunityId',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        if (Object.keys(request.query).length)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Detail always reads the current Opportunity version.'
+          );
+        try {
+          return json(
+            200,
+            await options.reader.find(
+              principal.workspaceId,
+              request.params.contentOpportunityId ?? ''
+            )
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    }
+  ];
 }
 
 export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions): JsonRoute[] {
