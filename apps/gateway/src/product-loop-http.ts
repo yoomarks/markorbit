@@ -186,6 +186,9 @@ export function createGatewayProductLoopRoutes(
           ...(request.headers['x-correlation-id']
             ? { 'x-correlation-id': request.headers['x-correlation-id'] }
             : {}),
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {}),
           ...(request.headers['idempotency-key']
             ? { 'idempotency-key': request.headers['idempotency-key'] }
             : {})
@@ -263,6 +266,19 @@ export function createGatewayProductLoopRoutes(
     route('GET', '/api/lite/today', ['workspace:read'], false),
     route('GET', '/api/lite/daily-orbit', ['workspace:read'], false),
     route('GET', '/api/lite/daily-workspace', ['workspace:read'], false),
+    route('GET', '/api/lite/opportunity-candidates', ['workspace:read'], false),
+    route(
+      'GET',
+      '/api/lite/opportunity-candidates/:opportunityCandidateId',
+      ['workspace:read'],
+      false
+    ),
+    route(
+      'GET',
+      '/api/lite/opportunity-candidates/:opportunityCandidateId/qualification',
+      ['workspace:read'],
+      false
+    ),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], false),
     {
       method: 'GET',
