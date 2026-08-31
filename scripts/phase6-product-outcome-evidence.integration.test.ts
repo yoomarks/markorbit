@@ -2,11 +2,14 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   encodeInternalWorkspacePrincipal,
-  type FormalMatterId,
   type WorkspacePrincipal
-} from '@markorbit/contracts';
-import { CN_DURATION_BAND_ACCEPTED_DATASET_REF } from '@markorbit/contracts/brain-cn-duration-band-classification';
-import { loadMigrationsForOwner, ManagedDatabase, migrate } from '@markorbit/persistence';
+} from '../packages/contracts/src/auth.js';
+import { CN_DURATION_BAND_ACCEPTED_DATASET_REF } from '../packages/contracts/src/brain-cn-duration-band-classification.js';
+import {
+  loadMigrationsForOwner,
+  ManagedDatabase,
+  migrate
+} from '../packages/persistence/src/index.js';
 import {
   MethodOutcomeEvidenceAdmissionServiceV1,
   PostgresMethodOutcomeEvidenceAdmissionRepositoryV1
@@ -44,7 +47,7 @@ if (required && !url)
 const suite = url ? describe : describe.skip;
 const workspaceId = '77777777-7777-4777-8777-777777777777';
 const otherWorkspaceId = '88888888-8888-4888-8888-888888888888';
-const formalMatterId = 'formal-matter_phase6-product-integrated' as FormalMatterId;
+const formalMatterId = 'formal-matter_phase6-product-integrated' as const;
 const observationId = 'matter-intelligence-observation_phase6-product-integrated';
 const secret = 'phase6-product-integrated-secret-32-bytes-minimum';
 const coreMigrationNamespace = 'phase6_product_integrated_core';
