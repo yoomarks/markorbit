@@ -10,6 +10,13 @@ export interface MethodImprovementHttpOptionsV1 {
   service: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
 }
 
+const PHASE7_PILOT_A_PREDECESSOR = Object.freeze({
+  methodPackageRef: 'brain-method-package:package_cn-duration@1',
+  methodRef: 'brain-method:method_cn-duration',
+  methodVersionRef: 'brain-method-version:method-version_cn-duration',
+  evaluationRef: 'brain-method-evaluation:evaluation_cn-duration'
+});
+
 function requiredHeader(
   headers: Readonly<Record<string, string | undefined>>,
   name: string,
@@ -18,6 +25,30 @@ function requiredHeader(
   const value = headers[name]?.trim();
   if (!value) throw new HttpError(400, code, `${name} is required.`);
   return value;
+}
+
+function assertPhase7PilotAPredecessor(command: unknown): void {
+  if (!command || typeof command !== 'object' || Array.isArray(command))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const predecessor = (command as Record<string, unknown>).predecessor;
+  if (!predecessor || typeof predecessor !== 'object' || Array.isArray(predecessor))
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Phase 7 pilot A requires the frozen CN duration predecessor.'
+    );
+  const value = predecessor as Record<string, unknown>;
+  if (
+    value.methodPackageRef !== PHASE7_PILOT_A_PREDECESSOR.methodPackageRef ||
+    value.methodRef !== PHASE7_PILOT_A_PREDECESSOR.methodRef ||
+    value.methodVersionRef !== PHASE7_PILOT_A_PREDECESSOR.methodVersionRef ||
+    value.evaluationRef !== PHASE7_PILOT_A_PREDECESSOR.evaluationRef
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Phase 7 pilot A requires the frozen CN duration predecessor.'
+    );
 }
 
 function translate(error: unknown): never {
@@ -67,6 +98,7 @@ export function createMethodImprovementRoutesV1(
           'x-correlation-id',
           'CORRELATION_ID_REQUIRED'
         );
+        assertPhase7PilotAPredecessor(request.body);
         try {
           const result = await options.service.admit({
             workspaceId,
