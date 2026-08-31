@@ -2,6 +2,26 @@
 
 Professional content, opportunity, asset, capability and work product.
 
+## #413 Content Studio
+
+Content is a read-only, authenticated Workspace surface backed by
+`GET /api/lite/content-studio/works` and
+`GET /api/lite/content-studio/works/:contentOpportunityId`. Its stable work identity is the
+durable Content Opportunity ID and version. The list exposes a deterministic presentation stage;
+the detail preserves Content Opportunity → exact Draft version → Review Decision → Publish Package
+→ user-reported feedback lineage.
+
+Owner 401/403/404/503 responses remain distinct from an empty Workspace. The production client has
+no fixture fallback. Visual/media history is explicitly partial while
+`VISUAL_HISTORY_NOT_DISCOVERABLE` is returned, and user-reported use or publication is never shown
+as independently verified or executed by MarkOrbit. Today remains the daily discovery and
+orchestration surface and links completed Lite Content Opportunity handoffs into the Studio.
+
+Fixture-backed Storybook states cover list, empty, detail, no Draft, Draft without Review, exact
+Review, Package without feedback, feedback, pagination, partial Visual history, permission,
+persistence failure and 390px mobile. The Lite Playwright suite covers Gateway list/detail requests,
+lineage language, 503-versus-empty behavior and desktop/mobile overflow.
+
 ## #353 navigation and product-truth brief
 
 User / job: a Lite practitioner must navigate between product pillars and distinguish durable
@@ -16,14 +36,14 @@ responsive CSS and `@markorbit/ui` primitives; no visual redesign, backend work 
 - Data boundaries: Customers and Opportunities are fixtures regardless of the selected Workspace.
   Today, Matters, Trademarks, Capability and Professional Review use authenticated Workspace APIs.
   Execution Release uses its existing Execution API; the shell does not claim Workspace authentication
-  for that client. Content and Guide are explicit unpromoted entries, not new backend capabilities.
+  for that client. This historical #353 statement preceded the #413 Content Studio promotion;
+  Guide remains an explicit unpromoted entry.
 - Desktop / mobile: keep the existing sidebar and responsive navigation at 1440px and 390px;
   Work controls stack on narrow screens. All primary destinations remain reachable without overflow.
 - States: fixture loading / empty / error / stale / ready retain the fixture banner; existing live
   loading / empty / error / permission / partial-data / success handling remains with each surface.
-  Missing Workspace retains the selection error and is labelled Workspace required. Content / Guide
-  are static unavailable entries with an Open Today link, no artificial loading or success state,
-  and no API requests or state mutations.
+  Missing Workspace retains the selection error and is labelled Workspace required. This historical
+  #353 statement preceded the #413 Content Studio promotion; Guide remains a static unavailable entry.
 - Accessibility: labelled primary and Work navigation, one active primary item, `aria-current` on
   the active Work control, semantic entry headings, keyboard activation and visible focus using
   existing primitives. No new modal, focus trap or color-only state.
