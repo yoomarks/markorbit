@@ -330,74 +330,68 @@ function refingerprintMission(
 }
 
 describe('Phase 7 trigger-bound Method Improvement candidate', () => {
-  it(
-    'produces one deterministic CLASSIFICATION CANDIDATE from new reproducible research',
-    async () => {
-      const admission = await admitted();
-      const input = {
-        trigger: admission.trigger,
-        researchMission: admission.researchMission,
-        research: researchFixture()
-      };
-      const first = buildMethodImprovementCandidateV1(input);
-      const replay = buildMethodImprovementCandidateV1(input);
+  it('produces one deterministic CLASSIFICATION CANDIDATE from new reproducible research', async () => {
+    const admission = await admitted();
+    const input = {
+      trigger: admission.trigger,
+      researchMission: admission.researchMission,
+      research: researchFixture()
+    };
+    const first = buildMethodImprovementCandidateV1(input);
+    const replay = buildMethodImprovementCandidateV1(input);
 
-      expect(replay).toEqual(first);
-      expect(first.method.lifecycle).toBe('CANDIDATE');
-      expect(first.package.lifecycle).toBe('CANDIDATE');
-      expect(first.method.methodFamily).toBe('CLASSIFICATION');
-      expect(first.package.methodFamily).toBe('CLASSIFICATION');
-      expect(first.method.evaluation.status).toBe('CONDITIONAL');
-      expect(first.package.evaluation.status).toBe('CONDITIONAL');
-      expect(first.method.validatedAt).toBeUndefined();
-      expect(first.package.activatedAt).toBeUndefined();
-      expect(first.method.supersedesMethodVersionIds).toEqual([
-        PHASE7_PILOT_A_CANONICAL_PREDECESSOR_METHOD_VERSION_ID
-      ]);
-      expect(first.predecessor).toEqual(predecessor);
-      expect(first.method.lineage.researchDatasets[0]?.dataset_ref_id).toBe(
-        `research-dataset_${'d'.repeat(64)}`
-      );
-      expect(first.package.executable).toMatchObject({
-        thresholds: { p25Days: 330, medianDays: 340, p75Days: 390 },
-        legalConclusion: false,
-        predictiveClaim: false,
-        riskClaim: false,
-        probabilityClaim: false,
-        recommendation: false,
-        methodImprovement: {
-          triggerId: admission.trigger.triggerId,
-          researchMissionId: admission.researchMission.researchMissionId,
-          predecessor
-        }
-      });
-      expect(first.candidateFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(first.methodFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(first.packageFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(parseBrainMethodContractV1(first.method)).toEqual(first.method);
-      expect(parseExecutableMethodPackageV1(first.package)).toEqual(first.package);
-    }
-  );
+    expect(replay).toEqual(first);
+    expect(first.method.lifecycle).toBe('CANDIDATE');
+    expect(first.package.lifecycle).toBe('CANDIDATE');
+    expect(first.method.methodFamily).toBe('CLASSIFICATION');
+    expect(first.package.methodFamily).toBe('CLASSIFICATION');
+    expect(first.method.evaluation.status).toBe('CONDITIONAL');
+    expect(first.package.evaluation.status).toBe('CONDITIONAL');
+    expect(first.method.validatedAt).toBeUndefined();
+    expect(first.package.activatedAt).toBeUndefined();
+    expect(first.method.supersedesMethodVersionIds).toEqual([
+      PHASE7_PILOT_A_CANONICAL_PREDECESSOR_METHOD_VERSION_ID
+    ]);
+    expect(first.predecessor).toEqual(predecessor);
+    expect(first.method.lineage.researchDatasets[0]?.dataset_ref_id).toBe(
+      `research-dataset_${'d'.repeat(64)}`
+    );
+    expect(first.package.executable).toMatchObject({
+      thresholds: { p25Days: 330, medianDays: 340, p75Days: 390 },
+      legalConclusion: false,
+      predictiveClaim: false,
+      riskClaim: false,
+      probabilityClaim: false,
+      recommendation: false,
+      methodImprovement: {
+        triggerId: admission.trigger.triggerId,
+        researchMissionId: admission.researchMission.researchMissionId,
+        predecessor
+      }
+    });
+    expect(first.candidateFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(first.methodFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(first.packageFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(parseBrainMethodContractV1(first.method)).toEqual(first.method);
+    expect(parseExecutableMethodPackageV1(first.package)).toEqual(first.package);
+  });
 
-  it(
-    'keeps candidate artifacts bounded and does not copy product state or raw population rows',
-    async () => {
-      const admission = await admitted();
-      const candidate = buildMethodImprovementCandidateV1({
-        trigger: admission.trigger,
-        researchMission: admission.researchMission,
-        research: researchFixture()
-      });
-      const serialized = JSON.stringify(candidate);
+  it('keeps candidate artifacts bounded and does not copy product state or raw population rows', async () => {
+    const admission = await admitted();
+    const candidate = buildMethodImprovementCandidateV1({
+      trigger: admission.trigger,
+      researchMission: admission.researchMission,
+      research: researchFixture()
+    });
+    const serialized = JSON.stringify(candidate);
 
-      expect(serialized).not.toContain('formalMatter');
-      expect(serialized).not.toContain('customer');
-      expect(serialized).not.toContain('capabilityPackage');
-      expect(serialized).not.toContain('rawPopulationRows');
-      expect(serialized).not.toContain('ACTIVE');
-      expect(serialized).not.toContain('VALIDATED');
-    }
-  );
+    expect(serialized).not.toContain('formalMatter');
+    expect(serialized).not.toContain('customer');
+    expect(serialized).not.toContain('capabilityPackage');
+    expect(serialized).not.toContain('rawPopulationRows');
+    expect(serialized).not.toContain('ACTIVE');
+    expect(serialized).not.toContain('VALIDATED');
+  });
 
   it('rejects tampered trigger or mission fingerprints and unrelated mission scope', async () => {
     const admission = await admitted();
@@ -472,19 +466,16 @@ describe('Phase 7 trigger-bound Method Improvement candidate', () => {
     ).toThrowError(expect.objectContaining({ code: 'RESEARCH_REJECTED' }));
   });
 
-  it(
-    'rejects non-strict classification thresholds even when descriptive replay agrees',
-    async () => {
-      const admission = await admitted();
-      expect(() =>
-        buildMethodImprovementCandidateV1({
-          trigger: admission.trigger,
-          researchMission: admission.researchMission,
-          research: researchFixture({ p25Days: 340, medianDays: 340, p75Days: 390 })
-        })
-      ).toThrowError(expect.objectContaining({ code: 'THRESHOLD_CONTRACT_MISMATCH' }));
-    }
-  );
+  it('rejects non-strict classification thresholds even when descriptive replay agrees', async () => {
+    const admission = await admitted();
+    expect(() =>
+      buildMethodImprovementCandidateV1({
+        trigger: admission.trigger,
+        researchMission: admission.researchMission,
+        research: researchFixture({ p25Days: 340, medianDays: 340, p75Days: 390 })
+      })
+    ).toThrowError(expect.objectContaining({ code: 'THRESHOLD_CONTRACT_MISMATCH' }));
+  });
 
   it('rejects the exact accepted predecessor research identity as a no-op candidate', async () => {
     const admission = await admitted();
