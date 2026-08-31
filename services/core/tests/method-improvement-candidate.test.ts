@@ -399,8 +399,10 @@ describe('Phase 7 trigger-bound Method Improvement candidate', () => {
     expect(serialized).not.toContain('customer');
     expect(serialized).not.toContain('capabilityPackage');
     expect(serialized).not.toContain('rawPopulationRows');
-    expect(serialized).not.toContain('ACTIVE');
-    expect(serialized).not.toContain('VALIDATED');
+    expect(candidate.method.lifecycle).toBe('CANDIDATE');
+    expect(candidate.package.lifecycle).toBe('CANDIDATE');
+    expect(candidate.method.validatedAt).toBeUndefined();
+    expect(candidate.package.activatedAt).toBeUndefined();
   });
 
   it('rejects tampered trigger or mission fingerprints and unrelated mission scope', async () => {
