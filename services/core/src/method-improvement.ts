@@ -80,6 +80,12 @@ export interface MethodImprovementAdmissionRepositoryV1 {
 
 type RecordValue = Record<string, unknown>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const PHASE7_PILOT_A_PREDECESSOR = Object.freeze({
+  methodPackageRef: 'brain-method-package:package_cn-duration@1',
+  methodRef: 'brain-method:method_cn-duration',
+  methodVersionRef: 'brain-method-version:method-version_cn-duration',
+  evaluationRef: 'brain-method-evaluation:evaluation_cn-duration'
+});
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => canonicalize(item));
@@ -130,6 +136,16 @@ function workspace(value: unknown): string {
   return cleaned;
 }
 
+function assertFrozenPilotAPredecessor(predecessor: Readonly<MethodImprovementPredecessorV1>): void {
+  if (
+    predecessor.methodPackageRef !== PHASE7_PILOT_A_PREDECESSOR.methodPackageRef ||
+    predecessor.methodRef !== PHASE7_PILOT_A_PREDECESSOR.methodRef ||
+    predecessor.methodVersionRef !== PHASE7_PILOT_A_PREDECESSOR.methodVersionRef ||
+    predecessor.evaluationRef !== PHASE7_PILOT_A_PREDECESSOR.evaluationRef
+  )
+    invalid('Phase 7 pilot A requires the frozen CN duration predecessor.');
+}
+
 export function parseMethodImprovementPerformanceGapCommandV1(
   value: unknown
 ): MethodImprovementPerformanceGapCommandV1 {
@@ -148,7 +164,8 @@ export function parseMethodImprovementPerformanceGapCommandV1(
     ],
     'methodImprovementCommand'
   );
-  if (command.schemaVersion !== 1) invalid('methodImprovementCommand.schemaVersion must be 1.');
+  if (command.schemaVersion !== 1)
+    invalid('methodImprovementCommand.schemaVersion must be 1.');
   if (command.triggerType !== 'PERFORMANCE_GAP')
     invalid('Phase 7 pilot A admits PERFORMANCE_GAP only.');
 
@@ -168,7 +185,9 @@ export function parseMethodImprovementPerformanceGapCommandV1(
       return invalid(error.message);
     throw error;
   }
-  if (!reportQuery.watermark) invalid('reportQuery.watermark is required for Phase 7 admission.');
+  assertFrozenPilotAPredecessor(predecessor);
+  if (!reportQuery.watermark)
+    invalid('reportQuery.watermark is required for Phase 7 admission.');
   const workspaceId = workspace(command.workspaceId);
   if (reportQuery.workspaceId !== workspaceId)
     invalid('reportQuery.workspaceId must match command workspaceId.');
@@ -262,19 +281,30 @@ function performanceSource(
 }
 
 function triggerFingerprint(
-  value: Omit<MethodImprovementTriggerV1, 'triggerId' | 'triggerFingerprintSha256' | 'admittedAt'>
+  value: Omit<
+    MethodImprovementTriggerV1,
+    'triggerId' | 'triggerFingerprintSha256' | 'admittedAt'
+  >
 ): string {
   return fingerprint(value);
 }
 
 function missionFingerprint(
-  value: Omit<MethodImprovementResearchMissionV1, 'researchMissionId' | 'missionFingerprintSha256'>
+  value: Omit<
+    MethodImprovementResearchMissionV1,
+    'researchMissionId' | 'missionFingerprintSha256'
+  >
 ): string {
   return fingerprint(value);
 }
 
-function sourceIdentityFingerprint(source: Readonly<MethodImprovementPerformanceReportSourceV1>): string {
-  return fingerprint({ query: source.query, reportFingerprintSha256: source.reportFingerprintSha256 });
+function sourceIdentityFingerprint(
+  source: Readonly<MethodImprovementPerformanceReportSourceV1>
+): string {
+  return fingerprint({
+    query: source.query,
+    reportFingerprintSha256: source.reportFingerprintSha256
+  });
 }
 
 function requestFingerprint(command: Readonly<MethodImprovementPerformanceGapCommandV1>): string {
@@ -351,7 +381,9 @@ function postgresCode(error: unknown): string | undefined {
     : undefined;
 }
 
-export class PostgresMethodImprovementAdmissionRepositoryV1 implements MethodImprovementAdmissionRepositoryV1 {
+export class PostgresMethodImprovementAdmissionRepositoryV1
+  implements MethodImprovementAdmissionRepositoryV1
+{
   constructor(private readonly database: ManagedDatabase) {}
 
   async admit(
