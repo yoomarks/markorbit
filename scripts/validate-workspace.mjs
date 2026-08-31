@@ -44,6 +44,33 @@ for (const [folder, expectedName] of runtimes) {
   }
 }
 
+const agents = await readFile(path.join(root, 'AGENTS.md'), 'utf8');
+const mandatorySkillRefs = [
+  ...new Set(
+    [...agents.matchAll(/`(\.agents\/skills\/[A-Za-z0-9._-]+\/SKILL\.md)`/g)].map(
+      (match) => match[1]
+    )
+  )
+];
+const canonicalUiSkill = '.agents/skills/ui-design/SKILL.md';
+if (!mandatorySkillRefs.includes(canonicalUiSkill)) {
+  failures.push(`AGENTS.md is missing canonical UI skill reference: ${canonicalUiSkill}`);
+}
+for (const skillRef of mandatorySkillRefs) {
+  try {
+    const skill = await readFile(path.join(root, skillRef), 'utf8');
+    const name = skill.match(/^---\s*\n[\s\S]*?^name:\s*([^\n]+)$/m)?.[1]?.trim();
+    const description = skill.match(/^---\s*\n[\s\S]*?^description:\s*([^\n]+)$/m)?.[1]?.trim();
+    if (!name) failures.push(`${skillRef}: SKILL.md frontmatter is missing name`);
+    if (!description) failures.push(`${skillRef}: SKILL.md frontmatter is missing description`);
+    if (skillRef === canonicalUiSkill && name !== 'ui-design') {
+      failures.push(`${skillRef}: expected skill name ui-design`);
+    }
+  } catch {
+    failures.push(`Mandatory repository skill is not resolvable: ${skillRef}`);
+  }
+}
+
 const compose = await readFile(path.join(root, 'infrastructure/docker-compose.yml'), 'utf8');
 for (const service of ['postgres:', 'redis:', 'nats:', 'minio:']) {
   if (!compose.includes(service)) failures.push(`Compose is missing ${service.slice(0, -1)}`);

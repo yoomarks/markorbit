@@ -70,7 +70,9 @@ If yes, simplify it. Check specifically for unnecessary abstractions, files, dep
 
 ## 4. UI work
 
-Every UI task MUST load and follow the available `ui-design` skill before implementation.
+Every UI task MUST load and follow the canonical repository `ui-design` skill at `.agents/skills/ui-design/SKILL.md` before implementation. This repository-owned path is authoritative for MarkOrbit UI workflow; a user-level, plugin, or similarly named skill does not replace it.
+
+If that file cannot be resolved in a fresh worktree, the UI task is blocked. Do not silently bypass the requirement or substitute Figma, memory, an external skill, or ad hoc design guidance.
 
 A UI task must define:
 
