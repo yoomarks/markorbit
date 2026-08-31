@@ -5,10 +5,20 @@ import { MethodImprovementAdmissionError } from '../src/method-improvement.js';
 
 const secret = 'phase7-method-improvement-secret-32-bytes';
 const workspaceId = '11111111-1111-4111-8111-111111111111';
+const predecessor = {
+  methodPackageRef: 'brain-method-package:package_cn-duration@1',
+  methodRef: 'brain-method:method_cn-duration',
+  methodVersionRef: 'brain-method-version:method-version_cn-duration',
+  evaluationRef: 'brain-method-evaluation:evaluation_cn-duration'
+} as const;
+const command = { schemaVersion: 1, predecessor };
 
-function request(headers: Record<string, string | undefined> = {}): JsonRequest {
+function request(
+  headers: Record<string, string | undefined> = {},
+  body: unknown = command
+): JsonRequest {
   return {
-    body: { schemaVersion: 1 },
+    body,
     headers: {
       'x-markorbit-internal-authorization': secret,
       'x-markorbit-workspace-id': workspaceId,
@@ -52,7 +62,7 @@ describe('Method Improvement HTTP admission', () => {
       workspaceId,
       idempotencyKey: 'phase7-http-key',
       correlationId: 'phase7-http-correlation',
-      command: { schemaVersion: 1 }
+      command
     });
   });
 
@@ -80,6 +90,19 @@ describe('Method Improvement HTTP admission', () => {
       });
       expect(f.admit).not.toHaveBeenCalled();
     }
+  });
+
+  it('rejects any predecessor outside the frozen CN duration Pilot A refs before admission', async () => {
+    const f = fixture();
+    await expect(
+      f.route.handle(
+        request({}, {
+          schemaVersion: 1,
+          predecessor: { ...predecessor, methodRef: 'brain-method:method_cn-duration-other' }
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    expect(f.admit).not.toHaveBeenCalled();
   });
 
   it('maps insufficient evidence and invalid requests to 400', async () => {
