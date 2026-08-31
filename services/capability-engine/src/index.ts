@@ -29,6 +29,7 @@ import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 
 export * from './capability-audit-telemetry.js';
+export * from './capability-catalog-integrity.js';
 export * from './capability-center-http.js';
 export * from './capability-demand-coverage.js';
 export * from './capability-observation-http.js';
@@ -54,6 +55,7 @@ export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
 export * from './reflection-disposition-profile-http.js';
 export * from './reflection-disposition-profile.js';
+export * from './runtime-capability-catalog.js';
 export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
 export * from './uspto-official-fee-resolver-pilot.js';
