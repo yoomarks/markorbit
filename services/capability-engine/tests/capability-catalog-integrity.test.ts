@@ -135,10 +135,12 @@ describe('CapabilityCatalogIntegrityAuditorV1', () => {
   });
 
   it('finds malformed current Capability authority flags as bounded catalog evidence', async () => {
-    const result = await auditor(
-      [capability({ acceptedCanonProjection: false, createdFromAiOutput: true })],
-      [profile()]
-    ).audit();
+    const malformedCapability = {
+      ...capability(),
+      acceptedCanonProjection: false,
+      createdFromAiOutput: true
+    } as unknown as RuntimeCapabilityDefinition;
+    const result = await auditor([malformedCapability], [profile()]).audit();
     expect(result.status).toBe('CATALOG_INTEGRITY_FINDINGS');
     expect(result.findings.map((item) => item.code)).toEqual([
       'INVALID_CURRENT_CAPABILITY_PROJECTION'
