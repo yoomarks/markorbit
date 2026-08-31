@@ -102,7 +102,9 @@ async function stack(
       ...markRegOptions
     })
   );
-  const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+  const gatewayUrl = await start(
+    createGateway({ port: 0, markRegUrl, milestoneTestRuntime: true })
+  );
   return {
     gatewayUrl,
     capabilityRepository,
@@ -232,7 +234,9 @@ describe('first intake-to-recommendation HTTP slice', () => {
         repository
       })
     );
-    const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+    const gatewayUrl = await start(
+      createGateway({ port: 0, markRegUrl, milestoneTestRuntime: true })
+    );
     const response = await submit(gatewayUrl, 'cap-down');
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({
@@ -282,7 +286,9 @@ describe('first intake-to-recommendation HTTP slice', () => {
         publisher: markRegPublisher
       })
     );
-    const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+    const gatewayUrl = await start(
+      createGateway({ port: 0, markRegUrl, milestoneTestRuntime: true })
+    );
 
     expect((await submit(gatewayUrl, 'retry-key')).status).toBe(502);
     expect(markRegRepository.all()[0]?.intake.status).toBe('FAILED');
@@ -324,7 +330,9 @@ describe('first intake-to-recommendation HTTP slice', () => {
         publisher
       })
     );
-    const gatewayUrl = await start(createGateway({ port: 0, markRegUrl }));
+    const gatewayUrl = await start(
+      createGateway({ port: 0, markRegUrl, milestoneTestRuntime: true })
+    );
 
     const failed = await submit(gatewayUrl, 'event-retry-key');
     expect(failed.status).toBe(500);
