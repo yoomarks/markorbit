@@ -70,7 +70,9 @@ function command(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function report(overrides: Partial<MethodOutcomeReportV1> = {}): MethodOutcomeReportV1 {
+function report(
+  overrides: Partial<MethodOutcomeReportV1> = {}
+): MethodOutcomeReportV1 {
   return {
     schemaVersion: 1,
     workspaceId,
@@ -106,7 +108,11 @@ class ReplayRepository implements MethodImprovementAdmissionRepositoryV1 {
   async admit(input: Readonly<PreparedMethodImprovementAdmissionV1>) {
     if (!this.first) {
       this.first = structuredClone(input);
-      return { trigger: input.trigger, researchMission: input.researchMission, replayed: false };
+      return {
+        trigger: input.trigger,
+        researchMission: input.researchMission,
+        replayed: false
+      };
     }
     if (
       this.first.idempotencyKey !== input.idempotencyKey ||
@@ -125,10 +131,12 @@ class ReplayRepository implements MethodImprovementAdmissionRepositoryV1 {
   }
 }
 
-function service(options: {
-  resolved?: MethodOutcomeReportV1;
-  repository?: MethodImprovementAdmissionRepositoryV1;
-} = {}) {
+function service(
+  options: {
+    resolved?: MethodOutcomeReportV1;
+    repository?: MethodImprovementAdmissionRepositoryV1;
+  } = {}
+) {
   const reports = {
     report: vi.fn(() => Promise.resolve(options.resolved ?? report()))
   };
@@ -207,7 +215,10 @@ describe('Method Improvement performance-gap admission', () => {
   it('fails trusted workspace mismatch before report execution', async () => {
     const fixture = service();
     await expect(
-      fixture.service.admit({ ...request(), workspaceId: '22222222-2222-4222-8222-222222222222' })
+      fixture.service.admit({
+        ...request(),
+        workspaceId: '22222222-2222-4222-8222-222222222222'
+      })
     ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
     expect(fixture.reports.report).not.toHaveBeenCalled();
   });
@@ -223,8 +234,27 @@ describe('Method Improvement performance-gap admission', () => {
       }),
       repository
     });
-    await expect(fixture.service.admit(request())).rejects.toMatchObject({ code: 'REPORT_MISMATCH' });
+    await expect(fixture.service.admit(request())).rejects.toMatchObject({
+      code: 'REPORT_MISMATCH'
+    });
     expect(repository.admit).not.toHaveBeenCalled();
+  });
+
+  it('rejects a direct service command outside the frozen Pilot A predecessor refs', async () => {
+    const fixture = service();
+    await expect(
+      fixture.service.admit(
+        request(
+          command({
+            predecessor: {
+              ...predecessor,
+              methodRef: 'brain-method:method_cn-duration-other'
+            }
+          })
+        )
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(fixture.reports.report).not.toHaveBeenCalled();
   });
 
   it('replays the exact immutable request and returns the original records', async () => {
@@ -246,7 +276,9 @@ describe('Method Improvement performance-gap admission', () => {
         request(
           command({
             mission: mission({
-              hypotheses: ['A materially different hypothesis must be a conflicting immutable request.']
+              hypotheses: [
+                'A materially different hypothesis must be a conflicting immutable request.'
+              ]
             })
           })
         )
