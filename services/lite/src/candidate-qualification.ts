@@ -79,6 +79,11 @@ export interface OpportunityQualificationDisposition {
   currentCandidate: OpportunityCandidate;
 }
 
+export interface OpportunityCandidatePage {
+  items: readonly OpportunityCandidate[];
+  nextCursor: OpportunityCandidateId | null;
+}
+
 type Row = Record<string, unknown>;
 type CommandType = 'CREATE_OPPORTUNITY_CANDIDATE' | 'RECORD_OPPORTUNITY_QUALIFICATION';
 
@@ -456,17 +461,49 @@ export class PostgresLiteCandidateQualificationStore {
     );
   }
 
+  async listLatestCandidates(
+    workspaceIdValue: string,
+    options: Readonly<{ limit?: number; cursor?: string }> = {}
+  ): Promise<OpportunityCandidatePage> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const limit = options.limit ?? 50;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      throw new LiteCandidateQualificationError(
+        'INVALID_INPUT',
+        'limit must be an integer between 1 and 100.',
+        422
+      );
+    const cursor = options.cursor === undefined ? null : cleanText(options.cursor, 'cursor', 300);
+    // Identity ordering keeps a qualification/version update from moving an item between pages.
+    const result = await this.readQuery(
+      `SELECT document_json FROM (
+         SELECT DISTINCT ON (opportunity_candidate_id) opportunity_candidate_id, document_json
+         FROM lite_opportunity_candidates
+         WHERE workspace_id=$1 AND ($2::text IS NULL OR opportunity_candidate_id > $2)
+         ORDER BY opportunity_candidate_id ASC, version DESC
+       ) latest
+       ORDER BY opportunity_candidate_id ASC LIMIT $3`,
+      [workspaceId, cursor, limit + 1]
+    );
+    const items = result.rows.slice(0, limit).map((row) => rowDocument<OpportunityCandidate>(row)!);
+    return {
+      items,
+      nextCursor:
+        result.rows.length > limit ? items[items.length - 1]!.opportunityCandidateId : null
+    };
+  }
+
   async findCandidate(
     workspaceIdValue: string,
     candidateId: OpportunityCandidateId,
     version: number
   ): Promise<OpportunityCandidate | undefined> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
-    const result = await this.query.query(
+    const result = await this.readQuery(
       'SELECT document_json FROM lite_opportunity_candidates WHERE workspace_id=$1 AND opportunity_candidate_id=$2 AND version=$3',
       [workspaceId, candidateId, exactVersion(version, 'version')]
     );
-    return rowDocument<OpportunityCandidate>(result.rows[0] as Row | undefined);
+    return rowDocument<OpportunityCandidate>(result.rows[0]);
   }
 
   async findLatestCandidate(
@@ -474,11 +511,11 @@ export class PostgresLiteCandidateQualificationStore {
     candidateId: OpportunityCandidateId
   ): Promise<OpportunityCandidate | undefined> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
-    const result = await this.query.query(
+    const result = await this.readQuery(
       'SELECT document_json FROM lite_opportunity_candidates WHERE workspace_id=$1 AND opportunity_candidate_id=$2 ORDER BY version DESC LIMIT 1',
       [workspaceId, candidateId]
     );
-    return rowDocument<OpportunityCandidate>(result.rows[0] as Row | undefined);
+    return rowDocument<OpportunityCandidate>(result.rows[0]);
   }
 
   async findQualificationDecision(
@@ -486,11 +523,25 @@ export class PostgresLiteCandidateQualificationStore {
     candidateId: OpportunityCandidateId
   ): Promise<OpportunityQualificationDecision | undefined> {
     const workspaceId = cleanWorkspaceId(workspaceIdValue);
-    const result = await this.query.query(
+    const result = await this.readQuery(
       'SELECT document_json FROM lite_opportunity_qualification_decisions WHERE workspace_id=$1 AND opportunity_candidate_id=$2 LIMIT 1',
       [workspaceId, candidateId]
     );
-    return rowDocument<OpportunityQualificationDecision>(result.rows[0] as Row | undefined);
+    return rowDocument<OpportunityQualificationDecision>(result.rows[0]);
+  }
+
+  private async readQuery(sql: string, values: unknown[]) {
+    try {
+      return await this.query.query<Row>(sql, values);
+    } catch (cause) {
+      throw new LiteCandidateQualificationError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Lite Opportunity Candidate persistence is unavailable.',
+        503,
+        undefined,
+        { cause }
+      );
+    }
   }
 
   private async assertCustomerAccessible(

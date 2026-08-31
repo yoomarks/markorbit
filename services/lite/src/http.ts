@@ -151,6 +151,53 @@ function mapError(error: unknown): never {
 
 export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions): JsonRoute[] {
   return [
+    {
+      method: 'GET',
+      path: '/v1/opportunity-candidates',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        try {
+          return json(
+            200,
+            await options.candidateStore.listLatestCandidates(principal.workspaceId, {
+              ...(request.query.limit !== undefined ? { limit: Number(request.query.limit) } : {}),
+              ...(request.query.cursor !== undefined ? { cursor: request.query.cursor } : {})
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    ...(['', '/qualification'] as const).map((suffix): JsonRoute => ({
+      method: 'GET',
+      path: `/v1/opportunity-candidates/:opportunityCandidateId${suffix}`,
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        const candidateId = request.params.opportunityCandidateId! as OpportunityCandidateId;
+        try {
+          const candidate = await options.candidateStore.findLatestCandidate(
+            principal.workspaceId,
+            candidateId
+          );
+          if (!candidate)
+            throw new HttpError(
+              404,
+              'OPPORTUNITY_CANDIDATE_NOT_FOUND',
+              'Opportunity Candidate was not found.'
+            );
+          if (!suffix) return json(200, candidate);
+          // Return the durable decision unchanged: its reviewed version is not the latest version.
+          const decision = await options.candidateStore.findQualificationDecision(
+            principal.workspaceId,
+            candidateId
+          );
+          return json(200, decision ?? null);
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    })),
     ...(options.dailySignalStore
       ? [
           {
