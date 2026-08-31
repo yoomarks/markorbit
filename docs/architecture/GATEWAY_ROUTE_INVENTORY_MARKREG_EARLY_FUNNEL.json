@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "extends": "GATEWAY_ROUTE_INVENTORY.json",
+  "issue": 386,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/v1/markreg/intakes",
+      "owner": "markreg",
+      "namespaceClass": "LEGACY_COMPATIBILITY",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-early-funnel-http.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/markreg/quotes",
+      "owner": "markreg",
+      "namespaceClass": "LEGACY_COMPATIBILITY",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-early-funnel-http.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/markreg/quotes/:quoteId/confirm",
+      "owner": "markreg",
+      "namespaceClass": "LEGACY_COMPATIBILITY",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-early-funnel-http.test.ts"
+    }
+  ]
+}
