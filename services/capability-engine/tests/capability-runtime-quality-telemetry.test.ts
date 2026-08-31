@@ -18,14 +18,16 @@ const sensitiveInput = 'SECRET CUSTOMER INPUT';
 const sensitiveOutput = 'SECRET CAPABILITY OUTPUT';
 const sensitiveEvidenceRef = 'evidence_SECRET_PRIVATE';
 
-function executionFixture(options: {
-  status?: 'SUCCEEDED' | 'FAILED' | 'REQUIRES_REVIEW';
-  errorCode?: 'IMPLEMENTATION_FAILED' | 'OUTPUT_CONTRACT_INVALID';
-  invocationStatus?: 'COMPLETED' | 'FAILED';
-  replayed?: boolean;
-  startedAt?: string;
-  completedAt?: string;
-} = {}): CapabilityRuntimeExecution {
+function executionFixture(
+  options: {
+    status?: 'SUCCEEDED' | 'FAILED' | 'REQUIRES_REVIEW';
+    errorCode?: 'IMPLEMENTATION_FAILED' | 'OUTPUT_CONTRACT_INVALID';
+    invocationStatus?: 'COMPLETED' | 'FAILED';
+    replayed?: boolean;
+    startedAt?: string;
+    completedAt?: string;
+  } = {}
+): CapabilityRuntimeExecution {
   const status = options.status ?? 'SUCCEEDED';
   const errorCode = options.errorCode;
   const invocationStatus =
@@ -362,10 +364,7 @@ describe('Governed Capability runtime quality telemetry V1', () => {
     };
 
     expect(() =>
-      createGovernedCapabilityRuntimeQualityTelemetryV1(
-        drifted,
-        '2026-09-01T00:00:05.000Z'
-      )
+      createGovernedCapabilityRuntimeQualityTelemetryV1(drifted, '2026-09-01T00:00:05.000Z')
     ).toThrow(/exact execution identity pairing/u);
   });
 

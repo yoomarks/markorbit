@@ -1,4 +1,7 @@
-import type { CapabilityAuditTelemetryEventV1, CapabilityAuditTelemetrySinkV1 } from './capability-audit-telemetry.js';
+import type {
+  CapabilityAuditTelemetryEventV1,
+  CapabilityAuditTelemetrySinkV1
+} from './capability-audit-telemetry.js';
 import {
   GovernedCapabilityRuntimeError,
   type CapabilityRuntimeExecution,
@@ -91,8 +94,7 @@ export interface GovernedCapabilityRuntimeRejectionTelemetryV1 {
 }
 
 export type CapabilityRuntimeQualityTelemetryEventV1 =
-  | GovernedCapabilityRuntimeQualityTelemetryV1
-  | GovernedCapabilityRuntimeRejectionTelemetryV1;
+  GovernedCapabilityRuntimeQualityTelemetryV1 | GovernedCapabilityRuntimeRejectionTelemetryV1;
 
 export interface CapabilityRuntimeQualityTelemetrySinkV1 {
   record(event: Readonly<CapabilityRuntimeQualityTelemetryEventV1>): Promise<void>;
@@ -102,7 +104,10 @@ export interface GovernedCapabilityRuntimeLikeV1 {
   invoke(value: unknown): Promise<CapabilityRuntimeExecution>;
 }
 
-function measuredDurationMs(startedAt: string, completedAt: string | undefined): number | undefined {
+function measuredDurationMs(
+  startedAt: string,
+  completedAt: string | undefined
+): number | undefined {
   if (completedAt === undefined) return undefined;
   const started = Date.parse(startedAt);
   const completed = Date.parse(completedAt);
@@ -140,7 +145,9 @@ function assertExactRuntimeExecution(execution: Readonly<CapabilityRuntimeExecut
     receipt.capabilityReturnId === returnValue.capabilityReturnId;
 
   if (!matches) {
-    throw new Error('Capability runtime quality telemetry requires exact execution identity pairing.');
+    throw new Error(
+      'Capability runtime quality telemetry requires exact execution identity pairing.'
+    );
   }
 }
 
@@ -190,9 +197,7 @@ export function createGovernedCapabilityRuntimeQualityTelemetryV1(
     outcome: {
       capabilityOutcomeId: execution.outcome.capabilityOutcomeId,
       status: execution.outcome.status,
-      ...(execution.outcome.error === undefined
-        ? {}
-        : { errorCode: execution.outcome.error.code })
+      ...(execution.outcome.error === undefined ? {} : { errorCode: execution.outcome.error.code })
     },
     result: {
       capabilityReturnId: execution.returnValue.capabilityReturnId,
@@ -303,9 +308,7 @@ export function createCapabilityAuditTelemetrySinkFromEnvironmentV1(
   return new JsonLineCapabilityAuditTelemetrySinkV1(writeLine);
 }
 
-export class InMemoryCapabilityRuntimeQualityTelemetrySinkV1
-  implements CapabilityRuntimeQualityTelemetrySinkV1
-{
+export class InMemoryCapabilityRuntimeQualityTelemetrySinkV1 implements CapabilityRuntimeQualityTelemetrySinkV1 {
   private readonly events: CapabilityRuntimeQualityTelemetryEventV1[] = [];
 
   record(event: Readonly<CapabilityRuntimeQualityTelemetryEventV1>): Promise<void> {
