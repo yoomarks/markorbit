@@ -27,20 +27,20 @@ function definition(capabilityId: string, version: number): RuntimeCapabilityDef
 
 function queryClient(rows: readonly { capability_id: string }[]): QueryClient {
   return {
-    query: (() =>
+    query: () =>
       Promise.resolve({
         command: 'SELECT',
         rowCount: rows.length,
         oid: 0,
         fields: [],
         rows: [...rows]
-      })) as QueryClient['query']
+      })
   };
 }
 
 function failingQueryClient(error: Error): QueryClient {
   return {
-    query: (() => Promise.reject(error)) as QueryClient['query']
+    query: () => Promise.reject(error)
   };
 }
 
