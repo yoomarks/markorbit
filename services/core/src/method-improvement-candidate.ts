@@ -273,9 +273,11 @@ function boundaryEvaluationPasses(thresholds: Readonly<CnDurationBandThresholdsV
 }
 
 function changedThresholdCount(thresholds: Readonly<CnDurationBandThresholdsV1>): number {
-  return Number(thresholds.p25Days !== PREDECESSOR_THRESHOLDS.p25Days) +
+  return (
+    Number(thresholds.p25Days !== PREDECESSOR_THRESHOLDS.p25Days) +
     Number(thresholds.medianDays !== PREDECESSOR_THRESHOLDS.medianDays) +
-    Number(thresholds.p75Days !== PREDECESSOR_THRESHOLDS.p75Days);
+    Number(thresholds.p75Days !== PREDECESSOR_THRESHOLDS.p75Days)
+  );
 }
 
 export function buildMethodImprovementCandidateV1(
@@ -439,10 +441,12 @@ export function buildMethodImprovementCandidateV1(
       reasonCodes: {
         HISTORICAL_BAND_CLASSIFIED:
           'Completed factual duration was classified relative to candidate historical p25/median/p75 thresholds.',
-        NOT_APPLICABLE: 'Request is outside the exact completed-duration classification applicability.',
+        NOT_APPLICABLE:
+          'Request is outside the exact completed-duration classification applicability.',
         SOURCE_EVIDENCE_MISMATCH:
           'Candidate research dataset identity or descriptive thresholds do not match lineage.',
-        INVALID_COMPLETED_DURATION: 'Observed completed duration must be a non-negative safe integer.'
+        INVALID_COMPLETED_DURATION:
+          'Observed completed duration must be a non-negative safe integer.'
       },
       fallback: { behavior: 'NOT_APPLICABLE' },
       evaluation,
