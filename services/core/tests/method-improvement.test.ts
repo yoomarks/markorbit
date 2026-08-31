@@ -70,9 +70,7 @@ function command(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function report(
-  overrides: Partial<MethodOutcomeReportV1> = {}
-): MethodOutcomeReportV1 {
+function report(overrides: Partial<MethodOutcomeReportV1> = {}): MethodOutcomeReportV1 {
   return {
     schemaVersion: 1,
     workspaceId,
@@ -105,14 +103,14 @@ function report(
 class ReplayRepository implements MethodImprovementAdmissionRepositoryV1 {
   first?: PreparedMethodImprovementAdmissionV1;
 
-  async admit(input: Readonly<PreparedMethodImprovementAdmissionV1>) {
+  admit(input: Readonly<PreparedMethodImprovementAdmissionV1>) {
     if (!this.first) {
       this.first = structuredClone(input);
-      return {
+      return Promise.resolve({
         trigger: input.trigger,
         researchMission: input.researchMission,
         replayed: false
-      };
+      });
     }
     if (
       this.first.idempotencyKey !== input.idempotencyKey ||
@@ -123,11 +121,11 @@ class ReplayRepository implements MethodImprovementAdmissionRepositoryV1 {
         'TRIGGER_CONFLICT',
         'Immutable Method Improvement request conflicts with the admitted source.'
       );
-    return {
+    return Promise.resolve({
       trigger: this.first.trigger,
       researchMission: this.first.researchMission,
       replayed: true
-    };
+    });
   }
 }
 
