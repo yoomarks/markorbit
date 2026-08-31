@@ -39,6 +39,8 @@ import {
   validateReadyPackageV2DeliveryIntegrity
 } from './knowledge-v2-ingress.js';
 import type { KnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
+import { createMethodImprovementRoutesV1 } from './method-improvement-http.js';
+import type { MethodImprovementAdmissionServiceV1 } from './method-improvement.js';
 import { createMethodOutcomeEvidenceRoutesV1 } from './method-outcome-evidence-http.js';
 import type { MethodOutcomeEvidenceAdmissionServiceV1 } from './method-outcome-evidence.js';
 import { createMethodOutcomeReportRoutesV1 } from './method-outcome-report-http.js';
@@ -61,6 +63,7 @@ export interface CoreRuntimeOptions {
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
+  methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -99,6 +102,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Method Outcome Evidence admission.');
   if (options.methodOutcomeReports && !secret)
     throw new Error('internalServiceSecret is required for Method Outcome reporting.');
+  if (options.methodImprovementAdmissions && !secret)
+    throw new Error('internalServiceSecret is required for Method Improvement admission.');
   const onboardingRoutes =
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({
@@ -117,6 +122,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.methodOutcomeReports && secret
       ? createMethodOutcomeReportRoutesV1({
           service: options.methodOutcomeReports,
+          internalServiceSecret: secret
+        })
+      : [];
+  const methodImprovementRoutes =
+    options.methodImprovementAdmissions && secret
+      ? createMethodImprovementRoutesV1({
+          service: options.methodImprovementAdmissions,
           internalServiceSecret: secret
         })
       : [];
@@ -614,7 +626,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
         }
       ]
     : [];
-  routes.push(...methodOutcomeEvidenceRoutes, ...methodOutcomeReportRoutes);
+  routes.push(
+    ...methodOutcomeEvidenceRoutes,
+    ...methodOutcomeReportRoutes,
+    ...methodImprovementRoutes
+  );
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     { routes }
@@ -632,3 +648,5 @@ export * from './knowledge-v2-ingress.js';
 export * from './method-outcome-evidence.js';
 export * from './method-outcome-report.js';
 export * from './method-outcome-evidence-http.js';
+export * from './method-improvement.js';
+export * from './method-improvement-http.js';

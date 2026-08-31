@@ -19,6 +19,10 @@ import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-cont
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 import {
+  MethodImprovementAdmissionServiceV1,
+  PostgresMethodImprovementAdmissionRepositoryV1
+} from './method-improvement.js';
+import {
   MethodOutcomeEvidenceAdmissionServiceV1,
   PostgresMethodOutcomeEvidenceAdmissionRepositoryV1
 } from './method-outcome-evidence.js';
@@ -54,6 +58,10 @@ const methodOutcomeEvidenceAdmissions = new MethodOutcomeEvidenceAdmissionServic
 const methodOutcomeReports = new MethodOutcomeReportServiceV1(
   new PostgresMethodOutcomeReportReaderV1(database)
 );
+const methodImprovementAdmissions = new MethodImprovementAdmissionServiceV1({
+  repository: new PostgresMethodImprovementAdmissionRepositoryV1(database),
+  reports: methodOutcomeReports
+});
 const runtime = createRuntime({
   authentication,
   accountAccess,
@@ -64,6 +72,7 @@ const runtime = createRuntime({
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
+  methodImprovementAdmissions,
   internalServiceSecret: secret
 });
 
