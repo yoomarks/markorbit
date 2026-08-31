@@ -43,12 +43,26 @@ const nav = [
 type Surface =
   | 'today'
   | 'matters'
+  | 'content'
+  | 'guide'
   | 'trademarks'
   | 'capability'
   | 'customers'
   | 'opportunities'
   | 'professional-review'
   | 'execution-release';
+const surfacesByHash: Readonly<Record<string, Surface>> = {
+  '#today': 'today',
+  '#matters': 'matters',
+  '#content': 'content',
+  '#opportunities': 'opportunities',
+  '#trademarks': 'trademarks',
+  '#work-customers': 'customers',
+  '#work-professional-review': 'professional-review',
+  '#work-execution-release': 'execution-release',
+  '#capability': 'capability',
+  '#guide': 'guide'
+};
 export interface LiteAppProps {
   initialSurface?: Surface;
   initialState?: FixtureState;
@@ -507,23 +521,22 @@ export function LiteApp({
   initialOpportunityId,
   initialReviewCaseId,
   initialFilingAuthorization,
-  workspaceId = new URLSearchParams(window.location.search).get('workspaceId') ?? ''
+  workspaceId
 }: LiteAppProps) {
-  const [surface, setSurface] = useState<Surface>(initialSurface);
+  const [surface, setSurface] = useState<Surface>(
+    () => surfacesByHash[window.location.hash] ?? initialSurface
+  );
   const [state, setState] = useState<FixtureState>(initialState);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(workspaceId);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(
+    () => workspaceId ?? new URLSearchParams(window.location.search).get('workspaceId') ?? ''
+  );
   useEffect(() => {
     const followHash = () => {
-      setActiveWorkspaceId(new URLSearchParams(window.location.search).get('workspaceId') ?? '');
-      if (window.location.hash === '#work-customers') setSurface('customers');
-      else if (window.location.hash === '#work-professional-review')
-        setSurface('professional-review');
-      else if (window.location.hash === '#work-execution-release') setSurface('execution-release');
-      else if (window.location.hash === '#opportunities') setSurface('opportunities');
-      else if (window.location.hash === '#today') setSurface('today');
-      else if (window.location.hash === '#matters') setSurface('matters');
-      else if (window.location.hash === '#trademarks') setSurface('trademarks');
-      else if (window.location.hash === '#capability') setSurface('capability');
+      setActiveWorkspaceId(
+        new URLSearchParams(window.location.search).get('workspaceId') ?? workspaceId ?? ''
+      );
+      const nextSurface = surfacesByHash[window.location.hash];
+      if (nextSurface) setSurface(nextSurface);
     };
     followHash();
     window.addEventListener('hashchange', followHash);
@@ -532,7 +545,11 @@ export function LiteApp({
       window.removeEventListener('hashchange', followHash);
       window.removeEventListener('popstate', followHash);
     };
-  }, []);
+  }, [workspaceId]);
+  const isWork =
+    surface === 'customers' || surface === 'professional-review' || surface === 'execution-release';
+  const isFixture = surface === 'customers' || surface === 'opportunities';
+  const isEntry = surface === 'content' || surface === 'guide';
   return (
     <AppShell
       brand="MarkOrbit Lite"
@@ -541,74 +558,67 @@ export function LiteApp({
           items={nav.map((label) => ({
             label,
             href: label === 'Work' ? '#work-customers' : `#${label.toLowerCase()}`,
-            active:
-              surface === 'customers' ||
-              surface === 'professional-review' ||
-              surface === 'execution-release'
-                ? label === 'Work'
-                : surface === 'opportunities'
-                  ? label === 'Opportunities'
-                  : surface === 'matters'
-                    ? label === 'Matters'
-                    : surface === 'trademarks'
-                      ? label === 'Trademarks'
-                      : surface === 'capability'
-                        ? label === 'Capability'
-                        : label === 'Today'
+            active: isWork ? label === 'Work' : label.toLowerCase() === surface
           }))}
         />
       }
       topBar={
         <TopBar
           context={
-            surface === 'matters' ||
-            surface === 'today' ||
-            surface === 'trademarks' ||
-            surface === 'capability'
-              ? `Workspace · ${activeWorkspaceId || 'not selected'}`
-              : 'Northstar IP · Fixture workspace'
+            isFixture
+              ? 'Northstar IP · Fixture workspace'
+              : surface === 'execution-release'
+                ? 'Work · Execution API'
+                : `Workspace · ${activeWorkspaceId || 'not selected'}`
           }
           actions={
             <Badge>
-              {surface === 'matters' ||
-              surface === 'today' ||
-              surface === 'trademarks' ||
-              surface === 'capability'
-                ? 'Authenticated'
-                : 'Not live data'}
+              {isFixture
+                ? 'Not live data'
+                : isEntry
+                  ? 'Not yet promoted'
+                  : surface === 'execution-release'
+                    ? 'API-backed'
+                    : activeWorkspaceId
+                      ? 'Authenticated'
+                      : 'Workspace required'}
             </Badge>
           }
         />
       }
     >
       <div className="lite-workspace">
-        {surface !== 'matters' &&
-          surface !== 'today' &&
-          surface !== 'trademarks' &&
-          surface !== 'capability' && <FixtureBanner />}
-        {(surface === 'customers' ||
-          surface === 'professional-review' ||
-          surface === 'execution-release') && (
-          <div className="lite-subnav" aria-label="Workspace view">
+        {isFixture && <FixtureBanner />}
+        {isWork && (
+          <nav className="lite-subnav" aria-label="Workspace view">
             <Button
               variant={surface === 'customers' ? 'primary' : 'secondary'}
-              onClick={() => setSurface('customers')}
+              aria-current={surface === 'customers' ? 'page' : undefined}
+              onClick={() => {
+                window.location.hash = 'work-customers';
+              }}
             >
               Customers
             </Button>
             <Button
               variant={surface === 'professional-review' ? 'primary' : 'secondary'}
-              onClick={() => setSurface('professional-review')}
+              aria-current={surface === 'professional-review' ? 'page' : undefined}
+              onClick={() => {
+                window.location.hash = 'work-professional-review';
+              }}
             >
               Professional Review
             </Button>
             <Button
               variant={surface === 'execution-release' ? 'primary' : 'secondary'}
-              onClick={() => setSurface('execution-release')}
+              aria-current={surface === 'execution-release' ? 'page' : undefined}
+              onClick={() => {
+                window.location.hash = 'work-execution-release';
+              }}
             >
               Execution Release
             </Button>
-          </div>
+          </nav>
         )}
         {surface === 'matters' ? (
           activeWorkspaceId ? (
@@ -646,6 +656,26 @@ export function LiteApp({
               description="A valid Workspace context is required to load your private Capability Center."
             />
           )
+        ) : isEntry ? (
+          <>
+            <PageHeader
+              title={surface === 'content' ? 'Content' : 'Guide'}
+              description="An official Lite product pillar with a bounded entry surface."
+            />
+            <EmptyState
+              title={
+                surface === 'content'
+                  ? 'Content Studio is not yet promoted'
+                  : 'AI Guide is not yet promoted'
+              }
+              description={
+                surface === 'content'
+                  ? 'A first-class Content Studio is not available here. Existing bounded content preparation remains in Today; opening this page does not prepare or publish content.'
+                  : 'A first-class AI Guide is not available here. Opening this page does not start an AI conversation, create a recommendation, or authorize an action.'
+              }
+              action={<a href="#today">Open Today</a>}
+            />
+          </>
         ) : surface === 'customers' ? (
           <Customers
             key={initialCustomerId}

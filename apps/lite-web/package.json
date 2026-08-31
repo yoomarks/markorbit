@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src vite.config.ts",
+    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts",
     "build-storybook": "storybook build -c ../../packages/ui/.storybook"
   },
   "dependencies": {

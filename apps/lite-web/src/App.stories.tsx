@@ -6,6 +6,13 @@ export default {
   parameters: { layout: 'fullscreen', a11y: { disable: false } }
 } satisfies Meta<typeof LiteApp>;
 type Story = StoryObj<typeof LiteApp>;
+export const ContentEntry: Story = {
+  args: { initialSurface: 'content', workspaceId: 'workspace-story' }
+};
+export const GuideEntry: Story = {
+  args: { initialSurface: 'guide', workspaceId: 'workspace-story' }
+};
+export const WorkspaceRequired: Story = { args: { initialSurface: 'today' } };
 export const CustomerList: Story = { args: { initialSurface: 'customers' } };
 export const CustomerDetail: Story = {
   args: { initialSurface: 'customers', initialCustomerId: 'cus-northwind' }
@@ -31,6 +38,14 @@ export const Mobile390: Story = {
       viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
     }
   }
+};
+export const ContentMobile390: Story = {
+  ...ContentEntry,
+  parameters: { ...Mobile390.parameters }
+};
+export const GuideMobile390: Story = {
+  ...GuideEntry,
+  parameters: { ...Mobile390.parameters }
 };
 export const ReviewQueueLoading: Story = {
   args: { initialSurface: 'professional-review', initialState: 'loading' }
