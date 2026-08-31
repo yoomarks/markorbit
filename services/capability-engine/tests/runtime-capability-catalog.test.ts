@@ -35,7 +35,10 @@ describe('PostgresCurrentRuntimeCapabilityCatalogV1', () => {
       {
         query: () =>
           Promise.resolve({
-            rows: [{ capability_id: 'zeta-capability' }, { capability_id: 'alpha-capability' }],
+            rows: [
+              { capability_id: 'zeta-capability' },
+              { capability_id: 'alpha-capability' }
+            ],
             rowCount: 2
           })
       },
@@ -58,7 +61,11 @@ describe('PostgresCurrentRuntimeCapabilityCatalogV1', () => {
   it('fails closed when an identity has no current governed definition', async () => {
     const catalog = new PostgresCurrentRuntimeCapabilityCatalogV1(
       {
-        query: () => Promise.resolve({ rows: [{ capability_id: 'missing-capability' }], rowCount: 1 })
+        query: () =>
+          Promise.resolve({
+            rows: [{ capability_id: 'missing-capability' }],
+            rowCount: 1
+          })
       },
       { findCurrent: () => Promise.resolve(undefined) }
     );
