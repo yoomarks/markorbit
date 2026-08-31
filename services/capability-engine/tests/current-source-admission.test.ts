@@ -230,7 +230,9 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
     };
 
     await expect(
-      evaluator({ implementations: { findCurrent: vi.fn(() => newerProfile) } }).evaluate(historical)
+      evaluator({ implementations: { findCurrent: vi.fn(() => newerProfile) } }).evaluate(
+        historical
+      )
     ).resolves.toMatchObject({
       decision: 'DENIED',
       denial: { code: 'NON_CURRENT_IMPLEMENTATION_BINDING' }
@@ -247,7 +249,9 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
     };
 
     await expect(
-      evaluator({ implementations: { findCurrent: vi.fn(() => retiredProfile) } }).evaluate(historical)
+      evaluator({ implementations: { findCurrent: vi.fn(() => retiredProfile) } }).evaluate(
+        historical
+      )
     ).resolves.toMatchObject({
       decision: 'DENIED',
       denial: { code: 'NON_CURRENT_IMPLEMENTATION_BINDING' }
@@ -398,10 +402,12 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
       }))
     };
 
-    await expect(evaluator({ policy: requiredPolicy }).evaluate(historical)).resolves.toMatchObject({
-      decision: 'DENIED',
-      denial: { code: 'DEPENDENCY_RUNTIME_UNAVAILABLE' }
-    });
+    await expect(evaluator({ policy: requiredPolicy }).evaluate(historical)).resolves.toMatchObject(
+      {
+        decision: 'DENIED',
+        denial: { code: 'DEPENDENCY_RUNTIME_UNAVAILABLE' }
+      }
+    );
 
     await expect(
       evaluator({
@@ -420,9 +426,9 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
     const historical = await execution();
 
     await expect(
-      evaluator({ capabilities: { findCurrent: vi.fn(() => Promise.resolve(undefined)) } }).evaluate(
-        historical
-      )
+      evaluator({
+        capabilities: { findCurrent: vi.fn(() => Promise.resolve(undefined)) }
+      }).evaluate(historical)
     ).resolves.toMatchObject({
       decision: 'DENIED',
       denial: { code: 'NON_CURRENT_CAPABILITY_BINDING' }

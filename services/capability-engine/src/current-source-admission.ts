@@ -48,7 +48,10 @@ export interface CurrentRuntimeCapabilityAuthority {
 export interface CurrentImplementationProfileAuthority {
   findCurrent(
     implementationProfileId: string
-  ): Readonly<ImplementationProfile> | undefined | Promise<Readonly<ImplementationProfile> | undefined>;
+  ):
+    | Readonly<ImplementationProfile>
+    | undefined
+    | Promise<Readonly<ImplementationProfile> | undefined>;
 }
 
 export interface CapabilitySourceAdmissionPolicyInput {
@@ -545,7 +548,10 @@ function exactReferenceIdentity(value: Readonly<ExactReferenceSourceIdentity>): 
   );
 }
 
-function evidenceContains(execution: Readonly<CapabilityRuntimeExecution>, evidenceRef: string): boolean {
+function evidenceContains(
+  execution: Readonly<CapabilityRuntimeExecution>,
+  evidenceRef: string
+): boolean {
   return execution.receipt.evidenceRefs.includes(evidenceRef);
 }
 
@@ -577,7 +583,9 @@ export class CurrentCapabilitySourceAdmissionEvaluator {
 
     let currentCapability: RuntimeCapabilityDefinition | undefined;
     try {
-      currentCapability = await this.options.capabilities.findCurrent(execution.request.capabilityId);
+      currentCapability = await this.options.capabilities.findCurrent(
+        execution.request.capabilityId
+      );
     } catch {
       return denial(
         historical,
@@ -708,7 +716,8 @@ export class CurrentCapabilitySourceAdmissionEvaluator {
         referenceResult.references.length === 0 ||
         referenceResult.references.some(
           (reference) =>
-            !exactReferenceIdentity(reference) || !evidenceContains(execution, reference.evidenceRef)
+            !exactReferenceIdentity(reference) ||
+            !evidenceContains(execution, reference.evidenceRef)
         )
       ) {
         return denial(
