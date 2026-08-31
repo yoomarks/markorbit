@@ -226,7 +226,9 @@ export function parseMethodImprovementPredecessorV1(
   };
 }
 
-function parseSegment(value: unknown): MethodImprovementPerformanceReportQueryV1['segment'] {
+function parseSegment(
+  value: unknown
+): NonNullable<MethodImprovementPerformanceReportQueryV1['segment']> {
   const segment = record(value, 'source.query.segment');
   exactKeys(segment, ['kind', 'value'], 'source.query.segment');
   if (segment.kind !== 'RESEARCH_DATASET' && segment.kind !== 'IMPLEMENTATION_KEY')
