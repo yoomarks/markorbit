@@ -31,13 +31,9 @@ const mission = {
     requiredData: ['COMPLETED_DURATION_FACTS'],
     effectiveFrom: '2026-08-31T00:00:00.000Z'
   },
-  knowledgeResearchPlan: [
-    'Resolve bounded authoritative CN duration sources with exact lineage.'
-  ],
+  knowledgeResearchPlan: ['Resolve bounded authoritative CN duration sources with exact lineage.'],
   dataEngineResearchPlan: ['Rebuild the accepted reproducible CN duration research cohort.'],
-  hypotheses: [
-    'The admitted method error may be explained by a bounded duration-band edge case.'
-  ],
+  hypotheses: ['The admitted method error may be explained by a bounded duration-band edge case.'],
   featurePlan: [
     'Evaluate only deterministic completed-duration features already allowed by the method family.'
   ],
@@ -121,9 +117,7 @@ describe('Method Improvement V1 contracts', () => {
     expect(parsedTrigger.triggerType).toBe('PERFORMANCE_GAP');
     expect(parsedTrigger.source.counts.methodError).toBe(1);
     expect(parsedMission.mission.targetMethodFamily).toBe('CLASSIFICATION');
-    expect(() =>
-      assertMethodImprovementMissionBinding(parsedTrigger, parsedMission)
-    ).not.toThrow();
+    expect(() => assertMethodImprovementMissionBinding(parsedTrigger, parsedMission)).not.toThrow();
   });
 
   it('rejects extra unbounded product/customer snapshot fields', () => {
@@ -238,8 +232,8 @@ describe('Method Improvement V1 contracts', () => {
         evaluationRef: 'brain-method-evaluation:evaluation_other'
       }
     });
-    expect(() =>
-      assertMethodImprovementMissionBinding(parsedTrigger, wrongPredecessor)
-    ).toThrow(/does not match/u);
+    expect(() => assertMethodImprovementMissionBinding(parsedTrigger, wrongPredecessor)).toThrow(
+      /does not match/u
+    );
   });
 });
