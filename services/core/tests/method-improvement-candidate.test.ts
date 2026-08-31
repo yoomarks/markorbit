@@ -329,6 +329,16 @@ function refingerprintMission(
   };
 }
 
+function candidateError(run: () => unknown): MethodImprovementCandidateError {
+  try {
+    run();
+  } catch (error) {
+    if (error instanceof MethodImprovementCandidateError) return error;
+    throw error;
+  }
+  throw new Error('expected Method Improvement candidate rejection');
+}
+
 describe('Phase 7 trigger-bound Method Improvement candidate', () => {
   it('produces one deterministic CLASSIFICATION CANDIDATE from new reproducible research', async () => {
     const admission = await admitted();
@@ -395,13 +405,14 @@ describe('Phase 7 trigger-bound Method Improvement candidate', () => {
 
   it('rejects tampered trigger or mission fingerprints and unrelated mission scope', async () => {
     const admission = await admitted();
-    expect(() =>
+    const tamperedTriggerError = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: { ...admission.trigger, reason: 'tampered after admission' },
         researchMission: admission.researchMission,
         research: researchFixture()
       })
-    ).toThrowError(expect.objectContaining({ code: 'INVALID_TRIGGER' }));
+    );
+    expect(tamperedTriggerError.code).toBe('INVALID_TRIGGER');
 
     const unrelatedMission = {
       ...admission.researchMission.mission,
@@ -410,17 +421,15 @@ describe('Phase 7 trigger-bound Method Improvement candidate', () => {
         operations: ['UNRELATED_CLASSIFICATION']
       }
     };
-    const refingerprinted = refingerprintMission(
-      admission.researchMission,
-      unrelatedMission as MethodImprovementResearchMissionV1['mission']
-    );
-    expect(() =>
+    const refingerprinted = refingerprintMission(admission.researchMission, unrelatedMission);
+    const unrelatedMissionError = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: admission.trigger,
         researchMission: refingerprinted,
         research: researchFixture()
       })
-    ).toThrowError(expect.objectContaining({ code: 'MISSION_MISMATCH' }));
+    );
+    expect(unrelatedMissionError.code).toBe('MISSION_MISMATCH');
   });
 
   it('rejects predecessor drift before producing any candidate artifact', async () => {
@@ -438,43 +447,47 @@ describe('Phase 7 trigger-bound Method Improvement candidate', () => {
       predecessor: driftedPredecessor
     };
 
-    expect(() =>
+    const error = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: driftedTrigger,
         researchMission: driftedMission,
         research: researchFixture()
       })
-    ).toThrowError(expect.objectContaining({ code: 'PREDECESSOR_MISMATCH' }));
+    );
+    expect(error.code).toBe('PREDECESSOR_MISMATCH');
   });
 
   it('fails closed on receipt or descriptive replay drift', async () => {
     const admission = await admitted();
-    expect(() =>
+    const receiptError = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: admission.trigger,
         researchMission: admission.researchMission,
         research: researchFixture({ receiptIntegritySha: '9'.repeat(64) })
       })
-    ).toThrowError(expect.objectContaining({ code: 'RESEARCH_REJECTED' }));
+    );
+    expect(receiptError.code).toBe('RESEARCH_REJECTED');
 
-    expect(() =>
+    const replayError = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: admission.trigger,
         researchMission: admission.researchMission,
         research: researchFixture({ replayMedianDays: 341 })
       })
-    ).toThrowError(expect.objectContaining({ code: 'RESEARCH_REJECTED' }));
+    );
+    expect(replayError.code).toBe('RESEARCH_REJECTED');
   });
 
   it('rejects non-strict classification thresholds even when descriptive replay agrees', async () => {
     const admission = await admitted();
-    expect(() =>
+    const error = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: admission.trigger,
         researchMission: admission.researchMission,
         research: researchFixture({ p25Days: 340, medianDays: 340, p75Days: 390 })
       })
-    ).toThrowError(expect.objectContaining({ code: 'THRESHOLD_CONTRACT_MISMATCH' }));
+    );
+    expect(error.code).toBe('THRESHOLD_CONTRACT_MISMATCH');
   });
 
   it('rejects the exact accepted predecessor research identity as a no-op candidate', async () => {
@@ -490,27 +503,26 @@ describe('Phase 7 trigger-bound Method Improvement candidate', () => {
       p75Days: 383
     });
 
-    expect(() =>
+    const error = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: admission.trigger,
         researchMission: admission.researchMission,
         research: oldResearch
       })
-    ).toThrowError(expect.objectContaining({ code: 'NO_CANDIDATE_CHANGE' }));
+    );
+    expect(error.code).toBe('NO_CANDIDATE_CHANGE');
   });
 
   it('uses fail-closed typed errors for candidate rejection', async () => {
     const admission = await admitted();
-    try {
+    const error = candidateError(() =>
       buildMethodImprovementCandidateV1({
         trigger: admission.trigger,
         researchMission: admission.researchMission,
         research: researchFixture({ receiptIntegritySha: '8'.repeat(64) })
-      });
-      throw new Error('expected candidate rejection');
-    } catch (error) {
-      expect(error).toBeInstanceOf(MethodImprovementCandidateError);
-      expect(error).toMatchObject({ code: 'RESEARCH_REJECTED' });
-    }
+      })
+    );
+    expect(error).toBeInstanceOf(MethodImprovementCandidateError);
+    expect(error.code).toBe('RESEARCH_REJECTED');
   });
 });
