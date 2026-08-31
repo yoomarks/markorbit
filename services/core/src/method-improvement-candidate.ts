@@ -108,11 +108,7 @@ function fingerprint(value: unknown): string {
     .digest('hex');
 }
 
-function fail(
-  code: MethodImprovementCandidateErrorCode,
-  message: string,
-  cause?: unknown
-): never {
+function fail(code: MethodImprovementCandidateErrorCode, message: string, cause?: unknown): never {
   throw new MethodImprovementCandidateError(code, message, {
     cause: cause instanceof Error ? cause : undefined
   });
