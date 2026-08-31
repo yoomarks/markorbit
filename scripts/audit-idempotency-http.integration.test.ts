@@ -1,3 +1,4 @@
+import './phase6-product-outcome-evidence.integration.test.js';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ManagedDatabase } from '../packages/persistence/dist/index.js';
