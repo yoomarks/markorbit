@@ -285,6 +285,9 @@ export function createGatewayProductLoopRoutes(
       path: '/api/lite/trademark-assets/:trademarkAssetId',
       handle: trademarkAssetDetail
     },
+    route('POST', '/api/lite/trademark-assets/:trademarkAssetId/commerce-profile', [
+      'matter:manage'
+    ]),
     route(
       'GET',
       '/api/lite/trademark-assets/:trademarkAssetId/service-work-package',
