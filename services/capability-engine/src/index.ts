@@ -28,11 +28,13 @@ import type { PostgresReflectionDispositionProfileService } from './reflection-d
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 
+export * from './capability-audit-telemetry.js';
 export * from './capability-center-http.js';
 export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
 export * from './capability-runtime-http.js';
+export * from './capability-runtime-quality-telemetry.js';
 export * from './capability-runtime.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
