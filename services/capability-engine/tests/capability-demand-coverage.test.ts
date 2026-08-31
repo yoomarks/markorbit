@@ -128,7 +128,7 @@ function deniedAdmission(): CapabilitySourceAdmissionDecision {
 
 function auditor(
   options: {
-    currentCapability?: RuntimeCapabilityDefinition;
+    currentCapability?: RuntimeCapabilityDefinition | undefined;
     profiles?: ImplementationProfile[];
     capabilityFailure?: boolean;
     implementationFailure?: boolean;
