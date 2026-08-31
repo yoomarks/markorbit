@@ -431,7 +431,7 @@ export function parseMethodImprovementTriggerV1(value: unknown): MethodImproveme
       'methodImprovementTrigger.triggerId'
     ) as MethodImprovementTriggerId,
     workspaceId,
-    triggerType: trigger.triggerType as MethodImprovementTriggerType,
+    triggerType: trigger.triggerType,
     predecessor,
     source,
     reason: text(trigger.reason, 'methodImprovementTrigger.reason', 1000),
