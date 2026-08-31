@@ -52,10 +52,7 @@ describe('PostgresCurrentRuntimeCapabilityCatalogV1', () => {
       ['zeta-capability', definition('zeta-capability', 4)]
     ]);
     const catalog = new PostgresCurrentRuntimeCapabilityCatalogV1(
-      queryClient([
-        { capability_id: 'zeta-capability' },
-        { capability_id: 'alpha-capability' }
-      ]),
+      queryClient([{ capability_id: 'zeta-capability' }, { capability_id: 'alpha-capability' }]),
       {
         findCurrent: (capabilityId) => {
           calls.push(capabilityId);
