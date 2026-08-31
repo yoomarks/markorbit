@@ -521,17 +521,19 @@ export function LiteApp({
   initialOpportunityId,
   initialReviewCaseId,
   initialFilingAuthorization,
-  workspaceId = new URLSearchParams(window.location.search).get('workspaceId') ?? ''
+  workspaceId
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(
     () => surfacesByHash[window.location.hash] ?? initialSurface
   );
   const [state, setState] = useState<FixtureState>(initialState);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(workspaceId);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(
+    () => workspaceId ?? new URLSearchParams(window.location.search).get('workspaceId') ?? ''
+  );
   useEffect(() => {
     const followHash = () => {
       setActiveWorkspaceId(
-        new URLSearchParams(window.location.search).get('workspaceId') ?? workspaceId
+        new URLSearchParams(window.location.search).get('workspaceId') ?? workspaceId ?? ''
       );
       const nextSurface = surfacesByHash[window.location.hash];
       if (nextSurface) setSurface(nextSurface);

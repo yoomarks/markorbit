@@ -179,6 +179,23 @@ describe('Lite shell navigation truth', () => {
     }
   );
 
+  it.each(['popstate', 'hashchange'] as const)(
+    'clears a URL-derived Workspace when %s removes it from the URL',
+    (event) => {
+      window.history.replaceState(null, '', '/?workspaceId=workspace-1#today');
+      render(<LiteApp />);
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Today workspace-1');
+
+      location('/#today', event);
+
+      expect(screen.getByText('Workspace required')).toBeVisible();
+      expect(screen.getByText('Select a Workspace')).toBeVisible();
+      expect(screen.getByText('Workspace · not selected')).toBeVisible();
+      expect(screen.queryByText(/workspace-1/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
+    }
+  );
+
   it('retains a supplied Workspace in stories and updates it on prop changes', () => {
     const { rerender } = render(<LiteApp workspaceId="workspace-story" />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Today workspace-story');
