@@ -62,6 +62,18 @@ type Reason =
   | 'APPLICABILITY_ERROR'
   | 'PRODUCT_USER_PREFERENCE'
   | 'INCONCLUSIVE_EVIDENCE';
+type ImprovementCountsRow = { triggers: number; missions: number };
+type ImprovementStoredRow = {
+  method_package_ref: string;
+  method_ref: string;
+  method_version_ref: string;
+  evaluation_ref: string;
+  report_watermark_sequence: number;
+  report_watermark_evidence_id: string;
+  trigger_json: unknown;
+  mission_json: unknown;
+};
+type CountRow = { count: number };
 
 function evidence(suffix: string, outcome: Outcome, reason?: Reason) {
   const reviewId = `matter-intelligence-review_phase7-${suffix}`;
@@ -273,23 +285,20 @@ integration('PostgreSQL governed Method Improvement admission', () => {
       .query(
         'SELECT brain_asset_version_id,status FROM brain_asset_versions ORDER BY brain_asset_version_id'
       );
-    const result = await admitImprovement(
-      improvementService('first'),
-      command(source.watermark!)
-    );
+    const result = await admitImprovement(improvementService('first'), command(source.watermark!));
 
     expect(result.replayed).toBe(false);
     expect(result.trigger.source.query.watermark).toEqual(source.watermark);
     expect(result.trigger.source.counts.methodError).toBe(1);
     expect(result.researchMission.triggerId).toBe(result.trigger.triggerId);
-    const counts = await database.getPool().query(
+    const counts = await database.getPool().query<ImprovementCountsRow>(
       `SELECT
          (SELECT count(*)::int FROM core_method_improvement_triggers) AS triggers,
          (SELECT count(*)::int FROM core_method_improvement_research_missions) AS missions`
     );
     expect(counts.rows[0]).toEqual({ triggers: 1, missions: 1 });
 
-    const stored = await database.getPool().query(
+    const stored = await database.getPool().query<ImprovementStoredRow>(
       `SELECT t.method_package_ref,t.method_ref,t.method_version_ref,t.evaluation_ref,
               t.report_watermark_sequence::int AS report_watermark_sequence,
               t.report_watermark_evidence_id,t.trigger_json,m.mission_json
@@ -297,7 +306,8 @@ integration('PostgreSQL governed Method Improvement admission', () => {
          JOIN core_method_improvement_research_missions m
            ON m.trigger_id=t.trigger_id AND m.workspace_id=t.workspace_id`
     );
-    expect(stored.rows[0]).toMatchObject({
+    const storedRow = stored.rows[0]!;
+    expect(storedRow).toMatchObject({
       method_package_ref: packageRef,
       method_ref: methodRef,
       method_version_ref: methodVersionRef,
@@ -306,14 +316,14 @@ integration('PostgreSQL governed Method Improvement admission', () => {
       report_watermark_evidence_id: source.watermark!.methodOutcomeEvidenceId
     });
     const boundedJson = JSON.stringify({
-      trigger: stored.rows[0]!.trigger_json,
-      mission: stored.rows[0]!.mission_json
+      trigger: storedRow.trigger_json,
+      mission: storedRow.mission_json
     });
     expect(boundedJson).not.toMatch(
       /formalMatter|customerSnapshot|productSnapshot|rawDataEngineRows|capabilityPackageBody|brainPackageBody/u
     );
     expect(
-      (stored.rows[0]!.trigger_json as { source: { sampleEvidenceRefs: unknown[] } }).source
+      (storedRow.trigger_json as { source: { sampleEvidenceRefs: unknown[] } }).source
         .sampleEvidenceRefs
     ).toHaveLength(1);
 
@@ -360,7 +370,7 @@ integration('PostgreSQL governed Method Improvement admission', () => {
       )
     ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
 
-    const counts = await database.getPool().query(
+    const counts = await database.getPool().query<ImprovementCountsRow>(
       `SELECT
          (SELECT count(*)::int FROM core_method_improvement_triggers) AS triggers,
          (SELECT count(*)::int FROM core_method_improvement_research_missions) AS missions`
@@ -398,11 +408,9 @@ integration('PostgreSQL governed Method Improvement admission', () => {
     await admitOutcome('confirmed-only', 'CONFIRMED');
     const confirmedOnly = await exactReport();
     await expect(
-      admitImprovement(
-        improvementService('no-method-error'),
-        command(confirmedOnly.watermark!),
-        { idempotencyKey: 'phase7-no-method-error' }
-      )
+      admitImprovement(improvementService('no-method-error'), command(confirmedOnly.watermark!), {
+        idempotencyKey: 'phase7-no-method-error'
+      })
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_EVIDENCE' });
 
     await database.getPool().query(
@@ -423,7 +431,7 @@ integration('PostgreSQL governed Method Improvement admission', () => {
 
     const persisted = await database
       .getPool()
-      .query('SELECT count(*)::int AS count FROM core_method_improvement_triggers');
+      .query<CountRow>('SELECT count(*)::int AS count FROM core_method_improvement_triggers');
     expect(persisted.rows[0]?.count).toBe(0);
   });
 
