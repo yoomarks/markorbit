@@ -178,8 +178,13 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
 
   it('fails closed when historical producer identity is internally inconsistent', async () => {
     const historical = await execution();
-    const tampered = structuredClone(historical);
-    tampered.receipt.capabilityReturnId = 'capability-return_tampered';
+    const tampered: CapabilityRuntimeExecution = {
+      ...historical,
+      receipt: {
+        ...historical.receipt,
+        capabilityReturnId: 'capability-return_tampered'
+      }
+    };
 
     await expect(evaluator().evaluate(tampered)).resolves.toMatchObject({
       decision: 'DENIED',
@@ -189,8 +194,7 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
 
   it('denies a historically successful replay after the Capability definition advances without mutation', async () => {
     const first = await execution();
-    const replay = structuredClone(first);
-    replay.replayed = true;
+    const replay: CapabilityRuntimeExecution = { ...structuredClone(first), replayed: true };
     const before = structuredClone(replay);
     const newerDefinition: RuntimeCapabilityDefinition = {
       ...definition,
@@ -416,6 +420,15 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
     const historical = await execution();
 
     await expect(
+      evaluator({ capabilities: { findCurrent: vi.fn(() => Promise.resolve(undefined)) } }).evaluate(
+        historical
+      )
+    ).resolves.toMatchObject({
+      decision: 'DENIED',
+      denial: { code: 'NON_CURRENT_CAPABILITY_BINDING' }
+    });
+
+    await expect(
       evaluator({
         capabilities: {
           findCurrent: vi.fn(() => Promise.reject(new Error('registry unavailable')))
@@ -424,6 +437,13 @@ describe('CurrentCapabilitySourceAdmissionEvaluator', () => {
     ).resolves.toMatchObject({
       decision: 'DENIED',
       denial: { code: 'DEPENDENCY_RUNTIME_UNAVAILABLE' }
+    });
+
+    await expect(
+      evaluator({ implementations: { findCurrent: vi.fn(() => undefined) } }).evaluate(historical)
+    ).resolves.toMatchObject({
+      decision: 'DENIED',
+      denial: { code: 'NON_CURRENT_IMPLEMENTATION_BINDING' }
     });
 
     await expect(
