@@ -6,9 +6,7 @@ import {
   CN_DURATION_BAND_ACCEPTED_DATASET_REF
 } from '@markorbit/contracts/brain-cn-duration-band-classification';
 import { ManagedDatabase } from '@markorbit/persistence';
-import {
-  assertMatterIntelligenceReadIntegrity
-} from '../src/matter-intelligence-read-integrity.js';
+import { assertMatterIntelligenceReadIntegrity } from '../src/matter-intelligence-read-integrity.js';
 import {
   MatterIntelligenceReadService,
   PostgresMatterIntelligenceReadRepository,
@@ -191,15 +189,18 @@ suite('PostgreSQL governed MarkReg Matter Intelligence reads', () => {
     });
   }
 
-  it('returns a successful empty projection and a fresh reader instance sees the same durable truth', async () => {
-    const first = await reader().getForMatter(principal(), formalMatterId);
-    expect(first).toMatchObject({ items: [], total: 0 });
-    assertMatterIntelligenceReadIntegrity(first, workspaceId);
+  it(
+    'returns a successful empty projection and a fresh reader instance sees the same durable truth',
+    async () => {
+      const first = await reader().getForMatter(principal(), formalMatterId);
+      expect(first).toMatchObject({ items: [], total: 0 });
+      assertMatterIntelligenceReadIntegrity(first, workspaceId);
 
-    const freshReader = reader();
-    const second = await freshReader.getForMatter(principal(), formalMatterId);
-    expect(second).toEqual(first);
-  });
+      const freshReader = reader();
+      const second = await freshReader.getForMatter(principal(), formalMatterId);
+      expect(second).toEqual(first);
+    }
+  );
 
   it('orders and paginates multiple durable observations deterministically', async () => {
     const older = observation('one', 336, '2026-08-31T09:10:00.000Z');
@@ -236,74 +237,82 @@ suite('PostgreSQL governed MarkReg Matter Intelligence reads', () => {
     );
   });
 
-  it('returns exact current and superseded Human Review lineage bound to the durable observation', async () => {
-    const value = observation('one', 336, '2026-08-31T09:10:00.000Z');
-    await seedObservation(value, 'intelligence-read-one');
+  it(
+    'returns exact current and superseded Human Review lineage bound to the durable observation',
+    async () => {
+      const value = observation('one', 336, '2026-08-31T09:10:00.000Z');
+      await seedObservation(value, 'intelligence-read-one');
 
-    const firstReviewService = new MatterIntelligenceReviewService(
-      new PostgresMatterIntelligenceReviewRepository(database),
-      () => '2026-08-31T09:30:00.000Z'
-    );
-    const first = await firstReviewService.recordReview({
-      workspaceId,
-      formalMatterId,
-      matterIntelligenceObservationId: value.matterIntelligenceObservationId,
-      outcome: 'CONFIRMED',
-      principal: principal(),
-      idempotencyKey: 'intelligence-read-review-one',
-      correlationId: 'intelligence-read-review-correlation-one'
-    });
+      const firstReviewService = new MatterIntelligenceReviewService(
+        new PostgresMatterIntelligenceReviewRepository(database),
+        () => '2026-08-31T09:30:00.000Z'
+      );
+      const first = await firstReviewService.recordReview({
+        workspaceId,
+        formalMatterId,
+        matterIntelligenceObservationId: value.matterIntelligenceObservationId,
+        outcome: 'CONFIRMED',
+        principal: principal(),
+        idempotencyKey: 'intelligence-read-review-one',
+        correlationId: 'intelligence-read-review-correlation-one'
+      });
 
-    const secondReviewService = new MatterIntelligenceReviewService(
-      new PostgresMatterIntelligenceReviewRepository(database),
-      () => '2026-08-31T09:40:00.000Z'
-    );
-    const second = await secondReviewService.recordReview({
-      workspaceId,
-      formalMatterId,
-      matterIntelligenceObservationId: value.matterIntelligenceObservationId,
-      outcome: 'OVERRIDDEN',
-      reason: 'METHOD_ERROR',
-      rationale: 'Reviewer found a method-specific interpretation error.',
-      supersedes: {
-        reviewId: first.review.matterIntelligenceReviewId,
-        reviewVersion: first.review.reviewVersion
-      },
-      principal: principal(),
-      idempotencyKey: 'intelligence-read-review-two',
-      correlationId: 'intelligence-read-review-correlation-two'
-    });
-
-    const projection = await reader().getForMatter(principal(), formalMatterId, {
-      reviewHistoryLimit: 10
-    });
-    expect(projection.items[0]).toMatchObject({
-      reviewState: 'REVIEWED',
-      reviewHistoryTotal: 2,
-      reviewHistoryComplete: true,
-      currentReview: {
-        matterIntelligenceReviewId: second.review.matterIntelligenceReviewId,
-        reviewVersion: 2,
+      const secondReviewService = new MatterIntelligenceReviewService(
+        new PostgresMatterIntelligenceReviewRepository(database),
+        () => '2026-08-31T09:40:00.000Z'
+      );
+      const second = await secondReviewService.recordReview({
+        workspaceId,
+        formalMatterId,
+        matterIntelligenceObservationId: value.matterIntelligenceObservationId,
         outcome: 'OVERRIDDEN',
-        reason: 'METHOD_ERROR'
-      }
-    });
-    expect(projection.items[0]!.reviewHistory.map((review) => review.reviewVersion)).toEqual([2, 1]);
-    expect(projection.items[0]!.reviewHistory[0]!.supersedes).toEqual({
-      reviewId: first.review.matterIntelligenceReviewId,
-      reviewVersion: 1
-    });
-    assertMatterIntelligenceReadIntegrity(projection, workspaceId);
-  });
+        reason: 'METHOD_ERROR',
+        rationale: 'Reviewer found a method-specific interpretation error.',
+        supersedes: {
+          reviewId: first.review.matterIntelligenceReviewId,
+          reviewVersion: first.review.reviewVersion
+        },
+        principal: principal(),
+        idempotencyKey: 'intelligence-read-review-two',
+        correlationId: 'intelligence-read-review-correlation-two'
+      });
 
-  it('does not disclose another Workspace and keeps storage failure distinct from an empty result', async () => {
-    await expect(
-      reader().getForMatter(principal(otherWorkspaceId), formalMatterId)
-    ).rejects.toMatchObject({
-      code: 'FORMAL_MATTER_NOT_FOUND',
-      status: 404
-    } satisfies Partial<MatterIntelligenceReadError>);
-  });
+      const projection = await reader().getForMatter(principal(), formalMatterId, {
+        reviewHistoryLimit: 10
+      });
+      expect(projection.items[0]).toMatchObject({
+        reviewState: 'REVIEWED',
+        reviewHistoryTotal: 2,
+        reviewHistoryComplete: true,
+        currentReview: {
+          matterIntelligenceReviewId: second.review.matterIntelligenceReviewId,
+          reviewVersion: 2,
+          outcome: 'OVERRIDDEN',
+          reason: 'METHOD_ERROR'
+        }
+      });
+      expect(
+        projection.items[0]!.reviewHistory.map((review) => review.reviewVersion)
+      ).toEqual([2, 1]);
+      expect(projection.items[0]!.reviewHistory[0]!.supersedes).toEqual({
+        reviewId: first.review.matterIntelligenceReviewId,
+        reviewVersion: 1
+      });
+      assertMatterIntelligenceReadIntegrity(projection, workspaceId);
+    }
+  );
+
+  it(
+    'does not disclose another Workspace and keeps storage failure distinct from an empty result',
+    async () => {
+      await expect(
+        reader().getForMatter(principal(otherWorkspaceId), formalMatterId)
+      ).rejects.toMatchObject({
+        code: 'FORMAL_MATTER_NOT_FOUND',
+        status: 404
+      } satisfies Partial<MatterIntelligenceReadError>);
+    }
+  );
 
   it('fails the integrity gate when persisted review fingerprint lineage is corrupted', async () => {
     const value = observation('one', 336, '2026-08-31T09:10:00.000Z');
