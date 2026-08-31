@@ -22,6 +22,74 @@ Authenticated Opportunity Candidate Review reads (#365):
 
 Focused verification: set `LITE_CANDIDATE_TEST_DATABASE_URL` to an isolated test database and `LITE_CANDIDATE_POSTGRES_TEST_REQUIRED=1`, then run `pnpm --filter @markorbit/lite-service exec vitest run --no-file-parallelism tests/opportunity-candidate-http.test.ts tests/candidate-qualification-postgres.test.ts`. The PostgreSQL suite uses existing owner migrations, starts `src/main.ts` with a read-only database connection, and checks authenticated reads, exact qualification binding, isolation, bounded pagination, unchanged durable state, and real database failures.
 
+## #372 Content Studio work reads
+
+Content Studio uses the existing `contentOpportunityId` as stable Workspace work identity, with
+its current Opportunity version. It does not persist a Studio lifecycle or require a current
+Content Pick, Daily Orbit item or subject user's preferences. The accepted #364 Supervisor decision
+and #372 govern this backend-only change; Gateway exposure belongs to #373 and Web UI is separate.
+
+- `GET /v1/content-studio/works?limit=20&after=content-opportunity_...`: select the latest version
+  per Opportunity identity, then include only `ACCEPTED_FOR_PREPARATION`. `limit` is 1–50 (default
+  20); `after` is an exclusive Opportunity ID. Items use ascending PostgreSQL `C`-collation ID order.
+  `nextAfter` is the last returned ID when another page exists, otherwise `null`. Each request has
+  a consistent snapshot; pagination is not a frozen multi-request snapshot of concurrently changing work.
+- `GET /v1/content-studio/works/:contentOpportunityId`: read the current Workspace-visible
+  Opportunity, including its actual non-active status if it has since been rejected/deferred.
+  Only Draft lineage associated with that exact current Opportunity version is returned.
+- Both routes reuse trusted internal Workspace Principal authentication and `workspace:read`.
+  No subject identity, mutation permission, CSRF or idempotency key is used by these internal GETs.
+  Unsupported query parameters are rejected; reads cannot request a historical Opportunity version.
+
+`ContentStudioWorkList` and `ContentStudioWorkDetail` are Lite-local transport projections of
+existing shared domain types. List summaries contain the exact Opportunity reference, title,
+rationale, sources and Opportunity timestamps. `latestDraft` selects the newest `updatedAt` among
+each Draft identity's latest version, breaking ties by ascending Draft ID. `latestDraftReview`
+is either the actual decision for that exact Draft version or `null`; Draft status is never used
+to invent a decision. `latestPublishPackage` is the last Package by creation time, ID and version;
+it retains its exact Draft/Review references and may cover an older Draft. `latestPackageFeedback`
+belongs only to that exact Package. Missing optional records are `null`, not a synthesized stage.
+
+Detail returns `opportunity`, `drafts` (latest per identity), `reviewedDrafts` (the exact historical
+versions covered by decisions), `reviews`, `publishPackages` and `feedback`. Drafts are ordered by
+ID/version; decisions, Packages and feedback by their owner timestamp, ID and version. Review
+fingerprints must match the exact Draft; Packages must match both Draft and approving decision;
+feedback must match the exact Package and stored expected fingerprint. Workspace, relational
+identity and document lineage are checked before returning any records.
+
+The whole page/detail uses a `READ ONLY`, `REPEATABLE READ` transaction and batch queries over
+existing Lite tables. Unknown or another Workspace's work returns 404. Invalid inputs are governed
+400/422 errors; permission denial is 403; persistence failures and malformed stored lineage are
+503, never an empty list or absent Draft/Review fallback. No domain events or state transitions
+are emitted by these reads.
+
+Historical Visual discovery remains explicitly unavailable: both responses carry `partial: true`
+and `warnings: ["VISUAL_HISTORY_NOT_DISCOVERABLE"]`. They do not return incomplete current-Kit
+Visual references as history. This does not block the non-media lifecycle. No provider/model,
+QC, paid execution or publication authority is introduced. Drafts retain `humanReviewRequired=true`
+and `published=false`; Packages retain `externalPublishExecuted=false`; feedback remains a user's
+after-the-fact report, never independently verified publication or use.
+
+Focused verification (isolated PostgreSQL database, existing migrations only):
+
+```sh
+LITE_CONTENT_STUDIO_TEST_DATABASE_URL=postgresql://... LITE_CONTENT_STUDIO_POSTGRES_TEST_REQUIRED=1 pnpm --filter @markorbit/lite-service exec vitest run --no-file-parallelism tests/content-studio.test.ts tests/content-studio-postgres.test.ts
+pnpm --filter @markorbit/lite-service test
+pnpm --filter @markorbit/lite-service lint
+pnpm --filter @markorbit/lite-service typecheck
+pnpm --filter @markorbit/lite-service build
+pnpm validate:persistence-boundaries
+pnpm validate:workspace
+node --test scripts/ci-detect-scope.test.mjs
+pnpm format:check
+git diff --check
+```
+
+The PostgreSQL suite exercises the actual `src/main.ts` HTTP runtime and removes an original
+Daily Signal after proving its Orbit/Pick existed, then verifies stable list/detail for another
+Workspace member. It also covers version dedupe, pagination, isolation, exact historical lineage,
+malformed records and unchanged lifecycle row counts. No Gateway or UI implementation is included.
+
 Authenticated Trademark Asset Commerce runtime:
 
 - `GET /v1/trademark-assets/:trademarkAssetId` includes the workspace-owned `commerceProfile` (or `null` before creation), after checking Asset visibility.
