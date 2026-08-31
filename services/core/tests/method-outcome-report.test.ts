@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   MethodOutcomeReportServiceV1,
   parseMethodOutcomeReportQueryV1,
-  type MethodOutcomeReportReaderV1,
   type MethodOutcomeReportV1
 } from '../src/method-outcome-report.js';
 
@@ -82,7 +81,7 @@ describe('Method Outcome report query', () => {
 
   it('fails trusted workspace mismatch before invoking the reader', async () => {
     const report = vi.fn(() => Promise.resolve(emptyReport()));
-    const service = new MethodOutcomeReportServiceV1({ report } as MethodOutcomeReportReaderV1);
+    const service = new MethodOutcomeReportServiceV1({ report });
 
     await expect(
       service.report({
