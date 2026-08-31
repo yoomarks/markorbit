@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { extractGatewayRoutes } from './gateway-route-source.mjs';
 
+const key = (x) => `${x.method} ${x.path}`;
 const source = extractGatewayRoutes();
 const baseline = JSON.parse(
   fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY.json', 'utf8')
@@ -12,10 +13,16 @@ const m8Wp03 = JSON.parse(
 const m8Wp04 = JSON.parse(
   fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY_M8_WP04.json', 'utf8')
 ).routes;
-const inventory = [...baseline, ...m8Wp03, ...m8Wp04].sort((a, b) =>
-  `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`)
-);
-const key = (x) => `${x.method} ${x.path}`;
+const markRegEarlyFunnel = JSON.parse(
+  fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY_MARKREG_EARLY_FUNNEL.json', 'utf8')
+).routes;
+const promotedEarlyFunnelKeys = new Set(markRegEarlyFunnel.map(key));
+const inventory = [
+  ...baseline.filter((row) => !promotedEarlyFunnelKeys.has(key(row))),
+  ...m8Wp03,
+  ...m8Wp04,
+  ...markRegEarlyFunnel
+].sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
 
 assert.equal(
   new Set(inventory.map(key)).size,
@@ -49,7 +56,8 @@ for (const row of inventory) {
     row.path.startsWith('/api/markreg/document-packages') ||
     row.path.startsWith('/api/markreg/orders') ||
     row.path.startsWith('/api/markreg/recommended-actions') ||
-    row.path.startsWith('/api/operations/');
+    row.path.startsWith('/api/operations/') ||
+    row.path.startsWith('/v1/markreg/');
   const expected = authOwner
     ? 'auth'
     : row.path.startsWith('/api/payments')
@@ -89,5 +97,5 @@ assert.equal(
   85
 );
 console.log(
-  'Gateway inventory PASS: 91 runtime routes; authenticated Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
+  'Gateway inventory PASS: 91 runtime routes; authenticated Early Funnel, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
 );
