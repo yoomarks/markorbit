@@ -28,12 +28,17 @@ function executionFixture(options: {
 } = {}): CapabilityRuntimeExecution {
   const status = options.status ?? 'SUCCEEDED';
   const errorCode = options.errorCode;
-  const invocationStatus = options.invocationStatus ?? (errorCode === 'IMPLEMENTATION_FAILED' ? 'FAILED' : 'COMPLETED');
+  const invocationStatus =
+    options.invocationStatus ?? (errorCode === 'IMPLEMENTATION_FAILED' ? 'FAILED' : 'COMPLETED');
   const replayed = options.replayed ?? false;
   const startedAt = options.startedAt ?? '2026-09-01T00:00:00.000Z';
   const completedAt = options.completedAt ?? '2026-09-01T00:00:00.250Z';
   const returnStatus =
-    status === 'SUCCEEDED' ? 'COMPLETED' : status === 'REQUIRES_REVIEW' ? 'REVIEW_REQUIRED' : 'FAILED';
+    status === 'SUCCEEDED'
+      ? 'COMPLETED'
+      : status === 'REQUIRES_REVIEW'
+        ? 'REVIEW_REQUIRED'
+        : 'FAILED';
 
   return {
     request: {
@@ -348,11 +353,17 @@ describe('Governed Capability runtime quality telemetry V1', () => {
 
   it('rejects telemetry construction when persisted execution identities drift', () => {
     const execution = executionFixture();
-    execution.receipt.capabilityOutcomeId = 'capability-outcome_other';
+    const drifted: CapabilityRuntimeExecution = {
+      ...execution,
+      receipt: {
+        ...execution.receipt,
+        capabilityOutcomeId: 'capability-outcome_other'
+      }
+    };
 
     expect(() =>
       createGovernedCapabilityRuntimeQualityTelemetryV1(
-        execution,
+        drifted,
         '2026-09-01T00:00:05.000Z'
       )
     ).toThrow(/exact execution identity pairing/u);
