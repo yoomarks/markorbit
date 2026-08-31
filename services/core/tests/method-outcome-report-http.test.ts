@@ -3,7 +3,6 @@ import type { JsonRequest } from '@markorbit/service-kit';
 import { createMethodOutcomeReportRoutesV1 } from '../src/method-outcome-report-http.js';
 import {
   MethodOutcomeReportError,
-  type MethodOutcomeReportServiceV1,
   type MethodOutcomeReportV1
 } from '../src/method-outcome-report.js';
 
@@ -38,7 +37,7 @@ function fixture(error?: MethodOutcomeReportError) {
   const reportMethod = vi.fn(() => (error ? Promise.reject(error) : Promise.resolve(report())));
   const route = createMethodOutcomeReportRoutesV1({
     internalServiceSecret: secret,
-    service: { report: reportMethod } as Pick<MethodOutcomeReportServiceV1, 'report'>
+    service: { report: reportMethod }
   })[0]!;
   return { route, reportMethod };
 }
