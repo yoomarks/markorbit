@@ -6,7 +6,9 @@ import {
   CN_DURATION_BAND_ACCEPTED_DATASET_REF
 } from '@markorbit/contracts/brain-cn-duration-band-classification';
 import { ManagedDatabase } from '@markorbit/persistence';
-import { assertMatterIntelligenceReadIntegrity } from '../src/matter-intelligence-read-integrity.js';
+import {
+  assertMatterIntelligenceReadIntegrity
+} from '../src/matter-intelligence-read-integrity.js';
 import {
   MatterIntelligenceReadService,
   PostgresMatterIntelligenceReadRepository,
