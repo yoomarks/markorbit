@@ -31,7 +31,9 @@ function capability(
   };
 }
 
-function profile(options: Partial<ImplementationProfile> = {}): ImplementationProfile {
+function profile(
+  options: Partial<ImplementationProfile> = {}
+): ImplementationProfile {
   return {
     schemaVersion: 1,
     implementationProfileId: 'implementation-profile_catalog-primary',
@@ -69,7 +71,8 @@ describe('CapabilityCatalogIntegrityAuditorV1', () => {
     const second = await auditor([capability()], [profile()]).audit();
     expect(first).toEqual(second);
     expect(first.status).toBe('CATALOG_HEALTHY');
-    if (first.status === 'CATALOG_AUDIT_UNAVAILABLE') throw new Error('unexpected unavailable');
+    if (first.status === 'CATALOG_AUDIT_UNAVAILABLE')
+      throw new Error('unexpected unavailable');
     expect(first.findings).toEqual([]);
     expect(first.snapshot.currentCapabilities).toHaveLength(1);
     expect(first.snapshot.currentImplementationProfiles).toHaveLength(1);
@@ -81,27 +84,41 @@ describe('CapabilityCatalogIntegrityAuditorV1', () => {
   it('finds a current Capability with no current Implementation Profile', async () => {
     const result = await auditor([capability()], []).audit();
     expect(result.status).toBe('CATALOG_INTEGRITY_FINDINGS');
-    expect(result.findings.map((item) => item.code)).toEqual(['NO_CURRENT_IMPLEMENTATION_PROFILE']);
+    expect(result.findings.map((item) => item.code)).toEqual([
+      'NO_CURRENT_IMPLEMENTATION_PROFILE'
+    ]);
   });
 
   it('does not fall back from a current RETIRED profile to historical approval', async () => {
-    const result = await auditor([capability()], [profile({ version: 5, status: 'RETIRED' })]).audit();
+    const result = await auditor(
+      [capability()],
+      [profile({ version: 5, status: 'RETIRED' })]
+    ).audit();
     expect(result.status).toBe('CATALOG_INTEGRITY_FINDINGS');
-    expect(result.findings.map((item) => item.code)).toEqual(['NO_APPROVED_CURRENT_IMPLEMENTATION']);
-    if (result.status === 'CATALOG_AUDIT_UNAVAILABLE') throw new Error('unexpected unavailable');
+    expect(result.findings.map((item) => item.code)).toEqual([
+      'NO_APPROVED_CURRENT_IMPLEMENTATION'
+    ]);
+    if (result.status === 'CATALOG_AUDIT_UNAVAILABLE')
+      throw new Error('unexpected unavailable');
     expect(result.snapshot.currentImplementationProfiles[0]?.status).toBe('RETIRED');
   });
 
   it('finds orphan current Implementation Profiles without inventing a Capability', async () => {
     const result = await auditor([], [profile()]).audit();
     expect(result.status).toBe('CATALOG_INTEGRITY_FINDINGS');
-    expect(result.findings.map((item) => item.code)).toEqual(['ORPHAN_IMPLEMENTATION_PROFILE']);
-    if (result.status === 'CATALOG_AUDIT_UNAVAILABLE') throw new Error('unexpected unavailable');
+    expect(result.findings.map((item) => item.code)).toEqual([
+      'ORPHAN_IMPLEMENTATION_PROFILE'
+    ]);
+    if (result.status === 'CATALOG_AUDIT_UNAVAILABLE')
+      throw new Error('unexpected unavailable');
     expect(result.findings[0]?.runtimeCapability).toBeUndefined();
   });
 
   it('finds stale capabilityVersion binding and absence of approved current-version implementation', async () => {
-    const result = await auditor([capability()], [profile({ capabilityVersion: '2.0.0' })]).audit();
+    const result = await auditor(
+      [capability()],
+      [profile({ capabilityVersion: '2.0.0' })]
+    ).audit();
     expect(result.status).toBe('CATALOG_INTEGRITY_FINDINGS');
     expect(result.findings.map((item) => item.code)).toEqual([
       'NO_APPROVED_CURRENT_IMPLEMENTATION',
@@ -117,9 +134,14 @@ describe('CapabilityCatalogIntegrityAuditorV1', () => {
     });
     const result = await auditor([capability()], [alternate, profile()]).audit();
     expect(result.status).toBe('CATALOG_HEALTHY');
-    if (result.status === 'CATALOG_AUDIT_UNAVAILABLE') throw new Error('unexpected unavailable');
+    if (result.status === 'CATALOG_AUDIT_UNAVAILABLE')
+      throw new Error('unexpected unavailable');
     expect(result.findings).toEqual([]);
-    expect(result.snapshot.currentImplementationProfiles.map((item) => item.implementationProfileId)).toEqual([
+    expect(
+      result.snapshot.currentImplementationProfiles.map(
+        (item) => item.implementationProfileId
+      )
+    ).toEqual([
       'implementation-profile_catalog-primary',
       'implementation-profile_catalog-secondary'
     ]);
@@ -133,12 +155,16 @@ describe('CapabilityCatalogIntegrityAuditorV1', () => {
       [profile()]
     ).audit();
     expect(result.status).toBe('CATALOG_INTEGRITY_FINDINGS');
-    expect(result.findings.map((item) => item.code)).toEqual(['INVALID_CURRENT_CAPABILITY_PROJECTION']);
+    expect(result.findings.map((item) => item.code)).toEqual([
+      'INVALID_CURRENT_CAPABILITY_PROJECTION'
+    ]);
   });
 
   it('returns unavailable without fabricated findings when either registry authority fails', async () => {
     const capabilityFailure = new CapabilityCatalogIntegrityAuditorV1({
-      capabilities: { listCurrent: () => Promise.reject(new Error('registry unavailable')) },
+      capabilities: {
+        listCurrent: () => Promise.reject(new Error('registry unavailable'))
+      },
       implementations: { listCurrent: () => [profile()] }
     });
     await expect(capabilityFailure.audit()).resolves.toEqual({
@@ -151,7 +177,9 @@ describe('CapabilityCatalogIntegrityAuditorV1', () => {
 
     const implementationFailure = new CapabilityCatalogIntegrityAuditorV1({
       capabilities: { listCurrent: () => [capability()] },
-      implementations: { listCurrent: () => Promise.reject(new Error('registry unavailable')) }
+      implementations: {
+        listCurrent: () => Promise.reject(new Error('registry unavailable'))
+      }
     });
     const result = await implementationFailure.audit();
     expect(result).toEqual({
