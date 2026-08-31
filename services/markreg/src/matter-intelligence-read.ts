@@ -471,7 +471,12 @@ export class MatterIntelligenceReadService {
       );
     const page = readInteger(query.page, 1, 'page', 1_000_000);
     const pageSize = readInteger(query.pageSize, 20, 'pageSize', 50);
-    const reviewHistoryLimit = readInteger(query.reviewHistoryLimit, 20, 'reviewHistoryLimit', 50);
+    const reviewHistoryLimit = readInteger(
+      query.reviewHistoryLimit,
+      20,
+      'reviewHistoryLimit',
+      50
+    );
     const result = await this.repository.readMatter(
       principal.workspaceId,
       cleanMatterId as FormalMatterId,
@@ -489,10 +494,11 @@ export class MatterIntelligenceReadService {
     return {
       formalMatter: clone(result.formalMatter),
       items: result.observations.map((observation) => {
-        const history = result.reviewsByObservationId[observation.matterIntelligenceObservationId] ?? {
-          items: [],
-          total: 0
-        };
+        const history =
+          result.reviewsByObservationId[observation.matterIntelligenceObservationId] ?? {
+            items: [],
+            total: 0
+          };
         return {
           observation: clone(observation),
           matterSourceCurrent:
