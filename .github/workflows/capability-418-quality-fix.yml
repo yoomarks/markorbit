@@ -23,6 +23,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build Capability typed dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
       - name: Apply owner-local ESLint fixes
         run: >-
           pnpm --filter @markorbit/capability-engine exec eslint
