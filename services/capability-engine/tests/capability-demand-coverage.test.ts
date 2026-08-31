@@ -33,9 +33,7 @@ const capability = {
   createdAt: '2026-08-30T00:00:00.000Z'
 } satisfies RuntimeCapabilityDefinition;
 
-function profile(
-  options: Partial<ImplementationProfile> = {}
-): ImplementationProfile {
+function profile(options: Partial<ImplementationProfile> = {}): ImplementationProfile {
   return {
     schemaVersion: 1,
     implementationProfileId: 'implementation-profile_analysis-primary',
@@ -70,7 +68,9 @@ const demand = {
 
 function productionAdmission(
   selected: ImplementationProfile = profile(),
-  capabilityOverride: Partial<CapabilitySourceAdmissionDecision & { decision: 'PRODUCTION_ADMISSIBLE' }> = {}
+  capabilityOverride: Partial<
+    CapabilitySourceAdmissionDecision & { decision: 'PRODUCTION_ADMISSIBLE' }
+  > = {}
 ): CapabilitySourceAdmissionDecision {
   const decision: CapabilitySourceAdmissionDecision = {
     schemaVersion: 1,
@@ -101,7 +101,7 @@ function productionAdmission(
     },
     authority: capabilitySourceAdmissionNoAuthorityConsequences
   };
-  return { ...decision, ...capabilityOverride } as CapabilitySourceAdmissionDecision;
+  return { ...decision, ...capabilityOverride };
 }
 
 function deniedAdmission(): CapabilitySourceAdmissionDecision {
@@ -126,14 +126,15 @@ function deniedAdmission(): CapabilitySourceAdmissionDecision {
   };
 }
 
-function auditor(options: {
-  currentCapability?: RuntimeCapabilityDefinition;
-  profiles?: ImplementationProfile[];
-  capabilityFailure?: boolean;
-  implementationFailure?: boolean;
-} = {}): CapabilityDemandCoverageAuditorV1 {
-  const currentCapability =
-    'currentCapability' in options ? options.currentCapability : capability;
+function auditor(
+  options: {
+    currentCapability?: RuntimeCapabilityDefinition;
+    profiles?: ImplementationProfile[];
+    capabilityFailure?: boolean;
+    implementationFailure?: boolean;
+  } = {}
+): CapabilityDemandCoverageAuditorV1 {
+  const currentCapability = 'currentCapability' in options ? options.currentCapability : capability;
   const profiles = options.profiles ?? [profile()];
   return new CapabilityDemandCoverageAuditorV1({
     capabilities: {
@@ -241,10 +242,9 @@ describe('Capability product demand coverage audit V1', () => {
     }).audit(demand);
 
     expect(result.status).toBe('AMBIGUOUS_CURRENT_IMPLEMENTATION');
-    expect(result.evidence.qualifyingImplementations.map((item) => item.implementationKey)).toEqual([
-      'analysis:primary',
-      'analysis:secondary'
-    ]);
+    expect(result.evidence.qualifyingImplementations.map((item) => item.implementationKey)).toEqual(
+      ['analysis:primary', 'analysis:secondary']
+    );
     expect(result.evidence.selectedImplementation).toBeUndefined();
     expect(result.gapCandidate?.reasonCode).toBe('AMBIGUOUS_CURRENT_IMPLEMENTATION');
   });

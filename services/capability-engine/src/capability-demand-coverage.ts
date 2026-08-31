@@ -168,7 +168,8 @@ function invalid(message: string): never {
 }
 
 function record(value: unknown): RecordValue {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return invalid('must be an object.');
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return invalid('must be an object.');
   return value as RecordValue;
 }
 
@@ -200,7 +201,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function sha256(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
 export function normalizeProductCapabilityDemandV1(value: unknown): ProductCapabilityDemandV1 {
@@ -235,7 +238,13 @@ export function normalizeProductCapabilityDemandV1(value: unknown): ProductCapab
     riskClass: demand.riskClass as CapabilityRiskClass,
     ...(demand.requiredImplementationKey === undefined
       ? {}
-      : { requiredImplementationKey: text(demand.requiredImplementationKey, 'requiredImplementationKey', 500) }),
+      : {
+          requiredImplementationKey: text(
+            demand.requiredImplementationKey,
+            'requiredImplementationKey',
+            500
+          )
+        }),
     requiresProductionAdmissibleSource: demand.requiresProductionAdmissibleSource
   };
 }
@@ -432,11 +441,7 @@ export class CapabilityDemandCoverageAuditorV1 {
       currentCapability.createdFromWorkEvidence !== false ||
       currentCapability.createdFromAiOutput !== false
     ) {
-      return resolvedResult(
-        'MISSING_RUNTIME_CAPABILITY',
-        demand,
-        evidence(undefined, [])
-      );
+      return resolvedResult('MISSING_RUNTIME_CAPABILITY', demand, evidence(undefined, []));
     }
 
     let currentProfiles: readonly Readonly<ImplementationProfile>[];
@@ -447,15 +452,13 @@ export class CapabilityDemandCoverageAuditorV1 {
     }
 
     const qualifying = currentProfiles
-      .filter((profile) => profileQualifies(profile, currentCapability!, demand))
-      .sort((left, right) => left.implementationProfileId.localeCompare(right.implementationProfileId));
+      .filter((profile) => profileQualifies(profile, currentCapability, demand))
+      .sort((left, right) =>
+        left.implementationProfileId.localeCompare(right.implementationProfileId)
+      );
 
     if (qualifying.length === 0) {
-      return resolvedResult(
-        'NO_APPROVED_IMPLEMENTATION',
-        demand,
-        evidence(currentCapability, [])
-      );
+      return resolvedResult('NO_APPROVED_IMPLEMENTATION', demand, evidence(currentCapability, []));
     }
     if (qualifying.length > 1) {
       return resolvedResult(
