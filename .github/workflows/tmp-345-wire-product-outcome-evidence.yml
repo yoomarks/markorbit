@@ -1,0 +1,45 @@
+name: tmp-345-wire-product-outcome-evidence
+
+on:
+  push:
+    branches:
+      - phase6/345-product-outcome-evidence-loop
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6/345-product-outcome-evidence-loop
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire production path and canonical MarkReg persistence lane
+        run: |
+          node scripts/tmp-345-wire-product-outcome-evidence.mjs
+          pnpm exec prettier --write \
+            .github/workflows/ci.yml \
+            services/markreg/src/main.ts \
+            services/markreg/src/matter-intelligence-review.ts \
+            services/markreg/src/matter-intelligence-review-http.ts \
+            services/markreg/src/method-outcome-evidence-emission.ts \
+            services/markreg/tests/method-outcome-evidence-emission-postgres.test.ts
+      - name: Commit scoped wiring
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/ci.yml services/markreg/src/main.ts services/markreg/src/matter-intelligence-review.ts services/markreg/src/matter-intelligence-review-http.ts services/markreg/src/method-outcome-evidence-emission.ts services/markreg/tests/method-outcome-evidence-emission-postgres.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'Phase 6: wire product outcome evidence loop'
+          git push origin HEAD:phase6/345-product-outcome-evidence-loop
