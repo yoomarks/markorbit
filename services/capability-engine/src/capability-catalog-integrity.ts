@@ -3,9 +3,7 @@ import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capabilit
 import type { ImplementationProfile } from '@markorbit/contracts/capability-runtime';
 
 export type CapabilityCatalogIntegrityStatus =
-  | 'CATALOG_HEALTHY'
-  | 'CATALOG_INTEGRITY_FINDINGS'
-  | 'CATALOG_AUDIT_UNAVAILABLE';
+  'CATALOG_HEALTHY' | 'CATALOG_INTEGRITY_FINDINGS' | 'CATALOG_AUDIT_UNAVAILABLE';
 
 export type CapabilityCatalogIntegrityFindingCode =
   | 'INVALID_CURRENT_CAPABILITY_PROJECTION'
@@ -96,15 +94,13 @@ export type CapabilityCatalogIntegrityUnavailableResultV1 = Readonly<{
   schemaVersion: 1;
   status: 'CATALOG_AUDIT_UNAVAILABLE';
   unavailableDependency:
-    | 'CURRENT_CAPABILITY_CATALOG_AUTHORITY'
-    | 'CURRENT_IMPLEMENTATION_CATALOG_AUTHORITY';
+    'CURRENT_CAPABILITY_CATALOG_AUTHORITY' | 'CURRENT_IMPLEMENTATION_CATALOG_AUTHORITY';
   findings: readonly [];
   authority: Readonly<CapabilityCatalogIntegrityNoAuthorityV1>;
 }>;
 
 export type CapabilityCatalogIntegrityAuditResultV1 =
-  | CapabilityCatalogIntegrityAvailableResultV1
-  | CapabilityCatalogIntegrityUnavailableResultV1;
+  CapabilityCatalogIntegrityAvailableResultV1 | CapabilityCatalogIntegrityUnavailableResultV1;
 
 export interface CurrentRuntimeCapabilityCatalogAuthorityV1 {
   listCurrent():
@@ -139,7 +135,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function sha256(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
 function capabilityEntry(
@@ -262,9 +260,7 @@ function findingSort(
 }
 
 export class CapabilityCatalogIntegrityAuditorV1 {
-  constructor(
-    private readonly options: Readonly<CapabilityCatalogIntegrityAuditorOptionsV1>
-  ) {}
+  constructor(private readonly options: Readonly<CapabilityCatalogIntegrityAuditorOptionsV1>) {}
 
   async audit(): Promise<CapabilityCatalogIntegrityAuditResultV1> {
     let capabilities: readonly Readonly<RuntimeCapabilityDefinition>[];
@@ -354,8 +350,7 @@ export class CapabilityCatalogIntegrityAuditorV1 {
 
     findings.sort(findingSort);
     const snapshot = buildSnapshot(sortedCapabilities, sortedProfiles);
-    const status =
-      findings.length === 0 ? 'CATALOG_HEALTHY' : 'CATALOG_INTEGRITY_FINDINGS';
+    const status = findings.length === 0 ? 'CATALOG_HEALTHY' : 'CATALOG_INTEGRITY_FINDINGS';
     const auditFingerprintSha256 = sha256({
       status,
       snapshotFingerprintSha256: snapshot.snapshotFingerprintSha256,

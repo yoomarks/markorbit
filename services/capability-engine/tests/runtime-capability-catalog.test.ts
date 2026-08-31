@@ -35,10 +35,7 @@ describe('PostgresCurrentRuntimeCapabilityCatalogV1', () => {
       {
         query: () =>
           Promise.resolve({
-            rows: [
-              { capability_id: 'zeta-capability' },
-              { capability_id: 'alpha-capability' }
-            ],
+            rows: [{ capability_id: 'zeta-capability' }, { capability_id: 'alpha-capability' }],
             rowCount: 2
           })
       },

@@ -8,10 +8,7 @@ import {
 
 type Row = Record<string, unknown>;
 
-type CurrentRuntimeCapabilityLookup = Pick<
-  PostgresRuntimeCapabilityRegistry,
-  'findCurrent'
->;
+type CurrentRuntimeCapabilityLookup = Pick<PostgresRuntimeCapabilityRegistry, 'findCurrent'>;
 
 function persistedCapabilityId(row: Row): string {
   const value = row.capability_id;
@@ -25,9 +22,7 @@ function persistedCapabilityId(row: Row): string {
   return value;
 }
 
-export class PostgresCurrentRuntimeCapabilityCatalogV1
-  implements CurrentRuntimeCapabilityCatalogAuthorityV1
-{
+export class PostgresCurrentRuntimeCapabilityCatalogV1 implements CurrentRuntimeCapabilityCatalogAuthorityV1 {
   constructor(
     private readonly query: QueryClient,
     private readonly registry: Readonly<CurrentRuntimeCapabilityLookup>
@@ -52,9 +47,7 @@ export class PostgresCurrentRuntimeCapabilityCatalogV1
         }
         definitions.push(structuredClone(current));
       }
-      return definitions.sort((left, right) =>
-        left.capabilityId.localeCompare(right.capabilityId)
-      );
+      return definitions.sort((left, right) => left.capabilityId.localeCompare(right.capabilityId));
     } catch (error) {
       if (error instanceof RuntimeCapabilityRegistryError) throw error;
       throw new RuntimeCapabilityRegistryError(
