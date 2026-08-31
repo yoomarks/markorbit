@@ -30,6 +30,7 @@ import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-reg
 
 export * from './capability-audit-telemetry.js';
 export * from './capability-center-http.js';
+export * from './capability-demand-coverage.js';
 export * from './capability-observation-http.js';
 export * from './capability-observation-ledger.js';
 export * from './capability-observation-source.js';
