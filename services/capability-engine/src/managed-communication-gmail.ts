@@ -20,15 +20,13 @@ const SENSITIVE_EVIDENCE_HEADER =
   /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key)$/iu;
 
 type FetchLike = typeof globalThis.fetch;
-
 type GmailHeader = Readonly<{ name?: string; value?: string }>;
-type GmailBody = Readonly<{ attachmentId?: string; data?: string; size?: number }>;
 type GmailPart = Readonly<{
   partId?: string;
   mimeType?: string;
   filename?: string;
   headers?: readonly GmailHeader[];
-  body?: GmailBody;
+  body?: Readonly<{ attachmentId?: string; data?: string }>;
   parts?: readonly GmailPart[];
 }>;
 type GmailMessage = Readonly<{
@@ -78,14 +76,17 @@ function base64UrlDecode(value: string): Uint8Array {
   return Uint8Array.from(Buffer.from(value, 'base64url'));
 }
 
-function base64UrlText(value: string | undefined): string | undefined {
+function decodeText(value: string | undefined): string | undefined {
   if (!value) return undefined;
   return Buffer.from(value, 'base64url').toString('utf8').trim() || undefined;
 }
 
+function digest(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
 function encodeHeader(value: string): string {
-  const normalized = safeHeader(value, 'header');
-  return `=?UTF-8?B?${Buffer.from(normalized, 'utf8').toString('base64')}?=`;
+  return `=?UTF-8?B?${Buffer.from(safeHeader(value, 'header'), 'utf8').toString('base64')}?=`;
 }
 
 function mailbox(participant: Readonly<ManagedCommunicationParticipantV1>): string {
@@ -95,63 +96,46 @@ function mailbox(participant: Readonly<ManagedCommunicationParticipantV1>): stri
     : address;
 }
 
-function messageHeader(
-  headers: readonly GmailHeader[] | undefined,
-  name: string
-): string | undefined {
-  const found = headers?.find((header) => header.name?.toLowerCase() === name.toLowerCase());
-  return found?.value?.trim() || undefined;
+function header(headers: readonly GmailHeader[] | undefined, name: string): string | undefined {
+  return headers?.find((item) => item.name?.toLowerCase() === name.toLowerCase())?.value?.trim();
 }
 
-function splitMailboxList(
-  value: string | undefined
-): readonly Readonly<{ address: string; displayName?: string }>[] {
+function parseMailboxes(value: string | undefined) {
   if (!value) return [];
   return value
     .split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/u)
     .map((item) => item.trim())
     .filter(Boolean)
     .map((item) => {
-      const bracket = /^(.*?)\s*<([^<>]+)>$/u.exec(item);
-      if (!bracket) return Object.freeze({ address: item.replace(/^\"|\"$/gu, '').trim() });
-      const displayName = bracket[1]?.trim().replace(/^\"|\"$/gu, '');
-      return Object.freeze({
-        address: bracket[2]!.trim(),
+      const match = /^(.*?)\s*<([^<>]+)>$/u.exec(item);
+      if (!match) return { address: item.replace(/^\"|\"$/gu, '').trim() };
+      const displayName = match[1]?.trim().replace(/^\"|\"$/gu, '');
+      return {
+        address: match[2]!.trim(),
         ...(displayName ? { displayName } : {})
-      });
+      };
     });
 }
 
-function participantList(
-  payload: GmailPart
-): readonly Readonly<ManagedCommunicationParticipantV1>[] {
-  const participants: ManagedCommunicationParticipantV1[] = [];
-  const push = (
-    role: ManagedCommunicationParticipantV1['role'],
-    value: string | undefined
-  ) => {
-    for (const item of splitMailboxList(value)) {
-      participants.push({
-        role,
-        address: item.address,
-        ...(item.displayName ? { displayName: item.displayName } : {})
-      });
-    }
+function participants(payload: GmailPart): readonly Readonly<ManagedCommunicationParticipantV1>[] {
+  const values: ManagedCommunicationParticipantV1[] = [];
+  const add = (role: ManagedCommunicationParticipantV1['role'], value: string | undefined) => {
+    for (const item of parseMailboxes(value)) values.push({ role, ...item });
   };
-  push('SENDER', messageHeader(payload.headers, 'From'));
-  push('TO', messageHeader(payload.headers, 'To'));
-  push('CC', messageHeader(payload.headers, 'Cc'));
-  push('BCC', messageHeader(payload.headers, 'Bcc'));
-  push('REPLY_TO', messageHeader(payload.headers, 'Reply-To'));
-  return Object.freeze(participants);
+  add('SENDER', header(payload.headers, 'From'));
+  add('TO', header(payload.headers, 'To'));
+  add('CC', header(payload.headers, 'Cc'));
+  add('BCC', header(payload.headers, 'Bcc'));
+  add('REPLY_TO', header(payload.headers, 'Reply-To'));
+  return Object.freeze(values);
 }
 
 function textParts(part: GmailPart | undefined, mimeType: string): readonly string[] {
   if (!part) return [];
   const values: string[] = [];
   if (part.mimeType?.toLowerCase() === mimeType && part.body?.data) {
-    const decoded = base64UrlText(part.body.data);
-    if (decoded) values.push(decoded);
+    const value = decodeText(part.body.data);
+    if (value) values.push(value);
   }
   for (const child of part.parts ?? []) values.push(...textParts(child, mimeType));
   return values;
@@ -165,54 +149,48 @@ function attachmentParts(part: GmailPart | undefined): readonly GmailPart[] {
   return values;
 }
 
-function canonicalOccurredAt(internalDate: string | undefined, fallback: string): string {
+function occurredAt(internalDate: string | undefined, fallback: string): string {
   if (internalDate && /^\d+$/u.test(internalDate)) {
-    const date = new Date(Number(internalDate));
-    if (!Number.isNaN(date.getTime())) return date.toISOString();
+    const value = new Date(Number(internalDate));
+    if (!Number.isNaN(value.getTime())) return value.toISOString();
   }
   return fallback;
 }
 
-function sha256(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex');
-}
-
-function evidenceHeaders(headers: readonly GmailHeader[] | undefined) {
+function admittedHeaders(headers: readonly GmailHeader[] | undefined) {
   return Object.freeze(
     (headers ?? [])
-      .map((header) => ({
-        name: header.name?.trim() ?? '',
-        value: header.value?.trim() ?? ''
-      }))
+      .map((item) => ({ name: item.name?.trim() ?? '', value: item.value?.trim() ?? '' }))
       .filter(
-        (header) =>
-          header.name.length > 0 &&
-          header.value.length > 0 &&
-          !SENSITIVE_EVIDENCE_HEADER.test(header.name)
+        (item) =>
+          item.name.length > 0 &&
+          item.value.length > 0 &&
+          !SENSITIVE_EVIDENCE_HEADER.test(item.name)
       )
-      .map((header) => Object.freeze(header))
+      .map((item) => Object.freeze(item))
   );
 }
 
 export function buildGmailManagedCommunicationMimeV1(
   request: Readonly<ManagedCommunicationSendRequestV1>,
   sendId: string,
-  replyHeaders?: Readonly<{ inReplyTo?: string; references?: string; subject?: string }>
+  reply?: Readonly<{ inReplyTo?: string; references?: string; subject?: string }>
 ): string {
   if (request.attachments.length > 0)
     throw new Error(
       'Gmail sender does not accept outbound attachments without a governed byte resolver.'
     );
   const byRole = (role: ManagedCommunicationParticipantV1['role']) =>
-    request.participants.filter((participant) => participant.role === role).map(mailbox);
+    request.participants.filter((item) => item.role === role).map(mailbox);
   const sender = byRole('SENDER')[0];
   const to = byRole('TO');
   if (!sender || to.length === 0)
     throw new Error('Gmail sender requires sender and recipient participants.');
+
   const cc = byRole('CC');
   const bcc = byRole('BCC');
   const replyTo = byRole('REPLY_TO');
-  const subject = request.subject ?? replyHeaders?.subject;
+  const subject = request.subject ?? reply?.subject;
   const headers = [
     `From: ${sender}`,
     `To: ${to.join(', ')}`,
@@ -220,14 +198,15 @@ export function buildGmailManagedCommunicationMimeV1(
     ...(bcc.length ? [`Bcc: ${bcc.join(', ')}`] : []),
     ...(replyTo.length ? [`Reply-To: ${replyTo.join(', ')}`] : []),
     ...(subject ? [`Subject: ${encodeHeader(subject)}`] : []),
-    ...(replyHeaders?.inReplyTo
-      ? [`In-Reply-To: ${safeHeader(replyHeaders.inReplyTo, 'In-Reply-To')}`]
+    ...(reply?.inReplyTo
+      ? [`In-Reply-To: ${safeHeader(reply.inReplyTo, 'In-Reply-To')}`]
       : []),
-    ...(replyHeaders?.references
-      ? [`References: ${safeHeader(replyHeaders.references, 'References')}`]
+    ...(reply?.references
+      ? [`References: ${safeHeader(reply.references, 'References')}`]
       : []),
     'MIME-Version: 1.0'
   ];
+
   if (request.textBody && request.htmlBody) {
     const boundary = `markorbit_${safeHeader(sendId, 'sendId').replace(/[^a-zA-Z0-9_-]/gu, '_')}`;
     return [
@@ -248,6 +227,7 @@ export function buildGmailManagedCommunicationMimeV1(
       ''
     ].join('\r\n');
   }
+
   const html = request.htmlBody !== undefined;
   const body = html ? request.htmlBody : request.textBody;
   if (!body) throw new Error('Gmail sender requires a text or HTML message body.');
@@ -263,7 +243,7 @@ export function buildGmailManagedCommunicationMimeV1(
 
 export class GmailManagedCommunicationClientV1 {
   private readonly config: GmailManagedCommunicationProviderConfigV1;
-  private accessToken?: Readonly<{ value: string; expiresAtMs: number }>;
+  private accessToken: Readonly<{ value: string; expiresAtMs: number }> | undefined;
 
   constructor(
     config: GmailManagedCommunicationProviderConfigV1,
@@ -278,14 +258,14 @@ export class GmailManagedCommunicationClientV1 {
     });
   }
 
+  providerAccountRef(): string {
+    return this.config.providerAccountRef;
+  }
+
   async profile(): Promise<Readonly<{ historyId: string }>> {
-    const value = await this.gmailJson('/users/me/profile');
+    const value = (await this.gmailJson('/users/me/profile')) as { historyId?: unknown };
     return Object.freeze({
-      historyId: required(
-        (value as { historyId?: unknown }).historyId,
-        'gmail.profile.historyId',
-        200
-      )
+      historyId: required(value.historyId, 'gmail.profile.historyId', 200)
     });
   }
 
@@ -295,21 +275,21 @@ export class GmailManagedCommunicationClientV1 {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         raw: Buffer.from(input.raw, 'utf8').toString('base64url'),
-        ...(input.threadId ? { threadId: required(input.threadId, 'gmail.threadId', 500) } : {})
+        ...(input.threadId
+          ? { threadId: required(input.threadId, 'gmail.threadId', 500) }
+          : {})
       })
     }) as Promise<GmailMessage>;
   }
 
-  async threadMetadata(
-    threadId: string
-  ): Promise<Readonly<{ messageId?: string; references?: string; subject?: string }>> {
+  async threadMetadata(threadId: string) {
     const value = (await this.gmailJson(
       `/users/me/threads/${encodeURIComponent(required(threadId, 'gmail.threadId', 500))}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=Subject`
     )) as Readonly<{ messages?: readonly GmailMessage[] }>;
     const latest = value.messages?.at(-1)?.payload;
-    const messageId = messageHeader(latest?.headers, 'Message-ID');
-    const references = messageHeader(latest?.headers, 'References');
-    const subject = messageHeader(latest?.headers, 'Subject');
+    const messageId = header(latest?.headers, 'Message-ID');
+    const references = header(latest?.headers, 'References');
+    const subject = header(latest?.headers, 'Subject');
     return Object.freeze({
       ...(messageId ? { messageId } : {}),
       ...(references ? { references } : {}),
@@ -338,10 +318,6 @@ export class GmailManagedCommunicationClientV1 {
       `/users/me/messages/${encodeURIComponent(required(messageId, 'gmail.message.id', 500))}/attachments/${encodeURIComponent(required(attachmentId, 'gmail.attachment.id', 500))}`
     )) as Readonly<{ data?: unknown }>;
     return base64UrlDecode(required(value.data, 'gmail.attachment.data', 50_000_000));
-  }
-
-  providerAccountRef(): string {
-    return this.config.providerAccountRef;
   }
 
   private async gmailJson(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -375,10 +351,7 @@ export class GmailManagedCommunicationClientV1 {
     const token = required(value.access_token, 'gmail.oauth.access_token', 20_000);
     const expiresIn =
       typeof value.expires_in === 'number' && value.expires_in > 0 ? value.expires_in : 3600;
-    this.accessToken = Object.freeze({
-      value: token,
-      expiresAtMs: this.clock() + expiresIn * 1000
-    });
+    this.accessToken = Object.freeze({ value: token, expiresAtMs: this.clock() + expiresIn * 1000 });
     return token;
   }
 }
@@ -409,9 +382,7 @@ export class GmailManagedCommunicationSenderV1 implements ManagedCommunicationPr
       );
 
     let providerThreadId: string | undefined;
-    let replyHeaders:
-      | Readonly<{ inReplyTo?: string; references?: string; subject?: string }>
-      | undefined;
+    let reply: Readonly<{ inReplyTo?: string; references?: string; subject?: string }> | undefined;
     if (request.replyToThreadRef) {
       if (!this.resolveProviderThreadId)
         throw new Error('Gmail reply dispatch requires durable provider thread resolution.');
@@ -423,12 +394,10 @@ export class GmailManagedCommunicationSenderV1 implements ManagedCommunicationPr
       if (!providerThreadId)
         throw new Error('Gmail reply thread could not be resolved durably.');
       const metadata = await this.client.threadMetadata(providerThreadId);
-      replyHeaders = Object.freeze({
+      reply = Object.freeze({
         ...(metadata.messageId ? { inReplyTo: metadata.messageId } : {}),
         ...(metadata.messageId
-          ? {
-              references: [metadata.references, metadata.messageId].filter(Boolean).join(' ')
-            }
+          ? { references: [metadata.references, metadata.messageId].filter(Boolean).join(' ') }
           : metadata.references
             ? { references: metadata.references }
             : {}),
@@ -437,7 +406,7 @@ export class GmailManagedCommunicationSenderV1 implements ManagedCommunicationPr
     }
 
     const result = await this.client.sendRaw({
-      raw: buildGmailManagedCommunicationMimeV1(request, context.sendId, replyHeaders),
+      raw: buildGmailManagedCommunicationMimeV1(request, context.sendId, reply),
       ...(providerThreadId ? { threadId: providerThreadId } : {})
     });
     const providerMessageId = required(result.id, 'gmail.send.id', 500);
@@ -504,8 +473,8 @@ export class GmailManagedCommunicationInboundV1 {
       const page = await this.options.client.history(checkpoint.providerCursor, pageToken);
       if (page.historyId)
         providerCursor = required(page.historyId, 'gmail.history.historyId', 200);
-      for (const history of page.history ?? []) {
-        for (const added of history.messagesAdded ?? []) {
+      for (const item of page.history ?? []) {
+        for (const added of item.messagesAdded ?? []) {
           if (added.message?.id)
             messageIds.add(required(added.message.id, 'gmail.history.message.id', 500));
         }
@@ -535,8 +504,8 @@ export class GmailManagedCommunicationInboundV1 {
     if (!payload) throw new Error('Gmail full message payload is missing.');
     const providerMessageId = required(full.id, 'gmail.message.id', 500);
     const providerThreadId = required(full.threadId, 'gmail.message.threadId', 500);
-    const participants = participantList(payload);
-    const sender = participants.find((participant) => participant.role === 'SENDER');
+    const messageParticipants = participants(payload);
+    const sender = messageParticipants.find((item) => item.role === 'SENDER');
     if (!sender) throw new Error('Gmail inbound message does not contain a sender identity.');
     if (sender.address.toLowerCase() === this.options.client.providerAccountRef().toLowerCase())
       return 0;
@@ -549,10 +518,6 @@ export class GmailManagedCommunicationInboundV1 {
       providerMessageId,
       providerThreadId
     });
-    const attachments = await this.attachments(providerMessageId, payload);
-    const textBody = textParts(payload, 'text/plain')[0];
-    const htmlBody = textParts(payload, 'text/html')[0];
-    const subject = messageHeader(payload.headers, 'Subject');
     const message: ManagedCommunicationMessageV1 = {
       schemaVersion: 1,
       messageId: ids.messageId,
@@ -560,12 +525,18 @@ export class GmailManagedCommunicationInboundV1 {
       threadRef: ids.threadRef,
       channel: 'EMAIL',
       direction: 'INBOUND',
-      participants,
-      ...(subject ? { subject } : {}),
-      ...(textBody ? { textBody } : {}),
-      ...(htmlBody ? { htmlBody } : {}),
-      attachments,
-      occurredAt: canonicalOccurredAt(full.internalDate, observedAt),
+      participants: messageParticipants,
+      ...(header(payload.headers, 'Subject')
+        ? { subject: header(payload.headers, 'Subject') }
+        : {}),
+      ...(textParts(payload, 'text/plain')[0]
+        ? { textBody: textParts(payload, 'text/plain')[0] }
+        : {}),
+      ...(textParts(payload, 'text/html')[0]
+        ? { htmlBody: textParts(payload, 'text/html')[0] }
+        : {}),
+      attachments: await this.attachments(providerMessageId, payload),
+      occurredAt: occurredAt(full.internalDate, observedAt),
       providerObservation: {
         provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
         providerMessageId,
@@ -580,11 +551,8 @@ export class GmailManagedCommunicationInboundV1 {
       message,
       now: observedAt
     });
-
     const raw = await this.options.client.message(providerMessageId, 'raw');
-    const rawPayload = base64UrlDecode(
-      required(raw.raw, 'gmail.message.raw', 100_000_000)
-    );
+    const rawPayload = base64UrlDecode(required(raw.raw, 'gmail.message.raw', 100_000_000));
     await this.options.exactEvidence.admitExactEvidence({
       workspaceId: this.options.workspaceId,
       accountRef: this.options.accountRef,
@@ -594,7 +562,7 @@ export class GmailManagedCommunicationInboundV1 {
       rawPayload,
       mediaType: 'message/rfc822',
       observedAt,
-      headers: evidenceHeaders(payload.headers),
+      headers: admittedHeaders(payload.headers),
       metadata: {
         gmailMessageId: providerMessageId,
         gmailThreadId: providerThreadId,
@@ -624,7 +592,7 @@ export class GmailManagedCommunicationInboundV1 {
         ...(part.filename?.trim() ? { fileName: part.filename.trim() } : {}),
         ...(part.mimeType?.trim() ? { mediaType: part.mimeType.trim() } : {}),
         sizeBytes: bytes.byteLength,
-        sha256: sha256(bytes)
+        sha256: digest(bytes)
       });
     }
     return Object.freeze(values);
@@ -632,8 +600,8 @@ export class GmailManagedCommunicationInboundV1 {
 }
 
 export class GmailManagedCommunicationPollerV1 {
-  private timer?: NodeJS.Timeout;
-  private running?: Promise<GmailManagedCommunicationInboundResultV1>;
+  private timer: NodeJS.Timeout | undefined;
+  private running: Promise<GmailManagedCommunicationInboundResultV1> | undefined;
 
   constructor(
     private readonly inbound: GmailManagedCommunicationInboundV1,
