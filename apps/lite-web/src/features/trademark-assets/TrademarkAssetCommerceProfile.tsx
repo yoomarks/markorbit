@@ -34,7 +34,15 @@ type FormState = {
   mediaAssetReferences: string;
 };
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'permission' | 'unavailable' | 'error';
+type SaveState =
+  | 'idle'
+  | 'saving'
+  | 'saved'
+  | 'conflict'
+  | 'permission'
+  | 'assetUnavailable'
+  | 'unavailable'
+  | 'error';
 
 const lines = (value: readonly string[] | undefined) => value?.join('\n') ?? '';
 const values = (value: string) =>
@@ -96,8 +104,9 @@ export function TrademarkAssetCommerceProfileSection({
   };
 
   const save = async () => {
-    const hasAmount = Boolean(draft.askingPriceAmount.trim());
-    const hasCurrency = Boolean(draft.askingPriceCurrency.trim());
+    const askingPriceApplicable = draft.saleIntent === 'FOR_SALE';
+    const hasAmount = askingPriceApplicable && Boolean(draft.askingPriceAmount.trim());
+    const hasCurrency = askingPriceApplicable && Boolean(draft.askingPriceCurrency.trim());
     const amountMinor = Number(draft.askingPriceAmount);
     if (
       hasAmount !== hasCurrency ||
@@ -147,9 +156,11 @@ export function TrademarkAssetCommerceProfileSection({
           ? 'conflict'
           : status === 403
             ? 'permission'
-            : status === 404 || status === 503 || status === 0
-              ? 'unavailable'
-              : 'error'
+            : status === 404
+              ? 'assetUnavailable'
+              : status === 503 || status === 0
+                ? 'unavailable'
+                : 'error'
       );
       setErrorMessage(
         error instanceof Error ? error.message : 'Commerce Profile could not be saved.'
@@ -275,6 +286,12 @@ export function TrademarkAssetCommerceProfileSection({
               label="Asking price amount (minor units)"
               inputMode="numeric"
               value={draft.askingPriceAmount}
+              disabled={draft.saleIntent === 'NOT_FOR_SALE'}
+              hint={
+                draft.saleIntent === 'NOT_FOR_SALE'
+                  ? 'Not applicable while the Asset is not marked for sale. The draft price is retained if you switch back.'
+                  : undefined
+              }
               error={askingPriceError || undefined}
               onChange={(event) => setDraft({ ...draft, askingPriceAmount: event.target.value })}
             />
@@ -282,6 +299,7 @@ export function TrademarkAssetCommerceProfileSection({
               label="Asking price currency"
               placeholder="USD"
               value={draft.askingPriceCurrency}
+              disabled={draft.saleIntent === 'NOT_FOR_SALE'}
               onChange={(event) => setDraft({ ...draft, askingPriceCurrency: event.target.value })}
             />
           </div>
@@ -374,6 +392,21 @@ export function TrademarkAssetCommerceProfileSection({
           You do not have permission to manage this Commerce Profile. Your unsaved draft remains in
           the form.
         </p>
+      ) : null}
+      {saveState === 'assetUnavailable' ? (
+        <div
+          className="trademark-commerce__feedback trademark-commerce__feedback--warning"
+          role="alert"
+        >
+          <strong>This Asset is unavailable or no longer visible in the current Workspace.</strong>
+          <span>
+            Nothing was saved and your draft remains in the form. Reload the current Asset or return
+            to Trademarks to review its current availability.
+          </span>
+          <Button type="button" variant="secondary" onClick={() => void onReload?.()}>
+            Reload current Asset
+          </Button>
+        </div>
       ) : null}
       {saveState === 'unavailable' ? (
         <p

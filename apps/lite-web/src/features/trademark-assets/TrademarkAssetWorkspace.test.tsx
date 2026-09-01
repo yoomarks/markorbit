@@ -91,4 +91,43 @@ describe('TrademarkAssetWorkspace', () => {
     expect(screen.getAllByText('Marketplace source · read-only')).toHaveLength(2);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
+
+  it.each(['OWNED', 'MANAGED', 'REPRESENTED'] as const)(
+    'allows Commerce Profile editing for an %s relationship',
+    (kind) => {
+      render(
+        <TrademarkAssetWorkspace
+          view={{
+            ...view,
+            anchor: {
+              ...view.anchor,
+              workspaceRelationships: [{ kind, sourceAssetEditableByWorkspace: true }]
+            }
+          }}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'Set up sale context' })).toBeInTheDocument();
+    }
+  );
+
+  it('allows Commerce Profile editing when Marketplace and owner relationships are mixed', () => {
+    render(
+      <TrademarkAssetWorkspace
+        view={{
+          ...view,
+          anchor: {
+            ...view.anchor,
+            workspaceRelationships: [
+              { kind: 'MARKETPLACE_ADDED', sourceAssetEditableByWorkspace: false },
+              { kind: 'OWNED', sourceAssetEditableByWorkspace: true }
+            ]
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Set up sale context' })).toBeInTheDocument();
+    expect(screen.queryByText('Marketplace source · read-only')).not.toBeInTheDocument();
+  });
 });

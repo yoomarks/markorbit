@@ -117,6 +117,45 @@ describe('TrademarkAssetCommerceProfileSection', () => {
     expect(screen.getByText(/Saved version 2/)).toBeInTheDocument();
   });
 
+  it('omits an existing asking price when sale intent changes to not for sale', async () => {
+    const user = userEvent.setup();
+    const saved = {
+      ...profile,
+      version: 2,
+      saleIntent: 'NOT_FOR_SALE' as const,
+      askingPrice: undefined,
+      updatedAt: '2026-08-31T02:00:00.000Z'
+    };
+    const onSave = vi.fn().mockResolvedValue(saved);
+    render(
+      <TrademarkAssetCommerceProfileSection
+        assetVersion={3}
+        profile={profile}
+        readOnly={false}
+        onSave={onSave}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit sale context' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sale intent' }), 'NOT_FOR_SALE');
+
+    expect(
+      screen.getByRole('textbox', { name: 'Asking price amount (minor units)' })
+    ).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Asking price currency' })).toBeDisabled();
+    expect(
+      screen.getByText(/not applicable while the Asset is not marked for sale/i)
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Save sale context' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0]?.[0]).toMatchObject({ saleIntent: 'NOT_FOR_SALE' });
+    expect(onSave.mock.calls[0]?.[0]).not.toHaveProperty('askingPrice');
+    expect(await screen.findByText('Not marked for sale')).toBeInTheDocument();
+    expect(screen.getByText('Not provided')).toBeInTheDocument();
+  });
+
   it('keeps the draft and requires reload after a 409 conflict', async () => {
     const user = userEvent.setup();
     const onReload = vi.fn();
@@ -170,6 +209,38 @@ describe('TrademarkAssetCommerceProfileSection', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
     expect(screen.getByRole('textbox', { name: 'Headline' })).toHaveValue('Unsaved draft');
+  });
+
+  it('keeps the draft and reports current Workspace availability after a 404 save failure', async () => {
+    const user = userEvent.setup();
+    const onReload = vi.fn();
+    const onSave = vi
+      .fn()
+      .mockRejectedValue(
+        new TrademarkAssetHttpError(404, 'TRADEMARK_ASSET_NOT_FOUND', 'Asset unavailable.')
+      );
+    render(
+      <TrademarkAssetCommerceProfileSection
+        assetVersion={3}
+        profile={profile}
+        readOnly={false}
+        onSave={onSave}
+        onReload={onReload}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit sale context' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Headline' }));
+    await user.type(screen.getByRole('textbox', { name: 'Headline' }), 'Keep unavailable draft');
+    await user.click(screen.getByRole('button', { name: 'Save sale context' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/unavailable or no longer visible in the current Workspace/i);
+    expect(alert).toHaveTextContent(/Reload the current Asset or return to Trademarks/i);
+    expect(alert).not.toHaveTextContent(/persistence is unavailable/i);
+    expect(screen.getByRole('textbox', { name: 'Headline' })).toHaveValue('Keep unavailable draft');
+    await user.click(screen.getByRole('button', { name: 'Reload current Asset' }));
+    expect(onReload).toHaveBeenCalledTimes(1);
   });
 
   it('makes a Marketplace-added Asset visibly read-only without mutation controls', () => {

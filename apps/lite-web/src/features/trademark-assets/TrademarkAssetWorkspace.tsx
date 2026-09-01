@@ -60,6 +60,12 @@ export function TrademarkAssetWorkspace({
 }: TrademarkAssetWorkspaceProps) {
   const relationships = view.anchor.workspaceRelationships.map((relationship) => relationship.kind);
   const isMarketplaceReference = relationships.includes('MARKETPLACE_ADDED');
+  const commerceProfileEditable = view.anchor.workspaceRelationships.some(
+    (relationship) =>
+      relationship.kind === 'OWNED' ||
+      relationship.kind === 'MANAGED' ||
+      relationship.kind === 'REPRESENTED'
+  );
   const [pendingDisposition, setPendingDisposition] = useState<{
     recommendationId: string;
     disposition: PendingDisposition;
@@ -90,7 +96,9 @@ export function TrademarkAssetWorkspace({
         >
           <span>{relationships.join(' · ')}</span>
           <span>{view.freshness}</span>
-          {isMarketplaceReference ? <span>Marketplace source · read-only</span> : null}
+          {isMarketplaceReference && !commerceProfileEditable ? (
+            <span>Marketplace source · read-only</span>
+          ) : null}
         </div>
       </header>
 
@@ -316,7 +324,7 @@ export function TrademarkAssetWorkspace({
       <TrademarkAssetCommerceProfileSection
         assetVersion={view.anchor.version}
         {...(commerceProfile ? { profile: commerceProfile } : {})}
-        readOnly={isMarketplaceReference}
+        readOnly={!commerceProfileEditable}
         {...(onSaveCommerceProfile ? { onSave: onSaveCommerceProfile } : {})}
         {...(onReloadCommerceProfile ? { onReload: onReloadCommerceProfile } : {})}
       />
