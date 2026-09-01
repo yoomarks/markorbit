@@ -1,3 +1,4 @@
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
@@ -28,70 +29,6 @@ const packages = {
   Execution: '@markorbit/execution-service'
 } as const;
 const namespaces = { Core: 'core', MarkReg: 'markreg', Execution: 'execution' } as const;
-const ownedTables = {
-  Core: [
-    'users',
-    'workspaces',
-    'workspace_memberships',
-    'sessions',
-    'knowledge_intakes',
-    'knowledge_intake_contents',
-    'knowledge_v2_deliveries',
-    'account_profiles',
-    'password_credentials'
-  ],
-  MarkReg: [
-    'customer_confirmations',
-    'matter_drafts',
-    'formal_matters',
-    'formal_matter_commands',
-    'formal_matter_audit',
-    'document_packages',
-    'document_package_items',
-    'document_instruction_entries',
-    'document_package_commands',
-    'document_package_audit',
-    'markreg_denial_audit',
-    'markreg_recommended_action_commands',
-    'markreg_recommended_action_audit',
-    'markreg_recommended_actions',
-    'markreg_lifecycle_commands',
-    'markreg_lifecycle_events',
-    'markreg_lifecycle_views',
-    'markreg_formal_opportunity_commands',
-    'markreg_formal_trademark_service_opportunities',
-    'markreg_intake_handoffs',
-    'orders',
-    'order_commands',
-    'order_audit',
-    'commercial_products',
-    'commercial_prices',
-    'checkout_sessions',
-    'checkout_commands'
-  ],
-  Execution: [
-    'execution_reviewed_source_admissions',
-    'execution_reviewed_source_admission_commands',
-    'execution_reviewed_source_handoffs',
-    'execution_reviewed_source_handoff_audit',
-    'execution_evidence_review_sources',
-    'execution_evidence_review_decisions',
-    'execution_evidence_correction_requests',
-    'execution_evidence_review_commands',
-    'execution_evidence_review_audit',
-    'execution_provider_return_evidence_receipts',
-    'execution_provider_return_evidence_commands',
-    'execution_provider_return_evidence_audit',
-    'professional_review_cases',
-    'professional_review_commands',
-    'professional_review_audit',
-    'filing_authorizations',
-    'execution_releases',
-    'filing_execution_task_drafts',
-    'filing_governance_commands',
-    'filing_governance_audit'
-  ]
-} as const;
 const databases: ManagedDatabase[] = [];
 const open = async (owner: keyof typeof urls) => {
   const database = new ManagedDatabase(
@@ -111,21 +48,40 @@ const migrations = (owner: keyof typeof urls) =>
 const migrationOwnedTables = (loaded: Migration[]) => [
   ...new Set(
     loaded.flatMap((migration) =>
-      [...migration.sql.matchAll(/\bCREATE TABLE\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
-        (match) => match[1]!
-      )
+      [
+        ...migration.sql.matchAll(/\bCREATE TABLE(?: IF NOT EXISTS)?\s+([a-z][a-z0-9_]*)\s*\(/gi)
+      ].map((match) => match[1]!)
     )
   )
 ];
 const migrationOwnedFunctions = (loaded: Migration[]) => [
   ...new Set(
     loaded.flatMap((migration) =>
-      [...migration.sql.matchAll(/\bCREATE FUNCTION\s+([a-z][a-z0-9_]*)\s*\(/gi)].map(
-        (match) => match[1]!
-      )
+      [
+        ...migration.sql.matchAll(/\bCREATE(?: OR REPLACE)? FUNCTION\s+([a-z][a-z0-9_]*)\s*\(/gi)
+      ].map((match) => match[1]!)
     )
   )
 ];
+const migrationOwnershipInventory = async () => {
+  const registry = JSON.parse(await readFile(ownershipFile, 'utf8')) as {
+    migrations?: Record<string, string>;
+  };
+  const migrationOwners = registry.migrations ?? {};
+  const files = (await readdir(migrationDirectory))
+    .filter((name) => name.endsWith('.sql'))
+    .map((name) => name.slice(0, -4))
+    .sort();
+  const missingOwners = files.filter((migration) => !migrationOwners[migration]);
+  const missingFiles = Object.keys(migrationOwners).filter(
+    (migration) => !files.includes(migration)
+  );
+  if (missingOwners.length || missingFiles.length)
+    throw new Error(
+      `Migration ownership inventory is inconsistent. Missing owners: ${missingOwners.join(', ') || '<none>'}; missing files: ${missingFiles.join(', ') || '<none>'}.`
+    );
+  return { files, migrationOwners };
+};
 const reset = async (database: ManagedDatabase, owner: keyof typeof urls) => {
   const loaded = await migrations(owner);
   const tables = migrationOwnedTables(loaded);
@@ -158,7 +114,9 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
         .query<{ name: string }>(
           "SELECT tablename AS name FROM pg_tables WHERE schemaname='public'"
         );
-      expect(relations.rows.map((row) => row.name).sort()).toEqual([...ownedTables[owner]].sort());
+      expect(relations.rows.map((row) => row.name).sort()).toEqual(
+        migrationOwnedTables(loaded).sort()
+      );
     });
     it(`MIG-002 ${owner} repeated application is an exact no-op`, async () => {
       const database = await open(owner);
@@ -365,26 +323,22 @@ suite.sequential('TASK 026 owner migration reliability matrix', () => {
   });
 
   it('MIG-006 owner loaders return disjoint, exhaustively owned version sets', async () => {
+    const owners = Object.keys(urls) as (keyof typeof urls)[];
     const sets = await Promise.all(
-      (Object.keys(urls) as (keyof typeof urls)[]).map(
+      owners.map(
         async (owner) => new Set((await migrations(owner)).map((m) => `${m.version}_${m.name}`))
       )
     );
     for (let i = 0; i < sets.length; i++)
       for (let j = i + 1; j < sets.length; j++)
         expect([...sets[i]!].filter((key) => sets[j]!.has(key))).toEqual([]);
-    expect(sets.reduce((count, set) => count + set.size, 0)).toBe(21);
-    expect(sets[0]).toContain('0037_core_knowledge_intakes');
-    expect(sets[0]).toContain('0038_core_knowledge_intake_contents');
-    expect(sets[0]).toContain('0048_core_knowledge_v2_deliveries');
-    expect(sets[0]).toContain('0049_core_account_access');
-    expect(sets[1]).toContain('0034_markreg_lifecycle_projection');
-    expect(sets[1]).toContain('0035_markreg_recommended_actions');
-    expect(sets[1]).toContain('0041_markreg_formal_opportunity_handoff');
-    expect(sets[1]).toContain('0050_markreg_commercial_checkout');
-    expect(sets[2]).toContain('0027_execution_filing_governance');
-    expect(sets[2]).toContain('0032_execution_provider_return_evidence');
-    expect(sets[2]).toContain('0033_execution_evidence_review');
-    expect(sets[2]).toContain('0036_execution_reviewed_source_handoff');
+
+    const inventory = await migrationOwnershipInventory();
+    for (let i = 0; i < owners.length; i++) {
+      const expected = inventory.files.filter(
+        (migration) => inventory.migrationOwners[migration] === packages[owners[i]!]
+      );
+      expect([...sets[i]!].sort()).toEqual(expected.sort());
+    }
   });
 });
