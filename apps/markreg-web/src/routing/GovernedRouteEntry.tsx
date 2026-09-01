@@ -1,10 +1,10 @@
+import type { FormalMatter } from '@markorbit/contracts';
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createApiClient } from '../api/client.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
 import { CustomerConfirmationOrderEntry } from '../CustomerConfirmationOrderEntry.js';
-import { LifecyclePanel } from '../LifecyclePanel.js';
+import { FormalMatterWorkspace } from '../FormalMatterWorkspace.js';
 import { OrderJourney } from '../OrderJourney.js';
 import { parseMarkregRoute, type MarkregRoute, type MarkregRouteResult } from './markreg-route.js';
 
@@ -81,10 +81,11 @@ export function GovernedRouteEntry({
 }
 
 function loadRecord(client: MarkregClient, route: MarkregRoute) {
-  if (route.view === 'formal-matter')
-    return createApiClient().get(
-      `/api/markreg/formal-matters/${encodeURIComponent(route.recordId)}`
-    );
+  if (route.view === 'formal-matter') {
+    if (!client.getFormalMatter)
+      return Promise.reject(new Error('Formal Matter reader unavailable.'));
+    return client.getFormalMatter(route.recordId);
+  }
   if (!client.getGovernedRecord)
     return Promise.reject(new Error('Governed record reader unavailable.'));
   return client.getGovernedRecord(route.view, route.recordId);
@@ -147,7 +148,7 @@ function GenericGovernedRouteEntry({
       );
   }, [attempt, client, parsed]);
   useLayoutEffect(() => {
-    if (state.kind === 'ERROR' || state.kind === 'VERSION_MISMATCH') heading.current?.focus();
+    if (state.kind === 'ERROR') heading.current?.focus();
   }, [state]);
   if (state.kind === 'LOADING')
     return (
@@ -169,10 +170,18 @@ function GenericGovernedRouteEntry({
     );
   const loaded = state.loaded;
   const readOnly = ['STALE', 'WITHDRAWN', 'EXPIRED'].includes(loaded.status ?? '');
-  const authorityCopy =
-    parsed.route.view === 'formal-matter'
-      ? 'Viewing a Formal Matter does not create a payment, invoice, professional appointment, external filing or official application.'
-      : 'No Order, filing, submission, appointment, payment, or official application is created by this view.';
+
+  if (parsed.route.view === 'formal-matter')
+    return (
+      <FormalMatterWorkspace
+        matter={loaded.record as unknown as FormalMatter}
+        expectedVersion={parsed.route.expectedVersion}
+        actualVersion={loaded.actualVersion}
+        versionMismatch={state.kind === 'VERSION_MISMATCH'}
+        readOnly={readOnly}
+      />
+    );
+
   return (
     <main aria-labelledby="governed-route-heading">
       <h1 id="governed-route-heading" ref={heading} tabIndex={-1}>
@@ -200,14 +209,11 @@ function GenericGovernedRouteEntry({
           <dt>Governed status</dt>
           <dd>{loaded.status ?? 'READY'}</dd>
         </dl>
-        <strong>{authorityCopy}</strong>
+        <strong>
+          No Order, filing, submission, appointment, payment, or official application is created by
+          this view.
+        </strong>
       </Card>
-      {parsed.route.view === 'formal-matter' && (
-        <LifecyclePanel
-          formalMatterId={parsed.route.recordId}
-          disabled={state.kind === 'VERSION_MISMATCH' || readOnly}
-        />
-      )}
       <p>
         <Button onClick={() => location.reload()}>Reload exact record</Button>{' '}
         <a href="/">Back to MarkReg workspace</a>
