@@ -1,4 +1,4 @@
-import type { FormalMatterListResponse } from '@markorbit/contracts';
+import type { FormalMatterListQuery, FormalMatterListResponse } from '@markorbit/contracts';
 import {
   Alert,
   Button,
@@ -6,7 +6,9 @@ import {
   ErrorState,
   KeyValueList,
   LoadingState,
-  PageHeader
+  PageHeader,
+  Select,
+  TextInput
 } from '@markorbit/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { MarkregApp } from './App.js';
@@ -21,6 +23,8 @@ import {
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 const PAGE_SIZE = 10;
+
+type MatterFilters = Pick<FormalMatterListQuery, 'search' | 'status' | 'type'>;
 
 const currentWorkspaceId = () =>
   typeof sessionStorage === 'undefined'
@@ -92,6 +96,10 @@ function failure<T>(
   };
 }
 
+function hasMatterFilters(filters: MatterFilters): boolean {
+  return Boolean(filters.search || filters.status || filters.type);
+}
+
 const defaultOrderClient = createOrderClient();
 const defaultMatterClient = createFormalMatterListClient();
 
@@ -108,6 +116,10 @@ export function MarkregWorkspaceHome({
   const [workspaceId, setWorkspaceId] = useState(currentWorkspaceId);
   const [orderPage, setOrderPage] = useState(1);
   const [matterPage, setMatterPage] = useState(1);
+  const [matterSearchDraft, setMatterSearchDraft] = useState('');
+  const [matterStatusDraft, setMatterStatusDraft] = useState('');
+  const [matterTypeDraft, setMatterTypeDraft] = useState('');
+  const [matterFilters, setMatterFilters] = useState<MatterFilters>({});
   const [orderReloadToken, setOrderReloadToken] = useState(0);
   const [matterReloadToken, setMatterReloadToken] = useState(0);
   const [orderState, setOrderState] = useState<CollectionState<OrderListView>>({
@@ -148,7 +160,7 @@ export function MarkregWorkspaceHome({
 
     setMatterState({ kind: 'LOADING' });
     void matterClient
-      .list({ page: matterPage, pageSize: PAGE_SIZE })
+      .list({ page: matterPage, pageSize: PAGE_SIZE, ...matterFilters })
       .then((result) => {
         if (active) setMatterState({ kind: 'READY', result });
       })
@@ -159,7 +171,7 @@ export function MarkregWorkspaceHome({
     return () => {
       active = false;
     };
-  }, [matterClient, matterPage, matterReloadToken, workspaceId]);
+  }, [matterClient, matterFilters, matterPage, matterReloadToken, workspaceId]);
 
   useEffect(() => {
     const reconcileWorkspace = () => {
@@ -169,6 +181,10 @@ export function MarkregWorkspaceHome({
       setMatterState({ kind: 'LOADING' });
       setOrderPage(1);
       setMatterPage(1);
+      setMatterSearchDraft('');
+      setMatterStatusDraft('');
+      setMatterTypeDraft('');
+      setMatterFilters({});
       setWorkspaceId(nextWorkspaceId);
     };
     addEventListener('focus', reconcileWorkspace);
@@ -178,6 +194,26 @@ export function MarkregWorkspaceHome({
       removeEventListener('storage', reconcileWorkspace);
     };
   }, [workspaceId]);
+
+  const applyMatterFilters = () => {
+    const search = matterSearchDraft.trim();
+    setMatterPage(1);
+    setMatterFilters({
+      ...(search ? { search } : {}),
+      ...(matterStatusDraft === 'OPEN' ? { status: 'OPEN' as const } : {}),
+      ...(matterTypeDraft === 'TRADEMARK_REGISTRATION'
+        ? { type: 'TRADEMARK_REGISTRATION' as const }
+        : {})
+    });
+  };
+
+  const clearMatterFilters = () => {
+    setMatterSearchDraft('');
+    setMatterStatusDraft('');
+    setMatterTypeDraft('');
+    setMatterPage(1);
+    setMatterFilters({});
+  };
 
   if (planning)
     return (
@@ -213,6 +249,7 @@ export function MarkregWorkspaceHome({
     matterState.kind === 'READY'
       ? Math.max(1, Math.ceil(matterState.result.total / matterState.result.pageSize))
       : 1;
+  const matterFiltersActive = hasMatterFilters(matterFilters);
 
   return (
     <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
@@ -302,6 +339,36 @@ export function MarkregWorkspaceHome({
 
       <section className="markreg-workspace-list" aria-labelledby="workspace-matters-heading">
         <h2 id="workspace-matters-heading">Formal Matters</h2>
+        <div className="markreg-workspace-matter-filters" aria-label="Formal Matter filters">
+          <TextInput
+            label="Search Formal Matters"
+            value={matterSearchDraft}
+            onChange={(event) => setMatterSearchDraft(event.currentTarget.value)}
+            hint="Search uses the existing MarkReg Formal Matter query boundary."
+          />
+          <Select
+            label="Matter status"
+            value={matterStatusDraft}
+            onChange={(event) => setMatterStatusDraft(event.currentTarget.value)}
+          >
+            <option value="">All statuses</option>
+            <option value="OPEN">Open</option>
+          </Select>
+          <Select
+            label="Matter type"
+            value={matterTypeDraft}
+            onChange={(event) => setMatterTypeDraft(event.currentTarget.value)}
+          >
+            <option value="">All types</option>
+            <option value="TRADEMARK_REGISTRATION">Trademark registration</option>
+          </Select>
+          <div className="markreg-workspace-filter-actions">
+            <Button onClick={applyMatterFilters}>Apply filters</Button>
+            <Button variant="secondary" onClick={clearMatterFilters}>
+              Clear filters
+            </Button>
+          </div>
+        </div>
         {matterState.kind === 'LOADING' && <LoadingState label="Loading durable Formal Matters" />}
         {matterState.kind === 'ERROR' && (
           <ErrorState
@@ -314,11 +381,23 @@ export function MarkregWorkspaceHome({
         )}
         {matterState.kind === 'READY' && matterState.result.items.length === 0 && (
           <Card>
-            <h3>No Formal Matters yet</h3>
-            <p>
-              No durable Formal Matter is currently returned for this Workspace. This does not
-              change or reinterpret any Service Order state.
-            </p>
+            {matterFiltersActive ? (
+              <>
+                <h3>No Formal Matters match these filters</h3>
+                <p>
+                  The current producer query returned no matching Formal Matters. This does not mean
+                  the Workspace has no Formal Matters.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3>No Formal Matters yet</h3>
+                <p>
+                  No durable Formal Matter is currently returned for this Workspace. This does not
+                  change or reinterpret any Service Order state.
+                </p>
+              </>
+            )}
           </Card>
         )}
         {matterState.kind === 'READY' &&
