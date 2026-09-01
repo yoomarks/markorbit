@@ -1,3 +1,4 @@
+import type { FormalMatterListResponse } from '@markorbit/contracts';
 import {
   Alert,
   Button,
@@ -10,6 +11,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react';
 import { MarkregApp } from './App.js';
 import { MarkregApiError } from './api/errors.js';
+import { createFormalMatterListClient, type FormalMatterListClient } from './api/formal-matter.js';
 import {
   createOrderClient,
   type OrderClient,
@@ -32,7 +34,7 @@ const orderRoute = (order: OrderView) =>
     expectedVersion: String(order.version)
   });
 
-const matterRoute = (order: OrderView) =>
+const linkedMatterRoute = (order: OrderView) =>
   order.matter
     ? serializeMarkregRoute({
         view: 'formal-matter',
@@ -41,96 +43,132 @@ const matterRoute = (order: OrderView) =>
       })
     : undefined;
 
-type HomeState =
+type FormalMatterListItem = FormalMatterListResponse['items'][number];
+
+const formalMatterRoute = (matter: FormalMatterListItem) =>
+  serializeMarkregRoute({
+    view: 'formal-matter',
+    recordId: matter.formalMatterId,
+    expectedVersion: String(matter.version)
+  });
+
+type CollectionState<T> =
   | { kind: 'LOADING' }
-  | { kind: 'READY'; result: OrderListView }
+  | { kind: 'READY'; result: T }
   | { kind: 'ERROR'; title: string; description: string; retryable: boolean };
 
-function failure(error: unknown): Extract<HomeState, { kind: 'ERROR' }> {
+function failure<T>(
+  error: unknown,
+  subject: string
+): Extract<CollectionState<T>, { kind: 'ERROR' }> {
   if (error instanceof MarkregApiError) {
     if (error.kind === 'offline')
       return {
         kind: 'ERROR',
         title: 'You are offline',
-        description: 'Reconnect to load the durable Orders in this Workspace.',
+        description: `Reconnect to load durable ${subject} in this Workspace.`,
         retryable: true
       };
     if (error.kind === 'recoverable')
       return {
         kind: 'ERROR',
-        title: 'Workspace temporarily unavailable',
-        description:
-          'The Order service could not be reached. Existing Orders are unchanged; retry the same Workspace read.',
+        title: `${subject} temporarily unavailable`,
+        description: `The ${subject} read could not be completed. Existing durable records are unchanged; retry the same Workspace read.`,
         retryable: true
       };
     if (error.code?.includes('PERMISSION'))
       return {
         kind: 'ERROR',
         title: 'Workspace permission required',
-        description: 'Your current Workspace role cannot read these Orders.',
+        description: `Your current Workspace role cannot read ${subject}.`,
         retryable: false
       };
   }
   return {
     kind: 'ERROR',
-    title: 'Workspace could not be loaded',
-    description:
-      'MarkReg could not safely load durable Order truth. This is not being treated as an empty Workspace.',
+    title: `${subject} could not be loaded`,
+    description: `MarkReg could not safely load durable ${subject}. This failure is not being treated as an empty collection.`,
     retryable: true
   };
 }
 
 const defaultOrderClient = createOrderClient();
+const defaultMatterClient = createFormalMatterListClient();
 
 export function MarkregWorkspaceHome({
   client = defaultOrderClient,
+  matterClient = defaultMatterClient,
   renderPlanning = () => <MarkregApp />
 }: {
   client?: OrderClient;
+  matterClient?: FormalMatterListClient;
   renderPlanning?: () => ReactNode;
 }) {
   const [planning, setPlanning] = useState(false);
   const [workspaceId, setWorkspaceId] = useState(currentWorkspaceId);
-  const [page, setPage] = useState(1);
-  const [reloadToken, setReloadToken] = useState(0);
-  const [state, setState] = useState<HomeState>({ kind: 'LOADING' });
+  const [orderPage, setOrderPage] = useState(1);
+  const [matterPage, setMatterPage] = useState(1);
+  const [orderReloadToken, setOrderReloadToken] = useState(0);
+  const [matterReloadToken, setMatterReloadToken] = useState(0);
+  const [orderState, setOrderState] = useState<CollectionState<OrderListView>>({
+    kind: 'LOADING'
+  });
+  const [matterState, setMatterState] = useState<CollectionState<FormalMatterListResponse>>({
+    kind: 'LOADING'
+  });
 
   useEffect(() => {
     let active = true;
-    if (!workspaceId) {
-      setState({
-        kind: 'ERROR',
-        title: 'Choose a Workspace',
-        description:
-          'A current authenticated Workspace is required before MarkReg can load Orders.',
-        retryable: false
-      });
+    if (!workspaceId)
       return () => {
         active = false;
       };
-    }
 
-    setState({ kind: 'LOADING' });
+    setOrderState({ kind: 'LOADING' });
     void client
-      .list({ page, pageSize: PAGE_SIZE })
+      .list({ page: orderPage, pageSize: PAGE_SIZE })
       .then((result) => {
-        if (active) setState({ kind: 'READY', result });
+        if (active) setOrderState({ kind: 'READY', result });
       })
       .catch((error: unknown) => {
-        if (active) setState(failure(error));
+        if (active) setOrderState(failure(error, 'Service Orders'));
       });
 
     return () => {
       active = false;
     };
-  }, [client, page, reloadToken, workspaceId]);
+  }, [client, orderPage, orderReloadToken, workspaceId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!workspaceId)
+      return () => {
+        active = false;
+      };
+
+    setMatterState({ kind: 'LOADING' });
+    void matterClient
+      .list({ page: matterPage, pageSize: PAGE_SIZE })
+      .then((result) => {
+        if (active) setMatterState({ kind: 'READY', result });
+      })
+      .catch((error: unknown) => {
+        if (active) setMatterState(failure(error, 'Formal Matters'));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [matterClient, matterPage, matterReloadToken, workspaceId]);
 
   useEffect(() => {
     const reconcileWorkspace = () => {
       const nextWorkspaceId = currentWorkspaceId();
       if (nextWorkspaceId === workspaceId) return;
-      setState({ kind: 'LOADING' });
-      setPage(1);
+      setOrderState({ kind: 'LOADING' });
+      setMatterState({ kind: 'LOADING' });
+      setOrderPage(1);
+      setMatterPage(1);
       setWorkspaceId(nextWorkspaceId);
     };
     addEventListener('focus', reconcileWorkspace);
@@ -153,59 +191,69 @@ export function MarkregWorkspaceHome({
       </>
     );
 
-  if (state.kind === 'LOADING')
-    return (
-      <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
-        <LoadingState label="Loading durable trademark work" />
-      </main>
-    );
-
-  if (state.kind === 'ERROR')
+  if (!workspaceId)
     return (
       <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
         <PageHeader
           title="Trademark Workspace"
-          description="Orders and linked Matters are loaded from durable Workspace truth."
+          description="Durable Service Orders and Formal Matters are loaded independently from the current Workspace."
         />
         <ErrorState
-          title={state.title}
-          description={state.description}
-          {...(state.retryable ? { onRetry: () => setReloadToken((value) => value + 1) } : {})}
+          title="Choose a Workspace"
+          description="A current authenticated Workspace is required before MarkReg can load durable trademark work."
         />
       </main>
     );
 
-  const { result } = state;
-  const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
+  const orderTotalPages =
+    orderState.kind === 'READY'
+      ? Math.max(1, Math.ceil(orderState.result.total / orderState.result.pageSize))
+      : 1;
+  const matterTotalPages =
+    matterState.kind === 'READY'
+      ? Math.max(1, Math.ceil(matterState.result.total / matterState.result.pageSize))
+      : 1;
 
   return (
     <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
       <PageHeader
         title="Trademark Workspace"
-        description="Track durable service Orders and linked Formal Matters. Planning a new filing remains a separate fixture-only consultation until its production gates are complete."
+        description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing remains a fixture-only consultation until its production gates are complete."
       />
       <Alert tone="warning" title="Authority boundary">
-        Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing. A linked Formal Matter does not mean an
-        external filing has occurred.
+        Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing. A Formal Matter does not mean an external
+        filing has occurred.
       </Alert>
       <div className="markreg-workspace-primary-actions">
         <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
       </div>
 
-      {result.items.length === 0 ? (
-        <Card>
-          <h2>No service Orders yet</h2>
-          <p>
-            This Workspace has no durable Orders. You can start a planning-only consultation without
-            creating an Order, Payment, Matter, or Filing.
-          </p>
-          <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
-        </Card>
-      ) : (
-        <section className="markreg-workspace-list" aria-labelledby="workspace-orders-heading">
-          <h2 id="workspace-orders-heading">Service Orders</h2>
-          {result.items.map((order) => {
-            const linkedMatterRoute = matterRoute(order);
+      <section className="markreg-workspace-list" aria-labelledby="workspace-orders-heading">
+        <h2 id="workspace-orders-heading">Service Orders</h2>
+        {orderState.kind === 'LOADING' && <LoadingState label="Loading durable Service Orders" />}
+        {orderState.kind === 'ERROR' && (
+          <ErrorState
+            title={orderState.title}
+            description={orderState.description}
+            {...(orderState.retryable
+              ? { onRetry: () => setOrderReloadToken((value) => value + 1) }
+              : {})}
+          />
+        )}
+        {orderState.kind === 'READY' && orderState.result.items.length === 0 && (
+          <Card>
+            <h3>No service Orders yet</h3>
+            <p>
+              This Workspace has no durable Orders. Formal Matters, if any, remain visible
+              separately below. Planning a consultation does not create an Order, Payment, Matter,
+              or Filing.
+            </p>
+            <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
+          </Card>
+        )}
+        {orderState.kind === 'READY' &&
+          orderState.result.items.map((order) => {
+            const matterRoute = linkedMatterRoute(order);
             return (
               <Card key={order.orderId}>
                 <KeyValueList
@@ -224,35 +272,105 @@ export function MarkregWorkspaceHome({
                 />
                 <div className="markreg-workspace-order-actions">
                   <a href={orderRoute(order)}>Open Order</a>
-                  {linkedMatterRoute && <a href={linkedMatterRoute}>Open Formal Matter</a>}
+                  {matterRoute && <a href={matterRoute}>Open linked Formal Matter</a>}
                 </div>
               </Card>
             );
           })}
-        </section>
-      )}
+        {orderState.kind === 'READY' && orderState.result.total > orderState.result.pageSize && (
+          <nav className="markreg-workspace-pagination" aria-label="Order pages">
+            <Button
+              variant="secondary"
+              disabled={orderPage <= 1}
+              onClick={() => setOrderPage((value) => Math.max(1, value - 1))}
+            >
+              Previous
+            </Button>
+            <span>
+              Page {orderState.result.page} of {orderTotalPages}
+            </span>
+            <Button
+              variant="secondary"
+              disabled={orderPage >= orderTotalPages}
+              onClick={() => setOrderPage((value) => Math.min(orderTotalPages, value + 1))}
+            >
+              Next
+            </Button>
+          </nav>
+        )}
+      </section>
 
-      {result.total > result.pageSize && (
-        <nav className="markreg-workspace-pagination" aria-label="Order pages">
-          <Button
-            variant="secondary"
-            disabled={page <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </Button>
-          <span>
-            Page {result.page} of {totalPages}
-          </span>
-          <Button
-            variant="secondary"
-            disabled={page >= totalPages}
-            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-          >
-            Next
-          </Button>
-        </nav>
-      )}
+      <section className="markreg-workspace-list" aria-labelledby="workspace-matters-heading">
+        <h2 id="workspace-matters-heading">Formal Matters</h2>
+        {matterState.kind === 'LOADING' && <LoadingState label="Loading durable Formal Matters" />}
+        {matterState.kind === 'ERROR' && (
+          <ErrorState
+            title={matterState.title}
+            description={matterState.description}
+            {...(matterState.retryable
+              ? { onRetry: () => setMatterReloadToken((value) => value + 1) }
+              : {})}
+          />
+        )}
+        {matterState.kind === 'READY' && matterState.result.items.length === 0 && (
+          <Card>
+            <h3>No Formal Matters yet</h3>
+            <p>
+              No durable Formal Matter is currently returned for this Workspace. This does not
+              change or reinterpret any Service Order state.
+            </p>
+          </Card>
+        )}
+        {matterState.kind === 'READY' &&
+          matterState.result.items.map((matter) => (
+            <Card key={matter.formalMatterId}>
+              <KeyValueList
+                items={[
+                  { key: 'Matter ID', value: matter.formalMatterId },
+                  { key: 'Status', value: matter.status },
+                  { key: 'Type', value: matter.type },
+                  { key: 'Version', value: matter.version },
+                  { key: 'Applicant', value: matter.applicant ?? 'Not recorded' },
+                  { key: 'Trademark', value: matter.trademark ?? 'Not recorded' },
+                  { key: 'Jurisdiction', value: matter.jurisdiction ?? 'Not recorded' },
+                  {
+                    key: 'Classes',
+                    value: matter.classes.length ? matter.classes.join(', ') : 'Not recorded'
+                  },
+                  {
+                    key: 'Source Matter Draft',
+                    value: `${matter.sourceMatterDraftId} · version ${matter.sourceMatterDraftVersion}`
+                  },
+                  { key: 'Created', value: matter.createdAt }
+                ]}
+              />
+              <div className="markreg-workspace-order-actions">
+                <a href={formalMatterRoute(matter)}>Open Matter</a>
+              </div>
+            </Card>
+          ))}
+        {matterState.kind === 'READY' && matterState.result.total > matterState.result.pageSize && (
+          <nav className="markreg-workspace-pagination" aria-label="Matter pages">
+            <Button
+              variant="secondary"
+              disabled={matterPage <= 1}
+              onClick={() => setMatterPage((value) => Math.max(1, value - 1))}
+            >
+              Previous
+            </Button>
+            <span>
+              Page {matterState.result.page} of {matterTotalPages}
+            </span>
+            <Button
+              variant="secondary"
+              disabled={matterPage >= matterTotalPages}
+              onClick={() => setMatterPage((value) => Math.min(matterTotalPages, value + 1))}
+            >
+              Next
+            </Button>
+          </nav>
+        )}
+      </section>
     </main>
   );
 }
