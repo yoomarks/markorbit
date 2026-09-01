@@ -133,8 +133,7 @@ export interface MethodImprovementCoverageGapResearchMissionV1 {
 }
 
 export type MethodImprovementAnyTriggerV1 =
-  | MethodImprovementTriggerV1
-  | MethodImprovementCoverageGapTriggerV1;
+  MethodImprovementTriggerV1 | MethodImprovementCoverageGapTriggerV1;
 
 export class MethodImprovementCoverageGapContractError extends Error {
   constructor(message: string) {
@@ -245,7 +244,11 @@ function parseAuthority(
   value: unknown
 ): Readonly<MethodImprovementCoverageGapAuthorityConsequencesV1> {
   const authority = record(value, 'authorityConsequences');
-  exactKeys(authority, Object.keys(methodImprovementCoverageGapNoDownstreamAuthority), 'authorityConsequences');
+  exactKeys(
+    authority,
+    Object.keys(methodImprovementCoverageGapNoDownstreamAuthority),
+    'authorityConsequences'
+  );
   if (!same(authority, methodImprovementCoverageGapNoDownstreamAuthority))
     invalid('authorityConsequences must preserve the frozen no-downstream-authority boundary.');
   return methodImprovementCoverageGapNoDownstreamAuthority;
@@ -281,7 +284,10 @@ export function parseMethodImprovementCoverageGapEvidenceSourceV1(
     invalid('coverageGapSource.phase7AdmissionStatus must remain NOT_ADMITTED.');
   if (source.sourceKind !== 'CAPABILITY_DEMAND_COVERAGE_AUDIT_V1')
     invalid('coverageGapSource.sourceKind must be CAPABILITY_DEMAND_COVERAGE_AUDIT_V1.');
-  if (typeof source.coverageStatus !== 'string' || !COVERAGE_GAP_STATUSES.has(source.coverageStatus))
+  if (
+    typeof source.coverageStatus !== 'string' ||
+    !COVERAGE_GAP_STATUSES.has(source.coverageStatus)
+  )
     invalid('coverageGapSource.coverageStatus is not an eligible governed Coverage Gap status.');
 
   const evidenceFingerprintSha256 = sha256(
@@ -419,7 +425,10 @@ function assertCoverageGapAdmissionEligibility(
     invalid(
       `Coverage Gap status ${source.coverageStatus} requires source-governance/currentness revalidation and cannot be admitted as Method Improvement research.`
     );
-  if (source.coverageStatus === 'MISSING_RUNTIME_CAPABILITY' && target.kind !== 'NEW_CAPABILITY_METHOD_DEMAND')
+  if (
+    source.coverageStatus === 'MISSING_RUNTIME_CAPABILITY' &&
+    target.kind !== 'NEW_CAPABILITY_METHOD_DEMAND'
+  )
     invalid('MISSING_RUNTIME_CAPABILITY requires an explicit new capability/method demand target.');
   if (target.kind === 'NEW_CAPABILITY_METHOD_DEMAND') {
     if (
@@ -475,7 +484,9 @@ export function parseMethodImprovementCoverageGapTriggerV1(
     createdByPrincipalId
   });
   if (admission.replayKeyFingerprintSha256 !== expectedReplayKeyFingerprint)
-    invalid('coverageGapAdmission replay key fingerprint does not match its exact admission identity.');
+    invalid(
+      'coverageGapAdmission replay key fingerprint does not match its exact admission identity.'
+    );
 
   const base: CoverageGapTriggerFingerprintInputV1 = {
     schemaVersion: 1,
@@ -564,7 +575,9 @@ export function parseMethodImprovementCoverageGapResearchMissionV1(
     'coverageGapResearchMission.missionFingerprintSha256'
   );
   if (missionFingerprintSha256 !== methodImprovementCoverageGapMissionFingerprintV1(base))
-    invalid('coverageGapResearchMission.missionFingerprintSha256 does not match its bounded contents.');
+    invalid(
+      'coverageGapResearchMission.missionFingerprintSha256 does not match its bounded contents.'
+    );
 
   return {
     ...base,
@@ -589,7 +602,9 @@ export function assertMethodImprovementCoverageGapMissionBinding(
     !same(mission.target, trigger.target) ||
     !same(mission.source, trigger.source)
   )
-    invalid('Coverage Gap research mission does not match its immutable Method Improvement trigger.');
+    invalid(
+      'Coverage Gap research mission does not match its immutable Method Improvement trigger.'
+    );
 }
 
 export function parseMethodImprovementAnyTriggerV1(value: unknown): MethodImprovementAnyTriggerV1 {

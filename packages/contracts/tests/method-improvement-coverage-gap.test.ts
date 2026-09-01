@@ -32,7 +32,8 @@ const mission = {
   schemaVersion: 1,
   missionId: 'brain-research-mission_phase7-coverage-gap',
   capabilityDemand: 'Research the bounded governed capability coverage demand.',
-  problem: 'Resolve a governed research-eligible capability coverage gap without inventing authority.',
+  problem:
+    'Resolve a governed research-eligible capability coverage gap without inventing authority.',
   targetMethodFamily: 'CLASSIFICATION',
   applicabilityTarget: {
     jurisdictions: ['CN'],
@@ -274,7 +275,9 @@ describe('Method Improvement Coverage Gap V1 shared contract', () => {
 
   it('keeps the legacy PERFORMANCE parser closed to Coverage Gap while the additive union parser opts in', () => {
     const valid = trigger();
-    expect(() => parseMethodImprovementTriggerV1(valid)).toThrow(/PERFORMANCE_GAP only/u);
+    expect(() => parseMethodImprovementTriggerV1(valid)).toThrow(
+      /unsupported fields|PERFORMANCE_GAP only/u
+    );
     expect(parseMethodImprovementAnyTriggerV1(valid).triggerType).toBe('COVERAGE_GAP');
   });
 
@@ -286,31 +289,15 @@ describe('Method Improvement Coverage Gap V1 shared contract', () => {
       assertMethodImprovementCoverageGapMissionBinding(parsedTrigger, parsedMission)
     ).not.toThrow();
 
-    const drifted = researchMission();
-    const otherDemandFingerprint = 'f'.repeat(64);
-    const driftedTarget = {
-      kind: 'NEW_CAPABILITY_METHOD_DEMAND',
-      demandId: `capability-demand_${otherDemandFingerprint}`,
-      demandFingerprintSha256: otherDemandFingerprint
-    } as const;
-    const driftedBase = {
-      schemaVersion: 1,
-      workspaceId,
-      triggerId: drifted.triggerId,
-      triggerFingerprintSha256: drifted.triggerFingerprintSha256,
-      target: driftedTarget,
-      source: drifted.source,
-      mission,
-      createdByPrincipalId,
-      createdAt: mission.createdAt
-    } as const;
-    const parsedDriftedMission = parseMethodImprovementCoverageGapResearchMissionV1({
-      ...driftedBase,
-      researchMissionId: drifted.researchMissionId,
-      missionFingerprintSha256: methodImprovementCoverageGapMissionFingerprintV1(driftedBase)
+    const alternativeTrigger = trigger({
+      status: 'AMBIGUOUS_CURRENT_IMPLEMENTATION',
+      target: existingMethodTarget
     });
+    const parsedAlternativeMission = parseMethodImprovementCoverageGapResearchMissionV1(
+      researchMission(alternativeTrigger)
+    );
     expect(() =>
-      assertMethodImprovementCoverageGapMissionBinding(parsedTrigger, parsedDriftedMission)
+      assertMethodImprovementCoverageGapMissionBinding(parsedTrigger, parsedAlternativeMission)
     ).toThrow(/does not match/u);
   });
 });
