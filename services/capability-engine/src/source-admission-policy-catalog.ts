@@ -67,9 +67,7 @@ export type CapabilitySourceAdmissionPolicyEntryV1 =
     >;
 
 export type CapabilitySourceAdmissionPolicyCatalogErrorCode =
-  | 'INVALID_POLICY_ENTRY'
-  | 'DUPLICATE_POLICY_ID'
-  | 'DUPLICATE_POLICY_BINDING';
+  'INVALID_POLICY_ENTRY' | 'DUPLICATE_POLICY_ID' | 'DUPLICATE_POLICY_BINDING';
 
 export class CapabilitySourceAdmissionPolicyCatalogError extends Error {
   constructor(
@@ -121,7 +119,8 @@ function validateEntry(
 ): CapabilitySourceAdmissionPolicyEntryV1 {
   if (entry.schemaVersion !== 1) invalidEntry('schemaVersion must be 1.');
   if (!nonEmptyText(entry.policyId)) invalidEntry('policyId is required.');
-  if (!positiveInteger(entry.policyVersion)) invalidEntry('policyVersion must be a positive integer.');
+  if (!positiveInteger(entry.policyVersion))
+    invalidEntry('policyVersion must be a positive integer.');
   if (!capabilitySourceMaturityClasses.includes(entry.maturityClass))
     invalidEntry('maturityClass is invalid.');
   if (!nonEmptyText(entry.capabilityId)) invalidEntry('capabilityId is required.');
@@ -191,9 +190,7 @@ function unsupported(reason: string): CapabilitySourceAdmissionPolicyResult {
   return { applicability: 'UNSUPPORTED', reason };
 }
 
-export class CapabilitySourceAdmissionPolicyCatalogV1
-  implements CapabilitySourceAdmissionPolicyAuthority
-{
+export class CapabilitySourceAdmissionPolicyCatalogV1 implements CapabilitySourceAdmissionPolicyAuthority {
   private readonly entries: readonly Readonly<CapabilitySourceAdmissionPolicyEntryV1>[];
   private readonly byBinding: ReadonlyMap<string, Readonly<CapabilitySourceAdmissionPolicyEntryV1>>;
 
