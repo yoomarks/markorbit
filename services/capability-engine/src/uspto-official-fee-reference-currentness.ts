@@ -154,9 +154,7 @@ function sameAcceptedReference(
   );
 }
 
-export class UsptoOfficialFeeReferenceCurrentnessAuthorityV1
-  implements CapabilityReferenceCurrentnessAuthority
-{
+export class UsptoOfficialFeeReferenceCurrentnessAuthorityV1 implements CapabilityReferenceCurrentnessAuthority {
   constructor(private readonly options: Readonly<UsptoOfficialFeeReferenceCurrentnessOptionsV1>) {}
 
   evaluate(
@@ -169,7 +167,10 @@ export class UsptoOfficialFeeReferenceCurrentnessAuthorityV1
     }
 
     const historical = historicalOutput(input);
-    if (!historical || !historicalEvidenceComplete(historical, input.execution.receipt.evidenceRefs)) {
+    if (
+      !historical ||
+      !historicalEvidenceComplete(historical, input.execution.receipt.evidenceRefs)
+    ) {
       return notCurrent(
         'Historical USPTO official-fee output or exact reference evidence is missing or inconsistent.'
       );
