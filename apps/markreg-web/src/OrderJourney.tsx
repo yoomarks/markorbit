@@ -65,7 +65,7 @@ function problemCopy(problem: Problem) {
       return {
         title: 'Commercial source changed',
         description:
-          'The confirmed commercial source no longer matches this Order. Reload the governed source before continuing.'
+          'The current confirmed commercial source no longer matches this Order. Reloading this same Order does not make its immutable captured source current. Return to MarkReg and continue from a current confirmed commercial source.'
       };
     case 'VERSION_CONFLICT':
       return {
@@ -276,6 +276,8 @@ export function OrderJourney({
     );
 
   const copy = problem ? problemCopy(problem) : undefined;
+  const canRetryCreate = problem === 'SERVICE_UNAVAILABLE';
+  const canReloadOrder = problem === 'VERSION_CONFLICT' || problem === 'SERVICE_UNAVAILABLE';
   if (!order)
     return (
       <main className="markreg-page" aria-label="Order journey">
@@ -287,7 +289,7 @@ export function OrderJourney({
           <ErrorState
             title={copy.title}
             description={copy.description}
-            onRetry={() => void create()}
+            {...(canRetryCreate ? { onRetry: () => void create() } : {})}
           />
         )}
         <Card>
@@ -312,6 +314,7 @@ export function OrderJourney({
     );
 
   const progressionBlocked = Boolean(problem);
+  const cancellationBlocked = Boolean(problem) && problem !== 'STALE_SOURCE';
   return (
     <main className="markreg-page" aria-label="Order journey">
       <PageHeader
@@ -322,7 +325,7 @@ export function OrderJourney({
         <ErrorState
           title={copy.title}
           description={copy.description}
-          {...(problem === 'PERMISSION_DENIED' ? {} : { onRetry: () => void reload() })}
+          {...(canReloadOrder ? { onRetry: () => void reload() } : {})}
         />
       )}
       <Card>
@@ -343,7 +346,8 @@ export function OrderJourney({
         />
         <OrderAction
           status={order.status}
-          disabled={progressionBlocked}
+          progressionDisabled={progressionBlocked}
+          cancelDisabled={cancellationBlocked}
           requestConfirmation={() =>
             void withOrder((value, workspace) =>
               client.requestConfirmation({
@@ -431,7 +435,8 @@ export function OrderJourney({
 
 function OrderAction({
   status,
-  disabled,
+  progressionDisabled,
+  cancelDisabled,
   requestConfirmation,
   confirm,
   evaluate,
@@ -439,7 +444,8 @@ function OrderAction({
   cancel
 }: {
   status: OrderStatus;
-  disabled: boolean;
+  progressionDisabled: boolean;
+  cancelDisabled: boolean;
   requestConfirmation: () => void;
   confirm: () => void;
   evaluate: () => void;
@@ -462,12 +468,12 @@ function OrderAction({
   return (
     <div className="markreg-actions">
       {primary && (
-        <Button disabled={disabled} onClick={primary.action}>
+        <Button disabled={progressionDisabled} onClick={primary.action}>
           {primary.label}
         </Button>
       )}
       {cancellable && (
-        <Button variant="secondary" disabled={disabled} onClick={cancel}>
+        <Button variant="secondary" disabled={cancelDisabled} onClick={cancel}>
           Cancel Order
         </Button>
       )}

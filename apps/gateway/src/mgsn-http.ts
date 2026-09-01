@@ -53,6 +53,8 @@ const networkParticipationRoutes: readonly RouteDefinition[] = [
 ];
 
 const providerRoutes: readonly RouteDefinition[] = [
+  ['GET', '/api/provider/work-items'],
+  ['GET', '/api/provider/work-items/:allocationId'],
   ['GET', '/api/provider/allocations/:allocationId'],
   ['POST', '/api/provider/allocations/:allocationId/respond'],
   ['POST', '/api/provider/returns'],
@@ -115,6 +117,26 @@ function forbidProviderIdentityPayload(request: JsonRequest) {
       400,
       'PROVIDER_IDENTITY_PAYLOAD_FORBIDDEN',
       'Provider identity is derived from the authenticated Provider Workspace.'
+    );
+}
+
+function validateProviderWorkQuery(request: JsonRequest) {
+  if (request.path === '/api/provider/work-items') {
+    const allowed = new Set(['limit', 'cursor']);
+    const forbidden = Object.keys(request.query).filter((key) => !allowed.has(key));
+    if (forbidden.length > 0)
+      throw new HttpError(
+        400,
+        'PROVIDER_WORK_QUERY_FORBIDDEN',
+        'Provider work list accepts only limit and cursor query controls.'
+      );
+    return;
+  }
+  if (request.path.startsWith('/api/provider/work-items/') && Object.keys(request.query).length > 0)
+    throw new HttpError(
+      400,
+      'PROVIDER_WORK_QUERY_FORBIDDEN',
+      'Provider work detail does not accept query controls.'
     );
 }
 
@@ -236,6 +258,7 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
     try {
       const principal = await resolvePrincipal(request, provider);
       requirePermission(principal, mutation);
+      if (provider && !mutation) validateProviderWorkQuery(request);
       if (mutation) {
         requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
         validateCsrf(

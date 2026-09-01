@@ -150,6 +150,7 @@ describe('M3-WP-06 durable Order journey', () => {
     ).toBeVisible();
     expect(screen.getByText('4', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel Order' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
@@ -159,6 +160,7 @@ describe('M3-WP-06 durable Order journey', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeEnabled()
     );
+    expect(screen.getByRole('button', { name: 'Cancel Order' })).toBeEnabled();
     expect(screen.queryByText('Order changed in another session')).toBeNull();
     const params = new URLSearchParams(location.search);
     expect(params.get('view')).toBe('order');
@@ -166,9 +168,12 @@ describe('M3-WP-06 durable Order journey', () => {
     expect(params.get('orderVersion')).toBe('4');
   });
 
-  it('surfaces stale commercial source as a governed blocking state', async () => {
+  it('keeps stale commercial source progression fail closed while allowing safe cancellation', async () => {
+    const get = vi.fn().mockResolvedValue(order('Confirmed', 3));
+    const cancel = vi.fn().mockResolvedValue(order('Cancelled', 4));
     const client = mockClient({
-      get: vi.fn().mockResolvedValue(order('Confirmed', 3)),
+      get,
+      cancel,
       evaluateReadiness: vi
         .fn()
         .mockRejectedValue(
@@ -176,9 +181,95 @@ describe('M3-WP-06 durable Order journey', () => {
         )
     });
     render(<OrderJourney orderId="order_wp06" expectedVersion="3" client={client} />);
+
     await screen.findByText('Confirmed', { exact: true });
     fireEvent.click(screen.getByRole('button', { name: 'Validate Ready for Matter' }));
+
     await screen.findByText('Commercial source changed');
+    expect(screen.getByText(/Reloading this same Order does not make/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Validate Ready for Matter' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel Order' })).toBeEnabled();
+    expect(get).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Order' }));
+
+    await screen.findByText('Cancelled', { exact: true });
+    expect(cancel).toHaveBeenCalledWith({
+      workspaceId: workspace,
+      orderId: 'order_wp06',
+      expectedVersion: 3,
+      reason: 'Cancelled by customer from MarkReg Order journey',
+      idempotencyKey: 'order-cancel:order_wp06:3'
+    });
+    expect(client.createMatter).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Validate Ready for Matter' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel Order' })).toBeNull();
+    expect(screen.getAllByText('Not created').length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('keeps stable policy failures fail closed without same-Order reload', async () => {
+    const client = mockClient({
+      get: vi.fn().mockResolvedValue(order('Confirmed', 3)),
+      evaluateReadiness: vi
+        .fn()
+        .mockRejectedValue(
+          new MarkregApiError('validation', 'scope not ready', undefined, 'POLICY_DENIED')
+        )
+    });
+    render(<OrderJourney orderId="order_wp06" expectedVersion="3" client={client} />);
+
+    await screen.findByText('Confirmed', { exact: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Validate Ready for Matter' }));
+
+    await screen.findByText('Order journey cannot continue');
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Validate Ready for Matter' })).toBeDisabled();
+  });
+
+  it('keeps read reload for a transient Order service failure', async () => {
+    const get = vi.fn().mockResolvedValue(order('Confirmed', 3));
+    const client = mockClient({
+      get,
+      evaluateReadiness: vi
+        .fn()
+        .mockRejectedValue(
+          new MarkregApiError(
+            'recoverable',
+            'temporary failure',
+            undefined,
+            'PERSISTENCE_UNAVAILABLE'
+          )
+        )
+    });
+    render(<OrderJourney orderId="order_wp06" expectedVersion="3" client={client} />);
+
+    await screen.findByText('Confirmed', { exact: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Validate Ready for Matter' }));
+    await screen.findByText('Order service temporarily unavailable');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('Order service temporarily unavailable')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Validate Ready for Matter' })).toBeEnabled();
+  });
+
+  it('does not blindly retry Order creation from a stale commercial source', async () => {
+    const create = vi
+      .fn()
+      .mockRejectedValue(
+        new MarkregApiError('conflict', 'source changed', undefined, 'STALE_SOURCE')
+      );
+    const client = mockClient({ create });
+    render(<OrderJourney source={{ confirmation }} client={client} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Order' }));
+
+    await screen.findByText('Commercial source changed');
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Create Order' })).toBeDisabled();
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   it('clears stale Order state when the Workspace changes', async () => {

@@ -180,5 +180,9 @@ export function listFixture(
 }
 
 export function fixtureClient(list = listFixture(), detail = detailFixture()): ContentStudioClient {
-  return { list: () => Promise.resolve(list), find: () => Promise.resolve(detail) };
+  return {
+    list: () => Promise.resolve(list),
+    find: () => Promise.resolve(detail),
+    recordUseFeedback: (_publishPackage, outcome) => Promise.resolve({ ...feedback, outcome })
+  };
 }

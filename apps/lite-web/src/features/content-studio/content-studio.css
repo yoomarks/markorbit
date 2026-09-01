@@ -64,6 +64,15 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.content-studio__feedback {
+  display: grid;
+  gap: var(--mo-space-md);
+}
+.content-studio__feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mo-space-sm);
+}
 .content-studio code {
   overflow-wrap: anywhere;
 }
@@ -76,5 +85,9 @@
   }
   .content-studio__nested {
     padding: var(--mo-space-md);
+  }
+  .content-studio__feedback-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

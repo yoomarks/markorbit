@@ -55,15 +55,35 @@ export const ExactReview: Story = {
     initialContentOpportunityId: 'content-opportunity_413'
   }
 };
-export const PackageWithoutFeedback: Story = {
+export const FeedbackAvailable: Story = {
   args: {
     ...args,
     client: fixtureClient(listFixture(), detailFixture({ feedback: [] })),
     initialContentOpportunityId: 'content-opportunity_413'
   }
 };
-export const UserReportedFeedback: Story = {
+export const FeedbackRecorded: Story = {
   args: { ...args, initialContentOpportunityId: 'content-opportunity_413' }
+};
+export const FeedbackMutationError: Story = {
+  args: {
+    ...args,
+    client: {
+      ...fixtureClient(listFixture(), detailFixture({ feedback: [] })),
+      recordUseFeedback: () =>
+        Promise.reject(
+          new ContentStudioHttpError(409, 'PACKAGE_VERSION_CONFLICT', 'owner truth changed')
+        )
+    },
+    initialContentOpportunityId: 'content-opportunity_413'
+  },
+  play: async ({ canvasElement }) => {
+    const action = Array.from(canvasElement.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Published'
+    );
+    action?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 };
 export const Pagination: Story = {
   args: { ...args, client: fixtureClient(listFixture([summaryFixture()], 'next-page')) }
@@ -73,7 +93,8 @@ export const PermissionDenied: Story = {
     ...args,
     client: {
       list: () => Promise.reject(new ContentStudioHttpError(403, 'PERMISSION_DENIED', 'denied')),
-      find: () => Promise.reject(new Error('unused'))
+      find: () => Promise.reject(new Error('unused')),
+      recordUseFeedback: () => Promise.reject(new Error('unused'))
     }
   }
 };
@@ -83,12 +104,17 @@ export const PersistenceUnavailable: Story = {
     client: {
       list: () =>
         Promise.reject(new ContentStudioHttpError(503, 'PERSISTENCE_UNAVAILABLE', 'offline')),
-      find: () => Promise.reject(new Error('unused'))
+      find: () => Promise.reject(new Error('unused')),
+      recordUseFeedback: () => Promise.reject(new Error('unused'))
     }
   }
 };
 export const Mobile390: Story = {
-  args,
+  args: {
+    ...args,
+    client: fixtureClient(listFixture(), detailFixture({ feedback: [] })),
+    initialContentOpportunityId: 'content-opportunity_413'
+  },
   parameters: {
     viewport: {
       defaultViewport: 'mobile1',
