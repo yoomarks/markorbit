@@ -127,10 +127,7 @@ function successfulExecution(output: unknown) {
   };
 }
 
-function expectV3Error(
-  run: () => unknown,
-  code: CapabilitySourceAdmissionEvidenceV3Error['code']
-) {
+function expectV3Error(run: () => unknown, code: CapabilitySourceAdmissionEvidenceV3Error['code']) {
   try {
     run();
     throw new Error(`expected Capability source admission V3 error ${code}`);
@@ -338,9 +335,7 @@ describe('Capability production source-use evidence V3', () => {
     });
 
     await expect(
-      materializer.evaluateAndMaterialize(
-        successfulExecution({ answer: 'bounded-source-output' })
-      )
+      materializer.evaluateAndMaterialize(successfulExecution({ answer: 'bounded-source-output' }))
     ).rejects.toMatchObject({ code: 'SOURCE_USE_CONTEXT_UNAVAILABLE' });
   });
 
