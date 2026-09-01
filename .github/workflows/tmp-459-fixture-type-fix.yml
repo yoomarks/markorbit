@@ -1,0 +1,55 @@
+name: Temporary 459 Fixture Type Fix
+
+on:
+  push:
+    branches:
+      - tmp/459-fix-fixture-types
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/459-fix-fixture-types
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Preserve canonical fixture id literal types
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'packages/contracts/src/provider-selection.ts';
+          let text = fs.readFileSync(path, 'utf8');
+          text = text.replaceAll("'provider-discovery-request_fixture-381'", 'selectionFixtureDiscoveryRequestId');
+          text = text.replaceAll("'provider-discovery-candidate_fixture-381'", 'selectionFixtureCandidateId');
+          text = text.replaceAll("'provider-selection_fixture-394'", 'selectionFixtureSelectionId');
+          const marker = 'const selectionFixtureScope = Object.freeze({';
+          const declarations = `const selectionFixtureDiscoveryRequestId =\n  'provider-discovery-request_fixture-381' as const satisfies ProviderDiscoveryRequestId;\nconst selectionFixtureCandidateId =\n  'provider-discovery-candidate_fixture-381' as const satisfies ProviderDiscoveryCandidateId;\nconst selectionFixtureSelectionId =\n  'provider-selection_fixture-394' as const satisfies ProviderSelectionId;\n`;
+          if (!text.includes('const selectionFixtureDiscoveryRequestId =')) {
+            text = text.replace(marker, `${declarations}${marker}`);
+          }
+          fs.writeFileSync(path, text);
+          NODE
+      - run: pnpm exec prettier --write packages/contracts/src/provider-selection.ts
+      - run: pnpm --filter @markorbit/contracts build
+      - run: pnpm --filter @markorbit/contracts exec vitest run tests/provider-selection.test.ts
+      - run: git diff --check
+      - name: Commit fixture type fix
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/contracts/src/provider-selection.ts
+          git commit -m "fix(contracts): preserve selection fixture id literal types"
+          git push origin HEAD:tmp/459-fix-fixture-types
