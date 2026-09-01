@@ -144,7 +144,9 @@ describe('M3-WP-06 durable Order journey', () => {
 
     await screen.findByText('Order changed in another session');
     expect(
-      screen.getByText(/direct link points to a different Order version than the current durable Order/)
+      screen.getByText(
+        /direct link points to a different Order version than the current durable Order/
+      )
     ).toBeVisible();
     expect(screen.getByText('4', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeDisabled();
