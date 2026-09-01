@@ -3,7 +3,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
-  migrate,
   migrationStatus,
   verifyMigrations
 } from '@markorbit/persistence';
@@ -15,6 +14,7 @@ import {
   type ProviderRegistryError
 } from '../src/provider-registry.js';
 import { PostgresProviderRegistryRepository } from '../src/provider-registry-postgres.js';
+import { resetAndMigrateMgsnTestDatabase } from './support/mgsn-postgres-test-database.js';
 
 const url = process.env.MGSN_TEST_DATABASE_URL;
 const required = process.env.MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED === '1';
@@ -90,26 +90,12 @@ suite('M4-WP-03 durable MGSN Provider Registry', () => {
 
   beforeAll(async () => {
     await database.start();
-    const pool = database.getPool();
-    await pool.query(
-      `DROP TABLE IF EXISTS
-         mgsn_provider_registry_audit,
-         mgsn_provider_registry_commands,
-         mgsn_provider_supply_capabilities,
-         mgsn_providers
-       CASCADE`
-    );
-    await pool.query(
-      'DROP FUNCTION IF EXISTS reject_mgsn_provider_registry_audit_mutation() CASCADE'
-    );
-    const history = await pool.query<{ migration_history: string | null }>(
-      "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
-    );
-    if (history.rows[0]?.migration_history)
-      await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace=$1', [
-        namespace
-      ]);
-    await migrate(pool, namespace, await migrations());
+    await resetAndMigrateMgsnTestDatabase({
+      pool: database.getPool(),
+      namespace,
+      migrationsDirectory: path.resolve('../../infrastructure/persistence/migrations'),
+      migrationOwners: path.resolve('../../infrastructure/persistence/migration-owners.json')
+    });
   });
 
   beforeEach(async () => {
