@@ -19,8 +19,10 @@ if (required && !url)
 const integration = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
-const coreMigrations = () =>
-  loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/core-service');
+const brainGapMigrations = async () =>
+  (await loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/core-service')).filter(
+    (migration) => migration.version === '0081'
+  );
 const config = () =>
   parseDatabaseConfig({
     NODE_ENV: 'test',
@@ -94,7 +96,7 @@ integration('PostgreSQL BrainGap Registry durability', () => {
         brain_gap_occurrences,brain_gap_audit_admissions CASCADE;
        DROP SCHEMA IF EXISTS markorbit_persistence CASCADE`
     );
-    await migrate(database.getPool(), 'core_brain_gap_registry', await coreMigrations());
+    await migrate(database.getPool(), 'core_brain_gap_registry', await brainGapMigrations());
   });
 
   afterAll(async () => database.close());
