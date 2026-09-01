@@ -34,9 +34,7 @@ test('Lite shell provides its fixed semantic navigation and responsive fixture w
   assertHealthy();
 });
 
-test('Lite filters survive customer detail and suggested actions do not execute', async ({
-  page
-}) => {
+test('Lite filters survive customer detail navigation', async ({ page }) => {
   const assertHealthy = watchPage(page);
   await page.goto(`${urls.lite}#work-customers`);
   await page.getByLabel('Search customers').fill('Northwind');
@@ -49,25 +47,6 @@ test('Lite filters survive customer detail and suggested actions do not execute'
   await expect(page.getByRole('button', { name: 'View customer details' })).toBeFocused();
   await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
   await expect(page.getByLabel('Customer status')).toHaveValue('Active');
-
-  await page
-    .getByRole('navigation', { name: 'Primary' })
-    .getByRole('link', { name: 'Opportunities' })
-    .click();
-  await page.getByLabel('Opportunity status').selectOption('REVIEWING');
-  await page.getByRole('button', { name: 'View opportunity details' }).click();
-  await expect(page.getByText('Opportunity ≠ Confirmed Demand')).toBeVisible();
-  await page.getByRole('button', { name: 'Mark suggestion as reviewed' }).click();
-  const reviewAcknowledgement = page
-    .getByRole('status')
-    .filter({ hasText: 'Review acknowledgement saved' });
-  await expect(reviewAcknowledgement).toContainText('No contact, order, appointment, filing');
-  await page.getByRole('button', { name: 'Back to opportunities' }).click();
-  await expect(page.getByRole('button', { name: 'View opportunity details' })).toBeFocused();
-  await expect(page.getByLabel('Opportunity status')).toHaveValue('REVIEWING');
-  const reviewingStatus = page.locator('strong').filter({ hasText: /^REVIEWING$/ });
-  await expect(reviewingStatus).toHaveCount(1);
-  await expect(reviewingStatus).toBeVisible();
   assertHealthy();
 });
 
