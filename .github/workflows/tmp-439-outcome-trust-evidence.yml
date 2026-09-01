@@ -49,6 +49,18 @@ jobs:
           source = source.replace(before, after);
           fs.writeFileSync(path, source);
           NODE
+      - name: Narrow Trust Evidence item reference helper
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/tests/outcome-trust-evidence.test.ts';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = `function itemReference(item = claimItem()): TrustEvidenceItemReferenceV1 {`;
+          const after = `function itemReference(\n  item: {\n    trustEvidenceItemId: string;\n    version: number;\n    trustEvidenceItemFingerprintSha256: string;\n  } = claimItem()\n): TrustEvidenceItemReferenceV1 {`;
+          if (!source.includes(before)) throw new Error('expected itemReference helper not found');
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
       - run: pnpm exec prettier packages/contracts/package.json packages/contracts/src/outcome-trust-evidence.ts packages/contracts/tests/outcome-trust-evidence.test.ts --write
       - run: pnpm --filter @markorbit/contracts build
       - run: pnpm --filter @markorbit/contracts typecheck
