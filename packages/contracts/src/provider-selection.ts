@@ -313,6 +313,14 @@ const selectionFixtureWorkspaceId = '018f0000-0000-7000-8000-000000000381';
 const selectionFixtureProviderId = 'provider_fixture-381' as const satisfies ProviderId;
 const selectionFixtureSupplyId =
   'provider-supply-capability_fixture-381' as const satisfies ProviderSupplyCapabilityId;
+const selectionFixtureDiscoveryRequestId =
+  'provider-discovery-request_fixture-381' as const satisfies ProviderDiscoveryRequestId;
+const selectionFixtureCandidateId =
+  'provider-discovery-candidate_fixture-381' as const satisfies ProviderDiscoveryCandidateId;
+const selectionFixtureSelectionId =
+  'provider-selection_fixture-394' as const satisfies ProviderSelectionId;
+const selectionFixtureParticipationId =
+  'network-participation_fixture-381' as const satisfies DiscoveryVisibilityAuthorizationReferenceV1['networkParticipationId'];
 const selectionFixtureScope = Object.freeze({
   owner: 'LITE' as const,
   reference: 'need:fixture-381',
@@ -320,9 +328,9 @@ const selectionFixtureScope = Object.freeze({
   fingerprintSha256: '1'.repeat(64)
 }) satisfies Readonly<ProviderSelectionScopeReferenceV1>;
 
-const selectionFixtureSourceLineage = Object.freeze({
+const selectionFixtureSourceLineage = Object.freeze<ProviderSelectionSourceLineageV1>({
   discoveryRequest: {
-    providerDiscoveryRequestId: 'provider-discovery-request_fixture-381',
+    providerDiscoveryRequestId: selectionFixtureDiscoveryRequestId,
     requesterWorkspaceId: selectionFixtureWorkspaceId,
     requestFingerprintSha256: '2'.repeat(64),
     needReference: 'need:fixture-381',
@@ -336,7 +344,7 @@ const selectionFixtureSourceLineage = Object.freeze({
     evaluatedAt: '2026-09-01T04:45:00.000Z'
   },
   discoveryCandidate: {
-    providerDiscoveryCandidateId: 'provider-discovery-candidate_fixture-381',
+    providerDiscoveryCandidateId: selectionFixtureCandidateId,
     candidateFingerprintSha256: '7'.repeat(64),
     generatedAt: '2026-09-01T04:45:00.000Z',
     evaluationPolicyVersion: 'mgsn-provider-discovery-v1'
@@ -351,7 +359,7 @@ const selectionFixtureSourceLineage = Object.freeze({
     fingerprintSha256: '4'.repeat(64)
   },
   visibilityAuthorizationAtReview: {
-    networkParticipationId: 'network-participation_fixture-381',
+    networkParticipationId: selectionFixtureParticipationId,
     participationVersion: 4,
     visibilityPolicyVersion: 6,
     evaluatedAt: '2026-09-01T04:45:00.000Z',
@@ -383,7 +391,7 @@ const selectionFixtureSourceLineage = Object.freeze({
   },
   currentAuthorityRevalidationRequiredBeforeSelectionCommit: true,
   currentAuthorityRevalidationRequiredBeforeDownstreamUse: true
-}) satisfies Readonly<ProviderSelectionSourceLineageV1>;
+});
 
 const selectionFixtureAuthority = Object.freeze({
   source: 'CORE_WORKSPACE_PRINCIPAL',
@@ -402,7 +410,7 @@ const selectionFixtureAcknowledgement = Object.freeze({
   affirmativeHumanAction: true,
   acknowledgementCode: 'HUMAN_PROVIDER_SELECTION_V1',
   acknowledgementTextVersion: 'v1',
-  reviewedCandidateId: 'provider-discovery-candidate_fixture-381',
+  reviewedCandidateId: selectionFixtureCandidateId,
   reviewedCandidateFingerprintSha256: '7'.repeat(64),
   reviewedScopeFingerprintSha256: '1'.repeat(64),
   reviewedAt: selectionFixtureAt,
@@ -417,7 +425,7 @@ const selectionFixtureAcknowledgement = Object.freeze({
 
 const currentSelectionFixture = Object.freeze({
   schemaVersion: 1,
-  providerSelectionId: 'provider-selection_fixture-394',
+  providerSelectionId: selectionFixtureSelectionId,
   requesterWorkspaceId: selectionFixtureWorkspaceId,
   scope: selectionFixtureScope,
   scopeVersion: 1,
@@ -462,7 +470,7 @@ export const providerSelectionContractFixtureV1 = Object.freeze({
   currentButNotUsable: {
     schemaVersion: 1,
     selection: {
-      providerSelectionId: 'provider-selection_fixture-394',
+      providerSelectionId: selectionFixtureSelectionId,
       version: 1,
       scopeVersion: 1
     },
@@ -471,7 +479,7 @@ export const providerSelectionContractFixtureV1 = Object.freeze({
     purpose: 'CONTROLLED_HANDOFF_REVIEW',
     evaluatedAt: '2026-09-01T05:20:00.000Z',
     validationPolicyVersion: 'mgsn-provider-selection-validation-v1',
-    checkedAuthorityReferences: ['network-participation_fixture-381'],
+    checkedAuthorityReferences: [selectionFixtureParticipationId],
     authorityConsequences: noDownstreamProviderSelectionAuthorityConsequences,
     validationDoesNotAuthorizeDownstreamAction: true,
     decision: 'DENY',
@@ -482,7 +490,7 @@ export const providerSelectionContractFixtureV1 = Object.freeze({
   validForBoundedReview: {
     schemaVersion: 1,
     selection: {
-      providerSelectionId: 'provider-selection_fixture-394',
+      providerSelectionId: selectionFixtureSelectionId,
       version: 1,
       scopeVersion: 1
     },
@@ -492,7 +500,7 @@ export const providerSelectionContractFixtureV1 = Object.freeze({
     evaluatedAt: '2026-09-01T05:18:00.000Z',
     validationPolicyVersion: 'mgsn-provider-selection-validation-v1',
     checkedAuthorityReferences: [
-      'network-participation_fixture-381',
+      selectionFixtureParticipationId,
       'provider_fixture-381',
       'provider-supply-capability_fixture-381'
     ],
@@ -507,7 +515,7 @@ export const providerSelectionContractFixtureV1 = Object.freeze({
     requesterWorkspaceId: selectionFixtureWorkspaceId,
     scope: selectionFixtureScope,
     target: {
-      providerSelectionId: 'provider-selection_fixture-394',
+      providerSelectionId: selectionFixtureSelectionId,
       version: 1,
       scopeVersion: 1
     },
