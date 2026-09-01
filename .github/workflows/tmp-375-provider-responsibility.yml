@@ -49,6 +49,10 @@ jobs:
             "    doesNotReplaceFinalExecutionProvider: true\n  },\n  version: 3,",
             "    doesNotReplaceFinalExecutionProvider: true\n  } as const,\n  version: 3,"
           );
+          source = source.replace(
+            "      artifactAccessAuthorized: false\n    }\n  ],\n  version: 2,",
+            "      artifactAccessAuthorized: false\n    }\n  ] as const,\n  version: 2,"
+          );
           fs.writeFileSync(sourcePath, source);
           NODE
       - run: pnpm install --frozen-lockfile
