@@ -26,6 +26,7 @@
     "mgsn_service_package_eligibility": "@markorbit/mgsn-service",
     "mgsn_allocation_provider_acceptance": "@markorbit/mgsn-service",
     "mgsn_provider_return": "@markorbit/mgsn-service",
+    "mgsn_network_participation": "@markorbit/mgsn-service",
     "execution_provider_return_evidence": "@markorbit/execution-service",
     "execution_evidence_review": "@markorbit/execution-service",
     "execution_reviewed_source_handoff": "@markorbit/execution-service",
@@ -121,6 +122,7 @@
     "0075_markreg_matter_intelligence_reviews": "@markorbit/markreg-service",
     "0076_core_method_outcome_evidence": "@markorbit/core-service",
     "0077_core_method_outcome_evidence_reporting_watermark": "@markorbit/core-service",
-    "0078_core_method_improvement": "@markorbit/core-service"
+    "0078_core_method_improvement": "@markorbit/core-service",
+    "0079_mgsn_network_participation": "@markorbit/mgsn-service"
   }
 }
