@@ -112,31 +112,23 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
     );
     await database.start();
     await database.getPool().query(
-      `DROP TABLE IF EXISTS
-         capability_communication_exact_evidence,
-         capability_communication_send_claims,
-         capability_communication_checkpoints,
-         capability_communication_import_claims,
-         capability_communication_messages,
-         capability_communication_accounts,
-         capability_governed_runtime_replays,
-         capability_implementation_profile_versions,
-         capability_implementation_profile_identities,
-         capability_managed_ai_exact_outputs,
-         capability_managed_ai_execution_claims,
-         capability_reflection_disposition_profile_revisions,
-         capability_reflection_disposition_profiles,
-         capability_private_reflection_candidate_events,
-         capability_private_reflection_candidates,
-         capability_observation_events,
-         capability_observation_admission_audit,
-         capability_observation_admission_commands,
-         capability_ledger_entries,
-         capability_observations,
-         capability_runtime_definition_imports,
-         capability_runtime_definitions,
-         capability_runtime_identities
-       CASCADE;
+      `DO $reset$
+       DECLARE capability_table text;
+       BEGIN
+         FOR capability_table IN
+           SELECT tablename
+             FROM pg_tables
+            WHERE schemaname = current_schema()
+              AND tablename LIKE 'capability\\_%' ESCAPE '\\'
+         LOOP
+           EXECUTE format(
+             'DROP TABLE IF EXISTS %I.%I CASCADE',
+             current_schema(),
+             capability_table
+           );
+         END LOOP;
+       END
+       $reset$;
        DROP SCHEMA IF EXISTS markorbit_persistence CASCADE`
     );
     await migrate(
