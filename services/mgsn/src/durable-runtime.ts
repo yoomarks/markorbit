@@ -8,6 +8,8 @@ import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
 import { ProviderReturnService } from './provider-return.js';
 import { PostgresProviderReturnRepository } from './provider-return-postgres.js';
+import { ProviderWorkReadModelService } from './provider-work-read-model.js';
+import { PostgresProviderWorkReadRepository } from './provider-work-read-model-postgres.js';
 import {
   HttpCoreWorkspaceIdentitySource,
   HttpExecutionSourceAdmissionSource,
@@ -35,6 +37,7 @@ export function createDurableMgsnServices(options: DurableMgsnServicesOptions): 
     query
   );
   const providerReturnRepository = new PostgresProviderReturnRepository(options.database, query);
+  const providerWorkReadRepository = new PostgresProviderWorkReadRepository(query);
   const networkParticipationRepository = new PostgresNetworkParticipationRepository(
     options.database,
     query
@@ -71,6 +74,10 @@ export function createDurableMgsnServices(options: DurableMgsnServicesOptions): 
       servicePackageRepository,
       providerRepository,
       evidenceHandoff
+    ),
+    providerWorkRead: new ProviderWorkReadModelService(
+      providerWorkReadRepository,
+      providerRepository
     ),
     networkParticipation: new NetworkParticipationService(
       networkParticipationRepository,
