@@ -150,6 +150,7 @@ describe('M3-WP-06 durable Order journey', () => {
     ).toBeVisible();
     expect(screen.getByText('4', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel Order' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
@@ -159,6 +160,7 @@ describe('M3-WP-06 durable Order journey', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeEnabled()
     );
+    expect(screen.getByRole('button', { name: 'Cancel Order' })).toBeEnabled();
     expect(screen.queryByText('Order changed in another session')).toBeNull();
     const params = new URLSearchParams(location.search);
     expect(params.get('view')).toBe('order');
@@ -166,10 +168,12 @@ describe('M3-WP-06 durable Order journey', () => {
     expect(params.get('orderVersion')).toBe('4');
   });
 
-  it('keeps stale commercial source fail closed after the Order remains readable', async () => {
+  it('keeps stale commercial source progression fail closed while allowing safe cancellation', async () => {
     const get = vi.fn().mockResolvedValue(order('Confirmed', 3));
+    const cancel = vi.fn().mockResolvedValue(order('Cancelled', 4));
     const client = mockClient({
       get,
+      cancel,
       evaluateReadiness: vi
         .fn()
         .mockRejectedValue(
@@ -185,7 +189,23 @@ describe('M3-WP-06 durable Order journey', () => {
     expect(screen.getByText(/Reloading this same Order does not make/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Validate Ready for Matter' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel Order' })).toBeEnabled();
     expect(get).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Order' }));
+
+    await screen.findByText('Cancelled', { exact: true });
+    expect(cancel).toHaveBeenCalledWith({
+      workspaceId: workspace,
+      orderId: 'order_wp06',
+      expectedVersion: 3,
+      reason: 'Cancelled by customer from MarkReg Order journey',
+      idempotencyKey: 'order-cancel:order_wp06:3'
+    });
+    expect(client.createMatter).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Validate Ready for Matter' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel Order' })).toBeNull();
+    expect(screen.getAllByText('Not created').length).toBeGreaterThanOrEqual(5);
   });
 
   it('keeps stable policy failures fail closed without same-Order reload', async () => {
