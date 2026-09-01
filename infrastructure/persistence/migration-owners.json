@@ -59,6 +59,7 @@
     "capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
     "capability_engine_managed_communication_exact_evidence": "@markorbit/capability-engine",
     "core_brain_registry": "@markorbit/core-service",
+    "core_brain_gap_registry": "@markorbit/core-service",
     "core_official_fee_reference": "@markorbit/core-service",
     "markreg_matter_intelligence_commands": "@markorbit/markreg-service"
   },
@@ -125,6 +126,7 @@
     "0077_core_method_outcome_evidence_reporting_watermark": "@markorbit/core-service",
     "0078_core_method_improvement": "@markorbit/core-service",
     "0079_mgsn_network_participation": "@markorbit/mgsn-service",
-    "0080_mgsn_provider_responsibility": "@markorbit/mgsn-service"
+    "0080_mgsn_provider_responsibility": "@markorbit/mgsn-service",
+    "0081_core_brain_gap_registry": "@markorbit/core-service"
   }
 }
