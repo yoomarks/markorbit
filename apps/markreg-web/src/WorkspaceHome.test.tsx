@@ -242,7 +242,8 @@ describe('MarkReg durable Workspace Home', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Apply filters' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    const filterAlert = await screen.findByRole('alert');
+    expect(filterAlert.textContent).toContain(
       'Created from must not be later than Created to. Existing durable results are unchanged.'
     );
     expect(listMatters).toHaveBeenCalledTimes(1);
