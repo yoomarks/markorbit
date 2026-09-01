@@ -58,6 +58,7 @@ export * from './managed-communication-bootstrap.js';
 export * from './managed-communication-exchange.js';
 export * from './managed-communication-exact-evidence.js';
 export * from './managed-communication-foundation.js';
+export * from './managed-communication-gmail.js';
 export * from './managed-communication-http.js';
 export * from './managed-communication-inbound.js';
 export * from './milestone-capability-request-fixture.js';
