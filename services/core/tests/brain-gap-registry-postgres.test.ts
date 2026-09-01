@@ -10,11 +10,11 @@ import {
 import { brainGapIdentityFingerprint } from '../src/brain-gap-registry.js';
 import { PostgresBrainGapRegistry } from '../src/brain-gap-registry-postgres.js';
 
-const url = process.env.BRAIN_GAP_REGISTRY_TEST_DATABASE_URL;
-const required = process.env.BRAIN_GAP_REGISTRY_POSTGRES_TEST_REQUIRED === '1';
+const url = process.env.BRAIN_REGISTRY_TEST_DATABASE_URL;
+const required = process.env.BRAIN_REGISTRY_POSTGRES_TEST_REQUIRED === '1';
 if (required && !url)
   throw new Error(
-    'BRAIN_GAP_REGISTRY_POSTGRES_TEST_REQUIRED=1 requires BRAIN_GAP_REGISTRY_TEST_DATABASE_URL.'
+    'BRAIN_REGISTRY_POSTGRES_TEST_REQUIRED=1 requires BRAIN_REGISTRY_TEST_DATABASE_URL.'
   );
 const integration = url ? describe : describe.skip;
 const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
@@ -31,10 +31,7 @@ const config = () =>
 
 let database: ManagedDatabase;
 
-function gap(
-  detectedAt = '2026-09-02T00:00:00.000Z',
-  overrides: Partial<BrainGap> = {}
-): BrainGap {
+function gap(detectedAt = '2026-09-02T00:00:00.000Z', overrides: Partial<BrainGap> = {}): BrainGap {
   const base: BrainGap = {
     schemaVersion: 1,
     brainGapId: `brain-gap_${'0'.repeat(64)}`,
@@ -149,9 +146,9 @@ integration('PostgreSQL BrainGap Registry durability', () => {
     await expect(registry.admitAudit(conflicting)).rejects.toMatchObject({
       code: 'IDENTITY_CONFLICT'
     });
-    expect((await database.getPool().query('SELECT 1 FROM brain_gap_audit_admissions')).rowCount).toBe(
-      1
-    );
+    expect(
+      (await database.getPool().query('SELECT 1 FROM brain_gap_audit_admissions')).rowCount
+    ).toBe(1);
   });
 
   it('persists manual resolution and deterministic recurrence reopening across restart', async () => {
