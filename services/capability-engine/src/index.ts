@@ -42,6 +42,7 @@ export * from './capability-runtime.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
 export * from './cn-preliminary-publication-discovery-pilot.js';
+export * from './current-source-admission-evidence.js';
 export * from './current-source-admission.js';
 export * from './executable-method-runtime.js';
 export * from './managed-ai-execution-claim.js';
