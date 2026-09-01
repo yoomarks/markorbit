@@ -1,6 +1,10 @@
 import type { TrademarkAssetPortfolioPage } from '@markorbit/contracts/trademark-asset-portfolio';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
 import type {
+  TrademarkAssetCommerceProfile,
+  UpsertTrademarkAssetCommerceProfileInput
+} from '@markorbit/contracts/trademark-asset-commerce';
+import type {
   TrademarkServiceIntent,
   TrademarkServiceWorkPackage
 } from '@markorbit/contracts/trademark-service-workbench';
@@ -67,11 +71,17 @@ export type TrademarkAssetPortfolioResponse = TrademarkAssetPortfolioPage & {
 
 export interface TrademarkAssetDetailResponse {
   readonly view: Readonly<TrademarkAssetView>;
+  readonly commerceProfile: Readonly<TrademarkAssetCommerceProfile> | null;
   readonly attention?: readonly Readonly<TrademarkAssetAttentionSignal>[];
   readonly latestRefresh?: Readonly<TrademarkAssetRefreshSummary>;
   readonly managementSignals?: readonly Readonly<TrademarkAssetManagementSignal>[];
   readonly recommendations?: readonly Readonly<TrademarkAssetManagementRecommendation>[];
 }
+
+export type SaveTrademarkAssetCommerceProfileInput = Omit<
+  UpsertTrademarkAssetCommerceProfileInput,
+  'workspaceId' | 'trademarkAssetId' | 'idempotencyKey'
+>;
 
 export interface PrepareTrademarkServiceWorkPackageInput {
   readonly assetVersion: number | string;
@@ -82,6 +92,10 @@ export interface PrepareTrademarkServiceWorkPackageInput {
 export interface TrademarkAssetClient {
   search(input?: Readonly<TrademarkAssetSearchInput>): Promise<TrademarkAssetPortfolioResponse>;
   load(trademarkAssetId: TrademarkAssetId): Promise<TrademarkAssetDetailResponse>;
+  saveCommerceProfile(
+    trademarkAssetId: TrademarkAssetId,
+    input: Readonly<SaveTrademarkAssetCommerceProfileInput>
+  ): Promise<TrademarkAssetCommerceProfile>;
   loadServiceWorkPackage(
     trademarkAssetId: TrademarkAssetId
   ): Promise<TrademarkServiceWorkPackage | undefined>;
@@ -156,7 +170,7 @@ async function currentCsrfToken(): Promise<string> {
     throw new TrademarkAssetHttpError(
       response.status || 401,
       'AUTHENTICATION_REQUIRED',
-      'Authenticated session is required to prepare service work.',
+      'An authenticated session is required for this action.',
       false
     );
   return payload.csrfToken;
@@ -185,6 +199,20 @@ export function createTrademarkAssetClient(workspaceId: string): TrademarkAssetC
         `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}`,
         workspaceId
       ),
+    saveCommerceProfile: async (trademarkAssetId, input) => {
+      const csrfToken = await currentCsrfToken();
+      const response = await request<{ commerceProfile: TrademarkAssetCommerceProfile }>(
+        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/commerce-profile`,
+        workspaceId,
+        {
+          method: 'POST',
+          body: input,
+          idempotencyKey: `commerce-profile-${trademarkAssetId}-${crypto.randomUUID()}`,
+          csrfToken
+        }
+      );
+      return response.commerceProfile;
+    },
     loadServiceWorkPackage: async (trademarkAssetId) => {
       const response = await request<{ workPackage: TrademarkServiceWorkPackage | null }>(
         `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/service-work-package`,

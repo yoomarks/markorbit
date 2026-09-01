@@ -10,6 +10,7 @@
     "src/**/*.tsx",
     "tests/**/*.ts",
     "vite.config.ts",
-    "playwright.navigation.config.ts"
+    "playwright.navigation.config.ts",
+    "playwright.trademark-commerce.config.ts"
   ]
 }
