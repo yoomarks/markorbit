@@ -71,7 +71,7 @@ function problemCopy(problem: Problem) {
       return {
         title: 'Order changed in another session',
         description:
-          'This page is showing an older Order version. Reload the current version before taking another action.'
+          'This direct link points to a different Order version than the current durable Order shown here. Reload the current version before taking another action.'
       };
     case 'PERMISSION_DENIED':
       return {

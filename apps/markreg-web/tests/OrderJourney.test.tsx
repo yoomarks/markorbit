@@ -137,11 +137,31 @@ describe('M3-WP-06 durable Order journey', () => {
     );
   });
 
-  it('blocks progression when a direct Order URL points at an older version', async () => {
-    const client = mockClient({ get: vi.fn().mockResolvedValue(order('ReadyForMatter', 4)) });
+  it('blocks a stale direct Order link until reload accepts the current durable version', async () => {
+    const get = vi.fn().mockResolvedValue(order('ReadyForMatter', 4));
+    const client = mockClient({ get });
     render(<OrderJourney orderId="order_wp06" expectedVersion="3" client={client} />);
+
     await screen.findByText('Order changed in another session');
+    expect(
+      screen.getByText(/direct link points to a different Order version than the current durable Order/)
+    ).toBeVisible();
+    expect(screen.getByText('4', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    expect(get).toHaveBeenNthCalledWith(1, 'order_wp06');
+    expect(get).toHaveBeenNthCalledWith(2, 'order_wp06');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeEnabled()
+    );
+    expect(screen.queryByText('Order changed in another session')).toBeNull();
+    const params = new URLSearchParams(location.search);
+    expect(params.get('view')).toBe('order');
+    expect(params.get('orderId')).toBe('order_wp06');
+    expect(params.get('orderVersion')).toBe('4');
   });
 
   it('surfaces stale commercial source as a governed blocking state', async () => {
