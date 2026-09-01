@@ -16,9 +16,7 @@ export interface CapabilitySourceOutputIdentityV1 {
 }
 
 export type CapabilitySourceOutputIdentityErrorCode =
-  | 'INVALID_OUTPUT_SCHEMA'
-  | 'INVALID_OUTPUT_SHAPE'
-  | 'INCONSISTENT_RUNTIME_OUTPUT';
+  'INVALID_OUTPUT_SCHEMA' | 'INVALID_OUTPUT_SHAPE' | 'INCONSISTENT_RUNTIME_OUTPUT';
 
 export class CapabilitySourceOutputIdentityError extends Error {
   constructor(
@@ -190,7 +188,10 @@ export function validCapabilitySourceOutputIdentityV1(
   const identity = record(value);
   if (!identity) return false;
   const keys = Reflect.ownKeys(identity);
-  if (keys.length !== OUTPUT_IDENTITY_KEYS.size || keys.some((key) => !OUTPUT_IDENTITY_KEYS.has(key))) {
+  if (
+    keys.length !== OUTPUT_IDENTITY_KEYS.size ||
+    keys.some((key) => !OUTPUT_IDENTITY_KEYS.has(key))
+  ) {
     return false;
   }
   return (
