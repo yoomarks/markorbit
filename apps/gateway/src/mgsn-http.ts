@@ -23,6 +23,7 @@ export interface GatewayMgsnRouteOptions {
 
 type RouteMethod = 'GET' | 'POST';
 type RouteDefinition = readonly [RouteMethod, string];
+type NetworkParticipationOwnerAuthority = 'read' | 'manage';
 
 const operationsRoutes: readonly RouteDefinition[] = [
   ['GET', '/api/mgsn/providers'],
@@ -42,6 +43,13 @@ const operationsRoutes: readonly RouteDefinition[] = [
   ['GET', '/api/mgsn/allocations/:allocationId'],
   ['GET', '/api/mgsn/provider-acceptances/:providerAcceptanceId'],
   ['POST', '/api/mgsn/provider-returns/:providerReturnId/handoff']
+];
+
+const networkParticipationRoutes: readonly RouteDefinition[] = [
+  ['GET', '/api/mgsn/network-participation/providers/:providerId'],
+  ['POST', '/api/mgsn/network-participation/providers/:providerId/opt-in'],
+  ['POST', '/api/mgsn/network-participation/providers/:providerId/state'],
+  ['POST', '/api/mgsn/network-participation/providers/:providerId/visibility-policy']
 ];
 
 const providerRoutes: readonly RouteDefinition[] = [
@@ -90,6 +98,16 @@ function requirePermission(principal: WorkspacePrincipal, mutation: boolean) {
     throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
 }
 
+function requireNetworkParticipationPermission(
+  principal: WorkspacePrincipal,
+  mutation: boolean
+): NetworkParticipationOwnerAuthority {
+  const permission = mutation ? 'workspace:manage' : 'workspace:read';
+  if (!principal.permissions.includes(permission))
+    throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
+  return mutation ? 'manage' : 'read';
+}
+
 function forbidProviderIdentityPayload(request: JsonRequest) {
   const body = recordBody(request);
   if ('providerId' in body || 'providerWorkspaceId' in body)
@@ -97,6 +115,33 @@ function forbidProviderIdentityPayload(request: JsonRequest) {
       400,
       'PROVIDER_IDENTITY_PAYLOAD_FORBIDDEN',
       'Provider identity is derived from the authenticated Provider Workspace.'
+    );
+}
+
+function forbidNetworkParticipationAuthorityPayload(request: JsonRequest) {
+  const body = recordBody(request);
+  const forbidden = [
+    'workspaceId',
+    'actorId',
+    'providerWorkspaceId',
+    'providerId',
+    'principal',
+    'trustedActorId'
+  ];
+  if (forbidden.some((field) => Object.prototype.hasOwnProperty.call(body, field)))
+    throw new HttpError(
+      400,
+      'NETWORK_PARTICIPATION_AUTHORITY_PAYLOAD_FORBIDDEN',
+      'Network Participation identity and authority come only from the authenticated Provider Workspace.'
+    );
+}
+
+function requireNetworkParticipationIdempotency(request: JsonRequest) {
+  if (!request.headers['idempotency-key'])
+    throw new HttpError(
+      400,
+      'IDEMPOTENCY_KEY_REQUIRED',
+      'Idempotency-Key is required for Network Participation mutations.'
     );
 }
 
@@ -144,7 +189,8 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
   const forward = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
-    provider: boolean
+    provider: boolean,
+    networkParticipationOwnerAuthority?: NetworkParticipationOwnerAuthority
   ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
@@ -164,6 +210,12 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
             'x-markorbit-internal-authorization': options.internalServiceSecret,
             'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
             'x-markorbit-workspace-id': principal.workspaceId,
+            ...(networkParticipationOwnerAuthority
+              ? {
+                  'x-markorbit-network-participation-owner-authority':
+                    networkParticipationOwnerAuthority
+                }
+              : {}),
             ...(correlation(request) ? { 'x-correlation-id': correlation(request)! } : {}),
             ...(request.headers['idempotency-key']
               ? { 'idempotency-key': request.headers['idempotency-key'] }
@@ -197,7 +249,32 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       return mapAuthentication(error);
     }
   };
+  const handleNetworkParticipation = async (request: JsonRequest) => {
+    const mutation = request.method !== 'GET';
+    try {
+      const principal = await resolvePrincipal(request, true);
+      const ownerAuthority = requireNetworkParticipationPermission(principal, mutation);
+      if (mutation) {
+        forbidNetworkParticipationAuthorityPayload(request);
+        requireNetworkParticipationIdempotency(request);
+        requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+        validateCsrf(
+          principal.sessionId,
+          options.csrfSecret,
+          request.headers['x-markorbit-csrf-token']
+        );
+      }
+      return forward(request, principal, false, ownerAuthority);
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
   return [
+    ...networkParticipationRoutes.map(([method, path]): JsonRoute => ({
+      method,
+      path,
+      handle: handleNetworkParticipation
+    })),
     ...operationsRoutes.map(([method, path]): JsonRoute => ({
       method,
       path,
