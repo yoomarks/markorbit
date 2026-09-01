@@ -145,9 +145,15 @@ describe('Capability source admission producer evidence V1', () => {
     );
   });
 
-  it('fails closed on an invalid producer evaluation time', () => {
+  it('fails closed on malformed or impossible producer evaluation time', () => {
     expect(() =>
       materializeCapabilitySourceAdmissionEvidenceV1(admissibleDecision, '2026-09-01')
+    ).toThrowError(CapabilitySourceAdmissionEvidenceError);
+    expect(() =>
+      materializeCapabilitySourceAdmissionEvidenceV1(
+        admissibleDecision,
+        '2026-02-31T03:00:00.000Z'
+      )
     ).toThrowError(CapabilitySourceAdmissionEvidenceError);
 
     try {
@@ -157,15 +163,27 @@ describe('Capability source admission producer evidence V1', () => {
     }
   });
 
-  it('fails closed instead of materializing a non-producer decision', () => {
-    const malformed = {
+  it('fails closed instead of materializing a non-producer or incomplete decision', () => {
+    const wrongProducer = {
       ...admissibleDecision,
       producer: 'MARKREG'
     } as unknown as CapabilitySourceAdmissionDecision;
+    const missingCurrent = {
+      schemaVersion: 1,
+      producer: 'CAPABILITY_ENGINE',
+      decision: 'PRODUCTION_ADMISSIBLE',
+      historical: admissibleDecision.historical,
+      authority: capabilitySourceAdmissionNoAuthorityConsequences
+    } as unknown as CapabilitySourceAdmissionDecision;
 
-    expect(() => materializeCapabilitySourceAdmissionEvidenceV1(malformed, evaluatedAt)).toThrow(
-      expect.objectContaining({ code: 'INVALID_ADMISSION_DECISION' })
-    );
+    for (const malformed of [wrongProducer, missingCurrent]) {
+      try {
+        materializeCapabilitySourceAdmissionEvidenceV1(malformed, evaluatedAt);
+        throw new Error('expected materialization to fail');
+      } catch (error) {
+        expect(error).toMatchObject({ code: 'INVALID_ADMISSION_DECISION' });
+      }
+    }
   });
 
   it('delegates admission semantics to the existing evaluator exactly once', async () => {
