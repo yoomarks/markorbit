@@ -357,8 +357,7 @@ export function prepareUsptoOfficialFeeGovernedSuccessorV1(
       currentBrainGovernanceActivationEstablished: false
     },
     validatedSuccessor,
-    validatedSuccessorFingerprintSha256:
-      executableMethodPackageFingerprintV1(validatedSuccessor),
+    validatedSuccessorFingerprintSha256: executableMethodPackageFingerprintV1(validatedSuccessor),
     requiresExplicitBrainGovernanceApproval: true,
     activationDecisionId: null,
     activationEvidenceRef: null
