@@ -120,7 +120,10 @@ describe('Capability source admission producer evidence V1', () => {
   });
 
   it('changes evidence identity when the exact decision or evaluation instant changes', () => {
-    const baseline = materializeCapabilitySourceAdmissionEvidenceV1(admissibleDecision, evaluatedAt);
+    const baseline = materializeCapabilitySourceAdmissionEvidenceV1(
+      admissibleDecision,
+      evaluatedAt
+    );
     const later = materializeCapabilitySourceAdmissionEvidenceV1(
       admissibleDecision,
       '2026-09-01T03:00:01.000Z'
@@ -150,10 +153,7 @@ describe('Capability source admission producer evidence V1', () => {
       materializeCapabilitySourceAdmissionEvidenceV1(admissibleDecision, '2026-09-01')
     ).toThrowError(CapabilitySourceAdmissionEvidenceError);
     expect(() =>
-      materializeCapabilitySourceAdmissionEvidenceV1(
-        admissibleDecision,
-        '2026-02-31T03:00:00.000Z'
-      )
+      materializeCapabilitySourceAdmissionEvidenceV1(admissibleDecision, '2026-02-31T03:00:00.000Z')
     ).toThrowError(CapabilitySourceAdmissionEvidenceError);
 
     try {
