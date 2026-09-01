@@ -11,44 +11,26 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    env:
-      BASE_SHA: 4cf727456ed0d5e128419e241c13bfdc2d02802f
-      PROFESSIONAL_REVIEW_DEV_FALLBACK: 1
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Capture exact affected validation output
+      - name: Extract failure summary
         shell: bash
         run: |
           set +e
-          rm -f tmp-483-affected-report.txt
-          echo "BASE_SHA=$BASE_SHA" >> tmp-483-affected-report.txt
-          echo "HEAD_SHA=$(git rev-parse HEAD)" >> tmp-483-affected-report.txt
-          echo "=== BUILD ===" >> tmp-483-affected-report.txt
-          pnpm exec turbo run build --filter="...[$BASE_SHA]" >> tmp-483-affected-report.txt 2>&1
-          echo "build_exit=$?" >> tmp-483-affected-report.txt
-          echo "=== LINT TYPECHECK TEST ===" >> tmp-483-affected-report.txt
-          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]" --concurrency=4 >> tmp-483-affected-report.txt 2>&1
-          echo "validate_exit=$?" >> tmp-483-affected-report.txt
-          echo "=== CONTENT HYGIENE ===" >> tmp-483-affected-report.txt
-          pnpm run content:hygiene >> tmp-483-affected-report.txt 2>&1
-          echo "hygiene_exit=$?" >> tmp-483-affected-report.txt
-          cat tmp-483-affected-report.txt
-          exit 0
-      - name: Commit report
+          {
+            echo "=== EXIT CODES ==="
+            grep -E "^(build_exit|validate_exit|hygiene_exit)=" tmp-483-affected-report.txt || true
+            echo "=== ERROR SIGNALS ==="
+            grep -Ein "error|failed|failure|ELIFECYCLE|TS[0-9]{4}|cannot find|not found|exit code|command.*exited" tmp-483-affected-report.txt | tail -n 250 || true
+            echo "=== REPORT TAIL ==="
+            tail -n 180 tmp-483-affected-report.txt
+          } > tmp-483-failure-summary.txt
+          cat tmp-483-failure-summary.txt
+      - name: Commit summary
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tmp-483-affected-report.txt
-          git commit -m "chore: capture #483 affected validation diagnostics" || exit 0
+          git add tmp-483-failure-summary.txt
+          git commit -m "chore: summarize #483 validation diagnostics" || exit 0
           git push
