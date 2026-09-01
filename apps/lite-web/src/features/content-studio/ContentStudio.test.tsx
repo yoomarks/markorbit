@@ -12,6 +12,8 @@ import {
   fixtureClient,
   fixtureWorkspaceId,
   listFixture,
+  opportunity,
+  publishPackage,
   review,
   summaryFixture
 } from './fixtures.js';
@@ -120,7 +122,12 @@ describe('Content Studio workspace', () => {
     const list = vi.fn((after?: string) =>
       Promise.resolve(after ? listFixture([second]) : listFixture([first], 'page-2'))
     );
-    render(<ContentStudio workspaceId={fixtureWorkspaceId} client={{ list, find: vi.fn() }} />);
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={{ list, find: vi.fn(), recordUseFeedback: vi.fn() }}
+      />
+    );
     await screen.findByText(first.title);
     await userEvent.click(screen.getByRole('button', { name: 'Load more content work' }));
     expect(await screen.findByText('Second work')).toBeVisible();
@@ -163,7 +170,8 @@ describe('Content Studio workspace', () => {
   it('opens durable work directly when current Orbit or Pick context is absent', async () => {
     const client = {
       list: vi.fn(() => Promise.reject(new Error('list discovery is not required'))),
-      find: vi.fn(() => Promise.resolve(detailFixture()))
+      find: vi.fn(() => Promise.resolve(detailFixture())),
+      recordUseFeedback: vi.fn()
     };
     render(
       <ContentStudio
@@ -241,7 +249,84 @@ describe('Content Studio workspace', () => {
         initialContentOpportunityId="content-opportunity_413"
       />
     );
-    expect(await screen.findByText('No user-reported package feedback.')).toBeVisible();
+    expect(await screen.findByText(/No user-reported package feedback\./)).toBeVisible();
+  });
+
+  it('shows exact feedback actions only for a Package without durable feedback', async () => {
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient(listFixture(), detailFixture({ feedback: [] }))}
+        initialContentOpportunityId="content-opportunity_413"
+      />
+    );
+    expect(await screen.findByRole('button', { name: 'Published' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Used' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Not used' })).toBeVisible();
+    expect(screen.getByText(/Recording feedback does not publish externally/)).toBeVisible();
+  });
+
+  it('reloads durable detail after feedback succeeds without creating local success', async () => {
+    const noFeedback = detailFixture({ feedback: [] });
+    const recorded = detailFixture({ feedback: [{ ...feedback, outcome: 'USER_REPORTED_USED' }] });
+    const find = vi
+      .fn<ContentStudioClient['find']>()
+      .mockResolvedValueOnce(noFeedback)
+      .mockResolvedValueOnce(recorded);
+    const recordUseFeedback = vi.fn<ContentStudioClient['recordUseFeedback']>(() =>
+      Promise.resolve({ ...feedback, outcome: 'USER_REPORTED_USED' })
+    );
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={{ list: vi.fn(), find, recordUseFeedback }}
+        initialContentOpportunityId="content-opportunity_413"
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Used' }));
+
+    expect(await screen.findByText('USER_REPORTED_USED')).toBeVisible();
+    expect(recordUseFeedback).toHaveBeenCalledWith(publishPackage, 'USER_REPORTED_USED');
+    expect(find).toHaveBeenNthCalledWith(2, opportunity.contentOpportunityId);
+    expect(screen.queryByRole('button', { name: 'Published' })).not.toBeInTheDocument();
+  });
+
+  it('suppresses duplicate actions when exact-package durable feedback exists', async () => {
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient()}
+        initialContentOpportunityId="content-opportunity_413"
+      />
+    );
+    expect(await screen.findByText('USER_REPORTED_PUBLISHED')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Published' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Used' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Not used' })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [409, 'Package truth may have changed'],
+    [503, 'Feedback service unavailable']
+  ] as const)('preserves loaded lineage when feedback fails with %s', async (status, title) => {
+    const client = fixtureClient(listFixture(), detailFixture({ feedback: [] }));
+    client.recordUseFeedback = vi.fn(() =>
+      Promise.reject(new ContentStudioHttpError(status, 'FEEDBACK_FAILED', 'failed'))
+    );
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={client}
+        initialContentOpportunityId="content-opportunity_413"
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Published' }));
+    expect(await screen.findByText(title)).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Version lineage' })).toBeVisible();
+    expect(screen.getByText(`Draft · exact version ${draft.version}`)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Published' })).toBeVisible();
+    expect(screen.queryByText('USER_REPORTED_PUBLISHED')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -252,7 +337,8 @@ describe('Content Studio workspace', () => {
   ] as const)('keeps %s distinct from empty', async (status, title) => {
     const client: ContentStudioClient = {
       list: () => Promise.reject(new ContentStudioHttpError(status, 'OWNER_ERROR', 'failed')),
-      find: () => Promise.reject(new Error('unused'))
+      find: () => Promise.reject(new Error('unused')),
+      recordUseFeedback: () => Promise.reject(new Error('unused'))
     };
     render(<ContentStudio workspaceId={fixtureWorkspaceId} client={client} />);
     expect(await screen.findByRole('heading', { name: title })).toBeVisible();

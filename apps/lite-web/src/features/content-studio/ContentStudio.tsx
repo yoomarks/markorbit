@@ -9,11 +9,16 @@ import {
   LoadingState,
   PageHeader
 } from '@markorbit/ui';
-import type { ContentDraftStatus, ContentReviewDecision } from '@markorbit/contracts/product-loop';
+import type {
+  ContentDraftStatus,
+  ContentReviewDecision,
+  PublishPackage
+} from '@markorbit/contracts/product-loop';
 import {
   ContentStudioHttpError,
   createContentStudioClient,
   type ContentStudioClient,
+  type ContentStudioFeedbackOutcome,
   type ContentStudioWorkDetail,
   type ContentStudioWorkList,
   type ContentStudioWorkSummary
@@ -77,6 +82,38 @@ function Failure({ error, retry }: { error: ContentStudioHttpError; retry: () =>
       description={copy[1] ?? error.message}
       onRetry={retry}
     />
+  );
+}
+
+function FeedbackFailure({ error }: { error: ContentStudioHttpError }) {
+  const copy =
+    error.status === 401
+      ? ['Sign in required', 'An authenticated session is required to record package feedback.']
+      : error.status === 403
+        ? [
+            'Feedback permission required',
+            'Permission or CSRF validation denied this feedback request.'
+          ]
+        : error.status === 404
+          ? [
+              'Publish Package unavailable',
+              'This exact Publish Package is unavailable in the current Workspace.'
+            ]
+          : error.status === 409
+            ? [
+                'Package truth may have changed',
+                'The package version, fingerprint, or prior idempotent request conflicts with current owner truth. Reload the durable detail before trying again.'
+              ]
+            : error.status === 503
+              ? [
+                  'Feedback service unavailable',
+                  'The owner could not record or reload durable feedback. The loaded lineage remains unchanged.'
+                ]
+              : ['Feedback could not be saved', error.message];
+  return (
+    <Alert tone="danger" title={copy[0] ?? 'Feedback could not be saved'}>
+      {copy[1] ?? error.message}
+    </Alert>
   );
 }
 
@@ -216,7 +253,22 @@ function packageReviews(detail: ContentStudioWorkDetail, review: ContentReviewDe
   );
 }
 
-function WorkDetail({ value, back }: { value: ContentStudioWorkDetail; back: () => void }) {
+function WorkDetail({
+  value,
+  back,
+  recordFeedback,
+  feedbackBusyPackage,
+  feedbackError
+}: {
+  value: ContentStudioWorkDetail;
+  back: () => void;
+  recordFeedback: (
+    publishPackage: Readonly<PublishPackage>,
+    outcome: ContentStudioFeedbackOutcome
+  ) => void;
+  feedbackBusyPackage: string;
+  feedbackError: { packageKey: string; error: ContentStudioHttpError } | undefined;
+}) {
   const { opportunity } = value;
   const drafts = [...value.drafts, ...value.reviewedDrafts].filter(
     (draft, index, all) =>
@@ -314,16 +366,14 @@ function WorkDetail({ value, back }: { value: ContentStudioWorkDetail; back: () 
                           <code>{review.expectedContentDraftFingerprintSha256}</code>.
                         </p>
                         {packages.map((pkg) => {
+                          const packageKey = `${pkg.publishPackageId}:${pkg.version}`;
                           const feedback = value.feedback.filter(
                             (item) =>
                               item.publishPackage.id === pkg.publishPackageId &&
                               Number(item.publishPackage.version) === pkg.version
                           );
                           return (
-                            <section
-                              className="content-studio__nested"
-                              key={`${pkg.publishPackageId}:${pkg.version}`}
-                            >
+                            <section className="content-studio__nested" key={packageKey}>
                               <h5>Publish Package</h5>
                               <p>
                                 {pkg.publishPackageId} · version {pkg.version}
@@ -351,7 +401,42 @@ function WorkDetail({ value, back }: { value: ContentStudioWorkDetail; back: () 
                                   ))}
                                 </ul>
                               ) : (
-                                <p>No user-reported package feedback.</p>
+                                <div className="content-studio__feedback">
+                                  <p>
+                                    No user-reported package feedback. Recording feedback does not
+                                    publish externally or independently verify publication or use.
+                                  </p>
+                                  <div
+                                    className="content-studio__feedback-actions"
+                                    role="group"
+                                    aria-label={`Record feedback for ${pkg.publishPackageId} version ${pkg.version}`}
+                                  >
+                                    {(
+                                      [
+                                        ['Published', 'USER_REPORTED_PUBLISHED'],
+                                        ['Used', 'USER_REPORTED_USED'],
+                                        ['Not used', 'NOT_USED']
+                                      ] as const
+                                    ).map(([label, outcome]) => (
+                                      <Button
+                                        key={outcome}
+                                        variant="secondary"
+                                        disabled={feedbackBusyPackage === packageKey}
+                                        onClick={() => recordFeedback(pkg, outcome)}
+                                      >
+                                        {label}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                  {feedbackBusyPackage === packageKey ? (
+                                    <p role="status">
+                                      Recording feedback and reloading durable detail…
+                                    </p>
+                                  ) : null}
+                                  {feedbackError?.packageKey === packageKey ? (
+                                    <FeedbackFailure error={feedbackError.error} />
+                                  ) : null}
+                                </div>
                               )}
                             </section>
                           );
@@ -387,6 +472,11 @@ export function ContentStudio({
   const [selected, setSelected] = useState(initialContentOpportunityId);
   const [error, setError] = useState<ContentStudioHttpError>();
   const [loadingMore, setLoadingMore] = useState(false);
+  const [feedbackBusyPackage, setFeedbackBusyPackage] = useState('');
+  const [feedbackError, setFeedbackError] = useState<{
+    packageKey: string;
+    error: ContentStudioHttpError;
+  }>();
   const [retryVersion, setRetryVersion] = useState(0);
   const origin = useRef<HTMLButtonElement | null>(null);
 
@@ -417,6 +507,7 @@ export function ContentStudio({
       return;
     }
     setError(undefined);
+    setFeedbackError(undefined);
     setDetail(undefined);
     client
       .find(selected)
@@ -445,6 +536,31 @@ export function ContentStudio({
     return detail ? (
       <WorkDetail
         value={detail}
+        feedbackBusyPackage={feedbackBusyPackage}
+        feedbackError={feedbackError}
+        recordFeedback={(publishPackage, outcome) => {
+          const packageKey = `${publishPackage.publishPackageId}:${publishPackage.version}`;
+          setFeedbackBusyPackage(packageKey);
+          setFeedbackError(undefined);
+          client
+            .recordUseFeedback(publishPackage, outcome)
+            .then(() => client.find(detail.opportunity.contentOpportunityId))
+            .then(setDetail)
+            .catch((cause) =>
+              setFeedbackError({
+                packageKey,
+                error:
+                  cause instanceof ContentStudioHttpError
+                    ? cause
+                    : new ContentStudioHttpError(
+                        503,
+                        'FEEDBACK_RECORD_FAILED',
+                        'Feedback could not be saved.'
+                      )
+              })
+            )
+            .finally(() => setFeedbackBusyPackage(''));
+        }}
         back={() => {
           setSelected(undefined);
           setTimeout(() => origin.current?.focus());
