@@ -62,9 +62,7 @@ export interface CapabilitySourceUseContextAuthorityV1 {
       runtimeExecution: unknown;
       evidence: Readonly<CapabilitySourceAdmissionEvidenceV2>;
     }>
-  ):
-    | CapabilitySourceUseContextResolutionV1
-    | Promise<CapabilitySourceUseContextResolutionV1>;
+  ): CapabilitySourceUseContextResolutionV1 | Promise<CapabilitySourceUseContextResolutionV1>;
 }
 
 export interface CapabilitySourceUseContextV1 {
@@ -151,9 +149,7 @@ function normalizedOrderedList(
       `${field} must contain at most ${maximumItems} items.`
     );
   }
-  const normalized = value.map((item, index) =>
-    normalizedText(item, `${field}[${index}]`, 2000)
-  );
+  const normalized = value.map((item, index) => normalizedText(item, `${field}[${index}]`, 2000));
   if (new Set(normalized).size !== normalized.length) {
     return evidenceV3Error('INVALID_SOURCE_USE_CONTEXT', `${field} must not contain duplicates.`);
   }
@@ -224,7 +220,9 @@ function validProductionPredecessor(
   if (canonicalJsonSha256V1(predecessorEvidenceBasis(value)) !== value.evidenceFingerprintSha256) {
     return false;
   }
-  return value.evidenceId === `capability-source-admission-evidence_${value.evidenceFingerprintSha256}`;
+  return (
+    value.evidenceId === `capability-source-admission-evidence_${value.evidenceFingerprintSha256}`
+  );
 }
 
 function requiredProducerProvenance(
