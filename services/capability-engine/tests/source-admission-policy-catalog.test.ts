@@ -107,10 +107,11 @@ describe('Capability source-admission policy catalog V1', () => {
     ]);
 
     for (const [definition, profile] of currentPilots) {
-      expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput(definition, profile)))
-        .toMatchObject({
-          applicability: 'UNSUPPORTED'
-        });
+      expect(
+        currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput(definition, profile))
+      ).toMatchObject({
+        applicability: 'UNSUPPORTED'
+      });
     }
   });
 
@@ -209,15 +210,15 @@ describe('Capability source-admission policy catalog V1', () => {
       policyId: 'source-admission-policy.same-binding.v2'
     });
 
-    expect(() =>
-      new CapabilitySourceAdmissionPolicyCatalogV1([first, sameIdDifferentBinding])
+    expect(
+      () => new CapabilitySourceAdmissionPolicyCatalogV1([first, sameIdDifferentBinding])
     ).toThrowError(
       expect.objectContaining<Partial<CapabilitySourceAdmissionPolicyCatalogError>>({
         code: 'DUPLICATE_POLICY_ID'
       })
     );
-    expect(() =>
-      new CapabilitySourceAdmissionPolicyCatalogV1([first, sameBindingDifferentId])
+    expect(
+      () => new CapabilitySourceAdmissionPolicyCatalogV1([first, sameBindingDifferentId])
     ).toThrowError(
       expect.objectContaining<Partial<CapabilitySourceAdmissionPolicyCatalogError>>({
         code: 'DUPLICATE_POLICY_BINDING'
@@ -226,10 +227,11 @@ describe('Capability source-admission policy catalog V1', () => {
   });
 
   it('rejects unbounded wildcard callers for production-admissible policies', () => {
-    expect(() =>
-      new CapabilitySourceAdmissionPolicyCatalogV1([
-        productionPolicy({ allowedCallerProducts: ['*'] })
-      ])
+    expect(
+      () =>
+        new CapabilitySourceAdmissionPolicyCatalogV1([
+          productionPolicy({ allowedCallerProducts: ['*'] })
+        ])
     ).toThrowError(
       expect.objectContaining<Partial<CapabilitySourceAdmissionPolicyCatalogError>>({
         code: 'INVALID_POLICY_ENTRY'
