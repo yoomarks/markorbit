@@ -314,6 +314,7 @@ export function OrderJourney({
     );
 
   const progressionBlocked = Boolean(problem);
+  const cancellationBlocked = Boolean(problem) && problem !== 'STALE_SOURCE';
   return (
     <main className="markreg-page" aria-label="Order journey">
       <PageHeader
@@ -345,7 +346,8 @@ export function OrderJourney({
         />
         <OrderAction
           status={order.status}
-          disabled={progressionBlocked}
+          progressionDisabled={progressionBlocked}
+          cancelDisabled={cancellationBlocked}
           requestConfirmation={() =>
             void withOrder((value, workspace) =>
               client.requestConfirmation({
@@ -433,7 +435,8 @@ export function OrderJourney({
 
 function OrderAction({
   status,
-  disabled,
+  progressionDisabled,
+  cancelDisabled,
   requestConfirmation,
   confirm,
   evaluate,
@@ -441,7 +444,8 @@ function OrderAction({
   cancel
 }: {
   status: OrderStatus;
-  disabled: boolean;
+  progressionDisabled: boolean;
+  cancelDisabled: boolean;
   requestConfirmation: () => void;
   confirm: () => void;
   evaluate: () => void;
@@ -464,12 +468,12 @@ function OrderAction({
   return (
     <div className="markreg-actions">
       {primary && (
-        <Button disabled={disabled} onClick={primary.action}>
+        <Button disabled={progressionDisabled} onClick={primary.action}>
           {primary.label}
         </Button>
       )}
       {cancellable && (
-        <Button variant="secondary" disabled={disabled} onClick={cancel}>
+        <Button variant="secondary" disabled={cancelDisabled} onClick={cancel}>
           Cancel Order
         </Button>
       )}
