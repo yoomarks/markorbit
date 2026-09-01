@@ -18,6 +18,10 @@ import {
 import { ProviderRegistryError, type ProviderRegistryService } from './provider-registry.js';
 import { ProviderReturnError, type ProviderReturnService } from './provider-return.js';
 import {
+  ProviderWorkReadModelError,
+  type ProviderWorkReadModelService
+} from './provider-work-read-model.js';
+import {
   ServicePackageEligibilityError,
   type ServicePackageEligibilityService
 } from './service-package-eligibility.js';
@@ -31,6 +35,7 @@ export interface MgsnHttpServices {
   servicePackageEligibility: ServicePackageEligibilityService;
   allocationProviderAcceptance: AllocationProviderAcceptanceService;
   providerReturn: ProviderReturnService;
+  providerWorkRead: ProviderWorkReadModelService;
   networkParticipation: NetworkParticipationService;
 }
 
@@ -65,6 +70,7 @@ function mapDomainError(error: unknown): never {
     error instanceof ServicePackageEligibilityError ||
     error instanceof AllocationProviderAcceptanceError ||
     error instanceof ProviderReturnError ||
+    error instanceof ProviderWorkReadModelError ||
     error instanceof NetworkParticipationError
   )
     if (
@@ -109,6 +115,24 @@ function rejectNetworkParticipationAuthorityPayload(body: Body) {
       400,
       'SPOOFED_AUTHORITY_CONTEXT',
       'Network Participation authority must come only from the trusted Workspace Principal.'
+    );
+}
+
+function rejectProviderWorkAuthorityQuery(query: Record<string, string | undefined>) {
+  const authorityFields = [
+    'workspaceId',
+    'providerWorkspaceId',
+    'providerId',
+    'principalReference',
+    'workspaceAuthorityReference',
+    'userId',
+    'membershipId'
+  ];
+  if (authorityFields.some((field) => Object.prototype.hasOwnProperty.call(query, field)))
+    throw new HttpError(
+      400,
+      'SPOOFED_AUTHORITY_CONTEXT',
+      'Provider work authority must come only from the trusted Workspace Principal.'
     );
 }
 
@@ -173,6 +197,51 @@ export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[]
   };
 
   return [
+    {
+      method: 'GET',
+      path: '/v1/provider/work-items',
+      handle: async (request) => {
+        const principal = principalFor(request, false);
+        rejectProviderWorkAuthorityQuery(request.query);
+        const result = await operation(() =>
+          services().providerWorkRead.list(
+            {
+              workspaceId: principal.workspaceId,
+              userId: principal.userId,
+              membershipId: principal.membershipId
+            },
+            {
+              ...(request.query.limit === undefined ? {} : { limit: Number(request.query.limit) }),
+              ...(request.query.cursor === undefined ? {} : { cursor: request.query.cursor })
+            }
+          )
+        );
+        return json(200, { providerWorkItemList: result });
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/provider/work-items/:allocationId',
+      handle: async (request) => {
+        const principal = principalFor(request, false);
+        rejectProviderWorkAuthorityQuery(request.query);
+        const result = await operation(() =>
+          services().providerWorkRead.read(
+            {
+              workspaceId: principal.workspaceId,
+              userId: principal.userId,
+              membershipId: principal.membershipId
+            },
+            request.params.allocationId! as AllocationId
+          )
+        );
+        if (result.decision === 'NOT_FOUND_OR_NOT_AUTHORIZED')
+          throw new HttpError(404, 'PROVIDER_WORK_ITEM_NOT_FOUND', result.publicReason);
+        if (result.decision === 'SOURCE_UNAVAILABLE')
+          throw new HttpError(503, 'PROVIDER_WORK_SOURCE_UNAVAILABLE', result.publicReason, true);
+        return json(200, { providerWorkItemRead: result });
+      }
+    },
     {
       method: 'GET',
       path: '/v1/network-participation/providers/:providerId',
