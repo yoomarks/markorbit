@@ -52,6 +52,8 @@ import {
   PostgresMatterIntelligenceReadRepository
 } from './matter-intelligence-read.js';
 import { createMatterIntelligenceReadRoutes } from './matter-intelligence-read-http.js';
+import { FormalMatterEvidenceReadService } from './formal-matter-evidence-read.js';
+import { createFormalMatterEvidenceReadRoutes } from './formal-matter-evidence-read-http.js';
 import {
   MatterIntelligenceReviewService,
   PostgresMatterIntelligenceReviewRepository
@@ -184,6 +186,16 @@ if (fixtureRuntime) {
     }
   });
   const lifecycleRepository = new PostgresLifecycleProjectionRepository(database, pool);
+  const formalMatterEvidenceReadService = new FormalMatterEvidenceReadService({
+    formalMatters: formalMatterRepository,
+    documentPackages: documentPackageService,
+    lifecycle: lifecycleRepository,
+    intelligence: matterIntelligenceReadService
+  });
+  const formalMatterEvidenceReadRoutes = createFormalMatterEvidenceReadRoutes({
+    internalServiceSecret,
+    service: formalMatterEvidenceReadService
+  });
   const recommendedActionRepository = new PostgresRecommendedActionRepository(database, pool);
   const lifecycleServiceFor = (workspaceId: string) =>
     new LifecycleProjectionService(
@@ -242,6 +254,7 @@ if (fixtureRuntime) {
       ...formalOpportunityRoutes,
       ...matterIntelligenceRoutes,
       ...matterIntelligenceReadRoutes,
+      ...formalMatterEvidenceReadRoutes,
       ...matterIntelligenceReviewRoutes,
       ...knowledgeCaseRoutes
     ]
