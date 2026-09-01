@@ -161,9 +161,16 @@ function ownerFactItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function itemReference(item = claimItem()): TrustEvidenceItemReferenceV1 {
+function itemReference(
+  item: {
+    trustEvidenceItemId: string;
+    version: number;
+    trustEvidenceItemFingerprintSha256: string;
+  } = claimItem()
+): TrustEvidenceItemReferenceV1 {
   return {
-    trustEvidenceItemId: item.trustEvidenceItemId as TrustEvidenceItemReferenceV1['trustEvidenceItemId'],
+    trustEvidenceItemId:
+      item.trustEvidenceItemId as TrustEvidenceItemReferenceV1['trustEvidenceItemId'],
     version: item.version,
     trustEvidenceItemFingerprintSha256: item.trustEvidenceItemFingerprintSha256
   };
@@ -232,7 +239,8 @@ function explanation(overrides: Record<string, unknown> = {}) {
         explanation: 'Historical projection authorization is not current serve permission.'
       }
     ],
-    summary: 'Attributable evidence exists for this bounded context; it is not a universal Provider score.',
+    summary:
+      'Attributable evidence exists for this bounded context; it is not a universal Provider score.',
     visibilityProjection: {
       trustEvidenceVisibilityProjectionId: visible.trustEvidenceVisibilityProjectionId,
       projectionFingerprintSha256: visible.projectionFingerprintSha256
@@ -271,9 +279,17 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
 
   it('admits only audited narrow owner fact kinds and rejects operational/verification/payment-amount shortcuts', () => {
     expect(parseTrustEvidenceItemV1(ownerFactItem()).source.kind).toBe('CANONICAL_OWNER_FACT');
-    for (const factKind of ['PROVIDER_OPERATIONAL_STATUS', 'SUPPLY_VERIFICATION_STATE', 'ELIGIBILITY', 'PAYMENT_AMOUNT']) {
+    for (const factKind of [
+      'PROVIDER_OPERATIONAL_STATUS',
+      'SUPPLY_VERIFICATION_STATE',
+      'ELIGIBILITY',
+      'PAYMENT_AMOUNT'
+    ]) {
       const item = ownerFactItem({
-        source: ownerFactSource({ owner: factKind === 'PAYMENT_AMOUNT' ? 'PAYMENT' : 'MGSN', factKind })
+        source: ownerFactSource({
+          owner: factKind === 'PAYMENT_AMOUNT' ? 'PAYMENT' : 'MGSN',
+          factKind
+        })
       });
       expect(() => parseTrustEvidenceItemV1(item)).toThrow(/factKind|own/u);
     }
@@ -344,7 +360,9 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
       ['marginMinor', 5000],
       ['partnerRelationshipGraph', ['workspace_private']]
     ] as const) {
-      const item = claimItem({ context: { ...outcomeTrustEvidenceFixtureContextV1, [field]: value } });
+      const item = claimItem({
+        context: { ...outcomeTrustEvidenceFixtureContextV1, [field]: value }
+      });
       expect(() => parseTrustEvidenceItemV1(item)).toThrow(/unsupported fields/u);
     }
   });
@@ -451,7 +469,9 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
         currentAuthorityRevalidationRequiredBeforeServe: true
       }
     });
-    expect(() => parseTrustEvidenceVisibilityProjectionV1(legacyOnly)).toThrow(/requires Network Visibility provenance/u);
+    expect(() => parseTrustEvidenceVisibilityProjectionV1(legacyOnly)).toThrow(
+      /requires Network Visibility provenance/u
+    );
   });
 
   it('fails closed when current visibility or relationship authority is no longer valid', () => {
@@ -488,7 +508,10 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
         projectionFingerprintSha256: visible.projectionFingerprintSha256
       },
       validatedEvidenceItems: visible.evidenceItems,
-      authorityReferences: ['current-network-visibility:fixture-439', 'current-trust-projection:fixture-439'],
+      authorityReferences: [
+        'current-network-visibility:fixture-439',
+        'current-trust-projection:fixture-439'
+      ],
       checkedAt: AT,
       artifactAccessAuthorized: false,
       authorityConsequences: noTrustEvidenceAuthorityConsequences
@@ -554,7 +577,8 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
         {
           left: itemReference(left),
           right: itemReference(right),
-          explanation: 'The Provider claim and owner review record do not establish one consensus outcome.'
+          explanation:
+            'The Provider claim and owner review record do not establish one consensus outcome.'
         }
       ],
       limitations: [
@@ -587,9 +611,15 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
   });
 
   it('rejects score/rank/winner fields and any authority escalation by exact-key and frozen consequence rules', () => {
-    expect(() => parseTrustEvidenceItemV1({ ...claimItem(), trustScore: 98 })).toThrow(/unsupported fields/u);
-    expect(() => parseTrustEvidenceVisibilityProjectionV1({ ...projection(), rank: 1 })).toThrow(/unsupported fields/u);
-    expect(() => parseTrustExplanationV1({ ...explanation(), winnerProviderId: PROVIDER })).toThrow(/unsupported fields/u);
+    expect(() => parseTrustEvidenceItemV1({ ...claimItem(), trustScore: 98 })).toThrow(
+      /unsupported fields/u
+    );
+    expect(() => parseTrustEvidenceVisibilityProjectionV1({ ...projection(), rank: 1 })).toThrow(
+      /unsupported fields/u
+    );
+    expect(() => parseTrustExplanationV1({ ...explanation(), winnerProviderId: PROVIDER })).toThrow(
+      /unsupported fields/u
+    );
     expect(() =>
       parseTrustEvidenceItemV1({
         ...claimItem(),
@@ -606,7 +636,10 @@ describe('Outcome & Trust Evidence V1 shared contract', () => {
       parseTrustEvidenceItemV1({ ...claimItem(), trustEvidenceItemFingerprintSha256: SHA_A })
     ).toThrow(/fingerprint/u);
     expect(() =>
-      parseTrustEvidenceVisibilityProjectionV1({ ...projection(), projectionFingerprintSha256: SHA_B })
+      parseTrustEvidenceVisibilityProjectionV1({
+        ...projection(),
+        projectionFingerprintSha256: SHA_B
+      })
     ).toThrow(/fingerprint/u);
     expect(() =>
       parseTrustExplanationV1({ ...explanation(), trustExplanationFingerprintSha256: SHA_C })
