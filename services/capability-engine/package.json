@@ -19,7 +19,8 @@
     "test:managed-communication:postgres": "vitest run tests/managed-communication-foundation-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "postinstall": "prettier --write src/current-source-admission-evidence-v3.ts tests/current-source-admission-evidence-v3.test.ts && git diff -- src/current-source-admission-evidence-v3.ts tests/current-source-admission-evidence-v3.test.ts"
   },
   "dependencies": {
     "@markorbit/ai": "workspace:*",
