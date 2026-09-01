@@ -44,6 +44,7 @@ export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
 export * from './cn-preliminary-publication-discovery-pilot.js';
 export * from './current-source-admission-evidence-v2.js';
+export * from './current-source-admission-evidence-v3.js';
 export * from './current-source-admission-evidence.js';
 export * from './current-source-admission.js';
 export * from './executable-method-runtime.js';
