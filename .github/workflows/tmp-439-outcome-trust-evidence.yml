@@ -1,0 +1,54 @@
+name: tmp-439-outcome-trust-evidence
+on:
+  push:
+    branches: [tmp/439-outcome-trust-evidence]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/439-outcome-trust-evidence
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add package subpath and build entry
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.exports['./outcome-trust-evidence'] = {
+            types: './dist/outcome-trust-evidence.d.ts',
+            import: './dist/outcome-trust-evidence.js',
+            default: './dist/outcome-trust-evidence.js'
+          };
+          const needle = 'src/method-improvement-coverage-gap.ts';
+          const addition = 'src/outcome-trust-evidence.ts';
+          if (!pkg.scripts.build.includes(addition)) {
+            pkg.scripts.build = pkg.scripts.build.replace(needle, `${needle} ${addition}`);
+          }
+          fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+      - run: pnpm exec prettier packages/contracts/package.json packages/contracts/src/outcome-trust-evidence.ts packages/contracts/tests/outcome-trust-evidence.test.ts --write
+      - run: pnpm --filter @markorbit/contracts build
+      - run: pnpm --filter @markorbit/contracts typecheck
+      - run: pnpm --filter @markorbit/contracts lint
+      - run: pnpm --filter @markorbit/contracts exec vitest run tests/outcome-trust-evidence.test.ts tests/provider-responsibility.test.ts tests/provider-discovery.test.ts tests/evidence-lifecycle.test.ts
+      - run: git diff --check
+      - name: Commit normalized blobs
+        run: |
+          git config user.name yoomarks
+          git config user.email lukeluccas6292643@gmail.com
+          git add packages/contracts/package.json packages/contracts/src/outcome-trust-evidence.ts packages/contracts/tests/outcome-trust-evidence.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m 'tmp: normalize Outcome Trust Evidence contract'
+            git push origin HEAD:tmp/439-outcome-trust-evidence
+          fi
