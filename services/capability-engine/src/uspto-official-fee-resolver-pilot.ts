@@ -344,7 +344,9 @@ function referenceIntegrity(reference: Readonly<UsptoOfficialFeeResolverReferenc
   };
 }
 
-function parseReference(value: unknown): UsptoOfficialFeeResolverReferenceV1 {
+export function parseUsptoOfficialFeeResolverReferenceV1(
+  value: unknown
+): UsptoOfficialFeeResolverReferenceV1 {
   const reference = record(value);
   if (
     !reference ||
@@ -527,7 +529,7 @@ export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMetho
     const requestInput = parseUsptoOfficialFeeResolverInputV1(input.request.input);
     assertAcceptedPackage(input.package);
 
-    const reference = parseReference(
+    const reference = parseUsptoOfficialFeeResolverReferenceV1(
       await this.references.resolveCurrent({
         operation: USPTO_OFFICIAL_FEE_RESOLVER_OPERATION,
         jurisdiction: 'US',
@@ -564,7 +566,7 @@ export class UsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMetho
         referenceId: reference.referenceId,
         currency: reference.currency,
         amountMinor: reference.amountMinor,
-        unit: reference.unit,
+        unit: 'PER_CLASS',
         effectiveFrom: reference.effectiveFrom,
         packageId: reference.packageId,
         methodId: reference.methodId,
