@@ -62,6 +62,7 @@ import {
   MarkRegMethodOutcomeEvidenceEmitterV1,
   PostgresMarkRegMethodOutcomeEvidenceSourceV1
 } from './method-outcome-evidence-emission.js';
+import { FailClosedPreparationRepository } from './fail-closed-preparation.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -229,6 +230,7 @@ if (fixtureRuntime) {
     matterDraftRepository: new PostgresMatterDraftRepository(pool),
     formalMatterRepository,
     documentPackageService,
+    preparationRepository: new FailClosedPreparationRepository(),
     auditRepository: new PostgresMarkRegAuditRepository(pool),
     internalServiceSecret,
     executionUrl,
