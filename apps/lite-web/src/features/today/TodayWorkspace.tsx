@@ -214,12 +214,14 @@ function ContentPickCard({
 }
 
 function PreparedActionCard({
+  workspaceId,
   recommendation,
   journey,
   busy,
   onPrepare,
   onConfirm
 }: {
+  workspaceId: string;
   recommendation: Readonly<TodayRecommendation>;
   journey?: Readonly<PreparedActionJourney>;
   busy: BusyState;
@@ -302,6 +304,14 @@ function PreparedActionCard({
             No automatic publication, customer outreach, Order, Matter, payment, provider
             appointment, filing or Official Truth was created by this handoff.
           </p>
+          {journey.handoffResult?.owner === 'LITE' &&
+          journey.handoffResult.ownerRecord.id.startsWith('content-opportunity_') ? (
+            <a
+              href={`?workspaceId=${encodeURIComponent(workspaceId)}&contentOpportunityId=${encodeURIComponent(journey.handoffResult.ownerRecord.id)}#content`}
+            >
+              Open durable work in Content Studio
+            </a>
+          ) : null}
         </Alert>
       )}
     </Card>
@@ -1287,6 +1297,7 @@ export function TodayWorkspace({
               return (
                 <PreparedActionCard
                   key={recommendation.todayRecommendationId}
+                  workspaceId={workspaceId}
                   recommendation={recommendation}
                   {...(journey ? { journey } : {})}
                   busy={busy}

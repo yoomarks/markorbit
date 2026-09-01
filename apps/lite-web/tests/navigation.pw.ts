@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { detailFixture, listFixture } from '../src/features/content-studio/fixtures.js';
 
 test('every primary destination is explicit and truthful on desktop and mobile', async ({
   page
@@ -10,7 +11,7 @@ test('every primary destination is explicit and truthful on desktop and mobile',
   for (const [label, hash, title, badge] of [
     ['Today', 'today', 'Select a Workspace', 'Workspace required'],
     ['Matters', 'matters', 'Select a Workspace', 'Workspace required'],
-    ['Content', 'content', 'Content', 'Not yet promoted'],
+    ['Content', 'content', 'Select a Workspace', 'Workspace required'],
     ['Opportunities', 'opportunities', 'Opportunities', 'Not live data'],
     ['Trademarks', 'trademarks', 'Select a Workspace', 'Workspace required'],
     ['Work', 'work-customers', 'Customers', 'Not live data'],
@@ -36,7 +37,9 @@ test('every primary destination is explicit and truthful on desktop and mobile',
   }
   await nav.getByRole('link', { name: 'Content', exact: true }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { name: 'Content', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Select a Workspace', exact: true })
+  ).toBeVisible();
   const focus = page.locator(':focus-visible');
   await expect(focus).toBeVisible();
   expect(await focus.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
@@ -91,25 +94,54 @@ test('Work navigation survives back, forward and reload while retaining review d
   expect(workspaceHeaders.every((value) => value === 'workspace-browser')).toBe(true);
 });
 
-test('Content and Guide deep links render without fetching a different surface', async ({
+test('Content Studio uses durable Gateway list/detail work and remains readable at narrow widths', async ({
+  page
+}, testInfo) => {
+  const apiRequests: string[] = [];
+  await page.route('**/api/lite/content-studio/works?*', (route) => {
+    apiRequests.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ json: listFixture() });
+  });
+  await page.route('**/api/lite/content-studio/works/content-opportunity_413', (route) => {
+    apiRequests.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ json: detailFixture() });
+  });
+  await page.goto('/?workspaceId=38383838-3838-4383-8383-383838383838#content');
+  await expect(page.getByRole('heading', { name: 'Content Studio' })).toBeVisible();
+  await expect(page.locator('.mo-topbar')).toContainText('Authenticated');
+  await expect(page.getByText('content-opportunity_413')).toBeVisible();
+  await expect(page.getByText('Reviewed draft ready for package')).toBeVisible();
+  await expect(page.getByText('Latest Draft Review')).toBeVisible();
+  await expect(page.getByText('Latest Publish Package · work-level history')).toBeVisible();
+  await expect(
+    page.getByText(/Historical visual\/media lineage is not fully discoverable/)
+  ).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('content-studio-list.png'), fullPage: true });
+  await page.getByRole('button', { name: 'View lineage' }).click();
+  await expect(page.getByRole('heading', { name: 'Version lineage' })).toBeVisible();
+  await expect(page.getByText('USER_REPORTED_PUBLISHED')).toBeVisible();
+  await expect(page.getByText(/independently verified by MarkOrbit: No/)).toBeVisible();
+  await expect(page.getByText(/External publish executed by MarkOrbit:/)).toContainText('No');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({ path: testInfo.outputPath('content-studio-detail.png'), fullPage: true });
+  expect(apiRequests).toEqual([
+    '/api/lite/content-studio/works',
+    '/api/lite/content-studio/works/content-opportunity_413'
+  ]);
+});
+
+test('Content Studio keeps owner failure distinct from empty while Guide remains bounded', async ({
   page
 }) => {
-  const apiRequests: string[] = [];
-  await page.route(
-    (url) => url.pathname.startsWith('/api/'),
-    (route) => {
-      apiRequests.push(route.request().url());
-      return route.fulfill({ status: 503, json: { message: 'Unexpected entry request' } });
-    }
+  await page.route('**/api/lite/content-studio/works?*', (route) =>
+    route.fulfill({ status: 503, json: { code: 'PERSISTENCE_UNAVAILABLE', message: 'offline' } })
   );
-  for (const surface of ['Content', 'Guide']) {
-    await page.goto(`/?workspaceId=workspace-browser#${surface.toLowerCase()}`);
-    await expect(page.getByRole('heading', { name: surface, exact: true })).toBeVisible();
-    await expect(page.locator('.mo-topbar')).toHaveText(
-      'Workspace · workspace-browserNot yet promoted'
-    );
-    await page.reload();
-    await expect(page.getByRole('heading', { name: surface, exact: true })).toBeVisible();
-  }
-  expect(apiRequests).toEqual([]);
+  await page.goto('/?workspaceId=workspace-browser#content');
+  await expect(page.getByRole('heading', { name: 'Content Studio unavailable' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No content work yet' })).toHaveCount(0);
+  await page.goto('/?workspaceId=workspace-browser#guide');
+  await expect(page.getByRole('heading', { name: 'Guide', exact: true })).toBeVisible();
+  await expect(page.locator('.mo-topbar')).toContainText('Not yet promoted');
 });

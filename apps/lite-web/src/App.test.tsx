@@ -19,6 +19,9 @@ vi.mock('./features/trademark-assets/TrademarkAssetPortfolio.js', () => ({
 vi.mock('./features/capability/CapabilityCenter.js', () => ({
   CapabilityCenter: ({ workspaceId }: { workspaceId: string }) => <h1>Capability {workspaceId}</h1>
 }));
+vi.mock('./features/content-studio/ContentStudio.js', () => ({
+  ContentStudio: ({ workspaceId }: { workspaceId: string }) => <h1>Content Studio {workspaceId}</h1>
+}));
 vi.mock('./features/professional-review/ProfessionalReview.js', () => ({
   ProfessionalReview: ({
     workspaceId,
@@ -65,7 +68,7 @@ describe('Lite shell navigation truth', () => {
     for (const [label, heading, hash] of [
       ['Today', 'Today workspace-1', '#today'],
       ['Matters', 'Matters workspace-1', '#matters'],
-      ['Content', 'Content', '#content'],
+      ['Content', 'Content Studio workspace-1', '#content'],
       ['Opportunities', 'Opportunities', '#opportunities'],
       ['Trademarks', 'Trademarks workspace-1', '#trademarks'],
       ['Work', 'Customers', '#work-customers'],
@@ -81,21 +84,26 @@ describe('Lite shell navigation truth', () => {
     }
   });
 
-  it.each(['content', 'guide'])(
-    'opens #%s directly as a bounded entry without fixture or live claims',
-    (surface) => {
-      window.history.replaceState(null, '', `/?workspaceId=workspace-1#${surface}`);
-      render(<LiteApp />);
-      expect(
-        screen.getByRole('heading', { level: 1, name: surface === 'content' ? 'Content' : 'Guide' })
-      ).toBeVisible();
-      expect(screen.getByText('Not yet promoted')).toBeVisible();
-      expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
-      expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
-      expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
-      expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
-    }
-  );
+  it('opens Content directly as an authenticated Workspace surface', () => {
+    const surface = 'content';
+    window.history.replaceState(null, '', `/?workspaceId=workspace-1#${surface}`);
+    render(<LiteApp />);
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Content Studio workspace-1' })
+    ).toBeVisible();
+    expect(screen.getByText('Authenticated')).toBeVisible();
+    expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
+    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
+  });
+
+  it('keeps Guide as a bounded entry without fixture or live claims', () => {
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1#guide');
+    render(<LiteApp />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible();
+    expect(screen.getByText('Not yet promoted')).toBeVisible();
+    expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
+  });
 
   it.each(['today', 'matters', 'trademarks', 'capability', 'work-professional-review'])(
     'preserves Workspace context on #%s, including query deep links',

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { LiteApp } from './App.js';
+import { fixtureClient, fixtureWorkspaceId } from './features/content-studio/fixtures.js';
 export default {
   title: 'Products/Lite workspace',
   component: LiteApp,
@@ -7,7 +8,11 @@ export default {
 } satisfies Meta<typeof LiteApp>;
 type Story = StoryObj<typeof LiteApp>;
 export const ContentEntry: Story = {
-  args: { initialSurface: 'content', workspaceId: 'workspace-story' }
+  args: {
+    initialSurface: 'content',
+    workspaceId: fixtureWorkspaceId,
+    contentStudioClient: fixtureClient()
+  }
 };
 export const GuideEntry: Story = {
   args: { initialSurface: 'guide', workspaceId: 'workspace-story' }

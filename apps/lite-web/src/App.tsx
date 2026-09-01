@@ -29,6 +29,8 @@ import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 import { TodayWorkspace } from './features/today/TodayWorkspace.js';
 import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
 import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAssetPortfolio.js';
+import { ContentStudio } from './features/content-studio/ContentStudio.js';
+import type { ContentStudioClient } from './api/content-studio.js';
 
 const nav = [
   'Today',
@@ -71,6 +73,8 @@ export interface LiteAppProps {
   initialReviewCaseId?: string;
   initialFilingAuthorization?: { id: string; version: number };
   workspaceId?: string;
+  contentStudioClient?: ContentStudioClient;
+  initialContentOpportunityId?: string;
 }
 const statusTone = (status: OpportunityStatus) =>
   status === 'QUALIFIED'
@@ -521,7 +525,9 @@ export function LiteApp({
   initialOpportunityId,
   initialReviewCaseId,
   initialFilingAuthorization,
-  workspaceId
+  workspaceId,
+  contentStudioClient,
+  initialContentOpportunityId
 }: LiteAppProps) {
   const [surface, setSurface] = useState<Surface>(
     () => surfacesByHash[window.location.hash] ?? initialSurface
@@ -549,7 +555,7 @@ export function LiteApp({
   const isWork =
     surface === 'customers' || surface === 'professional-review' || surface === 'execution-release';
   const isFixture = surface === 'customers' || surface === 'opportunities';
-  const isEntry = surface === 'content' || surface === 'guide';
+  const isEntry = surface === 'guide';
   return (
     <AppShell
       brand="MarkOrbit Lite"
@@ -656,22 +662,36 @@ export function LiteApp({
               description="A valid Workspace context is required to load your private Capability Center."
             />
           )
+        ) : surface === 'content' ? (
+          activeWorkspaceId ? (
+            <ContentStudio
+              workspaceId={activeWorkspaceId}
+              {...(contentStudioClient ? { client: contentStudioClient } : {})}
+              {...((initialContentOpportunityId ??
+              new URLSearchParams(window.location.search).get('contentOpportunityId'))
+                ? {
+                    initialContentOpportunityId:
+                      initialContentOpportunityId ??
+                      new URLSearchParams(window.location.search).get('contentOpportunityId')!
+                  }
+                : {})}
+            />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load durable Content Studio work."
+            />
+          )
         ) : isEntry ? (
           <>
             <PageHeader
-              title={surface === 'content' ? 'Content' : 'Guide'}
+              title="Guide"
               description="An official Lite product pillar with a bounded entry surface."
             />
             <EmptyState
-              title={
-                surface === 'content'
-                  ? 'Content Studio is not yet promoted'
-                  : 'AI Guide is not yet promoted'
-              }
+              title={'AI Guide is not yet promoted'}
               description={
-                surface === 'content'
-                  ? 'A first-class Content Studio is not available here. Existing bounded content preparation remains in Today; opening this page does not prepare or publish content.'
-                  : 'A first-class AI Guide is not available here. Opening this page does not start an AI conversation, create a recommendation, or authorize an action.'
+                'A first-class AI Guide is not available here. Opening this page does not start an AI conversation, create a recommendation, or authorize an action.'
               }
               action={<a href="#today">Open Today</a>}
             />
