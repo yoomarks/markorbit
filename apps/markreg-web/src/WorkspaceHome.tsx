@@ -24,7 +24,10 @@ import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 const PAGE_SIZE = 10;
 
-type MatterFilters = Pick<FormalMatterListQuery, 'search' | 'status' | 'type'>;
+type MatterFilters = Pick<
+  FormalMatterListQuery,
+  'search' | 'status' | 'type' | 'createdFrom' | 'createdTo'
+>;
 
 const currentWorkspaceId = () =>
   typeof sessionStorage === 'undefined'
@@ -97,7 +100,9 @@ function failure<T>(
 }
 
 function hasMatterFilters(filters: MatterFilters): boolean {
-  return Boolean(filters.search || filters.status || filters.type);
+  return Boolean(
+    filters.search || filters.status || filters.type || filters.createdFrom || filters.createdTo
+  );
 }
 
 const defaultOrderClient = createOrderClient();
@@ -119,6 +124,9 @@ export function MarkregWorkspaceHome({
   const [matterSearchDraft, setMatterSearchDraft] = useState('');
   const [matterStatusDraft, setMatterStatusDraft] = useState('');
   const [matterTypeDraft, setMatterTypeDraft] = useState('');
+  const [matterCreatedFromDraft, setMatterCreatedFromDraft] = useState('');
+  const [matterCreatedToDraft, setMatterCreatedToDraft] = useState('');
+  const [matterFilterError, setMatterFilterError] = useState('');
   const [matterFilters, setMatterFilters] = useState<MatterFilters>({});
   const [orderReloadToken, setOrderReloadToken] = useState(0);
   const [matterReloadToken, setMatterReloadToken] = useState(0);
@@ -184,6 +192,9 @@ export function MarkregWorkspaceHome({
       setMatterSearchDraft('');
       setMatterStatusDraft('');
       setMatterTypeDraft('');
+      setMatterCreatedFromDraft('');
+      setMatterCreatedToDraft('');
+      setMatterFilterError('');
       setMatterFilters({});
       setWorkspaceId(nextWorkspaceId);
     };
@@ -196,14 +207,26 @@ export function MarkregWorkspaceHome({
   }, [workspaceId]);
 
   const applyMatterFilters = () => {
+    if (
+      matterCreatedFromDraft &&
+      matterCreatedToDraft &&
+      matterCreatedFromDraft > matterCreatedToDraft
+    ) {
+      setMatterFilterError('Created from must not be later than Created to.');
+      return;
+    }
+
     const search = matterSearchDraft.trim();
+    setMatterFilterError('');
     setMatterPage(1);
     setMatterFilters({
       ...(search ? { search } : {}),
       ...(matterStatusDraft === 'OPEN' ? { status: 'OPEN' as const } : {}),
       ...(matterTypeDraft === 'TRADEMARK_REGISTRATION'
         ? { type: 'TRADEMARK_REGISTRATION' as const }
-        : {})
+        : {}),
+      ...(matterCreatedFromDraft ? { createdFrom: `${matterCreatedFromDraft}T00:00:00.000Z` } : {}),
+      ...(matterCreatedToDraft ? { createdTo: `${matterCreatedToDraft}T23:59:59.999Z` } : {})
     });
   };
 
@@ -211,6 +234,9 @@ export function MarkregWorkspaceHome({
     setMatterSearchDraft('');
     setMatterStatusDraft('');
     setMatterTypeDraft('');
+    setMatterCreatedFromDraft('');
+    setMatterCreatedToDraft('');
+    setMatterFilterError('');
     setMatterPage(1);
     setMatterFilters({});
   };
@@ -362,6 +388,20 @@ export function MarkregWorkspaceHome({
             <option value="">All types</option>
             <option value="TRADEMARK_REGISTRATION">Trademark registration</option>
           </Select>
+          <TextInput
+            type="date"
+            label="Created from (UTC)"
+            value={matterCreatedFromDraft}
+            onChange={(event) => setMatterCreatedFromDraft(event.currentTarget.value)}
+            hint="MarkReg Matter creation date, not a trademark-office event date."
+          />
+          <TextInput
+            type="date"
+            label="Created to (UTC)"
+            value={matterCreatedToDraft}
+            onChange={(event) => setMatterCreatedToDraft(event.currentTarget.value)}
+            hint="The selected UTC end day is included in full."
+          />
           <div className="markreg-workspace-filter-actions">
             <Button onClick={applyMatterFilters}>Apply filters</Button>
             <Button variant="secondary" onClick={clearMatterFilters}>
@@ -369,6 +409,11 @@ export function MarkregWorkspaceHome({
             </Button>
           </div>
         </div>
+        {matterFilterError && (
+          <Alert tone="danger" title="Invalid Formal Matter filters">
+            {matterFilterError} Existing durable results are unchanged.
+          </Alert>
+        )}
         {matterState.kind === 'LOADING' && <LoadingState label="Loading durable Formal Matters" />}
         {matterState.kind === 'ERROR' && (
           <ErrorState
