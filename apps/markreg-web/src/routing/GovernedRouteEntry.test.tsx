@@ -2,6 +2,7 @@ import type { FormalMatter } from '@markorbit/contracts';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MarkregApiError } from '../api/errors.js';
 import { GovernedRouteEntry } from './GovernedRouteEntry';
 
 vi.mock('../LifecyclePanel.js', () => ({
@@ -93,6 +94,39 @@ describe('MarkReg governed direct entry', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry same identity and version' }));
     await waitFor(() => expect(getGovernedRecord).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('matter-draft_exact')).toBeTruthy();
+  });
+  it('renders durable Preparation unavailability as a stable non-retryable boundary', async () => {
+    const unavailable = new MarkregApiError(
+      'recoverable',
+      'Matter preparation is temporarily unavailable. Your saved Draft is unchanged.',
+      undefined,
+      'DURABLE_PREPARATION_NOT_AVAILABLE'
+    );
+    const getGovernedRecord = vi.fn().mockRejectedValue(unavailable);
+    render(
+      <GovernedRouteEntry
+        search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=4%3A8"
+        client={{ createIntake: vi.fn(), getGovernedRecord }}
+      />
+    );
+
+    const heading = await screen.findByRole('heading', {
+      name: 'Durable Preparation is not available yet'
+    });
+    const durablePackages = screen.getByText(/Durable Document Packages are available/);
+    const noFallback = screen.getByText(/historical in-memory or fixture/);
+    const noFabrication = screen.getByText(/No Preparation Lock was fabricated/);
+    const retry = screen.queryByRole('button', {
+      name: 'Retry same identity and version'
+    });
+
+    expect(document.activeElement).toBe(heading);
+    expect(durablePackages).toBeTruthy();
+    expect(noFallback).toBeTruthy();
+    expect(noFabrication).toBeTruthy();
+    expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
+    expect(retry).toBeNull();
+    expect(getGovernedRecord).toHaveBeenCalledWith('preparation-lock', 'preparation-lock_exact');
   });
   it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
     const getFormalMatter = vi.fn().mockResolvedValue({ formalMatter });
