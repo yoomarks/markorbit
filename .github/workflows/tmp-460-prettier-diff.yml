@@ -1,0 +1,24 @@
+name: tmp-460-prettier-diff
+
+on:
+  pull_request:
+    paths:
+      - 'packages/contracts/src/brain-official-fee-method.ts'
+      - 'packages/contracts/tests/brain-official-fee-method.test.ts'
+      - '.github/workflows/tmp-460-prettier-diff.yml'
+
+jobs:
+  prettier-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write packages/contracts/src/brain-official-fee-method.ts packages/contracts/tests/brain-official-fee-method.test.ts
+      - run: git diff -- packages/contracts/src/brain-official-fee-method.ts packages/contracts/tests/brain-official-fee-method.test.ts
