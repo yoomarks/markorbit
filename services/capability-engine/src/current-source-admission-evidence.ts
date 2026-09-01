@@ -5,7 +5,8 @@ import {
   type CapabilitySourceAdmissionDecision
 } from './current-source-admission.js';
 
-const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/;
+const RFC3339 =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 
 export type CapabilitySourceAdmissionEvidenceErrorCode =
   | 'INVALID_EVALUATED_AT'
@@ -59,31 +60,124 @@ function sha256(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
 }
 
+function invalidEvaluatedAt(message: string): never {
+  throw new CapabilitySourceAdmissionEvidenceError('INVALID_EVALUATED_AT', message);
+}
+
 function normalizedEvaluatedAt(value: string): string {
-  if (typeof value !== 'string' || !RFC3339.test(value)) {
-    throw new CapabilitySourceAdmissionEvidenceError(
-      'INVALID_EVALUATED_AT',
+  const match = typeof value === 'string' ? RFC3339.exec(value) : null;
+  if (!match) {
+    return invalidEvaluatedAt(
       'Capability source-admission evidence requires an explicit RFC3339 evaluation time.'
     );
   }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const millisecond = Number((match[7] ?? '').padEnd(3, '0'));
+  const offsetHour = match[8] === 'Z' ? 0 : Number(match[10]);
+  const offsetMinute = match[8] === 'Z' ? 0 : Number(match[11]);
+
+  if (
+    month < 1 ||
+    month > 12 ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59 ||
+    offsetHour > 23 ||
+    offsetMinute > 59
+  ) {
+    return invalidEvaluatedAt(
+      'Capability source-admission evidence evaluation time contains an invalid date or offset.'
+    );
+  }
+
+  const calendar = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond));
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== month - 1 ||
+    calendar.getUTCDate() !== day ||
+    calendar.getUTCHours() !== hour ||
+    calendar.getUTCMinutes() !== minute ||
+    calendar.getUTCSeconds() !== second ||
+    calendar.getUTCMilliseconds() !== millisecond
+  ) {
+    return invalidEvaluatedAt(
+      'Capability source-admission evidence evaluation time is not a valid calendar instant.'
+    );
+  }
+
   const instant = new Date(value);
   if (Number.isNaN(instant.getTime())) {
-    throw new CapabilitySourceAdmissionEvidenceError(
-      'INVALID_EVALUATED_AT',
+    return invalidEvaluatedAt(
       'Capability source-admission evidence evaluation time is not a valid instant.'
     );
   }
   return instant.toISOString();
 }
 
+function record(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return value as Record<string, unknown>;
+}
+
+function nonEmptyText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function positiveInteger(value: unknown): boolean {
+  return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
 function validDecision(decision: unknown): decision is CapabilitySourceAdmissionDecision {
-  if (!decision || typeof decision !== 'object' || Array.isArray(decision)) return false;
-  const value = decision as Partial<CapabilitySourceAdmissionDecision>;
-  return (
-    value.schemaVersion === 1 &&
-    value.producer === 'CAPABILITY_ENGINE' &&
-    (value.decision === 'PRODUCTION_ADMISSIBLE' || value.decision === 'DENIED') &&
-    isDeepStrictEqual(value.authority, capabilitySourceAdmissionNoAuthorityConsequences)
+  const value = record(decision);
+  if (
+    !value ||
+    value.schemaVersion !== 1 ||
+    value.producer !== 'CAPABILITY_ENGINE' ||
+    !isDeepStrictEqual(value.authority, capabilitySourceAdmissionNoAuthorityConsequences)
+  ) {
+    return false;
+  }
+
+  const historical = record(value.historical);
+  if (
+    !historical ||
+    !nonEmptyText(historical.capabilityRequestId) ||
+    !nonEmptyText(historical.implementationBindingId) ||
+    !nonEmptyText(historical.capabilityInvocationId) ||
+    !nonEmptyText(historical.capabilityOutcomeId) ||
+    !nonEmptyText(historical.capabilityReturnId) ||
+    !nonEmptyText(historical.sessionReceiptId) ||
+    typeof historical.replayed !== 'boolean'
+  ) {
+    return false;
+  }
+
+  if (value.decision === 'DENIED') {
+    const denial = record(value.denial);
+    return Boolean(denial && nonEmptyText(denial.code) && nonEmptyText(denial.reason));
+  }
+  if (value.decision !== 'PRODUCTION_ADMISSIBLE') return false;
+
+  const current = record(value.current);
+  const capability = record(current?.capability);
+  const implementation = record(current?.implementation);
+  return Boolean(
+    capability &&
+      implementation &&
+      nonEmptyText(capability.runtimeCapabilityDefinitionId) &&
+      positiveInteger(capability.version) &&
+      nonEmptyText(capability.capabilityId) &&
+      nonEmptyText(capability.capabilityVersion) &&
+      nonEmptyText(implementation.implementationProfileId) &&
+      positiveInteger(implementation.version) &&
+      nonEmptyText(implementation.implementationKey) &&
+      implementation.status === 'APPROVED'
   );
 }
 
