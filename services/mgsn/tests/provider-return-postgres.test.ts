@@ -8,7 +8,6 @@ import {
 import {
   ManagedDatabase,
   loadMigrationsForOwner,
-  migrate,
   migrationStatus,
   verifyMigrations
 } from '@markorbit/persistence';
@@ -22,6 +21,7 @@ import {
   ServicePackageEligibilityService,
   type ExecutionSourceVerification
 } from '../src/service-package-eligibility.js';
+import { resetAndMigrateMgsnTestDatabase } from './support/mgsn-postgres-test-database.js';
 import { PostgresAllocationProviderAcceptanceRepository } from '../src/allocation-provider-acceptance-postgres.js';
 import { AllocationProviderAcceptanceService } from '../src/allocation-provider-acceptance.js';
 import { PostgresProviderReturnRepository } from '../src/provider-return-postgres.js';
@@ -286,44 +286,12 @@ suite('M4-WP-06 durable Provider Return and exact evidence handoff', () => {
 
   beforeAll(async () => {
     await database.start();
-    const pool = database.getPool();
-    await pool.query(
-      `DROP TABLE IF EXISTS
-         mgsn_provider_return_audit,
-         mgsn_provider_return_commands,
-         mgsn_provider_returns,
-         mgsn_allocation_audit,
-         mgsn_allocation_commands,
-         mgsn_provider_acceptances,
-         mgsn_allocations,
-         mgsn_service_package_audit,
-         mgsn_service_package_commands,
-         mgsn_eligibility_evaluations,
-         mgsn_service_packages,
-         mgsn_provider_registry_audit,
-         mgsn_provider_registry_commands,
-         mgsn_provider_supply_capabilities,
-         mgsn_providers
-       CASCADE`
-    );
-    await pool.query(
-      'DROP FUNCTION IF EXISTS reject_mgsn_provider_return_audit_mutation() CASCADE'
-    );
-    await pool.query('DROP FUNCTION IF EXISTS reject_mgsn_allocation_audit_mutation() CASCADE');
-    await pool.query(
-      'DROP FUNCTION IF EXISTS reject_mgsn_service_package_audit_mutation() CASCADE'
-    );
-    await pool.query(
-      'DROP FUNCTION IF EXISTS reject_mgsn_provider_registry_audit_mutation() CASCADE'
-    );
-    const history = await pool.query<{ migration_history: string | null }>(
-      "SELECT to_regclass('markorbit_persistence.migration_history')::text AS migration_history"
-    );
-    if (history.rows[0]?.migration_history)
-      await pool.query('DELETE FROM markorbit_persistence.migration_history WHERE namespace=$1', [
-        namespace
-      ]);
-    await migrate(pool, namespace, await migrations());
+    await resetAndMigrateMgsnTestDatabase({
+      pool: database.getPool(),
+      namespace,
+      migrationsDirectory: path.resolve('../../infrastructure/persistence/migrations'),
+      migrationOwners: path.resolve('../../infrastructure/persistence/migration-owners.json')
+    });
   });
 
   beforeEach(async () => {
