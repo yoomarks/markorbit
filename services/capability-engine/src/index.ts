@@ -75,6 +75,7 @@ export * from './source-admission-policy-provenance.js';
 export * from './uspto-official-fee-method-currentness.js';
 export * from './uspto-official-fee-reference-currentness.js';
 export * from './uspto-official-fee-resolver-pilot.js';
+export * from './uspto-official-fee-source-use.js';
 
 export const serviceManifest = Object.freeze({
   name: 'capability-engine',
