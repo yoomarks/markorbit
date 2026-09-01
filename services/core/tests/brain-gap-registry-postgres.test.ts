@@ -21,11 +21,7 @@ const migrationsDirectory = path.resolve('../../infrastructure/persistence/migra
 const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 const brainGapMigrations = async () =>
   (
-    await loadMigrationsForOwner(
-      migrationsDirectory,
-      migrationOwners,
-      '@markorbit/core-service'
-    )
+    await loadMigrationsForOwner(migrationsDirectory, migrationOwners, '@markorbit/core-service')
   ).filter((migration) => migration.version === '0081');
 const config = () =>
   parseDatabaseConfig({
@@ -37,10 +33,7 @@ const config = () =>
 
 let database: ManagedDatabase;
 
-function gap(
-  detectedAt = '2026-09-02T00:00:00.000Z',
-  overrides: Partial<BrainGap> = {}
-): BrainGap {
+function gap(detectedAt = '2026-09-02T00:00:00.000Z', overrides: Partial<BrainGap> = {}): BrainGap {
   const base: BrainGap = {
     schemaVersion: 1,
     brainGapId: `brain-gap_${'0'.repeat(64)}`,
