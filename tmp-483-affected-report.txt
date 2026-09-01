@@ -1,0 +1,1707 @@
+BASE_SHA=4cf727456ed0d5e128419e241c13bfdc2d02802f
+HEAD_SHA=3122afbe6b9cd111611764ff45c749377f036698
+=== BUILD ===
+
+Attention:
+Turborepo now collects completely anonymous telemetry regarding usage.
+This information is used to shape the Turborepo roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://turborepo.dev/docs/telemetry
+
+
+   • Packages in scope: //, @markorbit/ai, @markorbit/capability-engine, @markorbit/contracts, @markorbit/core-service, @markorbit/events, @markorbit/execution-service, @markorbit/gateway, @markorbit/lite-service, @markorbit/lite-web, @markorbit/markreg-service, @markorbit/markreg-web, @markorbit/mgsn-service, @markorbit/payment-service
+   • Running build in 14 packages
+   • Remote caching disabled
+
+::group::@markorbit/service-kit:build
+cache miss, executing c21995aa12e46b5a
+
+> @markorbit/service-kit@0.1.0 build /home/runner/work/markorbit/markorbit/packages/service-kit
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m7.21 KB[39m
+[32mESM[39m ⚡️ Build success in 42ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 3141ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m2.13 KB[39m
+::endgroup::
+::group::@markorbit/persistence:build
+cache miss, executing 2e3ac03d1ebb4f03
+
+> @markorbit/persistence@0.1.0 build /home/runner/work/markorbit/markorbit/packages/persistence
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m13.53 KB[39m
+[32mESM[39m ⚡️ Build success in 72ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 3452ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m3.10 KB[39m
+::endgroup::
+::group::@markorbit/ui:build
+cache miss, executing aaeb74c7824df529
+
+> @markorbit/ui@0.1.0 build /home/runner/work/markorbit/markorbit/packages/ui
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m11.89 KB[39m
+[32mESM[39m ⚡️ Build success in 80ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 5070ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m6.56 KB[39m
+::endgroup::
+::group::@markorbit/contracts:build
+cache miss, executing a07b81e5bf2d9e11
+
+> @markorbit/contracts@0.1.0 build /home/runner/work/markorbit/markorbit/packages/contracts
+> tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/network-participation.ts src/provider-discovery.ts src/provider-responsibility.ts src/provider-selection.ts src/controlled-privacy-handoff.ts src/provider-work-read-model.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/trademark-asset-composition.ts src/trademark-asset-portfolio.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-management.ts src/trademark-service-workbench.ts src/trademark-service-execution.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-connector.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/trademark-service-execution-observability.ts src/daily-source.ts src/data-engine.ts src/data-engine-discovery.ts src/capability-learning.ts src/capability-runtime.ts src/capability-runtime-execution.ts src/brain.ts src/brain-evidence.ts src/brain-method.ts src/brain-method-activation.ts src/brain-cn-duration-research.ts src/brain-cn-duration-band-classification.ts src/brain-cn-duration-evidence-intake.ts src/brain-method-fallback.ts src/brain-official-fee-method.ts src/brain-confidence.ts src/brain-gap.ts src/brain-build.ts src/managed-ai-execution.ts src/managed-communication.ts src/method-outcome-evidence.ts src/method-improvement.ts src/beta-readiness.ts src/markreg-early-funnel.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/beta-readiness.ts, src/brain-build.ts, src/brain-cn-duration-band-classification.ts, src/brain-cn-duration-evidence-intake.ts, src/brain-cn-duration-research.ts, src/brain-confidence.ts, src/brain-evidence.ts, src/brain-gap.ts, src/brain-method-activation.ts, src/brain-method-fallback.ts, src/brain-method.ts, src/brain-official-fee-method.ts, src/brain.ts, src/capability-learning.ts, src/capability-runtime-execution.ts, src/capability-runtime.ts, src/commercial.ts, src/controlled-privacy-handoff.ts, src/daily-source.ts, src/daily-workspace.ts, src/data-engine-discovery.ts, src/data-engine.ts, src/evidence-lifecycle.ts, src/index.ts, src/knowledge-content-export.ts, src/knowledge-ready-package-v2.ts, src/managed-ai-execution.ts, src/managed-communication.ts, src/markreg-early-funnel.ts, src/method-improvement.ts, src/method-outcome-evidence.ts, src/network-participation.ts, src/order.ts, src/payment.ts, src/product-loop.ts, src/provider-discovery.ts, src/provider-execution.ts, src/provider-responsibility.ts, src/provider-selection.ts, src/provider-work-read-model.ts, src/trademark-asset-ai-guide.ts, src/trademark-asset-commerce.ts, src/trademark-asset-composition.ts, src/trademark-asset-management.ts, src/trademark-asset-marketplace-reference.ts, src/trademark-asset-portfolio.ts, src/trademark-asset-workspace.ts, src/trademark-service-execution-connector.ts, src/trademark-service-execution-isolation.ts, src/trademark-service-execution-observability.ts, src/trademark-service-execution-readiness-bundle.ts, src/trademark-service-execution-sandbox.ts, src/trademark-service-execution-simulation.ts, src/trademark-service-execution.ts, src/trademark-service-workbench.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/trademark-service-execution-isolation.js        [22m[32m693.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-observability.js    [22m[32m710.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-sandbox.js          [22m[32m1.31 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-simulation.js       [22m[32m1.08 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution.js                  [22m[32m984.00 B[39m
+[32mESM[39m [1mdist/trademark-service-workbench.js                  [22m[32m3.04 KB[39m
+[32mESM[39m [1mdist/trademark-asset-ai-guide.js                     [22m[32m1.13 KB[39m
+[32mESM[39m [1mdist/trademark-asset-commerce.js                     [22m[32m984.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-composition.js                  [22m[32m921.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-management.js                   [22m[32m2.66 KB[39m
+[32mESM[39m [1mdist/trademark-asset-marketplace-reference.js        [22m[32m850.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-portfolio.js                    [22m[32m624.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-workspace.js                    [22m[32m3.66 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-readiness-bundle.js [22m[32m504.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-connector.js        [22m[32m814.00 B[39m
+[32mESM[39m [1mdist/order.js                                        [22m[32m2.88 KB[39m
+[32mESM[39m [1mdist/payment.js                                      [22m[32m4.05 KB[39m
+[32mESM[39m [1mdist/product-loop.js                                 [22m[32m3.12 KB[39m
+[32mESM[39m [1mdist/provider-execution.js                           [22m[32m3.41 KB[39m
+[32mESM[39m [1mdist/provider-responsibility.js                      [22m[32m8.77 KB[39m
+[32mESM[39m [1mdist/provider-discovery.js                           [22m[32m8.68 KB[39m
+[32mESM[39m [1mdist/provider-selection.js                           [22m[32m9.21 KB[39m
+[32mESM[39m [1mdist/provider-work-read-model.js                     [22m[32m9.25 KB[39m
+[32mESM[39m [1mdist/knowledge-content-export.js                     [22m[32m9.04 KB[39m
+[32mESM[39m [1mdist/knowledge-ready-package-v2.js                   [22m[32m1.26 KB[39m
+[32mESM[39m [1mdist/managed-ai-execution.js                         [22m[32m17.97 KB[39m
+[32mESM[39m [1mdist/managed-communication.js                        [22m[32m9.05 KB[39m
+[32mESM[39m [1mdist/markreg-early-funnel.js                         [22m[32m21.79 KB[39m
+[32mESM[39m [1mdist/method-improvement.js                           [22m[32m14.14 KB[39m
+[32mESM[39m [1mdist/method-outcome-evidence.js                      [22m[32m10.94 KB[39m
+[32mESM[39m [1mdist/commercial.js                                   [22m[32m613.00 B[39m
+[32mESM[39m [1mdist/chunk-EUY7JLKV.js                               [22m[32m3.25 KB[39m
+[32mESM[39m [1mdist/network-participation.js                        [22m[32m6.89 KB[39m
+[32mESM[39m [1mdist/daily-source.js                                 [22m[32m1.45 KB[39m
+[32mESM[39m [1mdist/daily-workspace.js                              [22m[32m2.45 KB[39m
+[32mESM[39m [1mdist/controlled-privacy-handoff.js                   [22m[32m14.05 KB[39m
+[32mESM[39m [1mdist/data-engine-discovery.js                        [22m[32m10.03 KB[39m
+[32mESM[39m [1mdist/data-engine.js                                  [22m[32m707.00 B[39m
+[32mESM[39m [1mdist/chunk-ADXR43XD.js                               [22m[32m8.57 KB[39m
+[32mESM[39m [1mdist/evidence-lifecycle.js                           [22m[32m2.99 KB[39m
+[32mESM[39m [1mdist/index.js                                        [22m[32m3.97 KB[39m
+[32mESM[39m [1mdist/chunk-BZ2MDUZQ.js                               [22m[32m15.34 KB[39m
+[32mESM[39m [1mdist/chunk-SB54R4OK.js                               [22m[32m9.80 KB[39m
+[32mESM[39m [1mdist/brain-method-activation.js                      [22m[32m11.12 KB[39m
+[32mESM[39m [1mdist/brain-method-fallback.js                        [22m[32m2.26 KB[39m
+[32mESM[39m [1mdist/brain-method.js                                 [22m[32m849.00 B[39m
+[32mESM[39m [1mdist/brain-official-fee-method.js                    [22m[32m9.57 KB[39m
+[32mESM[39m [1mdist/brain.js                                        [22m[32m551.00 B[39m
+[32mESM[39m [1mdist/capability-learning.js                          [22m[32m427.00 B[39m
+[32mESM[39m [1mdist/chunk-7KEIX4VE.js                               [22m[32m1.30 KB[39m
+[32mESM[39m [1mdist/capability-runtime-execution.js                 [22m[32m22.76 KB[39m
+[32mESM[39m [1mdist/capability-runtime.js                           [22m[32m391.00 B[39m
+[32mESM[39m [1mdist/chunk-6LCQSSE6.js                               [22m[32m3.82 KB[39m
+[32mESM[39m [1mdist/beta-readiness.js                               [22m[32m7.42 KB[39m
+[32mESM[39m [1mdist/brain-build.js                                  [22m[32m431.00 B[39m
+[32mESM[39m [1mdist/brain-cn-duration-band-classification.js        [22m[32m1.20 KB[39m
+[32mESM[39m [1mdist/chunk-QZYJHDZX.js                               [22m[32m13.79 KB[39m
+[32mESM[39m [1mdist/brain-cn-duration-evidence-intake.js            [22m[32m5.34 KB[39m
+[32mESM[39m [1mdist/brain-cn-duration-research.js                   [22m[32m961.00 B[39m
+[32mESM[39m [1mdist/chunk-7DNXFD43.js                               [22m[32m25.82 KB[39m
+[32mESM[39m [1mdist/chunk-DL5VNZAY.js                               [22m[32m26.67 KB[39m
+[32mESM[39m [1mdist/brain-confidence.js                             [22m[32m383.00 B[39m
+[32mESM[39m [1mdist/brain-evidence.js                               [22m[32m4.87 KB[39m
+[32mESM[39m [1mdist/chunk-57LRKF34.js                               [22m[32m10.70 KB[39m
+[32mESM[39m [1mdist/brain-gap.js                                    [22m[32m888.00 B[39m
+[32mESM[39m [1mdist/chunk-HP2OBTCN.js                               [22m[32m5.78 KB[39m
+[32mESM[39m ⚡️ Build success in 185ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 6811ms
+[32mDTS[39m [1mdist/beta-readiness.d.ts                               [22m[32m18.49 KB[39m
+[32mDTS[39m [1mdist/brain-build.d.ts                                  [22m[32m2.19 KB[39m
+[32mDTS[39m [1mdist/brain-cn-duration-evidence-intake.d.ts            [22m[32m2.32 KB[39m
+[32mDTS[39m [1mdist/brain-evidence.d.ts                               [22m[32m4.91 KB[39m
+[32mDTS[39m [1mdist/brain-gap.d.ts                                    [22m[32m3.70 KB[39m
+[32mDTS[39m [1mdist/brain-method-activation.d.ts                      [22m[32m2.25 KB[39m
+[32mDTS[39m [1mdist/brain-method-fallback.d.ts                        [22m[32m1.25 KB[39m
+[32mDTS[39m [1mdist/brain-official-fee-method.d.ts                    [22m[32m2.93 KB[39m
+[32mDTS[39m [1mdist/brain.d.ts                                        [22m[32m3.76 KB[39m
+[32mDTS[39m [1mdist/capability-runtime-execution.d.ts                 [22m[32m2.25 KB[39m
+[32mDTS[39m [1mdist/brain-cn-duration-band-classification.d.ts        [22m[32m3.51 KB[39m
+[32mDTS[39m [1mdist/brain-cn-duration-research.d.ts                   [22m[32m4.59 KB[39m
+[32mDTS[39m [1mdist/capability-runtime.d.ts                           [22m[32m7.56 KB[39m
+[32mDTS[39m [1mdist/daily-source.d.ts                                 [22m[32m760.00 B[39m
+[32mDTS[39m [1mdist/daily-workspace.d.ts                              [22m[32m10.63 KB[39m
+[32mDTS[39m [1mdist/data-engine-discovery.d.ts                        [22m[32m5.69 KB[39m
+[32mDTS[39m [1mdist/data-engine.d.ts                                  [22m[32m5.94 KB[39m
+[32mDTS[39m [1mdist/evidence-lifecycle.d.ts                           [22m[32m11.40 KB[39m
+[32mDTS[39m [1mdist/knowledge-content-export.d.ts                     [22m[32m3.50 KB[39m
+[32mDTS[39m [1mdist/managed-ai-execution.d.ts                         [22m[32m6.56 KB[39m
+[32mDTS[39m [1mdist/managed-communication.d.ts                        [22m[32m3.96 KB[39m
+[32mDTS[39m [1mdist/markreg-early-funnel.d.ts                         [22m[32m9.26 KB[39m
+[32mDTS[39m [1mdist/method-improvement.d.ts                           [22m[32m4.27 KB[39m
+[32mDTS[39m [1mdist/brain-method.d.ts                                 [22m[32m7.87 KB[39m
+[32mDTS[39m [1mdist/method-outcome-evidence.d.ts                      [22m[32m3.39 KB[39m
+[32mDTS[39m [1mdist/capability-learning.d.ts                          [22m[32m10.29 KB[39m
+[32mDTS[39m [1mdist/commercial.d.ts                                   [22m[32m4.27 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                                        [22m[32m50.74 KB[39m
+[32mDTS[39m [1mdist/order.d.ts                                        [22m[32m8.47 KB[39m
+[32mDTS[39m [1mdist/knowledge-ready-package-v2.d.ts                   [22m[32m4.40 KB[39m
+[32mDTS[39m [1mdist/controlled-privacy-handoff.d.ts                   [22m[32m31.58 KB[39m
+[32mDTS[39m [1mdist/provider-discovery.d.ts                           [22m[32m22.93 KB[39m
+[32mDTS[39m [1mdist/provider-execution.d.ts                           [22m[32m15.21 KB[39m
+[32mDTS[39m [1mdist/provider-selection.d.ts                           [22m[32m24.68 KB[39m
+[32mDTS[39m [1mdist/network-participation.d.ts                        [22m[32m21.68 KB[39m
+[32mDTS[39m [1mdist/product-loop.d.ts                                 [22m[32m15.86 KB[39m
+[32mDTS[39m [1mdist/payment.d.ts                                      [22m[32m6.93 KB[39m
+[32mDTS[39m [1mdist/provider-responsibility.d.ts                      [22m[32m22.62 KB[39m
+[32mDTS[39m [1mdist/provider-work-read-model.d.ts                     [22m[32m17.52 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-ai-guide.d.ts                     [22m[32m3.26 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-workspace.d.ts                    [22m[32m10.46 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-commerce.d.ts                     [22m[32m3.49 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-composition.d.ts                  [22m[32m3.80 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-management.d.ts                   [22m[32m8.85 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-marketplace-reference.d.ts        [22m[32m3.60 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-portfolio.d.ts                    [22m[32m2.96 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-connector.d.ts        [22m[32m3.74 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution.d.ts                  [22m[32m7.88 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-sandbox.d.ts          [22m[32m4.05 KB[39m
+[32mDTS[39m [1mdist/trademark-service-workbench.d.ts                  [22m[32m9.58 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-isolation.d.ts        [22m[32m3.36 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-observability.d.ts    [22m[32m3.22 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-readiness-bundle.d.ts [22m[32m2.81 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-simulation.d.ts       [22m[32m3.57 KB[39m
+[32mDTS[39m [1mdist/brain-confidence.d.ts                             [22m[32m465.00 B[39m
+::endgroup::
+::group::@markorbit/lite-web:build
+cache miss, executing 4c43b1be23b2243e
+
+> @markorbit/lite-web@0.1.0 build /home/runner/work/markorbit/markorbit/apps/lite-web
+> vite build
+
+[36mvite v6.3.5 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 67 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:  0.29 kB[22m
+[2mdist/[22m[2massets/[22m[35mindex-DfVlRJhO.css  [39m[1m[2m 21.99 kB[22m[1m[22m[2m │ gzip:  4.53 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-BPFeYmzp.js   [39m[1m[2m292.64 kB[22m[1m[22m[2m │ gzip: 84.80 kB[22m
+[32m✓ built in 6.73s[39m
+::endgroup::
+::group::@markorbit/markreg-web:build
+cache miss, executing 25c2087429731fcb
+
+> @markorbit/markreg-web@0.1.0 build /home/runner/work/markorbit/markorbit/apps/markreg-web
+> vite build
+
+[36mvite v6.3.5 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 56 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:  0.29 kB[22m
+[2mdist/[22m[2massets/[22m[35mindex-CJCk_ICI.css  [39m[1m[2m 10.53 kB[22m[1m[22m[2m │ gzip:  2.76 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-dzJCkPPd.js   [39m[1m[2m234.75 kB[22m[1m[22m[2m │ gzip: 70.04 kB[22m
+[32m✓ built in 6.94s[39m
+::endgroup::
+::group::@markorbit/ai:build
+cache miss, executing 77e835d2f222dcb3
+
+> @markorbit/ai@0.1.0 build /home/runner/work/markorbit/markorbit/packages/ai
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m33.62 KB[39m
+[32mESM[39m ⚡️ Build success in 114ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 8015ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m10.59 KB[39m
+::endgroup::
+::group::@markorbit/events:build
+cache miss, executing fb0c1720ac5ab349
+
+> @markorbit/events@0.1.0 build /home/runner/work/markorbit/markorbit/packages/events
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m277.00 B[39m
+[32mESM[39m ⚡️ Build success in 89ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 7842ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m549.00 B[39m
+::endgroup::
+::group::@markorbit/gateway:build
+cache miss, executing aaa2afb4af964064
+
+> @markorbit/gateway@0.1.0 build /home/runner/work/markorbit/markorbit/apps/gateway
+> tsup src/index.ts src/main.ts src/data-engine-http.ts src/data-engine-discovery-http.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/data-engine-discovery-http.ts, src/data-engine-http.ts, src/index.ts, src/main.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/data-engine-discovery-http.js [22m[32m1.91 KB[39m
+[32mESM[39m [1mdist/data-engine-http.js           [22m[32m151.00 B[39m
+[32mESM[39m [1mdist/index.js                      [22m[32m1.50 KB[39m
+[32mESM[39m [1mdist/main.js                       [22m[32m523.00 B[39m
+[32mESM[39m [1mdist/chunk-R4FRYLLV.js             [22m[32m152.47 KB[39m
+[32mESM[39m [1mdist/chunk-5IEABLZE.js             [22m[32m9.36 KB[39m
+[32mESM[39m ⚡️ Build success in 143ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 13945ms
+[32mDTS[39m [1mdist/main.d.ts                       [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/data-engine-discovery-http.d.ts [22m[32m761.00 B[39m
+[32mDTS[39m [1mdist/data-engine-http.d.ts           [22m[32m3.49 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                      [22m[32m9.68 KB[39m
+::endgroup::
+::group::@markorbit/payment-service:build
+cache miss, executing 82d132f14ff2fff0
+
+> @markorbit/payment-service@0.1.0 build /home/runner/work/markorbit/markorbit/services/payment
+> tsup src/index.ts src/main.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts, src/main.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js          [22m[32m1.20 KB[39m
+[32mESM[39m [1mdist/main.js           [22m[32m2.17 KB[39m
+[32mESM[39m [1mdist/chunk-4PCOMPUQ.js [22m[32m88.65 KB[39m
+[32mESM[39m ⚡️ Build success in 193ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 16564ms
+[32mDTS[39m [1mdist/main.d.ts  [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/index.d.ts [22m[32m18.55 KB[39m
+::endgroup::
+::group::@markorbit/mgsn-service:build
+cache miss, executing 2e433d331c435606
+
+> @markorbit/mgsn-service@0.1.0 build /home/runner/work/markorbit/markorbit/services/mgsn
+> tsup src/index.ts src/main.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts, src/main.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js          [22m[32m2.04 KB[39m
+[32mESM[39m [1mdist/main.js           [22m[32m1.65 KB[39m
+[32mESM[39m [1mdist/chunk-GVEVAFSM.js [22m[32m175.81 KB[39m
+[32mESM[39m ⚡️ Build success in 134ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 19112ms
+[32mDTS[39m [1mdist/main.d.ts  [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/index.d.ts [22m[32m37.58 KB[39m
+::endgroup::
+::group::@markorbit/core-service:build
+cache miss, executing ceeb696c4c847263
+
+> @markorbit/core-service@0.1.0 build /home/runner/work/markorbit/markorbit/services/core
+> tsup src/index.ts src/main.ts src/brain-asset-registry.ts src/brain-asset-registry-postgres.ts src/brain-evidence-resolver.ts src/brain-confidence-engine.ts src/brain-build-runtime.ts src/brain-self-audit.ts src/brain-build-self-audit-observation.ts src/brain-gap-registry.ts src/official-fee-reference-store.ts src/official-fee-reference-store-postgres.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/brain-asset-registry-postgres.ts, src/brain-asset-registry.ts, src/brain-build-runtime.ts, src/brain-build-self-audit-observation.ts, src/brain-confidence-engine.ts, src/brain-evidence-resolver.ts, src/brain-gap-registry.ts, src/brain-self-audit.ts, src/index.ts, src/main.ts, src/official-fee-reference-store-postgres.ts, src/official-fee-reference-store.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/main.js                                  [22m[32m3.00 KB[39m
+[32mESM[39m [1mdist/index.js                                 [22m[32m4.15 KB[39m
+[32mESM[39m [1mdist/chunk-OTSPLF3K.js                        [22m[32m105.83 KB[39m
+[32mESM[39m [1mdist/official-fee-reference-store-postgres.js [22m[32m5.72 KB[39m
+[32mESM[39m [1mdist/official-fee-reference-store.js          [22m[32m329.00 B[39m
+[32mESM[39m [1mdist/chunk-GZPMBNQ6.js                        [22m[32m7.72 KB[39m
+[32mESM[39m [1mdist/auth-5OQ7IVER.js                         [22m[32m483.00 B[39m
+[32mESM[39m [1mdist/chunk-X6XIFSC7.js                        [22m[32m26.09 KB[39m
+[32mESM[39m [1mdist/brain-asset-registry-postgres.js         [22m[32m10.86 KB[39m
+[32mESM[39m [1mdist/brain-asset-registry.js                  [22m[32m163.00 B[39m
+[32mESM[39m [1mdist/chunk-IH4OQ7OZ.js                        [22m[32m8.66 KB[39m
+[32mESM[39m [1mdist/brain-build-runtime.js                   [22m[32m6.68 KB[39m
+[32mESM[39m [1mdist/brain-build-self-audit-observation.js    [22m[32m1.03 KB[39m
+[32mESM[39m [1mdist/brain-confidence-engine.js               [22m[32m157.00 B[39m
+[32mESM[39m [1mdist/chunk-2B7OXYLK.js                        [22m[32m8.00 KB[39m
+[32mESM[39m [1mdist/brain-evidence-resolver.js               [22m[32m97.00 B[39m
+[32mESM[39m [1mdist/chunk-MNDAMR5X.js                        [22m[32m4.50 KB[39m
+[32mESM[39m [1mdist/brain-gap-registry.js                    [22m[32m8.53 KB[39m
+[32mESM[39m [1mdist/brain-self-audit.js                      [22m[32m145.00 B[39m
+[32mESM[39m [1mdist/chunk-E2C5HJFJ.js                        [22m[32m6.32 KB[39m
+[32mESM[39m ⚡️ Build success in 305ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 18079ms
+[32mDTS[39m [1mdist/main.d.ts                                  [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/brain-asset-registry-postgres.d.ts         [22m[32m904.00 B[39m
+[32mDTS[39m [1mdist/brain-asset-registry.d.ts                  [22m[32m1.48 KB[39m
+[32mDTS[39m [1mdist/brain-build-runtime.d.ts                   [22m[32m326.00 B[39m
+[32mDTS[39m [1mdist/brain-build-self-audit-observation.d.ts    [22m[32m1.58 KB[39m
+[32mDTS[39m [1mdist/brain-confidence-engine.d.ts               [22m[32m407.00 B[39m
+[32mDTS[39m [1mdist/brain-evidence-resolver.d.ts               [22m[32m434.00 B[39m
+[32mDTS[39m [1mdist/brain-gap-registry.d.ts                    [22m[32m1.30 KB[39m
+[32mDTS[39m [1mdist/brain-self-audit.d.ts                      [22m[32m538.00 B[39m
+[32mDTS[39m [1mdist/official-fee-reference-store-postgres.d.ts [22m[32m765.00 B[39m
+[32mDTS[39m [1mdist/official-fee-reference-store.d.ts          [22m[32m3.04 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                                 [22m[32m32.58 KB[39m
+::endgroup::
+::group::@markorbit/lite-service:build
+cache miss, executing a7e95ac70a765e0a
+
+> @markorbit/lite-service@0.1.0 build /home/runner/work/markorbit/markorbit/services/lite
+> tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/preference-feedback.ts src/trademark-asset.ts src/trademark-asset-view.ts src/trademark-asset-portfolio.ts src/trademark-asset-attention.ts src/trademark-asset-management-signal.ts src/trademark-asset-management-recommendation.ts src/trademark-asset-management-handoff.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-refresh.ts src/trademark-service-work-package.ts src/trademark-service-requirement-composition.ts src/trademark-service-readiness.ts src/trademark-service-candidate-matching.ts src/trademark-service-commercial-preparation.ts src/trademark-service-execution-readiness.ts src/trademark-asset-http.ts src/http.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/candidate-qualification.ts, src/content-preparation.ts, src/conversion-analytics.ts, src/feedback.ts, src/http.ts, src/index.ts, src/main.ts, src/preference-feedback.ts, src/prepared-action.ts, src/trademark-asset-ai-guide.ts, src/trademark-asset-attention.ts, src/trademark-asset-commerce.ts, src/trademark-asset-http.ts, src/trademark-asset-management-handoff.ts, src/trademark-asset-management-recommendation.ts, src/trademark-asset-management-signal.ts, src/trademark-asset-marketplace-reference.ts, src/trademark-asset-portfolio.ts, src/trademark-asset-refresh.ts, src/trademark-asset-view.ts, src/trademark-asset.ts, src/trademark-service-candidate-matching.ts, src/trademark-service-commercial-preparation.ts, src/trademark-service-execution-readiness.ts, src/trademark-service-readiness.ts, src/trademark-service-requirement-composition.ts, src/trademark-service-work-package.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/trademark-service-readiness.js               [22m[32m119.00 B[39m
+[32mESM[39m [1mdist/trademark-service-requirement-composition.js [22m[32m145.00 B[39m
+[32mESM[39m [1mdist/trademark-service-work-package.js            [22m[32m231.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-marketplace-reference.js     [22m[32m13.48 KB[39m
+[32mESM[39m [1mdist/trademark-asset-portfolio.js                 [22m[32m147.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-refresh.js                   [22m[32m187.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-view.js                      [22m[32m175.00 B[39m
+[32mESM[39m [1mdist/trademark-asset.js                           [22m[32m187.00 B[39m
+[32mESM[39m [1mdist/trademark-service-candidate-matching.js      [22m[32m119.00 B[39m
+[32mESM[39m [1mdist/trademark-service-commercial-preparation.js  [22m[32m141.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-readiness.js     [22m[32m313.00 B[39m
+[32mESM[39m [1mdist/prepared-action.js                           [22m[32m269.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-ai-guide.js                  [22m[32m9.40 KB[39m
+[32mESM[39m [1mdist/trademark-asset-attention.js                 [22m[32m187.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-commerce.js                  [22m[32m189.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-http.js                      [22m[32m327.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-management-handoff.js        [22m[32m221.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-management-recommendation.js [22m[32m251.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-management-signal.js         [22m[32m303.00 B[39m
+[32mESM[39m [1mdist/candidate-qualification.js                   [22m[32m205.00 B[39m
+[32mESM[39m [1mdist/content-preparation.js                       [22m[32m249.00 B[39m
+[32mESM[39m [1mdist/conversion-analytics.js                      [22m[32m255.00 B[39m
+[32mESM[39m [1mdist/feedback.js                                  [22m[32m177.00 B[39m
+[32mESM[39m [1mdist/http.js                                      [22m[32m289.00 B[39m
+[32mESM[39m [1mdist/index.js                                     [22m[32m24.08 KB[39m
+[32mESM[39m [1mdist/chunk-CSZR3O6Y.js                            [22m[32m5.57 KB[39m
+[32mESM[39m [1mdist/chunk-5J35PBXS.js                            [22m[32m6.73 KB[39m
+[32mESM[39m [1mdist/chunk-4OA7AO6O.js                            [22m[32m5.63 KB[39m
+[32mESM[39m [1mdist/chunk-TRXMC5OJ.js                            [22m[32m6.59 KB[39m
+[32mESM[39m [1mdist/chunk-VLWW7OG3.js                            [22m[32m4.39 KB[39m
+[32mESM[39m [1mdist/main.js                                      [22m[32m18.16 KB[39m
+[32mESM[39m [1mdist/chunk-IMCVKPEZ.js                            [22m[32m16.17 KB[39m
+[32mESM[39m [1mdist/chunk-AHN554YT.js                            [22m[32m11.98 KB[39m
+[32mESM[39m [1mdist/chunk-IVXPMVVM.js                            [22m[32m65.02 KB[39m
+[32mESM[39m [1mdist/chunk-665I7DVO.js                            [22m[32m16.01 KB[39m
+[32mESM[39m [1mdist/chunk-476W3FKA.js                            [22m[32m11.31 KB[39m
+[32mESM[39m [1mdist/chunk-YVYSGIRW.js                            [22m[32m6.40 KB[39m
+[32mESM[39m [1mdist/chunk-PWG4Y6CU.js                            [22m[32m15.11 KB[39m
+[32mESM[39m [1mdist/chunk-QDJT5S3L.js                            [22m[32m6.05 KB[39m
+[32mESM[39m [1mdist/chunk-NBJ633AB.js                            [22m[32m24.52 KB[39m
+[32mESM[39m [1mdist/chunk-YUDCS2VE.js                            [22m[32m5.12 KB[39m
+[32mESM[39m [1mdist/chunk-FSWWLTSZ.js                            [22m[32m7.43 KB[39m
+[32mESM[39m [1mdist/chunk-6UIXTGMG.js                            [22m[32m9.01 KB[39m
+[32mESM[39m [1mdist/chunk-MI6PL3RG.js                            [22m[32m30.64 KB[39m
+[32mESM[39m [1mdist/chunk-2S3NTET4.js                            [22m[32m60.03 KB[39m
+[32mESM[39m [1mdist/chunk-BPGFX444.js                            [22m[32m29.15 KB[39m
+[32mESM[39m [1mdist/chunk-PI4RAUDA.js                            [22m[32m18.65 KB[39m
+[32mESM[39m [1mdist/chunk-TPZRM4BP.js                            [22m[32m9.15 KB[39m
+[32mESM[39m [1mdist/chunk-SXNYSS7I.js                            [22m[32m11.87 KB[39m
+[32mESM[39m [1mdist/preference-feedback.js                       [22m[32m241.00 B[39m
+[32mESM[39m [1mdist/chunk-K6VGEMCI.js                            [22m[32m14.08 KB[39m
+[32mESM[39m ⚡️ Build success in 348ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 20125ms
+[32mDTS[39m [1mdist/index.d.ts                                     [22m[32m25.82 KB[39m
+[32mDTS[39m [1mdist/candidate-qualification.d.ts                   [22m[32m4.06 KB[39m
+[32mDTS[39m [1mdist/conversion-analytics.d.ts                      [22m[32m1.01 KB[39m
+[32mDTS[39m [1mdist/feedback.d.ts                                  [22m[32m2.26 KB[39m
+[32mDTS[39m [1mdist/main.d.ts                                      [22m[32m133.00 B[39m
+[32mDTS[39m [1mdist/preference-feedback.d.ts                       [22m[32m2.80 KB[39m
+[32mDTS[39m [1mdist/prepared-action.d.ts                           [22m[32m5.47 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-ai-guide.d.ts                  [22m[32m1.14 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-attention.d.ts                 [22m[32m1.26 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-http.d.ts                      [22m[32m1.18 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-commerce.d.ts                  [22m[32m1.80 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-management-handoff.d.ts        [22m[32m1.51 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-management-recommendation.d.ts [22m[32m1.82 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-management-signal.d.ts         [22m[32m2.56 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-marketplace-reference.d.ts     [22m[32m1.99 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-portfolio.d.ts                 [22m[32m2.08 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-refresh.d.ts                   [22m[32m2.35 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-view.d.ts                      [22m[32m1.58 KB[39m
+[32mDTS[39m [1mdist/trademark-asset.d.ts                           [22m[32m3.03 KB[39m
+[32mDTS[39m [1mdist/trademark-service-candidate-matching.d.ts      [22m[32m2.82 KB[39m
+[32mDTS[39m [1mdist/trademark-service-commercial-preparation.d.ts  [22m[32m2.58 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-readiness.d.ts     [22m[32m1.83 KB[39m
+[32mDTS[39m [1mdist/trademark-service-readiness.d.ts               [22m[32m1.12 KB[39m
+[32mDTS[39m [1mdist/trademark-service-requirement-composition.d.ts [22m[32m1.95 KB[39m
+[32mDTS[39m [1mdist/trademark-service-work-package.d.ts            [22m[32m2.74 KB[39m
+[32mDTS[39m [1mdist/content-preparation.d.ts                       [22m[32m5.89 KB[39m
+[32mDTS[39m [1mdist/http.d.ts                                      [22m[32m652.00 B[39m
+[32mDTS[39m [1mdist/http-ZhtBbf0O.d.ts                             [22m[32m6.31 KB[39m
+[32mDTS[39m [1mdist/daily-orbit-C7M4IQqG.d.ts                      [22m[32m3.59 KB[39m
+::endgroup::
+::group::@markorbit/execution-service:build
+cache miss, executing 5abd86a862c990f0
+
+> @markorbit/execution-service@0.1.0 build /home/runner/work/markorbit/markorbit/services/execution
+> tsup src/index.ts src/main.ts src/reviewed-source-handoff.ts src/reviewed-source-handoff-http.ts src/evidence-provenance-http.ts src/trademark-service-execution.ts src/trademark-service-execution-postgres.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-sandbox-postgres.ts src/trademark-service-execution-connectors.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/trademark-service-execution-observability.ts src/trademark-service-execution-observability-postgres.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/evidence-provenance-http.ts, src/index.ts, src/main.ts, src/reviewed-source-handoff-http.ts, src/reviewed-source-handoff.ts, src/trademark-service-execution-connectors.ts, src/trademark-service-execution-isolation.ts, src/trademark-service-execution-observability-postgres.ts, src/trademark-service-execution-observability.ts, src/trademark-service-execution-postgres.ts, src/trademark-service-execution-readiness-bundle.ts, src/trademark-service-execution-sandbox-postgres.ts, src/trademark-service-execution-sandbox.ts, src/trademark-service-execution-simulation.ts, src/trademark-service-execution.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/trademark-service-execution-observability.js          [22m[32m257.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-postgres.js               [22m[32m173.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-readiness-bundle.js       [22m[32m7.48 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-sandbox-postgres.js       [22m[32m8.00 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-sandbox.js                [22m[32m6.63 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-simulation.js             [22m[32m4.09 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution.js                        [22m[32m777.00 B[39m
+[32mESM[39m [1mdist/evidence-provenance-http.js                           [22m[32m195.00 B[39m
+[32mESM[39m [1mdist/index.js                                              [22m[32m1.49 KB[39m
+[32mESM[39m [1mdist/main.js                                               [22m[32m20.23 KB[39m
+[32mESM[39m [1mdist/chunk-HXSL7GXM.js                                     [22m[32m10.84 KB[39m
+[32mESM[39m [1mdist/chunk-GIPCQJAO.js                                     [22m[32m7.91 KB[39m
+[32mESM[39m [1mdist/chunk-FQANKIFI.js                                     [22m[32m129.78 KB[39m
+[32mESM[39m [1mdist/chunk-CQZFT4MN.js                                     [22m[32m11.54 KB[39m
+[32mESM[39m [1mdist/reviewed-source-handoff-http.js                       [22m[32m253.00 B[39m
+[32mESM[39m [1mdist/chunk-RMVBW36Z.js                                     [22m[32m6.76 KB[39m
+[32mESM[39m [1mdist/reviewed-source-handoff.js                            [22m[32m481.00 B[39m
+[32mESM[39m [1mdist/chunk-BHK6FXMT.js                                     [22m[32m32.08 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-connectors.js             [22m[32m5.04 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-isolation.js              [22m[32m7.36 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-observability-postgres.js [22m[32m11.00 KB[39m
+[32mESM[39m [1mdist/chunk-DGCH3QEU.js                                     [22m[32m2.15 KB[39m
+[32mESM[39m [1mdist/chunk-KBSSUR5B.js                                     [22m[32m19.43 KB[39m
+[32mESM[39m ⚡️ Build success in 285ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 11511ms
+[32mDTS[39m [1mdist/main.d.ts                                               [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/reviewed-source-handoff-http.d.ts                       [22m[32m1.30 KB[39m
+[32mDTS[39m [1mdist/reviewed-source-handoff.d.ts                            [22m[32m7.87 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-isolation.d.ts              [22m[32m1.12 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-observability-postgres.d.ts [22m[32m1.75 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-observability.d.ts          [22m[32m1.84 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-readiness-bundle.d.ts       [22m[32m1.69 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-sandbox-postgres.d.ts       [22m[32m1.42 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-postgres.d.ts               [22m[32m2.38 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-sandbox.d.ts                [22m[32m2.59 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-simulation.d.ts             [22m[32m1.22 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-connectors.d.ts             [22m[32m1.79 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution.d.ts                        [22m[32m5.78 KB[39m
+[32mDTS[39m [1mdist/evidence-provenance-http.d.ts                           [22m[32m1.31 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                                              [22m[32m20.84 KB[39m
+[32mDTS[39m [1mdist/evidence-review-CQarDD5S.d.ts                           [22m[32m19.48 KB[39m
+::endgroup::
+::group::@markorbit/markreg-service:build
+cache miss, executing 4aae9fa963e1fc79
+
+> @markorbit/markreg-service@0.1.0 build /home/runner/work/markorbit/markorbit/services/markreg
+> tsup src/index.ts src/main.ts src/lifecycle-projection.ts src/lifecycle-handoff-http.ts src/lifecycle-surface-http.ts src/recommended-action.ts src/formal-opportunity.ts src/formal-opportunity-http.ts src/knowledge-case-promotion.ts src/knowledge-case-promotion-postgres.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/formal-opportunity-http.ts, src/formal-opportunity.ts, src/index.ts, src/knowledge-case-promotion-postgres.ts, src/knowledge-case-promotion.ts, src/lifecycle-handoff-http.ts, src/lifecycle-projection.ts, src/lifecycle-surface-http.ts, src/main.ts, src/recommended-action.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/main.js                              [22m[32m145.95 KB[39m
+[32mESM[39m [1mdist/formal-opportunity.js                [22m[32m169.00 B[39m
+[32mESM[39m [1mdist/chunk-MW4DS2ZU.js                    [22m[32m22.10 KB[39m
+[32mESM[39m [1mdist/index.js                             [22m[32m2.94 KB[39m
+[32mESM[39m [1mdist/knowledge-case-promotion-postgres.js [22m[32m167.00 B[39m
+[32mESM[39m [1mdist/chunk-DYFBBBEQ.js                    [22m[32m230.67 KB[39m
+[32mESM[39m [1mdist/chunk-EUPJKC24.js                    [22m[32m10.91 KB[39m
+[32mESM[39m [1mdist/knowledge-case-promotion.js          [22m[32m745.00 B[39m
+[32mESM[39m [1mdist/chunk-RCZIITFX.js                    [22m[32m20.13 KB[39m
+[32mESM[39m [1mdist/lifecycle-handoff-http.js            [22m[32m261.00 B[39m
+[32mESM[39m [1mdist/chunk-3AD5NFZ5.js                    [22m[32m4.97 KB[39m
+[32mESM[39m [1mdist/lifecycle-projection.js              [22m[32m315.00 B[39m
+[32mESM[39m [1mdist/lifecycle-surface-http.js            [22m[32m187.00 B[39m
+[32mESM[39m [1mdist/chunk-2KN2GBMQ.js                    [22m[32m7.72 KB[39m
+[32mESM[39m [1mdist/chunk-AXEDCFSC.js                    [22m[32m28.81 KB[39m
+[32mESM[39m [1mdist/chunk-4GK5JAOE.js                    [22m[32m23.42 KB[39m
+[32mESM[39m [1mdist/recommended-action.js                [22m[32m367.00 B[39m
+[32mESM[39m [1mdist/formal-opportunity-http.js           [22m[32m233.00 B[39m
+[32mESM[39m [1mdist/chunk-547V7Q3R.js                    [22m[32m6.32 KB[39m
+[32mESM[39m ⚡️ Build success in 362ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 12721ms
+[32mDTS[39m [1mdist/main.d.ts                              [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/formal-opportunity-http.d.ts           [22m[32m1.23 KB[39m
+[32mDTS[39m [1mdist/formal-opportunity.d.ts                [22m[32m4.67 KB[39m
+[32mDTS[39m [1mdist/knowledge-case-promotion-postgres.d.ts [22m[32m1.46 KB[39m
+[32mDTS[39m [1mdist/knowledge-case-promotion.d.ts          [22m[32m6.67 KB[39m
+[32mDTS[39m [1mdist/lifecycle-handoff-http.d.ts            [22m[32m1.33 KB[39m
+[32mDTS[39m [1mdist/lifecycle-surface-http.d.ts            [22m[32m877.00 B[39m
+[32mDTS[39m [1mdist/recommended-action.d.ts                [22m[32m5.95 KB[39m
+[32mDTS[39m [1mdist/lifecycle-projection.d.ts              [22m[32m4.08 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                             [22m[32m36.75 KB[39m
+[32mDTS[39m [1mdist/formal-matter-DvywcgRu.d.ts            [22m[32m14.04 KB[39m
+::endgroup::
+::group::@markorbit/capability-engine:build
+cache miss, executing b1333fd37d370da3
+
+> @markorbit/capability-engine@0.1.0 build /home/runner/work/markorbit/markorbit/services/capability-engine
+> tsup src/index.ts src/main.ts src/governed-runtime-bootstrap.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/governed-runtime-bootstrap.ts, src/index.ts, src/main.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/governed-runtime-bootstrap.js [22m[32m419.00 B[39m
+[32mESM[39m [1mdist/index.js                      [22m[32m16.31 KB[39m
+[32mESM[39m [1mdist/main.js                       [22m[32m6.59 KB[39m
+[32mESM[39m [1mdist/chunk-5U4YPA6N.js             [22m[32m31.22 KB[39m
+[32mESM[39m [1mdist/chunk-CAKSNF7L.js             [22m[32m385.61 KB[39m
+[32mESM[39m [1mdist/chunk-KKVLWVQG.js             [22m[32m42.93 KB[39m
+[32mESM[39m ⚡️ Build success in 396ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 13280ms
+[32mDTS[39m [1mdist/main.d.ts                       [22m[32m13.00 B[39m
+[32mDTS[39m [1mdist/governed-runtime-bootstrap.d.ts [22m[32m1.99 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                      [22m[32m116.03 KB[39m
+[32mDTS[39m [1mdist/managed-ai-http-Dl_RwsTG.d.ts   [22m[32m10.31 KB[39m
+::endgroup::
+
+ Tasks:    16 successful, 16 total
+Cached:    0 cached, 16 total
+  Time:    38.651s 
+
+build_exit=0
+=== LINT TYPECHECK TEST ===
+
+   • Packages in scope: //, @markorbit/ai, @markorbit/capability-engine, @markorbit/contracts, @markorbit/core-service, @markorbit/events, @markorbit/execution-service, @markorbit/gateway, @markorbit/lite-service, @markorbit/lite-web, @markorbit/markreg-service, @markorbit/markreg-web, @markorbit/mgsn-service, @markorbit/payment-service
+   • Running lint, typecheck, test in 14 packages
+   • Remote caching disabled
+
+::group::@markorbit/contracts:build
+cache hit, replaying logs a07b81e5bf2d9e11
+
+> @markorbit/contracts@0.1.0 build /home/runner/work/markorbit/markorbit/packages/contracts
+> tsup src/index.ts src/order.ts src/commercial.ts src/payment.ts src/provider-execution.ts src/network-participation.ts src/provider-discovery.ts src/provider-responsibility.ts src/provider-selection.ts src/controlled-privacy-handoff.ts src/provider-work-read-model.ts src/evidence-lifecycle.ts src/knowledge-content-export.ts src/knowledge-ready-package-v2.ts src/product-loop.ts src/daily-workspace.ts src/trademark-asset-workspace.ts src/trademark-asset-composition.ts src/trademark-asset-portfolio.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-management.ts src/trademark-service-workbench.ts src/trademark-service-execution.ts src/trademark-service-execution-sandbox.ts src/trademark-service-execution-connector.ts src/trademark-service-execution-isolation.ts src/trademark-service-execution-simulation.ts src/trademark-service-execution-readiness-bundle.ts src/trademark-service-execution-observability.ts src/daily-source.ts src/data-engine.ts src/data-engine-discovery.ts src/capability-learning.ts src/capability-runtime.ts src/capability-runtime-execution.ts src/brain.ts src/brain-evidence.ts src/brain-method.ts src/brain-method-activation.ts src/brain-cn-duration-research.ts src/brain-cn-duration-band-classification.ts src/brain-cn-duration-evidence-intake.ts src/brain-method-fallback.ts src/brain-official-fee-method.ts src/brain-confidence.ts src/brain-gap.ts src/brain-build.ts src/managed-ai-execution.ts src/managed-communication.ts src/method-outcome-evidence.ts src/method-improvement.ts src/beta-readiness.ts src/markreg-early-funnel.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/beta-readiness.ts, src/brain-build.ts, src/brain-cn-duration-band-classification.ts, src/brain-cn-duration-evidence-intake.ts, src/brain-cn-duration-research.ts, src/brain-confidence.ts, src/brain-evidence.ts, src/brain-gap.ts, src/brain-method-activation.ts, src/brain-method-fallback.ts, src/brain-method.ts, src/brain-official-fee-method.ts, src/brain.ts, src/capability-learning.ts, src/capability-runtime-execution.ts, src/capability-runtime.ts, src/commercial.ts, src/controlled-privacy-handoff.ts, src/daily-source.ts, src/daily-workspace.ts, src/data-engine-discovery.ts, src/data-engine.ts, src/evidence-lifecycle.ts, src/index.ts, src/knowledge-content-export.ts, src/knowledge-ready-package-v2.ts, src/managed-ai-execution.ts, src/managed-communication.ts, src/markreg-early-funnel.ts, src/method-improvement.ts, src/method-outcome-evidence.ts, src/network-participation.ts, src/order.ts, src/payment.ts, src/product-loop.ts, src/provider-discovery.ts, src/provider-execution.ts, src/provider-responsibility.ts, src/provider-selection.ts, src/provider-work-read-model.ts, src/trademark-asset-ai-guide.ts, src/trademark-asset-commerce.ts, src/trademark-asset-composition.ts, src/trademark-asset-management.ts, src/trademark-asset-marketplace-reference.ts, src/trademark-asset-portfolio.ts, src/trademark-asset-workspace.ts, src/trademark-service-execution-connector.ts, src/trademark-service-execution-isolation.ts, src/trademark-service-execution-observability.ts, src/trademark-service-execution-readiness-bundle.ts, src/trademark-service-execution-sandbox.ts, src/trademark-service-execution-simulation.ts, src/trademark-service-execution.ts, src/trademark-service-workbench.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/trademark-service-execution-isolation.js        [22m[32m693.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-observability.js    [22m[32m710.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-sandbox.js          [22m[32m1.31 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-simulation.js       [22m[32m1.08 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution.js                  [22m[32m984.00 B[39m
+[32mESM[39m [1mdist/trademark-service-workbench.js                  [22m[32m3.04 KB[39m
+[32mESM[39m [1mdist/trademark-asset-ai-guide.js                     [22m[32m1.13 KB[39m
+[32mESM[39m [1mdist/trademark-asset-commerce.js                     [22m[32m984.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-composition.js                  [22m[32m921.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-management.js                   [22m[32m2.66 KB[39m
+[32mESM[39m [1mdist/trademark-asset-marketplace-reference.js        [22m[32m850.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-portfolio.js                    [22m[32m624.00 B[39m
+[32mESM[39m [1mdist/trademark-asset-workspace.js                    [22m[32m3.66 KB[39m
+[32mESM[39m [1mdist/trademark-service-execution-readiness-bundle.js [22m[32m504.00 B[39m
+[32mESM[39m [1mdist/trademark-service-execution-connector.js        [22m[32m814.00 B[39m
+[32mESM[39m [1mdist/order.js                                        [22m[32m2.88 KB[39m
+[32mESM[39m [1mdist/payment.js                                      [22m[32m4.05 KB[39m
+[32mESM[39m [1mdist/product-loop.js                                 [22m[32m3.12 KB[39m
+[32mESM[39m [1mdist/provider-execution.js                           [22m[32m3.41 KB[39m
+[32mESM[39m [1mdist/provider-responsibility.js                      [22m[32m8.77 KB[39m
+[32mESM[39m [1mdist/provider-discovery.js                           [22m[32m8.68 KB[39m
+[32mESM[39m [1mdist/provider-selection.js                           [22m[32m9.21 KB[39m
+[32mESM[39m [1mdist/provider-work-read-model.js                     [22m[32m9.25 KB[39m
+[32mESM[39m [1mdist/knowledge-content-export.js                     [22m[32m9.04 KB[39m
+[32mESM[39m [1mdist/knowledge-ready-package-v2.js                   [22m[32m1.26 KB[39m
+[32mESM[39m [1mdist/managed-ai-execution.js                         [22m[32m17.97 KB[39m
+[32mESM[39m [1mdist/managed-communication.js                        [22m[32m9.05 KB[39m
+[32mESM[39m [1mdist/markreg-early-funnel.js                         [22m[32m21.79 KB[39m
+[32mESM[39m [1mdist/method-improvement.js                           [22m[32m14.14 KB[39m
+[32mESM[39m [1mdist/method-outcome-evidence.js                      [22m[32m10.94 KB[39m
+[32mESM[39m [1mdist/commercial.js                                   [22m[32m613.00 B[39m
+[32mESM[39m [1mdist/chunk-EUY7JLKV.js                               [22m[32m3.25 KB[39m
+[32mESM[39m [1mdist/network-participation.js                        [22m[32m6.89 KB[39m
+[32mESM[39m [1mdist/daily-source.js                                 [22m[32m1.45 KB[39m
+[32mESM[39m [1mdist/daily-workspace.js                              [22m[32m2.45 KB[39m
+[32mESM[39m [1mdist/controlled-privacy-handoff.js                   [22m[32m14.05 KB[39m
+[32mESM[39m [1mdist/data-engine-discovery.js                        [22m[32m10.03 KB[39m
+[32mESM[39m [1mdist/data-engine.js                                  [22m[32m707.00 B[39m
+[32mESM[39m [1mdist/chunk-ADXR43XD.js                               [22m[32m8.57 KB[39m
+[32mESM[39m [1mdist/evidence-lifecycle.js                           [22m[32m2.99 KB[39m
+[32mESM[39m [1mdist/index.js                                        [22m[32m3.97 KB[39m
+[32mESM[39m [1mdist/chunk-BZ2MDUZQ.js                               [22m[32m15.34 KB[39m
+[32mESM[39m [1mdist/chunk-SB54R4OK.js                               [22m[32m9.80 KB[39m
+[32mESM[39m [1mdist/brain-method-activation.js                      [22m[32m11.12 KB[39m
+[32mESM[39m [1mdist/brain-method-fallback.js                        [22m[32m2.26 KB[39m
+[32mESM[39m [1mdist/brain-method.js                                 [22m[32m849.00 B[39m
+[32mESM[39m [1mdist/brain-official-fee-method.js                    [22m[32m9.57 KB[39m
+[32mESM[39m [1mdist/brain.js                                        [22m[32m551.00 B[39m
+[32mESM[39m [1mdist/capability-learning.js                          [22m[32m427.00 B[39m
+[32mESM[39m [1mdist/chunk-7KEIX4VE.js                               [22m[32m1.30 KB[39m
+[32mESM[39m [1mdist/capability-runtime-execution.js                 [22m[32m22.76 KB[39m
+[32mESM[39m [1mdist/capability-runtime.js                           [22m[32m391.00 B[39m
+[32mESM[39m [1mdist/chunk-6LCQSSE6.js                               [22m[32m3.82 KB[39m
+[32mESM[39m [1mdist/beta-readiness.js                               [22m[32m7.42 KB[39m
+[32mESM[39m [1mdist/brain-build.js                                  [22m[32m431.00 B[39m
+[32mESM[39m [1mdist/brain-cn-duration-band-classification.js        [22m[32m1.20 KB[39m
+[32mESM[39m [1mdist/chunk-QZYJHDZX.js                               [22m[32m13.79 KB[39m
+[32mESM[39m [1mdist/brain-cn-duration-evidence-intake.js            [22m[32m5.34 KB[39m
+[32mESM[39m [1mdist/brain-cn-duration-research.js                   [22m[32m961.00 B[39m
+[32mESM[39m [1mdist/chunk-7DNXFD43.js                               [22m[32m25.82 KB[39m
+[32mESM[39m [1mdist/chunk-DL5VNZAY.js                               [22m[32m26.67 KB[39m
+[32mESM[39m [1mdist/brain-confidence.js                             [22m[32m383.00 B[39m
+[32mESM[39m [1mdist/brain-evidence.js                               [22m[32m4.87 KB[39m
+[32mESM[39m [1mdist/chunk-57LRKF34.js                               [22m[32m10.70 KB[39m
+[32mESM[39m [1mdist/brain-gap.js                                    [22m[32m888.00 B[39m
+[32mESM[39m [1mdist/chunk-HP2OBTCN.js                               [22m[32m5.78 KB[39m
+[32mESM[39m ⚡️ Build success in 185ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 6811ms
+[32mDTS[39m [1mdist/beta-readiness.d.ts                               [22m[32m18.49 KB[39m
+[32mDTS[39m [1mdist/brain-build.d.ts                                  [22m[32m2.19 KB[39m
+[32mDTS[39m [1mdist/brain-cn-duration-evidence-intake.d.ts            [22m[32m2.32 KB[39m
+[32mDTS[39m [1mdist/brain-evidence.d.ts                               [22m[32m4.91 KB[39m
+[32mDTS[39m [1mdist/brain-gap.d.ts                                    [22m[32m3.70 KB[39m
+[32mDTS[39m [1mdist/brain-method-activation.d.ts                      [22m[32m2.25 KB[39m
+[32mDTS[39m [1mdist/brain-method-fallback.d.ts                        [22m[32m1.25 KB[39m
+[32mDTS[39m [1mdist/brain-official-fee-method.d.ts                    [22m[32m2.93 KB[39m
+[32mDTS[39m [1mdist/brain.d.ts                                        [22m[32m3.76 KB[39m
+[32mDTS[39m [1mdist/capability-runtime-execution.d.ts                 [22m[32m2.25 KB[39m
+[32mDTS[39m [1mdist/brain-cn-duration-band-classification.d.ts        [22m[32m3.51 KB[39m
+[32mDTS[39m [1mdist/brain-cn-duration-research.d.ts                   [22m[32m4.59 KB[39m
+[32mDTS[39m [1mdist/capability-runtime.d.ts                           [22m[32m7.56 KB[39m
+[32mDTS[39m [1mdist/daily-source.d.ts                                 [22m[32m760.00 B[39m
+[32mDTS[39m [1mdist/daily-workspace.d.ts                              [22m[32m10.63 KB[39m
+[32mDTS[39m [1mdist/data-engine-discovery.d.ts                        [22m[32m5.69 KB[39m
+[32mDTS[39m [1mdist/data-engine.d.ts                                  [22m[32m5.94 KB[39m
+[32mDTS[39m [1mdist/evidence-lifecycle.d.ts                           [22m[32m11.40 KB[39m
+[32mDTS[39m [1mdist/knowledge-content-export.d.ts                     [22m[32m3.50 KB[39m
+[32mDTS[39m [1mdist/managed-ai-execution.d.ts                         [22m[32m6.56 KB[39m
+[32mDTS[39m [1mdist/managed-communication.d.ts                        [22m[32m3.96 KB[39m
+[32mDTS[39m [1mdist/markreg-early-funnel.d.ts                         [22m[32m9.26 KB[39m
+[32mDTS[39m [1mdist/method-improvement.d.ts                           [22m[32m4.27 KB[39m
+[32mDTS[39m [1mdist/brain-method.d.ts                                 [22m[32m7.87 KB[39m
+[32mDTS[39m [1mdist/method-outcome-evidence.d.ts                      [22m[32m3.39 KB[39m
+[32mDTS[39m [1mdist/capability-learning.d.ts                          [22m[32m10.29 KB[39m
+[32mDTS[39m [1mdist/commercial.d.ts                                   [22m[32m4.27 KB[39m
+[32mDTS[39m [1mdist/index.d.ts                                        [22m[32m50.74 KB[39m
+[32mDTS[39m [1mdist/order.d.ts                                        [22m[32m8.47 KB[39m
+[32mDTS[39m [1mdist/knowledge-ready-package-v2.d.ts                   [22m[32m4.40 KB[39m
+[32mDTS[39m [1mdist/controlled-privacy-handoff.d.ts                   [22m[32m31.58 KB[39m
+[32mDTS[39m [1mdist/provider-discovery.d.ts                           [22m[32m22.93 KB[39m
+[32mDTS[39m [1mdist/provider-execution.d.ts                           [22m[32m15.21 KB[39m
+[32mDTS[39m [1mdist/provider-selection.d.ts                           [22m[32m24.68 KB[39m
+[32mDTS[39m [1mdist/network-participation.d.ts                        [22m[32m21.68 KB[39m
+[32mDTS[39m [1mdist/product-loop.d.ts                                 [22m[32m15.86 KB[39m
+[32mDTS[39m [1mdist/payment.d.ts                                      [22m[32m6.93 KB[39m
+[32mDTS[39m [1mdist/provider-responsibility.d.ts                      [22m[32m22.62 KB[39m
+[32mDTS[39m [1mdist/provider-work-read-model.d.ts                     [22m[32m17.52 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-ai-guide.d.ts                     [22m[32m3.26 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-workspace.d.ts                    [22m[32m10.46 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-commerce.d.ts                     [22m[32m3.49 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-composition.d.ts                  [22m[32m3.80 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-management.d.ts                   [22m[32m8.85 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-marketplace-reference.d.ts        [22m[32m3.60 KB[39m
+[32mDTS[39m [1mdist/trademark-asset-portfolio.d.ts                    [22m[32m2.96 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-connector.d.ts        [22m[32m3.74 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution.d.ts                  [22m[32m7.88 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-sandbox.d.ts          [22m[32m4.05 KB[39m
+[32mDTS[39m [1mdist/trademark-service-workbench.d.ts                  [22m[32m9.58 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-isolation.d.ts        [22m[32m3.36 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-observability.d.ts    [22m[32m3.22 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-readiness-bundle.d.ts [22m[32m2.81 KB[39m
+[32mDTS[39m [1mdist/trademark-service-execution-simulation.d.ts       [22m[32m3.57 KB[39m
+[32mDTS[39m [1mdist/brain-confidence.d.ts                             [22m[32m465.00 B[39m
+::endgroup::
+::group::@markorbit/service-kit:typecheck
+cache miss, executing 3e3409f11fe3ce16
+
+> @markorbit/service-kit@0.1.0 typecheck /home/runner/work/markorbit/markorbit/packages/service-kit
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/contracts:typecheck
+cache miss, executing 2a4156dae258ee05
+
+> @markorbit/contracts@0.1.0 typecheck /home/runner/work/markorbit/markorbit/packages/contracts
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/ai:lint
+cache miss, executing 46f321c291154cfe
+
+> @markorbit/ai@0.1.0 lint /home/runner/work/markorbit/markorbit/packages/ai
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/payment-service:lint
+cache miss, executing 2b41fb104f1b73a1
+
+> @markorbit/payment-service@0.1.0 lint /home/runner/work/markorbit/markorbit/services/payment
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/lite-service:lint
+cache miss, executing 188b06702c1af748
+
+> @markorbit/lite-service@0.1.0 lint /home/runner/work/markorbit/markorbit/services/lite
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/core-service:lint
+cache miss, executing a4150ff666ae4c85
+
+> @markorbit/core-service@0.1.0 lint /home/runner/work/markorbit/markorbit/services/core
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/markreg-service:lint
+cache miss, executing 5ac09b0ae379199f
+
+> @markorbit/markreg-service@0.1.0 lint /home/runner/work/markorbit/markorbit/services/markreg
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/ui:build
+cache hit, replaying logs aaeb74c7824df529
+
+> @markorbit/ui@0.1.0 build /home/runner/work/markorbit/markorbit/packages/ui
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m11.89 KB[39m
+[32mESM[39m ⚡️ Build success in 80ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 5070ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m6.56 KB[39m
+::endgroup::
+::group::@markorbit/contracts:test
+cache miss, executing 571b555436bf770c
+
+> @markorbit/contracts@0.1.0 test /home/runner/work/markorbit/markorbit/packages/contracts
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/packages/contracts[39m
+
+ [32m✓[39m tests/provider-execution-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m tests/product-loop-contract.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m tests/markreg-early-funnel.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m tests/brain-method.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-workspace-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m tests/daily-workspace-contract.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/order-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/controlled-privacy-handoff.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m tests/evidence-lifecycle-contract.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m tests/brain-cn-duration-evaluation.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/provider-work-read-model.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/brain-cn-duration-evidence-intake.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 79[2mms[22m[39m
+ [32m✓[39m tests/method-improvement.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/managed-ai-execution-contract.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-execution.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/provider-discovery.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m tests/provider-selection.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m tests/provider-responsibility.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/network-participation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/brain-cn-duration-band-classification.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+ [32m✓[39m tests/capability-learning-contract.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/brain-method-activation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 147[2mms[22m[39m
+ [32m✓[39m tests/brain-cn-duration-research.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/data-engine-discovery-contract.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/contracts.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m tests/method-outcome-evidence.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-workbench.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/brain-method-fallback.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m tests/beta-readiness-contract.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m tests/brain-official-fee-method.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m tests/payment.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-sandbox-contract.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/brain.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m tests/knowledge-content-export-contract.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-contract.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-management.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/order-permissions.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/beta-readiness-conversion-analytics.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-marketplace-reference-contract.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/data-engine-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32m✓[39m tests/brain-evidence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/commercial.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+PHASE3_CORE_REAL_INTAKE_PASS {"intake_version":"CN_FILING_TO_PRELIM_CORE_EVIDENCE_INTAKE_V1","evidence_sha256":"de407eb5e5c0704c7e2817cf8ce67f14c381d1a587fb986a664425d8a3eb411c","evaluation_status":"PASSED","method_lifecycle":"VALIDATED","package_lifecycle":"VALIDATED","dataset_ref_id":"research-dataset_7bdd73d7e4eab9cec0bc04337747f2ea6c1b692f9a79570c4b7ba4fde1faa82d"}
+ [32m✓[39m tests/brain-cn-duration-real-evidence-acceptance.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-commerce-contract.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-auth.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/brain-confidence.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-contract.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-ai-guide-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-composition-contract.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-simulation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-isolation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-observability.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/knowledge-intake-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-portfolio-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-readiness-bundle.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m55 passed[39m[22m[90m (55)[39m
+[2m      Tests [22m [1m[32m319 passed[39m[22m[90m (319)[39m
+[2m   Start at [22m 13:45:57
+[2m   Duration [22m 16.84s[2m (transform 2.71s, setup 0ms, collect 5.99s, tests 1.78s, environment 48ms, prepare 14.78s)[22m
+
+::endgroup::
+::group::@markorbit/execution-service:lint
+cache miss, executing 6f0516d445ff40de
+
+> @markorbit/execution-service@0.1.0 lint /home/runner/work/markorbit/markorbit/services/execution
+> eslint src tests
+
+
+/home/runner/work/markorbit/markorbit/services/execution/tests/provider-return-evidence-postgres.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-unnecessary-type-assertion')
+
+✖ 1 problem (0 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+::endgroup::
+::group::@markorbit/contracts:lint
+cache miss, executing a3a615517f0b34ef
+
+> @markorbit/contracts@0.1.0 lint /home/runner/work/markorbit/markorbit/packages/contracts
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/ui:typecheck
+cache miss, executing 628f3ba1e7fd33dc
+
+> @markorbit/ui@0.1.0 typecheck /home/runner/work/markorbit/markorbit/packages/ui
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/events:lint
+cache miss, executing eb510f83d64de257
+
+> @markorbit/events@0.1.0 lint /home/runner/work/markorbit/markorbit/packages/events
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/service-kit:build
+cache hit, replaying logs c21995aa12e46b5a
+
+> @markorbit/service-kit@0.1.0 build /home/runner/work/markorbit/markorbit/packages/service-kit
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m7.21 KB[39m
+[32mESM[39m ⚡️ Build success in 42ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 3141ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m2.13 KB[39m
+::endgroup::
+::group::@markorbit/persistence:build
+cache hit, replaying logs 2e3ac03d1ebb4f03
+
+> @markorbit/persistence@0.1.0 build /home/runner/work/markorbit/markorbit/packages/persistence
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m13.53 KB[39m
+[32mESM[39m ⚡️ Build success in 72ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 3452ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m3.10 KB[39m
+::endgroup::
+::group::@markorbit/persistence:typecheck
+cache miss, executing f74f7b6ec41a7fb0
+
+> @markorbit/persistence@0.1.0 typecheck /home/runner/work/markorbit/markorbit/packages/persistence
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/markreg-web:lint
+cache miss, executing da670ac49d7f25b9
+
+> @markorbit/markreg-web@0.1.0 lint /home/runner/work/markorbit/markorbit/apps/markreg-web
+> eslint src vite.config.ts
+
+::endgroup::
+::group::@markorbit/lite-web:lint
+cache miss, executing da74481f7d9cbf9f
+
+> @markorbit/lite-web@0.1.0 lint /home/runner/work/markorbit/markorbit/apps/lite-web
+> eslint src tests vite.config.ts playwright.navigation.config.ts playwright.trademark-commerce.config.ts
+
+::endgroup::
+::group::@markorbit/events:test
+cache miss, executing ceb8ebc49474924b
+
+> @markorbit/events@0.1.0 test /home/runner/work/markorbit/markorbit/packages/events
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/packages/events[39m
+
+ [32m✓[39m tests/package.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 13:46:30
+[2m   Duration [22m 822ms[2m (transform 105ms, setup 0ms, collect 86ms, tests 6ms, environment 0ms, prepare 208ms)[22m
+
+::endgroup::
+::group::@markorbit/ai:build
+cache hit, replaying logs 77e835d2f222dcb3
+
+> @markorbit/ai@0.1.0 build /home/runner/work/markorbit/markorbit/packages/ai
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m33.62 KB[39m
+[32mESM[39m ⚡️ Build success in 114ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 8015ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m10.59 KB[39m
+::endgroup::
+::group::@markorbit/events:build
+cache hit, replaying logs fb0c1720ac5ab349
+
+> @markorbit/events@0.1.0 build /home/runner/work/markorbit/markorbit/packages/events
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m277.00 B[39m
+[32mESM[39m ⚡️ Build success in 89ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 7842ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m549.00 B[39m
+::endgroup::
+::group::@markorbit/ai:test
+cache miss, executing 330fbda20145d754
+
+> @markorbit/ai@0.1.0 test /home/runner/work/markorbit/markorbit/packages/ai
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/packages/ai[39m
+
+ [32m✓[39m tests/deepseek.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m tests/managed-executor.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 97[2mms[22m[39m
+ [32m✓[39m tests/provider-registry.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/package.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/provider-policy.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m34 passed[39m[22m[90m (34)[39m
+[2m   Start at [22m 13:46:33
+[2m   Duration [22m 2.34s[2m (transform 687ms, setup 0ms, collect 1.49s, tests 262ms, environment 4ms, prepare 1.42s)[22m
+
+::endgroup::
+::group::@markorbit/mgsn-service:lint
+cache miss, executing 89fc49af242c1a8a
+
+> @markorbit/mgsn-service@0.1.0 lint /home/runner/work/markorbit/markorbit/services/mgsn
+> eslint src tests
+
+
+/home/runner/work/markorbit/markorbit/services/mgsn/tests/provider-return-postgres.test.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-unnecessary-type-assertion')
+
+✖ 1 problem (0 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+::endgroup::
+::group::@markorbit/ai:typecheck
+cache miss, executing c9ca67c9395bcf2d
+
+> @markorbit/ai@0.1.0 typecheck /home/runner/work/markorbit/markorbit/packages/ai
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/gateway:lint
+cache miss, executing 467083d8d8446287
+
+> @markorbit/gateway@0.1.0 lint /home/runner/work/markorbit/markorbit/apps/gateway
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/events:typecheck
+cache miss, executing a06e9339d7dcf44a
+
+> @markorbit/events@0.1.0 typecheck /home/runner/work/markorbit/markorbit/packages/events
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/capability-engine:lint
+cache miss, executing a27edb3b970a8580
+
+> @markorbit/capability-engine@0.1.0 lint /home/runner/work/markorbit/markorbit/services/capability-engine
+> eslint src tests
+
+::endgroup::
+::group::@markorbit/gateway:typecheck
+cache miss, executing 3701a0b37b4c7871
+
+> @markorbit/gateway@0.1.0 typecheck /home/runner/work/markorbit/markorbit/apps/gateway
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/lite-web:test
+cache miss, executing eb25d6e9ca39f3bd
+
+> @markorbit/lite-web@0.1.0 test /home/runner/work/markorbit/markorbit/apps/lite-web
+> vitest run --passWithNoTests
+
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/runner/work/markorbit/markorbit/apps/lite-web[39m
+
+ [32m✓[39m src/features/content-studio/ContentStudio.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1375[2mms[22m[39m
+   [33m[2m✓[22m[39m Content Studio workspace[2m > [22mkeeps old Package and feedback as work facts without overriding the current Draft lineage [33m 350[2mms[22m[39m
+ [32m✓[39m src/features/trademark-assets/TrademarkAssetCommerceProfile.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 3423[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22msaves explicitly and replaces the view with server-returned durable truth [33m 593[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22momits an existing asking price when sale intent changes to not for sale [33m 348[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mkeeps the draft and requires reload after a 409 conflict [33m 586[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mpreserves the draft for a 403 save failure [33m 505[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mpreserves the draft for a 503 save failure [33m 430[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mkeeps the draft and reports current Workspace availability after a 404 save failure [33m 522[2mms[22m[39m
+ [32m✓[39m src/App.test.tsx [2m([22m[2m19 tests[22m[2m)[22m[33m 3623[2mms[22m[39m
+   [33m[2m✓[22m[39m Lite shell navigation truth[2m > [22mresolves every primary navigation click with exactly one active item [33m 1322[2mms[22m[39m
+   [33m[2m✓[22m[39m Lite shell navigation truth[2m > [22mkeeps customers fixture-labelled in every fixture state even with a Workspace [33m 458[2mms[22m[39m
+   [33m[2m✓[22m[39m Lite shell navigation truth[2m > [22mkeeps opportunities fixture-labelled in every fixture state even with a Workspace [33m 382[2mms[22m[39m
+   [33m[2m✓[22m[39m Lite shell navigation truth[2m > [22msynchronizes Work subnavigation with URL and browser history [33m 418[2mms[22m[39m
+ [32m✓[39m src/features/execution-release/ExecutionRelease.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1864[2mms[22m[39m
+   [33m[2m✓[22m[39m Gateway-backed Execution Release workspace[2m > [22mopens detail, exposes blocking UNKNOWN, and restores focus and filters on back [33m 517[2mms[22m[39m
+   [33m[2m✓[22m[39m Gateway-backed Execution Release workspace[2m > [22mpersists evaluate and assignment through the Gateway client and requires explicit rationale [33m 573[2mms[22m[39m
+   [33m[2m✓[22m[39m Gateway-backed Execution Release workspace[2m > [22mreleases through Gateway and renders one task draft receipt plus all 13 false consequences [33m 600[2mms[22m[39m
+ [32m✓[39m src/features/trademark-assets/TrademarkAssetPortfolio.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1087[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetPortfolio[2m > [22mloads the workspace portfolio and opens a read-only composed view [33m 584[2mms[22m[39m
+ [32m✓[39m src/features/trademark-assets/TrademarkAssetWorkspace.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 735[2mms[22m[39m
+   [33m[2m✓[22m[39m TrademarkAssetWorkspace[2m > [22mshows source ownership and the Lite authority boundary without execution controls [33m 467[2mms[22m[39m
+ [32m✓[39m src/features/capability/CapabilityCenter.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 358[2mms[22m[39m
+   [33m[2m✓[22m[39m Lite Capability Center[2m > [22mrenders private authority semantics and dispositions the exact candidate [33m 304[2mms[22m[39m
+ [32m✓[39m src/features/trademark-assets/TrademarkServiceWorkbench.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 505[2mms[22m[39m
+ [32m✓[39m src/AccountEntry.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 812[2mms[22m[39m
+   [33m[2m✓[22m[39m Lite account entry[2m > [22mtakes a new professional from registration through first Workspace into Lite [33m 810[2mms[22m[39m
+ [32m✓[39m src/api/daily-workspace.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+ [32m✓[39m src/api/trademark-assets.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m src/api/capability-invocation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m src/features/document-package/DocumentPackageWorkspace.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 382[2mms[22m[39m
+   [33m[2m✓[22m[39m Document Package workspace[2m > [22mrenders exact ready semantics and complete append-only supersession history read-only [33m 372[2mms[22m[39m
+ [32m✓[39m src/api/daily-workspace-snapshot.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/features/today/daily-workspace-primary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/api/content-studio.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m src/routing/lite-route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/features/workspace.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m18 passed[39m[22m[90m (18)[39m
+[2m      Tests [22m [1m[32m96 passed[39m[22m[90m (96)[39m
+[2m   Start at [22m 13:46:43
+[2m   Duration [22m 19.49s[2m (transform 1.97s, setup 0ms, collect 11.18s, tests 14.46s, environment 15.42s, prepare 5.85s)[22m
+
+::endgroup::
+::group::@markorbit/markreg-web:typecheck
+cache miss, executing d99a182fb25b72cf
+
+> @markorbit/markreg-web@0.1.0 typecheck /home/runner/work/markorbit/markorbit/apps/markreg-web
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/markreg-web:test
+cache miss, executing 25bc19c42a341619
+
+> @markorbit/markreg-web@0.1.0 test /home/runner/work/markorbit/markorbit/apps/markreg-web
+> vitest run --passWithNoTests
+
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/runner/work/markorbit/markorbit/apps/markreg-web[39m
+
+ [32m✓[39m tests/OrderJourney.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1055[2mms[22m[39m
+   [33m[2m✓[22m[39m M3-WP-06 durable Order journey[2m > [22mdrives the explicit confirmation-to-MatterCreated path without financial or filing consequences [33m 688[2mms[22m[39m
+ [32m✓[39m src/WorkspaceHome.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1048[2mms[22m[39m
+   [33m[2m✓[22m[39m MarkReg durable Workspace Home[2m > [22mloads durable Orders and independently discoverable Formal Matters with exact routes [33m 595[2mms[22m[39m
+ [32m✓[39m tests/ConfirmationMatterFlow.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1027[2mms[22m[39m
+   [33m[2m✓[22m[39m Confirmation receipt authority boundary[2m > [22mrenders each prohibited automatic consequence exactly once with a visible No value [33m 570[2mms[22m[39m
+   [33m[2m✓[22m[39m Confirmation receipt authority boundary[2m > [22msaves using the displayed optimistic version and reports the winning version [33m 313[2mms[22m[39m
+ [32m✓[39m tests/App.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 5952[2mms[22m[39m
+   [33m[2m✓[22m[39m guided intake[2m > [22menters the Gateway-backed Documents and Instructions journey and reaches its lock receipt [33m 1579[2mms[22m[39m
+   [33m[2m✓[22m[39m guided intake[2m > [22mvalidates required fields and preserves answers when moving back [33m 633[2mms[22m[39m
+   [33m[2m✓[22m[39m guided intake[2m > [22mcoalesces duplicate submit clicks and renders fixture output without trace [33m 1621[2mms[22m[39m
+   [33m[2m✓[22m[39m guided intake[2m > [22mreuses a key for retry and creates a new key after an edit [33m 1830[2mms[22m[39m
+ [32m✓[39m tests/FilingAuthorization.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1634[2mms[22m[39m
+   [33m[2m✓[22m[39m Gateway-backed Filing Authorization application[2m > [22mshows exact immutable scope with every acknowledgement initially unchecked and confirm disabled [33m 587[2mms[22m[39m
+   [33m[2m✓[22m[39m Gateway-backed Filing Authorization application[2m > [22mactively acknowledges through the Gateway client and renders the AUTHORIZED receipt with all false consequences [33m 903[2mms[22m[39m
+ [32m✓[39m src/routing/GovernedRouteEntry.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 735[2mms[22m[39m
+   [33m[2m✓[22m[39m MarkReg governed direct entry[2m > [22mfocuses recovery and retries the same identity after downstream failure [33m 429[2mms[22m[39m
+ [32m✓[39m tests/api.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+ [32m✓[39m src/FormalMatterWorkspace.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 1004[2mms[22m[39m
+   [33m[2m✓[22m[39m FormalMatterWorkspace[2m > [22mturns durable Formal Matter truth into a customer workspace without fabricating authority [33m 896[2mms[22m[39m
+ [32m✓[39m tests/LifecyclePanel.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 534[2mms[22m[39m
+ [32m✓[39m tests/order-api.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/AccountEntry.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 572[2mms[22m[39m
+   [33m[2m✓[22m[39m MarkReg account entry[2m > [22mtakes a new customer from registration through first Workspace into the product [33m 568[2mms[22m[39m
+ [32m✓[39m tests/DocumentsInstructionsWorkspace.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 796[2mms[22m[39m
+   [33m[2m✓[22m[39m Documents and Instructions workspace[2m > [22mdistinguishes document states and exposes named semantic regions [33m 341[2mms[22m[39m
+   [33m[2m✓[22m[39m Documents and Instructions workspace[2m > [22mleaves every acknowledgement unselected and disables locking [33m 411[2mms[22m[39m
+ [32m✓[39m src/routing/markreg-route.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32m✓[39m src/api/formal-matter.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m14 passed[39m[22m[90m (14)[39m
+[2m      Tests [22m [1m[32m58 passed[39m[22m[90m (58)[39m
+[2m   Start at [22m 13:46:47
+[2m   Duration [22m 22.64s[2m (transform 1.84s, setup 13.53s, collect 5.37s, tests 14.49s, environment 20.98s, prepare 3.96s)[22m
+
+::endgroup::
+::group::@markorbit/lite-web:typecheck
+cache miss, executing 916f08ff24791add
+
+> @markorbit/lite-web@0.1.0 typecheck /home/runner/work/markorbit/markorbit/apps/lite-web
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/payment-service:test
+cache miss, executing 02c6f77374e7461b
+
+> @markorbit/payment-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/payment
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/payment[39m
+
+ [32m✓[39m tests/payment-lifecycle.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/stripe-provider.sandbox.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [32m✓[39m tests/payment-lifecycle-http.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/stripe-provider.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 146[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/payment-lifecycle-postgres.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/payment-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m tests/payment-service.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+ [32m✓[39m tests/payment-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/payment-admin-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32m✓[39m tests/payment-runtime.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (10)[39m
+[2m      Tests [22m [1m[32m32 passed[39m[22m[2m | [22m[33m4 skipped[39m[90m (36)[39m
+[2m   Start at [22m 13:47:24
+[2m   Duration [22m 6.52s[2m (transform 1.45s, setup 0ms, collect 3.75s, tests 546ms, environment 13ms, prepare 4.55s)[22m
+
+::endgroup::
+::group::@markorbit/lite-service:test
+cache miss, executing 7ba015bd7dfc9432
+
+> @markorbit/lite-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/lite
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/lite[39m
+
+ [2m[90m↓[39m[22m tests/candidate-qualification-postgres.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-asset-commerce-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/content-studio-postgres.test.ts [2m([22m[2m21 tests[22m[2m | [22m[33m21 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/prepared-action-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/content-preparation-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/product-loop-feedback-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/daily-orbit.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/conversion-analytics-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/content-kit-postgres.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-service-work-package-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/visual-bridge-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m tests/trademark-service-readiness.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 88[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-management-signal.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/trademark-asset-refresh-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-asset-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-asset-marketplace-reference-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/preference-target.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/trademark-asset-portfolio-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-asset-management-disposition-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [32m✓[39m tests/content-studio.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/preference-feedback-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m tests/content-kit.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/preference-visual-target.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-ai-guide.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-readiness.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 79[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/daily-signal-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [32m✓[39m tests/trademark-service-candidate-matching.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-portfolio.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-commercial-preparation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 62[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-requirement-composition.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-view.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/daily-orbit-postgres.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [32m✓[39m tests/opportunity-candidate-http.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 174[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-management-recommendation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-management-handoff.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-composition-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-commerce-http.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m tests/preference-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/daily-workspace-snapshot.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-attention.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/daily-signal.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m tests/daily-workspace-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m tests/visual-bridge.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-refresh.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-management-disposition.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-refresh-authority.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-refresh-ledger-read.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 17[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m29 passed[39m[22m[2m | [22m[33m18 skipped[39m[90m (47)[39m
+[2m      Tests [22m [1m[32m161 passed[39m[22m[2m | [22m[33m92 skipped[39m[90m (253)[39m
+[2m   Start at [22m 13:47:10
+[2m   Duration [22m 20.60s[2m (transform 3.45s, setup 0ms, collect 10.33s, tests 1.51s, environment 79ms, prepare 17.05s)[22m
+
+::endgroup::
+::group::@markorbit/core-service:test
+cache miss, executing 43a6e10be2707454
+
+> @markorbit/core-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/core
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/core[39m
+
+ [2m[90m↓[39m[22m tests/method-improvement-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/knowledge-v2-delivery-postgres.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [32m✓[39m tests/method-improvement-candidate.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 147[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/method-outcome-report-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/brain-asset-registry-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/knowledge-v2-delivery-http.test.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 629[2mms[22m[39m
+ [32m✓[39m tests/method-improvement.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+ [32m✓[39m tests/identity-postgres.test.ts [2m([22m[2m43 tests[22m[2m | [22m[33m42 skipped[39m[2m)[22m[32m 22[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/knowledge-intake-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/method-outcome-evidence-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/knowledge-content-http.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 863[2mms[22m[39m
+ [32m✓[39m tests/brain-gap-registry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 178[2mms[22m[39m
+ [32m✓[39m tests/official-fee-reference-store.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 141[2mms[22m[39m
+ [32m✓[39m tests/brain-build-self-audit-observation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/official-fee-reference-store-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/official-fee-phase2-final-acceptance.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 157[2mms[22m[39m
+ [32m✓[39m tests/brain-self-audit.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 122[2mms[22m[39m
+ [32m✓[39m tests/knowledge-intake-http.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 429[2mms[22m[39m
+ [32m✓[39m tests/knowledge-daily-source-http.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 258[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/account-access-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/brain-evidence-resolver.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+ [32m✓[39m tests/brain-confidence-engine.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/method-improvement-http.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m tests/brain-asset-registry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/brain-build-registry-admission.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 180[2mms[22m[39m
+ [32m✓[39m tests/method-outcome-evidence-http.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 144[2mms[22m[39m
+ [32m✓[39m tests/brain-build-runtime.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 155[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/session-postgres.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [32m✓[39m tests/auth.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m tests/account-access.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 2785[2mms[22m[39m
+   [33m[2m✓[22m[39m real account access[2m > [22mhashes passwords with scrypt and never embeds the plaintext password [33m 859[2mms[22m[39m
+   [33m[2m✓[22m[39m real account access[2m > [22mcreates a PROFESSIONAL account [33m 343[2mms[22m[39m
+   [33m[2m✓[22m[39m real account access[2m > [22mrejects duplicate normalized email registration [33m 606[2mms[22m[39m
+   [33m[2m✓[22m[39m real account access[2m > [22mlogs in by normalized email and issues a fresh session [33m 593[2mms[22m[39m
+ [32m✓[39m tests/method-outcome-evidence.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/account-onboarding-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m tests/account-onboarding.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m tests/knowledge-product-loop-source-http.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 230[2mms[22m[39m
+ [32m✓[39m tests/method-outcome-report.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/identity.test.ts [2m([22m[2m103 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m tests/method-outcome-report-http.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/official-fee-brain-method-integration.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-account.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m tests/brain-gap-identity.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m tests/session-memory-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m tests/identity-memory-contract.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m33 passed[39m[22m[2m | [22m[33m10 skipped[39m[90m (43)[39m
+[2m      Tests [22m [1m[32m308 passed[39m[22m[2m | [22m[33m92 skipped[39m[90m (400)[39m
+[2m   Start at [22m 13:47:11
+[2m   Duration [22m 21.27s[2m (transform 3.16s, setup 0ms, collect 11.00s, tests 7.61s, environment 38ms, prepare 16.04s)[22m
+
+::endgroup::
+::group::@markorbit/gateway:test
+cache miss, executing dc7ce306322ccf33
+
+> @markorbit/gateway@0.1.0 pretest /home/runner/work/markorbit/markorbit/apps/gateway
+> pnpm --filter @markorbit/events build
+
+
+> @markorbit/events@0.1.0 build /home/runner/work/markorbit/markorbit/packages/events
+> tsup src/index.ts --format esm --dts --clean
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2022
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m277.00 B[39m
+[32mESM[39m ⚡️ Build success in 70ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 4391ms
+[32mDTS[39m [1mdist/index.d.ts [22m[32m549.00 B[39m
+
+> @markorbit/gateway@0.1.0 test /home/runner/work/markorbit/markorbit/apps/gateway
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/apps/gateway[39m
+
+ [32m✓[39m tests/filing-authorization-execution-release.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 1619[2mms[22m[39m
+ [32m✓[39m tests/capability-http.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m tests/document-package-instruction-ledger.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1851[2mms[22m[39m
+   [33m[2m✓[22m[39m Gateway Document Package vertical slice[2m > [22mcreates, gets and lists a package with server-derived requirements [33m 457[2mms[22m[39m
+ [32m✓[39m tests/vertical-slice.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 1644[2mms[22m[39m
+ [32m✓[39m tests/markreg-early-funnel-http.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m tests/account-access-http.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m tests/data-engine-http.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m tests/product-loop-daily-workspace-http.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32m✓[39m tests/product-loop-http.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32m✓[39m tests/customer-confirmation-matter-draft.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 830[2mms[22m[39m
+ [32m✓[39m tests/opportunity-candidate-http.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/data-engine-primary-cross-repo.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [32m✓[39m tests/data-engine-primary-runtime.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 335[2mms[22m[39m
+ [32m✓[39m tests/content-studio-http.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32m✓[39m tests/mgsn-provider-journey.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 360[2mms[22m[39m
+ [32m✓[39m tests/lifecycle-http.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 502[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-product-admission.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 140[2mms[22m[39m
+ [32m✓[39m tests/commercial-checkout-boundary.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 99[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-commerce-http.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 104[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/data-engine-g1-cross-repo.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-asset-primary-cross-repo.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [32m✓[39m tests/data-engine-discovery-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m tests/payment-http.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 104[2mms[22m[39m
+ [32m✓[39m tests/milestone-scenario-snapshot.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 441[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-account-http.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/data-engine-product-query-contract.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/data-engine-cn-discovery-cross-repo.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [32m✓[39m tests/commercial-admin-markreg-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m tests/trademark-asset-data-engine.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-mgsn-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+ [32m✓[39m tests/professional-review-negative-paths.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 372[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-payment-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/execution-negative-path-matrix.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 545[2mms[22m[39m
+ [32m✓[39m tests/mgsn-outage.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 156[2mms[22m[39m
+ [32m✓[39m tests/product-loop-conversion-analytics-http.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/governed-read-routes.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 380[2mms[22m[39m
+   [33m[2m✓[22m[39m governed direct-link read routes[2m > [22mloads exact Consultation, Recommendation and Quote identities without mutation or latest fallback [33m 378[2mms[22m[39m
+ [32m✓[39m tests/payment-runtime-wiring.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 193[2mms[22m[39m
+ [32m✓[39m tests/markreg-negative-path-matrix.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 729[2mms[22m[39m
+ [32m✓[39m tests/auth-boundary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m36 passed[39m[22m[2m | [22m[33m4 skipped[39m[90m (40)[39m
+[2m      Tests [22m [1m[32m219 passed[39m[22m[2m | [22m[33m16 skipped[39m[90m (235)[39m
+[2m   Start at [22m 13:47:12
+[2m   Duration [22m 24.86s[2m (transform 8.22s, setup 0ms, collect 19.52s, tests 11.62s, environment 38ms, prepare 14.60s)[22m
+
+::endgroup::
+::group::@markorbit/mgsn-service:test
+cache miss, executing 5790f9fce03cd0a3
+
+> @markorbit/mgsn-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/mgsn
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/mgsn[39m
+
+ [2m[90m↓[39m[22m tests/service-package-eligibility-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [32m✓[39m tests/network-participation.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 197[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/allocation-provider-acceptance-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/provider-registry-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/provider-return-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/http-boundary.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 352[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-read.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[2m | [22m[33m4 skipped[39m[90m (8)[39m
+[2m      Tests [22m [1m[32m37 passed[39m[22m[2m | [22m[33m32 skipped[39m[90m (69)[39m
+[2m   Start at [22m 13:47:34
+[2m   Duration [22m 4.24s[2m (transform 1.67s, setup 0ms, collect 4.25s, tests 572ms, environment 11ms, prepare 2.63s)[22m
+
+::endgroup::
+::group::@markorbit/core-service:typecheck
+cache miss, executing e8ab6b412f29cfb8
+
+> @markorbit/core-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/core
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/lite-service:typecheck
+cache miss, executing 5400a1fecab22d52
+
+> @markorbit/lite-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/lite
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/payment-service:typecheck
+cache miss, executing 08ac0741dedbcd46
+
+> @markorbit/payment-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/payment
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/mgsn-service:typecheck
+cache miss, executing 27c00a11d87e3d3f
+
+> @markorbit/mgsn-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/mgsn
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/execution-service:test
+cache miss, executing 1bff18b730bc4537
+
+> @markorbit/execution-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/execution
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/execution[39m
+
+ [2m[90m↓[39m[22m tests/filing-authorization-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/evidence-review-postgres.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [32m✓[39m tests/trademark-service-execution-m15-release-readiness-audit.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/provider-return-evidence-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [32m✓[39m tests/trademark-service-execution.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/professional-review-postgres.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/trademark-service-execution-sandbox-postgres.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [32m✓[39m tests/trademark-service-execution-isolation.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m tests/filing-authorization-auth.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 495[2mms[22m[39m
+ [32m✓[39m tests/filing-authorization.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/trademark-service-execution-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [32m✓[39m tests/professional-review.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 120[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-simulation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-readiness-bundle.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-sandbox.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-connectors.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 129[2mms[22m[39m
+ [32m✓[39m tests/evidence-provenance-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 335[2mms[22m[39m
+ [32m✓[39m tests/capability-observation-source-http.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/milestone-negative-path-matrix.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 120[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/legacy-execution-boundary.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 268[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m15 passed[39m[22m[2m | [22m[33m6 skipped[39m[90m (21)[39m
+[2m      Tests [22m [1m[32m99 passed[39m[22m[2m | [22m[33m49 skipped[39m[90m (148)[39m
+[2m   Start at [22m 13:47:45
+[2m   Duration [22m 10.38s[2m (transform 2.42s, setup 0ms, collect 6.20s, tests 1.87s, environment 27ms, prepare 7.96s)[22m
+
+::endgroup::
+::group::@markorbit/execution-service:typecheck
+cache miss, executing 5732e899f162e289
+
+> @markorbit/execution-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/execution
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/markreg-service:test
+cache miss, executing 614e7124803b945b
+
+> @markorbit/markreg-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/markreg
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/markreg[39m
+
+ [2m[90m↓[39m[22m tests/document-package-postgres.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [32m✓[39m tests/matter-intelligence.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 213[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/order-matter-conversion-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/lifecycle-projection-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/recommended-action-postgres.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/formal-opportunity-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/matter-intelligence-review-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/formal-matter-postgres.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [32m✓[39m tests/order-service.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 170[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/matter-intelligence-read-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/knowledge-case-promotion.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 137[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/matter-intelligence-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/knowledge-case-promotion-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/formal-matter-evidence-read.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/lifecycle-surface-http.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 228[2mms[22m[39m
+ [32m✓[39m tests/matter-intelligence-read.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 456[2mms[22m[39m
+ [32m✓[39m tests/preparation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/order-service-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m tests/commercial-checkout.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/order-postgres.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/commercial-checkout-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/customer-confirmation.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 121[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/customer-confirmation-postgres.test.ts [2m([22m[2m16 tests[22m[2m | [22m[33m16 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/audit-postgres.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [32m✓[39m tests/matter-intelligence-review.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 152[2mms[22m[39m
+ [32m✓[39m tests/matter-flow.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+ [32m✓[39m tests/formal-matter-evidence-read-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 202[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-read.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/formal-matter.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/fail-closed-preparation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/milestone-negative-path-matrix.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m tests/customer-confirmation-memory-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 154[2mms[22m[39m
+ [32m✓[39m tests/matter-draft-memory-contract.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/order-memory-contract.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m20 passed[39m[22m[2m | [22m[33m15 skipped[39m[90m (35)[39m
+[2m      Tests [22m [1m[32m130 passed[39m[22m[2m | [22m[33m110 skipped[39m[90m (240)[39m
+[2m   Start at [22m 13:47:46
+[2m   Duration [22m 16.09s[2m (transform 4.00s, setup 0ms, collect 11.73s, tests 2.26s, environment 38ms, prepare 12.30s)[22m
+
+::endgroup::
+::group::@markorbit/capability-engine:test
+cache miss, executing aecc56019aef6f94
+
+> @markorbit/capability-engine@0.1.0 test /home/runner/work/markorbit/markorbit/services/capability-engine
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/capability-engine[39m
+
+ [32m✓[39m tests/capability-runtime-quality-telemetry.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 270[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/reflection-disposition-profile-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/capability-observation-ledger-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/private-reflection-candidate-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [32m✓[39m tests/cn-duration-band-classification-pilot.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 215[2mms[22m[39m
+ [32m✓[39m tests/uspto-official-fee-resolver-pilot.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 221[2mms[22m[39m
+ [32m✓[39m tests/capability-demand-coverage.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence-v3.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-http.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 237[2mms[22m[39m
+ [32m✓[39m tests/uspto-official-fee-reference-currentness.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 150[2mms[22m[39m
+ [32m✓[39m tests/cn-preliminary-publication-discovery-pilot.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m tests/capability-coverage-gap-evidence.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+ [32m✓[39m tests/cn-duration-analytical-pilot.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence-v2.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 206[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/managed-ai-execution-claim-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/managed-communication-foundation-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/managed-communication-exchange-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/capability-audit-telemetry.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m tests/source-admission-policy-catalog.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/capability-runtime-replay-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [32m✓[39m tests/current-source-admission-evidence-v4.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 160[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence-v5.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/managed-ai-exact-output-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/executable-method-runtime.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/implementation-profile-registry-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/managed-ai-http.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+ [32m✓[39m tests/implementation-profile-registry.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/governed-runtime-bootstrap-postgres.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [32m✓[39m tests/governed-runtime-bootstrap.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/runtime-capability-registry-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [32m✓[39m tests/managed-ai-exact-output.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-replay.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m tests/capability-catalog-integrity.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m tests/managed-ai-v2-outcome-preservation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-foundation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 98[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-exchange.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32m✓[39m tests/source-admission-policy-content-provenance.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/managed-ai-bootstrap.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m tests/capability-observation-source.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-conformance.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 104[2mms[22m[39m
+ [32m✓[39m tests/source-admission-policy-provenance.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/capability-center-http.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-exact-evidence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m tests/runtime-capability-registry.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/runtime-capability-catalog.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m38 passed[39m[22m[2m | [22m[33m11 skipped[39m[90m (49)[39m
+[2m      Tests [22m [1m[32m272 passed[39m[22m[2m | [22m[33m59 skipped[39m[90m (331)[39m
+[2m   Start at [22m 13:47:45
+[2m   Duration [22m 20.81s[2m (transform 4.69s, setup 0ms, collect 13.90s, tests 3.80s, environment 29ms, prepare 15.14s)[22m
+
+::endgroup::
+::group::@markorbit/capability-engine:typecheck
+cache miss, executing 218e70e3bddb87a5
+
+> @markorbit/capability-engine@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/capability-engine
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/markreg-service:typecheck
+cache miss, executing 0a129597d41ef896
+
+> @markorbit/markreg-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/markreg
+> tsc --noEmit
+
+::endgroup::
+
+ Tasks:    48 successful, 48 total
+Cached:    6 cached, 48 total
+  Time:    2m33.515s 
+
+ WARNING  no output files found for task @markorbit/ai#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/capability-engine#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/contracts#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/core-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/events#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/execution-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/gateway#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/lite-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/lite-web#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/markreg-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/markreg-web#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/mgsn-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/payment-service#test. Please check your `outputs` key in `turbo.json`
+validate_exit=0
+=== CONTENT HYGIENE ===
+ ERR_PNPM_NO_SCRIPT  Missing script: content:hygiene
+
+Command "content:hygiene" not found. Did you mean "pnpm run test:e2e"?
+hygiene_exit=1
