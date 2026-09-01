@@ -1,0 +1,53 @@
+name: tmp-461-coverage-contract
+on:
+  push:
+    branches: [tmp/461-coverage-contract]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/461-coverage-contract
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add package subpath and build entry
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.exports['./method-improvement-coverage-gap'] = {
+            types: './dist/method-improvement-coverage-gap.d.ts',
+            import: './dist/method-improvement-coverage-gap.js',
+            default: './dist/method-improvement-coverage-gap.js'
+          };
+          const needle = 'src/method-improvement.ts';
+          const addition = 'src/method-improvement-coverage-gap.ts';
+          if (!pkg.scripts.build.includes(addition)) {
+            pkg.scripts.build = pkg.scripts.build.replace(needle, `${needle} ${addition}`);
+          }
+          fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+      - run: pnpm exec prettier packages/contracts/package.json packages/contracts/src/method-improvement-coverage-gap.ts packages/contracts/tests/method-improvement-coverage-gap.test.ts --write
+      - run: pnpm --filter @markorbit/contracts build
+      - run: pnpm --filter @markorbit/contracts typecheck
+      - run: pnpm --filter @markorbit/contracts lint
+      - run: pnpm --filter @markorbit/contracts exec vitest run tests/method-improvement.test.ts tests/method-improvement-coverage-gap.test.ts
+      - name: Commit normalized blobs
+        run: |
+          git config user.name yoomarks
+          git config user.email lukeluccas6292643@gmail.com
+          git add packages/contracts/package.json packages/contracts/src/method-improvement-coverage-gap.ts packages/contracts/tests/method-improvement-coverage-gap.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m 'tmp: normalize Coverage Gap contract'
+            git push origin HEAD:tmp/461-coverage-contract
+          fi
