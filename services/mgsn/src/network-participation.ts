@@ -39,7 +39,8 @@ export type NetworkParticipationErrorCode =
   | 'STALE_PARTICIPATION'
   | 'STALE_VISIBILITY_POLICY'
   | 'IDEMPOTENCY_CONFLICT'
-  | 'AUTHORITY_UNAVAILABLE';
+  | 'AUTHORITY_UNAVAILABLE'
+  | 'PERSISTENCE_UNAVAILABLE';
 
 export class NetworkParticipationError extends Error {
   constructor(
@@ -114,7 +115,9 @@ export interface NetworkParticipationRepository {
     scopeKey: string,
     idempotencyKey: string
   ): Promise<NetworkParticipationReplayRecord | undefined>;
-  commit(mutation: NetworkParticipationCommit): Promise<void>;
+  commit(
+    mutation: NetworkParticipationCommit
+  ): Promise<NetworkParticipationReplayRecord | undefined>;
   listParticipationHistory(
     networkParticipationId: NetworkParticipationId
   ): Promise<NetworkParticipationVersionRecord[]>;
@@ -178,8 +181,25 @@ export class InMemoryNetworkParticipationRepository implements NetworkParticipat
   }
 
   // Deliberately contains no await: the complete binding CAS and append execute in one JS turn.
-  commit(mutation: NetworkParticipationCommit): Promise<void> {
+  commit(
+    mutation: NetworkParticipationCommit
+  ): Promise<NetworkParticipationReplayRecord | undefined> {
     const key = bindingKey(mutation.workspaceId, mutation.providerId);
+    const committedReplay = this.replays.get(
+      replayKey(mutation.replay.scopeKey, mutation.replay.idempotencyKey)
+    );
+    if (committedReplay) {
+      if (
+        committedReplay.fingerprint !== mutation.replay.fingerprint ||
+        committedReplay.commandType !== mutation.replay.commandType
+      )
+        throw new NetworkParticipationError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key has a different trusted context or command payload.',
+          409
+        );
+      return Promise.resolve(copy(committedReplay));
+    }
     const currentId = this.currentByBinding.get(key) ?? null;
     const current = currentId ? this.participationHistory.get(currentId)?.at(-1) : undefined;
     const currentPolicy = currentId ? this.policyHistory.get(currentId)?.at(-1) : undefined;
@@ -198,13 +218,6 @@ export class InMemoryNetworkParticipationRepository implements NetworkParticipat
         'Visibility Policy changed; reload the exact latest version.',
         409
       );
-    if (this.replays.has(replayKey(mutation.replay.scopeKey, mutation.replay.idempotencyKey)))
-      throw new NetworkParticipationError(
-        'IDEMPOTENCY_CONFLICT',
-        'Idempotency key was committed concurrently.',
-        409
-      );
-
     const participationVersions =
       this.participationHistory.get(mutation.participation.networkParticipationId) ?? [];
     const previousParticipation = participationVersions.at(-1);
@@ -254,7 +267,7 @@ export class InMemoryNetworkParticipationRepository implements NetworkParticipat
     );
     const auditHistory = this.audits.get(mutation.audit.networkParticipationId) ?? [];
     this.audits.set(mutation.audit.networkParticipationId, [...auditHistory, copy(mutation.audit)]);
-    return Promise.resolve();
+    return Promise.resolve(undefined);
   }
 
   listParticipationHistory(networkParticipationId: NetworkParticipationId) {
@@ -325,7 +338,7 @@ function normalizedGrant(grant: NetworkVisibilityGrantV1): NetworkVisibilityGran
       422
     );
   const allowedFields = new Set<string>(networkVisibilityFieldsByDataClass[grant.dataClass]);
-  if (!hasItems(grant.fields))
+  if (!hasItems(grant.fields) || grant.fields.some((field) => typeof field !== 'string'))
     throw new NetworkParticipationError(
       'INVALID_INPUT',
       'Each grant requires explicit fields.',
@@ -342,6 +355,16 @@ function normalizedGrant(grant: NetworkVisibilityGrantV1): NetworkVisibilityGran
     throw new NetworkParticipationError(
       'INVALID_INPUT',
       'Grant purpose is not authorized by V1.',
+      422
+    );
+  if (
+    !Array.isArray(grant.authorityReferences) ||
+    !grant.audience ||
+    typeof grant.audience !== 'object'
+  )
+    throw new NetworkParticipationError(
+      'INVALID_INPUT',
+      'Each grant requires an explicit audience and authority references.',
       422
     );
   const authorityReferences = [
@@ -537,6 +560,7 @@ export class NetworkParticipationService {
     );
     const reason = cleanText(command.reason, 'reason', 1000);
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 200);
+    const correlationId = cleanText(command.correlationId, 'correlationId', 200) as MarkOrbitId;
     const scopeKey = commandScope(workspaceId, command.providerId);
     const requestFingerprint = fingerprint({
       commandType: 'OPT_IN',
@@ -545,7 +569,7 @@ export class NetworkParticipationService {
       providerId: command.providerId,
       authorizationReference,
       reason,
-      correlationId: command.correlationId
+      correlationId
     });
     const replay = await this.replay(scopeKey, idempotencyKey, requestFingerprint, 'OPT_IN');
     if (replay) return replay;
@@ -578,7 +602,7 @@ export class NetworkParticipationService {
       authorizationReference,
       reason,
       actorId,
-      correlationId: command.correlationId,
+      correlationId,
       occurredAt: at,
       createdAt: at
     };
@@ -592,12 +616,12 @@ export class NetworkParticipationService {
       authorizationReference,
       reason,
       actorId,
-      correlationId: command.correlationId,
+      correlationId,
       updatedAt: at,
       createdAt: at
     };
     const response = snapshot(participation, policy, at);
-    await this.repository.commit({
+    const committedReplay = await this.repository.commit({
       workspaceId,
       providerId: command.providerId,
       expectedCurrentParticipationId: current?.networkParticipationId ?? null,
@@ -628,10 +652,10 @@ export class NetworkParticipationService {
         newVisibilityPolicyVersion: 1,
         affectedDataClasses: [],
         occurredAt: at,
-        correlationId: command.correlationId
+        correlationId
       }
     });
-    return response;
+    return committedReplay?.response ?? response;
   }
 
   async changeState(
@@ -647,6 +671,7 @@ export class NetworkParticipationService {
     );
     const reason = cleanText(command.reason, 'reason', 1000);
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 200);
+    const correlationId = cleanText(command.correlationId, 'correlationId', 200) as MarkOrbitId;
     const expectedParticipationVersion = positiveVersion(
       command.expectedParticipationVersion,
       'expectedParticipationVersion'
@@ -673,7 +698,7 @@ export class NetworkParticipationService {
       expectedVisibilityPolicyVersion,
       authorizationReference,
       reason,
-      correlationId: command.correlationId
+      correlationId
     });
     const replay = await this.replay(scopeKey, idempotencyKey, requestFingerprint, commandType);
     if (replay) return replay;
@@ -716,12 +741,12 @@ export class NetworkParticipationService {
       authorizationReference,
       reason,
       actorId,
-      correlationId: command.correlationId,
+      correlationId,
       occurredAt: at,
       createdAt: at
     };
     const response = snapshot(next, policy, at);
-    await this.repository.commit({
+    const committedReplay = await this.repository.commit({
       workspaceId,
       providerId: command.providerId,
       expectedCurrentParticipationId: current.networkParticipationId,
@@ -745,10 +770,10 @@ export class NetworkParticipationService {
         newVisibilityPolicyVersion: policy.version,
         affectedDataClasses: exposedDataClasses(policy),
         occurredAt: at,
-        correlationId: command.correlationId
+        correlationId
       }
     });
-    return response;
+    return committedReplay?.response ?? response;
   }
 
   async replaceVisibilityPolicy(
@@ -764,6 +789,7 @@ export class NetworkParticipationService {
     );
     const reason = cleanText(command.reason, 'reason', 1000);
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 200);
+    const correlationId = cleanText(command.correlationId, 'correlationId', 200) as MarkOrbitId;
     const expectedParticipationVersion = positiveVersion(
       command.expectedParticipationVersion,
       'expectedParticipationVersion'
@@ -785,7 +811,7 @@ export class NetworkParticipationService {
       replacement,
       authorizationReference,
       reason,
-      correlationId: command.correlationId
+      correlationId
     });
     const replay = await this.replay(
       scopeKey,
@@ -823,12 +849,12 @@ export class NetworkParticipationService {
       authorizationReference,
       reason,
       actorId,
-      correlationId: command.correlationId,
+      correlationId,
       updatedAt: at,
       createdAt: at
     };
     const response = snapshot(current, nextPolicy, at);
-    await this.repository.commit({
+    const committedReplay = await this.repository.commit({
       workspaceId,
       providerId: command.providerId,
       expectedCurrentParticipationId: current.networkParticipationId,
@@ -859,10 +885,10 @@ export class NetworkParticipationService {
         newVisibilityPolicyVersion: nextPolicy.version,
         affectedDataClasses: changedDataClasses(currentPolicy, replacement),
         occurredAt: at,
-        correlationId: command.correlationId
+        correlationId
       }
     });
-    return response;
+    return committedReplay?.response ?? response;
   }
 
   private assertSchema(schemaVersion: unknown): void {

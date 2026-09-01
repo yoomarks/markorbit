@@ -14,6 +14,7 @@ export * from './allocation-provider-acceptance-postgres.js';
 export * from './provider-return.js';
 export * from './provider-return-postgres.js';
 export * from './network-participation.js';
+export * from './network-participation-postgres.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';
