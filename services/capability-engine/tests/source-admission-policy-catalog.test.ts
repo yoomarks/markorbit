@@ -134,7 +134,7 @@ describe('Capability source-admission policy catalog V1', () => {
     const unknownProfile = {
       ...CN_DURATION_ANALYTICAL_IMPLEMENTATION_PROFILE,
       capabilityId: 'analytics.unknown-source',
-      implementationProfileId: 'implementation-profile_unknown-source'
+      implementationProfileId: 'implementation-profile_unknown-source' as const
     };
 
     expect(
