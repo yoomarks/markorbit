@@ -49,7 +49,7 @@ jobs:
           source = source.replace(before, after);
           fs.writeFileSync(path, source);
           NODE
-      - name: Use lint-safe validated allowlists
+      - name: Use lint-safe validated allowlists and control-flow narrowing
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -75,10 +75,22 @@ jobs:
             [
               'allowedNonPositive.includes(executor.assessmentState as ProviderDirectExecutorAssessmentState)',
               'allowedNonPositive.has(executor.assessmentState)'
+            ],
+            [
+              'providerReturnStatus: source.providerReturnStatus as ProviderReturnStatus,',
+              'providerReturnStatus: source.providerReturnStatus,'
+            ],
+            [
+              "if (typeof executor.assessmentState !== 'string' || !POSITIVE_EXECUTOR_STATES.has(executor.assessmentState))\n      invalid('Established executorAttribution requires a positive #375 assessment state.');",
+              "if (\n      executor.assessmentState !== 'DIRECT_FINAL_EXECUTOR_ESTABLISHED' &&\n      executor.assessmentState !== 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED'\n    )\n      invalid('Established executorAttribution requires a positive #375 assessment state.');"
+            ],
+            [
+              "assessmentState: executor.assessmentState as 'DIRECT_FINAL_EXECUTOR_ESTABLISHED' | 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED',",
+              'assessmentState: executor.assessmentState,'
             ]
           ];
           for (const [before, after] of replacements) {
-            if (!source.includes(before)) throw new Error(`expected allowlist fragment not found: ${before}`);
+            if (!source.includes(before)) throw new Error(`expected narrowing fragment not found: ${before}`);
             source = source.replace(before, after);
           }
           fs.writeFileSync(path, source);
