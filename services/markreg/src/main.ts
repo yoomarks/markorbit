@@ -52,7 +52,10 @@ import {
   PostgresMatterIntelligenceReadRepository
 } from './matter-intelligence-read.js';
 import { createMatterIntelligenceReadRoutes } from './matter-intelligence-read-http.js';
-import { FormalMatterEvidenceReadService } from './formal-matter-evidence-read.js';
+import {
+  FormalMatterEvidenceReadService,
+  PostgresFormalMatterDocumentPackageReader
+} from './formal-matter-evidence-read.js';
 import { createFormalMatterEvidenceReadRoutes } from './formal-matter-evidence-read-http.js';
 import {
   MatterIntelligenceReviewService,
@@ -188,7 +191,7 @@ if (fixtureRuntime) {
   const lifecycleRepository = new PostgresLifecycleProjectionRepository(database, pool);
   const formalMatterEvidenceReadService = new FormalMatterEvidenceReadService({
     formalMatters: formalMatterRepository,
-    documentPackages: documentPackageService,
+    documentPackages: new PostgresFormalMatterDocumentPackageReader(pool, documentPackageService),
     lifecycle: lifecycleRepository,
     intelligence: matterIntelligenceReadService
   });
