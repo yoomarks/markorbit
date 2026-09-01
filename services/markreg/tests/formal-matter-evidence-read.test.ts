@@ -274,9 +274,9 @@ describe('Postgres Formal Matter Document Package Reader', () => {
       }
     });
 
-    await expect(reader.listForMatter(principal(otherWorkspaceId), formalMatterId)).resolves.toEqual(
-      []
-    );
+    await expect(
+      reader.listForMatter(principal(otherWorkspaceId), formalMatterId)
+    ).resolves.toEqual([]);
     expect(loaded).toBe(false);
   });
 
