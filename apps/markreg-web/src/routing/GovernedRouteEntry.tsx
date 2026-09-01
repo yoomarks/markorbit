@@ -1,6 +1,7 @@
 import type { FormalMatter } from '@markorbit/contracts';
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { MarkregApiError } from '../api/errors.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
 import { CustomerConfirmationOrderEntry } from '../CustomerConfirmationOrderEntry.js';
@@ -14,11 +15,13 @@ type Loaded = {
   actualVersion: string;
   status?: string;
 };
+type RecoveryReason = 'DURABLE_PREPARATION_NOT_AVAILABLE';
 type State =
   | { kind: 'LOADING' }
   | { kind: 'READY'; loaded: Loaded }
   | { kind: 'VERSION_MISMATCH'; loaded: Loaded }
-  | { kind: 'ERROR'; title: string; retry: boolean };
+  | { kind: 'ERROR'; title: string; retry: boolean; reason?: RecoveryReason };
+const DURABLE_PREPARATION_NOT_AVAILABLE = 'DURABLE_PREPARATION_NOT_AVAILABLE';
 const unwrap = (value: unknown): Record<string, unknown> => {
   const root = value as Record<string, unknown>;
   for (const key of [
@@ -137,15 +140,29 @@ function GenericGovernedRouteEntry({
             : { kind: 'VERSION_MISMATCH', loaded }
         );
       })
-      .catch((error: Error) =>
+      .catch((error: unknown) => {
+        if (
+          parsed.route.view === 'preparation-lock' &&
+          error instanceof MarkregApiError &&
+          error.code === DURABLE_PREPARATION_NOT_AVAILABLE
+        ) {
+          setState({
+            kind: 'ERROR',
+            title: 'Durable Preparation is not available yet',
+            retry: false,
+            reason: 'DURABLE_PREPARATION_NOT_AVAILABLE'
+          });
+          return;
+        }
         setState({
           kind: 'ERROR',
-          title: error.message.includes('not found')
-            ? 'The requested record was not found. No latest record was selected.'
-            : 'The governed record service is unavailable.',
+          title:
+            error instanceof Error && error.message.includes('not found')
+              ? 'The requested record was not found. No latest record was selected.'
+              : 'The governed record service is unavailable.',
           retry: true
-        })
-      );
+        });
+      });
   }, [attempt, client, parsed]);
   useLayoutEffect(() => {
     if (state.kind === 'ERROR') heading.current?.focus();
@@ -156,18 +173,37 @@ function GenericGovernedRouteEntry({
         <LoadingState label="Loading exact governed record" />
       </main>
     );
-  if (parsed.kind !== 'VALID' || state.kind === 'ERROR')
+  if (parsed.kind !== 'VALID' || state.kind === 'ERROR') {
+    const durablePreparationUnavailable =
+      state.kind === 'ERROR' && state.reason === 'DURABLE_PREPARATION_NOT_AVAILABLE';
     return (
       <main aria-labelledby="route-recovery-heading">
         <h1 id="route-recovery-heading" ref={heading} tabIndex={-1}>
           {state.kind === 'ERROR' ? state.title : 'Invalid governed route'}
         </h1>
+        {durablePreparationUnavailable && (
+          <>
+            <Alert tone="warning" title="Durable Preparation boundary">
+              Durable Document Packages are available, but durable Preparation Lock persistence is
+              not yet available in the production MarkReg path. MarkReg will not fall back to the
+              historical in-memory or fixture Preparation implementation.
+            </Alert>
+            <Card>
+              <p>
+                No Preparation Lock was fabricated or treated as empty truth. Opening this governed
+                route did not file or submit an application, create a payment, send a document, or
+                contact a provider or trademark office.
+              </p>
+            </Card>
+          </>
+        )}
         {state.kind === 'ERROR' && state.retry && (
           <Button onClick={() => setAttempt((x) => x + 1)}>Retry same identity and version</Button>
         )}{' '}
         <a href="/">Back to MarkReg workspace</a>
       </main>
     );
+  }
   const loaded = state.loaded;
   const readOnly = ['STALE', 'WITHDRAWN', 'EXPIRED'].includes(loaded.status ?? '');
 
