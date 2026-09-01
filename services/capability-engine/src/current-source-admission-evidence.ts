@@ -9,8 +9,7 @@ const RFC3339 =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 
 export type CapabilitySourceAdmissionEvidenceErrorCode =
-  | 'INVALID_EVALUATED_AT'
-  | 'INVALID_ADMISSION_DECISION';
+  'INVALID_EVALUATED_AT' | 'INVALID_ADMISSION_DECISION';
 
 export class CapabilitySourceAdmissionEvidenceError extends Error {
   constructor(
@@ -57,7 +56,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function sha256(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
 function invalidEvaluatedAt(message: string): never {
@@ -169,15 +170,15 @@ function validDecision(decision: unknown): decision is CapabilitySourceAdmission
   const implementation = record(current?.implementation);
   return Boolean(
     capability &&
-      implementation &&
-      nonEmptyText(capability.runtimeCapabilityDefinitionId) &&
-      positiveInteger(capability.version) &&
-      nonEmptyText(capability.capabilityId) &&
-      nonEmptyText(capability.capabilityVersion) &&
-      nonEmptyText(implementation.implementationProfileId) &&
-      positiveInteger(implementation.version) &&
-      nonEmptyText(implementation.implementationKey) &&
-      implementation.status === 'APPROVED'
+    implementation &&
+    nonEmptyText(capability.runtimeCapabilityDefinitionId) &&
+    positiveInteger(capability.version) &&
+    nonEmptyText(capability.capabilityId) &&
+    nonEmptyText(capability.capabilityVersion) &&
+    nonEmptyText(implementation.implementationProfileId) &&
+    positiveInteger(implementation.version) &&
+    nonEmptyText(implementation.implementationKey) &&
+    implementation.status === 'APPROVED'
   );
 }
 
