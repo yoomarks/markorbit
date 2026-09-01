@@ -15,6 +15,7 @@ import {
 import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
+import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -82,6 +83,11 @@ if (milestoneFixtureMode) {
           )
         }
       : rawManagedAiRuntime;
+  const managedCommunicationRuntime = await createManagedCommunicationRuntimeBindingsV1({
+    environment: process.env,
+    database,
+    query: pool
+  });
   const rawGovernedCapabilityRuntime = createGovernedProductionRuntimeV1({
     definitions: registry,
     implementationProfiles,
@@ -98,6 +104,7 @@ if (milestoneFixtureMode) {
     privateReflectionCandidates,
     reflectionDispositionProfiles,
     ...(managedAiRuntime ?? {}),
+    ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),
     internalServiceSecret
   });
