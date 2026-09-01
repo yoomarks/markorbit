@@ -96,7 +96,10 @@ function productionPolicy(
   } as CapabilitySourceAdmissionPolicyEntryV1;
 }
 
-function expectCatalogError(run: () => unknown, code: CapabilitySourceAdmissionPolicyCatalogError['code']) {
+function expectCatalogError(
+  run: () => unknown,
+  code: CapabilitySourceAdmissionPolicyCatalogError['code']
+) {
   try {
     run();
     throw new Error(`expected Capability source-admission policy catalog error ${code}`);
