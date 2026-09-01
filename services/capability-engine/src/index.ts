@@ -17,6 +17,7 @@ import type {
 } from './managed-communication-exchange.js';
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
 import { createManagedCommunicationRoutesV1 } from './managed-communication-http.js';
+import type { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
 import {
   createMilestoneCapabilityRequestFixtureRoute,
   type InMemoryCapabilityRequestRepository
@@ -53,10 +54,12 @@ export * from './executable-method-runtime.js';
 export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
+export * from './managed-communication-bootstrap.js';
 export * from './managed-communication-exchange.js';
 export * from './managed-communication-exact-evidence.js';
 export * from './managed-communication-foundation.js';
 export * from './managed-communication-http.js';
+export * from './managed-communication-inbound.js';
 export * from './milestone-capability-request-fixture.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
@@ -92,6 +95,7 @@ export interface CapabilityEngineOptions {
   managedAiClaimStore?: ManagedAiExecutionClaimStoreV1;
   managedAiExactOutputStore?: ManagedAiExactOutputStoreV1;
   managedCommunicationExchange?: Pick<ManagedCommunicationExchangeV1, 'send'>;
+  managedCommunicationInbound?: Pick<ManagedCommunicationInboundIngestorV1, 'ingest'>;
   managedCommunicationThreadReader?: ManagedCommunicationThreadEvidenceReaderV1;
   managedCommunicationExactEvidence?: Pick<
     ManagedCommunicationExactEvidenceStoreV1,
@@ -135,28 +139,30 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
   if (options.managedAiExactOutputStore && !options.managedAiExecutor) {
     throw new Error('managedAiExactOutputStore requires managedAiExecutor.');
   }
-  if (
-    (options.managedCommunicationExchange ||
+
+  const managedCommunicationConfigured = Boolean(
+    options.managedCommunicationExchange ||
+      options.managedCommunicationInbound ||
       options.managedCommunicationThreadReader ||
-      options.managedCommunicationExactEvidence) &&
-    !options.internalServiceSecret
-  ) {
+      options.managedCommunicationExactEvidence
+  );
+  if (managedCommunicationConfigured && !options.internalServiceSecret) {
     throw new Error('Managed Communication routes require internalServiceSecret.');
   }
   if (
-    [
-      options.managedCommunicationExchange,
-      options.managedCommunicationThreadReader,
-      options.managedCommunicationExactEvidence
-    ].filter(Boolean).length !== 0 &&
-    [
-      options.managedCommunicationExchange,
-      options.managedCommunicationThreadReader,
-      options.managedCommunicationExactEvidence
-    ].filter(Boolean).length !== 3
+    Boolean(options.managedCommunicationThreadReader) !==
+    Boolean(options.managedCommunicationExactEvidence)
   ) {
     throw new Error(
-      'managedCommunicationExchange, managedCommunicationThreadReader and managedCommunicationExactEvidence must be configured together.'
+      'managedCommunicationThreadReader and managedCommunicationExactEvidence must be configured together.'
+    );
+  }
+  if (
+    options.managedCommunicationExchange &&
+    (!options.managedCommunicationThreadReader || !options.managedCommunicationExactEvidence)
+  ) {
+    throw new Error(
+      'managedCommunicationExchange requires thread reader and exact evidence resolver bindings.'
     );
   }
 
@@ -229,15 +235,21 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         })
       : [];
   const managedCommunicationRoutes =
-    options.managedCommunicationExchange &&
-    options.managedCommunicationThreadReader &&
-    options.managedCommunicationExactEvidence &&
-    options.internalServiceSecret
+    managedCommunicationConfigured && options.internalServiceSecret
       ? createManagedCommunicationRoutesV1({
-          exchange: options.managedCommunicationExchange,
-          threadReader: options.managedCommunicationThreadReader,
-          exactEvidence: options.managedCommunicationExactEvidence,
-          internalServiceSecret: options.internalServiceSecret
+          internalServiceSecret: options.internalServiceSecret,
+          ...(options.managedCommunicationExchange === undefined
+            ? {}
+            : { exchange: options.managedCommunicationExchange }),
+          ...(options.managedCommunicationInbound === undefined
+            ? {}
+            : { inbound: options.managedCommunicationInbound }),
+          ...(options.managedCommunicationThreadReader === undefined
+            ? {}
+            : { threadReader: options.managedCommunicationThreadReader }),
+          ...(options.managedCommunicationExactEvidence === undefined
+            ? {}
+            : { exactEvidence: options.managedCommunicationExactEvidence })
         })
       : [];
 
