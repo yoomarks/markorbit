@@ -60,6 +60,7 @@ export * from './reflection-disposition-profile.js';
 export * from './runtime-capability-catalog.js';
 export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
+export * from './source-admission-policy-catalog.js';
 export * from './uspto-official-fee-resolver-pilot.js';
 
 export const serviceManifest = Object.freeze({
