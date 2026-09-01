@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContentStudioHttpError, createContentStudioClient } from './content-studio.js';
+import { publishPackage } from '../features/content-studio/fixtures.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -51,5 +52,91 @@ describe('Content Studio authenticated Gateway client', () => {
       status: 503,
       code: 'DOWNSTREAM_UNAVAILABLE'
     });
+  });
+
+  it.each([
+    ['USER_REPORTED_PUBLISHED', 'USER_REPORTED_PUBLISHED'],
+    ['USER_REPORTED_USED', 'USER_REPORTED_USED'],
+    ['NOT_USED', 'NOT_USED']
+  ] as const)(
+    'records %s with the canonical authenticated package protocol',
+    async (_, outcome) => {
+      const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.endsWith('/api/auth/session') ? { csrfToken: 'csrf-content-studio' } : { outcome }
+            ),
+            { status: 200 }
+          )
+        )
+      );
+      vi.stubGlobal('fetch', fetch);
+
+      await createContentStudioClient('workspace-1').recordUseFeedback(publishPackage, outcome);
+
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetch.mock.calls[0]).toEqual([
+        'http://127.0.0.1:4000/api/auth/session',
+        { credentials: 'include' }
+      ]);
+      const [url, init] = fetch.mock.calls[1]!;
+      expect(url).toBe(
+        'http://127.0.0.1:4000/api/lite/publish-packages/publish-package_413/use-feedback'
+      );
+      expect(init).toMatchObject({ method: 'POST', credentials: 'include' });
+      const headers = new Headers(init?.headers);
+      expect(headers.get('x-markorbit-workspace-id')).toBe('workspace-1');
+      expect(headers.get('x-markorbit-csrf-token')).toBe('csrf-content-studio');
+      expect(headers.get('idempotency-key')).toBe('feedback:publish-package_413:1');
+      expect(typeof init?.body).toBe('string');
+      expect(JSON.parse(init?.body as string)).toEqual({
+        workspaceId: 'workspace-1',
+        publishPackageVersion: publishPackage.version,
+        expectedPublishPackageFingerprintSha256: publishPackage.publishPackageFingerprintSha256,
+        outcome
+      });
+    }
+  );
+
+  it.each([401, 403, 404, 409, 503])(
+    'preserves feedback mutation error status %s',
+    async (status) => {
+      const fetch = vi.fn<(url: string) => Promise<Response>>((url) =>
+        Promise.resolve(
+          url.endsWith('/api/auth/session')
+            ? new Response(JSON.stringify({ csrfToken: 'csrf' }), { status: 200 })
+            : new Response(JSON.stringify({ code: `FEEDBACK_${status}`, message: 'owner truth' }), {
+                status
+              })
+        )
+      );
+      vi.stubGlobal('fetch', fetch);
+      await expect(
+        createContentStudioClient('workspace-1').recordUseFeedback(
+          publishPackage,
+          'USER_REPORTED_USED'
+        )
+      ).rejects.toEqual(new ContentStudioHttpError(status, `FEEDBACK_${status}`, 'owner truth'));
+    }
+  );
+
+  it('keeps authentication/session failure distinct before mutation', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ code: 'AUTH_REQUIRED', message: 'sign in' }), {
+            status: 401
+          })
+        )
+      )
+    );
+    await expect(
+      createContentStudioClient('workspace-1').recordUseFeedback(
+        publishPackage,
+        'USER_REPORTED_PUBLISHED'
+      )
+    ).rejects.toEqual(new ContentStudioHttpError(401, 'AUTH_REQUIRED', 'sign in'));
   });
 });

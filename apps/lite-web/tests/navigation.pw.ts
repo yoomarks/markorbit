@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { detailFixture, listFixture } from '../src/features/content-studio/fixtures.js';
+import {
+  detailFixture,
+  feedback,
+  listFixture,
+  publishPackage
+} from '../src/features/content-studio/fixtures.js';
 
 test('every primary destination is explicit and truthful on desktop and mobile', async ({
   page
@@ -144,4 +149,71 @@ test('Content Studio keeps owner failure distinct from empty while Guide remains
   await page.goto('/?workspaceId=workspace-browser#guide');
   await expect(page.getByRole('heading', { name: 'Guide', exact: true })).toBeVisible();
   await expect(page.locator('.mo-topbar')).toContainText('Not yet promoted');
+});
+
+test('Content Studio records governed package feedback and refreshes durable detail', async ({
+  page
+}, testInfo) => {
+  let feedbackRecorded = false;
+  let detailReads = 0;
+  let mutationRequest:
+    { headers: Record<string, string>; body: Record<string, unknown>; method: string } | undefined;
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf-browser' } })
+  );
+  await page.route('**/api/lite/content-studio/works/content-opportunity_413', (route) => {
+    detailReads += 1;
+    return route.fulfill({
+      json: detailFixture({
+        feedback: feedbackRecorded ? [{ ...feedback, outcome: 'USER_REPORTED_USED' }] : []
+      })
+    });
+  });
+  await page.route(
+    '**/api/lite/publish-packages/publish-package_413/use-feedback',
+    async (route) => {
+      mutationRequest = {
+        headers: route.request().headers(),
+        body: route.request().postDataJSON() as Record<string, unknown>,
+        method: route.request().method()
+      };
+      feedbackRecorded = true;
+      return route.fulfill({ json: { ...feedback, outcome: 'USER_REPORTED_USED' } });
+    }
+  );
+
+  await page.goto(
+    '/?workspaceId=38383838-3838-4383-8383-383838383838&contentOpportunityId=content-opportunity_413#content'
+  );
+  await expect(page.getByRole('button', { name: 'Used', exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('content-studio-feedback-available.png'),
+    fullPage: true
+  });
+  await page.getByRole('button', { name: 'Used', exact: true }).click();
+
+  await expect(page.getByText('USER_REPORTED_USED')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Published' })).toHaveCount(0);
+  expect(detailReads).toBe(2);
+  expect(mutationRequest).toMatchObject({
+    method: 'POST',
+    body: {
+      workspaceId: '38383838-3838-4383-8383-383838383838',
+      publishPackageVersion: publishPackage.version,
+      expectedPublishPackageFingerprintSha256: publishPackage.publishPackageFingerprintSha256,
+      outcome: 'USER_REPORTED_USED'
+    }
+  });
+  expect(mutationRequest?.headers['x-markorbit-workspace-id']).toBe(
+    '38383838-3838-4383-8383-383838383838'
+  );
+  expect(mutationRequest?.headers['x-markorbit-csrf-token']).toBe('csrf-browser');
+  expect(mutationRequest?.headers['idempotency-key']).toBe('feedback:publish-package_413:1');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('content-studio-feedback.png'),
+    fullPage: true
+  });
 });

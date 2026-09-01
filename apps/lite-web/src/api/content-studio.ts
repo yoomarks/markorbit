@@ -2,6 +2,7 @@ import type {
   ContentDraft,
   ContentOpportunity,
   ContentReviewDecision,
+  ProductLoopFeedbackOutcome,
   ProductLoopUseFeedback,
   PublishPackage
 } from '@markorbit/contracts/product-loop';
@@ -9,6 +10,10 @@ import type {
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
 
 export type ContentStudioWarning = 'VISUAL_HISTORY_NOT_DISCOVERABLE';
+export type ContentStudioFeedbackOutcome = Extract<
+  ProductLoopFeedbackOutcome,
+  'USER_REPORTED_PUBLISHED' | 'USER_REPORTED_USED' | 'NOT_USED'
+>;
 
 export interface ContentStudioWorkSummary {
   contentOpportunity: { id: ContentOpportunity['contentOpportunityId']; version: number };
@@ -62,14 +67,50 @@ export class ContentStudioHttpError extends Error {
 export interface ContentStudioClient {
   list(after?: string): Promise<ContentStudioWorkList>;
   find(contentOpportunityId: string): Promise<ContentStudioWorkDetail>;
+  recordUseFeedback(
+    publishPackage: Readonly<PublishPackage>,
+    outcome: ContentStudioFeedbackOutcome
+  ): Promise<ProductLoopUseFeedback>;
 }
 
-async function request<T>(path: string, workspaceId: string): Promise<T> {
+async function csrfToken(): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
+  const value = (await response.json().catch(() => ({}))) as {
+    csrfToken?: string;
+    code?: string;
+    message?: string;
+  };
+  if (!response.ok || !value.csrfToken)
+    throw new ContentStudioHttpError(
+      response.status || 503,
+      value.code ?? 'AUTHENTICATION_REQUIRED',
+      value.message ?? 'An authenticated session is required.'
+    );
+  return value.csrfToken;
+}
+
+async function request<T>(
+  path: string,
+  workspaceId: string,
+  method: 'GET' | 'POST' = 'GET',
+  body?: unknown,
+  idempotencyKey?: string
+): Promise<T> {
+  const csrf = method === 'GET' ? '' : await csrfToken();
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${path}`, {
+      method,
       credentials: 'include',
-      headers: { 'x-markorbit-workspace-id': workspaceId }
+      headers: {
+        'content-type': 'application/json',
+        'x-markorbit-workspace-id': workspaceId,
+        ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
+        ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {})
+      },
+      ...(method === 'GET'
+        ? {}
+        : { body: JSON.stringify({ workspaceId, ...(body as Record<string, unknown>) }) })
     });
   } catch (cause) {
     throw new ContentStudioHttpError(
@@ -106,6 +147,18 @@ export function createContentStudioClient(workspaceId: string): ContentStudioCli
       request<ContentStudioWorkDetail>(
         `/api/lite/content-studio/works/${encodeURIComponent(contentOpportunityId)}`,
         workspaceId
+      ),
+    recordUseFeedback: (publishPackage, outcome) =>
+      request<ProductLoopUseFeedback>(
+        `/api/lite/publish-packages/${encodeURIComponent(publishPackage.publishPackageId)}/use-feedback`,
+        workspaceId,
+        'POST',
+        {
+          publishPackageVersion: publishPackage.version,
+          expectedPublishPackageFingerprintSha256: publishPackage.publishPackageFingerprintSha256,
+          outcome
+        },
+        `feedback:${publishPackage.publishPackageId}:${publishPackage.version}`
       )
   };
 }
