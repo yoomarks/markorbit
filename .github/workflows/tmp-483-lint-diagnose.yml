@@ -1,0 +1,40 @@
+name: tmp-483-lint-diagnose
+
+on:
+  push:
+    branches:
+      - tmp/483-lint-diagnose
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture contracts lint output
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @markorbit/contracts lint > tmp-483-lint-report.txt 2>&1
+          status=$?
+          echo "exit_code=$status" >> tmp-483-lint-report.txt
+          cat tmp-483-lint-report.txt
+          exit 0
+      - name: Commit report
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tmp-483-lint-report.txt
+          git commit -m "chore: capture #483 lint diagnostics" || exit 0
+          git push
