@@ -126,14 +126,10 @@ describe('USPTO Official Fee Brain Method compiler', () => {
       throw new Error('Expected legacy and governed-successor preparation.');
     }
 
-    expect(prepared.legacyPilot.governanceStatus).toBe(
-      USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE
-    );
+    expect(prepared.legacyPilot.governanceStatus).toBe(USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE);
     expect(prepared.legacyPilot.packageId).toBe(legacy.package.packageId);
     expect(prepared.legacyPilot.packageVersion).toBe(1);
-    expect(prepared.legacyPilot.historicalActivatedAt).toBe(
-      '2026-08-28T00:00:00.000Z'
-    );
+    expect(prepared.legacyPilot.historicalActivatedAt).toBe('2026-08-28T00:00:00.000Z');
     expect(prepared.legacyPilot.activationDecisionId).toBeNull();
     expect(prepared.legacyPilot.activationEvidenceRef).toBeNull();
     expect(prepared.legacyPilot.phase4ResolverAcceptanceIsBrainGovernanceActivation).toBe(false);
@@ -184,9 +180,9 @@ describe('USPTO Official Fee Brain Method compiler', () => {
         rationale: 'Test-only rejection proving fail-closed activation.'
       }
     );
-    expect(() =>
-      activateExecutableMethodPackageV1(prepared.validatedSuccessor, rejected)
-    ).toThrow('A REJECTED activation decision cannot produce ACTIVE state.');
+    expect(() => activateExecutableMethodPackageV1(prepared.validatedSuccessor, rejected)).toThrow(
+      'A REJECTED activation decision cannot produce ACTIVE state.'
+    );
 
     const approved = prepareExecutableMethodPackageActivationDecisionV1(
       prepared.validatedSuccessor,
