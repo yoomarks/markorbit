@@ -65,7 +65,7 @@ function problemCopy(problem: Problem) {
       return {
         title: 'Commercial source changed',
         description:
-          'The confirmed commercial source no longer matches this Order. Reload the governed source before continuing.'
+          'The current confirmed commercial source no longer matches this Order. Reloading this same Order does not make its immutable captured source current. Return to MarkReg and continue from a current confirmed commercial source.'
       };
     case 'VERSION_CONFLICT':
       return {
@@ -276,6 +276,8 @@ export function OrderJourney({
     );
 
   const copy = problem ? problemCopy(problem) : undefined;
+  const canRetryCreate = problem === 'SERVICE_UNAVAILABLE';
+  const canReloadOrder = problem === 'VERSION_CONFLICT' || problem === 'SERVICE_UNAVAILABLE';
   if (!order)
     return (
       <main className="markreg-page" aria-label="Order journey">
@@ -287,7 +289,7 @@ export function OrderJourney({
           <ErrorState
             title={copy.title}
             description={copy.description}
-            onRetry={() => void create()}
+            {...(canRetryCreate ? { onRetry: () => void create() } : {})}
           />
         )}
         <Card>
@@ -322,7 +324,7 @@ export function OrderJourney({
         <ErrorState
           title={copy.title}
           description={copy.description}
-          {...(problem === 'PERMISSION_DENIED' ? {} : { onRetry: () => void reload() })}
+          {...(canReloadOrder ? { onRetry: () => void reload() } : {})}
         />
       )}
       <Card>
