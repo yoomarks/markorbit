@@ -334,7 +334,8 @@ export function prepareUsptoOfficialFeeGovernedSuccessorV1(
     throw new Error('Legacy USPTO official-fee pilot must retain its historical activatedAt.');
   }
 
-  const { activatedAt: _legacyActivatedAt, ...legacyPackageWithoutActivation } = legacy.package;
+  const legacyPackageWithoutActivation = structuredClone(legacy.package);
+  Reflect.deleteProperty(legacyPackageWithoutActivation, 'activatedAt');
   const validatedSuccessor = parseExecutableMethodPackageV1({
     ...legacyPackageWithoutActivation,
     packageId: `${legacy.package.packageId}-governed-successor`,
