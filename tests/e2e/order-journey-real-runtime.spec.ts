@@ -117,14 +117,16 @@ test.describe('M3-WP-06 real durable Order journey', () => {
     const matterHref = await matterLink.getAttribute('href');
     expect(matterHref).toContain('view=formal-matter');
     await matterLink.click();
-    await expect(page.getByRole('heading', { name: 'formal-matter', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Trademark Matter', exact: true })
+    ).toBeVisible();
     await expect(page.getByText(/does not create a payment, invoice/)).toBeVisible();
     const matterUrl = page.url();
 
     const directMatter = await context.newPage();
     await directMatter.goto(matterUrl);
     await expect(
-      directMatter.getByRole('heading', { name: 'formal-matter', exact: true })
+      directMatter.getByRole('heading', { name: 'Trademark Matter', exact: true })
     ).toBeVisible();
     await directMatter.close();
 
