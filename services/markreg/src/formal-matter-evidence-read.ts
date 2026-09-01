@@ -3,7 +3,8 @@ import type {
   CurrentLifecycleView,
   LifecycleEventProjection
 } from '@markorbit/contracts/evidence-lifecycle';
-import type { PostgresDocumentPackageService } from './document-package.js';
+import type { QueryClient } from '@markorbit/persistence';
+import { DocumentPackageError, type PostgresDocumentPackageService } from './document-package.js';
 import { FormalMatterError, type FormalMatterRepository } from './formal-matter.js';
 import type { LifecycleProjectionRepository } from './lifecycle-projection.js';
 import { assertMatterIntelligenceReadIntegrity } from './matter-intelligence-read-integrity.js';
@@ -33,12 +34,50 @@ export class FormalMatterEvidenceReadError extends Error {
   }
 }
 
-type DocumentPackageList = Awaited<ReturnType<PostgresDocumentPackageService['list']>>;
-type DocumentPackageView = DocumentPackageList[number];
+type DocumentPackageView = Awaited<ReturnType<PostgresDocumentPackageService['get']>>;
+type DocumentPackageReadSource = Pick<PostgresDocumentPackageService, 'get'>;
+
+function requireDocumentPackageReadPermission(principal: WorkspacePrincipal): void {
+  if (!principal.permissions.includes('document-package:read'))
+    throw new DocumentPackageError(
+      'PERMISSION_DENIED',
+      'document-package:read permission is required.',
+      403
+    );
+}
+
+export class PostgresFormalMatterDocumentPackageReader {
+  constructor(
+    private readonly query: QueryClient,
+    private readonly documentPackages: DocumentPackageReadSource
+  ) {}
+
+  async listForMatter(principal: WorkspacePrincipal, formalMatterId: FormalMatterId) {
+    requireDocumentPackageReadPermission(principal);
+    try {
+      const rows = await this.query.query<{ document_package_id: string }>(
+        'SELECT document_package_id FROM document_packages WHERE workspace_id=$1 AND formal_matter_id=$2 ORDER BY updated_at DESC,document_package_id',
+        [principal.workspaceId, formalMatterId]
+      );
+      return Promise.all(
+        rows.rows.map((row) => this.documentPackages.get(principal, row.document_package_id))
+      );
+    } catch (cause) {
+      if (cause instanceof DocumentPackageError) throw cause;
+      throw new DocumentPackageError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Document Package persistence is unavailable.',
+        503,
+        true,
+        { cause }
+      );
+    }
+  }
+}
 
 export interface FormalMatterEvidenceReadDependencies {
   formalMatters: Pick<FormalMatterRepository, 'findById'>;
-  documentPackages: Pick<PostgresDocumentPackageService, 'list'>;
+  documentPackages: Pick<PostgresFormalMatterDocumentPackageReader, 'listForMatter'>;
   lifecycle: Pick<LifecycleProjectionRepository, 'getCurrentView' | 'listEvents'>;
   intelligence: Pick<MatterIntelligenceReadService, 'getForMatter'>;
 }
@@ -183,18 +222,15 @@ export class FormalMatterEvidenceReadService {
       );
 
     const evidence = await Promise.all([
-      this.dependencies.documentPackages.list(principal),
+      this.dependencies.documentPackages.listForMatter(principal, formalMatterId),
       this.dependencies.lifecycle.getCurrentView(principal.workspaceId, formalMatterId),
       this.dependencies.lifecycle.listEvents(principal.workspaceId, formalMatterId),
       this.dependencies.intelligence.getForMatter(principal, formalMatterId, query)
     ]);
-    const [workspacePackages, currentLifecycle, lifecycleEvents, intelligence] = evidence;
+    const [matterPackages, currentLifecycle, lifecycleEvents, intelligence] = evidence;
 
     assertMatterIntelligenceReadIntegrity(intelligence, principal.workspaceId);
 
-    const matterPackages = workspacePackages.filter(
-      (value) => value.formalMatterId === formalMatterId
-    );
     const matchingPackages = matterPackages.slice(0, MAX_DOCUMENT_PACKAGES);
     const boundedEvents = lifecycleEvents.slice(0, MAX_LIFECYCLE_EVENTS);
     const currentMatterSource = {
