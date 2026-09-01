@@ -40,7 +40,7 @@ jobs:
           }
           text = text.replace(
             'const selectionFixtureSourceLineage = Object.freeze({',
-            'const selectionFixtureSourceLineage: Readonly<ProviderSelectionSourceLineageV1> = Object.freeze({'
+            'const selectionFixtureSourceLineage = Object.freeze<ProviderSelectionSourceLineageV1>({'
           );
           text = text.replace(
             `  currentAuthorityRevalidationRequiredBeforeSelectionCommit: true,\n  currentAuthorityRevalidationRequiredBeforeDownstreamUse: true\n}) satisfies Readonly<ProviderSelectionSourceLineageV1>;`,
