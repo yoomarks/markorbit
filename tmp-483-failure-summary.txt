@@ -1,0 +1,195 @@
+=== EXIT CODES ===
+build_exit=0
+validate_exit=0
+hygiene_exit=1
+=== ERROR SIGNALS ===
+912:✖ 1 problem (0 errors, 1 warning)
+913:  0 errors and 1 warning potentially fixable with the `--fix` option.
+1078:✖ 1 problem (0 errors, 1 warning)
+1079:  0 errors and 1 warning potentially fixable with the `--fix` option.
+1132:   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mpreserves the draft for a 403 save failure [33m 505[2mms[22m[39m
+1133:   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mpreserves the draft for a 503 save failure [33m 430[2mms[22m[39m
+1134:   [33m[2m✓[22m[39m TrademarkAssetCommerceProfileSection[2m > [22mkeeps the draft and reports current Workspace availability after a 404 save failure [33m 522[2mms[22m[39m
+1202:   [33m[2m✓[22m[39m MarkReg governed direct entry[2m > [22mfocuses recovery and retries the same identity after downstream failure [33m 429[2mms[22m[39m
+1706:Command "content:hygiene" not found. Did you mean "pnpm run test:e2e"?
+=== REPORT TAIL ===
+ [32m✓[39m tests/filing-authorization.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/trademark-service-execution-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [32m✓[39m tests/professional-review.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 120[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-simulation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-readiness-bundle.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-sandbox.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/trademark-service-execution-connectors.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 129[2mms[22m[39m
+ [32m✓[39m tests/evidence-provenance-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 335[2mms[22m[39m
+ [32m✓[39m tests/capability-observation-source-http.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/milestone-negative-path-matrix.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 120[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/legacy-execution-boundary.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 268[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m15 passed[39m[22m[2m | [22m[33m6 skipped[39m[90m (21)[39m
+[2m      Tests [22m [1m[32m99 passed[39m[22m[2m | [22m[33m49 skipped[39m[90m (148)[39m
+[2m   Start at [22m 13:47:45
+[2m   Duration [22m 10.38s[2m (transform 2.42s, setup 0ms, collect 6.20s, tests 1.87s, environment 27ms, prepare 7.96s)[22m
+
+::endgroup::
+::group::@markorbit/execution-service:typecheck
+cache miss, executing 5732e899f162e289
+
+> @markorbit/execution-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/execution
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/markreg-service:test
+cache miss, executing 614e7124803b945b
+
+> @markorbit/markreg-service@0.1.0 test /home/runner/work/markorbit/markorbit/services/markreg
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/markreg[39m
+
+ [2m[90m↓[39m[22m tests/document-package-postgres.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [32m✓[39m tests/matter-intelligence.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 213[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/order-matter-conversion-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/lifecycle-projection-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/recommended-action-postgres.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/formal-opportunity-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/matter-intelligence-review-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/formal-matter-postgres.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [32m✓[39m tests/order-service.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 170[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/matter-intelligence-read-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/knowledge-case-promotion.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 137[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/matter-intelligence-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/knowledge-case-promotion-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/formal-matter-evidence-read.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/lifecycle-surface-http.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 228[2mms[22m[39m
+ [32m✓[39m tests/matter-intelligence-read.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 456[2mms[22m[39m
+ [32m✓[39m tests/preparation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/order-service-postgres.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m tests/commercial-checkout.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/order-postgres.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/commercial-checkout-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/customer-confirmation.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 121[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/customer-confirmation-postgres.test.ts [2m([22m[2m16 tests[22m[2m | [22m[33m16 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/audit-postgres.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [32m✓[39m tests/matter-intelligence-review.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 152[2mms[22m[39m
+ [32m✓[39m tests/matter-flow.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+ [32m✓[39m tests/formal-matter-evidence-read-http.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 202[2mms[22m[39m
+ [32m✓[39m tests/commercial-admin-read.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/formal-matter.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/fail-closed-preparation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/milestone-negative-path-matrix.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m tests/customer-confirmation-memory-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 154[2mms[22m[39m
+ [32m✓[39m tests/matter-draft-memory-contract.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/order-memory-contract.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m20 passed[39m[22m[2m | [22m[33m15 skipped[39m[90m (35)[39m
+[2m      Tests [22m [1m[32m130 passed[39m[22m[2m | [22m[33m110 skipped[39m[90m (240)[39m
+[2m   Start at [22m 13:47:46
+[2m   Duration [22m 16.09s[2m (transform 4.00s, setup 0ms, collect 11.73s, tests 2.26s, environment 38ms, prepare 12.30s)[22m
+
+::endgroup::
+::group::@markorbit/capability-engine:test
+cache miss, executing aecc56019aef6f94
+
+> @markorbit/capability-engine@0.1.0 test /home/runner/work/markorbit/markorbit/services/capability-engine
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90m/home/runner/work/markorbit/markorbit/services/capability-engine[39m
+
+ [32m✓[39m tests/capability-runtime-quality-telemetry.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 270[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/reflection-disposition-profile-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/capability-observation-ledger-postgres.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/private-reflection-candidate-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [32m✓[39m tests/cn-duration-band-classification-pilot.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 215[2mms[22m[39m
+ [32m✓[39m tests/uspto-official-fee-resolver-pilot.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 221[2mms[22m[39m
+ [32m✓[39m tests/capability-demand-coverage.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence-v3.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-http.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 237[2mms[22m[39m
+ [32m✓[39m tests/uspto-official-fee-reference-currentness.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 150[2mms[22m[39m
+ [32m✓[39m tests/cn-preliminary-publication-discovery-pilot.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m tests/capability-coverage-gap-evidence.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+ [32m✓[39m tests/cn-duration-analytical-pilot.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence-v2.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 206[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/managed-ai-execution-claim-postgres.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/managed-communication-foundation-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m tests/managed-communication-exchange-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/capability-audit-telemetry.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m tests/source-admission-policy-catalog.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/capability-runtime-replay-postgres.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [32m✓[39m tests/current-source-admission-evidence-v4.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 160[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence-v5.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/managed-ai-exact-output-postgres.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [32m✓[39m tests/executable-method-runtime.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/implementation-profile-registry-postgres.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m tests/managed-ai-http.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+ [32m✓[39m tests/implementation-profile-registry.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/governed-runtime-bootstrap-postgres.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [32m✓[39m tests/governed-runtime-bootstrap.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/runtime-capability-registry-postgres.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [32m✓[39m tests/managed-ai-exact-output.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-replay.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+ [32m✓[39m tests/capability-catalog-integrity.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m tests/managed-ai-v2-outcome-preservation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-foundation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m tests/current-source-admission-evidence.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 98[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-exchange.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32m✓[39m tests/source-admission-policy-content-provenance.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/managed-ai-bootstrap.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m tests/capability-observation-source.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m tests/capability-runtime-conformance.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 104[2mms[22m[39m
+ [32m✓[39m tests/source-admission-policy-provenance.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/capability-center-http.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/managed-communication-exact-evidence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m tests/runtime-capability-registry.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/runtime-capability-catalog.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/manifest.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m38 passed[39m[22m[2m | [22m[33m11 skipped[39m[90m (49)[39m
+[2m      Tests [22m [1m[32m272 passed[39m[22m[2m | [22m[33m59 skipped[39m[90m (331)[39m
+[2m   Start at [22m 13:47:45
+[2m   Duration [22m 20.81s[2m (transform 4.69s, setup 0ms, collect 13.90s, tests 3.80s, environment 29ms, prepare 15.14s)[22m
+
+::endgroup::
+::group::@markorbit/capability-engine:typecheck
+cache miss, executing 218e70e3bddb87a5
+
+> @markorbit/capability-engine@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/capability-engine
+> tsc --noEmit
+
+::endgroup::
+::group::@markorbit/markreg-service:typecheck
+cache miss, executing 0a129597d41ef896
+
+> @markorbit/markreg-service@0.1.0 typecheck /home/runner/work/markorbit/markorbit/services/markreg
+> tsc --noEmit
+
+::endgroup::
+
+ Tasks:    48 successful, 48 total
+Cached:    6 cached, 48 total
+  Time:    2m33.515s 
+
+ WARNING  no output files found for task @markorbit/ai#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/capability-engine#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/contracts#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/core-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/events#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/execution-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/gateway#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/lite-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/lite-web#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/markreg-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/markreg-web#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/mgsn-service#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @markorbit/payment-service#test. Please check your `outputs` key in `turbo.json`
+validate_exit=0
+=== CONTENT HYGIENE ===
+ ERR_PNPM_NO_SCRIPT  Missing script: content:hygiene
+
+Command "content:hygiene" not found. Did you mean "pnpm run test:e2e"?
+hygiene_exit=1
