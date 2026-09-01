@@ -1,8 +1,5 @@
 import type { MarkOrbitId } from './index.js';
-import type {
-  ProviderId,
-  ProviderSupplyCapabilityId
-} from './provider-execution.js';
+import type { ProviderId, ProviderSupplyCapabilityId } from './provider-execution.js';
 import type {
   NetworkParticipationId,
   NetworkVisibilityAudienceV1,
@@ -16,8 +13,7 @@ import type {
  * Allocation, Acceptance, appointment, external-contact, Filing, Payment or Official Truth.
  */
 export type ProviderDiscoveryRequestId = `provider-discovery-request_${string}`;
-export type ProviderDiscoveryCandidateId =
-  `provider-discovery-candidate_${string}`;
+export type ProviderDiscoveryCandidateId = `provider-discovery-candidate_${string}`;
 
 export interface ProviderDiscoveryNeedReferenceV1 {
   reference: string;
@@ -90,8 +86,7 @@ export const discoverySourceAuthorityStates = [
   'AMBIGUOUS',
   'UNAVAILABLE'
 ] as const;
-export type DiscoverySourceAuthorityState =
-  (typeof discoverySourceAuthorityStates)[number];
+export type DiscoverySourceAuthorityState = (typeof discoverySourceAuthorityStates)[number];
 
 export interface DiscoverySourceVersionV1 {
   owner: 'CORE' | 'MGSN' | 'CAPABILITY_ENGINE' | 'OTHER_CANONICAL_OWNER';
@@ -125,10 +120,7 @@ export interface DiscoveryEvidenceReferenceV1 {
   evidenceReference: string;
   kind: DiscoveryEvidenceKind;
   source: Readonly<DiscoverySourceVersionV1>;
-  authorityClass:
-    | 'MGSN_OPERATIONAL'
-    | 'PROVIDER_CLAIM'
-    | 'CANONICAL_OWNER_REFERENCE';
+  authorityClass: 'MGSN_OPERATIONAL' | 'PROVIDER_CLAIM' | 'CANONICAL_OWNER_REFERENCE';
   artifactAccessAuthorized: false;
 }
 
@@ -228,9 +220,7 @@ export interface ProviderDiscoveryCandidateV1 {
     fingerprintSha256: string;
   }>;
   authorizedProjection: Readonly<AuthorizedProviderProjectionV1>;
-  visibilityAuthorization: Readonly<
-    DiscoveryVisibilityAuthorizationReferenceV1
-  >;
+  visibilityAuthorization: Readonly<DiscoveryVisibilityAuthorizationReferenceV1>;
   visibilityEvidence: ReadonlyArray<CurrentDiscoveryEvidenceReferenceV1>;
   suitabilityEvidence: ReadonlyArray<CurrentDiscoveryEvidenceReferenceV1>;
   directExecutorDisclosure: Readonly<DirectExecutorDiscoveryDisclosureV1>;
@@ -247,8 +237,7 @@ export const providerDiscoveryResultStatuses = [
   'NO_AUTHORIZED_CANDIDATES',
   'AUTHORITY_UNAVAILABLE'
 ] as const;
-export type ProviderDiscoveryResultStatus =
-  (typeof providerDiscoveryResultStatuses)[number];
+export type ProviderDiscoveryResultStatus = (typeof providerDiscoveryResultStatuses)[number];
 
 interface ProviderDiscoveryResultBaseV1 {
   schemaVersion: 1;
@@ -284,8 +273,7 @@ export type ProviderDiscoveryResultV1 = Readonly<
 
 const discoveryFixtureAt = '2026-09-01T04:45:00.000Z';
 const discoveryFixtureWorkspaceId = '018f0000-0000-7000-8000-000000000381';
-const discoveryFixtureProviderId =
-  'provider_fixture-381' as const satisfies ProviderId;
+const discoveryFixtureProviderId = 'provider_fixture-381' as const satisfies ProviderId;
 const discoveryFixtureSupplyId =
   'provider-supply-capability_fixture-381' as const satisfies ProviderSupplyCapabilityId;
 
@@ -443,10 +431,7 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
         explanation: {
           summary:
             'Current visibility and supply evidence permit this Provider to be shown as a candidate for the reviewed Need.',
-          matchedConstraints: [
-            'jurisdiction:US',
-            'serviceType:TRADEMARK_APPLICATION'
-          ],
+          matchedConstraints: ['jurisdiction:US', 'serviceType:TRADEMARK_APPLICATION'],
           evidenceReferences: [
             'visibility-evidence:fixture-381',
             'suitability-evidence:fixture-381'
@@ -466,7 +451,8 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
             },
             {
               code: 'NO_BOUNDED_AVAILABILITY_SIGNAL',
-              explanation: 'Raw capacity and availability are private and no derived signal is exposed.'
+              explanation:
+                'Raw capacity and availability are private and no derived signal is exposed.'
             }
           ]
         },
@@ -484,8 +470,7 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
     authorityConsequences: noProviderDiscoveryAuthorityConsequences,
     status: 'NO_AUTHORIZED_CANDIDATES',
     candidates: [],
-    publicMessage:
-      'No Provider candidates are currently available for this request.'
+    publicMessage: 'No Provider candidates are currently available for this request.'
   },
   authorityUnavailableResult: {
     schemaVersion: 1,
@@ -496,8 +481,7 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
     status: 'AUTHORITY_UNAVAILABLE',
     candidates: [],
     authorityState: 'STALE',
-    publicMessage:
-      'Provider discovery is unavailable until current authority can be verified.'
+    publicMessage: 'Provider discovery is unavailable until current authority can be verified.'
   }
 } as const satisfies Readonly<{
   candidateResult: ProviderDiscoveryResultV1;
