@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom/vitest';
 import type { FormalMatter } from '@markorbit/contracts';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -104,10 +103,10 @@ describe('MarkReg governed direct entry', () => {
       />
     );
 
-    expect(await screen.findByRole('heading', { name: 'Trademark Matter' })).toBeInTheDocument();
-    expect(screen.getByText('ORBIT')).toBeInTheDocument();
-    expect(screen.getByText('Lifecycle current')).toBeInTheDocument();
-    expect(screen.getByText(/Matter ≠ Filing/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
+    expect(screen.getByText('ORBIT')).toBeTruthy();
+    expect(screen.getByText('Lifecycle current')).toBeTruthy();
+    expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
     expect(getFormalMatter).toHaveBeenCalledWith('formal-matter_exact');
   });
 });
