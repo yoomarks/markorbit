@@ -107,6 +107,8 @@ jobs:
           source = source.replace(before, after);
           fs.writeFileSync(path, source);
           NODE
+      - name: Apply repo ESLint autofix
+        run: pnpm --filter @markorbit/contracts exec eslint src/outcome-trust-evidence.ts tests/outcome-trust-evidence.test.ts --fix
       - run: pnpm exec prettier packages/contracts/package.json packages/contracts/src/outcome-trust-evidence.ts packages/contracts/tests/outcome-trust-evidence.test.ts --write
       - run: pnpm --filter @markorbit/contracts build
       - run: pnpm --filter @markorbit/contracts typecheck
