@@ -23,7 +23,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Preserve canonical fixture id literal types
+      - name: Preserve canonical fixture literal types
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -38,6 +38,14 @@ jobs:
           if (!text.includes('const selectionFixtureDiscoveryRequestId =')) {
             text = text.replace(marker, `${declarations}${marker}`);
           }
+          text = text.replace(
+            'const selectionFixtureSourceLineage = Object.freeze({',
+            'const selectionFixtureSourceLineage: Readonly<ProviderSelectionSourceLineageV1> = Object.freeze({'
+          );
+          text = text.replace(
+            `  currentAuthorityRevalidationRequiredBeforeSelectionCommit: true,\n  currentAuthorityRevalidationRequiredBeforeDownstreamUse: true\n}) satisfies Readonly<ProviderSelectionSourceLineageV1>;`,
+            `  currentAuthorityRevalidationRequiredBeforeSelectionCommit: true,\n  currentAuthorityRevalidationRequiredBeforeDownstreamUse: true\n});`
+          );
           fs.writeFileSync(path, text);
           NODE
       - run: pnpm exec prettier --write packages/contracts/src/provider-selection.ts
@@ -52,5 +60,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add packages/contracts/src/provider-selection.ts
-          git commit -m "fix(contracts): preserve selection fixture id literal types"
+          git commit -m "fix(contracts): preserve selection fixture literal types"
           git push origin HEAD:tmp/459-fix-fixture-types
