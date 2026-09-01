@@ -45,6 +45,7 @@ export * from './cn-duration-band-classification-pilot.js';
 export * from './cn-preliminary-publication-discovery-pilot.js';
 export * from './current-source-admission-evidence-v2.js';
 export * from './current-source-admission-evidence-v3.js';
+export * from './current-source-admission-evidence-v4.js';
 export * from './current-source-admission-evidence.js';
 export * from './current-source-admission.js';
 export * from './executable-method-runtime.js';
@@ -64,6 +65,7 @@ export * from './runtime-capability-catalog.js';
 export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
 export * from './source-admission-policy-catalog.js';
+export * from './source-admission-policy-provenance.js';
 export * from './uspto-official-fee-reference-currentness.js';
 export * from './uspto-official-fee-resolver-pilot.js';
 
