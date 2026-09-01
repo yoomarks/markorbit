@@ -96,6 +96,17 @@ function productionPolicy(
   } as CapabilitySourceAdmissionPolicyEntryV1;
 }
 
+function expectCatalogError(run: () => unknown, code: CapabilitySourceAdmissionPolicyCatalogError['code']) {
+  try {
+    run();
+    throw new Error(`expected Capability source-admission policy catalog error ${code}`);
+  } catch (error) {
+    expect(error).toBeInstanceOf(CapabilitySourceAdmissionPolicyCatalogError);
+    if (!(error instanceof CapabilitySourceAdmissionPolicyCatalogError)) throw error;
+    expect(error.code).toBe(code);
+  }
+}
+
 describe('Capability source-admission policy catalog V1', () => {
   it('explicitly classifies all four current Phase 4 families as PILOT and denies production admission', () => {
     expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
@@ -123,7 +134,7 @@ describe('Capability source-admission policy catalog V1', () => {
     const unknownProfile = {
       ...CN_DURATION_ANALYTICAL_IMPLEMENTATION_PROFILE,
       capabilityId: 'analytics.unknown-source',
-      implementationProfileId: 'implementation-profile_unknown-source'
+      implementationProfileId: 'implementation-profile_unknown-source' as const
     };
 
     expect(
@@ -190,11 +201,12 @@ describe('Capability source-admission policy catalog V1', () => {
       reason: 'No accepted production source exists.'
     } as CapabilitySourceAdmissionPolicyEntryV1;
     const catalog = new CapabilitySourceAdmissionPolicyCatalogV1([fixture]);
+    const fixtureDecision = catalog.evaluate(policyInput());
 
-    expect(catalog.evaluate(policyInput())).toMatchObject({
-      applicability: 'UNSUPPORTED',
-      reason: expect.stringContaining('FIXTURE_TEST')
-    });
+    expect(fixtureDecision.applicability).toBe('UNSUPPORTED');
+    if (fixtureDecision.applicability !== 'UNSUPPORTED')
+      throw new Error('fixture policy unexpectedly became supported');
+    expect(fixtureDecision.reason).toContain('FIXTURE_TEST');
     expect(new CapabilitySourceAdmissionPolicyCatalogV1([unsupported]).list()[0]).toMatchObject({
       maturityClass: 'UNSUPPORTED'
     });
@@ -210,32 +222,23 @@ describe('Capability source-admission policy catalog V1', () => {
       policyId: 'source-admission-policy.same-binding.v2'
     });
 
-    expect(
-      () => new CapabilitySourceAdmissionPolicyCatalogV1([first, sameIdDifferentBinding])
-    ).toThrowError(
-      expect.objectContaining<Partial<CapabilitySourceAdmissionPolicyCatalogError>>({
-        code: 'DUPLICATE_POLICY_ID'
-      })
+    expectCatalogError(
+      () => new CapabilitySourceAdmissionPolicyCatalogV1([first, sameIdDifferentBinding]),
+      'DUPLICATE_POLICY_ID'
     );
-    expect(
-      () => new CapabilitySourceAdmissionPolicyCatalogV1([first, sameBindingDifferentId])
-    ).toThrowError(
-      expect.objectContaining<Partial<CapabilitySourceAdmissionPolicyCatalogError>>({
-        code: 'DUPLICATE_POLICY_BINDING'
-      })
+    expectCatalogError(
+      () => new CapabilitySourceAdmissionPolicyCatalogV1([first, sameBindingDifferentId]),
+      'DUPLICATE_POLICY_BINDING'
     );
   });
 
   it('rejects unbounded wildcard callers for production-admissible policies', () => {
-    expect(
+    expectCatalogError(
       () =>
         new CapabilitySourceAdmissionPolicyCatalogV1([
           productionPolicy({ allowedCallerProducts: ['*'] })
-        ])
-    ).toThrowError(
-      expect.objectContaining<Partial<CapabilitySourceAdmissionPolicyCatalogError>>({
-        code: 'INVALID_POLICY_ENTRY'
-      })
+        ]),
+      'INVALID_POLICY_ENTRY'
     );
   });
 
