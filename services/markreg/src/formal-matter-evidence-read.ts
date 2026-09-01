@@ -4,10 +4,7 @@ import type {
   LifecycleEventProjection
 } from '@markorbit/contracts/evidence-lifecycle';
 import type { QueryClient } from '@markorbit/persistence';
-import {
-  DocumentPackageError,
-  type PostgresDocumentPackageService
-} from './document-package.js';
+import { DocumentPackageError, type PostgresDocumentPackageService } from './document-package.js';
 import { FormalMatterError, type FormalMatterRepository } from './formal-matter.js';
 import type { LifecycleProjectionRepository } from './lifecycle-projection.js';
 import { assertMatterIntelligenceReadIntegrity } from './matter-intelligence-read-integrity.js';
