@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { FormalMatterListResponse } from '@markorbit/contracts';
+import type { FormalMatterListQuery, FormalMatterListResponse } from '@markorbit/contracts';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -134,6 +134,46 @@ describe('MarkReg durable Workspace Home', () => {
     expect(screen.getByText(/Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing/)).toBeTruthy();
   });
 
+  it('applies bounded Matter filters without reloading Service Orders and distinguishes filtered empty', async () => {
+    const user = userEvent.setup();
+    const listOrders = vi.fn(() => Promise.resolve(orderPage([order])));
+    const listMatters = vi.fn((query?: Partial<FormalMatterListQuery>) =>
+      Promise.resolve(query?.search ? matterPage([]) : matterPage([matter]))
+    );
+    render(
+      <MarkregWorkspaceHome
+        client={orderClient(listOrders)}
+        matterClient={matterClient(listMatters)}
+      />
+    );
+
+    expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();
+    await user.type(screen.getByLabelText('Search Formal Matters'), ' orbit ');
+    await user.selectOptions(screen.getByLabelText('Matter status'), 'OPEN');
+    await user.selectOptions(screen.getByLabelText('Matter type'), 'TRADEMARK_REGISTRATION');
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() =>
+      expect(listMatters).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 10,
+        search: 'orbit',
+        status: 'OPEN',
+        type: 'TRADEMARK_REGISTRATION'
+      })
+    );
+    expect(listOrders).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('heading', { name: 'No Formal Matters match these filters' })
+    ).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'No Formal Matters yet' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() => expect(listMatters).toHaveBeenLastCalledWith({ page: 1, pageSize: 10 }));
+    expect(listOrders).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();
+  });
+
   it('keeps Formal Matters visible when Service Orders are empty and planning remains separate', async () => {
     const user = userEvent.setup();
     render(
@@ -199,7 +239,8 @@ describe('MarkReg durable Workspace Home', () => {
     expect(screen.queryByRole('heading', { name: 'No service Orders yet' })).toBeNull();
   });
 
-  it('clears both prior Workspace collections and reloads after Workspace context changes', async () => {
+  it('clears both collections and Matter filters after Workspace context changes', async () => {
+    const user = userEvent.setup();
     const listOrders = vi.fn(() =>
       Promise.resolve(
         orderPage(
@@ -209,12 +250,14 @@ describe('MarkReg durable Workspace Home', () => {
         )
       )
     );
-    const listMatters = vi.fn(() =>
+    const listMatters = vi.fn((query?: Partial<FormalMatterListQuery>) =>
       Promise.resolve(
         matterPage(
-          sessionStorage.getItem('markorbit-workspace-id') === workspaceTwo
-            ? [secondMatter]
-            : [matter]
+          query?.search
+            ? []
+            : sessionStorage.getItem('markorbit-workspace-id') === workspaceTwo
+              ? [secondMatter]
+              : [matter]
         )
       )
     );
@@ -227,14 +270,20 @@ describe('MarkReg durable Workspace Home', () => {
 
     expect(await screen.findByText(order.orderId)).toBeTruthy();
     expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();
+    await user.type(screen.getByLabelText('Search Formal Matters'), 'old workspace');
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(
+      await screen.findByRole('heading', { name: 'No Formal Matters match these filters' })
+    ).toBeTruthy();
+
     sessionStorage.setItem('markorbit-workspace-id', workspaceTwo);
     fireEvent(window, new Event('focus'));
 
     await waitFor(() => expect(screen.queryByText(order.orderId)).toBeNull());
-    await waitFor(() => expect(screen.queryByText(matter.formalMatterId)).toBeNull());
     expect(await screen.findByText(secondOrder.orderId)).toBeTruthy();
     expect(await screen.findByText(secondMatter.formalMatterId)).toBeTruthy();
+    expect(screen.getByLabelText('Search Formal Matters')).toHaveProperty('value', '');
     expect(listOrders).toHaveBeenCalledTimes(2);
-    expect(listMatters).toHaveBeenCalledTimes(2);
+    expect(listMatters).toHaveBeenLastCalledWith({ page: 1, pageSize: 10 });
   });
 });
