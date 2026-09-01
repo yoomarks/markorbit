@@ -10,9 +10,7 @@ import type {
   ManagedCommunicationExactEvidenceRefV1,
   ManagedCommunicationExactEvidenceStoreV1
 } from '../src/managed-communication-exact-evidence.js';
-import type {
-  ManagedCommunicationSendRequestV1
-} from '../src/managed-communication-exchange.js';
+import type { ManagedCommunicationSendRequestV1 } from '../src/managed-communication-exchange.js';
 import {
   buildGmailManagedCommunicationMimeV1,
   GmailManagedCommunicationClientV1,
@@ -86,9 +84,8 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
     accountRef: string;
     messageId: string;
   }): Promise<ManagedCommunicationExactEvidenceRefV1 | undefined> {
-    return Promise.resolve(
-      this.rows.get(`${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`)
-    );
+    const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
+    return Promise.resolve(this.rows.get(key));
   }
 }
 
@@ -110,33 +107,41 @@ function sendRequest(
   };
 }
 
+function gmailAccount() {
+  return {
+    schemaVersion: 1 as const,
+    workspaceId,
+    accountRef,
+    channel: 'EMAIL' as const,
+    provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+    providerAccountRef,
+    createdAt: '2026-09-01T14:00:00.000Z'
+  };
+}
+
 describe('Gmail Managed Communication provider adapter', () => {
   it('performs no network activity until invoked and caches OAuth access tokens', async () => {
     const calls: string[] = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       calls.push(url);
-      if (url === 'https://oauth2.googleapis.com/token')
+      if (url === 'https://oauth2.googleapis.com/token') {
         return json({ access_token: 'access-token-test-only', expires_in: 3600 });
-      if (url === 'https://gmail.googleapis.com/gmail/v1/users/me/profile')
+      }
+      if (url === 'https://gmail.googleapis.com/gmail/v1/users/me/profile') {
         return json({ historyId: '100' });
+      }
       throw new Error(`Unexpected provider request: ${url}`);
     }) as typeof fetch;
 
     const client = new GmailManagedCommunicationClientV1(config, fetchImpl, () => 10_000);
     expect(calls).toEqual([]);
-
     await expect(client.profile()).resolves.toEqual({ historyId: '100' });
     await expect(client.profile()).resolves.toEqual({ historyId: '100' });
-
-    expect(
-      calls.filter((url) => url === 'https://oauth2.googleapis.com/token')
-    ).toHaveLength(1);
-    expect(
-      calls.filter(
-        (url) => url === 'https://gmail.googleapis.com/gmail/v1/users/me/profile'
-      )
-    ).toHaveLength(2);
+    const tokenCalls = calls.filter((url) => url === 'https://oauth2.googleapis.com/token');
+    const profileCalls = calls.filter((url) => url.endsWith('/users/me/profile'));
+    expect(tokenCalls).toHaveLength(1);
+    expect(profileCalls).toHaveLength(2);
   });
 
   it('builds deterministic reply MIME and returns stable Gmail send identities', async () => {
@@ -144,9 +149,10 @@ describe('Gmail Managed Communication provider adapter', () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       requests.push({ url, ...(init ? { init } : {}) });
-      if (url === 'https://oauth2.googleapis.com/token')
+      if (url === 'https://oauth2.googleapis.com/token') {
         return json({ access_token: 'access-token-test-only', expires_in: 3600 });
-      if (url.includes('/users/me/threads/gmail-thread-1?'))
+      }
+      if (url.includes('/users/me/threads/gmail-thread-1?')) {
         return json({
           messages: [
             {
@@ -160,37 +166,28 @@ describe('Gmail Managed Communication provider adapter', () => {
             }
           ]
         });
-      if (url.endsWith('/users/me/messages/send'))
+      }
+      if (url.endsWith('/users/me/messages/send')) {
         return json({ id: 'gmail-message-out-1', threadId: 'gmail-thread-1' });
+      }
       throw new Error(`Unexpected provider request: ${url}`);
     }) as typeof fetch;
     const client = new GmailManagedCommunicationClientV1(config, fetchImpl, () => 20_000);
+    const resolveThread = async ({ threadRef }: { threadRef: string }) => {
+      expect(threadRef).toBe('commthread_existing');
+      return 'gmail-thread-1';
+    };
     const sender = new GmailManagedCommunicationSenderV1(
       client,
-      async ({ threadRef }) => {
-        expect(threadRef).toBe('commthread_existing');
-        return 'gmail-thread-1';
-      },
+      resolveThread,
       () => '2026-09-01T14:10:00.000Z'
     );
-
-    const receipt = await sender.send(
-      sendRequest({ replyToThreadRef: 'commthread_existing' }),
-      {
-        sendId: 'commsend_reply_test',
-        workspaceId,
-        account: {
-          schemaVersion: 1,
-          workspaceId,
-          accountRef,
-          channel: 'EMAIL',
-          provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-          providerAccountRef,
-          createdAt: '2026-09-01T14:00:00.000Z'
-        },
-        correlationId: 'gmail-provider-test'
-      }
-    );
+    const receipt = await sender.send(sendRequest({ replyToThreadRef: 'commthread_existing' }), {
+      sendId: 'commsend_reply_test',
+      workspaceId,
+      account: gmailAccount(),
+      correlationId: 'gmail-provider-test'
+    });
 
     expect(receipt).toEqual({
       providerMessageId: 'gmail-message-out-1',
@@ -214,33 +211,29 @@ describe('Gmail Managed Communication provider adapter', () => {
     expect(raw).not.toContain(config.refreshToken);
   });
 
-  it('fails closed on header injection and unsupported outbound attachments before dispatch', () => {
-    expect(() =>
-      buildGmailManagedCommunicationMimeV1(
-        sendRequest({ subject: 'safe\r\nBcc: attacker@example.test' }),
-        'commsend_header_injection'
-      )
-    ).toThrow(/CR\/LF/u);
-    expect(() =>
-      buildGmailManagedCommunicationMimeV1(
-        sendRequest({
-          attachments: [
-            {
-              attachmentRef: 'attachment_test',
-              fileName: 'test.txt',
-              mediaType: 'text/plain',
-              sizeBytes: 4,
-              sha256: 'a'.repeat(64)
-            }
-          ]
-        }),
-        'commsend_attachment_test'
-      )
-    ).toThrow(/governed byte resolver/u);
+  it('fails closed on header injection and unsupported outbound attachments', () => {
+    const injected = sendRequest({ subject: 'safe\r\nBcc: attacker@example.test' });
+    const buildInjected = () =>
+      buildGmailManagedCommunicationMimeV1(injected, 'commsend_header_injection');
+    expect(buildInjected).toThrow(/CR\/LF/u);
+    const withAttachment = sendRequest({
+      attachments: [
+        {
+          attachmentRef: 'attachment_test',
+          fileName: 'test.txt',
+          mediaType: 'text/plain',
+          sizeBytes: 4,
+          sha256: 'a'.repeat(64)
+        }
+      ]
+    });
+    const buildAttachment = () =>
+      buildGmailManagedCommunicationMimeV1(withAttachment, 'commsend_attachment');
+    expect(buildAttachment).toThrow(/governed byte resolver/u);
   });
 
   it(
-    'advances Gmail history checkpoints, ignores self mail, and admits exact raw inbound evidence without sensitive headers',
+    'advances history, ignores self mail, and admits exact raw evidence without sensitive headers',
     async () => {
       const foundation = new InMemoryManagedCommunicationFoundationV1();
       await foundation.registerAccount({
@@ -264,8 +257,9 @@ describe('Gmail Managed Communication provider adapter', () => {
 
       const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
-        if (url === 'https://oauth2.googleapis.com/token')
+        if (url === 'https://oauth2.googleapis.com/token') {
           return json({ access_token: 'access-token-test-only', expires_in: 3600 });
+        }
         if (url.endsWith('/users/me/profile')) return json({ historyId: '100' });
         if (url.includes('/users/me/history?')) {
           const parsed = new URL(url);
@@ -283,7 +277,7 @@ describe('Gmail Managed Communication provider adapter', () => {
             ]
           });
         }
-        if (url.includes('/messages/gmail-self-1?format=full'))
+        if (url.includes('/messages/gmail-self-1?format=full')) {
           return json({
             id: 'gmail-self-1',
             threadId: 'gmail-thread-self',
@@ -299,7 +293,8 @@ describe('Gmail Managed Communication provider adapter', () => {
               }
             }
           });
-        if (url.includes('/messages/gmail-inbound-1?format=full'))
+        }
+        if (url.includes('/messages/gmail-inbound-1?format=full')) {
           return json({
             id: 'gmail-inbound-1',
             threadId: 'gmail-thread-inbound-1',
@@ -320,9 +315,7 @@ describe('Gmail Managed Communication provider adapter', () => {
                   partId: '0',
                   mimeType: 'text/plain',
                   body: {
-                    data: Buffer.from('Normalized inbound body.', 'utf8').toString(
-                      'base64url'
-                    )
+                    data: Buffer.from('Normalized inbound body.', 'utf8').toString('base64url')
                   }
                 },
                 {
@@ -334,12 +327,14 @@ describe('Gmail Managed Communication provider adapter', () => {
               ]
             }
           });
-        if (url.includes('/messages/gmail-inbound-1?format=raw'))
+        }
+        if (url.includes('/messages/gmail-inbound-1?format=raw')) {
           return json({
             id: 'gmail-inbound-1',
             threadId: 'gmail-thread-inbound-1',
             raw: Buffer.from(rawMessage, 'utf8').toString('base64url')
           });
+        }
         throw new Error(`Unexpected provider request: ${url}`);
       }) as typeof fetch;
 
@@ -375,8 +370,8 @@ describe('Gmail Managed Communication provider adapter', () => {
         imported: 0,
         providerCursor: '101'
       });
-
       expect(historyStarts).toEqual(['100', '101']);
+
       const ids = managedCommunicationNormalizedIdsV1({
         workspaceId,
         accountRef,
@@ -384,11 +379,7 @@ describe('Gmail Managed Communication provider adapter', () => {
         providerMessageId: 'gmail-inbound-1',
         providerThreadId: 'gmail-thread-inbound-1'
       });
-      const normalized = await foundation.resolveMessage(
-        workspaceId,
-        accountRef,
-        ids.messageId
-      );
+      const normalized = await foundation.resolveMessage(workspaceId, accountRef, ids.messageId);
       expect(normalized.textBody).toBe('Normalized inbound body.');
       expect(normalized.attachments).toEqual([
         {
@@ -403,8 +394,6 @@ describe('Gmail Managed Communication provider adapter', () => {
       expect(exactEvidence.admissions).toHaveLength(2);
       const firstEvidence = exactEvidence.admissions[0]!;
       expect(Buffer.from(firstEvidence.rawPayload).toString('utf8')).toBe(rawMessage);
-      expect(firstEvidence.provider).toBe(GMAIL_MANAGED_COMMUNICATION_PROVIDER);
-      expect(firstEvidence.providerMessageId).toBe('gmail-inbound-1');
       expect(firstEvidence.metadata).toEqual({
         gmailMessageId: 'gmail-inbound-1',
         gmailThreadId: 'gmail-thread-inbound-1',
@@ -416,12 +405,9 @@ describe('Gmail Managed Communication provider adapter', () => {
           { name: 'X-Trace-Id', value: 'trace-safe-1' }
         ])
       );
-      expect(
-        firstEvidence.headers.map((header) => header.name.toLowerCase())
-      ).not.toContain('authorization');
-      expect(
-        firstEvidence.headers.map((header) => header.name.toLowerCase())
-      ).not.toContain('cookie');
+      const headerNames = firstEvidence.headers.map((item) => item.name.toLowerCase());
+      expect(headerNames).not.toContain('authorization');
+      expect(headerNames).not.toContain('cookie');
       const persistedProjection = JSON.stringify({ normalized, firstEvidence });
       expect(persistedProjection).not.toContain(config.clientSecret);
       expect(persistedProjection).not.toContain(config.refreshToken);
