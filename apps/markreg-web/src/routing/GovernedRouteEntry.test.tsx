@@ -95,6 +95,47 @@ describe('MarkReg governed direct entry', () => {
     await waitFor(() => expect(getGovernedRecord).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('matter-draft_exact')).toBeTruthy();
   });
+  it('fails closed on permission denial instead of presenting a transient service retry', async () => {
+    const denied = new MarkregApiError(
+      'blocking',
+      'You do not have permission to change this Matter Draft.',
+      undefined,
+      'PERMISSION_DENIED'
+    );
+    const getGovernedRecord = vi.fn().mockRejectedValue(denied);
+    render(
+      <GovernedRouteEntry
+        search="?view=quote&quoteId=quote_exact&quoteVersion=v1"
+        client={{ createIntake: vi.fn(), getGovernedRecord }}
+      />
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Workspace permission required' });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
+  });
+  it('keeps not-found governed reads stable and non-retryable', async () => {
+    const notFound = new MarkregApiError(
+      'blocking',
+      'This Matter Draft was not found in the current Workspace.',
+      undefined,
+      'RECORD_NOT_FOUND'
+    );
+    const getGovernedRecord = vi.fn().mockRejectedValue(notFound);
+    render(
+      <GovernedRouteEntry
+        search="?view=quote&quoteId=quote_missing&quoteVersion=v1"
+        client={{ createIntake: vi.fn(), getGovernedRecord }}
+      />
+    );
+
+    const heading = await screen.findByRole('heading', {
+      name: 'The requested record was not found. No latest record was selected.'
+    });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
+  });
   it('renders durable Preparation unavailability as a stable non-retryable boundary', async () => {
     const unavailable = new MarkregApiError(
       'recoverable',
