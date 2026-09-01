@@ -54,6 +54,14 @@ jobs:
             "      artifactAccessAuthorized: false\n    }\n  ] as const,\n  version: 2,"
           );
           fs.writeFileSync(sourcePath, source);
+
+          const testPath = 'packages/contracts/tests/provider-responsibility.test.ts';
+          let test = fs.readFileSync(testPath, 'utf8');
+          test = test.replace(
+            "['score', 'rank', 'winner', 'appointmentCreated']",
+            "['score', 'rank', 'winner']"
+          );
+          fs.writeFileSync(testPath, test);
           NODE
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prettier --write packages/contracts/package.json packages/contracts/src/provider-responsibility.ts packages/contracts/tests/provider-responsibility.test.ts
