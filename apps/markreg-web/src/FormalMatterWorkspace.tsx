@@ -10,7 +10,7 @@ export type FormalMatterLifecycleRenderer = (input: {
 }) => ReactNode;
 
 const defaultLifecycle: FormalMatterLifecycleRenderer = ({ formalMatterId, disabled }) => (
-  <LifecyclePanel formalMatterId={formalMatterId} disabled={disabled} />
+  <LifecyclePanel formalMatterId={formalMatterId} disabled={disabled} embedded />
 );
 
 const text = (value: unknown) =>
