@@ -62,7 +62,7 @@ function canonicalJson(value: unknown, ancestors: WeakSet<object>): string {
     return invalidOutputShape('Capability source output contains an unsupported value.');
   }
 
-  const objectValue = value as object;
+  const objectValue = value;
   if (ancestors.has(objectValue)) {
     return invalidOutputShape('Capability source output cannot contain cyclic references.');
   }
@@ -94,7 +94,7 @@ function canonicalJson(value: unknown, ancestors: WeakSet<object>): string {
       return `[${items.join(',')}]`;
     }
 
-    const prototype = Object.getPrototypeOf(value);
+    const prototype = Reflect.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) {
       return invalidOutputShape(
         'Capability source output must use JSON-compatible plain objects only.'
