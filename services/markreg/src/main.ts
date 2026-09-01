@@ -48,6 +48,11 @@ import {
 } from './matter-intelligence.js';
 import { createMatterIntelligenceRoutes } from './matter-intelligence-http.js';
 import {
+  MatterIntelligenceReadService,
+  PostgresMatterIntelligenceReadRepository
+} from './matter-intelligence-read.js';
+import { createMatterIntelligenceReadRoutes } from './matter-intelligence-read-http.js';
+import {
   MatterIntelligenceReviewService,
   PostgresMatterIntelligenceReviewRepository
 } from './matter-intelligence-review.js';
@@ -98,6 +103,13 @@ if (fixtureRuntime) {
   const matterIntelligenceRoutes = createMatterIntelligenceRoutes({
     internalServiceSecret,
     service: matterIntelligenceService
+  });
+  const matterIntelligenceReadService = new MatterIntelligenceReadService(
+    new PostgresMatterIntelligenceReadRepository(database)
+  );
+  const matterIntelligenceReadRoutes = createMatterIntelligenceReadRoutes({
+    internalServiceSecret,
+    service: matterIntelligenceReadService
   });
   const matterIntelligenceReviewService = new MatterIntelligenceReviewService(
     new PostgresMatterIntelligenceReviewRepository(database)
@@ -227,6 +239,7 @@ if (fixtureRuntime) {
       ...lifecycleSurfaceRoutes,
       ...formalOpportunityRoutes,
       ...matterIntelligenceRoutes,
+      ...matterIntelligenceReadRoutes,
       ...matterIntelligenceReviewRoutes,
       ...knowledgeCaseRoutes
     ]
