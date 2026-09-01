@@ -94,6 +94,60 @@ function loadRecord(client: MarkregClient, route: MarkregRoute) {
   return client.getGovernedRecord(route.view, route.recordId);
 }
 
+function readFailure(error: unknown, route: MarkregRoute): Extract<State, { kind: 'ERROR' }> {
+  if (
+    route.view === 'preparation-lock' &&
+    error instanceof MarkregApiError &&
+    error.code === DURABLE_PREPARATION_NOT_AVAILABLE
+  )
+    return {
+      kind: 'ERROR',
+      title: 'Durable Preparation is not available yet',
+      retry: false,
+      reason: 'DURABLE_PREPARATION_NOT_AVAILABLE'
+    };
+
+  if (error instanceof Error && /not found/i.test(error.message))
+    return {
+      kind: 'ERROR',
+      title: 'The requested record was not found. No latest record was selected.',
+      retry: false
+    };
+
+  if (error instanceof MarkregApiError) {
+    if (error.code?.includes('PERMISSION') || /permission/i.test(error.message))
+      return {
+        kind: 'ERROR',
+        title: 'Workspace permission required',
+        retry: false
+      };
+    if (error.kind === 'validation')
+      return {
+        kind: 'ERROR',
+        title: 'The governed record request is invalid.',
+        retry: false
+      };
+    if (error.kind === 'conflict')
+      return {
+        kind: 'ERROR',
+        title: 'The governed record changed and cannot be loaded from this exact link.',
+        retry: false
+      };
+    if (error.kind === 'blocking')
+      return {
+        kind: 'ERROR',
+        title: 'The governed record could not be loaded safely.',
+        retry: false
+      };
+  }
+
+  return {
+    kind: 'ERROR',
+    title: 'The governed record service is unavailable.',
+    retry: true
+  };
+}
+
 function GenericGovernedRouteEntry({
   parsed,
   client
@@ -141,27 +195,7 @@ function GenericGovernedRouteEntry({
         );
       })
       .catch((error: unknown) => {
-        if (
-          parsed.route.view === 'preparation-lock' &&
-          error instanceof MarkregApiError &&
-          error.code === DURABLE_PREPARATION_NOT_AVAILABLE
-        ) {
-          setState({
-            kind: 'ERROR',
-            title: 'Durable Preparation is not available yet',
-            retry: false,
-            reason: 'DURABLE_PREPARATION_NOT_AVAILABLE'
-          });
-          return;
-        }
-        setState({
-          kind: 'ERROR',
-          title:
-            error instanceof Error && error.message.includes('not found')
-              ? 'The requested record was not found. No latest record was selected.'
-              : 'The governed record service is unavailable.',
-          retry: true
-        });
+        setState(readFailure(error, parsed.route));
       });
   }, [attempt, client, parsed]);
   useLayoutEffect(() => {
