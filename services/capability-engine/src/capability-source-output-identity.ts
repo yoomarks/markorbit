@@ -29,6 +29,12 @@ function invalidOutputShape(message: string): never {
   throw new CapabilitySourceOutputIdentityError('INVALID_OUTPUT_SHAPE', message);
 }
 
+function canonicalKeyOrder(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
 function canonicalJson(value: unknown, ancestors: WeakSet<object>): string {
   if (value === null) return 'null';
   if (typeof value === 'string') return JSON.stringify(value);
@@ -105,7 +111,7 @@ function canonicalJson(value: unknown, ancestors: WeakSet<object>): string {
       }
       entries.push([key, descriptor.value]);
     }
-    entries.sort(([left], [right]) => left.localeCompare(right));
+    entries.sort(([left], [right]) => canonicalKeyOrder(left, right));
     return `{${entries
       .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item, ancestors)}`)
       .join(',')}}`;
@@ -122,20 +128,23 @@ export function materializeCapabilitySourceOutputIdentityV1(
   outputSchemaId: string,
   output: unknown
 ): Readonly<CapabilitySourceOutputIdentityV1> {
-  if (typeof outputSchemaId !== 'string' || outputSchemaId.trim().length === 0) {
+  if (
+    typeof outputSchemaId !== 'string' ||
+    outputSchemaId.length === 0 ||
+    outputSchemaId !== outputSchemaId.trim()
+  ) {
     throw new CapabilitySourceOutputIdentityError(
       'INVALID_OUTPUT_SCHEMA',
-      'Capability source output identity requires an exact output schema id.'
+      'Capability source output identity requires an exact non-whitespace-padded output schema id.'
     );
   }
-  const normalizedOutputSchemaId = outputSchemaId.trim();
   const outputFingerprintSha256 = canonicalJsonSha256V1({
-    outputSchemaId: normalizedOutputSchemaId,
+    outputSchemaId,
     output
   });
   return Object.freeze({
     schemaVersion: 1,
-    outputSchemaId: normalizedOutputSchemaId,
+    outputSchemaId,
     outputFingerprintSha256
   });
 }
@@ -177,7 +186,8 @@ export function validCapabilitySourceOutputIdentityV1(
     identity &&
     identity.schemaVersion === 1 &&
     typeof identity.outputSchemaId === 'string' &&
-    identity.outputSchemaId.trim().length > 0 &&
+    identity.outputSchemaId.length > 0 &&
+    identity.outputSchemaId === identity.outputSchemaId.trim() &&
     typeof identity.outputFingerprintSha256 === 'string' &&
     SHA256.test(identity.outputFingerprintSha256)
   );
