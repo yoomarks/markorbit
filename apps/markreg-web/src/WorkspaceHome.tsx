@@ -1,4 +1,5 @@
 import type { FormalMatterListQuery, FormalMatterListResponse } from '@markorbit/contracts';
+import { orderStatuses, type OrderStatus } from '@markorbit/contracts/order';
 import {
   Alert,
   Button,
@@ -121,6 +122,8 @@ export function MarkregWorkspaceHome({
   const [workspaceId, setWorkspaceId] = useState(currentWorkspaceId);
   const [orderPage, setOrderPage] = useState(1);
   const [matterPage, setMatterPage] = useState(1);
+  const [orderStatusDraft, setOrderStatusDraft] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus>();
   const [matterSearchDraft, setMatterSearchDraft] = useState('');
   const [matterStatusDraft, setMatterStatusDraft] = useState('');
   const [matterTypeDraft, setMatterTypeDraft] = useState('');
@@ -146,7 +149,11 @@ export function MarkregWorkspaceHome({
 
     setOrderState({ kind: 'LOADING' });
     void client
-      .list({ page: orderPage, pageSize: PAGE_SIZE })
+      .list({
+        page: orderPage,
+        pageSize: PAGE_SIZE,
+        ...(orderStatusFilter ? { status: orderStatusFilter } : {})
+      })
       .then((result) => {
         if (active) setOrderState({ kind: 'READY', result });
       })
@@ -157,7 +164,7 @@ export function MarkregWorkspaceHome({
     return () => {
       active = false;
     };
-  }, [client, orderPage, orderReloadToken, workspaceId]);
+  }, [client, orderPage, orderReloadToken, orderStatusFilter, workspaceId]);
 
   useEffect(() => {
     let active = true;
@@ -189,6 +196,8 @@ export function MarkregWorkspaceHome({
       setMatterState({ kind: 'LOADING' });
       setOrderPage(1);
       setMatterPage(1);
+      setOrderStatusDraft('');
+      setOrderStatusFilter(undefined);
       setMatterSearchDraft('');
       setMatterStatusDraft('');
       setMatterTypeDraft('');
@@ -205,6 +214,18 @@ export function MarkregWorkspaceHome({
       removeEventListener('storage', reconcileWorkspace);
     };
   }, [workspaceId]);
+
+  const applyOrderFilter = () => {
+    const status = orderStatuses.find((candidate) => candidate === orderStatusDraft);
+    setOrderPage(1);
+    setOrderStatusFilter(status);
+  };
+
+  const clearOrderFilter = () => {
+    setOrderStatusDraft('');
+    setOrderPage(1);
+    setOrderStatusFilter(undefined);
+  };
 
   const applyMatterFilters = () => {
     if (
@@ -275,6 +296,7 @@ export function MarkregWorkspaceHome({
     matterState.kind === 'READY'
       ? Math.max(1, Math.ceil(matterState.result.total / matterState.result.pageSize))
       : 1;
+  const orderFilterActive = orderStatusFilter !== undefined;
   const matterFiltersActive = hasMatterFilters(matterFilters);
 
   return (
@@ -293,6 +315,26 @@ export function MarkregWorkspaceHome({
 
       <section className="markreg-workspace-list" aria-labelledby="workspace-orders-heading">
         <h2 id="workspace-orders-heading">Service Orders</h2>
+        <div className="markreg-workspace-matter-filters" aria-label="Service Order filters">
+          <Select
+            label="Order status"
+            value={orderStatusDraft}
+            onChange={(event) => setOrderStatusDraft(event.currentTarget.value)}
+          >
+            <option value="">All statuses</option>
+            {orderStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
+          <div className="markreg-workspace-filter-actions">
+            <Button onClick={applyOrderFilter}>Apply Order filter</Button>
+            <Button variant="secondary" onClick={clearOrderFilter}>
+              Clear Order filter
+            </Button>
+          </div>
+        </div>
         {orderState.kind === 'LOADING' && <LoadingState label="Loading durable Service Orders" />}
         {orderState.kind === 'ERROR' && (
           <ErrorState
@@ -305,13 +347,26 @@ export function MarkregWorkspaceHome({
         )}
         {orderState.kind === 'READY' && orderState.result.items.length === 0 && (
           <Card>
-            <h3>No service Orders yet</h3>
-            <p>
-              This Workspace has no durable Orders. Formal Matters, if any, remain visible
-              separately below. Planning a consultation does not create an Order, Payment, Matter,
-              or Filing.
-            </p>
-            <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
+            {orderFilterActive ? (
+              <>
+                <h3>No Service Orders match this status</h3>
+                <p>
+                  The current durable Order query returned no Orders matching the selected status.
+                  This does not mean the Workspace has no Service Orders. Order status is internal
+                  MarkReg state, not trademark-office or filing status.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3>No service Orders yet</h3>
+                <p>
+                  This Workspace has no durable Orders. Formal Matters, if any, remain visible
+                  separately below. Planning a consultation does not create an Order, Payment,
+                  Matter, or Filing.
+                </p>
+                <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
+              </>
+            )}
           </Card>
         )}
         {orderState.kind === 'READY' &&
