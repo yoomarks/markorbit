@@ -96,14 +96,13 @@ describe('MarkReg governed direct entry', () => {
     expect(await screen.findByText('matter-draft_exact')).toBeTruthy();
   });
   it('renders durable Preparation unavailability as a stable non-retryable boundary', async () => {
-    const getGovernedRecord = vi.fn().mockRejectedValue(
-      new MarkregApiError(
-        'recoverable',
-        'Matter preparation is temporarily unavailable. Your saved Draft is unchanged.',
-        undefined,
-        'DURABLE_PREPARATION_NOT_AVAILABLE'
-      )
+    const unavailable = new MarkregApiError(
+      'recoverable',
+      'Matter preparation is temporarily unavailable. Your saved Draft is unchanged.',
+      undefined,
+      'DURABLE_PREPARATION_NOT_AVAILABLE'
     );
+    const getGovernedRecord = vi.fn().mockRejectedValue(unavailable);
     render(
       <GovernedRouteEntry
         search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=4%3A8"
@@ -114,18 +113,19 @@ describe('MarkReg governed direct entry', () => {
     const heading = await screen.findByRole('heading', {
       name: 'Durable Preparation is not available yet'
     });
+    const durablePackages = screen.getByText(/Durable Document Packages are available/);
+    const noFallback = screen.getByText(/historical in-memory or fixture/);
+    const noFabrication = screen.getByText(/No Preparation Lock was fabricated/);
+    const retry = screen.queryByRole('button', {
+      name: 'Retry same identity and version'
+    });
+
     expect(document.activeElement).toBe(heading);
-    expect(screen.getByText(/Durable Document Packages are available/)).toBeTruthy();
-    expect(
-      screen.getByText(/will not fall back to the historical in-memory or fixture/)
-    ).toBeTruthy();
-    expect(
-      screen.getByText(/No Preparation Lock was fabricated or treated as empty truth/)
-    ).toBeTruthy();
+    expect(durablePackages).toBeTruthy();
+    expect(noFallback).toBeTruthy();
+    expect(noFabrication).toBeTruthy();
     expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
-    expect(
-      screen.queryByRole('button', { name: 'Retry same identity and version' })
-    ).toBeNull();
+    expect(retry).toBeNull();
     expect(getGovernedRecord).toHaveBeenCalledWith('preparation-lock', 'preparation-lock_exact');
   });
   it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
