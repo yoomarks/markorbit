@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js",
-    "test:brain-registry:postgres": "vitest run tests/brain-asset-registry-postgres.test.ts && vitest run tests/brain-gap-registry-postgres.test.ts && vitest run tests/official-fee-reference-store-postgres.test.ts",
+    "test:brain-registry:postgres": "pnpm exec prettier src/brain-gap-registry-postgres.ts tests/brain-gap-registry-postgres.test.ts && vitest run tests/brain-asset-registry-postgres.test.ts && vitest run tests/brain-gap-registry-postgres.test.ts && vitest run tests/official-fee-reference-store-postgres.test.ts",
     "test:official-fee-reference:postgres": "vitest run tests/official-fee-reference-store-postgres.test.ts"
   },
   "dependencies": {
