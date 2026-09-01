@@ -208,7 +208,7 @@ function dependencies(options?: {
               503,
               true
             )
-          ) as never;
+          );
         return Promise.resolve(requestedMatterId === formalMatterId ? packages : []) as never;
       }
     },
@@ -227,21 +227,21 @@ describe('Postgres Formal Matter Document Package Reader', () => {
     const calls: { text: string; values: readonly unknown[] | undefined }[] = [];
     const loaded: string[] = [];
     const query = {
-      query: async (text: string, values?: readonly unknown[]) => {
+      query: (text: string, values?: readonly unknown[]) => {
         calls.push({ text, values });
-        return {
+        return Promise.resolve({
           rows: [
             { document_package_id: 'document-package_newest' },
             { document_package_id: 'document-package_older' }
           ],
           rowCount: 2
-        };
+        });
       }
     } as never;
     const reader = new PostgresFormalMatterDocumentPackageReader(query, {
-      get: async (_principal, packageId) => {
+      get: (_principal, packageId) => {
         loaded.push(packageId);
-        return { documentPackageId: packageId } as never;
+        return Promise.resolve({ documentPackageId: packageId } as never);
       }
     });
 
@@ -262,16 +262,17 @@ describe('Postgres Formal Matter Document Package Reader', () => {
   it('keeps a different Workspace isolated and does not load unrelated packages', async () => {
     let loaded = false;
     const query = {
-      query: async (_text: string, values?: readonly unknown[]) => ({
-        rows:
-          values?.[0] === workspaceId ? [{ document_package_id: 'document-package_hidden' }] : [],
-        rowCount: values?.[0] === workspaceId ? 1 : 0
-      })
+      query: (_text: string, values?: readonly unknown[]) =>
+        Promise.resolve({
+          rows:
+            values?.[0] === workspaceId ? [{ document_package_id: 'document-package_hidden' }] : [],
+          rowCount: values?.[0] === workspaceId ? 1 : 0
+        })
     } as never;
     const reader = new PostgresFormalMatterDocumentPackageReader(query, {
-      get: async () => {
+      get: () => {
         loaded = true;
-        return {} as never;
+        return Promise.resolve({} as never);
       }
     });
 
@@ -285,12 +286,12 @@ describe('Postgres Formal Matter Document Package Reader', () => {
     let queried = false;
     const reader = new PostgresFormalMatterDocumentPackageReader(
       {
-        query: async () => {
+        query: () => {
           queried = true;
-          return { rows: [], rowCount: 0 };
+          return Promise.resolve({ rows: [], rowCount: 0 });
         }
       } as never,
-      { get: async () => ({}) as never }
+      { get: () => Promise.resolve({} as never) }
     );
 
     await expect(
