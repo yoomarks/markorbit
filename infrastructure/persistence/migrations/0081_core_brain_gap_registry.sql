@@ -15,10 +15,7 @@ CREATE TABLE IF NOT EXISTS brain_gap_audit_admissions (
 
 CREATE TABLE IF NOT EXISTS brain_gap_occurrences (
   occurrence_sha256 text PRIMARY KEY CHECK (occurrence_sha256 ~ '^[a-f0-9]{64}$'),
-  audit_admission_id text NOT NULL
-    REFERENCES brain_gap_audit_admissions(audit_admission_id) ON DELETE RESTRICT,
-  audit_payload_sha256 text NOT NULL CHECK (audit_payload_sha256 ~ '^[a-f0-9]{64}$'),
-  audit_gap_ordinal integer NOT NULL CHECK (audit_gap_ordinal >= 0),
+  occurrence_admission_sequence bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
   brain_gap_id text NOT NULL,
   brain_gap_registry_key text NOT NULL,
   identity_fingerprint_sha256 text NOT NULL
@@ -41,16 +38,29 @@ CREATE TABLE IF NOT EXISTS brain_gap_occurrences (
   detected_at timestamptz NOT NULL,
   gap_json jsonb NOT NULL,
   stored_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  UNIQUE (audit_admission_id, audit_gap_ordinal),
-  FOREIGN KEY (audit_admission_id, audit_payload_sha256)
-    REFERENCES brain_gap_audit_admissions(audit_admission_id, audit_payload_sha256)
-    ON DELETE RESTRICT,
   CHECK (brain_gap_id = 'brain-gap_' || identity_fingerprint_sha256),
   CHECK (brain_gap_registry_key = 'brain-gap-key_' || identity_fingerprint_sha256)
 );
 
+-- Audit membership is separate from the globally de-duplicated occurrence fact.
+-- This preserves every batch/ordinal receipt even when the exact same governed
+-- occurrence appears in a later non-replay audit, without incrementing registry
+-- occurrenceCount a second time.
+CREATE TABLE IF NOT EXISTS brain_gap_audit_occurrence_memberships (
+  audit_admission_id text NOT NULL,
+  audit_payload_sha256 text NOT NULL CHECK (audit_payload_sha256 ~ '^[a-f0-9]{64}$'),
+  audit_gap_ordinal integer NOT NULL CHECK (audit_gap_ordinal >= 0),
+  occurrence_sha256 text NOT NULL
+    REFERENCES brain_gap_occurrences(occurrence_sha256) ON DELETE RESTRICT,
+  stored_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (audit_admission_id, audit_gap_ordinal),
+  FOREIGN KEY (audit_admission_id, audit_payload_sha256)
+    REFERENCES brain_gap_audit_admissions(audit_admission_id, audit_payload_sha256)
+    ON DELETE RESTRICT
+);
+
 CREATE INDEX IF NOT EXISTS brain_gap_occurrences_registry_history_idx
-  ON brain_gap_occurrences(brain_gap_registry_key, detected_at, occurrence_sha256);
+  ON brain_gap_occurrences(brain_gap_registry_key, detected_at, occurrence_admission_sequence);
 
 CREATE INDEX IF NOT EXISTS brain_gap_occurrences_scope_idx
   ON brain_gap_occurrences(domain, jurisdiction, concept, detected_at);
@@ -59,8 +69,12 @@ CREATE INDEX IF NOT EXISTS brain_gap_occurrences_build_run_idx
   ON brain_gap_occurrences(related_brain_build_run_id)
   WHERE related_brain_build_run_id IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS brain_gap_audit_occurrence_memberships_occurrence_idx
+  ON brain_gap_audit_occurrence_memberships(occurrence_sha256, audit_admission_id, audit_gap_ordinal);
+
 CREATE TABLE IF NOT EXISTS brain_gap_dispositions (
   disposition_id text PRIMARY KEY,
+  disposition_admission_sequence bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
   brain_gap_registry_key text NOT NULL,
   status text NOT NULL CHECK (status IN ('OPEN','ACKNOWLEDGED','RESOLVING','RESOLVED','DISMISSED')),
   occurred_at timestamptz NOT NULL,
@@ -71,11 +85,14 @@ CREATE TABLE IF NOT EXISTS brain_gap_dispositions (
 );
 
 CREATE INDEX IF NOT EXISTS brain_gap_dispositions_registry_history_idx
-  ON brain_gap_dispositions(brain_gap_registry_key, occurred_at, disposition_id);
+  ON brain_gap_dispositions(brain_gap_registry_key, occurred_at, disposition_admission_sequence);
 
--- Historical audit admissions, gap occurrences, and dispositions are evidence.
--- They are append-only; later registry state is reconstructed from history rather
--- than mutating prior evidence.
+-- Storage sequences preserve accepted call order when semantic timestamps tie.
+-- They are reconstruction tie-breakers only and create no business authority.
+
+-- Historical audit admissions, audit memberships, gap occurrences, and
+-- dispositions are evidence. They are append-only; later registry state is
+-- reconstructed from history rather than mutating prior evidence.
 CREATE OR REPLACE FUNCTION reject_brain_gap_history_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -94,6 +111,11 @@ FOR EACH ROW EXECUTE FUNCTION reject_brain_gap_history_mutation();
 DROP TRIGGER IF EXISTS brain_gap_occurrences_append_only ON brain_gap_occurrences;
 CREATE TRIGGER brain_gap_occurrences_append_only
 BEFORE UPDATE OR DELETE ON brain_gap_occurrences
+FOR EACH ROW EXECUTE FUNCTION reject_brain_gap_history_mutation();
+
+DROP TRIGGER IF EXISTS brain_gap_audit_occurrence_memberships_append_only ON brain_gap_audit_occurrence_memberships;
+CREATE TRIGGER brain_gap_audit_occurrence_memberships_append_only
+BEFORE UPDATE OR DELETE ON brain_gap_audit_occurrence_memberships
 FOR EACH ROW EXECUTE FUNCTION reject_brain_gap_history_mutation();
 
 DROP TRIGGER IF EXISTS brain_gap_dispositions_append_only ON brain_gap_dispositions;
