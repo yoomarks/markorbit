@@ -46,6 +46,11 @@ vi.mock('./features/execution-release/ExecutionRelease.js', () => ({
     </h1>
   )
 }));
+vi.mock('./features/opportunities/CandidateReview.js', () => ({
+  CandidateReview: ({ workspaceId }: { workspaceId: string }) => (
+    <h1>Opportunity Center {workspaceId}</h1>
+  )
+}));
 
 afterEach(() => {
   cleanup();
@@ -69,7 +74,7 @@ describe('Lite shell navigation truth', () => {
       ['Today', 'Today workspace-1', '#today'],
       ['Matters', 'Matters workspace-1', '#matters'],
       ['Content', 'Content Studio workspace-1', '#content'],
-      ['Opportunities', 'Opportunities', '#opportunities'],
+      ['Opportunities', 'Opportunity Center workspace-1', '#opportunities'],
       ['Trademarks', 'Trademarks workspace-1', '#trademarks'],
       ['Work', 'Customers', '#work-customers'],
       ['Capability', 'Capability workspace-1', '#capability'],
@@ -122,20 +127,27 @@ describe('Lite shell navigation truth', () => {
     }
   );
 
-  it.each(['customers', 'opportunities'] as const)(
-    'keeps %s fixture-labelled in every fixture state even with a Workspace',
-    (surface) => {
-      window.history.replaceState(null, '', '/?workspaceId=workspace-1');
-      const { rerender } = render(<LiteApp initialSurface={surface} />);
-      for (const state of ['ready', 'loading', 'empty', 'error', 'stale'] as const) {
-        rerender(<LiteApp key={state} initialSurface={surface} initialState={state} />);
-        expect(screen.getByText('Northstar IP · Fixture workspace')).toBeVisible();
-        expect(screen.getByText('Not live data')).toBeVisible();
-        expect(screen.getByText(/Demonstration only/)).toBeVisible();
-        expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
-      }
+  it('keeps Customers fixture-labelled in every fixture state even with a Workspace', () => {
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1');
+    const { rerender } = render(<LiteApp initialSurface="customers" />);
+    for (const state of ['ready', 'loading', 'empty', 'error', 'stale'] as const) {
+      rerender(<LiteApp key={state} initialSurface="customers" initialState={state} />);
+      expect(screen.getByText('Northstar IP · Fixture workspace')).toBeVisible();
+      expect(screen.getByText('Not live data')).toBeVisible();
+      expect(screen.getByText(/Demonstration only/)).toBeVisible();
+      expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
     }
-  );
+  });
+
+  it('promotes Opportunities as an authenticated Workspace Candidate Review surface', () => {
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1#opportunities');
+    render(<LiteApp />);
+    expect(screen.getByRole('heading', { name: 'Opportunity Center workspace-1' })).toBeVisible();
+    expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
+    expect(screen.getByText('Authenticated')).toBeVisible();
+    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
+  });
 
   it('synchronizes Work subnavigation with URL and browser history', async () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1#work-customers');
@@ -177,7 +189,7 @@ describe('Lite shell navigation truth', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('authorization_1 2');
   });
 
-  it.each(['today', 'matters', 'trademarks', 'capability'] as const)(
+  it.each(['today', 'matters', 'content', 'trademarks', 'capability', 'opportunities'] as const)(
     'keeps the missing-Workspace state for %s',
     (surface) => {
       render(<LiteApp initialSurface={surface} />);

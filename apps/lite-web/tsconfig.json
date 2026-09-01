@@ -11,6 +11,7 @@
     "tests/**/*.ts",
     "vite.config.ts",
     "playwright.navigation.config.ts",
+    "playwright.opportunity-candidates.config.ts",
     "playwright.trademark-commerce.config.ts"
   ]
 }
