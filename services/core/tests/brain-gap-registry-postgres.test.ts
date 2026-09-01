@@ -66,7 +66,10 @@ function gap(
   };
 }
 
-function audit(gaps: readonly BrainGap[], auditedAt = '2026-09-02T00:05:00.000Z'): BrainSelfAuditResult {
+function audit(
+  gaps: readonly BrainGap[],
+  auditedAt = '2026-09-02T00:05:00.000Z'
+): BrainSelfAuditResult {
   return { schemaVersion: 1, gaps, auditedAt };
 }
 
@@ -110,7 +113,9 @@ integration('PostgreSQL BrainGap Registry durability', () => {
 
     expect(replay).toEqual(first);
     expect((await restarted.query())[0]?.occurrenceCount).toBe(1);
-    expect((await database.getPool().query('SELECT 1 FROM brain_gap_occurrences')).rowCount).toBe(1);
+    expect((await database.getPool().query('SELECT 1 FROM brain_gap_occurrences')).rowCount).toBe(
+      1
+    );
     expect(
       (await database.getPool().query('SELECT 1 FROM brain_gap_audit_occurrence_memberships'))
         .rowCount
@@ -125,7 +130,9 @@ integration('PostgreSQL BrainGap Registry durability', () => {
     await registry.admitAudit(audit([exactGap], '2026-09-02T00:06:00.000Z'));
 
     expect((await registry.query())[0]?.occurrenceCount).toBe(1);
-    expect((await database.getPool().query('SELECT 1 FROM brain_gap_occurrences')).rowCount).toBe(1);
+    expect((await database.getPool().query('SELECT 1 FROM brain_gap_occurrences')).rowCount).toBe(
+      1
+    );
     expect(
       (await database.getPool().query('SELECT 1 FROM brain_gap_audit_occurrence_memberships'))
         .rowCount
