@@ -1,8 +1,61 @@
-import '@testing-library/jest-dom/vitest';
+import type { FormalMatter } from '@markorbit/contracts';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GovernedRouteEntry } from './GovernedRouteEntry';
+
+vi.mock('../LifecyclePanel.js', () => ({
+  LifecyclePanel: ({ disabled }: { disabled: boolean }) => (
+    <div>{disabled ? 'Lifecycle read only' : 'Lifecycle current'}</div>
+  )
+}));
+
+const formalMatter = {
+  schemaVersion: 1,
+  formalMatterId: 'formal-matter_exact',
+  workspaceId: '11111111-1111-4111-8111-111111111111',
+  kind: 'TRADEMARK_REGISTRATION',
+  status: 'OPEN',
+  version: 1,
+  sourceCustomerConfirmationId: 'confirmation_exact',
+  sourceCustomerConfirmationVersion: 1,
+  sourceMatterDraftId: 'matter-draft_exact-source',
+  sourceMatterDraftVersion: 2,
+  sourceQuoteId: 'quote_exact-source',
+  sourceQuoteVersion: 'quote-v1',
+  sourceSnapshot: {
+    schemaVersion: 1,
+    customerConfirmation: { id: 'confirmation_exact', version: 1, status: 'CONFIRMED' },
+    quote: { id: 'quote_exact-source', version: 'quote-v1', currency: 'USD', totalMinor: 100 },
+    matterDraft: {
+      id: 'matter-draft_exact-source',
+      version: 2,
+      status: 'READY_FOR_PROFESSIONAL_REVIEW',
+      readiness: {
+        evaluatedAt: '2026-09-01T02:00:00.000Z',
+        checks: [],
+        readyForProfessionalReview: true
+      }
+    },
+    preparation: {
+      applicantName: 'Orbit Labs',
+      applicantAddress: '1 Orbit Way',
+      trademark: 'ORBIT',
+      targetJurisdiction: 'US',
+      classes: [9],
+      goodsServices: 'Software',
+      filingBasis: 'USE',
+      representativeRequired: false,
+      documentReferences: [],
+      commercialScopeUnchanged: true
+    }
+  },
+  snapshotSchemaVersion: 1,
+  snapshotSha256: 'a'.repeat(64),
+  createdByUserId: 'user_exact',
+  createdAt: '2026-09-01T02:00:00.000Z',
+  updatedAt: '2026-09-01T02:00:00.000Z'
+} as unknown as FormalMatter;
 
 afterEach(cleanup);
 describe('MarkReg governed direct entry', () => {
@@ -40,5 +93,20 @@ describe('MarkReg governed direct entry', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry same identity and version' }));
     await waitFor(() => expect(getGovernedRecord).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('matter-draft_exact')).toBeTruthy();
+  });
+  it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
+    const getFormalMatter = vi.fn().mockResolvedValue({ formalMatter });
+    render(
+      <GovernedRouteEntry
+        search="?view=formal-matter&formalMatterId=formal-matter_exact&formalMatterVersion=1"
+        client={{ createIntake: vi.fn(), getFormalMatter }}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
+    expect(screen.getByText('ORBIT')).toBeTruthy();
+    expect(screen.getByText('Lifecycle current')).toBeTruthy();
+    expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
+    expect(getFormalMatter).toHaveBeenCalledWith('formal-matter_exact');
   });
 });
