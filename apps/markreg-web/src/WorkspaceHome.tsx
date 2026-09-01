@@ -1,4 +1,7 @@
-import type { FormalMatterListResponse } from '@markorbit/contracts';
+import type {
+  FormalMatterListQuery,
+  FormalMatterListResponse
+} from '@markorbit/contracts';
 import {
   Alert,
   Button,
@@ -21,6 +24,18 @@ import {
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 const PAGE_SIZE = 10;
+
+type MatterFilters = Readonly<{
+  search: string;
+  createdFrom: string;
+  createdTo: string;
+}>;
+
+const emptyMatterFilters = (): MatterFilters => ({
+  search: '',
+  createdFrom: '',
+  createdTo: ''
+});
 
 const currentWorkspaceId = () =>
   typeof sessionStorage === 'undefined'
@@ -92,6 +107,29 @@ function failure<T>(
   };
 }
 
+function matterQuery(filters: MatterFilters, page: number): FormalMatterListQuery {
+  const search = filters.search.trim();
+  return {
+    page,
+    pageSize: PAGE_SIZE,
+    ...(search ? { search } : {}),
+    ...(filters.createdFrom ? { createdFrom: `${filters.createdFrom}T00:00:00.000Z` } : {}),
+    ...(filters.createdTo ? { createdTo: `${filters.createdTo}T23:59:59.999Z` } : {})
+  };
+}
+
+function hasMatterFilters(filters: MatterFilters): boolean {
+  return Boolean(filters.search.trim() || filters.createdFrom || filters.createdTo);
+}
+
+function matterFilterSummary(filters: MatterFilters): string {
+  const parts: string[] = [];
+  if (filters.search.trim()) parts.push(`search “${filters.search.trim()}”`);
+  if (filters.createdFrom) parts.push(`created from ${filters.createdFrom} UTC`);
+  if (filters.createdTo) parts.push(`created through ${filters.createdTo} UTC`);
+  return parts.join(' · ');
+}
+
 const defaultOrderClient = createOrderClient();
 const defaultMatterClient = createFormalMatterListClient();
 
@@ -108,6 +146,9 @@ export function MarkregWorkspaceHome({
   const [workspaceId, setWorkspaceId] = useState(currentWorkspaceId);
   const [orderPage, setOrderPage] = useState(1);
   const [matterPage, setMatterPage] = useState(1);
+  const [matterFilterDraft, setMatterFilterDraft] = useState<MatterFilters>(emptyMatterFilters);
+  const [matterFilters, setMatterFilters] = useState<MatterFilters>(emptyMatterFilters);
+  const [matterFilterError, setMatterFilterError] = useState<string>();
   const [orderReloadToken, setOrderReloadToken] = useState(0);
   const [matterReloadToken, setMatterReloadToken] = useState(0);
   const [orderState, setOrderState] = useState<CollectionState<OrderListView>>({
@@ -148,7 +189,7 @@ export function MarkregWorkspaceHome({
 
     setMatterState({ kind: 'LOADING' });
     void matterClient
-      .list({ page: matterPage, pageSize: PAGE_SIZE })
+      .list(matterQuery(matterFilters, matterPage))
       .then((result) => {
         if (active) setMatterState({ kind: 'READY', result });
       })
@@ -159,7 +200,7 @@ export function MarkregWorkspaceHome({
     return () => {
       active = false;
     };
-  }, [matterClient, matterPage, matterReloadToken, workspaceId]);
+  }, [matterClient, matterFilters, matterPage, matterReloadToken, workspaceId]);
 
   useEffect(() => {
     const reconcileWorkspace = () => {
@@ -178,6 +219,29 @@ export function MarkregWorkspaceHome({
       removeEventListener('storage', reconcileWorkspace);
     };
   }, [workspaceId]);
+
+  const applyMatterFilters = () => {
+    if (
+      matterFilterDraft.createdFrom &&
+      matterFilterDraft.createdTo &&
+      matterFilterDraft.createdFrom > matterFilterDraft.createdTo
+    ) {
+      setMatterFilterError('Created from must not be later than Created to.');
+      return;
+    }
+    setMatterFilterError(undefined);
+    setMatterPage(1);
+    setMatterFilters({ ...matterFilterDraft, search: matterFilterDraft.search.trim() });
+    setMatterReloadToken((value) => value + 1);
+  };
+
+  const clearMatterFilters = () => {
+    setMatterFilterError(undefined);
+    setMatterFilterDraft(emptyMatterFilters());
+    setMatterFilters(emptyMatterFilters());
+    setMatterPage(1);
+    setMatterReloadToken((value) => value + 1);
+  };
 
   if (planning)
     return (
@@ -213,6 +277,7 @@ export function MarkregWorkspaceHome({
     matterState.kind === 'READY'
       ? Math.max(1, Math.ceil(matterState.result.total / matterState.result.pageSize))
       : 1;
+  const matterFiltered = hasMatterFilters(matterFilters);
 
   return (
     <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
@@ -302,6 +367,64 @@ export function MarkregWorkspaceHome({
 
       <section className="markreg-workspace-list" aria-labelledby="workspace-matters-heading">
         <h2 id="workspace-matters-heading">Formal Matters</h2>
+        <Card>
+          <h3>Find Formal Matters</h3>
+          <p>
+            Search matches Matter ID, source Matter Draft ID, Applicant, or Trademark. Created
+            dates use UTC and filter the Matter creation timestamp, not an official-office event.
+          </p>
+          <div className="markreg-workspace-filter-fields">
+            <label>
+              Search Formal Matters
+              <input
+                type="search"
+                value={matterFilterDraft.search}
+                onChange={(event) =>
+                  setMatterFilterDraft((current) => ({
+                    ...current,
+                    search: event.currentTarget.value
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Created from (UTC)
+              <input
+                type="date"
+                value={matterFilterDraft.createdFrom}
+                onChange={(event) =>
+                  setMatterFilterDraft((current) => ({
+                    ...current,
+                    createdFrom: event.currentTarget.value
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Created to (UTC)
+              <input
+                type="date"
+                value={matterFilterDraft.createdTo}
+                onChange={(event) =>
+                  setMatterFilterDraft((current) => ({
+                    ...current,
+                    createdTo: event.currentTarget.value
+                  }))
+                }
+              />
+            </label>
+          </div>
+          {matterFilterError && <p role="alert">{matterFilterError}</p>}
+          <div className="markreg-workspace-order-actions">
+            <Button onClick={applyMatterFilters}>Apply filters</Button>
+            <Button variant="secondary" onClick={clearMatterFilters}>
+              Clear filters
+            </Button>
+          </div>
+          {matterFiltered && (
+            <p aria-live="polite">Active filters: {matterFilterSummary(matterFilters)}</p>
+          )}
+        </Card>
         {matterState.kind === 'LOADING' && <LoadingState label="Loading durable Formal Matters" />}
         {matterState.kind === 'ERROR' && (
           <ErrorState
@@ -314,10 +437,11 @@ export function MarkregWorkspaceHome({
         )}
         {matterState.kind === 'READY' && matterState.result.items.length === 0 && (
           <Card>
-            <h3>No Formal Matters yet</h3>
+            <h3>{matterFiltered ? 'No Formal Matters match these filters' : 'No Formal Matters yet'}</h3>
             <p>
-              No durable Formal Matter is currently returned for this Workspace. This does not
-              change or reinterpret any Service Order state.
+              {matterFiltered
+                ? 'The current durable query returned zero matching Formal Matters. This does not mean the Workspace has no Matters outside the active filters.'
+                : 'No durable Formal Matter is currently returned for this Workspace. This does not change or reinterpret any Service Order state.'}
             </p>
           </Card>
         )}

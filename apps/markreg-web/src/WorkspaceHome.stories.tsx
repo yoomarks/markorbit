@@ -51,6 +51,15 @@ const matter = {
   nextStep: 'PROFESSIONAL_REVIEW_AVAILABLE'
 } as unknown as FormalMatterListResponse['items'][number];
 
+const secondMatter = {
+  ...matter,
+  formalMatterId: 'formal-matter_018f0000-0000-7000-8000-000000000908',
+  createdAt: '2026-07-15T12:00:00.000Z',
+  applicant: 'Second Applicant Inc.',
+  trademark: 'SECOND MARK',
+  sourceMatterDraftId: 'matter-draft_018f0000-0000-7000-8000-000000000909'
+} as unknown as FormalMatterListResponse['items'][number];
+
 const orderResult = (items: readonly OrderView[]): OrderListView => ({
   items,
   page: 1,
@@ -58,10 +67,14 @@ const orderResult = (items: readonly OrderView[]): OrderListView => ({
   total: items.length
 });
 
-const matterResult = (items: FormalMatterListResponse['items']): FormalMatterListResponse => ({
+const matterResult = (
+  items: FormalMatterListResponse['items'],
+  page = 1,
+  pageSize = 10
+): FormalMatterListResponse => ({
   items,
-  page: 1,
-  pageSize: 10,
+  page,
+  pageSize,
   total: items.length
 });
 
@@ -73,6 +86,23 @@ const client = (items: readonly OrderView[]) =>
 const matterClient = (items: FormalMatterListResponse['items']): FormalMatterListClient => ({
   list: () => Promise.resolve(matterResult(items))
 });
+
+const searchableMatterClient: FormalMatterListClient = {
+  list(query = {}) {
+    const search = query.search?.toLowerCase();
+    const items = [matter, secondMatter].filter((item) => {
+      const matchesSearch =
+        !search ||
+        [item.formalMatterId, item.sourceMatterDraftId, item.applicant, item.trademark].some((value) =>
+          value?.toLowerCase().includes(search)
+        );
+      const matchesFrom = !query.createdFrom || item.createdAt >= query.createdFrom;
+      const matchesTo = !query.createdTo || item.createdAt <= query.createdTo;
+      return matchesSearch && matchesFrom && matchesTo;
+    });
+    return Promise.resolve(matterResult(items, query.page ?? 1, query.pageSize ?? 10));
+  }
+};
 
 const meta = {
   title: 'MarkReg/Workspace Home',
@@ -90,6 +120,10 @@ type Story = StoryObj<typeof meta>;
 
 export const WithIndependentMatter: Story = {
   args: { client: client([order]), matterClient: matterClient([matter]) }
+};
+
+export const SearchableMatterCollection: Story = {
+  args: { client: client([order]), matterClient: searchableMatterClient }
 };
 
 export const MatterWithoutOrders: Story = {

@@ -134,6 +134,76 @@ describe('MarkReg durable Workspace Home', () => {
     expect(screen.getByText(/Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing/)).toBeTruthy();
   });
 
+  it('applies exact search and full-UTC-day creation bounds without reloading Orders', async () => {
+    const user = userEvent.setup();
+    const listOrders = vi.fn(() => Promise.resolve(orderPage([order])));
+    const listMatters = vi.fn(() => Promise.resolve(matterPage([])));
+    render(
+      <MarkregWorkspaceHome
+        client={orderClient(listOrders)}
+        matterClient={matterClient(listMatters)}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'No Formal Matters yet' })).toBeTruthy();
+    await user.type(screen.getByLabelText('Search Formal Matters'), ' ORBIT ');
+    fireEvent.change(screen.getByLabelText('Created from (UTC)'), {
+      target: { value: '2026-08-01' }
+    });
+    fireEvent.change(screen.getByLabelText('Created to (UTC)'), {
+      target: { value: '2026-08-31' }
+    });
+    expect(listMatters).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() =>
+      expect(listMatters).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 10,
+        search: 'ORBIT',
+        createdFrom: '2026-08-01T00:00:00.000Z',
+        createdTo: '2026-08-31T23:59:59.999Z'
+      })
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'No Formal Matters match these filters' })
+    ).toBeTruthy();
+    expect(screen.getByText(/Active filters: search “ORBIT”/)).toBeTruthy();
+    expect(listOrders).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() =>
+      expect(listMatters).toHaveBeenLastCalledWith({ page: 1, pageSize: 10 })
+    );
+    expect(await screen.findByRole('heading', { name: 'No Formal Matters yet' })).toBeTruthy();
+  });
+
+  it('rejects an inverted created-date range without issuing a durable read', async () => {
+    const user = userEvent.setup();
+    const listMatters = vi.fn(() => Promise.resolve(matterPage([matter])));
+    render(
+      <MarkregWorkspaceHome
+        client={orderClient(() => Promise.resolve(orderPage([])))}
+        matterClient={matterClient(listMatters)}
+      />
+    );
+
+    expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Created from (UTC)'), {
+      target: { value: '2026-09-01' }
+    });
+    fireEvent.change(screen.getByLabelText('Created to (UTC)'), {
+      target: { value: '2026-08-01' }
+    });
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Created from must not be later than Created to.'
+    );
+    expect(listMatters).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps Formal Matters visible when Service Orders are empty and planning remains separate', async () => {
     const user = userEvent.setup();
     render(
@@ -199,7 +269,8 @@ describe('MarkReg durable Workspace Home', () => {
     expect(screen.queryByRole('heading', { name: 'No service Orders yet' })).toBeNull();
   });
 
-  it('clears both prior Workspace collections and reloads after Workspace context changes', async () => {
+  it('preserves applied Matter filters across Workspace changes but clears prior Workspace results', async () => {
+    const user = userEvent.setup();
     const listOrders = vi.fn(() =>
       Promise.resolve(
         orderPage(
@@ -227,6 +298,12 @@ describe('MarkReg durable Workspace Home', () => {
 
     expect(await screen.findByText(order.orderId)).toBeTruthy();
     expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();
+    await user.type(screen.getByLabelText('Search Formal Matters'), 'ORBIT');
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() =>
+      expect(listMatters).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, search: 'ORBIT' })
+    );
+
     sessionStorage.setItem('markorbit-workspace-id', workspaceTwo);
     fireEvent(window, new Event('focus'));
 
@@ -235,6 +312,7 @@ describe('MarkReg durable Workspace Home', () => {
     expect(await screen.findByText(secondOrder.orderId)).toBeTruthy();
     expect(await screen.findByText(secondMatter.formalMatterId)).toBeTruthy();
     expect(listOrders).toHaveBeenCalledTimes(2);
-    expect(listMatters).toHaveBeenCalledTimes(2);
+    expect(listMatters).toHaveBeenCalledTimes(3);
+    expect(listMatters).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, search: 'ORBIT' });
   });
 });
