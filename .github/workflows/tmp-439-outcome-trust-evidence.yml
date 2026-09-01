@@ -37,6 +37,18 @@ jobs:
           }
           fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
           NODE
+      - name: Fix exact optional executor assessment pair
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/src/outcome-trust-evidence.ts';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = `  return {\n    state: 'NOT_ESTABLISHED',\n    assessmentState: executor.assessmentState as Exclude<ProviderDirectExecutorAssessmentState, 'DIRECT_FINAL_EXECUTOR_ESTABLISHED' | 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED'>,\n    ...(assessmentReference ? { assessmentReference, assessmentFingerprintSha256 } : {}),`;
+          const after = `  const assessmentIdentity =\n    assessmentReference === undefined\n      ? {}\n      : { assessmentReference, assessmentFingerprintSha256: assessmentFingerprintSha256! };\n  return {\n    state: 'NOT_ESTABLISHED',\n    assessmentState: executor.assessmentState as Exclude<ProviderDirectExecutorAssessmentState, 'DIRECT_FINAL_EXECUTOR_ESTABLISHED' | 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED'>,\n    ...assessmentIdentity,`;
+          if (!source.includes(before)) throw new Error('expected executor construction not found');
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
       - run: pnpm exec prettier packages/contracts/package.json packages/contracts/src/outcome-trust-evidence.ts packages/contracts/tests/outcome-trust-evidence.test.ts --write
       - run: pnpm --filter @markorbit/contracts build
       - run: pnpm --filter @markorbit/contracts typecheck
