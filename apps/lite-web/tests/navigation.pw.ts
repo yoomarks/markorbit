@@ -110,9 +110,13 @@ test('Content Studio uses durable Gateway list/detail work and remains readable 
   await expect(page.getByRole('heading', { name: 'Content Studio' })).toBeVisible();
   await expect(page.locator('.mo-topbar')).toContainText('Authenticated');
   await expect(page.getByText('content-opportunity_413')).toBeVisible();
+  await expect(page.getByText('Reviewed draft ready for package')).toBeVisible();
+  await expect(page.getByText('Latest Draft Review')).toBeVisible();
+  await expect(page.getByText('Latest Publish Package · work-level history')).toBeVisible();
   await expect(
     page.getByText(/Historical visual\/media lineage is not fully discoverable/)
   ).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('content-studio-list.png'), fullPage: true });
   await page.getByRole('button', { name: 'View lineage' }).click();
   await expect(page.getByRole('heading', { name: 'Version lineage' })).toBeVisible();
   await expect(page.getByText('USER_REPORTED_PUBLISHED')).toBeVisible();
