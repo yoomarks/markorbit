@@ -3,6 +3,10 @@ name: Milestone 2 reliability
 on:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - 'scripts/milestone2-migrations.integration.test.ts'
+      - '.github/workflows/milestone-2-reliability.yml'
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * *'
@@ -57,18 +61,38 @@ jobs:
           CREATE DATABASE markorbit_markreg_test;
           CREATE DATABASE markorbit_execution_test;
           SQL
-      - run: pnpm exec playwright install --with-deps chromium
-      - name: Ordered executable reliability matrix
+      - name: Install browser for full reliability matrix
+        if: github.event_name != 'pull_request'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Exact-head migration reliability
+        if: github.event_name == 'pull_request'
         run: |
           mkdir -p .artifacts
-          set -o pipefail
-          pnpm test:milestone2:reliability 2>&1 | tee .artifacts/milestone-2-reliability.log
+          if pnpm test:milestone2:migrations > .artifacts/milestone-2-migrations.log 2>&1; then
+            status=0
+          else
+            status=$?
+          fi
+          cat .artifacts/milestone-2-migrations.log
+          exit "$status"
+      - name: Ordered executable reliability matrix
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p .artifacts
+          if pnpm test:milestone2:reliability > .artifacts/milestone-2-reliability.log 2>&1; then
+            status=0
+          else
+            status=$?
+          fi
+          cat .artifacts/milestone-2-reliability.log
+          exit "$status"
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: milestone-2-reliability-failure
           path: |
+            .artifacts/milestone-2-migrations.log
             .artifacts/milestone-2-reliability.log
             .artifacts/milestone-runtime/
             playwright-report/
