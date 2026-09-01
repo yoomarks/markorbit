@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom/vitest';
 import type { FormalMatter } from '@markorbit/contracts';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -74,25 +73,21 @@ describe('FormalMatterWorkspace', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: 'Trademark Matter' })).toBeInTheDocument();
-    expect(screen.getByText('ORBIT')).toBeInTheDocument();
-    expect(screen.getByText('Orbit Labs Inc.')).toBeInTheDocument();
-    expect(screen.getByText('US')).toBeInTheDocument();
-    expect(screen.getByText('9, 42')).toBeInTheDocument();
-    expect(screen.getByText(/Matter ≠ Filing/)).toBeInTheDocument();
-    expect(screen.getByText(/confirmation_workspace-one · version 2/)).toBeInTheDocument();
-    expect(screen.getByText(/matter-draft_workspace-one · version 3/)).toBeInTheDocument();
-    expect(screen.getByText(/quote_workspace-one · version quote-v4/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open Customer Confirmation' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('confirmationVersion=2')
-    );
-    expect(screen.getByRole('link', { name: 'Open source Quote' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('quoteVersion=quote-v4')
-    );
-    expect(screen.queryByRole('link', { name: /Matter Draft/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/does not mean no intelligence exists/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
+    expect(screen.getByText('ORBIT')).toBeTruthy();
+    expect(screen.getByText('Orbit Labs Inc.')).toBeTruthy();
+    expect(screen.getByText('US')).toBeTruthy();
+    expect(screen.getByText('9, 42')).toBeTruthy();
+    expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
+    expect(screen.getByText(/confirmation_workspace-one · version 2/)).toBeTruthy();
+    expect(screen.getByText(/matter-draft_workspace-one · version 3/)).toBeTruthy();
+    expect(screen.getByText(/quote_workspace-one · version quote-v4/)).toBeTruthy();
+    const confirmationLink = screen.getByRole('link', { name: 'Open Customer Confirmation' });
+    expect(confirmationLink.getAttribute('href')).toContain('confirmationVersion=2');
+    const quoteLink = screen.getByRole('link', { name: 'Open source Quote' });
+    expect(quoteLink.getAttribute('href')).toContain('quoteVersion=quote-v4');
+    expect(screen.queryByRole('link', { name: /Matter Draft/ })).toBeNull();
+    expect(screen.getByText(/does not mean no intelligence exists/i)).toBeTruthy();
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: false
@@ -113,9 +108,9 @@ describe('FormalMatterWorkspace', () => {
       />
     );
 
-    expect(screen.getByText('Version mismatch')).toBeInTheDocument();
-    expect(screen.getByText(/expected version 4/i)).toBeInTheDocument();
-    expect(screen.getByText('Lifecycle disabled')).toBeInTheDocument();
+    expect(screen.getByText('Version mismatch')).toBeTruthy();
+    expect(screen.getByText(/expected version 4/i)).toBeTruthy();
+    expect(screen.getByText('Lifecycle disabled')).toBeTruthy();
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: true
