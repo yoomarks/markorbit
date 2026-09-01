@@ -10,7 +10,10 @@ import type {
   BrainSelfAuditResult
 } from '@markorbit/contracts/brain-gap';
 import type { ManagedDatabase, QueryClient } from '@markorbit/persistence';
-import { BrainGapRegistryError, brainGapIdentityFingerprint } from './brain-gap-registry.js';
+import {
+  BrainGapRegistryError,
+  brainGapIdentityFingerprint
+} from './brain-gap-registry.js';
 
 const transitions: Readonly<Record<BrainGapStatus, readonly BrainGapStatus[]>> = {
   OPEN: ['ACKNOWLEDGED', 'RESOLVING', 'RESOLVED', 'DISMISSED'],
@@ -128,7 +131,11 @@ function dispositionId(
   disposition: Readonly<BrainGapDisposition>,
   occurrenceSha256?: string
 ): string {
-  return `brain-gap-disposition_${sha256({ key, disposition, occurrenceSha256: occurrenceSha256 ?? null })}`;
+  return `brain-gap-disposition_${sha256({
+    key,
+    disposition,
+    occurrenceSha256: occurrenceSha256 ?? null
+  })}`;
 }
 
 function pgCode(error: unknown): string | undefined {
@@ -152,7 +159,10 @@ async function lock(client: QueryClient, key: string): Promise<void> {
 
 function parseGap(value: unknown): BrainGap {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new BrainGapRegistryError('PERSISTENCE_UNAVAILABLE', 'Stored BrainGap payload is invalid.');
+    throw new BrainGapRegistryError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Stored BrainGap payload is invalid.'
+    );
   const gap = structuredClone(value) as BrainGap;
   validateGap(gap);
   return gap;
@@ -330,7 +340,10 @@ async function admitOne(
   return { record, occurrenceSha256 };
 }
 
-function matches(record: BrainGapRegistryRecord, query: Readonly<BrainGapRegistryQuery>): boolean {
+function matches(
+  record: BrainGapRegistryRecord,
+  query: Readonly<BrainGapRegistryQuery>
+): boolean {
   const gap = record.latestGap;
   return (
     (query.status === undefined || record.status === query.status) &&
@@ -365,7 +378,9 @@ export class PostgresBrainGapRegistry {
     validateAudit(result);
     const admissionId = auditAdmissionId(result);
     const payloadSha256 = auditPayloadFingerprint(result);
-    const keys = [...new Set(result.gaps.map((gap) => registryKey(gap.fingerprintSha256)))].sort();
+    const keys = [
+      ...new Set(result.gaps.map((gap) => registryKey(gap.fingerprintSha256)))
+    ].sort();
     try {
       return await this.database.transact(async (client) => {
         await lock(client, `brain-gap-audit:${admissionId}`);
@@ -400,7 +415,13 @@ export class PostgresBrainGapRegistry {
           `INSERT INTO brain_gap_audit_admissions(
              audit_admission_id,audit_payload_sha256,schema_version,audited_at,audit_json
            ) VALUES($1,$2,$3,$4,$5::jsonb)`,
-          [admissionId, payloadSha256, result.schemaVersion, result.auditedAt, JSON.stringify(result)]
+          [
+            admissionId,
+            payloadSha256,
+            result.schemaVersion,
+            result.auditedAt,
+            JSON.stringify(result)
+          ]
         );
 
         const admitted: BrainGapRegistryRecord[] = [];
@@ -447,7 +468,10 @@ export class PostgresBrainGapRegistry {
         const previousDispositionAt = current.latestDisposition
           ? Date.parse(current.latestDisposition.occurredAt)
           : Number.NEGATIVE_INFINITY;
-        if (occurredAt < Date.parse(current.firstDetectedAt) || occurredAt < previousDispositionAt)
+        if (
+          occurredAt < Date.parse(current.firstDetectedAt) ||
+          occurredAt < previousDispositionAt
+        )
           throw new BrainGapRegistryError(
             'INVALID_COMMAND',
             'BrainGap transition time cannot precede detection or the previous disposition.'
