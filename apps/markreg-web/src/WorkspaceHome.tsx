@@ -225,9 +225,7 @@ export function MarkregWorkspaceHome({
       ...(matterTypeDraft === 'TRADEMARK_REGISTRATION'
         ? { type: 'TRADEMARK_REGISTRATION' as const }
         : {}),
-      ...(matterCreatedFromDraft
-        ? { createdFrom: `${matterCreatedFromDraft}T00:00:00.000Z` }
-        : {}),
+      ...(matterCreatedFromDraft ? { createdFrom: `${matterCreatedFromDraft}T00:00:00.000Z` } : {}),
       ...(matterCreatedToDraft ? { createdTo: `${matterCreatedToDraft}T23:59:59.999Z` } : {})
     });
   };
