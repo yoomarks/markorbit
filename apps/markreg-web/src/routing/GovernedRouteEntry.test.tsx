@@ -116,10 +116,16 @@ describe('MarkReg governed direct entry', () => {
     });
     expect(document.activeElement).toBe(heading);
     expect(screen.getByText(/Durable Document Packages are available/)).toBeTruthy();
-    expect(screen.getByText(/will not fall back to the historical in-memory or fixture/)).toBeTruthy();
-    expect(screen.getByText(/No Preparation Lock was fabricated or treated as empty truth/)).toBeTruthy();
+    expect(
+      screen.getByText(/will not fall back to the historical in-memory or fixture/)
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/No Preparation Lock was fabricated or treated as empty truth/)
+    ).toBeTruthy();
     expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Retry same identity and version' })
+    ).toBeNull();
     expect(getGovernedRecord).toHaveBeenCalledWith('preparation-lock', 'preparation-lock_exact');
   });
   it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
