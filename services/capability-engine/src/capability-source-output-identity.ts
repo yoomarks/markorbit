@@ -3,11 +3,11 @@ import { isDeepStrictEqual } from 'node:util';
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
-const OUTPUT_IDENTITY_KEYS = [
+const OUTPUT_IDENTITY_KEYS = new Set<PropertyKey>([
   'schemaVersion',
   'outputSchemaId',
   'outputFingerprintSha256'
-] as const;
+]);
 
 export interface CapabilitySourceOutputIdentityV1 {
   readonly schemaVersion: 1;
@@ -190,10 +190,7 @@ export function validCapabilitySourceOutputIdentityV1(
   const identity = record(value);
   if (!identity) return false;
   const keys = Reflect.ownKeys(identity);
-  if (
-    keys.length !== OUTPUT_IDENTITY_KEYS.length ||
-    keys.some((key) => typeof key !== 'string' || !OUTPUT_IDENTITY_KEYS.includes(key as never))
-  ) {
+  if (keys.length !== OUTPUT_IDENTITY_KEYS.size || keys.some((key) => !OUTPUT_IDENTITY_KEYS.has(key))) {
     return false;
   }
   return (
