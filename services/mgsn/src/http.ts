@@ -9,6 +9,7 @@ import type {
   ProviderSupplyCapabilityId,
   ServicePackageId
 } from '@markorbit/contracts/provider-execution';
+import type { NetworkParticipationId } from '@markorbit/contracts/network-participation';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   AllocationProviderAcceptanceError,
@@ -20,12 +21,17 @@ import {
   ServicePackageEligibilityError,
   type ServicePackageEligibilityService
 } from './service-package-eligibility.js';
+import {
+  NetworkParticipationError,
+  type NetworkParticipationService
+} from './network-participation.js';
 
 export interface MgsnHttpServices {
   providerRegistry: ProviderRegistryService;
   servicePackageEligibility: ServicePackageEligibilityService;
   allocationProviderAcceptance: AllocationProviderAcceptanceService;
   providerReturn: ProviderReturnService;
+  networkParticipation: NetworkParticipationService;
 }
 
 export interface MgsnHttpOptions {
@@ -58,9 +64,19 @@ function mapDomainError(error: unknown): never {
     error instanceof ProviderRegistryError ||
     error instanceof ServicePackageEligibilityError ||
     error instanceof AllocationProviderAcceptanceError ||
-    error instanceof ProviderReturnError
+    error instanceof ProviderReturnError ||
+    error instanceof NetworkParticipationError
   )
-    throw new HttpError(error.status, error.code, error.message, error.status >= 500);
+    if (
+      error instanceof NetworkParticipationError &&
+      (error.code === 'PROVIDER_NOT_FOUND' || error.code === 'PROVIDER_WORKSPACE_MISMATCH')
+    )
+      throw new HttpError(
+        404,
+        'NETWORK_PARTICIPATION_NOT_FOUND',
+        'Network Participation was not found.'
+      );
+    else throw new HttpError(error.status, error.code, error.message, error.status >= 500);
   throw error;
 }
 
@@ -80,6 +96,22 @@ function assertRecordWorkspace(principal: WorkspacePrincipal, workspaceId: strin
     throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped record was not found.');
 }
 
+function rejectNetworkParticipationAuthorityPayload(body: Body) {
+  const authorityFields = [
+    'workspaceId',
+    'actorId',
+    'providerWorkspaceId',
+    'principal',
+    'trustedActorId'
+  ];
+  if (authorityFields.some((field) => Object.prototype.hasOwnProperty.call(body, field)))
+    throw new HttpError(
+      400,
+      'SPOOFED_AUTHORITY_CONTEXT',
+      'Network Participation authority must come only from the trusted Workspace Principal.'
+    );
+}
+
 export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[] {
   const secret = options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
   const services = () => {
@@ -92,7 +124,7 @@ export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[]
       );
     return options.services;
   };
-  const principalFor = (request: JsonRequest, manage: boolean): WorkspacePrincipal => {
+  const trustedPrincipalFor = (request: JsonRequest): WorkspacePrincipal => {
     if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
       throw new HttpError(
         401,
@@ -109,9 +141,27 @@ export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[]
         'A trusted Workspace Principal is required.'
       );
     }
+    return principal;
+  };
+  const principalFor = (request: JsonRequest, manage: boolean): WorkspacePrincipal => {
+    const principal = trustedPrincipalFor(request);
     const permission = manage ? 'execution:manage' : 'execution:read';
     if (!principal.permissions.includes(permission))
       throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
+    return principal;
+  };
+  const networkParticipationOwnerPrincipalFor = (
+    request: JsonRequest,
+    manage: boolean
+  ): WorkspacePrincipal => {
+    const principal = trustedPrincipalFor(request);
+    const asserted = request.headers['x-markorbit-network-participation-owner-authority'];
+    if (manage ? asserted !== 'manage' : asserted !== 'read' && asserted !== 'manage')
+      throw new HttpError(
+        403,
+        'NETWORK_PARTICIPATION_OWNER_AUTHORITY_REQUIRED',
+        `Reviewed Network Participation owner ${manage ? 'manage' : 'read'} authority is required.`
+      );
     return principal;
   };
   const operation = async <T>(work: () => Promise<T>) => {
@@ -123,6 +173,97 @@ export function createMgsnHttpRoutes(options: MgsnHttpOptions = {}): JsonRoute[]
   };
 
   return [
+    {
+      method: 'GET',
+      path: '/v1/network-participation/providers/:providerId',
+      handle: async (request) => {
+        const principal = networkParticipationOwnerPrincipalFor(request, false);
+        const record = await operation(() =>
+          services().networkParticipation.read(
+            { workspaceId: principal.workspaceId, actorId: principal.userId },
+            request.params.providerId! as ProviderId
+          )
+        );
+        return json(200, { networkParticipation: record });
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/network-participation/providers/:providerId/opt-in',
+      handle: async (request) => {
+        const principal = networkParticipationOwnerPrincipalFor(request, true);
+        const body = bodyOf(request);
+        rejectNetworkParticipationAuthorityPayload(body);
+        const record = await operation(() =>
+          services().networkParticipation.optIn(
+            { workspaceId: principal.workspaceId, actorId: principal.userId },
+            {
+              schemaVersion: body.schemaVersion,
+              providerId: request.params.providerId! as ProviderId,
+              authorizationReference: body.authorizationReference,
+              reason: body.reason,
+              idempotencyKey: requireIdempotency(request, body),
+              correlationId: body.correlationId
+            }
+          )
+        );
+        return json(201, { networkParticipation: record });
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/network-participation/providers/:providerId/state',
+      handle: async (request) => {
+        const principal = networkParticipationOwnerPrincipalFor(request, true);
+        const body = bodyOf(request);
+        rejectNetworkParticipationAuthorityPayload(body);
+        const record = await operation(() =>
+          services().networkParticipation.changeState(
+            { workspaceId: principal.workspaceId, actorId: principal.userId },
+            {
+              schemaVersion: body.schemaVersion,
+              action: body.action,
+              networkParticipationId: body.networkParticipationId as NetworkParticipationId,
+              providerId: request.params.providerId! as ProviderId,
+              expectedParticipationVersion: body.expectedParticipationVersion,
+              expectedVisibilityPolicyVersion: body.expectedVisibilityPolicyVersion,
+              authorizationReference: body.authorizationReference,
+              reason: body.reason,
+              idempotencyKey: requireIdempotency(request, body),
+              correlationId: body.correlationId
+            }
+          )
+        );
+        return json(200, { networkParticipation: record });
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/network-participation/providers/:providerId/visibility-policy',
+      handle: async (request) => {
+        const principal = networkParticipationOwnerPrincipalFor(request, true);
+        const body = bodyOf(request);
+        rejectNetworkParticipationAuthorityPayload(body);
+        const record = await operation(() =>
+          services().networkParticipation.replaceVisibilityPolicy(
+            { workspaceId: principal.workspaceId, actorId: principal.userId },
+            {
+              schemaVersion: body.schemaVersion,
+              networkParticipationId: body.networkParticipationId as NetworkParticipationId,
+              providerId: request.params.providerId! as ProviderId,
+              expectedParticipationVersion: body.expectedParticipationVersion,
+              expectedVisibilityPolicyVersion: body.expectedVisibilityPolicyVersion,
+              replacement: body.replacement,
+              authorizationReference: body.authorizationReference,
+              reason: body.reason,
+              idempotencyKey: requireIdempotency(request, body),
+              correlationId: body.correlationId
+            }
+          )
+        );
+        return json(200, { networkParticipation: record });
+      }
+    },
     {
       method: 'GET',
       path: '/v1/providers',

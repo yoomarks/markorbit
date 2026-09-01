@@ -2,6 +2,8 @@ import type { ManagedDatabase } from '@markorbit/persistence';
 import { AllocationProviderAcceptanceService } from './allocation-provider-acceptance.js';
 import { PostgresAllocationProviderAcceptanceRepository } from './allocation-provider-acceptance-postgres.js';
 import type { MgsnHttpServices } from './http.js';
+import { NetworkParticipationService } from './network-participation.js';
+import { PostgresNetworkParticipationRepository } from './network-participation-postgres.js';
 import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
 import { ProviderReturnService } from './provider-return.js';
@@ -33,6 +35,10 @@ export function createDurableMgsnServices(options: DurableMgsnServicesOptions): 
     query
   );
   const providerReturnRepository = new PostgresProviderReturnRepository(options.database, query);
+  const networkParticipationRepository = new PostgresNetworkParticipationRepository(
+    options.database,
+    query
+  );
   const coreWorkspaces = new HttpCoreWorkspaceIdentitySource(
     options.coreUrl,
     options.internalServiceSecret
@@ -65,6 +71,10 @@ export function createDurableMgsnServices(options: DurableMgsnServicesOptions): 
       servicePackageRepository,
       providerRepository,
       evidenceHandoff
+    ),
+    networkParticipation: new NetworkParticipationService(
+      networkParticipationRepository,
+      providerRepository
     )
   };
 }
