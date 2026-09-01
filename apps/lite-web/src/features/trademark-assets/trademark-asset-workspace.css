@@ -61,6 +61,72 @@
   background: #fff;
 }
 
+.trademark-commerce__boundary {
+  max-width: 780px;
+  color: var(--mo-muted, #475569);
+}
+
+.trademark-commerce__notice,
+.trademark-commerce__empty,
+.trademark-commerce__feedback {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.trademark-commerce__notice {
+  border-left: 4px solid #475569;
+}
+
+.trademark-commerce__grid,
+.trademark-commerce__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trademark-commerce__grid > div {
+  min-width: 0;
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.035);
+  overflow-wrap: anywhere;
+}
+
+.trademark-commerce__grid dt {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trademark-commerce__grid dd {
+  margin: 6px 0;
+}
+
+.trademark-commerce__form {
+  display: grid;
+  gap: 14px;
+}
+
+.trademark-commerce__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.trademark-commerce__feedback {
+  margin-top: 14px;
+}
+
+.trademark-commerce__feedback--warning {
+  border-left: 4px solid #b45309;
+  background: #fffbeb;
+}
+
 .trademark-asset-workspace__header,
 .trademark-asset-workspace__section-heading {
   display: flex;
@@ -171,6 +237,16 @@
 
   .trademark-asset-workspace__badges {
     justify-content: flex-start;
+  }
+
+  .trademark-commerce__grid,
+  .trademark-commerce__form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trademark-commerce__actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

@@ -68,4 +68,64 @@ describe('Trademark Asset client', () => {
 
     expect(capturedUrl).toContain('/api/lite/trademark-assets/trademark-asset_test');
   });
+
+  it('saves Commerce Profile through the authenticated Gateway mutation conventions', async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchMock: typeof fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      requests.push({ url, ...(init ? { init } : {}) });
+      if (url.endsWith('/api/auth/session')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ csrfToken: 'csrf-commerce' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          })
+        );
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            commerceProfile: {
+              trademarkAssetId: 'trademark-asset_test',
+              workspaceId,
+              version: 2
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const saved = await createTrademarkAssetClient(workspaceId).saveCommerceProfile(
+      'trademark-asset_test',
+      {
+        expectedTrademarkAssetVersion: 3,
+        expectedCommerceProfileVersion: 1,
+        saleIntent: 'FOR_SALE',
+        sellerRole: 'OWNER'
+      }
+    );
+
+    expect(saved.version).toBe(2);
+    expect(requests).toHaveLength(2);
+    const mutation = requests[1]!;
+    expect(mutation.url).toContain(
+      '/api/lite/trademark-assets/trademark-asset_test/commerce-profile'
+    );
+    expect(mutation.init?.method).toBe('POST');
+    expect(mutation.init?.credentials).toBe('include');
+    const headers = new Headers(mutation.init?.headers);
+    expect(headers.get('x-markorbit-workspace-id')).toBe(workspaceId);
+    expect(headers.get('x-markorbit-csrf-token')).toBe('csrf-commerce');
+    expect(headers.get('idempotency-key')).toMatch(/^commerce-profile-trademark-asset_test-/);
+    const mutationBody = mutation.init?.body;
+    if (typeof mutationBody !== 'string') throw new Error('Expected a JSON request body.');
+    expect(JSON.parse(mutationBody)).toEqual({
+      expectedTrademarkAssetVersion: 3,
+      expectedCommerceProfileVersion: 1,
+      saleIntent: 'FOR_SALE',
+      sellerRole: 'OWNER'
+    });
+  });
 });

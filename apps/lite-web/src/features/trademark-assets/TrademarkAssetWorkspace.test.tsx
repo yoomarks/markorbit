@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 
@@ -56,6 +56,8 @@ const view: TrademarkAssetView = {
   protectedActionAuthorized: false
 };
 
+afterEach(cleanup);
+
 describe('TrademarkAssetWorkspace', () => {
   it('shows source ownership and the Lite authority boundary without execution controls', () => {
     render(<TrademarkAssetWorkspace view={view} />);
@@ -65,7 +67,10 @@ describe('TrademarkAssetWorkspace', () => {
     expect(screen.getByText(/Example Owner/)).toBeInTheDocument();
     expect(screen.getByText(/Lite does not verify official truth/)).toBeInTheDocument();
     expect(screen.getByText(/Source facts are read-only/)).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /owner/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /fil|pay|transfer|publish/i })
+    ).not.toBeInTheDocument();
   });
 
   it('labels Marketplace-added assets as source read-only', () => {
@@ -83,7 +88,46 @@ describe('TrademarkAssetWorkspace', () => {
       />
     );
 
-    expect(screen.getByText('Marketplace source · read-only')).toBeInTheDocument();
+    expect(screen.getAllByText('Marketplace source · read-only')).toHaveLength(2);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it.each(['OWNED', 'MANAGED', 'REPRESENTED'] as const)(
+    'allows Commerce Profile editing for an %s relationship',
+    (kind) => {
+      render(
+        <TrademarkAssetWorkspace
+          view={{
+            ...view,
+            anchor: {
+              ...view.anchor,
+              workspaceRelationships: [{ kind, sourceAssetEditableByWorkspace: true }]
+            }
+          }}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'Set up sale context' })).toBeInTheDocument();
+    }
+  );
+
+  it('allows Commerce Profile editing when Marketplace and owner relationships are mixed', () => {
+    render(
+      <TrademarkAssetWorkspace
+        view={{
+          ...view,
+          anchor: {
+            ...view.anchor,
+            workspaceRelationships: [
+              { kind: 'MARKETPLACE_ADDED', sourceAssetEditableByWorkspace: false },
+              { kind: 'OWNED', sourceAssetEditableByWorkspace: true }
+            ]
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Set up sale context' })).toBeInTheDocument();
+    expect(screen.queryByText('Marketplace source · read-only')).not.toBeInTheDocument();
   });
 });
