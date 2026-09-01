@@ -1,8 +1,10 @@
 import type { MarkOrbitId } from './index.js';
 import type { ProviderId, ProviderSupplyCapabilityId } from './provider-execution.js';
 import type {
+  NetworkParticipationId,
   NetworkVisibilityAudienceV1,
   NetworkVisibilityDataClass,
+  NetworkVisibilityField,
   NetworkVisibilityPurpose
 } from './network-participation.js';
 
@@ -29,7 +31,9 @@ export interface ProviderDiscoveryRequestReferenceV1 {
   need: Readonly<ProviderDiscoveryNeedReferenceV1>;
   purpose: NetworkVisibilityPurpose;
   audience: Readonly<NetworkVisibilityAudienceV1>;
+  contextReference: string;
   requestedDataClasses: readonly NetworkVisibilityDataClass[];
+  requestedFields: readonly NetworkVisibilityField[];
   requestedAt: string;
   requestFingerprintSha256: string;
   correlationId: MarkOrbitId;
@@ -96,6 +100,10 @@ export interface DiscoverySourceVersionV1 {
   authorityState: DiscoverySourceAuthorityState;
 }
 
+export type DiscoveryCurrentSourceVersionV1 = Readonly<
+  Omit<DiscoverySourceVersionV1, 'authorityState'> & { authorityState: 'CURRENT' }
+>;
+
 export const discoveryEvidenceKinds = [
   'PARTICIPATION_VISIBILITY',
   'PROVIDER_OPERATIONAL',
@@ -110,8 +118,13 @@ export interface DiscoveryEvidenceReferenceV1 {
   evidenceReference: string;
   kind: DiscoveryEvidenceKind;
   source: Readonly<DiscoverySourceVersionV1>;
+  authorityClass: 'MGSN_OPERATIONAL' | 'PROVIDER_CLAIM' | 'CANONICAL_OWNER_REFERENCE';
   artifactAccessAuthorized: false;
 }
+
+export type CurrentDiscoveryEvidenceReferenceV1 = Readonly<
+  Omit<DiscoveryEvidenceReferenceV1, 'source'> & { source: DiscoveryCurrentSourceVersionV1 }
+>;
 
 export const directExecutorDiscoveryDisclosureStates = [
   'UNKNOWN',
@@ -158,7 +171,7 @@ export interface DiscoveryExplanationV1 {
  * These versions are provenance only and must not be reused as current exposure permission.
  */
 export interface DiscoveryVisibilityAuthorizationReferenceV1 {
-  networkParticipationId: string;
+  networkParticipationId: NetworkParticipationId;
   participationVersion: number;
   visibilityPolicyVersion: number;
   evaluatedAt: string;
@@ -204,10 +217,11 @@ export interface ProviderDiscoveryCandidateV1 {
   }>;
   authorizedProjection: Readonly<AuthorizedProviderProjectionV1>;
   visibilityAuthorization: Readonly<DiscoveryVisibilityAuthorizationReferenceV1>;
-  visibilityEvidence: ReadonlyArray<Readonly<DiscoveryEvidenceReferenceV1>>;
-  suitabilityEvidence: ReadonlyArray<Readonly<DiscoveryEvidenceReferenceV1>>;
+  visibilityEvidence: ReadonlyArray<CurrentDiscoveryEvidenceReferenceV1>;
+  suitabilityEvidence: ReadonlyArray<CurrentDiscoveryEvidenceReferenceV1>;
   directExecutorDisclosure: Readonly<DirectExecutorDiscoveryDisclosureV1>;
-  sourceVersions: ReadonlyArray<Readonly<DiscoverySourceVersionV1>>;
+  sourceVersions: ReadonlyArray<DiscoveryCurrentSourceVersionV1>;
+  evaluationPolicyVersion: string;
   explanation: Readonly<DiscoveryExplanationV1>;
   candidateFingerprintSha256: string;
   generatedAt: string;
@@ -240,8 +254,14 @@ export type ProviderDiscoveryResultV1 = Readonly<
           ];
         }
       | {
-          status: 'NO_AUTHORIZED_CANDIDATES' | 'AUTHORITY_UNAVAILABLE';
+          status: 'NO_AUTHORIZED_CANDIDATES';
           candidates: readonly [];
+          publicMessage: string;
+        }
+      | {
+          status: 'AUTHORITY_UNAVAILABLE';
+          candidates: readonly [];
+          authorityState: Exclude<DiscoverySourceAuthorityState, 'CURRENT'>;
           publicMessage: string;
         }
     )
@@ -266,11 +286,19 @@ const providerDiscoveryRequestFixtureV1 = Object.freeze({
   },
   purpose: 'PROVIDER_DISCOVERY',
   audience: { kind: 'BOUNDED_NETWORK' as const },
+  contextReference: 'context:fixture-381-network-discovery',
   requestedDataClasses: [
     'PROVIDER_REFERENCE',
     'SUPPLY_PROFILE',
     'SERVICE_JURISDICTIONS',
     'PROVIDER_EVIDENCE_REFERENCE'
+  ] as const,
+  requestedFields: [
+    'providerId',
+    'displayName',
+    'serviceTypes',
+    'jurisdictions',
+    'evidenceReferences'
   ] as const,
   requestedAt: discoveryFixtureAt,
   requestFingerprintSha256: '2'.repeat(64),
@@ -348,6 +376,7 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
               checkedAt: discoveryFixtureAt,
               authorityState: 'CURRENT'
             },
+            authorityClass: 'MGSN_OPERATIONAL',
             artifactAccessAuthorized: false
           }
         ],
@@ -365,6 +394,7 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
               checkedAt: discoveryFixtureAt,
               authorityState: 'CURRENT'
             },
+            authorityClass: 'MGSN_OPERATIONAL',
             artifactAccessAuthorized: false
           }
         ],
@@ -393,6 +423,7 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
             authorityState: 'CURRENT'
           }
         ],
+        evaluationPolicyVersion: 'mgsn-provider-discovery-v1',
         explanation: {
           summary:
             'Current visibility and supply evidence permit this Provider to be shown as a candidate for the reviewed Need.',
@@ -435,8 +466,20 @@ export const providerDiscoveryContractFixtureV1 = Object.freeze({
     status: 'NO_AUTHORIZED_CANDIDATES',
     candidates: [],
     publicMessage: 'No Provider candidates are currently available for this request.'
+  },
+  authorityUnavailableResult: {
+    schemaVersion: 1,
+    request: providerDiscoveryRequestFixtureV1,
+    evaluatedAt: discoveryFixtureAt,
+    resultFingerprintSha256: '9'.repeat(64),
+    authorityConsequences: noProviderDiscoveryAuthorityConsequences,
+    status: 'AUTHORITY_UNAVAILABLE',
+    candidates: [],
+    authorityState: 'STALE',
+    publicMessage: 'Provider discovery is unavailable until current authority can be verified.'
   }
 } as const satisfies Readonly<{
   candidateResult: ProviderDiscoveryResultV1;
   failClosedResult: ProviderDiscoveryResultV1;
+  authorityUnavailableResult: ProviderDiscoveryResultV1;
 }>);
