@@ -1,0 +1,5 @@
+
+> @markorbit/contracts@0.1.0 lint /home/runner/work/markorbit/markorbit/packages/contracts
+> eslint src tests
+
+exit_code=0
