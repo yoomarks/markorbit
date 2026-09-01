@@ -142,9 +142,9 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
 
   const managedCommunicationConfigured = Boolean(
     options.managedCommunicationExchange ||
-      options.managedCommunicationInbound ||
-      options.managedCommunicationThreadReader ||
-      options.managedCommunicationExactEvidence
+    options.managedCommunicationInbound ||
+    options.managedCommunicationThreadReader ||
+    options.managedCommunicationExactEvidence
   );
   if (managedCommunicationConfigured && !options.internalServiceSecret) {
     throw new Error('Managed Communication routes require internalServiceSecret.');
