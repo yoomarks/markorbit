@@ -4,8 +4,10 @@ import type {
   CurrentLifecycleView,
   LifecycleEventProjection
 } from '@markorbit/contracts/evidence-lifecycle';
+import { DocumentPackageError } from '../src/document-package.js';
 import {
   FormalMatterEvidenceReadService,
+  PostgresFormalMatterDocumentPackageReader,
   type FormalMatterEvidenceReadDependencies
 } from '../src/formal-matter-evidence-read.js';
 import { FormalMatterError } from '../src/formal-matter.js';
@@ -111,6 +113,8 @@ function dependencies(options?: {
   missingMatter?: boolean;
   noEvidence?: boolean;
   persistenceFailure?: boolean;
+  documentPackageFailure?: boolean;
+  observedMatterIds?: FormalMatterId[];
 }): FormalMatterEvidenceReadDependencies {
   const documentPackage = {
     documentPackageId: 'document-package_evidence',
@@ -194,7 +198,19 @@ function dependencies(options?: {
       }
     },
     documentPackages: {
-      list: () => Promise.resolve(packages) as never
+      listForMatter: (_principal, requestedMatterId) => {
+        options?.observedMatterIds?.push(requestedMatterId);
+        if (options?.documentPackageFailure)
+          return Promise.reject(
+            new DocumentPackageError(
+              'PERSISTENCE_UNAVAILABLE',
+              'Document Package persistence unavailable.',
+              503,
+              true
+            )
+          ) as never;
+        return Promise.resolve(requestedMatterId === formalMatterId ? packages : []) as never;
+      }
     },
     lifecycle: {
       getCurrentView: () => Promise.resolve(currentLifecycle),
@@ -205,6 +221,83 @@ function dependencies(options?: {
     }
   };
 }
+
+describe('Postgres Formal Matter Document Package Reader', () => {
+  it('queries exact Workspace + Formal Matter and preserves producer ordering', async () => {
+    const calls: { text: string; values: readonly unknown[] | undefined }[] = [];
+    const loaded: string[] = [];
+    const query = {
+      query: async (text: string, values?: readonly unknown[]) => {
+        calls.push({ text, values });
+        return {
+          rows: [
+            { document_package_id: 'document-package_newest' },
+            { document_package_id: 'document-package_older' }
+          ],
+          rowCount: 2
+        };
+      }
+    } as never;
+    const reader = new PostgresFormalMatterDocumentPackageReader(query, {
+      get: async (_principal, packageId) => {
+        loaded.push(packageId);
+        return { documentPackageId: packageId } as never;
+      }
+    });
+
+    const result = await reader.listForMatter(principal(), formalMatterId);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toContain(
+      'WHERE workspace_id=$1 AND formal_matter_id=$2 ORDER BY updated_at DESC,document_package_id'
+    );
+    expect(calls[0]?.values).toEqual([workspaceId, formalMatterId]);
+    expect(loaded).toEqual(['document-package_newest', 'document-package_older']);
+    expect(result.map((value) => value.documentPackageId)).toEqual([
+      'document-package_newest',
+      'document-package_older'
+    ]);
+  });
+
+  it('keeps a different Workspace isolated and does not load unrelated packages', async () => {
+    let loaded = false;
+    const query = {
+      query: async (_text: string, values?: readonly unknown[]) => ({
+        rows: values?.[0] === workspaceId ? [{ document_package_id: 'document-package_hidden' }] : [],
+        rowCount: values?.[0] === workspaceId ? 1 : 0
+      })
+    } as never;
+    const reader = new PostgresFormalMatterDocumentPackageReader(query, {
+      get: async () => {
+        loaded = true;
+        return {} as never;
+      }
+    });
+
+    await expect(reader.listForMatter(principal(otherWorkspaceId), formalMatterId)).resolves.toEqual(
+      []
+    );
+    expect(loaded).toBe(false);
+  });
+
+  it('fails before persistence access when document-package:read is absent', async () => {
+    let queried = false;
+    const reader = new PostgresFormalMatterDocumentPackageReader(
+      {
+        query: async () => {
+          queried = true;
+          return { rows: [], rowCount: 0 };
+        }
+      } as never,
+      { get: async () => ({}) as never }
+    );
+
+    await expect(
+      reader.listForMatter(principal(workspaceId, false), formalMatterId)
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', status: 403 });
+    expect(queried).toBe(false);
+  });
+});
 
 describe('Formal Matter Evidence Read Projection V1', () => {
   it('consolidates existing evidence truth without creating authority', async () => {
@@ -249,6 +342,15 @@ describe('Formal Matter Evidence Read Projection V1', () => {
     });
   });
 
+  it('reads Document Packages through the exact requested Formal Matter boundary', async () => {
+    const observedMatterIds: FormalMatterId[] = [];
+    const service = new FormalMatterEvidenceReadService(dependencies({ observedMatterIds }));
+
+    await service.getForMatter(principal(), formalMatterId);
+
+    expect(observedMatterIds).toEqual([formalMatterId]);
+  });
+
   it('returns successful empty components for a real Matter with no evidence yet', async () => {
     const service = new FormalMatterEvidenceReadService(dependencies({ noEvidence: true }));
     const projection = await service.getForMatter(principal(), formalMatterId);
@@ -279,6 +381,17 @@ describe('Formal Matter Evidence Read Projection V1', () => {
     await expect(
       service.getForMatter(principal(workspaceId, false), formalMatterId)
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED', status: 403 });
+  });
+
+  it('preserves Document Package persistence failure instead of returning empty evidence', async () => {
+    const service = new FormalMatterEvidenceReadService(
+      dependencies({ documentPackageFailure: true })
+    );
+    await expect(service.getForMatter(principal(), formalMatterId)).rejects.toMatchObject({
+      code: 'PERSISTENCE_UNAVAILABLE',
+      status: 503,
+      retryable: true
+    });
   });
 
   it('preserves Formal Matter persistence failure as retryable failure', async () => {
