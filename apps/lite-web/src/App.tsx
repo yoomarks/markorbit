@@ -13,14 +13,11 @@ import {
   PageHeader,
   Select,
   SideNavigation,
-  StatusBadge,
   TextInput,
   TopBar
 } from '@markorbit/ui';
 import { customerFixtures } from './features/customers/fixture-repository.js';
 import type { CustomerDetail } from './features/customers/view-models.js';
-import { opportunityFixtures } from './features/opportunities/fixture-repository.js';
-import type { OpportunityDetail, OpportunityStatus } from './features/opportunities/view-models.js';
 import type { FixtureState, RelatedRecord } from './features/shared/view-models.js';
 import './lite.css';
 import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
@@ -31,6 +28,7 @@ import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
 import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAssetPortfolio.js';
 import { ContentStudio } from './features/content-studio/ContentStudio.js';
 import type { ContentStudioClient } from './api/content-studio.js';
+import { CandidateReview } from './features/opportunities/CandidateReview.js';
 
 const nav = [
   'Today',
@@ -76,17 +74,6 @@ export interface LiteAppProps {
   contentStudioClient?: ContentStudioClient;
   initialContentOpportunityId?: string;
 }
-const statusTone = (status: OpportunityStatus) =>
-  status === 'QUALIFIED'
-    ? 'success'
-    : status === 'DISMISSED'
-      ? 'danger'
-      : status === 'NEW'
-        ? 'info'
-        : status === 'DEFERRED'
-          ? 'pending'
-          : 'warning';
-
 function StateGate({
   state,
   subject,
@@ -312,212 +299,6 @@ function Customers({
     </StateGate>
   );
 }
-function OpportunityDetailView({
-  opportunity,
-  onBack
-}: {
-  opportunity: OpportunityDetail;
-  onBack: () => void;
-}) {
-  const [reviewed, setReviewed] = useState(false);
-  return (
-    <>
-      <Button variant="secondary" onClick={onBack}>
-        ← Back to opportunities
-      </Button>
-      <PageHeader
-        title={opportunity.title}
-        description="Opportunity detail · fixture observation"
-        actions={<Badge>Fixture only</Badge>}
-      />
-      <Alert tone="warning" title="Decision boundary">
-        Opportunity ≠ Confirmed Demand. Suggested Action ≠ Customer Instruction. Recommendation ≠
-        Appointment.
-      </Alert>
-      <div className="lite-detail-grid">
-        <Card>
-          <h2>Opportunity overview</h2>
-          <KeyValueList
-            items={[
-              { key: 'Source', value: opportunity.source },
-              { key: 'Customer', value: opportunity.customerName },
-              { key: 'Country / region', value: opportunity.region },
-              { key: 'Trademark', value: opportunity.trademark },
-              {
-                key: 'Status',
-                value: (
-                  <>
-                    <StatusBadge status={statusTone(opportunity.status)} />{' '}
-                    <span>{opportunity.status}</span>
-                  </>
-                )
-              }
-            ]}
-          />
-          <p className="lite-long">{opportunity.sourceDetail}</p>
-        </Card>
-        <Card>
-          <h2>Confidence / evidence</h2>
-          <p>
-            <strong>{opportunity.evidence.confidence} confidence</strong> —{' '}
-            {opportunity.evidence.basis}
-          </p>
-          <p>Observed {opportunity.evidence.observedAt}</p>
-          <h3>Limitations</h3>
-          <ul>
-            {opportunity.evidence.limitations.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </Card>
-      </div>
-      <Card>
-        <h2>Suggested next action</h2>
-        <p className="lite-long">{opportunity.suggestedNextAction}</p>
-        <Button variant="secondary" aria-pressed={reviewed} onClick={() => setReviewed(true)}>
-          {reviewed ? 'Suggestion marked as reviewed' : 'Mark suggestion as reviewed'}
-        </Button>
-        <p role="status">
-          {reviewed
-            ? 'Review acknowledgement saved in component memory only. No contact, order, appointment, filing, or external action occurred.'
-            : 'Reviewing this suggestion will not execute it.'}
-        </p>
-      </Card>
-      <RelatedList
-        title="Related intake or matter preview"
-        records={opportunity.relatedPreview ? [opportunity.relatedPreview] : []}
-      />
-    </>
-  );
-}
-function Opportunities({
-  state,
-  setState,
-  initialSelected
-}: {
-  state: FixtureState;
-  setState: (state: FixtureState) => void;
-  initialSelected?: string | undefined;
-}) {
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('ALL');
-  const [region, setRegion] = useState('ALL');
-  const [selected, setSelected] = useState<string | undefined>(initialSelected);
-  const originId = useRef<string>();
-  useEffect(() => {
-    if (!selected && originId.current) {
-      document
-        .querySelector<HTMLButtonElement>(`[data-opportunity-id="${originId.current}"]`)
-        ?.focus();
-      originId.current = undefined;
-    }
-  }, [selected]);
-  const rows = useMemo(
-    () =>
-      state === 'empty'
-        ? []
-        : opportunityFixtures.filter(
-            (o) =>
-              `${o.title} ${o.customerName} ${o.trademark}`
-                .toLowerCase()
-                .includes(search.toLowerCase()) &&
-              (status === 'ALL' || o.status === status) &&
-              (region === 'ALL' || o.region.includes(region))
-          ),
-    [search, status, region, state]
-  );
-  const opportunity = opportunityFixtures.find((item) => item.id === selected);
-  if (opportunity)
-    return (
-      <OpportunityDetailView opportunity={opportunity} onBack={() => setSelected(undefined)} />
-    );
-  return (
-    <StateGate state={state} subject="opportunities" onReady={() => setState('ready')}>
-      <PageHeader
-        title="Opportunities"
-        description="Evidence-aware observations for professional review—not confirmed demand"
-        actions={<Badge>Fixture state: {state}</Badge>}
-      />
-      <Alert title="Opportunity boundary">
-        Nothing here initiates contact, bulk outreach, an order, an appointment, or a protected
-        external action.
-      </Alert>
-      <div className="lite-filters" role="search">
-        <TextInput
-          label="Search opportunities"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Select
-          label="Opportunity status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="ALL">All statuses</option>
-          {(['NEW', 'REVIEWING', 'QUALIFIED', 'DEFERRED', 'DISMISSED'] as OpportunityStatus[]).map(
-            (value) => (
-              <option key={value}>{value}</option>
-            )
-          )}
-        </Select>
-        <Select label="Country / region" value={region} onChange={(e) => setRegion(e.target.value)}>
-          <option value="ALL">All countries / regions</option>
-          <option value="US">United States</option>
-          <option value="CA">Canada</option>
-          <option value="EU">European Union</option>
-        </Select>
-      </div>
-      {rows.length ? (
-        <div className="lite-list" aria-live="polite">
-          {rows.map((o) => (
-            <Card key={o.id}>
-              <div className="lite-row">
-                <div>
-                  <h2>{o.title}</h2>
-                  <p>
-                    {o.customerName} · {o.region}
-                  </p>
-                </div>
-                <span>
-                  <StatusBadge status={statusTone(o.status)} /> <strong>{o.status}</strong>
-                </span>
-              </div>
-              <p>
-                <strong>{o.trademark}</strong> · {o.confidence} confidence
-              </p>
-              <Button
-                data-opportunity-id={o.id}
-                onClick={() => {
-                  originId.current = o.id;
-                  setSelected(o.id);
-                }}
-              >
-                View opportunity details
-              </Button>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          title="No fixture opportunities found"
-          description="No opportunity matches this fixture state or the current filters."
-          action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setSearch('');
-                setStatus('ALL');
-                setRegion('ALL');
-              }}
-            >
-              Clear filters
-            </Button>
-          }
-        />
-      )}
-    </StateGate>
-  );
-}
 export function LiteApp({
   initialSurface = 'today',
   initialState = 'ready',
@@ -554,7 +335,7 @@ export function LiteApp({
   }, [workspaceId]);
   const isWork =
     surface === 'customers' || surface === 'professional-review' || surface === 'execution-release';
-  const isFixture = surface === 'customers' || surface === 'opportunities';
+  const isFixture = surface === 'customers';
   const isEntry = surface === 'guide';
   return (
     <AppShell
@@ -720,12 +501,23 @@ export function LiteApp({
           <ExecutionReleaseView
             {...(initialFilingAuthorization ? { initialFilingAuthorization } : {})}
           />
+        ) : surface === 'opportunities' ? (
+          activeWorkspaceId ? (
+            <CandidateReview
+              key={`${activeWorkspaceId}:${initialOpportunityId ?? ''}`}
+              workspaceId={activeWorkspaceId}
+              {...(initialOpportunityId ? { initialSelected: initialOpportunityId } : {})}
+            />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load Opportunity Candidates."
+            />
+          )
         ) : (
-          <Opportunities
-            key={initialOpportunityId}
-            state={state}
-            setState={setState}
-            initialSelected={initialOpportunityId}
+          <ErrorState
+            title="Unknown Lite surface"
+            description="This Lite surface is unavailable."
           />
         )}
       </div>

@@ -63,6 +63,24 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.candidate-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--mo-space-sm);
+  align-items: center;
+}
+.candidate-no-decision {
+  font-weight: 700;
+}
+.candidate-sources {
+  display: grid;
+  gap: var(--mo-space-lg);
+  padding-left: 1.25rem;
+}
+.candidate-sources li + li {
+  padding-top: var(--mo-space-lg);
+  border-top: 1px solid var(--mo-border);
+}
 .review-check {
   display: grid;
   grid-template-columns: minmax(14rem, 1.2fr) minmax(10rem, 0.7fr) minmax(14rem, 1fr);
@@ -129,6 +147,9 @@
   .lite-subnav .mo-button,
   .lite-row .mo-button {
     width: 100%;
+  }
+  .candidate-status {
+    align-items: flex-start;
   }
 }
 .package-workspace {
@@ -216,5 +237,13 @@
     inset: auto;
     transform: none;
     grid-area: auto;
+  }
+  .lite-workspace .mo-key-value > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--mo-space-xs);
+  }
+  .lite-workspace .mo-key-value dd {
+    width: 100%;
   }
 }
