@@ -280,11 +280,18 @@ describe('Capability production source-use evidence V3', () => {
   it('delegates admission once, ignores caller text, and obtains constraints only from producer authority', async () => {
     const evaluate = vi.fn(() => Promise.resolve(admissibleDecision));
     const resolve = vi.fn(
-      (): CapabilitySourceUseContextResolutionV1 =>
-        resolvedSourceUse({
+      (
+        input: Readonly<{
+          runtimeExecution: unknown;
+          evidence: ReturnType<typeof predecessor>;
+        }>
+      ): CapabilitySourceUseContextResolutionV1 => {
+        void input;
+        return resolvedSourceUse({
           assumptions: ['Producer-owned assumption.'],
           limitations: ['Producer-owned limitation.']
-        })
+        });
+      }
     );
     const materializer = new CurrentCapabilitySourceAdmissionEvidenceMaterializerV3({
       evaluator: { evaluate },
