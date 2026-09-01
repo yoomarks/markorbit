@@ -25,8 +25,7 @@ import {
   USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA,
   createUsptoOfficialFeeResolverCapabilityExecutorV1,
   validateUsptoOfficialFeeResolverInputV1,
-  validateUsptoOfficialFeeResolverOutputV1,
-  type OfficialFeeReferenceReaderV1
+  validateUsptoOfficialFeeResolverOutputV1
 } from '../src/uspto-official-fee-resolver-pilot.js';
 
 const EFFECTIVE_FROM = '2025-01-18T00:00:00.000-05:00';
@@ -220,8 +219,13 @@ describe('USPTO official-fee reference currentness authority V1', () => {
         capabilityId: 'resolver.foreign'
       }
     };
-    const foreignOperationExecution = structuredClone(execution);
-    foreignOperationExecution.request.input = resolverInput({ operation: 'USPTO_OTHER_OPERATION' });
+    const foreignOperationExecution = {
+      ...execution,
+      request: {
+        ...execution.request,
+        input: resolverInput({ operation: 'USPTO_OTHER_OPERATION' })
+      }
+    };
 
     expect(authority.evaluate(foreignCapability)).toMatchObject({
       status: 'UNSUPPORTED_APPLICABILITY'
@@ -236,10 +240,16 @@ describe('USPTO official-fee reference currentness authority V1', () => {
   });
 
   it('denies historical currentness when exact reference evidence is missing', async () => {
-    const execution = structuredClone(await historicalExecution());
-    execution.receipt.evidenceRefs = execution.receipt.evidenceRefs.filter(
-      (value) => !value.startsWith('official-fee-materialization-sha256:')
-    );
+    const original = await historicalExecution();
+    const execution = {
+      ...original,
+      receipt: {
+        ...original.receipt,
+        evidenceRefs: original.receipt.evidenceRefs.filter(
+          (value) => !value.startsWith('official-fee-materialization-sha256:')
+        )
+      }
+    };
     const resolveCurrent = vi.fn(() => acceptedReference());
     const authority = new UsptoOfficialFeeReferenceCurrentnessAuthorityV1({
       references: { resolveCurrent },
