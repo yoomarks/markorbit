@@ -125,7 +125,10 @@ async function ensureAccountBinding(
     const existing = await foundation.resolveAccount(config.workspaceId, config.accountRef);
     return assertSameAccountBinding(existing, config);
   } catch (error) {
-    if (!(error instanceof ManagedCommunicationFoundationError) || error.code !== 'ACCOUNT_NOT_FOUND') {
+    if (
+      !(error instanceof ManagedCommunicationFoundationError) ||
+      error.code !== 'ACCOUNT_NOT_FOUND'
+    ) {
       throw error;
     }
   }
@@ -140,7 +143,10 @@ async function ensureAccountBinding(
       now: now()
     });
   } catch (error) {
-    if (!(error instanceof ManagedCommunicationFoundationError) || error.code !== 'ACCOUNT_CONFLICT') {
+    if (
+      !(error instanceof ManagedCommunicationFoundationError) ||
+      error.code !== 'ACCOUNT_CONFLICT'
+    ) {
       throw error;
     }
 
