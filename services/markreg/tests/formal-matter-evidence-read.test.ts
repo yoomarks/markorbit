@@ -263,7 +263,10 @@ describe('Postgres Formal Matter Document Package Reader', () => {
     let loaded = false;
     const query = {
       query: async (_text: string, values?: readonly unknown[]) => ({
-        rows: values?.[0] === workspaceId ? [{ document_package_id: 'document-package_hidden' }] : [],
+        rows:
+          values?.[0] === workspaceId
+            ? [{ document_package_id: 'document-package_hidden' }]
+            : [],
         rowCount: values?.[0] === workspaceId ? 1 : 0
       })
     } as never;
