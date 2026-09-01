@@ -49,18 +49,36 @@ jobs:
           source = source.replace(before, after);
           fs.writeFileSync(path, source);
           NODE
-      - name: Remove unnecessary narrowed assertions
+      - name: Use lint-safe validated allowlists
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const path = 'packages/contracts/src/outcome-trust-evidence.ts';
           let source = fs.readFileSync(path, 'utf8');
           const replacements = [
-            ['ownerByKind[source.factKind as TrustEvidenceOwnerFactKindV1]', 'ownerByKind[source.factKind]'],
-            ['allowedNonPositive.includes(executor.assessmentState as ProviderDirectExecutorAssessmentState)', 'allowedNonPositive.includes(executor.assessmentState)']
+            [
+              'const ownerByKind: Readonly<Record<TrustEvidenceOwnerFactKindV1, TrustEvidenceOwnerFactOwnerV1>> = {',
+              'const ownerByKind: Readonly<Record<string, TrustEvidenceOwnerFactOwnerV1>> = {'
+            ],
+            [
+              'ownerByKind[source.factKind as TrustEvidenceOwnerFactKindV1]',
+              'ownerByKind[source.factKind]'
+            ],
+            [
+              'const allowedNonPositive: readonly ProviderDirectExecutorAssessmentState[] = [',
+              'const allowedNonPositive: ReadonlySet<string> = new Set(['
+            ],
+            [
+              "    'AUTHORITY_UNAVAILABLE'\n  ];",
+              "    'AUTHORITY_UNAVAILABLE'\n  ]);"
+            ],
+            [
+              'allowedNonPositive.includes(executor.assessmentState as ProviderDirectExecutorAssessmentState)',
+              'allowedNonPositive.has(executor.assessmentState)'
+            ]
           ];
           for (const [before, after] of replacements) {
-            if (!source.includes(before)) throw new Error(`expected assertion not found: ${before}`);
+            if (!source.includes(before)) throw new Error(`expected allowlist fragment not found: ${before}`);
             source = source.replace(before, after);
           }
           fs.writeFileSync(path, source);
