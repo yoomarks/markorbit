@@ -182,10 +182,9 @@ afterEach(async () => {
 
 describe('authenticated Network Participation Gateway owner boundary', () => {
   it('reads fail-closed no-row state through reviewed workspace:read authority', async () => {
-    const response = await fetch(
-      `${base}/api/mgsn/network-participation/providers/${providerId}`,
-      { headers: headers(providerWorkspaceId) }
-    );
+    const response = await fetch(`${base}/api/mgsn/network-participation/providers/${providerId}`, {
+      headers: headers(providerWorkspaceId)
+    });
     expect(response.status).toBe(200);
     const body = (await response.json()) as any;
     expect(body.networkParticipation.state).toBe('NOT_PARTICIPATING');
@@ -233,9 +232,7 @@ describe('authenticated Network Participation Gateway owner boundary', () => {
       }
     );
     expect(response.status).toBe(400);
-    expect((await response.json()).code).toBe(
-      'NETWORK_PARTICIPATION_AUTHORITY_PAYLOAD_FORBIDDEN'
-    );
+    expect((await response.json()).code).toBe('NETWORK_PARTICIPATION_AUTHORITY_PAYLOAD_FORBIDDEN');
     expect(capturedMutation).toBeUndefined();
   });
 
@@ -296,10 +293,9 @@ describe('authenticated Network Participation Gateway owner boundary', () => {
   });
 
   it('fails closed across Workspaces without disclosing Provider binding details', async () => {
-    const response = await fetch(
-      `${base}/api/mgsn/network-participation/providers/${providerId}`,
-      { headers: headers(wrongWorkspaceId) }
-    );
+    const response = await fetch(`${base}/api/mgsn/network-participation/providers/${providerId}`, {
+      headers: headers(wrongWorkspaceId)
+    });
     expect(response.status).toBe(404);
     const body = (await response.json()) as any;
     expect(body.code).toBe('NETWORK_PARTICIPATION_NOT_FOUND');
