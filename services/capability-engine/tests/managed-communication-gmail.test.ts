@@ -10,7 +10,9 @@ import type {
   ManagedCommunicationExactEvidenceRefV1,
   ManagedCommunicationExactEvidenceStoreV1
 } from '../src/managed-communication-exact-evidence.js';
-import type { ManagedCommunicationSendRequestV1 } from '../src/managed-communication-exchange.js';
+import type {
+  ManagedCommunicationSendRequestV1
+} from '../src/managed-communication-exchange.js';
 import {
   buildGmailManagedCommunicationMimeV1,
   GmailManagedCommunicationClientV1,
@@ -60,11 +62,11 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
         Object.freeze({ schemaVersion: 1, disposition: 'REPLAYED', evidence: existing })
       );
     }
-    const digest = sha256(input.rawPayload);
+    const evidenceSha256 = sha256(input.rawPayload);
     const evidence = Object.freeze({
       schemaVersion: 1 as const,
-      evidenceRef: `commevidence_test_${digest.slice(0, 20)}`,
-      sha256: digest,
+      evidenceRef: `commevidence_test_${evidenceSha256.slice(0, 20)}`,
+      sha256: evidenceSha256,
       mediaType: input.mediaType,
       sizeBytes: input.rawPayload.byteLength,
       observedAt: input.observedAt,
@@ -127,7 +129,9 @@ describe('Gmail Managed Communication provider adapter', () => {
     await expect(client.profile()).resolves.toEqual({ historyId: '100' });
     await expect(client.profile()).resolves.toEqual({ historyId: '100' });
 
-    expect(calls.filter((url) => url === 'https://oauth2.googleapis.com/token')).toHaveLength(1);
+    expect(
+      calls.filter((url) => url === 'https://oauth2.googleapis.com/token')
+    ).toHaveLength(1);
     expect(
       calls.filter(
         (url) => url === 'https://gmail.googleapis.com/gmail/v1/users/me/profile'
@@ -196,7 +200,10 @@ describe('Gmail Managed Communication provider adapter', () => {
     });
     const sendCall = requests.find((request) => request.url.endsWith('/users/me/messages/send'));
     expect(sendCall).toBeDefined();
-    const body = JSON.parse(String(sendCall?.init?.body)) as { raw: string; threadId?: string };
+    const body = JSON.parse(String(sendCall?.init?.body)) as {
+      raw: string;
+      threadId?: string;
+    };
     expect(body.threadId).toBe('gmail-thread-1');
     const raw = Buffer.from(body.raw, 'base64url').toString('utf8');
     expect(raw).toContain('In-Reply-To: <prior@example.test>');
@@ -232,183 +239,194 @@ describe('Gmail Managed Communication provider adapter', () => {
     ).toThrow(/governed byte resolver/u);
   });
 
-  it('advances Gmail history checkpoints, ignores self mail, and admits exact raw inbound evidence without sensitive headers', async () => {
-    const foundation = new InMemoryManagedCommunicationFoundationV1();
-    await foundation.registerAccount({
-      workspaceId,
-      accountRef,
-      channel: 'EMAIL',
-      provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-      providerAccountRef,
-      now: '2026-09-01T14:00:00.000Z'
-    });
-    const exactEvidence = new RecordingExactEvidenceStore();
-    const rawMessage = [
-      'From: Expert <expert@example.test>',
-      `To: ${providerAccountRef}`,
-      'Subject: Exact inbound reply',
-      '',
-      'Exact provider raw body.'
-    ].join('\r\n');
-    const inlineAttachment = Buffer.from('attachment-bytes', 'utf8');
-    const historyStarts: string[] = [];
+  it(
+    'advances Gmail history checkpoints, ignores self mail, and admits exact raw inbound evidence without sensitive headers',
+    async () => {
+      const foundation = new InMemoryManagedCommunicationFoundationV1();
+      await foundation.registerAccount({
+        workspaceId,
+        accountRef,
+        channel: 'EMAIL',
+        provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+        providerAccountRef,
+        now: '2026-09-01T14:00:00.000Z'
+      });
+      const exactEvidence = new RecordingExactEvidenceStore();
+      const rawMessage = [
+        'From: Expert <expert@example.test>',
+        `To: ${providerAccountRef}`,
+        'Subject: Exact inbound reply',
+        '',
+        'Exact provider raw body.'
+      ].join('\r\n');
+      const inlineAttachment = Buffer.from('attachment-bytes', 'utf8');
+      const historyStarts: string[] = [];
 
-    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url === 'https://oauth2.googleapis.com/token')
-        return json({ access_token: 'access-token-test-only', expires_in: 3600 });
-      if (url.endsWith('/users/me/profile')) return json({ historyId: '100' });
-      if (url.includes('/users/me/history?')) {
-        const parsed = new URL(url);
-        historyStarts.push(parsed.searchParams.get('startHistoryId') ?? '');
-        return json({
-          historyId: '101',
-          history: [
-            {
-              messagesAdded: [
-                { message: { id: 'gmail-self-1' } },
-                { message: { id: 'gmail-inbound-1' } },
-                { message: { id: 'gmail-inbound-1' } }
-              ]
-            }
-          ]
-        });
-      }
-      if (url.includes('/messages/gmail-self-1?format=full'))
-        return json({
-          id: 'gmail-self-1',
-          threadId: 'gmail-thread-self',
-          internalDate: '1788271800000',
-          payload: {
-            mimeType: 'text/plain',
-            headers: [
-              { name: 'From', value: providerAccountRef },
-              { name: 'To', value: 'expert@example.test' }
-            ],
-            body: { data: Buffer.from('self message', 'utf8').toString('base64url') }
-          }
-        });
-      if (url.includes('/messages/gmail-inbound-1?format=full'))
-        return json({
-          id: 'gmail-inbound-1',
-          threadId: 'gmail-thread-inbound-1',
-          historyId: '101',
-          internalDate: '1788271860000',
-          payload: {
-            mimeType: 'multipart/mixed',
-            headers: [
-              { name: 'From', value: 'Expert <expert@example.test>' },
-              { name: 'To', value: providerAccountRef },
-              { name: 'Subject', value: 'Exact inbound reply' },
-              { name: 'Authorization', value: 'Bearer must-not-persist' },
-              { name: ' Cookie ', value: 'session=must-not-persist' },
-              { name: 'X-Trace-Id', value: 'trace-safe-1' }
-            ],
-            parts: [
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === 'https://oauth2.googleapis.com/token')
+          return json({ access_token: 'access-token-test-only', expires_in: 3600 });
+        if (url.endsWith('/users/me/profile')) return json({ historyId: '100' });
+        if (url.includes('/users/me/history?')) {
+          const parsed = new URL(url);
+          historyStarts.push(parsed.searchParams.get('startHistoryId') ?? '');
+          return json({
+            historyId: '101',
+            history: [
               {
-                partId: '0',
-                mimeType: 'text/plain',
-                body: {
-                  data: Buffer.from('Normalized inbound body.', 'utf8').toString('base64url')
-                }
-              },
-              {
-                partId: '1',
-                mimeType: 'text/plain',
-                filename: 'proof.txt',
-                body: { data: inlineAttachment.toString('base64url') }
+                messagesAdded: [
+                  { message: { id: 'gmail-self-1' } },
+                  { message: { id: 'gmail-inbound-1' } },
+                  { message: { id: 'gmail-inbound-1' } }
+                ]
               }
             ]
-          }
-        });
-      if (url.includes('/messages/gmail-inbound-1?format=raw'))
-        return json({
-          id: 'gmail-inbound-1',
-          threadId: 'gmail-thread-inbound-1',
-          raw: Buffer.from(rawMessage, 'utf8').toString('base64url')
-        });
-      throw new Error(`Unexpected provider request: ${url}`);
-    }) as typeof fetch;
+          });
+        }
+        if (url.includes('/messages/gmail-self-1?format=full'))
+          return json({
+            id: 'gmail-self-1',
+            threadId: 'gmail-thread-self',
+            internalDate: '1788271800000',
+            payload: {
+              mimeType: 'text/plain',
+              headers: [
+                { name: 'From', value: providerAccountRef },
+                { name: 'To', value: 'expert@example.test' }
+              ],
+              body: {
+                data: Buffer.from('self message', 'utf8').toString('base64url')
+              }
+            }
+          });
+        if (url.includes('/messages/gmail-inbound-1?format=full'))
+          return json({
+            id: 'gmail-inbound-1',
+            threadId: 'gmail-thread-inbound-1',
+            historyId: '101',
+            internalDate: '1788271860000',
+            payload: {
+              mimeType: 'multipart/mixed',
+              headers: [
+                { name: 'From', value: 'Expert <expert@example.test>' },
+                { name: 'To', value: providerAccountRef },
+                { name: 'Subject', value: 'Exact inbound reply' },
+                { name: 'Authorization', value: 'Bearer must-not-persist' },
+                { name: ' Cookie ', value: 'session=must-not-persist' },
+                { name: 'X-Trace-Id', value: 'trace-safe-1' }
+              ],
+              parts: [
+                {
+                  partId: '0',
+                  mimeType: 'text/plain',
+                  body: {
+                    data: Buffer.from('Normalized inbound body.', 'utf8').toString(
+                      'base64url'
+                    )
+                  }
+                },
+                {
+                  partId: '1',
+                  mimeType: 'text/plain',
+                  filename: 'proof.txt',
+                  body: { data: inlineAttachment.toString('base64url') }
+                }
+              ]
+            }
+          });
+        if (url.includes('/messages/gmail-inbound-1?format=raw'))
+          return json({
+            id: 'gmail-inbound-1',
+            threadId: 'gmail-thread-inbound-1',
+            raw: Buffer.from(rawMessage, 'utf8').toString('base64url')
+          });
+        throw new Error(`Unexpected provider request: ${url}`);
+      }) as typeof fetch;
 
-    const client = new GmailManagedCommunicationClientV1(config, fetchImpl, () => 30_000);
-    let timestampIndex = 0;
-    const timestamps = [
-      '2026-09-01T14:20:00.000Z',
-      '2026-09-01T14:21:00.000Z',
-      '2026-09-01T14:22:00.000Z',
-      '2026-09-01T14:23:00.000Z'
-    ];
-    const inbound = new GmailManagedCommunicationInboundV1({
-      client,
-      foundation,
-      exactEvidence,
-      workspaceId,
-      accountRef,
-      now: () => timestamps[timestampIndex++] ?? '2026-09-01T14:24:00.000Z'
-    });
+      const client = new GmailManagedCommunicationClientV1(config, fetchImpl, () => 30_000);
+      let timestampIndex = 0;
+      const timestamps = [
+        '2026-09-01T14:20:00.000Z',
+        '2026-09-01T14:21:00.000Z',
+        '2026-09-01T14:22:00.000Z',
+        '2026-09-01T14:23:00.000Z'
+      ];
+      const inbound = new GmailManagedCommunicationInboundV1({
+        client,
+        foundation,
+        exactEvidence,
+        workspaceId,
+        accountRef,
+        now: () => timestamps[timestampIndex++] ?? '2026-09-01T14:24:00.000Z'
+      });
 
-    await expect(inbound.syncOnce()).resolves.toEqual({
-      initialized: true,
-      imported: 0,
-      providerCursor: '100'
-    });
-    await expect(inbound.syncOnce()).resolves.toEqual({
-      initialized: false,
-      imported: 1,
-      providerCursor: '101'
-    });
-    await expect(inbound.syncOnce()).resolves.toEqual({
-      initialized: false,
-      imported: 0,
-      providerCursor: '101'
-    });
+      await expect(inbound.syncOnce()).resolves.toEqual({
+        initialized: true,
+        imported: 0,
+        providerCursor: '100'
+      });
+      await expect(inbound.syncOnce()).resolves.toEqual({
+        initialized: false,
+        imported: 1,
+        providerCursor: '101'
+      });
+      await expect(inbound.syncOnce()).resolves.toEqual({
+        initialized: false,
+        imported: 0,
+        providerCursor: '101'
+      });
 
-    expect(historyStarts).toEqual(['100', '101']);
-    const ids = managedCommunicationNormalizedIdsV1({
-      workspaceId,
-      accountRef,
-      provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-      providerMessageId: 'gmail-inbound-1',
-      providerThreadId: 'gmail-thread-inbound-1'
-    });
-    const normalized = await foundation.resolveMessage(workspaceId, accountRef, ids.messageId);
-    expect(normalized.textBody).toBe('Normalized inbound body.');
-    expect(normalized.attachments).toEqual([
-      {
-        attachmentRef: 'gmail:gmail-inbound-1:part:1',
-        fileName: 'proof.txt',
-        mediaType: 'text/plain',
-        sizeBytes: inlineAttachment.byteLength,
-        sha256: sha256(inlineAttachment)
-      }
-    ]);
+      expect(historyStarts).toEqual(['100', '101']);
+      const ids = managedCommunicationNormalizedIdsV1({
+        workspaceId,
+        accountRef,
+        provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+        providerMessageId: 'gmail-inbound-1',
+        providerThreadId: 'gmail-thread-inbound-1'
+      });
+      const normalized = await foundation.resolveMessage(
+        workspaceId,
+        accountRef,
+        ids.messageId
+      );
+      expect(normalized.textBody).toBe('Normalized inbound body.');
+      expect(normalized.attachments).toEqual([
+        {
+          attachmentRef: 'gmail:gmail-inbound-1:part:1',
+          fileName: 'proof.txt',
+          mediaType: 'text/plain',
+          sizeBytes: inlineAttachment.byteLength,
+          sha256: sha256(inlineAttachment)
+        }
+      ]);
 
-    expect(exactEvidence.admissions).toHaveLength(2);
-    const firstEvidence = exactEvidence.admissions[0]!;
-    expect(Buffer.from(firstEvidence.rawPayload).toString('utf8')).toBe(rawMessage);
-    expect(firstEvidence.provider).toBe(GMAIL_MANAGED_COMMUNICATION_PROVIDER);
-    expect(firstEvidence.providerMessageId).toBe('gmail-inbound-1');
-    expect(firstEvidence.metadata).toEqual({
-      gmailMessageId: 'gmail-inbound-1',
-      gmailThreadId: 'gmail-thread-inbound-1',
-      gmailHistoryId: '101'
-    });
-    expect(firstEvidence.headers).toEqual(
-      expect.arrayContaining([
-        { name: 'From', value: 'Expert <expert@example.test>' },
-        { name: 'X-Trace-Id', value: 'trace-safe-1' }
-      ])
-    );
-    expect(firstEvidence.headers.map((header) => header.name.toLowerCase())).not.toContain(
-      'authorization'
-    );
-    expect(firstEvidence.headers.map((header) => header.name.toLowerCase())).not.toContain(
-      'cookie'
-    );
-    const persistedProjection = JSON.stringify({ normalized, firstEvidence });
-    expect(persistedProjection).not.toContain(config.clientSecret);
-    expect(persistedProjection).not.toContain(config.refreshToken);
-    expect(persistedProjection).not.toContain('access-token-test-only');
-    expect(persistedProjection).not.toContain('must-not-persist');
-  });
+      expect(exactEvidence.admissions).toHaveLength(2);
+      const firstEvidence = exactEvidence.admissions[0]!;
+      expect(Buffer.from(firstEvidence.rawPayload).toString('utf8')).toBe(rawMessage);
+      expect(firstEvidence.provider).toBe(GMAIL_MANAGED_COMMUNICATION_PROVIDER);
+      expect(firstEvidence.providerMessageId).toBe('gmail-inbound-1');
+      expect(firstEvidence.metadata).toEqual({
+        gmailMessageId: 'gmail-inbound-1',
+        gmailThreadId: 'gmail-thread-inbound-1',
+        gmailHistoryId: '101'
+      });
+      expect(firstEvidence.headers).toEqual(
+        expect.arrayContaining([
+          { name: 'From', value: 'Expert <expert@example.test>' },
+          { name: 'X-Trace-Id', value: 'trace-safe-1' }
+        ])
+      );
+      expect(
+        firstEvidence.headers.map((header) => header.name.toLowerCase())
+      ).not.toContain('authorization');
+      expect(
+        firstEvidence.headers.map((header) => header.name.toLowerCase())
+      ).not.toContain('cookie');
+      const persistedProjection = JSON.stringify({ normalized, firstEvidence });
+      expect(persistedProjection).not.toContain(config.clientSecret);
+      expect(persistedProjection).not.toContain(config.refreshToken);
+      expect(persistedProjection).not.toContain('access-token-test-only');
+      expect(persistedProjection).not.toContain('must-not-persist');
+    }
+  );
 });
