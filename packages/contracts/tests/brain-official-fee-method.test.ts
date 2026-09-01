@@ -4,9 +4,16 @@ import {
   type KnowledgeRetrievalLineageRefV1
 } from '../src/brain-method.js';
 import {
+  activateExecutableMethodPackageV1,
+  executableMethodActivationEvidenceRefV1,
+  prepareExecutableMethodPackageActivationDecisionV1
+} from '../src/brain-method-activation.js';
+import {
   USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE,
+  USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE,
   USPTO_OFFICIAL_FEE_PILOT_OPERATION,
   compileUsptoOfficialFeeMethodPackageV1,
+  prepareUsptoOfficialFeeGovernedSuccessorV1,
   type CompileUsptoOfficialFeeMethodInputV1
 } from '../src/brain-official-fee-method.js';
 
@@ -110,5 +117,95 @@ describe('USPTO Official Fee Brain Method compiler', () => {
       status: 'NOT_APPLICABLE',
       reason: 'No ACTIVE executable method package matches the request scope and available data.'
     });
+  });
+
+  it('preserves the direct-ACTIVE v1 artifact as an explicitly ungoverned legacy pilot', () => {
+    const legacy = compileUsptoOfficialFeeMethodPackageV1(resolvedInput());
+    const prepared = prepareUsptoOfficialFeeGovernedSuccessorV1(resolvedInput());
+    if (legacy.status !== 'READY' || prepared.status !== 'PREPARED') {
+      throw new Error('Expected legacy and governed-successor preparation.');
+    }
+
+    expect(prepared.legacyPilot.governanceStatus).toBe(USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE);
+    expect(prepared.legacyPilot.packageId).toBe(legacy.package.packageId);
+    expect(prepared.legacyPilot.packageVersion).toBe(1);
+    expect(prepared.legacyPilot.historicalActivatedAt).toBe('2026-08-28T00:00:00.000Z');
+    expect(prepared.legacyPilot.activationDecisionId).toBeNull();
+    expect(prepared.legacyPilot.activationEvidenceRef).toBeNull();
+    expect(prepared.legacyPilot.phase4ResolverAcceptanceIsBrainGovernanceActivation).toBe(false);
+    expect(prepared.legacyPilot.currentBrainGovernanceActivationEstablished).toBe(false);
+  });
+
+  it('prepares a distinct VALIDATED successor with exact source/evaluation lineage and no activation authority', () => {
+    const legacy = compileUsptoOfficialFeeMethodPackageV1(resolvedInput());
+    const prepared = prepareUsptoOfficialFeeGovernedSuccessorV1(resolvedInput());
+    if (legacy.status !== 'READY' || prepared.status !== 'PREPARED') {
+      throw new Error('Expected legacy and governed-successor preparation.');
+    }
+
+    expect(prepared.validatedSuccessor.lifecycle).toBe('VALIDATED');
+    expect(prepared.validatedSuccessor.activatedAt).toBeUndefined();
+    expect(prepared.validatedSuccessor.packageId).not.toBe(legacy.package.packageId);
+    expect(prepared.validatedSuccessor.packageId).toBe(
+      `${legacy.package.packageId}-governed-successor`
+    );
+    expect(prepared.validatedSuccessor.packageVersion).toBe(1);
+    expect(prepared.validatedSuccessor.methodId).toBe(legacy.package.methodId);
+    expect(prepared.validatedSuccessor.methodVersionId).toBe(legacy.package.methodVersionId);
+    expect(prepared.validatedSuccessor.evaluation).toEqual(legacy.package.evaluation);
+    expect(prepared.validatedSuccessor.lineage).toEqual(legacy.package.lineage);
+    expect(prepared.validatedSuccessor.executable).toEqual(legacy.package.executable);
+    expect(prepared.requiresExplicitBrainGovernanceApproval).toBe(true);
+    expect(prepared.activationDecisionId).toBeNull();
+    expect(prepared.activationEvidenceRef).toBeNull();
+    expect(prepared.validatedSuccessorFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('can become ACTIVE only through an explicit canonical BRAIN_GOVERNANCE approval decision', () => {
+    const prepared = prepareUsptoOfficialFeeGovernedSuccessorV1(resolvedInput());
+    if (prepared.status !== 'PREPARED') {
+      throw new Error('Expected governed-successor preparation.');
+    }
+
+    const rejected = prepareExecutableMethodPackageActivationDecisionV1(
+      prepared.validatedSuccessor,
+      {
+        decision: 'REJECTED',
+        selectionPriority: 100,
+        limitations: prepared.validatedSuccessor.limitations,
+        policyVersion: 'brain-governance-test-v1',
+        approvedBy: 'test-governance-principal',
+        approvalTicketRef: 'TEST-ONLY-REJECTION-460',
+        approvedAt: '2026-09-01T00:00:00.000Z',
+        rationale: 'Test-only rejection proving fail-closed activation.'
+      }
+    );
+    expect(() => activateExecutableMethodPackageV1(prepared.validatedSuccessor, rejected)).toThrow(
+      'A REJECTED activation decision cannot produce ACTIVE state.'
+    );
+
+    const approved = prepareExecutableMethodPackageActivationDecisionV1(
+      prepared.validatedSuccessor,
+      {
+        decision: 'APPROVED',
+        selectionPriority: 100,
+        limitations: prepared.validatedSuccessor.limitations,
+        policyVersion: 'brain-governance-test-v1',
+        approvedBy: 'test-governance-principal',
+        approvalTicketRef: 'TEST-ONLY-APPROVAL-460',
+        approvedAt: '2026-09-01T00:00:00.000Z',
+        rationale: 'Synthetic test fixture only; not a production governance approval.'
+      }
+    );
+    const active = activateExecutableMethodPackageV1(prepared.validatedSuccessor, approved);
+
+    expect(approved.approval.authority).toBe('BRAIN_GOVERNANCE');
+    expect(approved.decisionId).toMatch(/^brain-method-activation_/);
+    expect(active.lifecycle).toBe('ACTIVE');
+    expect(active.packageVersion).toBe(2);
+    expect(active.activatedAt).toBe(approved.approval.approvedAt);
+    expect(executableMethodActivationEvidenceRefV1(approved)).toBe(
+      `brain-method-activation:${approved.decisionId}:${prepared.validatedSuccessorFingerprintSha256}`
+    );
   });
 });
