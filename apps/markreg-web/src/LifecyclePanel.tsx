@@ -16,10 +16,12 @@ type State =
 export function LifecyclePanel({
   formalMatterId,
   disabled = false,
+  embedded = false,
   client = defaultClient
 }: {
   formalMatterId: string;
   disabled?: boolean;
+  embedded?: boolean;
   client?: CustomerLifecycleClient;
 }) {
   const [state, setState] = useState<State>({ kind: 'LOADING' });
@@ -69,9 +71,8 @@ export function LifecyclePanel({
     );
 
   const { lifecycle, timeline, recommendedAction, noAction } = state.value;
-  return (
-    <section aria-labelledby="matter-lifecycle-heading">
-      <h2 id="matter-lifecycle-heading">Matter lifecycle</h2>
+  const content = (
+    <>
       <Alert tone="info" title="Internal governed status">
         This lifecycle view helps track the Matter. It is not trademark-office status or proof of
         filing.
@@ -135,6 +136,14 @@ export function LifecyclePanel({
           <p>No current recommendation is available.</p>
         )}
       </Card>
+    </>
+  );
+
+  if (embedded) return content;
+  return (
+    <section aria-labelledby="matter-lifecycle-heading">
+      <h2 id="matter-lifecycle-heading">Matter lifecycle</h2>
+      {content}
     </section>
   );
 }
