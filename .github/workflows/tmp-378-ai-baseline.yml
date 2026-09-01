@@ -22,7 +22,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @markorbit/ai build
+      - run: pnpm --filter @markorbit/ai... build
       - run: pnpm --filter @markorbit/ai lint
       - run: pnpm --filter @markorbit/ai typecheck
       - run: pnpm --filter @markorbit/ai test
