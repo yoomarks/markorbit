@@ -1,6 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
+  ContentDraftId,
+  ContentOpportunityId,
+  ContentReviewDecisionId,
+  ContentReviewOutcome,
   OpportunityCandidateId,
   OpportunityQualificationDecisionId,
   PreparedActionId,
@@ -19,6 +23,10 @@ import {
 } from './conversion-analytics.js';
 import { DailyOrbitError, type DailyOrbitService } from './daily-orbit.js';
 import { ContentStudioError, type PostgresContentStudioReader } from './content-studio.js';
+import {
+  LiteContentPreparationError,
+  type PostgresLiteContentPreparationStore
+} from './content-preparation.js';
 import { DailySignalImportError, type PostgresLiteDailySignalStore } from './daily-signal.js';
 import { ProductLoopFeedbackError, type PostgresProductLoopFeedbackStore } from './feedback.js';
 import {
@@ -131,9 +139,24 @@ function planOf(value: unknown): PreparedActionPlan {
   return value as PreparedActionPlan;
 }
 
+function exactBody(body: Body, fields: readonly string[]): void {
+  const actorField = ['reviewerPrincipalId', 'actorId', 'userId', 'confirmedByPrincipalId'].find(
+    (field) => body[field] !== undefined
+  );
+  if (actorField)
+    throw new HttpError(
+      400,
+      'ACTOR_SPOOF_REJECTED',
+      'Actor identity comes from the authenticated Principal.'
+    );
+  if (Object.keys(body).some((field) => !fields.includes(field)))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body contains unsupported fields.');
+}
+
 function mapError(error: unknown): never {
   if (
     error instanceof ContentStudioError ||
+    error instanceof LiteContentPreparationError ||
     error instanceof PreparedActionJourneyError ||
     error instanceof LiteCandidateQualificationError ||
     error instanceof ProductLoopFeedbackError ||
@@ -155,6 +178,14 @@ export function createContentStudioRoutes(
   options: Readonly<{
     internalServiceSecret: string;
     reader: Pick<PostgresContentStudioReader, 'list' | 'find'>;
+    contentStore: Pick<
+      PostgresLiteContentPreparationStore,
+      | 'createDraft'
+      | 'reviseDraft'
+      | 'markDraftReadyForReview'
+      | 'recordReview'
+      | 'preparePublishPackage'
+    >;
   }>
 ): JsonRoute[] {
   return [
@@ -199,6 +230,173 @@ export function createContentStudioRoutes(
               principal.workspaceId,
               request.params.contentOpportunityId ?? ''
             )
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/content-studio/works/:contentOpportunityId/drafts',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        exactBody(body, [
+          'contentOpportunityVersion',
+          'expectedContentOpportunityFingerprintSha256',
+          'title',
+          'body'
+        ]);
+        try {
+          return json(
+            201,
+            await options.contentStore.createDraft({
+              workspaceId: principal.workspaceId,
+              contentOpportunity: {
+                id: request.params.contentOpportunityId! as ContentOpportunityId,
+                version: positive(body.contentOpportunityVersion, 'contentOpportunityVersion')
+              },
+              expectedContentOpportunityFingerprintSha256: text(
+                body.expectedContentOpportunityFingerprintSha256,
+                'expectedContentOpportunityFingerprintSha256'
+              ),
+              title: text(body.title, 'title'),
+              body: text(body.body, 'body'),
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/content-drafts/:contentDraftId/revisions',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        exactBody(body, [
+          'expectedVersion',
+          'expectedContentDraftFingerprintSha256',
+          'title',
+          'body'
+        ]);
+        try {
+          return json(
+            200,
+            await options.contentStore.reviseDraft({
+              workspaceId: principal.workspaceId,
+              contentDraftId: request.params.contentDraftId! as ContentDraftId,
+              expectedVersion: positive(body.expectedVersion, 'expectedVersion'),
+              expectedContentDraftFingerprintSha256: text(
+                body.expectedContentDraftFingerprintSha256,
+                'expectedContentDraftFingerprintSha256'
+              ),
+              title: text(body.title, 'title'),
+              body: text(body.body, 'body'),
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/content-drafts/:contentDraftId/ready-for-review',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        exactBody(body, ['expectedVersion', 'expectedContentDraftFingerprintSha256']);
+        try {
+          return json(
+            200,
+            await options.contentStore.markDraftReadyForReview({
+              workspaceId: principal.workspaceId,
+              contentDraftId: request.params.contentDraftId! as ContentDraftId,
+              expectedVersion: positive(body.expectedVersion, 'expectedVersion'),
+              expectedContentDraftFingerprintSha256: text(
+                body.expectedContentDraftFingerprintSha256,
+                'expectedContentDraftFingerprintSha256'
+              ),
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/content-drafts/:contentDraftId/reviews',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        exactBody(body, [
+          'contentDraftVersion',
+          'expectedContentDraftFingerprintSha256',
+          'outcome',
+          'rationale'
+        ]);
+        try {
+          return json(
+            201,
+            await options.contentStore.recordReview({
+              workspaceId: principal.workspaceId,
+              contentDraft: {
+                id: request.params.contentDraftId! as ContentDraftId,
+                version: positive(body.contentDraftVersion, 'contentDraftVersion')
+              },
+              expectedContentDraftFingerprintSha256: text(
+                body.expectedContentDraftFingerprintSha256,
+                'expectedContentDraftFingerprintSha256'
+              ),
+              outcome: text(body.outcome, 'outcome') as ContentReviewOutcome,
+              rationale: text(body.rationale, 'rationale'),
+              reviewerPrincipalId: principal.userId,
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/content-drafts/:contentDraftId/publish-packages',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        exactBody(body, [
+          'contentDraftVersion',
+          'expectedContentDraftFingerprintSha256',
+          'reviewDecisionId',
+          'reviewDecisionVersion'
+        ]);
+        try {
+          return json(
+            201,
+            await options.contentStore.preparePublishPackage({
+              workspaceId: principal.workspaceId,
+              contentDraft: {
+                id: request.params.contentDraftId! as ContentDraftId,
+                version: positive(body.contentDraftVersion, 'contentDraftVersion')
+              },
+              expectedContentDraftFingerprintSha256: text(
+                body.expectedContentDraftFingerprintSha256,
+                'expectedContentDraftFingerprintSha256'
+              ),
+              reviewDecision: {
+                id: text(body.reviewDecisionId, 'reviewDecisionId') as ContentReviewDecisionId,
+                version: positive(body.reviewDecisionVersion, 'reviewDecisionVersion')
+              },
+              idempotencyKey: keyOf(request)
+            })
           );
         } catch (error) {
           return mapError(error);

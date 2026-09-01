@@ -289,7 +289,8 @@ const runtime = createServiceRuntime(serviceManifest, {
   routes: [
     ...createContentStudioRoutes({
       internalServiceSecret,
-      reader: new PostgresContentStudioReader(database)
+      reader: new PostgresContentStudioReader(database),
+      contentStore
     }),
     ...createDailyWorkspaceRoutes({
       internalServiceSecret,

@@ -127,7 +127,18 @@ describe('#372 Content Studio failure and HTTP boundaries', () => {
         )
       )
     };
-    const routes = createContentStudioRoutes({ internalServiceSecret: secret, reader });
+    const contentStore = {
+      createDraft: vi.fn(),
+      reviseDraft: vi.fn(),
+      markDraftReadyForReview: vi.fn(),
+      recordReview: vi.fn(),
+      preparePublishPackage: vi.fn()
+    };
+    const routes = createContentStudioRoutes({
+      internalServiceSecret: secret,
+      reader,
+      contentStore
+    });
     const request = (headers: Record<string, string> = {}, query: Record<string, string> = {}) => ({
       method: 'GET' as const,
       path: '/v1/content-studio/works',
@@ -144,11 +155,16 @@ describe('#372 Content Studio failure and HTTP boundaries', () => {
     return { reader, routes, request };
   }
 
-  it('registers only GET routes, passes trusted Workspace without subject identity, and preserves 404', async () => {
+  it('registers governed Content Studio routes, passes trusted Workspace to reads, and preserves 404', async () => {
     const { reader, routes, request } = setup();
     expect(routes.map(({ method, path }) => [method, path])).toEqual([
       ['GET', '/v1/content-studio/works'],
-      ['GET', '/v1/content-studio/works/:contentOpportunityId']
+      ['GET', '/v1/content-studio/works/:contentOpportunityId'],
+      ['POST', '/v1/content-studio/works/:contentOpportunityId/drafts'],
+      ['POST', '/v1/content-drafts/:contentDraftId/revisions'],
+      ['POST', '/v1/content-drafts/:contentDraftId/ready-for-review'],
+      ['POST', '/v1/content-drafts/:contentDraftId/reviews'],
+      ['POST', '/v1/content-drafts/:contentDraftId/publish-packages']
     ]);
     expect(
       await routes[0]!.handle(request({}, { limit: '2', after: 'content-opportunity_a' }))
