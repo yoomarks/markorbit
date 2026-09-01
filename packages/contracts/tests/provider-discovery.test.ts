@@ -33,6 +33,19 @@ describe('MGSN Provider Discovery Candidate V1 shared contract', () => {
 
   it('uses an explicit authorized projection rather than Provider/Supply wholesale serialization', () => {
     const candidate = providerDiscoveryContractFixtureV1.candidateResult.candidates[0];
+    expect(candidate.request.requestedDataClasses).toEqual([
+      'PROVIDER_REFERENCE',
+      'SUPPLY_PROFILE',
+      'SERVICE_JURISDICTIONS',
+      'PROVIDER_EVIDENCE_REFERENCE'
+    ]);
+    expect(candidate.request.requestedFields).toEqual([
+      'providerId',
+      'displayName',
+      'serviceTypes',
+      'jurisdictions',
+      'evidenceReferences'
+    ]);
     const serializedProjection = JSON.stringify(candidate.authorizedProjection);
 
     for (const forbidden of [
@@ -73,14 +86,18 @@ describe('MGSN Provider Discovery Candidate V1 shared contract', () => {
     expect(candidate.visibilityEvidence[0]).toMatchObject({
       kind: 'PARTICIPATION_VISIBILITY',
       artifactAccessAuthorized: false,
-      source: { version: 6, authorityState: 'CURRENT' }
+      source: { version: 6, authorityState: 'CURRENT' },
+      authorityClass: 'MGSN_OPERATIONAL'
     });
     expect(candidate.suitabilityEvidence[0]).toMatchObject({
       kind: 'SUPPLY_SUITABILITY',
       artifactAccessAuthorized: false,
-      source: { version: 7, authorityState: 'CURRENT' }
+      source: { version: 7, authorityState: 'CURRENT' },
+      authorityClass: 'MGSN_OPERATIONAL'
     });
     expect(candidate.sourceVersions.every((source) => source.version !== undefined)).toBe(true);
+    expect(candidate.sourceVersions.every((source) => source.authorityState === 'CURRENT')).toBe(true);
+    expect(candidate.evaluationPolicyVersion).toBe('mgsn-provider-discovery-v1');
   });
 
   it('requires current visibility revalidation instead of treating historical candidate replay as permission', () => {
@@ -128,16 +145,25 @@ describe('MGSN Provider Discovery Candidate V1 shared contract', () => {
     expect(result.candidates).toEqual([]);
     expect(result.publicMessage).toBe('No Provider candidates are currently available for this request.');
 
-    const serialized = JSON.stringify(result);
-    for (const forbidden of [
-      'excludedProvider',
-      'hiddenProvider',
-      'excludedCount',
-      'internalReason',
-      'NOT_PARTICIPATING',
-      'VISIBILITY_PRIVATE'
-    ]) {
-      expect(serialized).not.toContain(forbidden);
+    const authorityUnavailable = providerDiscoveryContractFixtureV1.authorityUnavailableResult;
+    expect(authorityUnavailable).toMatchObject({
+      status: 'AUTHORITY_UNAVAILABLE',
+      candidates: [],
+      authorityState: 'STALE'
+    });
+
+    for (const candidateResult of [result, authorityUnavailable]) {
+      const serialized = JSON.stringify(candidateResult);
+      for (const forbidden of [
+        'excludedProvider',
+        'hiddenProvider',
+        'excludedCount',
+        'internalReason',
+        'NOT_PARTICIPATING',
+        'VISIBILITY_PRIVATE'
+      ]) {
+        expect(serialized).not.toContain(forbidden);
+      }
     }
   });
 
