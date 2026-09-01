@@ -11,9 +11,7 @@ export interface CapabilitySourceOutputIdentityV1 {
 }
 
 export type CapabilitySourceOutputIdentityErrorCode =
-  | 'INVALID_OUTPUT_SCHEMA'
-  | 'INVALID_OUTPUT_SHAPE'
-  | 'INCONSISTENT_RUNTIME_OUTPUT';
+  'INVALID_OUTPUT_SCHEMA' | 'INVALID_OUTPUT_SHAPE' | 'INCONSISTENT_RUNTIME_OUTPUT';
 
 export class CapabilitySourceOutputIdentityError extends Error {
   constructor(

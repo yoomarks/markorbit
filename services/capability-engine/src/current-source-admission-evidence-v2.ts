@@ -54,7 +54,10 @@ export function materializeCapabilitySourceAdmissionEvidenceV2(
   sourceOutputValue?: Readonly<CapabilitySourceOutputIdentityV1>
 ): Readonly<CapabilitySourceAdmissionEvidenceV2> {
   const v1 = materializeCapabilitySourceAdmissionEvidenceV1(decisionValue, evaluatedAtValue);
-  if (sourceOutputValue !== undefined && !validCapabilitySourceOutputIdentityV1(sourceOutputValue)) {
+  if (
+    sourceOutputValue !== undefined &&
+    !validCapabilitySourceOutputIdentityV1(sourceOutputValue)
+  ) {
     return invalidSourceOutput(
       'Capability source-admission V2 evidence requires a valid exact source-output identity.'
     );
