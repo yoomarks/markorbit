@@ -19,7 +19,7 @@ import {
 afterEach(cleanup);
 
 describe('Content Studio workspace', () => {
-  it('maps owner projection to deterministic presentation stages', () => {
+  it('maps only the latest exact Draft owner status to presentation copy', () => {
     expect(
       contentWorkStage(
         summaryFixture({
@@ -30,22 +30,66 @@ describe('Content Studio workspace', () => {
         })
       )
     ).toBe('Content Opportunity created');
+    expect(contentWorkStage(summaryFixture())).toBe('Reviewed draft ready for package');
+    expect(
+      contentWorkStage(
+        summaryFixture({ latestDraft: { ...summaryFixture().latestDraft!, status: 'DRAFT' } })
+      )
+    ).toBe('Draft in progress');
     expect(
       contentWorkStage(
         summaryFixture({
-          latestDraftReview: null,
-          latestPublishPackage: null,
-          latestPackageFeedback: null
+          latestDraft: {
+            ...summaryFixture().latestDraft!,
+            status: 'READY_FOR_HUMAN_REVIEW'
+          }
         })
       )
-    ).toBe('Draft awaiting review');
-    expect(
-      contentWorkStage(summaryFixture({ latestPublishPackage: null, latestPackageFeedback: null }))
-    ).toBe('Human review completed');
-    expect(contentWorkStage(summaryFixture({ latestPackageFeedback: null }))).toBe(
-      'Publish package prepared'
+    ).toBe('Ready for human review');
+  });
+
+  it('keeps old Package and feedback as work facts without overriding the current Draft lineage', async () => {
+    const current = summaryFixture();
+    const oldPackage = {
+      ...current.latestPublishPackage!,
+      contentDraft: { id: draft.contentDraftId, version: 1 }
+    };
+    const crossLineage = summaryFixture({
+      latestDraft: { ...current.latestDraft!, version: 2, status: 'DRAFT' },
+      latestDraftReview: null,
+      latestPublishPackage: oldPackage,
+      latestPackageFeedback: {
+        ...feedback,
+        publishPackage: { id: oldPackage.publishPackageId, version: oldPackage.version }
+      }
+    });
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient(listFixture([crossLineage]))}
+      />
     );
-    expect(contentWorkStage(summaryFixture())).toBe('User feedback recorded');
+
+    expect(await screen.findByText('Draft in progress')).toBeVisible();
+    expect(screen.getByText(`${draft.contentDraftId} · v2 · DRAFT`)).toBeVisible();
+    expect(screen.getByText('No exact Review Decision')).toBeVisible();
+    expect(screen.getByText(new RegExp(oldPackage.publishPackageId))).toBeVisible();
+    expect(screen.getByText(/User-reported · USER_REPORTED_PUBLISHED/)).toBeVisible();
+    expect(screen.queryByText('Draft awaiting review')).not.toBeInTheDocument();
+    expect(screen.queryByText('Human review completed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Publish package prepared')).not.toBeInTheDocument();
+    expect(screen.queryByText('User feedback recorded')).not.toBeInTheDocument();
+  });
+
+  it('does not describe a DRAFT without an exact Review as awaiting review', () => {
+    const work = summaryFixture({
+      latestDraft: { ...summaryFixture().latestDraft!, status: 'DRAFT' },
+      latestDraftReview: null,
+      latestPublishPackage: null,
+      latestPackageFeedback: null
+    });
+    expect(contentWorkStage(work)).toBe('Draft in progress');
+    expect(contentWorkStage(work)).not.toBe('Draft awaiting review');
   });
 
   it('renders Workspace-backed list, stable ContentOpportunity identity and partial Visual warning', async () => {

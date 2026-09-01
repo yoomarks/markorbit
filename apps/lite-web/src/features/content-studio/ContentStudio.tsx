@@ -9,7 +9,7 @@ import {
   LoadingState,
   PageHeader
 } from '@markorbit/ui';
-import type { ContentReviewDecision } from '@markorbit/contracts/product-loop';
+import type { ContentDraftStatus, ContentReviewDecision } from '@markorbit/contracts/product-loop';
 import {
   ContentStudioHttpError,
   createContentStudioClient,
@@ -27,11 +27,16 @@ export interface ContentStudioProps {
 }
 
 export function contentWorkStage(work: Readonly<ContentStudioWorkSummary>): string {
-  if (work.latestPackageFeedback) return 'User feedback recorded';
-  if (work.latestPublishPackage) return 'Publish package prepared';
-  if (work.latestDraftReview) return 'Human review completed';
-  if (work.latestDraft) return 'Draft awaiting review';
-  return 'Content Opportunity created';
+  if (!work.latestDraft) return 'Content Opportunity created';
+  const labels: Record<ContentDraftStatus, string> = {
+    DRAFT: 'Draft in progress',
+    READY_FOR_HUMAN_REVIEW: 'Ready for human review',
+    REVIEWED_READY_FOR_PACKAGE: 'Reviewed draft ready for package',
+    CHANGES_REQUIRED: 'Draft changes required',
+    REJECTED: 'Draft rejected',
+    SUPERSEDED: 'Draft superseded'
+  };
+  return labels[work.latestDraft.status];
 }
 
 function date(value: string) {
@@ -146,11 +151,35 @@ function WorkList({
                   <dd>{date(work.updatedAt)}</dd>
                 </div>
                 <div>
-                  <dt>Latest draft</dt>
+                  <dt>Latest exact Draft</dt>
                   <dd>
                     {work.latestDraft
-                      ? `${work.latestDraft.contentDraftId} · v${work.latestDraft.version}`
+                      ? `${work.latestDraft.contentDraftId} · v${work.latestDraft.version} · ${work.latestDraft.status}`
                       : 'Not created'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Latest Draft Review</dt>
+                  <dd>
+                    {work.latestDraftReview
+                      ? `${work.latestDraftReview.outcome} · ${work.latestDraftReview.contentReviewDecisionId} v${work.latestDraftReview.version}`
+                      : 'No exact Review Decision'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Latest Publish Package · work-level history</dt>
+                  <dd>
+                    {work.latestPublishPackage
+                      ? `${work.latestPublishPackage.publishPackageId} · v${work.latestPublishPackage.version} · ${work.latestPublishPackage.status} · ${date(work.latestPublishPackage.createdAt)}`
+                      : 'No Publish Package'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Latest Package Feedback · work-level history</dt>
+                  <dd>
+                    {work.latestPackageFeedback
+                      ? `User-reported · ${work.latestPackageFeedback.outcome} · ${date(work.latestPackageFeedback.recordedAt)}`
+                      : 'No user-reported feedback'}
                   </dd>
                 </div>
               </dl>
