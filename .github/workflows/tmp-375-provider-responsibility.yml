@@ -24,8 +24,8 @@ jobs:
       - run: |
           node <<'NODE'
           const fs = require('fs');
-          const path = 'packages/contracts/package.json';
-          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const packagePath = 'packages/contracts/package.json';
+          const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
           pkg.exports['./provider-responsibility'] = {
             types: './dist/provider-responsibility.d.ts',
             import: './dist/provider-responsibility.js',
@@ -37,7 +37,19 @@ jobs:
               'src/provider-discovery.ts src/provider-responsibility.ts'
             );
           }
-          fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+          fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
+
+          const sourcePath = 'packages/contracts/src/provider-responsibility.ts';
+          let source = fs.readFileSync(sourcePath, 'utf8');
+          source = source.replaceAll(
+            "legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false },",
+            "legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false } as const,"
+          );
+          source = source.replace(
+            "    doesNotReplaceFinalExecutionProvider: true\n  },\n  version: 3,",
+            "    doesNotReplaceFinalExecutionProvider: true\n  } as const,\n  version: 3,"
+          );
+          fs.writeFileSync(sourcePath, source);
           NODE
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prettier --write packages/contracts/package.json packages/contracts/src/provider-responsibility.ts packages/contracts/tests/provider-responsibility.test.ts
