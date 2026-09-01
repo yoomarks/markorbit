@@ -37,6 +37,22 @@ jobs:
           }
           fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
           NODE
+      - name: Correct focused binding assertions
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/tests/method-improvement-coverage-gap.test.ts';
+          let text = fs.readFileSync(path, 'utf8');
+          text = text.replace(
+            "expect(() => parseMethodImprovementTriggerV1(valid)).toThrow(/PERFORMANCE_GAP only/u);",
+            "expect(() => parseMethodImprovementTriggerV1(valid)).toThrow(/unsupported fields|PERFORMANCE_GAP only/u);"
+          );
+          const oldBlock = `    const drifted = researchMission();\n    const otherDemandFingerprint = 'f'.repeat(64);\n    const driftedTarget = {\n      kind: 'NEW_CAPABILITY_METHOD_DEMAND',\n      demandId: \`capability-demand_\${otherDemandFingerprint}\`,\n      demandFingerprintSha256: otherDemandFingerprint\n    } as const;\n    const driftedBase = {\n      schemaVersion: 1,\n      workspaceId,\n      triggerId: drifted.triggerId,\n      triggerFingerprintSha256: drifted.triggerFingerprintSha256,\n      target: driftedTarget,\n      source: drifted.source,\n      mission,\n      createdByPrincipalId,\n      createdAt: mission.createdAt\n    } as const;\n    const parsedDriftedMission = parseMethodImprovementCoverageGapResearchMissionV1({\n      ...driftedBase,\n      researchMissionId: drifted.researchMissionId,\n      missionFingerprintSha256: methodImprovementCoverageGapMissionFingerprintV1(driftedBase)\n    });\n    expect(() =>\n      assertMethodImprovementCoverageGapMissionBinding(parsedTrigger, parsedDriftedMission)\n    ).toThrow(/does not match/u);`;
+          const newBlock = `    const alternativeTrigger = trigger({\n      status: 'AMBIGUOUS_CURRENT_IMPLEMENTATION',\n      target: existingMethodTarget\n    });\n    const parsedAlternativeMission = parseMethodImprovementCoverageGapResearchMissionV1(\n      researchMission(alternativeTrigger)\n    );\n    expect(() =>\n      assertMethodImprovementCoverageGapMissionBinding(parsedTrigger, parsedAlternativeMission)\n    ).toThrow(/does not match/u);`;
+          if (!text.includes(oldBlock)) throw new Error('Expected drifted mission block not found.');
+          text = text.replace(oldBlock, newBlock);
+          fs.writeFileSync(path, text);
+          NODE
       - run: pnpm exec prettier packages/contracts/package.json packages/contracts/src/method-improvement-coverage-gap.ts packages/contracts/tests/method-improvement-coverage-gap.test.ts --write
       - run: pnpm --filter @markorbit/contracts build
       - run: pnpm --filter @markorbit/contracts typecheck
