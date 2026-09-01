@@ -3,6 +3,11 @@ import { isDeepStrictEqual } from 'node:util';
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
+const OUTPUT_IDENTITY_KEYS = [
+  'schemaVersion',
+  'outputSchemaId',
+  'outputFingerprintSha256'
+] as const;
 
 export interface CapabilitySourceOutputIdentityV1 {
   readonly schemaVersion: 1;
@@ -131,6 +136,7 @@ export function materializeCapabilitySourceOutputIdentityV1(
   if (
     typeof outputSchemaId !== 'string' ||
     outputSchemaId.length === 0 ||
+    outputSchemaId.length > 300 ||
     outputSchemaId !== outputSchemaId.trim()
   ) {
     throw new CapabilitySourceOutputIdentityError(
@@ -182,11 +188,19 @@ export function validCapabilitySourceOutputIdentityV1(
   value: unknown
 ): value is CapabilitySourceOutputIdentityV1 {
   const identity = record(value);
-  return Boolean(
-    identity &&
+  if (!identity) return false;
+  const keys = Reflect.ownKeys(identity);
+  if (
+    keys.length !== OUTPUT_IDENTITY_KEYS.length ||
+    keys.some((key) => typeof key !== 'string' || !OUTPUT_IDENTITY_KEYS.includes(key as never))
+  ) {
+    return false;
+  }
+  return (
     identity.schemaVersion === 1 &&
     typeof identity.outputSchemaId === 'string' &&
     identity.outputSchemaId.length > 0 &&
+    identity.outputSchemaId.length <= 300 &&
     identity.outputSchemaId === identity.outputSchemaId.trim() &&
     typeof identity.outputFingerprintSha256 === 'string' &&
     SHA256.test(identity.outputFingerprintSha256)
