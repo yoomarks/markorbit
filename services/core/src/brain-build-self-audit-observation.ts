@@ -1,8 +1,5 @@
 import type { BrainBuildRun } from '@markorbit/contracts/brain-build';
-import type {
-  BrainGapRegistryRecord,
-  BrainSelfAuditResult
-} from '@markorbit/contracts/brain-gap';
+import type { BrainGapRegistryRecord, BrainSelfAuditResult } from '@markorbit/contracts/brain-gap';
 import { auditBrainBuildRun } from './brain-self-audit.js';
 
 export interface BrainGapAuditAdmissionAuthorityV1 {
