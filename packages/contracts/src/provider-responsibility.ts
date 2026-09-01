@@ -77,12 +77,7 @@ export type ProviderResponsibilityEvidenceVerificationState =
   (typeof providerResponsibilityEvidenceVerificationStates)[number];
 
 export type ProviderResponsibilityEvidenceSourceOwner =
-  | 'CORE'
-  | 'MGSN'
-  | 'EXECUTION'
-  | 'KNOWLEDGE'
-  | 'CAPABILITY_ENGINE'
-  | 'OTHER_CANONICAL_OWNER';
+  'CORE' | 'MGSN' | 'EXECUTION' | 'KNOWLEDGE' | 'CAPABILITY_ENGINE' | 'OTHER_CANONICAL_OWNER';
 
 /** Evidence reference visibility never grants retrieval of an underlying private artifact. */
 export interface ProviderResponsibilityEvidenceReferenceV1 {
@@ -247,8 +242,7 @@ export type ProviderDirectExecutorAssessmentV1 = Readonly<
       | {
           state: Exclude<
             ProviderDirectExecutorAssessmentState,
-            | 'DIRECT_FINAL_EXECUTOR_ESTABLISHED'
-            | 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED'
+            'DIRECT_FINAL_EXECUTOR_ESTABLISHED' | 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED'
           >;
           directExecutorEstablished: false;
           profileAuthorityState: ProviderResponsibilityAuthorityState;
@@ -265,7 +259,9 @@ export type ProviderDirectExecutorAssessmentV1 = Readonly<
 export function directExecutorAssessmentEstablishesResponsibilityV1(
   assessment: ProviderDirectExecutorAssessmentV1 | null | undefined
 ): assessment is Extract<ProviderDirectExecutorAssessmentV1, { directExecutorEstablished: true }> {
-  return assessment?.directExecutorEstablished === true && assessment.profileAuthorityState === 'CURRENT';
+  return (
+    assessment?.directExecutorEstablished === true && assessment.profileAuthorityState === 'CURRENT'
+  );
 }
 
 const responsibilityFixtureProviderId = 'provider_fixture-375' as const satisfies ProviderId;
@@ -285,7 +281,7 @@ export const providerResponsibilityUnknownFixtureV1 = Object.freeze({
   noRebrokeringCommitmentState: 'UNKNOWN',
   intermediaryDisclosureState: 'UNKNOWN',
   executionTeamReferences: [],
-  legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false },
+  legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false } as const,
   evidenceReferences: [],
   authorityState: 'CURRENT',
   effectiveFrom: responsibilityFixtureAt,
@@ -315,7 +311,7 @@ export const providerResponsibilityDirectFixtureV1 = Object.freeze({
       observedAt: responsibilityFixtureAt,
       artifactAccessAuthorized: false
     }
-  ],
+  ] as const,
   version: 2,
   profileFingerprintSha256: '3'.repeat(64)
 }) satisfies Readonly<ProviderResponsibilityProfileV1>;
@@ -334,7 +330,7 @@ export const providerResponsibilityRequiredSignerFixtureV1 = Object.freeze({
     transparentlyDisclosed: true,
     receivesHandoffDataByDefault: false,
     doesNotReplaceFinalExecutionProvider: true
-  },
+  } as const,
   version: 3,
   profileFingerprintSha256: '4'.repeat(64)
 }) satisfies Readonly<ProviderResponsibilityProfileV1>;
@@ -365,7 +361,7 @@ export const providerDirectExecutorEstablishedFixtureV1 = Object.freeze({
   profileAuthorityState: 'CURRENT',
   finalExecutionProviderId: responsibilityFixtureProviderId,
   finalExecutionProviderWorkspaceId: responsibilityFixtureWorkspaceId,
-  legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false },
+  legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false } as const,
   evidenceReferences: providerResponsibilityDirectFixtureV1.evidenceReferences.map(
     (evidence) => evidence.evidenceReference
   ),
@@ -385,7 +381,8 @@ export const providerDirectExecutorRequiredSignerFixtureV1 = Object.freeze({
     profileFingerprintSha256: providerResponsibilityRequiredSignerFixtureV1.profileFingerprintSha256
   },
   state: 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED',
-  legallyRequiredDistinctSigner: providerResponsibilityRequiredSignerFixtureV1.legallyRequiredDistinctSigner,
+  legallyRequiredDistinctSigner:
+    providerResponsibilityRequiredSignerFixtureV1.legallyRequiredDistinctSigner,
   assessmentFingerprintSha256: '7'.repeat(64)
 }) satisfies Readonly<ProviderDirectExecutorAssessmentV1>;
 

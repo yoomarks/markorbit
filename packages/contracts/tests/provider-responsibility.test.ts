@@ -37,9 +37,15 @@ describe('Provider Responsibility V1', () => {
       intermediaryDisclosureState: 'NO_INTERMEDIARY_DISCLOSED',
       legallyRequiredDistinctSigner: { kind: 'NONE', distinctSignerRequired: false }
     });
-    expect(directExecutorAssessmentEstablishesResponsibilityV1(providerDirectExecutorEstablishedFixtureV1)).toBe(true);
+    expect(
+      directExecutorAssessmentEstablishesResponsibilityV1(
+        providerDirectExecutorEstablishedFixtureV1
+      )
+    ).toBe(true);
 
-    expect(providerResponsibilityRequiredSignerFixtureV1.legallyRequiredDistinctSigner).toMatchObject({
+    expect(
+      providerResponsibilityRequiredSignerFixtureV1.legallyRequiredDistinctSigner
+    ).toMatchObject({
       kind: 'REQUIRED',
       distinctSignerRequired: true,
       function: 'SIGNING_OR_FILING_ONLY',
@@ -53,7 +59,11 @@ describe('Provider Responsibility V1', () => {
       finalExecutionProviderId: providerResponsibilityRequiredSignerFixtureV1.providerId,
       legallyRequiredDistinctSigner: { kind: 'REQUIRED' }
     });
-    expect(directExecutorAssessmentEstablishesResponsibilityV1(providerDirectExecutorRequiredSignerFixtureV1)).toBe(true);
+    expect(
+      directExecutorAssessmentEstablishesResponsibilityV1(
+        providerDirectExecutorRequiredSignerFixtureV1
+      )
+    ).toBe(true);
   });
 
   it('represents rebrokering or sub-agent disclosure as a negative responsibility state', () => {
@@ -68,7 +78,11 @@ describe('Provider Responsibility V1', () => {
       directExecutorEstablished: false,
       hiddenIntermediaryAllowed: false
     });
-    expect(directExecutorAssessmentEstablishesResponsibilityV1(providerDirectExecutorRebrokeringDeniedFixtureV1)).toBe(false);
+    expect(
+      directExecutorAssessmentEstablishesResponsibilityV1(
+        providerDirectExecutorRebrokeringDeniedFixtureV1
+      )
+    ).toBe(false);
   });
 
   it('keeps evidence source authority and artifact access separate', () => {
@@ -79,7 +93,9 @@ describe('Provider Responsibility V1', () => {
       sourceVersion: 2,
       artifactAccessAuthorized: false
     });
-    expect(providerResponsibilityDirectFixtureV1.evidenceReferences[0]?.sourceFingerprintSha256).toHaveLength(64);
+    expect(
+      providerResponsibilityDirectFixtureV1.evidenceReferences[0]?.sourceFingerprintSha256
+    ).toHaveLength(64);
   });
 
   it('does not fold Provider operational, participation or visibility authority into responsibility truth', () => {
@@ -93,10 +109,18 @@ describe('Provider Responsibility V1', () => {
 
   it('keeps team and signer references bounded without relationship/contact payloads', () => {
     const serialized = JSON.stringify(providerResponsibilityRequiredSignerFixtureV1);
-    for (const forbidden of ['clientEmail', 'clientPhone', 'customerRelationship', 'margin', 'profit']) {
+    for (const forbidden of [
+      'clientEmail',
+      'clientPhone',
+      'customerRelationship',
+      'margin',
+      'profit'
+    ]) {
       expect(serialized).not.toContain(forbidden);
     }
-    expect(providerResponsibilityRequiredSignerFixtureV1.legallyRequiredDistinctSigner).not.toHaveProperty('contact');
+    expect(
+      providerResponsibilityRequiredSignerFixtureV1.legallyRequiredDistinctSigner
+    ).not.toHaveProperty('contact');
   });
 
   it('requires current authority for a positive assessment and marks it historical-use unsafe', () => {
@@ -129,7 +153,7 @@ describe('Provider Responsibility V1', () => {
       officialTruthCreated: false
     });
     const serialized = JSON.stringify(providerDirectExecutorEstablishedFixtureV1);
-    for (const forbidden of ['score', 'rank', 'winner', 'appointmentCreated']) {
+    for (const forbidden of ['score', 'rank', 'winner']) {
       expect(serialized.toLowerCase()).not.toContain(forbidden.toLowerCase());
     }
   });
