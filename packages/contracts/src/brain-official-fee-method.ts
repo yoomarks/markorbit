@@ -5,9 +5,13 @@ import {
   type ExecutableMethodPackageV1,
   type KnowledgeRetrievalLineageRefV1
 } from './brain-method.js';
+import { executableMethodPackageFingerprintV1 } from './brain-method-activation.js';
 
 export const USPTO_OFFICIAL_FEE_PILOT_OPERATION =
   'USPTO_TM_NEW_APPLICATION_BASE_FEE_SECTION_1_44_ELECTRONIC_PER_CLASS' as const;
+
+export const USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE =
+  'LEGACY_DIRECT_ACTIVE_PILOT_WITHOUT_BRAIN_GOVERNANCE_ACTIVATION' as const;
 
 export const USPTO_OFFICIAL_FEE_ACCEPTED_LINEAGE = Object.freeze([
   Object.freeze({
@@ -96,6 +100,31 @@ export type CompileUsptoOfficialFeeMethodResultV1 =
       status: 'READY';
       method: Readonly<BrainMethodContractV1>;
       package: Readonly<ExecutableMethodPackageV1>;
+    };
+
+export interface UsptoOfficialFeeLegacyPilotGovernanceV1 {
+  governanceStatus: typeof USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE;
+  packageId: ExecutableMethodPackageV1['packageId'];
+  packageVersion: number;
+  packageFingerprintSha256: string;
+  historicalActivatedAt: string;
+  activationDecisionId: null;
+  activationEvidenceRef: null;
+  phase4ResolverAcceptanceIsBrainGovernanceActivation: false;
+  currentBrainGovernanceActivationEstablished: false;
+}
+
+export type PrepareUsptoOfficialFeeGovernedSuccessorResultV1 =
+  | Extract<CompileUsptoOfficialFeeMethodResultV1, { status: 'REJECTED' }>
+  | {
+      status: 'PREPARED';
+      method: Readonly<BrainMethodContractV1>;
+      legacyPilot: Readonly<UsptoOfficialFeeLegacyPilotGovernanceV1>;
+      validatedSuccessor: Readonly<ExecutableMethodPackageV1>;
+      validatedSuccessorFingerprintSha256: string;
+      requiresExplicitBrainGovernanceApproval: true;
+      activationDecisionId: null;
+      activationEvidenceRef: null;
     };
 
 function stableLineageIdentity(source: Readonly<KnowledgeRetrievalLineageRefV1>): string {
@@ -287,4 +316,51 @@ export function compileUsptoOfficialFeeMethodPackageV1(
   });
 
   return { status: 'READY', method, package: pkg };
+}
+
+/**
+ * Prepares an intentionally versioned governance successor without rewriting the historical
+ * direct-ACTIVE v1 pilot. No activation decision is synthesized here. The returned VALIDATED
+ * package can only become ACTIVE through the canonical BRAIN_GOVERNANCE activation contract.
+ */
+export function prepareUsptoOfficialFeeGovernedSuccessorV1(
+  input: Readonly<CompileUsptoOfficialFeeMethodInputV1>
+): PrepareUsptoOfficialFeeGovernedSuccessorResultV1 {
+  const legacy = compileUsptoOfficialFeeMethodPackageV1(input);
+  if (legacy.status === 'REJECTED') return legacy;
+
+  const historicalActivatedAt = legacy.package.activatedAt;
+  if (!historicalActivatedAt) {
+    throw new Error('Legacy USPTO official-fee pilot must retain its historical activatedAt.');
+  }
+
+  const { activatedAt: _legacyActivatedAt, ...legacyPackageWithoutActivation } = legacy.package;
+  const validatedSuccessor = parseExecutableMethodPackageV1({
+    ...legacyPackageWithoutActivation,
+    packageId: `${legacy.package.packageId}-governed-successor`,
+    packageVersion: 1,
+    lifecycle: 'VALIDATED'
+  });
+
+  return {
+    status: 'PREPARED',
+    method: legacy.method,
+    legacyPilot: {
+      governanceStatus: USPTO_OFFICIAL_FEE_LEGACY_PILOT_GOVERNANCE,
+      packageId: legacy.package.packageId,
+      packageVersion: legacy.package.packageVersion,
+      packageFingerprintSha256: executableMethodPackageFingerprintV1(legacy.package),
+      historicalActivatedAt,
+      activationDecisionId: null,
+      activationEvidenceRef: null,
+      phase4ResolverAcceptanceIsBrainGovernanceActivation: false,
+      currentBrainGovernanceActivationEstablished: false
+    },
+    validatedSuccessor,
+    validatedSuccessorFingerprintSha256:
+      executableMethodPackageFingerprintV1(validatedSuccessor),
+    requiresExplicitBrainGovernanceApproval: true,
+    activationDecisionId: null,
+    activationEvidenceRef: null
+  };
 }
