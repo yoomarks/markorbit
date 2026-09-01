@@ -32,8 +32,9 @@ jobs:
           text = text.replaceAll("'provider-discovery-request_fixture-381'", 'selectionFixtureDiscoveryRequestId');
           text = text.replaceAll("'provider-discovery-candidate_fixture-381'", 'selectionFixtureCandidateId');
           text = text.replaceAll("'provider-selection_fixture-394'", 'selectionFixtureSelectionId');
+          text = text.replaceAll("'network-participation_fixture-381'", 'selectionFixtureParticipationId');
           const marker = 'const selectionFixtureScope = Object.freeze({';
-          const declarations = `const selectionFixtureDiscoveryRequestId =\n  'provider-discovery-request_fixture-381' as const satisfies ProviderDiscoveryRequestId;\nconst selectionFixtureCandidateId =\n  'provider-discovery-candidate_fixture-381' as const satisfies ProviderDiscoveryCandidateId;\nconst selectionFixtureSelectionId =\n  'provider-selection_fixture-394' as const satisfies ProviderSelectionId;\n`;
+          const declarations = `const selectionFixtureDiscoveryRequestId =\n  'provider-discovery-request_fixture-381' as const satisfies ProviderDiscoveryRequestId;\nconst selectionFixtureCandidateId =\n  'provider-discovery-candidate_fixture-381' as const satisfies ProviderDiscoveryCandidateId;\nconst selectionFixtureSelectionId =\n  'provider-selection_fixture-394' as const satisfies ProviderSelectionId;\nconst selectionFixtureParticipationId =\n  'network-participation_fixture-381' as const satisfies DiscoveryVisibilityAuthorizationReferenceV1['networkParticipationId'];\n`;
           if (!text.includes('const selectionFixtureDiscoveryRequestId =')) {
             text = text.replace(marker, `${declarations}${marker}`);
           }
