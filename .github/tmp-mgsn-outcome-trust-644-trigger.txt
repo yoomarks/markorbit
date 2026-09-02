@@ -1,1 +1,1 @@
-Trigger the corrected NEVER-MERGE verifier for PR #645. This file must never merge.
+Trigger the lint-clean NEVER-MERGE verifier for PR #645. This file must never merge.
