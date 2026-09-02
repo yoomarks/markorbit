@@ -1,0 +1,97 @@
+name: tmp-mgsn-handoff-606-verifier
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-repair-formal:
+    if: github.head_ref == 'tmp-mgsn-handoff-606-verifier'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-controlled-handoff-phase-a
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Repair validation outage semantics and add acceptance
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('services/mgsn/src/controlled-privacy-handoff.ts')
+          s = p.read_text()
+          old = """    const snapshot = await this.evaluateAuthority({\n      envelope,\n      purpose: input.purpose,\n      attempt: input.attempt\n    });\n    const authorityDenial = denialFromAuthority(snapshot, input.attempt.artifactRetrievalRequested);"""
+          new = """    let snapshot: ControlledHandoffCurrentAuthoritySnapshot;\n    try {\n      snapshot = await this.currentAuthority.evaluateCurrentAuthority({\n        envelope,\n        purpose: input.purpose,\n        attempt: input.attempt\n      });\n    } catch {\n      return deny('AUTHORITY_UNAVAILABLE');\n    }\n    const authorityDenial = denialFromAuthority(snapshot, input.attempt.artifactRetrievalRequested);"""
+          if old not in s:
+              raise SystemExit('validation authority target not found')
+          p.write_text(s.replace(old, new, 1))
+
+          p = Path('services/mgsn/tests/controlled-privacy-handoff.test.ts')
+          s = p.read_text()
+          marker = "\n});\n"
+          test = """
+
+  it('returns a fail-closed validation result when current authority evaluation is unavailable', async () => {
+    const repository = new InMemoryControlledHandoffRepository();
+    const seed = new ControlledPrivacyHandoffService(
+      repository,
+      { evaluateCurrentAuthority: () => Promise.resolve(currentSnapshot()) },
+      () => now,
+      () => 'controlled-handoff_605-outage' as ControlledHandoffId
+    );
+    const current = await createCurrent(seed);
+    const outage = new ControlledPrivacyHandoffService(
+      repository,
+      { evaluateCurrentAuthority: () => Promise.reject(new Error('outage')) },
+      () => now
+    );
+    const validation = await outage.validateCurrent(principal(), {
+      envelope: { controlledHandoffId: current.envelope.controlledHandoffId, version: 1 },
+      purpose: 'HANDOFF_CONSUMPTION',
+      attempt: attempt()
+    });
+    expect(validation).toMatchObject({
+      decision: 'DENY',
+      denialReason: 'AUTHORITY_UNAVAILABLE',
+      currentlyUsable: false,
+      currentExactDisclosurePermitted: false
+    });
+  });
+"""
+          idx = s.rfind(marker)
+          if idx < 0:
+              raise SystemExit('test suite closing marker not found')
+          p.write_text(s[:idx] + test + s[idx:])
+      - name: Format owner files
+        run: >-
+          pnpm exec prettier --write
+          services/mgsn/src/controlled-privacy-handoff.ts
+          services/mgsn/src/index.ts
+          services/mgsn/tests/controlled-privacy-handoff.test.ts
+      - name: Verify MGSN Phase A
+        run: |
+          pnpm build:mgsn-provider-registry-deps
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service lint
+          pnpm --filter @markorbit/mgsn-service test
+      - name: Commit verified owner changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/mgsn/src/controlled-privacy-handoff.ts services/mgsn/src/index.ts services/mgsn/tests/controlled-privacy-handoff.test.ts
+          if git diff --cached --quiet; then
+            echo 'No owner changes to push.'
+            exit 0
+          fi
+          git commit -m 'MGSN: harden Controlled Handoff Phase A validation'
+          git push origin HEAD:mgsn-controlled-handoff-phase-a
