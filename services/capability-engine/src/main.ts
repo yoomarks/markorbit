@@ -16,6 +16,7 @@ import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
+import { createGmailManagedCommunicationSenderFromEnvironmentV1 } from './managed-communication-gmail-runtime.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -83,10 +84,13 @@ if (milestoneFixtureMode) {
           )
         }
       : rawManagedAiRuntime;
+  const managedCommunicationSender =
+    createGmailManagedCommunicationSenderFromEnvironmentV1(process.env);
   const managedCommunicationRuntime = await createManagedCommunicationRuntimeBindingsV1({
     environment: process.env,
     database,
-    query: pool
+    query: pool,
+    ...(managedCommunicationSender ? { sender: managedCommunicationSender } : {})
   });
   const rawGovernedCapabilityRuntime = createGovernedProductionRuntimeV1({
     definitions: registry,
