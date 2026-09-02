@@ -15,7 +15,8 @@ export type BrainGapRegistryErrorCode =
   | 'IDENTITY_CONFLICT'
   | 'RECORD_NOT_FOUND'
   | 'INVALID_TRANSITION'
-  | 'INVALID_COMMAND';
+  | 'INVALID_COMMAND'
+  | 'PERSISTENCE_UNAVAILABLE';
 
 export class BrainGapRegistryError extends Error {
   constructor(
