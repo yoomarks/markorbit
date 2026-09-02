@@ -9,9 +9,11 @@ import {
   type TrademarkAssetManagementSignal,
   type TrademarkAssetManagementSignalId
 } from '@markorbit/contracts/trademark-asset-management';
-import type {
-  TrademarkAssetId,
-  TrademarkAssetRelation
+import {
+  trademarkAssetRelationKinds,
+  trademarkAssetSourceOwners,
+  type TrademarkAssetId,
+  type TrademarkAssetRelation
 } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
@@ -48,6 +50,18 @@ export interface RecordTrademarkAssetManagementDispositionCommand {
   note?: string;
   workflowReference?: Readonly<TrademarkAssetRelation>;
   idempotencyKey: string;
+}
+
+export interface CurrentTrademarkAssetManagementDispositionProjection {
+  schemaVersion: 1;
+  workspaceId: string;
+  asset: Readonly<{ id: TrademarkAssetId; version: number }>;
+  items: ReadonlyArray<
+    Readonly<{
+      signal: Readonly<{ id: TrademarkAssetManagementSignalId; version: number }>;
+      disposition: Readonly<TrademarkAssetManagementDisposition> | null;
+    }>
+  >;
 }
 
 export interface TrademarkAssetManagementRecoveryJob {
@@ -201,6 +215,235 @@ function exactRecommendation(
     );
   }
   return recommendation;
+}
+
+function corruptDisposition(message: string): never {
+  throw new TrademarkAssetManagementDispositionError(
+    'PERSISTENCE_UNAVAILABLE',
+    `Stored Trademark Asset management disposition is invalid: ${message}`,
+    503,
+    true
+  );
+}
+
+function persistedRecord(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return corruptDisposition(`${field} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function persistedText(value: unknown, field: string, maximum = 4000): string {
+  if (typeof value !== 'string' || !value.trim() || value.trim().length > maximum) {
+    return corruptDisposition(`${field} must be a bounded non-empty string.`);
+  }
+  return value.trim();
+}
+
+function persistedVersion(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1) {
+    return corruptDisposition(`${field} must be a positive safe integer.`);
+  }
+  return Number(value);
+}
+
+function persistedInstant(value: unknown, field: string): string {
+  const parsed = typeof value === 'string' || value instanceof Date ? new Date(value) : undefined;
+  if (!parsed || Number.isNaN(parsed.valueOf())) {
+    return corruptDisposition(`${field} must be an ISO timestamp.`);
+  }
+  return parsed.toISOString();
+}
+
+function persistedReference(
+  value: unknown,
+  field: string
+): Readonly<{ id: string; version: number }> {
+  const reference = persistedRecord(value, field);
+  if (
+    Object.keys(reference).length !== 2 ||
+    !Object.hasOwn(reference, 'id') ||
+    !Object.hasOwn(reference, 'version')
+  ) {
+    return corruptDisposition(`${field} must contain exactly id and version.`);
+  }
+  return {
+    id: persistedText(reference.id, `${field}.id`, 300),
+    version: persistedVersion(reference.version, `${field}.version`)
+  };
+}
+
+function persistedWorkflowReference(value: unknown): Readonly<TrademarkAssetRelation> {
+  const reference = persistedRecord(value, 'document_json.workflowReference');
+  const allowed = new Set(['kind', 'owner', 'referenceId', 'referenceVersion']);
+  if (Object.keys(reference).some((key) => !allowed.has(key))) {
+    return corruptDisposition('workflowReference contains unsupported fields.');
+  }
+  const kind = persistedText(reference.kind, 'document_json.workflowReference.kind', 100);
+  const owner = persistedText(reference.owner, 'document_json.workflowReference.owner', 100);
+  const referenceId = persistedText(
+    reference.referenceId,
+    'document_json.workflowReference.referenceId',
+    500
+  );
+  if (!trademarkAssetRelationKinds.includes(kind as TrademarkAssetRelation['kind'])) {
+    return corruptDisposition('workflowReference.kind is unsupported.');
+  }
+  if (
+    owner === 'WORKSPACE_USER' ||
+    !trademarkAssetSourceOwners.includes(owner as (typeof trademarkAssetSourceOwners)[number])
+  ) {
+    return corruptDisposition('workflowReference.owner is unsupported.');
+  }
+  const referenceVersion =
+    reference.referenceVersion === undefined
+      ? undefined
+      : persistedText(
+          reference.referenceVersion,
+          'document_json.workflowReference.referenceVersion',
+          300
+        );
+  return {
+    kind: kind as TrademarkAssetRelation['kind'],
+    owner: owner as TrademarkAssetRelation['owner'],
+    referenceId,
+    ...(referenceVersion ? { referenceVersion } : {})
+  };
+}
+
+function persistedDisposition(
+  row: Row,
+  workspaceId: string,
+  trademarkAssetId: TrademarkAssetId
+): TrademarkAssetManagementDisposition {
+  const document = persistedRecord(row.document_json, 'document_json');
+  const allowed = new Set([
+    'schemaVersion',
+    'dispositionId',
+    'workspaceId',
+    'version',
+    'asset',
+    'signal',
+    'recommendation',
+    'kind',
+    'subjectUserId',
+    'note',
+    'workflowReference',
+    'recordedAt',
+    'officialTruthCreated',
+    'legalConclusionVerified',
+    'capabilityVerified'
+  ]);
+  if (Object.keys(document).some((key) => !allowed.has(key))) {
+    return corruptDisposition('document_json contains unsupported fields.');
+  }
+  if (document.schemaVersion !== 1) {
+    return corruptDisposition('schemaVersion must be 1.');
+  }
+
+  const dispositionId = persistedText(document.dispositionId, 'document_json.dispositionId', 300);
+  const rowDispositionId = persistedText(row.disposition_id, 'disposition_id', 300);
+  if (dispositionId !== rowDispositionId) {
+    return corruptDisposition('disposition identity does not match normalized persistence.');
+  }
+  const documentWorkspaceId = persistedText(document.workspaceId, 'document_json.workspaceId', 100);
+  if (documentWorkspaceId.toLowerCase() !== workspaceId) {
+    return corruptDisposition('workspace lineage does not match the requested Workspace.');
+  }
+  const rowWorkspaceId = persistedText(row.workspace_id, 'workspace_id', 100).toLowerCase();
+  if (rowWorkspaceId !== workspaceId) {
+    return corruptDisposition('normalized workspace lineage does not match the requested Workspace.');
+  }
+  const version = persistedVersion(document.version, 'document_json.version');
+  if (version !== persistedVersion(row.version, 'version')) {
+    return corruptDisposition('version does not match normalized persistence.');
+  }
+
+  const asset = persistedReference(document.asset, 'document_json.asset');
+  if (
+    asset.id !== trademarkAssetId ||
+    persistedText(row.trademark_asset_id, 'trademark_asset_id', 300) !== trademarkAssetId
+  ) {
+    return corruptDisposition('Asset lineage does not match the requested Asset.');
+  }
+  const signal = persistedReference(document.signal, 'document_json.signal');
+  if (signal.id !== persistedText(row.management_signal_id, 'management_signal_id', 300)) {
+    return corruptDisposition('Signal lineage does not match normalized persistence.');
+  }
+
+  const recommendationId =
+    row.recommendation_id === null || row.recommendation_id === undefined
+      ? undefined
+      : persistedText(row.recommendation_id, 'recommendation_id', 300);
+  const recommendation =
+    document.recommendation === undefined
+      ? undefined
+      : persistedReference(document.recommendation, 'document_json.recommendation');
+  if (
+    (recommendationId === undefined) !== (recommendation === undefined) ||
+    (recommendationId !== undefined && recommendation?.id !== recommendationId)
+  ) {
+    return corruptDisposition('Recommendation lineage does not match normalized persistence.');
+  }
+
+  const kind = persistedText(document.kind, 'document_json.kind', 100);
+  if (
+    !trademarkAssetManagementDispositionKinds.includes(
+      kind as TrademarkAssetManagementDispositionKind
+    ) ||
+    kind !== persistedText(row.disposition_kind, 'disposition_kind', 100)
+  ) {
+    return corruptDisposition('Disposition kind does not match normalized persistence.');
+  }
+  const subjectUserId = persistedText(document.subjectUserId, 'document_json.subjectUserId', 300);
+  if (subjectUserId !== persistedText(row.subject_user_id, 'subject_user_id', 300)) {
+    return corruptDisposition('subject user does not match normalized persistence.');
+  }
+  const note =
+    document.note === undefined ? undefined : persistedText(document.note, 'document_json.note');
+  const workflowReference =
+    document.workflowReference === undefined
+      ? undefined
+      : persistedWorkflowReference(document.workflowReference);
+  const recordedAt = persistedInstant(document.recordedAt, 'document_json.recordedAt');
+  if (recordedAt !== persistedInstant(row.recorded_at, 'recorded_at')) {
+    return corruptDisposition('recordedAt does not match normalized persistence.');
+  }
+  if (
+    document.officialTruthCreated !== false ||
+    document.legalConclusionVerified !== false ||
+    document.capabilityVerified !== false
+  ) {
+    return corruptDisposition('authority consequences must remain false.');
+  }
+
+  return {
+    schemaVersion: 1,
+    dispositionId: dispositionId as TrademarkAssetManagementDispositionId,
+    workspaceId,
+    version,
+    asset: { id: asset.id as TrademarkAssetId, version: asset.version },
+    signal: {
+      id: signal.id as TrademarkAssetManagementSignalId,
+      version: signal.version
+    },
+    ...(recommendation
+      ? {
+          recommendation: {
+            id: recommendation.id as TrademarkAssetManagementRecommendationId,
+            version: recommendation.version
+          }
+        }
+      : {}),
+    kind: kind as TrademarkAssetManagementDispositionKind,
+    subjectUserId,
+    ...(note ? { note } : {}),
+    ...(workflowReference ? { workflowReference } : {}),
+    recordedAt,
+    officialTruthCreated: false,
+    legalConclusionVerified: false,
+    capabilityVerified: false
+  };
 }
 
 function nextDispositionId(): TrademarkAssetManagementDispositionId {
@@ -503,6 +746,133 @@ export class PostgresTrademarkAssetManagementDispositionStore {
       throw new TrademarkAssetManagementDispositionError(
         'PERSISTENCE_UNAVAILABLE',
         'Trademark Asset management disposition persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
+  async listCurrentForAsset(
+    workspaceIdValue: string,
+    trademarkAssetIdValue: TrademarkAssetId
+  ): Promise<CurrentTrademarkAssetManagementDispositionProjection> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const trademarkAssetId = cleanAssetId(trademarkAssetIdValue);
+    try {
+      return await this.database.transact(
+        async (client) => {
+          const composedAt = timestamp(this.now(), 'now');
+          let current;
+          try {
+            current = await this.currentOwner.resolve(
+              workspaceId,
+              trademarkAssetId,
+              composedAt,
+              client
+            );
+          } catch (error) {
+            if (error instanceof TrademarkAssetPersistenceError && error.code === 'NOT_FOUND') {
+              throw new TrademarkAssetManagementDispositionError(
+                'NOT_FOUND',
+                'Trademark Asset was not found.',
+                404
+              );
+            }
+            throw error;
+          }
+          if (
+            current.asset.workspaceId.toLowerCase() !== workspaceId ||
+            current.asset.trademarkAssetId !== trademarkAssetId ||
+            !Number.isSafeInteger(current.asset.version) ||
+            current.asset.version < 1
+          ) {
+            return corruptDisposition('current owner Asset lineage is inconsistent.');
+          }
+          for (const signal of current.signals) {
+            if (
+              signal.workspaceId.toLowerCase() !== workspaceId ||
+              signal.asset.id !== trademarkAssetId ||
+              signal.asset.version !== current.asset.version ||
+              !Number.isSafeInteger(signal.version) ||
+              signal.version < 1
+            ) {
+              return corruptDisposition('current owner Signal lineage is inconsistent.');
+            }
+          }
+
+          const result = await client.query(
+            `SELECT workspace_id,disposition_id,version,trademark_asset_id,management_signal_id,
+                    recommendation_id,disposition_kind,subject_user_id,document_json,recorded_at
+               FROM lite_trademark_asset_management_dispositions
+              WHERE workspace_id=$1 AND trademark_asset_id=$2
+              ORDER BY recorded_at DESC,disposition_id DESC`,
+            [workspaceId, trademarkAssetId]
+          );
+          const documents = (result.rows as Row[]).map((row) =>
+            persistedDisposition(row, workspaceId, trademarkAssetId)
+          );
+          const latestByExactSignal = new Map<string, TrademarkAssetManagementDisposition>();
+          for (const document of documents) {
+            const key = `${document.signal.id}\u0000${document.signal.version}`;
+            if (!latestByExactSignal.has(key)) latestByExactSignal.set(key, document);
+          }
+
+          const items = current.signals.map((signal) => {
+            const key = `${signal.managementSignalId}\u0000${signal.version}`;
+            const disposition = latestByExactSignal.get(key);
+            if (disposition) {
+              if (
+                disposition.asset.id !== trademarkAssetId ||
+                disposition.asset.version !== current.asset.version
+              ) {
+                return corruptDisposition(
+                  'exact-current Signal disposition does not bind the exact current Asset version.'
+                );
+              }
+              if (disposition.recommendation) {
+                const recommendation = current.recommendations.find(
+                  (candidate) =>
+                    candidate.recommendationId === disposition.recommendation?.id &&
+                    candidate.version === disposition.recommendation?.version
+                );
+                if (
+                  !recommendation ||
+                  recommendation.workspaceId.toLowerCase() !== workspaceId ||
+                  recommendation.asset.id !== trademarkAssetId ||
+                  recommendation.asset.version !== current.asset.version ||
+                  !recommendation.signalReferences.some(
+                    (reference) =>
+                      reference.id === signal.managementSignalId &&
+                      reference.version === signal.version
+                  )
+                ) {
+                  return corruptDisposition(
+                    'exact-current disposition Recommendation lineage is inconsistent.'
+                  );
+                }
+              }
+            }
+            return {
+              signal: { id: signal.managementSignalId, version: signal.version },
+              disposition: disposition ? clone(disposition) : null
+            };
+          });
+
+          return {
+            schemaVersion: 1 as const,
+            workspaceId,
+            asset: { id: trademarkAssetId, version: current.asset.version },
+            items
+          };
+        },
+        { isolation: 'REPEATABLE READ', readOnly: true }
+      );
+    } catch (error) {
+      if (error instanceof TrademarkAssetManagementDispositionError) throw error;
+      throw new TrademarkAssetManagementDispositionError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Trademark Asset management disposition read projection is unavailable.',
         503,
         true,
         { cause: error instanceof Error ? error : undefined }
