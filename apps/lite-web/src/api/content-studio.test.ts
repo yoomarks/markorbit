@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContentStudioHttpError, createContentStudioClient } from './content-studio.js';
-import { publishPackage } from '../features/content-studio/fixtures.js';
+import { draft, opportunity, publishPackage, review } from '../features/content-studio/fixtures.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -53,6 +53,107 @@ describe('Content Studio authenticated Gateway client', () => {
       code: 'DOWNSTREAM_UNAVAILABLE'
     });
   });
+
+  it('uses exact governed preparation routes, bodies, Workspace, CSRF and caller idempotency keys', async () => {
+    const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            url.endsWith('/api/auth/session') ? { csrfToken: 'csrf-preparation' } : {}
+          ),
+          { status: 200 }
+        )
+      )
+    );
+    vi.stubGlobal('fetch', fetch);
+    const client = createContentStudioClient('workspace-1');
+
+    await client.createDraft(
+      opportunity,
+      { title: 'First title', body: 'First body' },
+      'create-key'
+    );
+    await client.reviseDraft(draft, { title: 'Next title', body: 'Next body' }, 'revise-key');
+    await client.markReadyForReview(draft, 'ready-key');
+    await client.recordReview(
+      draft,
+      { outcome: 'CHANGES_REQUIRED', rationale: 'Clarify the evidence.' },
+      'review-key'
+    );
+    await client.preparePublishPackage(draft, review, 'package-key');
+
+    const writes = fetch.mock.calls.filter(([url]) => !String(url).endsWith('/api/auth/session'));
+    expect(writes.map(([url]) => String(url))).toEqual([
+      'http://127.0.0.1:4000/api/lite/content-studio/works/content-opportunity_413/drafts',
+      'http://127.0.0.1:4000/api/lite/content-drafts/content-draft_413/revisions',
+      'http://127.0.0.1:4000/api/lite/content-drafts/content-draft_413/ready-for-review',
+      'http://127.0.0.1:4000/api/lite/content-drafts/content-draft_413/reviews',
+      'http://127.0.0.1:4000/api/lite/content-drafts/content-draft_413/publish-packages'
+    ]);
+    expect(writes.map(([, init]) => JSON.parse(init?.body as string) as unknown)).toEqual([
+      {
+        contentOpportunityVersion: opportunity.version,
+        expectedContentOpportunityFingerprintSha256:
+          opportunity.contentOpportunityFingerprintSha256,
+        title: 'First title',
+        body: 'First body'
+      },
+      {
+        expectedVersion: draft.version,
+        expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256,
+        title: 'Next title',
+        body: 'Next body'
+      },
+      {
+        expectedVersion: draft.version,
+        expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256
+      },
+      {
+        contentDraftVersion: draft.version,
+        expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256,
+        outcome: 'CHANGES_REQUIRED',
+        rationale: 'Clarify the evidence.'
+      },
+      {
+        contentDraftVersion: draft.version,
+        expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256,
+        reviewDecisionId: review.contentReviewDecisionId,
+        reviewDecisionVersion: review.version
+      }
+    ]);
+    writes.forEach(([, init], index) => {
+      const headers = new Headers(init?.headers);
+      expect(init?.method).toBe('POST');
+      expect(init?.credentials).toBe('include');
+      expect(headers.get('x-markorbit-workspace-id')).toBe('workspace-1');
+      expect(headers.get('x-markorbit-csrf-token')).toBe('csrf-preparation');
+      expect(headers.get('idempotency-key')).toBe(
+        ['create-key', 'revise-key', 'ready-key', 'review-key', 'package-key'][index]
+      );
+      expect(JSON.parse(init?.body as string)).not.toHaveProperty('reviewerPrincipalId');
+      expect(JSON.parse(init?.body as string)).not.toHaveProperty('actor');
+      expect(JSON.parse(init?.body as string)).not.toHaveProperty('userId');
+    });
+  });
+
+  it.each([401, 403, 404, 409, 422, 503])(
+    'preserves governed preparation mutation error status %s',
+    async (status) => {
+      const fetch = vi.fn<(url: string) => Promise<Response>>((url) =>
+        Promise.resolve(
+          url.endsWith('/api/auth/session')
+            ? new Response(JSON.stringify({ csrfToken: 'csrf' }), { status: 200 })
+            : new Response(JSON.stringify({ code: `PREP_${status}`, message: 'owner truth' }), {
+                status
+              })
+        )
+      );
+      vi.stubGlobal('fetch', fetch);
+      await expect(
+        createContentStudioClient('workspace-1').markReadyForReview(draft, 'same-logical-key')
+      ).rejects.toEqual(new ContentStudioHttpError(status, `PREP_${status}`, 'owner truth'));
+    }
+  );
 
   it.each([
     ['USER_REPORTED_PUBLISHED', 'USER_REPORTED_PUBLISHED'],
