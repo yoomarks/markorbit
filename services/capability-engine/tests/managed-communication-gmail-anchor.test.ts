@@ -10,7 +10,9 @@ import {
   InMemoryManagedCommunicationFoundationV1,
   managedCommunicationNormalizedIdsV1
 } from '../src/managed-communication-foundation.js';
-import { syncGmailManagedCommunicationInboundFromAnchorV1 } from '../src/managed-communication-gmail-anchor.js';
+import {
+  syncGmailManagedCommunicationInboundFromAnchorV1
+} from '../src/managed-communication-gmail-anchor.js';
 import {
   GMAIL_MANAGED_COMMUNICATION_PROVIDER,
   GmailManagedCommunicationClientV1,
@@ -38,9 +40,14 @@ function requestUrl(input: RequestInfo | URL): string {
   return input instanceof URL ? input.toString() : input.url;
 }
 
-class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceStoreV1 {
+class RecordingExactEvidenceStore
+  implements ManagedCommunicationExactEvidenceStoreV1
+{
   readonly admissions: ManagedCommunicationExactEvidenceAdmissionV1[] = [];
-  private readonly rows = new Map<string, ManagedCommunicationExactEvidenceRefV1>();
+  private readonly rows = new Map<
+    string,
+    ManagedCommunicationExactEvidenceRefV1
+  >();
 
   admitExactEvidence(
     input: ManagedCommunicationExactEvidenceAdmissionV1
@@ -48,7 +55,11 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
     const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
     const existing = this.rows.get(key);
     if (existing) {
-      return Promise.resolve({ schemaVersion: 1, disposition: 'REPLAYED', evidence: existing });
+      return Promise.resolve({
+        schemaVersion: 1,
+        disposition: 'REPLAYED',
+        evidence: existing
+      });
     }
     this.admissions.push({
       ...input,
@@ -66,11 +77,17 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
       observedAt: input.observedAt,
       provider: input.provider,
       providerMessageId: input.providerMessageId,
-      headers: Object.freeze(input.headers.map((header) => Object.freeze({ ...header }))),
+      headers: Object.freeze(
+        input.headers.map((header) => Object.freeze({ ...header }))
+      ),
       metadata: Object.freeze({ ...(input.metadata ?? {}) })
     });
     this.rows.set(key, evidence);
-    return Promise.resolve({ schemaVersion: 1, disposition: 'ADMITTED', evidence });
+    return Promise.resolve({
+      schemaVersion: 1,
+      disposition: 'ADMITTED',
+      evidence
+    });
   }
 
   resolveExactEvidence(input: {
@@ -78,9 +95,8 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
     accountRef: string;
     messageId: string;
   }): Promise<ManagedCommunicationExactEvidenceRefV1 | undefined> {
-    return Promise.resolve(
-      this.rows.get(`${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`)
-    );
+    const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
+    return Promise.resolve(this.rows.get(key));
   }
 }
 
@@ -128,7 +144,9 @@ function clientAndInbound(
             { name: 'To', value: 'expert@example.test' },
             { name: 'Subject', value: 'MarkOrbit Gmail Live Pilot' }
           ],
-          body: { data: Buffer.from('Please reply.', 'utf8').toString('base64url') }
+          body: {
+            data: Buffer.from('Please reply.', 'utf8').toString('base64url')
+          }
         }
       });
     }
@@ -207,104 +225,125 @@ function clientAndInbound(
 }
 
 describe('anchored Gmail Managed Communication inbound synchronization', () => {
-  it('anchors before an already-existing live reply, admits exact RFC822 evidence, and replays without duplication', async () => {
-    const foundationStore = await foundation();
-    const exactEvidence = new RecordingExactEvidenceStore();
-    const { client, inbound, historyStarts, rawReply } = clientAndInbound(
-      foundationStore,
-      exactEvidence
-    );
+  it(
+    'anchors before an already-existing live reply, admits exact RFC822 evidence, and replays without duplication',
+    async () => {
+      const foundationStore = await foundation();
+      const exactEvidence = new RecordingExactEvidenceStore();
+      const { client, inbound, historyStarts, rawReply } = clientAndInbound(
+        foundationStore,
+        exactEvidence
+      );
 
-    await expect(
-      syncGmailManagedCommunicationInboundFromAnchorV1({
-        client,
-        inbound,
-        foundation: foundationStore,
+      await expect(
+        syncGmailManagedCommunicationInboundFromAnchorV1({
+          client,
+          inbound,
+          foundation: foundationStore,
+          workspaceId,
+          accountRef,
+          anchorProviderMessageId,
+          now: () => '2026-09-02T03:49:30.000Z'
+        })
+      ).resolves.toEqual({
+        initialized: false,
+        imported: 1,
+        providerCursor: '101'
+      });
+
+      const replyIds = managedCommunicationNormalizedIdsV1({
         workspaceId,
         accountRef,
-        anchorProviderMessageId,
-        now: () => '2026-09-02T03:49:30.000Z'
-      })
-    ).resolves.toEqual({ initialized: false, imported: 1, providerCursor: '101' });
-
-    const replyIds = managedCommunicationNormalizedIdsV1({
-      workspaceId,
-      accountRef,
-      provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-      providerMessageId: replyProviderMessageId,
-      providerThreadId
-    });
-    const outboundIds = managedCommunicationNormalizedIdsV1({
-      workspaceId,
-      accountRef,
-      provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-      providerMessageId: anchorProviderMessageId,
-      providerThreadId
-    });
-    expect(replyIds.threadRef).toBe(outboundIds.threadRef);
-
-    const normalized = await foundationStore.resolveMessage(
-      workspaceId,
-      accountRef,
-      replyIds.messageId
-    );
-    expect(normalized.direction).toBe('INBOUND');
-    expect(normalized.textBody).toBe('MarkOrbit Gmail live pilot reply confirmed.');
-    expect(normalized.threadRef).toBe(outboundIds.threadRef);
-
-    const evidence = await exactEvidence.resolveExactEvidence({
-      workspaceId,
-      accountRef,
-      messageId: replyIds.messageId
-    });
-    expect(evidence).toMatchObject({
-      mediaType: 'message/rfc822',
-      provider: 'GMAIL',
-      providerMessageId: replyProviderMessageId,
-      metadata: {
-        gmailMessageId: replyProviderMessageId,
-        gmailThreadId: providerThreadId,
-        gmailHistoryId: '101'
-      }
-    });
-    expect(evidence?.sha256).toBe(createHash('sha256').update(rawReply).digest('hex'));
-    expect(evidence?.headers.some((header) => header.name.toLowerCase() === 'authorization')).toBe(
-      false
-    );
-    expect(exactEvidence.admissions).toHaveLength(1);
-
-    await expect(inbound.syncOnce()).resolves.toEqual({
-      initialized: false,
-      imported: 0,
-      providerCursor: '101'
-    });
-    expect(historyStarts).toEqual(['100', '101']);
-    expect(exactEvidence.admissions).toHaveLength(1);
-  });
-
-  it('fails closed instead of replacing a different existing provider cursor', async () => {
-    const foundationStore = await foundation();
-    await foundationStore.saveCheckpoint({
-      workspaceId,
-      accountRef,
-      checkpointRef: 'gmail-history:999',
-      providerCursor: '999',
-      observedAt: '2026-09-02T03:48:00.000Z',
-      now: '2026-09-02T03:48:00.000Z'
-    });
-    const exactEvidence = new RecordingExactEvidenceStore();
-    const { client, inbound } = clientAndInbound(foundationStore, exactEvidence);
-
-    await expect(
-      syncGmailManagedCommunicationInboundFromAnchorV1({
-        client,
-        inbound,
-        foundation: foundationStore,
+        provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+        providerMessageId: replyProviderMessageId,
+        providerThreadId
+      });
+      const outboundIds = managedCommunicationNormalizedIdsV1({
         workspaceId,
         accountRef,
-        anchorProviderMessageId
-      })
-    ).rejects.toThrow('refuses to replace an existing different provider cursor');
-    expect(exactEvidence.admissions).toHaveLength(0);
-  });
+        provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+        providerMessageId: anchorProviderMessageId,
+        providerThreadId
+      });
+      expect(replyIds.threadRef).toBe(outboundIds.threadRef);
+
+      const normalized = await foundationStore.resolveMessage(
+        workspaceId,
+        accountRef,
+        replyIds.messageId
+      );
+      expect(normalized.direction).toBe('INBOUND');
+      expect(normalized.textBody).toBe(
+        'MarkOrbit Gmail live pilot reply confirmed.'
+      );
+      expect(normalized.threadRef).toBe(outboundIds.threadRef);
+
+      const evidence = await exactEvidence.resolveExactEvidence({
+        workspaceId,
+        accountRef,
+        messageId: replyIds.messageId
+      });
+      expect(evidence).toMatchObject({
+        mediaType: 'message/rfc822',
+        provider: 'GMAIL',
+        providerMessageId: replyProviderMessageId,
+        metadata: {
+          gmailMessageId: replyProviderMessageId,
+          gmailThreadId: providerThreadId,
+          gmailHistoryId: '101'
+        }
+      });
+      expect(evidence?.sha256).toBe(
+        createHash('sha256').update(rawReply).digest('hex')
+      );
+      expect(
+        evidence?.headers.some(
+          (header) => header.name.toLowerCase() === 'authorization'
+        )
+      ).toBe(false);
+      expect(exactEvidence.admissions).toHaveLength(1);
+
+      await expect(inbound.syncOnce()).resolves.toEqual({
+        initialized: false,
+        imported: 0,
+        providerCursor: '101'
+      });
+      expect(historyStarts).toEqual(['100', '101']);
+      expect(exactEvidence.admissions).toHaveLength(1);
+    }
+  );
+
+  it(
+    'fails closed instead of replacing a different existing provider cursor',
+    async () => {
+      const foundationStore = await foundation();
+      await foundationStore.saveCheckpoint({
+        workspaceId,
+        accountRef,
+        checkpointRef: 'gmail-history:999',
+        providerCursor: '999',
+        observedAt: '2026-09-02T03:48:00.000Z',
+        now: '2026-09-02T03:48:00.000Z'
+      });
+      const exactEvidence = new RecordingExactEvidenceStore();
+      const { client, inbound } = clientAndInbound(
+        foundationStore,
+        exactEvidence
+      );
+
+      await expect(
+        syncGmailManagedCommunicationInboundFromAnchorV1({
+          client,
+          inbound,
+          foundation: foundationStore,
+          workspaceId,
+          accountRef,
+          anchorProviderMessageId
+        })
+      ).rejects.toThrow(
+        'refuses to replace an existing different provider cursor'
+      );
+      expect(exactEvidence.admissions).toHaveLength(0);
+    }
+  );
 });
