@@ -1,0 +1,63 @@
+name: tmp-mgsn-582-hardening-v2
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  harden-and-verify-v2:
+    if: github.head_ref == 'tmp-mgsn-582-hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-mgsn-582-hardening
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply corrected fail-closed hardening
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/tmp-mgsn-582-hardening.yml').read_text()
+          marker = "          python3 - <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY\n", start)
+          script = textwrap.dedent(workflow[start:end])
+          exec(compile(script, '<embedded-hardening>', 'exec'), {})
+
+          source = Path('services/mgsn/src/provider-responsibility-postgres.ts')
+          text = source.read_text()
+          old = "    const { profileFingerprintSha256, ...withoutFingerprint } = profile;"
+          new = """    const withoutFingerprint = Object.fromEntries(\n      Object.entries(profile).filter(([key]) => key !== 'profileFingerprintSha256')\n    );"""
+          if old not in text:
+              raise SystemExit('missing corrected fingerprint target')
+          source.write_text(text.replace(old, new, 1))
+          PY
+      - name: Build typed MGSN dependency closure
+        run: pnpm --filter @markorbit/mgsn-service... build
+      - name: Format and verify owner files
+        run: |
+          pnpm exec prettier --write services/mgsn/src/provider-responsibility-postgres.ts services/mgsn/src/durable-runtime.ts services/mgsn/tests/provider-responsibility-postgres.test.ts
+          pnpm --filter @markorbit/mgsn-service lint
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service test
+      - name: Commit verified hardening
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/mgsn/src/provider-responsibility-postgres.ts services/mgsn/src/durable-runtime.ts services/mgsn/tests/provider-responsibility-postgres.test.ts
+          git commit -m 'fix(mgsn): harden durable responsibility persistence'
+          git push origin HEAD:tmp-mgsn-582-hardening
