@@ -1,0 +1,63 @@
+name: TEMP MGSN Outcome Trust 644 format
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-format-push:
+    if: github.head_ref == 'tmp-mgsn-outcome-trust-644-format'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_mgsn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_mgsn_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      MGSN_TEST_DATABASE_URL: postgres://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-outcome-trust-durable
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact owner files
+        run: pnpm exec prettier --write services/mgsn/src/outcome-trust-evidence-postgres.ts services/mgsn/tests/outcome-trust-evidence-postgres.test.ts
+      - name: Build MGSN dependency closure
+        run: pnpm turbo run build --filter=@markorbit/mgsn-service...
+      - name: MGSN typecheck and lint
+        run: |
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service lint
+      - name: Run complete MGSN tests with real PostgreSQL
+        run: pnpm --filter @markorbit/mgsn-service test
+      - name: Push verified formatting to formal branch
+        run: |
+          if git diff --quiet -- services/mgsn; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/mgsn/src/outcome-trust-evidence-postgres.ts services/mgsn/tests/outcome-trust-evidence-postgres.test.ts
+          git commit -m "[MGSN-P0] Format durable Outcome & Trust Evidence runtime"
+          git push origin HEAD:mgsn-outcome-trust-durable
