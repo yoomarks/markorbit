@@ -9,8 +9,12 @@ import type {
 import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trademark-asset-marketplace-reference';
 import type { TrademarkAssetAttentionSignal } from '@markorbit/contracts/trademark-asset-workspace';
 import { Button } from '@markorbit/ui';
-import type { TrademarkAssetRefreshSummary } from '../../api/trademark-assets.js';
-import type { SaveTrademarkAssetCommerceProfileInput } from '../../api/trademark-assets.js';
+import type {
+  PrepareTrademarkAssetAiGuideRequest,
+  SaveTrademarkAssetCommerceProfileInput,
+  TrademarkAssetRefreshSummary
+} from '../../api/trademark-assets.js';
+import { TrademarkAssetAiGuide } from './TrademarkAssetAiGuide.js';
 import { TrademarkAssetCommerceProfileSection } from './TrademarkAssetCommerceProfile.js';
 import './trademark-asset-workspace.css';
 
@@ -27,6 +31,9 @@ export interface TrademarkAssetWorkspaceProps {
   onReloadCommerceProfile?: () => void | Promise<void>;
   marketplaceOverlay?: Readonly<TrademarkAssetMarketplaceOverlay>;
   aiGuide?: Readonly<TrademarkAssetAiGuidePreparedResult>;
+  onPrepareAiGuide?: (
+    input: Readonly<PrepareTrademarkAssetAiGuideRequest>
+  ) => Promise<TrademarkAssetAiGuidePreparedResult>;
 }
 
 type PendingDisposition = 'WATCH' | 'DEFER' | 'DISMISS';
@@ -56,7 +63,8 @@ export function TrademarkAssetWorkspace({
   onSaveCommerceProfile,
   onReloadCommerceProfile,
   marketplaceOverlay,
-  aiGuide
+  aiGuide,
+  onPrepareAiGuide
 }: TrademarkAssetWorkspaceProps) {
   const relationships = view.anchor.workspaceRelationships.map((relationship) => relationship.kind);
   const isMarketplaceReference = relationships.includes('MARKETPLACE_ADDED');
@@ -346,32 +354,13 @@ export function TrademarkAssetWorkspace({
         </section>
       ) : null}
 
-      {aiGuide ? (
-        <section aria-labelledby="ai-guide-heading">
-          <div className="trademark-asset-workspace__section-heading">
-            <div>
-              <p>Advisory only</p>
-              <h2 id="ai-guide-heading">AI Asset Guide</h2>
-            </div>
-            <span>
-              {aiGuide.staleOrConflictingEvidencePresent
-                ? 'Review evidence before use'
-                : 'Evidence current'}
-            </span>
-          </div>
-          <div className="trademark-asset-workspace__guide-grid">
-            {aiGuide.suggestions.map((suggestion) => (
-              <article key={suggestion.aiGuideSuggestionId}>
-                <h3>{suggestion.title}</h3>
-                <p>{suggestion.explanation}</p>
-                <small>
-                  Confirmation required · No filing, contact, payment or official verification
-                  authority
-                </small>
-              </article>
-            ))}
-          </div>
-        </section>
+      {onPrepareAiGuide ? (
+        <TrademarkAssetAiGuide
+          assetId={view.trademarkAssetId}
+          assetVersion={view.anchorVersion}
+          {...(aiGuide ? { initialResult: aiGuide } : {})}
+          onPrepare={onPrepareAiGuide}
+        />
       ) : null}
 
       <aside className="trademark-asset-workspace__authority" aria-label="Lite authority boundary">

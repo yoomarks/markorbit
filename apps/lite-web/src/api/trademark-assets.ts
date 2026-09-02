@@ -21,6 +21,10 @@ import type {
   TrademarkAssetSourceReference,
   TrademarkAssetWorkspaceRelationshipKind
 } from '@markorbit/contracts/trademark-asset-workspace';
+import type {
+  PrepareTrademarkAssetAiGuideInput,
+  TrademarkAssetAiGuidePreparedResult
+} from '@markorbit/contracts/trademark-asset-ai-guide';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
 
@@ -89,9 +93,18 @@ export interface PrepareTrademarkServiceWorkPackageInput {
   readonly intent: Readonly<TrademarkServiceIntent>;
 }
 
+export type PrepareTrademarkAssetAiGuideRequest = Pick<
+  PrepareTrademarkAssetAiGuideInput,
+  'expectedTrademarkAssetVersion' | 'requestedKinds'
+>;
+
 export interface TrademarkAssetClient {
   search(input?: Readonly<TrademarkAssetSearchInput>): Promise<TrademarkAssetPortfolioResponse>;
   load(trademarkAssetId: TrademarkAssetId): Promise<TrademarkAssetDetailResponse>;
+  prepareAiGuide(
+    trademarkAssetId: TrademarkAssetId,
+    input: Readonly<PrepareTrademarkAssetAiGuideRequest>
+  ): Promise<TrademarkAssetAiGuidePreparedResult>;
   saveCommerceProfile(
     trademarkAssetId: TrademarkAssetId,
     input: Readonly<SaveTrademarkAssetCommerceProfileInput>
@@ -199,6 +212,18 @@ export function createTrademarkAssetClient(workspaceId: string): TrademarkAssetC
         `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}`,
         workspaceId
       ),
+    prepareAiGuide: async (trademarkAssetId, input) => {
+      const csrfToken = await currentCsrfToken();
+      return request<TrademarkAssetAiGuidePreparedResult>(
+        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/ai-guide`,
+        workspaceId,
+        {
+          method: 'POST',
+          body: input,
+          csrfToken
+        }
+      );
+    },
     saveCommerceProfile: async (trademarkAssetId, input) => {
       const csrfToken = await currentCsrfToken();
       const response = await request<{ commerceProfile: TrademarkAssetCommerceProfile }>(
