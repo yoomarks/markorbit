@@ -62,10 +62,7 @@ export function createProductionIntakeRoutes(
         const principal = principalFor(request, options.internalServiceSecret);
         const body = request.body as Record<string, unknown>;
         const idempotencyKey = request.headers['idempotency-key'] ?? '';
-        if (
-          body?.idempotencyKey !== undefined &&
-          body.idempotencyKey !== idempotencyKey
-        )
+        if (body?.idempotencyKey !== undefined && body.idempotencyKey !== idempotencyKey)
           throw new HttpError(
             400,
             'INVALID_PRODUCTION_INTAKE_REQUEST',

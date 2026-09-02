@@ -83,7 +83,9 @@ describe('Production Intake runtime composition', () => {
       create: () => Promise.resolve(intake),
       get: () => Promise.resolve(intake)
     } as Pick<PostgresProductionIntakeService, 'create' | 'get'>;
-    const base = await start(createProductionIntakeRoutes({ internalServiceSecret: secret, service }));
+    const base = await start(
+      createProductionIntakeRoutes({ internalServiceSecret: secret, service })
+    );
 
     const production = await fetch(`${base}/internal/v1/production-intakes`, {
       method: 'POST',

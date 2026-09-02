@@ -36,7 +36,9 @@ const principal = (
   sessionExpiresAt: '2030-01-01T00:00:00.000Z'
 });
 
-const command = (overrides: Partial<CreateProductionIntakeCommandV1> = {}): CreateProductionIntakeCommandV1 => ({
+const command = (
+  overrides: Partial<CreateProductionIntakeCommandV1> = {}
+): CreateProductionIntakeCommandV1 => ({
   schemaVersion: 1,
   channel: 'MARKREG_DIRECT',
   relationshipModel: 'DIRECT',

@@ -128,10 +128,9 @@ describe('Production Intake HTTP', () => {
 
   it('reads an exact Intake through the same Workspace principal', async () => {
     const runtime = await stack();
-    const response = await fetch(
-      `${runtime.base}/internal/v1/production-intakes/${intakeId}`,
-      { headers: headers(principal()) }
-    );
+    const response = await fetch(`${runtime.base}/internal/v1/production-intakes/${intakeId}`, {
+      headers: headers(principal())
+    });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ intake: intake() });
     expect(runtime.get).toHaveBeenCalledWith(expect.objectContaining({ workspaceId }), intakeId);
@@ -139,27 +138,21 @@ describe('Production Intake HTTP', () => {
 
   it('requires trusted internal auth and exact Workspace identity', async () => {
     const runtime = await stack();
-    const untrusted = await fetch(
-      `${runtime.base}/internal/v1/production-intakes/${intakeId}`,
-      {
-        headers: {
-          ...headers(principal()),
-          'x-markorbit-internal-authorization': 'wrong-secret'
-        }
+    const untrusted = await fetch(`${runtime.base}/internal/v1/production-intakes/${intakeId}`, {
+      headers: {
+        ...headers(principal()),
+        'x-markorbit-internal-authorization': 'wrong-secret'
       }
-    );
+    });
     expect(untrusted.status).toBe(401);
     expect(await untrusted.json()).toMatchObject({ code: 'UNTRUSTED_INTERNAL_CALLER' });
 
-    const mismatch = await fetch(
-      `${runtime.base}/internal/v1/production-intakes/${intakeId}`,
-      {
-        headers: {
-          ...headers(principal()),
-          'x-markorbit-workspace-id': otherWorkspaceId
-        }
+    const mismatch = await fetch(`${runtime.base}/internal/v1/production-intakes/${intakeId}`, {
+      headers: {
+        ...headers(principal()),
+        'x-markorbit-workspace-id': otherWorkspaceId
       }
-    );
+    });
     expect(mismatch.status).toBe(404);
     expect(await mismatch.json()).toMatchObject({ code: 'WORKSPACE_MISMATCH' });
   });
@@ -196,10 +189,9 @@ describe('Production Intake HTTP', () => {
           )
         )
     });
-    const response = await fetch(
-      `${runtime.base}/internal/v1/production-intakes/${intakeId}`,
-      { headers: headers(principal()) }
-    );
+    const response = await fetch(`${runtime.base}/internal/v1/production-intakes/${intakeId}`, {
+      headers: headers(principal())
+    });
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({
       code: 'PERSISTENCE_UNAVAILABLE',
