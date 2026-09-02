@@ -1,0 +1,80 @@
+name: tmp-mgsn-568-lint
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  lint-selection:
+    if: github.head_ref == 'tmp-mgsn-568-lint'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-mgsn-568-lint
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply mechanical lint fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          src_path = Path('services/mgsn/src/provider-selection.ts')
+          src = src_path.read_text()
+          src = src.replace(
+          """  async findScopeState(scopeKey: string): Promise<ProviderSelectionScopeState> {\n    const currentId = this.currentByScope.get(scopeKey);\n    const current = currentId ? this.histories.get(currentId)?.at(-1) : undefined;\n    return {\n      scopeVersion: this.scopeVersions.get(scopeKey) ?? 0,\n      ...(current ? { current: copy(current) } : {})\n    };\n  }\n\n  async findLatestSelection(providerSelectionId: ProviderSelectionId) {\n    const latest = this.histories.get(providerSelectionId)?.at(-1);\n    return latest ? copy(latest) : undefined;\n  }\n\n  async findReplay(scopeKey: string, idempotencyKey: string) {\n    const replay = this.replays.get(replayKey(scopeKey, idempotencyKey));\n    return replay ? copy(replay) : undefined;\n  }\n""",
+          """  findScopeState(scopeKey: string): Promise<ProviderSelectionScopeState> {\n    const currentId = this.currentByScope.get(scopeKey);\n    const current = currentId ? this.histories.get(currentId)?.at(-1) : undefined;\n    return Promise.resolve({\n      scopeVersion: this.scopeVersions.get(scopeKey) ?? 0,\n      ...(current ? { current: copy(current) } : {})\n    });\n  }\n\n  findLatestSelection(providerSelectionId: ProviderSelectionId) {\n    const latest = this.histories.get(providerSelectionId)?.at(-1);\n    return Promise.resolve(latest ? copy(latest) : undefined);\n  }\n\n  findReplay(scopeKey: string, idempotencyKey: string) {\n    const replay = this.replays.get(replayKey(scopeKey, idempotencyKey));\n    return Promise.resolve(replay ? copy(replay) : undefined);\n  }\n""")
+          src = src.replace(
+          """  async listSelectionHistory(providerSelectionId: ProviderSelectionId) {\n    return copy(this.histories.get(providerSelectionId) ?? []);\n  }\n\n  async listAuditHistory(scopeKey: string) {\n    return copy(this.audits.get(scopeKey) ?? []);\n  }\n""",
+          """  listSelectionHistory(providerSelectionId: ProviderSelectionId) {\n    return Promise.resolve(copy(this.histories.get(providerSelectionId) ?? []));\n  }\n\n  listAuditHistory(scopeKey: string) {\n    return Promise.resolve(copy(this.audits.get(scopeKey) ?? []));\n  }\n""")
+          src_path.write_text(src)
+
+          test_path = Path('services/mgsn/tests/provider-selection.test.ts')
+          test = test_path.read_text()
+          test = test.replace(
+              '  return { ...base, ...overrides } as ProviderSelectionCurrentAuthoritySnapshot;',
+              '  return { ...base, ...overrides };'
+          )
+          test = test.replace(
+          """function authoritySource(\n  value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()\n): ProviderSelectionCurrentAuthoritySource {\n  return {\n    evaluateCurrentAuthority: vi.fn(async () => {\n      if (value instanceof Error) {\n        throw value;\n      }\n      return value;\n    })\n  };\n}\n""",
+          """function authorityEvaluator(\n  value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()\n) {\n  return vi.fn(() => {\n    if (value instanceof Error) {\n      return Promise.reject(value);\n    }\n    return Promise.resolve(value);\n  });\n}\n\nfunction authoritySource(\n  value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()\n): ProviderSelectionCurrentAuthoritySource {\n  return { evaluateCurrentAuthority: authorityEvaluator(value) };\n}\n""")
+          test = test.replace(
+          """  const source = authoritySource(value);\n  let sequence = 0;\n  const service = new ProviderSelectionService(\n    repository,\n    source,\n""",
+          """  const evaluateCurrentAuthority = authorityEvaluator(value);\n  const source: ProviderSelectionCurrentAuthoritySource = { evaluateCurrentAuthority };\n  let sequence = 0;\n  const service = new ProviderSelectionService(\n    repository,\n    source,\n""")
+          test = test.replace(
+              '  return { repository, service, source };',
+              '  return { repository, service, evaluateCurrentAuthority };'
+          )
+          test = test.replace('const { service, source } = harness();', 'const { service, evaluateCurrentAuthority } = harness();')
+          test = test.replace('const { repository, service, source } = harness();', 'const { repository, service, evaluateCurrentAuthority } = harness();')
+          test = test.replace('vi.mocked(source.evaluateCurrentAuthority)', 'evaluateCurrentAuthority')
+          test = test.replace('source.evaluateCurrentAuthority', 'evaluateCurrentAuthority')
+          test = test.replace("() => 'provider-selection_lifecycle-test' as ProviderSelectionId", "() => 'provider-selection_lifecycle-test'")
+          test = test.replace("() => 'provider-selection_authority-outage' as ProviderSelectionId", "() => 'provider-selection_authority-outage'")
+          test = test.replace("() => 'provider-selection_direct-executor' as ProviderSelectionId", "() => 'provider-selection_direct-executor'")
+          test_path.write_text(test)
+          PY
+      - name: Format and verify exact files
+        run: |
+          pnpm exec prettier --write services/mgsn/src/provider-selection.ts services/mgsn/tests/provider-selection.test.ts
+          pnpm --filter @markorbit/mgsn-service lint
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service test
+      - name: Commit verified mechanical fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/mgsn/src/provider-selection.ts services/mgsn/tests/provider-selection.test.ts
+          git commit -m 'chore: verify Selection lint cleanup for PR 568'
+          git push origin HEAD:tmp-mgsn-568-lint
