@@ -46,7 +46,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply exact DTS and lint repairs
+      - name: Apply exact durable Handoff repairs
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -58,7 +58,12 @@ jobs:
               s = s.replace(old, new, 1)
           elif new not in s:
               raise SystemExit('expected DTS cast shape not found')
-          p.write_text(s)
+
+          old = '''    await client.query(\n      `INSERT INTO mgsn_controlled_handoff_slot_state(\n         slot_key,originating_workspace_id,slot_revision,head_controlled_handoff_id,head_version,\n         current_controlled_handoff_id,current_version,set_by_principal_reference,correlation_id,updated_at\n       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)\n       ON CONFLICT (slot_key) DO UPDATE SET\n         slot_revision=EXCLUDED.slot_revision,\n         head_controlled_handoff_id=EXCLUDED.head_controlled_handoff_id,\n         head_version=EXCLUDED.head_version,\n         current_controlled_handoff_id=EXCLUDED.current_controlled_handoff_id,\n         current_version=EXCLUDED.current_version,\n         set_by_principal_reference=EXCLUDED.set_by_principal_reference,\n         correlation_id=EXCLUDED.correlation_id,\n         updated_at=EXCLUDED.updated_at`,\n      [\n        mutation.slotKey,\n        next.originatingWorkspaceId,\n        revision,\n        next.controlledHandoffId,\n        next.version,\n        next.status === 'AUTHORIZED' ? next.controlledHandoffId : null,\n        next.status === 'AUTHORIZED' ? next.version : null,\n        mutation.replay.principalReference,\n        next.correlationId,\n        at\n      ]\n    );'''
+          new = '''    const values = [\n      mutation.slotKey,\n      next.originatingWorkspaceId,\n      revision,\n      next.controlledHandoffId,\n      next.version,\n      next.status === 'AUTHORIZED' ? next.controlledHandoffId : null,\n      next.status === 'AUTHORIZED' ? next.version : null,\n      mutation.replay.principalReference,\n      next.correlationId,\n      at\n    ];\n    if (previousRevision === 0) {\n      await client.query(\n        `INSERT INTO mgsn_controlled_handoff_slot_state(\n           slot_key,originating_workspace_id,slot_revision,head_controlled_handoff_id,head_version,\n           current_controlled_handoff_id,current_version,set_by_principal_reference,correlation_id,updated_at\n         ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,\n        values\n      );\n      return;\n    }\n\n    const updated = await client.query(\n      `UPDATE mgsn_controlled_handoff_slot_state SET\n         slot_revision=$3,\n         head_controlled_handoff_id=$4,\n         head_version=$5,\n         current_controlled_handoff_id=$6,\n         current_version=$7,\n         set_by_principal_reference=$8,\n         correlation_id=$9,\n         updated_at=$10\n       WHERE slot_key=$1 AND originating_workspace_id=$2 AND slot_revision=$11`,\n      [...values, previousRevision]\n    );\n    if (updated.rowCount !== 1) {\n      throw new ControlledHandoffError('STALE_HANDOFF', 409, 'Controlled Handoff slot revision changed before commit.');\n    }'''
+          if old not in s:
+              raise SystemExit('expected Handoff slot UPSERT not found')
+          p.write_text(s.replace(old, new, 1))
 
           t = Path('services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts')
           s = t.read_text()
@@ -90,6 +95,6 @@ jobs:
         run: |
           if ! git diff --quiet -- services/mgsn; then
             git add services/mgsn
-            git commit -m "[MGSN-P0] Repair and format durable Controlled Handoff runtime"
+            git commit -m "[MGSN-P0] Repair durable Controlled Handoff slot CAS"
           fi
           git push origin HEAD:mgsn-controlled-handoff-durable
