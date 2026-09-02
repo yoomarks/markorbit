@@ -424,7 +424,7 @@ function persistedDisposition(
     dispositionId: dispositionId as TrademarkAssetManagementDispositionId,
     workspaceId,
     version,
-    asset: { id: asset.id as TrademarkAssetId, version: asset.version },
+    asset: { id: asset.id, version: asset.version },
     signal: {
       id: signal.id as TrademarkAssetManagementSignalId,
       version: signal.version
