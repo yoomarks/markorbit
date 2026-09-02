@@ -2,6 +2,7 @@ import type { FormalMatter } from '@markorbit/contracts';
 import { Alert, Button, Card, KeyValueList, PageHeader } from '@markorbit/ui';
 import type { ReactNode } from 'react';
 import { LifecyclePanel } from './LifecyclePanel.js';
+import { MatterIntelligencePanel } from './MatterIntelligencePanel.js';
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 export type FormalMatterLifecycleRenderer = (input: {
@@ -9,8 +10,14 @@ export type FormalMatterLifecycleRenderer = (input: {
   disabled: boolean;
 }) => ReactNode;
 
+export type FormalMatterIntelligenceRenderer = (input: { formalMatterId: string }) => ReactNode;
+
 const defaultLifecycle: FormalMatterLifecycleRenderer = ({ formalMatterId, disabled }) => (
   <LifecyclePanel formalMatterId={formalMatterId} disabled={disabled} embedded />
+);
+
+const defaultIntelligence: FormalMatterIntelligenceRenderer = ({ formalMatterId }) => (
+  <MatterIntelligencePanel formalMatterId={formalMatterId} />
 );
 
 const text = (value: unknown) =>
@@ -27,7 +34,8 @@ export function FormalMatterWorkspace({
   actualVersion,
   versionMismatch = false,
   readOnly = false,
-  renderLifecycle = defaultLifecycle
+  renderLifecycle = defaultLifecycle,
+  renderIntelligence = defaultIntelligence
 }: {
   matter: FormalMatter;
   expectedVersion: string;
@@ -35,6 +43,7 @@ export function FormalMatterWorkspace({
   versionMismatch?: boolean;
   readOnly?: boolean;
   renderLifecycle?: FormalMatterLifecycleRenderer;
+  renderIntelligence?: FormalMatterIntelligenceRenderer;
 }) {
   const preparation = matter.sourceSnapshot.preparation;
   const trademark = text(preparation.trademark);
@@ -183,14 +192,7 @@ export function FormalMatterWorkspace({
 
       <section aria-labelledby="matter-intelligence-heading">
         <h2 id="matter-intelligence-heading">Matter intelligence</h2>
-        <Card>
-          <p>
-            Governed analytical evidence is not exposed through this browser view yet. That does not
-            mean no intelligence exists. It will only appear here after the authenticated Gateway
-            read boundary is available; this workspace does not call MarkReg internal services
-            directly or fall back to fixtures.
-          </p>
-        </Card>
+        {renderIntelligence({ formalMatterId: String(matter.formalMatterId) })}
       </section>
 
       <p>
