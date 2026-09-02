@@ -1,4 +1,4 @@
-# Temporary one-shot latest-main refresh for PR #582; NEVER MERGE.
+# Temporary one-shot latest-main refresh for replacement PR #595; NEVER MERGE.
 name: tmp-mgsn-582-format-integrity
 
 on:
@@ -15,13 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: mgsn-o
+          ref: mgsn-o-ready
           fetch-depth: 0
-      - name: Merge exact latest main into formal MGSN branch
+      - name: Merge exact latest main into replacement MGSN branch
         shell: bash
         run: |
           set -euo pipefail
-          expected_main='1cce1ae941ddd03ccc24b3d23275f774614918f4'
+          expected_main='134f3cd357ca09c97cefe217fd05aaef3ef3811d'
           git fetch origin main
           actual_main="$(git rev-parse origin/main)"
           test "$actual_main" = "$expected_main" || {
@@ -31,4 +31,4 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git merge --no-edit "$expected_main"
-          git push origin HEAD:mgsn-o
+          git push origin HEAD:mgsn-o-ready
