@@ -382,7 +382,10 @@ export class OutcomeTrustEvidenceService {
 
     let authority: Readonly<TrustEvidenceCurrentAuthoritySnapshot>;
     try {
-      authority = await this.currentAuthority.evaluateCurrentAuthority({ projection, evidenceItems: items });
+      authority = await this.currentAuthority.evaluateCurrentAuthority({
+        projection,
+        evidenceItems: items
+      });
     } catch {
       return deny('AUTHORITY_UNAVAILABLE');
     }
