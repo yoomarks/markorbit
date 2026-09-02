@@ -44,9 +44,18 @@ const disposition = {
   legalConclusionVerified: false,
   capabilityVerified: false
 };
+const currentProjection = {
+  schemaVersion: 1,
+  workspaceId,
+  asset: { id: assetId, version: 7 },
+  items: [{ signal: body.managementSignal, disposition }]
+} as const;
 
 function setup() {
-  const dispositions = { record: vi.fn().mockResolvedValue(disposition) };
+  const dispositions = {
+    record: vi.fn().mockResolvedValue(disposition),
+    listCurrentForAsset: vi.fn().mockResolvedValue(currentProjection)
+  };
   const routes = createTrademarkAssetReadRoutes({
     internalServiceSecret: secret,
     assets: {},
@@ -62,6 +71,13 @@ function setup() {
       candidate.path === '/v1/trademark-assets/:trademarkAssetId/management-dispositions'
   );
   if (!route) throw new Error('Management disposition route is missing.');
+  const getRoutes = routes.filter(
+    (candidate) =>
+      candidate.method === 'GET' &&
+      candidate.path === '/v1/trademark-assets/:trademarkAssetId/management-dispositions'
+  );
+  const getRoute = getRoutes[0];
+  if (!getRoute) throw new Error('Management disposition read route is missing.');
   const request: JsonRequest = {
     method: 'POST',
     path: `/v1/trademark-assets/${assetId}/management-dispositions`,
@@ -75,10 +91,94 @@ function setup() {
     },
     body
   };
-  return { dispositions, route, request };
+  const getRequest: JsonRequest = {
+    ...request,
+    method: 'GET',
+    headers: {
+      'x-markorbit-internal-authorization': secret,
+      'x-markorbit-principal': encodeInternalWorkspacePrincipal({
+        ...principal,
+        role: 'READ_ONLY',
+        permissions: ['workspace:read']
+      }),
+      'x-markorbit-workspace-id': workspaceId
+    },
+    body: undefined
+  };
+  return { dispositions, getRoute, getRoutes, getRequest, route, request };
 }
 
 describe('authenticated Trademark Asset management disposition HTTP boundary', () => {
+  it('registers the exact GET once and reads with workspace:read without matter:manage', async () => {
+    const { dispositions, getRoute, getRoutes, getRequest } = setup();
+    expect(getRoutes).toHaveLength(1);
+    expect(await getRoute.handle(getRequest)).toEqual({
+      status: 200,
+      body: currentProjection
+    });
+    expect(dispositions.listCurrentForAsset).toHaveBeenCalledOnce();
+    expect(dispositions.listCurrentForAsset).toHaveBeenCalledWith(workspaceId, assetId);
+  });
+
+  it.each([
+    ['x-markorbit-internal-authorization', 'wrong', 401, 'UNTRUSTED_INTERNAL_CALLER'],
+    ['x-markorbit-principal', 'invalid', 401, 'INVALID_INTERNAL_PRINCIPAL'],
+    ['x-markorbit-workspace-id', '22222222-2222-4222-8222-222222222222', 404, 'WORKSPACE_MISMATCH']
+  ] as const)('rejects invalid GET %s before persistence', async (header, value, status, code) => {
+    const { dispositions, getRoute, getRequest } = setup();
+    await expect(
+      getRoute.handle({ ...getRequest, headers: { ...getRequest.headers, [header]: value } })
+    ).rejects.toMatchObject({ status, code });
+    expect(dispositions.listCurrentForAsset).not.toHaveBeenCalled();
+  });
+
+  it('requires workspace:read for GET', async () => {
+    const { dispositions, getRoute, getRequest } = setup();
+    await expect(
+      getRoute.handle({
+        ...getRequest,
+        headers: {
+          ...getRequest.headers,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal({
+            ...principal,
+            permissions: ['matter:manage']
+          })
+        }
+      })
+    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+    expect(dispositions.listCurrentForAsset).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { query: { workspaceId: '22222222-2222-4222-8222-222222222222' } },
+    { query: { subjectUserId: 'spoofed' } },
+    { body: { managementSignal: body.managementSignal } }
+  ])('rejects caller-supplied GET scope or management input: %j', async (replacement) => {
+    const { dispositions, getRoute, getRequest } = setup();
+    await expect(getRoute.handle({ ...getRequest, ...replacement })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST'
+    });
+    expect(dispositions.listCurrentForAsset).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['INVALID_INPUT', 400, false],
+    ['NOT_FOUND', 404, false],
+    ['PERSISTENCE_UNAVAILABLE', 503, true]
+  ] as const)('preserves GET owner error %s', async (code, status, retryable) => {
+    const { dispositions, getRoute, getRequest } = setup();
+    dispositions.listCurrentForAsset.mockRejectedValueOnce(
+      new TrademarkAssetManagementDispositionError(code, `owner ${code}`, status, retryable)
+    );
+    await expect(getRoute.handle(getRequest)).rejects.toMatchObject({
+      status,
+      code,
+      message: `owner ${code}`,
+      retryable
+    });
+  });
+
   it.each(['WATCHED', 'DEFERRED', 'DISMISSED', 'CONTINUED'] as const)(
     'forwards exact %s owner references and principal-derived identity once',
     async (kind) => {
