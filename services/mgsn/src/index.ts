@@ -25,6 +25,8 @@ export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
 // Phase A exports domain lifecycle/current validation only; durable Handoff persistence remains Integration-owned.
 export * from './controlled-privacy-handoff.js';
+// Phase A exports contextual Trust evaluation/current exposure only; source truth and persistence remain owner/shared-owned.
+export * from './outcome-trust-evidence.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';
