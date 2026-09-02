@@ -23,6 +23,7 @@ export * from './provider-discovery.js';
 export * from './provider-discovery-postgres.js';
 export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
+export * from './controlled-privacy-handoff.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';
