@@ -2,13 +2,18 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ContentStudio } from './ContentStudio.js';
 import { ContentStudioHttpError } from '../../api/content-studio.js';
 import {
+  alternateVisualOutput,
   detailFixture,
   draft,
   fixtureClient,
   fixtureWorkspaceId,
   listFixture,
   review,
-  summaryFixture
+  secondVisualBriefRecord,
+  secondVisualOutput,
+  summaryFixture,
+  visualBriefRecord,
+  visualOutput
 } from './fixtures.js';
 
 export default {
@@ -18,6 +23,77 @@ export default {
 } satisfies Meta<typeof ContentStudio>;
 type Story = StoryObj<typeof ContentStudio>;
 const args = { workspaceId: fixtureWorkspaceId, client: fixtureClient() };
+const mobile390 = {
+  viewport: {
+    defaultViewport: 'mobile1',
+    viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
+  }
+};
+export const CompleteEmpty: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture([summaryFixture({ visualBriefCount: 0, visualOutputCount: 0 })], null, {
+        partial: false,
+        warnings: []
+      }),
+      detailFixture({ visualBriefs: [], visualOutputs: [], partial: false, warnings: [] })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const CompleteHistory: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture([summaryFixture()], null, { partial: false, warnings: [] }),
+      detailFixture({ partial: false, warnings: [] })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const PartialEmptyUnknown: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture([summaryFixture({ visualBriefCount: 0, visualOutputCount: 0 })], null, {
+        partial: true,
+        warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+      }),
+      detailFixture({ visualBriefs: [], visualOutputs: [] })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const PartialMixed: Story = {
+  args: { ...args, initialContentOpportunityId: 'content-opportunity_413' }
+};
+export const MultipleOutput: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture([summaryFixture({ visualBriefCount: 2, visualOutputCount: 3 })], null, {
+        partial: false,
+        warnings: []
+      }),
+      detailFixture({
+        visualBriefs: [visualBriefRecord, secondVisualBriefRecord],
+        visualOutputs: [visualOutput, secondVisualOutput, alternateVisualOutput],
+        partial: false,
+        warnings: []
+      })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const CompleteEmptyMobile390: Story = { ...CompleteEmpty, parameters: mobile390 };
+export const CompleteHistoryMobile390: Story = { ...CompleteHistory, parameters: mobile390 };
+export const PartialEmptyUnknownMobile390: Story = {
+  ...PartialEmptyUnknown,
+  parameters: mobile390
+};
+export const PartialMixedMobile390: Story = { ...PartialMixed, parameters: mobile390 };
+export const MultipleOutputMobile390: Story = { ...MultipleOutput, parameters: mobile390 };
 export const SuccessList: Story = { args };
 export const EmptyWorkspace: Story = { args: { ...args, client: fixtureClient(listFixture([])) } };
 export const SuccessDetail: Story = {
@@ -229,10 +305,5 @@ export const Mobile390: Story = {
     client: fixtureClient(listFixture(), detailFixture({ feedback: [] })),
     initialContentOpportunityId: 'content-opportunity_413'
   },
-  parameters: {
-    viewport: {
-      defaultViewport: 'mobile1',
-      viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
-    }
-  }
+  parameters: mobile390
 };

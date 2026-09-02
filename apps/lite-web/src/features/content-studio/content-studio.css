@@ -3,13 +3,25 @@
   color: var(--mo-secondary);
 }
 .content-studio__list,
-.content-studio__lineage {
+.content-studio__lineage,
+.content-studio__visual-lineage,
+.content-studio__visual-briefs,
+.content-studio__visual-outputs {
   display: grid;
   gap: var(--mo-space-lg);
 }
-.content-studio__lineage {
+.content-studio__lineage,
+.content-studio__visual-briefs,
+.content-studio__visual-outputs {
   list-style: none;
   padding: 0;
+}
+.content-studio__visual-lineage {
+  margin-block: var(--mo-space-xl);
+}
+.content-studio__visual-outputs > li + li {
+  padding-top: var(--mo-space-lg);
+  border-top: 1px solid var(--mo-border);
 }
 .content-studio__row {
   display: flex;

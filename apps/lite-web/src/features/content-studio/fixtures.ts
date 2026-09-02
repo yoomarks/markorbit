@@ -6,11 +6,13 @@ import type {
   ProductLoopUseFeedback,
   PublishPackage
 } from '@markorbit/contracts/product-loop';
+import type { VisualBrief, VisualOutputReference } from '@markorbit/contracts/daily-workspace';
 import type {
   ContentStudioClient,
   ContentStudioWorkDetail,
   ContentStudioWorkList,
-  ContentStudioWorkSummary
+  ContentStudioWorkSummary,
+  VisualBriefRecord
 } from '../../api/content-studio.js';
 
 export const fixtureWorkspaceId = '38383838-3838-4383-8383-383838383838';
@@ -104,6 +106,90 @@ export const feedback: ProductLoopUseFeedback = {
   externalOutcomeVerifiedByMarkOrbit: false
 };
 
+export const visualBrief: VisualBrief = {
+  schemaVersion: 1,
+  visualBriefId: 'visual-brief_413',
+  workspaceId: fixtureWorkspaceId,
+  version: 2,
+  contentKit: { id: 'content-kit_413', version: 1 },
+  title: 'Evidence-first preparation cover',
+  keyMessage: 'Keep governed preparation and evidence visible.',
+  audience: 'Trademark practitioners',
+  outputKind: 'XIAOHONGSHU_COVER',
+  aspectRatio: '3:4',
+  styleIntent: 'Editorial blue-track note',
+  requestedIpPackage: 'moki-editorial',
+  sceneIntent: 'A structured evidence trail with a calm editorial focal point.',
+  reuseFirstRequired: true,
+  paidExecutionAuthorized: false,
+  createdAt: '2026-08-31T14:00:00.000Z'
+};
+
+export const visualBriefRecord: VisualBriefRecord = {
+  brief: visualBrief,
+  visualBriefFingerprintSha256: 'b'.repeat(64),
+  consumerIdentity: { ipId: 'moki-editorial', styleId: 'blue-track-note' }
+};
+
+export const visualOutput: VisualOutputReference = {
+  schemaVersion: 1,
+  visualOutputReferenceId: 'visual-output_413',
+  workspaceId: fixtureWorkspaceId,
+  version: 3,
+  visualBrief: { id: visualBrief.visualBriefId, version: visualBrief.version },
+  owner: 'VISUAL_ENGINE',
+  requestReference: 'delivery://requests/visual-413',
+  outputReference: 'library://visual-output-413',
+  status: 'READY',
+  qcStatus: 'PASS_WITH_WARNINGS',
+  providerExecutionAuthorizedByLite: false,
+  paidExecutionAuthorizedByLite: false,
+  createdAt: '2026-08-31T15:00:00.000Z'
+};
+
+export const secondVisualBriefRecord: VisualBriefRecord = {
+  brief: {
+    ...visualBrief,
+    visualBriefId: 'visual-brief_414',
+    version: 1,
+    title: 'Governed review social card',
+    outputKind: 'MOMENTS_SOCIAL_CARD',
+    aspectRatio: '1:1',
+    sceneIntent: 'A review checkpoint separated from external publication.',
+    createdAt: '2026-08-31T16:00:00.000Z'
+  },
+  visualBriefFingerprintSha256: 'c'.repeat(64),
+  consumerIdentity: { ipId: 'moki-editorial', styleId: 'review-card' }
+};
+
+export const secondVisualOutput: VisualOutputReference = {
+  schemaVersion: 1,
+  visualOutputReferenceId: 'visual-output_414',
+  workspaceId: fixtureWorkspaceId,
+  version: 1,
+  visualBrief: {
+    id: secondVisualBriefRecord.brief.visualBriefId,
+    version: secondVisualBriefRecord.brief.version
+  },
+  owner: 'VISUAL_ENGINE',
+  requestReference: 'delivery://requests/visual-414',
+  status: 'PLANNING_REQUIRED',
+  providerExecutionAuthorizedByLite: false,
+  paidExecutionAuthorizedByLite: false,
+  createdAt: '2026-08-31T17:00:00.000Z'
+};
+
+export const alternateVisualOutput: VisualOutputReference = {
+  ...visualOutput,
+  visualOutputReferenceId: 'visual-output_413-alternate',
+  version: 1,
+  requestReference: 'delivery://requests/visual-413-alternate',
+  outputReference: 'library://visual-output-413-alternate',
+  status: 'REUSED_CERTIFIED_ASSET',
+  qcStatus: 'PASS',
+  createdAt: '2026-08-31T15:30:00.000Z'
+};
+
 export function detailFixture(
   options: {
     drafts?: ContentDraft[];
@@ -111,6 +197,10 @@ export function detailFixture(
     reviews?: ContentReviewDecision[];
     packages?: PublishPackage[];
     feedback?: ProductLoopUseFeedback[];
+    visualBriefs?: VisualBriefRecord[];
+    visualOutputs?: VisualOutputReference[];
+    partial?: boolean;
+    warnings?: ContentStudioWorkDetail['warnings'];
   } = {}
 ): ContentStudioWorkDetail {
   return {
@@ -122,8 +212,10 @@ export function detailFixture(
     reviews: options.reviews ?? [review],
     publishPackages: options.packages ?? [publishPackage],
     feedback: options.feedback ?? [feedback],
-    partial: true,
-    warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+    visualBriefs: options.visualBriefs ?? [visualBriefRecord],
+    visualOutputs: options.visualOutputs ?? [visualOutput],
+    partial: options.partial ?? true,
+    warnings: options.warnings ?? ['VISUAL_HISTORY_NOT_DISCOVERABLE']
   };
 }
 
@@ -161,21 +253,27 @@ export function summaryFixture(
     latestDraftReview: review,
     latestPublishPackage: packageSummary,
     latestPackageFeedback: feedback,
+    visualBriefCount: 1,
+    visualOutputCount: 1,
     ...overrides
   };
 }
 
 export function listFixture(
   items: ContentStudioWorkSummary[] = [summaryFixture()],
-  nextAfter: string | null = null
+  nextAfter: string | null = null,
+  coverage: Pick<ContentStudioWorkList, 'partial' | 'warnings'> = {
+    partial: true,
+    warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+  }
 ): ContentStudioWorkList {
   return {
     schemaVersion: 1,
     workspaceId: fixtureWorkspaceId,
     items,
     nextAfter,
-    partial: true,
-    warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+    partial: coverage.partial,
+    warnings: coverage.warnings
   };
 }
 

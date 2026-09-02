@@ -7,6 +7,7 @@ import type {
   ProductLoopUseFeedback,
   PublishPackage
 } from '@markorbit/contracts/product-loop';
+import type { VisualBrief, VisualOutputReference } from '@markorbit/contracts/daily-workspace';
 
 const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000';
 
@@ -15,6 +16,13 @@ export type ContentStudioFeedbackOutcome = Extract<
   ProductLoopFeedbackOutcome,
   'USER_REPORTED_PUBLISHED' | 'USER_REPORTED_USED' | 'NOT_USED'
 >;
+
+/** Lite-local owner transport wrapper; the underlying Visual contracts remain shared. */
+export interface VisualBriefRecord {
+  readonly brief: Readonly<VisualBrief>;
+  readonly visualBriefFingerprintSha256: string;
+  readonly consumerIdentity: Readonly<{ ipId: string; styleId: string }>;
+}
 
 export interface ContentStudioWorkSummary {
   contentOpportunity: { id: ContentOpportunity['contentOpportunityId']; version: number };
@@ -30,6 +38,8 @@ export interface ContentStudioWorkSummary {
   latestDraftReview: ContentReviewDecision | null;
   latestPublishPackage: Omit<PublishPackage, 'body'> | null;
   latestPackageFeedback: ProductLoopUseFeedback | null;
+  visualBriefCount: number;
+  visualOutputCount: number;
 }
 
 export interface ContentStudioWorkList {
@@ -37,7 +47,7 @@ export interface ContentStudioWorkList {
   workspaceId: string;
   items: ContentStudioWorkSummary[];
   nextAfter: string | null;
-  partial: true;
+  partial: boolean;
   warnings: readonly ContentStudioWarning[];
 }
 
@@ -50,7 +60,9 @@ export interface ContentStudioWorkDetail {
   reviews: ContentReviewDecision[];
   publishPackages: PublishPackage[];
   feedback: ProductLoopUseFeedback[];
-  partial: true;
+  visualBriefs: VisualBriefRecord[];
+  visualOutputs: VisualOutputReference[];
+  partial: boolean;
   warnings: readonly ContentStudioWarning[];
 }
 

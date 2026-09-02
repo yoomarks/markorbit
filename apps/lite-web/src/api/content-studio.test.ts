@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContentStudioHttpError, createContentStudioClient } from './content-studio.js';
-import { draft, opportunity, publishPackage, review } from '../features/content-studio/fixtures.js';
+import {
+  detailFixture,
+  draft,
+  listFixture,
+  opportunity,
+  publishPackage,
+  review,
+  visualBriefRecord,
+  visualOutput
+} from '../features/content-studio/fixtures.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,6 +31,34 @@ describe('Content Studio authenticated Gateway client', () => {
         headers: { 'x-markorbit-workspace-id': 'workspace-1' }
       });
     }
+  });
+
+  it('accepts complete owner coverage, Visual counts, and exact detail lineage without fallback', async () => {
+    const list = listFixture(undefined, null, { partial: false, warnings: [] });
+    const detail = detailFixture({ partial: false, warnings: [] });
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn<() => Promise<Response>>()
+        .mockResolvedValueOnce(new Response(JSON.stringify(list), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(detail), { status: 200 }))
+    );
+
+    const client = createContentStudioClient('workspace-1');
+    const receivedList = await client.list();
+    const receivedDetail = await client.find(opportunity.contentOpportunityId);
+
+    expect(receivedList).toMatchObject({
+      partial: false,
+      warnings: [],
+      items: [{ visualBriefCount: 1, visualOutputCount: 1 }]
+    });
+    expect(receivedDetail).toMatchObject({
+      partial: false,
+      warnings: [],
+      visualBriefs: [visualBriefRecord],
+      visualOutputs: [visualOutput]
+    });
   });
 
   it.each([400, 401, 403, 404, 503])(

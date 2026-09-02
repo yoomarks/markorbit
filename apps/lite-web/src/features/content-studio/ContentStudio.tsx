@@ -228,6 +228,14 @@ function WorkList({
                       : 'No user-reported feedback'}
                   </dd>
                 </div>
+                <div>
+                  <dt>Durable Visual Briefs</dt>
+                  <dd>{work.visualBriefCount}</dd>
+                </div>
+                <div>
+                  <dt>Durable Visual Outputs</dt>
+                  <dd>{work.visualOutputCount}</dd>
+                </div>
               </dl>
               <details>
                 <summary>Sources and provenance</summary>
@@ -244,6 +252,157 @@ function WorkList({
         </div>
       )}
     </>
+  );
+}
+
+function VisualLineage({ value }: { value: ContentStudioWorkDetail }) {
+  const hasKnownHistory = value.visualBriefs.length > 0 || value.visualOutputs.length > 0;
+  return (
+    <section className="content-studio__visual-lineage" aria-labelledby="visual-lineage-heading">
+      <div>
+        <p className="content-studio__eyebrow">Read-only owner history</p>
+        <h2 id="visual-lineage-heading">Visual / Media lineage</h2>
+        <p>
+          Exact Visual Brief versions and their known Visual Outputs. Opaque references are shown as
+          provenance identifiers, not artifact downloads.
+        </p>
+      </div>
+      {!hasKnownHistory && !value.partial ? (
+        <EmptyState
+          title="No Visual / Media lineage"
+          description="Owner coverage is complete and no Visual Briefs or Visual Outputs are linked to this exact Content Opportunity."
+        />
+      ) : null}
+      {!hasKnownHistory && value.partial ? (
+        <p className="content-studio__pending" role="status">
+          No exactly linked Visual history is currently discoverable. Legacy Workspace history may
+          exist, so this is unknown coverage rather than confirmation that no Visual work exists.
+        </p>
+      ) : null}
+      {value.visualBriefs.length > 0 ? (
+        <ol className="content-studio__visual-briefs">
+          {value.visualBriefs.map((record) => {
+            const brief = record.brief;
+            const outputs = value.visualOutputs.filter(
+              (output) =>
+                output.visualBrief.id === brief.visualBriefId &&
+                output.visualBrief.version === brief.version
+            );
+            return (
+              <li key={`${brief.visualBriefId}:${brief.version}`}>
+                <Card>
+                  <p className="content-studio__eyebrow">
+                    Visual Brief · exact version {brief.version}
+                  </p>
+                  <h3>{brief.title}</h3>
+                  <dl className="content-studio__facts">
+                    <div>
+                      <dt>Visual Brief ID</dt>
+                      <dd>{brief.visualBriefId}</dd>
+                    </div>
+                    <div>
+                      <dt>Output kind</dt>
+                      <dd>{brief.outputKind}</dd>
+                    </div>
+                    <div>
+                      <dt>Aspect ratio</dt>
+                      <dd>{brief.aspectRatio}</dd>
+                    </div>
+                    {brief.sceneIntent ? (
+                      <div>
+                        <dt>Scene intent</dt>
+                        <dd>{brief.sceneIntent}</dd>
+                      </div>
+                    ) : null}
+                    {brief.styleIntent ? (
+                      <div>
+                        <dt>Style intent</dt>
+                        <dd>{brief.styleIntent}</dd>
+                      </div>
+                    ) : null}
+                    <div>
+                      <dt>Created</dt>
+                      <dd>{date(brief.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>Consumer identity</dt>
+                      <dd>
+                        IP {record.consumerIdentity.ipId} · style {record.consumerIdentity.styleId}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Exact fingerprint</dt>
+                      <dd>
+                        <code>{record.visualBriefFingerprintSha256}</code>
+                      </dd>
+                    </div>
+                  </dl>
+                  <section
+                    className="content-studio__nested"
+                    aria-label={`Visual Outputs for ${brief.visualBriefId} version ${brief.version}`}
+                  >
+                    <h4>Visual Outputs for this exact Brief version</h4>
+                    {outputs.length > 0 ? (
+                      <ol className="content-studio__visual-outputs">
+                        {outputs.map((output) => (
+                          <li key={`${output.visualOutputReferenceId}:${output.version}`}>
+                            <p className="content-studio__eyebrow">
+                              Visual Output · exact version {output.version}
+                            </p>
+                            <dl className="content-studio__facts">
+                              <div>
+                                <dt>Visual Output ID</dt>
+                                <dd>{output.visualOutputReferenceId}</dd>
+                              </div>
+                              <div>
+                                <dt>Status</dt>
+                                <dd>{output.status}</dd>
+                              </div>
+                              <div>
+                                <dt>Request reference</dt>
+                                <dd>{output.requestReference}</dd>
+                              </div>
+                              {output.outputReference ? (
+                                <div>
+                                  <dt>Output reference</dt>
+                                  <dd>{output.outputReference}</dd>
+                                </div>
+                              ) : null}
+                              {output.qcStatus ? (
+                                <div>
+                                  <dt>QC status</dt>
+                                  <dd>{output.qcStatus}</dd>
+                                </div>
+                              ) : null}
+                              <div>
+                                <dt>Created</dt>
+                                <dd>{date(output.createdAt)}</dd>
+                              </div>
+                              <div>
+                                <dt>Provider execution authorized by Lite</dt>
+                                <dd>{output.providerExecutionAuthorizedByLite ? 'Yes' : 'No'}</dd>
+                              </div>
+                              <div>
+                                <dt>Paid execution authorized by Lite</dt>
+                                <dd>{output.paidExecutionAuthorizedByLite ? 'Yes' : 'No'}</dd>
+                              </div>
+                            </dl>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="content-studio__pending">
+                        No Visual Output is linked to this exact Visual Brief version.
+                      </p>
+                    )}
+                  </section>
+                </Card>
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+    </section>
   );
 }
 
@@ -625,6 +784,7 @@ function WorkDetail({
         recordReview={recordReview}
         preparePackage={preparePackage}
       />
+      <VisualLineage value={value} />
       <section aria-labelledby="lineage-heading">
         <h2 id="lineage-heading">Version lineage</h2>
         {drafts.length === 0 ? (
