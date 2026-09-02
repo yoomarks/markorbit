@@ -9,6 +9,8 @@ import {
   type ManagedCommunicationFoundationStoreV1
 } from './managed-communication-foundation.js';
 import type {
+  ManagedCommunicationPreparedProviderSendV1,
+  ManagedCommunicationProviderSendContextV1,
   ManagedCommunicationProviderSenderV1,
   ManagedCommunicationSendRequestV1
 } from './managed-communication-exchange.js';
@@ -287,6 +289,10 @@ export class GmailManagedCommunicationClientV1 {
     return this.config.providerAccountRef;
   }
 
+  async prepareAccessToken(): Promise<string> {
+    return this.token();
+  }
+
   async profile(): Promise<Readonly<{ historyId: string }>> {
     const value = (await this.gmailJson('/users/me/profile')) as { historyId?: unknown };
     return Object.freeze({
@@ -294,18 +300,25 @@ export class GmailManagedCommunicationClientV1 {
     });
   }
 
-  async sendRaw(input: Readonly<{ raw: string; threadId?: string }>): Promise<GmailMessage> {
-    return this.gmailJson('/users/me/messages/send', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        raw: Buffer.from(input.raw, 'utf8').toString('base64url'),
-        ...(input.threadId ? { threadId: required(input.threadId, 'gmail.threadId', 500) } : {})
-      })
-    }) as Promise<GmailMessage>;
+  async sendRaw(
+    input: Readonly<{ raw: string; threadId?: string }>,
+    accessToken?: string
+  ): Promise<GmailMessage> {
+    return this.gmailJson(
+      '/users/me/messages/send',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          raw: Buffer.from(input.raw, 'utf8').toString('base64url'),
+          ...(input.threadId ? { threadId: required(input.threadId, 'gmail.threadId', 500) } : {})
+        })
+      },
+      accessToken
+    ) as Promise<GmailMessage>;
   }
 
-  async threadMetadata(threadId: string): Promise<GmailReplyHeadersV1> {
+  async threadMetadata(threadId: string, accessToken?: string): Promise<GmailReplyHeadersV1> {
     const safeThreadId = encodeURIComponent(required(threadId, 'gmail.threadId', 500));
     const query = [
       'format=metadata',
@@ -313,7 +326,11 @@ export class GmailManagedCommunicationClientV1 {
       'metadataHeaders=References',
       'metadataHeaders=Subject'
     ].join('&');
-    const value = (await this.gmailJson(`/users/me/threads/${safeThreadId}?${query}`)) as Readonly<{
+    const value = (await this.gmailJson(
+      `/users/me/threads/${safeThreadId}?${query}`,
+      {},
+      accessToken
+    )) as Readonly<{
       messages?: readonly GmailMessage[];
     }>;
     const latest = value.messages?.at(-1)?.payload;
@@ -352,8 +369,12 @@ export class GmailManagedCommunicationClientV1 {
     return base64UrlDecode(required(value.data, 'gmail.attachment.data', 50_000_000));
   }
 
-  private async gmailJson(path: string, init: RequestInit = {}): Promise<unknown> {
-    const token = await this.token();
+  private async gmailJson(
+    path: string,
+    init: RequestInit = {},
+    accessToken?: string
+  ): Promise<unknown> {
+    const token = accessToken ?? (await this.token());
     const response = await this.fetchImpl(`https://gmail.googleapis.com/gmail/v1${path}`, {
       ...init,
       headers: {
@@ -406,54 +427,81 @@ export class GmailManagedCommunicationSenderV1 implements ManagedCommunicationPr
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
 
-  async send(
+  async prepare(
     request: Readonly<ManagedCommunicationSendRequestV1>,
-    context: Parameters<ManagedCommunicationProviderSenderV1['send']>[1]
-  ) {
+    context: Readonly<ManagedCommunicationProviderSendContextV1>
+  ): Promise<Readonly<ManagedCommunicationPreparedProviderSendV1>> {
     if (context.account.provider !== GMAIL_MANAGED_COMMUNICATION_PROVIDER) {
       throw new Error('Gmail sender received a non-Gmail account binding.');
     }
+
     const configuredAccount = this.client.providerAccountRef().toLowerCase();
     if (context.account.providerAccountRef.toLowerCase() !== configuredAccount) {
       throw new Error('Gmail sender account binding does not match configured provider account.');
     }
 
+    const accessToken = await this.client.prepareAccessToken();
+
     let providerThreadId: string | undefined;
     let reply: GmailReplyHeadersV1 | undefined;
+
     if (request.replyToThreadRef) {
       if (!this.resolveProviderThreadId) {
         throw new Error('Gmail reply dispatch requires durable provider thread resolution.');
       }
+
       providerThreadId = await this.resolveProviderThreadId({
         workspaceId: context.workspaceId,
         accountRef: context.account.accountRef,
         threadRef: request.replyToThreadRef
       });
+
       if (!providerThreadId) {
         throw new Error('Gmail reply thread could not be resolved durably.');
       }
-      const metadata = await this.client.threadMetadata(providerThreadId);
+
+      const metadata = await this.client.threadMetadata(providerThreadId, accessToken);
       const references = metadata.inReplyTo
         ? [metadata.references, metadata.inReplyTo].filter(Boolean).join(' ')
         : metadata.references;
+
       reply = Object.freeze({
         ...metadata,
         ...(references ? { references } : {})
       });
     }
 
-    const result = await this.client.sendRaw({
-      raw: buildGmailManagedCommunicationMimeV1(request, context.sendId, reply),
-      ...(providerThreadId ? { threadId: providerThreadId } : {})
-    });
-    const providerMessageId = required(result.id, 'gmail.send.id', 500);
-    const returnedThreadId = required(result.threadId, 'gmail.send.threadId', 500);
+    const raw = buildGmailManagedCommunicationMimeV1(request, context.sendId, reply);
+
     return Object.freeze({
-      providerMessageId,
-      providerThreadId: returnedThreadId,
-      providerReceiptRef: `gmail://users/me/messages/${providerMessageId}`,
-      acceptedAt: this.now()
+      dispatch: async () => {
+        const result = await this.client.sendRaw(
+          {
+            raw,
+            ...(providerThreadId ? { threadId: providerThreadId } : {})
+          },
+          accessToken
+        );
+
+        const providerMessageId = required(result.id, 'gmail.send.id', 500);
+        const returnedThreadId = required(result.threadId, 'gmail.send.threadId', 500);
+
+        return Object.freeze({
+          providerMessageId,
+          providerThreadId: returnedThreadId,
+          providerReceiptRef: `gmail://users/me/messages/${providerMessageId}`,
+          acceptedAt: this.now()
+        });
+      }
     });
+  }
+
+  async send(
+    request: Readonly<ManagedCommunicationSendRequestV1>,
+    context: Readonly<ManagedCommunicationProviderSendContextV1>
+  ) {
+    const prepared = await this.prepare(request, context);
+    return prepared.dispatch();
   }
 }
 

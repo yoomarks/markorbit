@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { InMemoryManagedCommunicationFoundationV1 } from '../src/managed-communication-foundation.js';
+import {
+  InMemoryManagedCommunicationFoundationV1,
+  managedCommunicationNormalizedIdsV1
+} from '../src/managed-communication-foundation.js';
 import {
   InMemoryManagedCommunicationSendClaimStoreV1,
   ManagedCommunicationExchangeV1,
@@ -88,18 +91,26 @@ describe('Managed Communication provider readiness boundary', () => {
       prepare: (_request, context) => {
         prepareCalls += 1;
         preparedSendIds.push(context.sendId);
-        if (prepareCalls === 1) return Promise.reject(new Error('provider auth unavailable'));
-        return Promise.resolve();
+
+        if (prepareCalls === 1) {
+          return Promise.reject(new Error('provider auth unavailable'));
+        }
+
+        return Promise.resolve(
+          Object.freeze({
+            dispatch: () => {
+              dispatchCalls += 1;
+              return Promise.resolve({
+                providerMessageId: 'provider-message-readiness',
+                providerThreadId: 'provider-thread-readiness',
+                providerReceiptRef: `provider://${context.sendId}`,
+                acceptedAt: '2026-09-02T13:01:01.000Z'
+              });
+            }
+          })
+        );
       },
-      send: (_request, context) => {
-        dispatchCalls += 1;
-        return Promise.resolve({
-          providerMessageId: 'provider-message-readiness',
-          providerThreadId: 'provider-thread-readiness',
-          providerReceiptRef: `provider://${context.sendId}`,
-          acceptedAt: '2026-09-02T13:01:01.000Z'
-        });
-      }
+      send: () => Promise.reject(new Error('prepared sender fallback must not run'))
     };
     const { exchange } = await exchangeWith(sender);
 
@@ -139,7 +150,9 @@ describe('Managed Communication provider readiness boundary', () => {
   it('treats Gmail OAuth refresh failure as pre-dispatch readiness failure and never calls messages/send', async () => {
     const providerRequests: string[] = [];
     const fetchImpl = (async (url: string | URL | Request) => {
-      const value = String(url);
+      const value = await Promise.resolve(
+        typeof url === 'string' ? url : url instanceof URL ? url.href : url.url
+      );
       providerRequests.push(value);
       if (value === 'https://oauth2.googleapis.com/token') {
         return new Response('{}', { status: 401 });
@@ -161,7 +174,9 @@ describe('Managed Communication provider readiness boundary', () => {
     const providerRequests: string[] = [];
     let metadataFails = true;
     const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
-      const value = String(url);
+      const value = await Promise.resolve(
+        typeof url === 'string' ? url : url instanceof URL ? url.href : url.url
+      );
       providerRequests.push(value);
       if (value === 'https://oauth2.googleapis.com/token') {
         return Response.json({ access_token: 'access-token', expires_in: 3600 });
@@ -184,7 +199,10 @@ describe('Managed Communication provider readiness boundary', () => {
       }
       if (value.endsWith('/gmail/v1/users/me/messages/send')) {
         expect(init?.method).toBe('POST');
-        return Response.json({ id: 'provider-message-reply', threadId: 'provider-thread-original' });
+        return Response.json({
+          id: 'provider-message-reply',
+          threadId: 'provider-thread-original'
+        });
       }
       throw new Error(`Unexpected provider request: ${value}`);
     }) as typeof fetch;
@@ -194,7 +212,14 @@ describe('Managed Communication provider readiness boundary', () => {
       () => '2026-09-02T13:01:01.000Z'
     );
     const { exchange } = await exchangeWith(sender);
-    const replyRequest = input({ replyToThreadRef: 'commthread-existing' });
+    const existing = managedCommunicationNormalizedIdsV1({
+      workspaceId,
+      accountRef,
+      provider: 'GMAIL',
+      providerMessageId: 'provider-message-original',
+      providerThreadId: 'provider-thread-original'
+    });
+    const replyRequest = input({ replyToThreadRef: existing.threadRef });
 
     await expect(exchange.send(replyRequest)).rejects.toMatchObject({
       code: 'PROVIDER_NOT_READY',
@@ -206,8 +231,14 @@ describe('Managed Communication provider readiness boundary', () => {
     const receipt = await exchange.send(replyRequest);
     expect(receipt.providerMessageId).toBe('provider-message-reply');
     expect(receipt.providerThreadId).toBe('provider-thread-original');
-    expect(providerRequests.filter((value) => value === 'https://oauth2.googleapis.com/token')).toHaveLength(1);
-    expect(providerRequests.filter((value) => value.includes('/users/me/threads/'))).toHaveLength(2);
-    expect(providerRequests.filter((value) => value.includes('/users/me/messages/send'))).toHaveLength(1);
+    expect(
+      providerRequests.filter((value) => value === 'https://oauth2.googleapis.com/token')
+    ).toHaveLength(1);
+    expect(providerRequests.filter((value) => value.includes('/users/me/threads/'))).toHaveLength(
+      2
+    );
+    expect(
+      providerRequests.filter((value) => value.includes('/users/me/messages/send'))
+    ).toHaveLength(1);
   });
 });
