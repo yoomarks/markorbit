@@ -49,7 +49,7 @@ jobs:
           services/mgsn/tests/provider-selection-postgres.test.ts
       - name: Verify static owner checks
         run: |
-          pnpm --filter @markorbit/mgsn-service build
+          pnpm build:mgsn-provider-registry-deps
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
       - name: Commit verified repair
