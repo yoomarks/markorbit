@@ -53,10 +53,7 @@ function guideRoute(value = options()) {
   return matches[0]!;
 }
 
-function headers(
-  value = options(),
-  extras: Record<string, string> = {}
-): Record<string, string> {
+function headers(value = options(), extras: Record<string, string> = {}): Record<string, string> {
   return {
     cookie: 'mo_session=token',
     origin: 'https://test.markorbit.local',
@@ -325,7 +322,10 @@ describe('Gateway Trademark Asset AI Guide advisory POST boundary', () => {
       code: `OWNER_${status}`,
       detail: 'owner result must remain visible'
     };
-    vi.stubGlobal('fetch', vi.fn(() => ownerResponse(status, responseBody)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => ownerResponse(status, responseBody))
+    );
 
     const result = await guideRoute(value).handle({
       method: 'POST',
@@ -389,9 +389,7 @@ describe('Gateway Trademark Asset AI Guide advisory POST boundary', () => {
 
   it('keeps GET routes free of Origin, CSRF and idempotency requirements', async () => {
     const value = options();
-    const downstream = vi.fn(() =>
-      ownerResponse(200, { schemaVersion: 1, items: [] })
-    );
+    const downstream = vi.fn(() => ownerResponse(200, { schemaVersion: 1, items: [] }));
     vi.stubGlobal('fetch', downstream);
     const read = createGatewayProductLoopRoutes(value).find(
       (candidate) => candidate.method === 'GET' && candidate.path === '/api/lite/today'
