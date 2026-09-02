@@ -22,12 +22,14 @@ function requiredEnvironment(name: string, maximum: number): string {
   return value;
 }
 
-const anchorProviderMessageId = process.argv[2]?.trim();
-if (!anchorProviderMessageId) {
+const argument = process.argv[2]?.trim();
+if (!argument) {
   throw new Error(
-    'Usage: pnpm exec tsx services/capability-engine/scripts/gmail-inbound-live-sync.ts <anchor-provider-message-id>'
+    'Usage: pnpm exec tsx services/capability-engine/scripts/gmail-inbound-live-sync.ts <anchor-provider-message-id|--resume>'
   );
 }
+const resume = argument === '--resume';
+const anchorProviderMessageId = resume ? undefined : argument;
 
 const runtime = resolveManagedCommunicationRuntimeConfigV1(process.env);
 if (!runtime) {
@@ -70,19 +72,22 @@ try {
     accountRef: runtime.accountRef
   });
 
-  const result = await syncGmailManagedCommunicationInboundFromAnchorV1({
-    client,
-    inbound,
-    foundation,
-    workspaceId: runtime.workspaceId,
-    accountRef: runtime.accountRef,
-    anchorProviderMessageId
-  });
+  const result = resume
+    ? await inbound.syncOnce()
+    : await syncGmailManagedCommunicationInboundFromAnchorV1({
+        client,
+        inbound,
+        foundation,
+        workspaceId: runtime.workspaceId,
+        accountRef: runtime.accountRef,
+        anchorProviderMessageId: anchorProviderMessageId!
+      });
 
   process.stdout.write(
     `${JSON.stringify(
       {
         schemaVersion: 1,
+        mode: resume ? 'RESUME' : 'ANCHORED',
         workspaceId: runtime.workspaceId,
         accountRef: runtime.accountRef,
         initialized: result.initialized,
