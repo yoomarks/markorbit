@@ -84,6 +84,7 @@ function clientWithLoad(load: TrademarkAssetClient['load']): TrademarkAssetClien
       officialTruthVerifiedByLite: false
     }),
     load,
+    prepareAiGuide: vi.fn(),
     saveCommerceProfile: vi.fn(),
     loadServiceWorkPackage: vi.fn().mockResolvedValue(undefined),
     prepareServiceWorkPackage: vi.fn()
@@ -103,6 +104,7 @@ describe('TrademarkAssetPortfolio', () => {
         officialTruthVerifiedByLite: false
       }),
       load,
+      prepareAiGuide: vi.fn(),
       saveCommerceProfile: vi.fn(),
       loadServiceWorkPackage,
       prepareServiceWorkPackage: vi.fn()
@@ -131,6 +133,29 @@ describe('TrademarkAssetPortfolio', () => {
 
     expect(await screen.findByText('Durably reloaded sale context')).toBeInTheDocument();
     expect(screen.getByText('Authorized representative')).toBeInTheDocument();
+  });
+
+  it('preserves loaded Asset and Commerce Profile truth when AI Guide preparation is stale', async () => {
+    const client: TrademarkAssetClient = {
+      ...clientWithLoad(vi.fn().mockResolvedValue({ view, commerceProfile })),
+      prepareAiGuide: vi
+        .fn()
+        .mockRejectedValue(
+          new TrademarkAssetHttpError(409, 'ASSET_VERSION_CONFLICT', 'Asset changed.')
+        )
+    };
+    const user = userEvent.setup();
+    render(<TrademarkAssetPortfolio workspaceId={workspaceId} client={client} />);
+
+    await user.click(await screen.findByRole('button', { name: 'View asset details' }));
+    await user.click(await screen.findByRole('button', { name: 'Prepare AI guidance' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Asset truth changed or evidence conflicts'
+    );
+    expect(screen.getByRole('heading', { name: 'MARK ORBIT' })).toBeInTheDocument();
+    expect(screen.getByText('Durably reloaded sale context')).toBeInTheDocument();
+    expect(screen.getByText(/Source facts are read-only/i)).toBeInTheDocument();
   });
 
   it.each([

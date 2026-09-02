@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { TrademarkAssetCommerceProfile } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
+import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/trademark-asset-ai-guide';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 
 const source = {
@@ -77,6 +78,80 @@ const profile: TrademarkAssetCommerceProfile = {
   updatedAt: '2026-09-01T02:00:00.000Z'
 };
 
+const aiGuideResult: TrademarkAssetAiGuidePreparedResult = {
+  schemaVersion: 1,
+  workspaceId: view.workspaceId,
+  subjectUserId: 'fixture-user',
+  trademarkAssetId: view.trademarkAssetId,
+  trademarkAssetVersion: view.anchorVersion,
+  contextReferences: [
+    {
+      kind: 'ASSET_COMPOSITION',
+      referenceId: view.trademarkAssetId,
+      referenceVersion: String(view.anchorVersion),
+      fingerprintSha256: 'fixture-composition-fingerprint'
+    },
+    {
+      kind: 'COMMERCE_PROFILE',
+      referenceId: profile.commerceProfileId,
+      referenceVersion: String(profile.version)
+    }
+  ],
+  evidence: [source],
+  suggestions: [
+    {
+      schemaVersion: 1,
+      aiGuideSuggestionId: 'ai-guide-suggestion_story-explain',
+      workspaceId: view.workspaceId,
+      version: 1,
+      asset: { id: view.trademarkAssetId, version: view.anchorVersion },
+      kind: 'EXPLAIN_ASSET',
+      title: 'Asset context summary',
+      explanation:
+        'The current owner evidence identifies North Star Holdings. This is advisory explanation, not official verification.',
+      evidence: [source],
+      staleOrConflictingEvidencePresent: false,
+      userConfirmationRequiredForAnyConsequence: true,
+      externalActionAuthorized: false,
+      filingAuthorized: false,
+      customerOrProviderContactAuthorized: false,
+      paidExecutionAuthorized: false,
+      officialTruthVerified: false,
+      capabilityVerified: false,
+      createdAt: '2026-09-02T09:00:00.000Z'
+    },
+    {
+      schemaVersion: 1,
+      aiGuideSuggestionId: 'ai-guide-suggestion_story-checklist',
+      workspaceId: view.workspaceId,
+      version: 1,
+      asset: { id: view.trademarkAssetId, version: view.anchorVersion },
+      kind: 'PREPARE_CHECKLIST',
+      title: 'Evidence review checklist',
+      explanation:
+        'Review source freshness, ownership evidence, and any unresolved observations before consequential work.',
+      evidence: [source],
+      staleOrConflictingEvidencePresent: false,
+      userConfirmationRequiredForAnyConsequence: true,
+      externalActionAuthorized: false,
+      filingAuthorized: false,
+      customerOrProviderContactAuthorized: false,
+      paidExecutionAuthorized: false,
+      officialTruthVerified: false,
+      capabilityVerified: false,
+      createdAt: '2026-09-02T09:00:00.000Z'
+    }
+  ],
+  staleOrConflictingEvidencePresent: false,
+  officialTruthCreatedByGuide: false,
+  officialStatusVerifiedByGuide: false,
+  deadlineCertifiedByGuide: false,
+  externalActionAuthorizedByGuide: false,
+  customerOrProviderContactAuthorizedByGuide: false,
+  paidExecutionAuthorizedByGuide: false,
+  generatedAt: '2026-09-02T09:00:00.000Z'
+};
+
 const meta = {
   title: 'Lite/Trademark Asset/Sell-side Workspace',
   component: TrademarkAssetWorkspace,
@@ -122,5 +197,36 @@ export const NarrowCommerceProfile: Story = {
   },
   parameters: {
     viewport: { defaultViewport: 'mobile1' }
+  }
+};
+
+export const AiGuidePrepared: Story = {
+  args: {
+    commerceProfile: profile,
+    aiGuide: aiGuideResult,
+    onPrepareAiGuide: () => Promise.resolve(aiGuideResult)
+  }
+};
+
+export const AiGuideStaleEvidenceMobile390: Story = {
+  args: {
+    aiGuide: {
+      ...aiGuideResult,
+      staleOrConflictingEvidencePresent: true,
+      suggestions: aiGuideResult.suggestions.map((suggestion) => ({
+        ...suggestion,
+        staleOrConflictingEvidencePresent: true
+      }))
+    },
+    onPrepareAiGuide: () =>
+      Promise.resolve({ ...aiGuideResult, staleOrConflictingEvidencePresent: true })
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile390',
+      viewports: {
+        mobile390: { name: '390px mobile', styles: { width: '390px', height: '844px' } }
+      }
+    }
   }
 };

@@ -154,6 +154,7 @@ export function TrademarkAssetPortfolio({
             {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
+            onPrepareAiGuide={(input) => client.prepareAiGuide(selectedId, input)}
             {...(detail.commerceProfile ? { commerceProfile: detail.commerceProfile } : {})}
             onSaveCommerceProfile={async (input) => {
               const commerceProfile = await client.saveCommerceProfile(selectedId, input);
