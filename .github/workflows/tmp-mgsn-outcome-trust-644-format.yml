@@ -61,8 +61,8 @@ jobs:
           if old not in s:
               raise SystemExit('divergent evidence fixture block not found')
           s = s.replace(old, new, 1)
-          old = """    await service().putEvidenceItem(item);\n    const projected = projection([item]);\n    const wrongContext = {\n      ...projected,\n      contextFingerprintSha256: hash('9')\n    };\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
-          new = """    await service().putEvidenceItem(item);\n    const wrongContext = projection([item], hash('9'));\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
+          old = """    await repository().putEvidenceItem(item);\n    const projected = projection([item]);\n    const wrongContext = {\n      ...projected,\n      contextFingerprintSha256: hash('9')\n    };\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
+          new = """    await repository().putEvidenceItem(item);\n    const wrongContext = projection([item], hash('9'));\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
           if old not in s:
               raise SystemExit('wrong-context projection fixture block not found')
           p.write_text(s.replace(old, new, 1))
