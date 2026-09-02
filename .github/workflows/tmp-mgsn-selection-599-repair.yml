@@ -1,0 +1,65 @@
+name: tmp-mgsn-selection-599-repair
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  repair-formal-branch:
+    if: github.head_ref == 'tmp-mgsn-selection-599-repair'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-selection-durable
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fix exact TypeScript narrowing defects
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('services/mgsn/src/provider-selection-postgres.ts')
+          s = p.read_text()
+          old = "return structuredClone(value) as ProviderSelectionMutationResultV1;"
+          new = "return structuredClone(value) as unknown as ProviderSelectionMutationResultV1;"
+          if old not in s:
+              raise SystemExit('canonical replay cast target not found')
+          s = s.replace(old, new, 1)
+          old = "selection.revocationReasonCode ?? null,"
+          new = "selection.status === 'REVOKED' ? selection.revocationReasonCode : null,"
+          if old not in s:
+              raise SystemExit('revocation reason target not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+      - name: Format owned files
+        run: >-
+          pnpm exec prettier --write
+          services/mgsn/src/provider-selection-postgres.ts
+          services/mgsn/src/durable-runtime.ts
+          services/mgsn/tests/provider-selection-postgres.test.ts
+      - name: Verify static owner checks
+        run: |
+          pnpm --filter @markorbit/mgsn-service build
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service lint
+      - name: Commit verified repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/mgsn/src/provider-selection-postgres.ts services/mgsn/src/durable-runtime.ts services/mgsn/tests/provider-selection-postgres.test.ts
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git commit -m 'MGSN: repair durable Provider Selection static checks'
+          git push origin HEAD:mgsn-selection-durable
