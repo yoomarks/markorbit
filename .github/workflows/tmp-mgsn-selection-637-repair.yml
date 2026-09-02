@@ -1,0 +1,71 @@
+name: TEMP MGSN Selection 637 repair
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair-verify-push:
+    if: github.head_ref == 'tmp-mgsn-selection-637-repair'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_mgsn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_mgsn_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      MGSN_TEST_DATABASE_URL: postgres://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-selection-pg-arity-repair
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Repair exact Selection INSERT arity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/mgsn/src/provider-selection-postgres.ts')
+          s = p.read_text()
+          old = '        $60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70::jsonb,$71\n'
+          new = '        $60,$61,$62,$63,$64,$65,$66,$67,$68::jsonb,$69\n'
+          if old not in s:
+              raise SystemExit('expected Selection VALUES tail not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Format owner file
+        run: pnpm exec prettier --write services/mgsn/src/provider-selection-postgres.ts
+      - name: Build MGSN dependency closure
+        run: pnpm turbo run build --filter=@markorbit/mgsn-service...
+      - name: MGSN typecheck and lint
+        run: |
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service lint
+      - name: Run durable Selection tests with real PostgreSQL
+        run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-selection-postgres.test.ts
+      - name: Push verified repair to formal branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/mgsn/src/provider-selection-postgres.ts
+          git commit -m "[MGSN-P0] Repair durable Selection PostgreSQL INSERT arity"
+          git push origin HEAD:mgsn-selection-pg-arity-repair
