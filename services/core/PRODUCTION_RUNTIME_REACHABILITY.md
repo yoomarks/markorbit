@@ -1,6 +1,7 @@
 # Core Production Runtime Reachability — 2026-09-03
 
-Parent: #655  
+Parent: #655
+
 Baseline: `main@92a61ac1b81d1a8805178d648eea76757e048789`
 
 This checkpoint distinguishes code presence from production reachability. A component is not considered production-ready merely because its implementation, tests, or PostgreSQL adapter exist.
@@ -17,24 +18,149 @@ This checkpoint distinguishes code presence from production reachability. A comp
 
 ## Current reachability matrix
 
-| Subsystem | Implementation | Durable owner state | Production construction | Intended invocation boundary | Classification | Current next action |
-| --- | --- | --- | --- | --- | --- | --- |
-| Brain Asset Registry / ACTIVE resolution | `brain-asset-registry.ts`, `brain-asset-registry-postgres.ts` | PostgreSQL registry exists | not constructed by `services/core/src/main.ts`; exported as Core package subpath | owner-library resolution boundary | `INTERNAL_ONLY_REACHABLE` | Keep internal until a real consumer requires an owner route; do not add HTTP by analogy. |
-| Brain Build Runtime | `brain-build-runtime.ts` | derived/recomputable build output; registry adapter exists separately | not constructed by `main.ts`; built/exported as subpath | owner-library build boundary | `INTERNAL_ONLY_REACHABLE` | Wait for a real governed Build consumer; ordinary Capability hot paths must not run Brain research/build. |
-| Brain Self Audit + BrainGap Registry | `brain-build-self-audit-observation.ts`, `brain-build-self-audit-runtime.ts`, `brain-gap-registry-postgres.ts` | durable PostgreSQL BrainGap registry | `createPostgresBrainBuildSelfAuditRuntimeV1(database)` is an explicit production-capable constructor; not mounted in `main.ts` | internal Brain Build self-audit observation | `INTERNAL_ONLY_REACHABLE` | No generic route. Use the durable constructor from the actual Brain Build owner path when a production Build run is invoked. |
-| PERFORMANCE_GAP Method Improvement admission | `method-improvement.ts` + HTTP routes | PostgreSQL repository | `main.ts` constructs `PostgresMethodImprovementAdmissionRepositoryV1` and service | authenticated internal Method Improvement route through `createRuntime` | `PRODUCTION_REACHABLE` | Preserve current strict predecessor/report semantics. |
-| COVERAGE_GAP Method Improvement admission | `method-improvement-coverage-gap.ts` | in-memory repository only in accepted #512 slice | not wired to durable production bootstrap | owner-local coordinator only | `DURABILITY_INCOMPLETE` | Shared persistence foundation #657, then Core PostgreSQL adapter/bootstrap follow-on. |
-| Method Outcome Evidence admission | `method-outcome-evidence.ts` + HTTP | PostgreSQL | constructed in `main.ts` | authenticated internal route | `PRODUCTION_REACHABLE` | No owner-local reachability gap found. |
-| Method Outcome Reports | `method-outcome-report.ts` + HTTP | PostgreSQL reader | constructed in `main.ts` | authenticated internal route | `PRODUCTION_REACHABLE` | No owner-local reachability gap found. |
-| Official Fee Reference Store / current reference read | `official-fee-reference-store.ts`, `official-fee-reference-store-postgres.ts` | PostgreSQL | not constructed by Core `main.ts`; explicit package subpaths are built/exported | controlled owner-library reference read/materialization boundary | `INTERNAL_ONLY_REACHABLE` | Keep behind bounded resolver/currentness adapters; do not create generic fee HTTP truth. |
-| Capability Runtime + current Runtime Capability / Implementation Profile | Capability Engine registry/profile/runtime stack | PostgreSQL | Capability Engine `main.ts` constructs registry, implementation profiles and governed runtime | Capability Engine authenticated runtime | `PRODUCTION_REACHABLE` | No generic maturity promotion implied by runtime reachability. |
-| Capability observation / quality telemetry | observation ledger + quality telemetry | PostgreSQL/telemetry sink where configured | Capability Engine `main.ts` constructs observation ledger and wraps governed runtime when telemetry configured | owner runtime observation path | `PRODUCTION_REACHABLE` | Keep execution quality separate from method correctness. |
-| Managed AI runtime | managed AI bootstrap | durable/runtime-specific dependencies | Capability Engine `main.ts` creates runtime bindings when configuration is complete | governed Capability execution only | `PRODUCTION_REACHABLE` | No authority expansion; missing config remains disabled/fail-closed. |
-| Managed Communication | managed communication bootstrap + Gmail runtime | PostgreSQL + provider state | Capability Engine `main.ts` constructs bindings and optional Gmail sender after #305 | existing authenticated managed-communication owner boundary | `PRODUCTION_REACHABLE` | Live-provider authority remains configuration/account bounded. |
-| Capability source-admission/currentness/source-use production proof | `current-source-admission*`, policy catalog, USPTO Method/Reference currentness, USPTO source-use authority | proof is deterministic/recomputable; depends on governed producer state | current Capability Engine `main.ts` does not construct a production source-admission/evidence composition path | owner-local library/evaluator APIs only | `IMPLEMENTED_NOT_BOOTSTRAPPED` | #656 is the first explicit promotion-readiness/production proof vertical slice. Do not promote policy before real governance activation. |
-| Capability catalog integrity audit | `capability-catalog-integrity.ts` and current-catalog adapter | reads durable current registries | not mounted as service route | read-only owner audit API | `INTERNAL_ONLY_REACHABLE` | Candidate input to future Cognitive Control Plane; no auto-remediation. |
-| Product demand coverage audit | `capability-demand-coverage.ts` | deterministic audit, no product-demand registry by design | not mounted as general route | explicit owner audit over caller-supplied governed demand descriptor | `INTERNAL_ONLY_REACHABLE` | Correct boundary. Product remains owner of demand truth. |
-| Coverage Gap evidence materialization | `capability-coverage-gap-evidence.ts` | deterministic evidence, no trigger mutation | not mounted as general route | owner producer evidence API | `INTERNAL_ONLY_REACHABLE` | Durable Core admission currently blocked by #657 persistence gap, not by producer evidence. |
+### Brain Asset Registry / ACTIVE resolution
+
+- Implementation: `brain-asset-registry.ts`, `brain-asset-registry-postgres.ts`.
+- Durable state: PostgreSQL registry exists.
+- Production construction: not constructed by `services/core/src/main.ts`; exported as a Core package subpath.
+- Intended boundary: owner-library resolution boundary.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: keep internal until a real consumer requires an owner route; do not add HTTP by analogy.
+
+### Brain Build Runtime
+
+- Implementation: `brain-build-runtime.ts`.
+- Durable state: derived/recomputable build output; registry adapter exists separately.
+- Production construction: not constructed by `main.ts`; built/exported as a subpath.
+- Intended boundary: owner-library build boundary.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: wait for a real governed Build consumer; ordinary Capability hot paths must not run Brain research/build.
+
+### Brain Self Audit + BrainGap Registry
+
+- Implementation: `brain-build-self-audit-observation.ts`, `brain-build-self-audit-runtime.ts`, `brain-gap-registry-postgres.ts`.
+- Durable state: PostgreSQL BrainGap registry.
+- Production construction: `createPostgresBrainBuildSelfAuditRuntimeV1(database)` is an explicit production-capable constructor; it is not mounted in `main.ts`.
+- Intended boundary: internal Brain Build self-audit observation.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: no generic route. Use the durable constructor from the actual Brain Build owner path when a production Build run is invoked.
+
+### PERFORMANCE_GAP Method Improvement admission
+
+- Implementation: `method-improvement.ts` plus HTTP routes.
+- Durable state: PostgreSQL repository.
+- Production construction: `main.ts` constructs `PostgresMethodImprovementAdmissionRepositoryV1` and its service.
+- Intended boundary: authenticated internal Method Improvement route through `createRuntime`.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: preserve current strict predecessor/report semantics.
+
+### COVERAGE_GAP Method Improvement admission
+
+- Implementation: `method-improvement-coverage-gap.ts`.
+- Durable state: in-memory repository only in accepted #512 slice.
+- Production construction: not wired to a durable production bootstrap.
+- Intended boundary: owner-local coordinator only.
+- Classification: `DURABILITY_INCOMPLETE`.
+- Next action: Shared persistence foundation #657, then Core PostgreSQL adapter/bootstrap follow-on.
+
+### Method Outcome Evidence admission
+
+- Implementation: `method-outcome-evidence.ts` plus HTTP.
+- Durable state: PostgreSQL.
+- Production construction: constructed in `main.ts`.
+- Intended boundary: authenticated internal route.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: no owner-local reachability gap found.
+
+### Method Outcome Reports
+
+- Implementation: `method-outcome-report.ts` plus HTTP.
+- Durable state: PostgreSQL reader.
+- Production construction: constructed in `main.ts`.
+- Intended boundary: authenticated internal route.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: no owner-local reachability gap found.
+
+### Official Fee Reference Store / current reference read
+
+- Implementation: `official-fee-reference-store.ts`, `official-fee-reference-store-postgres.ts`.
+- Durable state: PostgreSQL.
+- Production construction: not constructed by Core `main.ts`; explicit package subpaths are built/exported.
+- Intended boundary: controlled owner-library reference read/materialization boundary.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: keep behind bounded resolver/currentness adapters; do not create generic fee HTTP truth.
+
+### Capability Runtime + current Runtime Capability / Implementation Profile
+
+- Implementation: Capability Engine registry/profile/runtime stack.
+- Durable state: PostgreSQL.
+- Production construction: Capability Engine `main.ts` constructs registry, implementation profiles and governed runtime.
+- Intended boundary: authenticated Capability Engine runtime.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: no generic maturity promotion is implied by runtime reachability.
+
+### Capability observation / quality telemetry
+
+- Implementation: observation ledger plus quality telemetry.
+- Durable state: PostgreSQL/telemetry sink where configured.
+- Production construction: Capability Engine `main.ts` constructs the observation ledger and wraps governed runtime when telemetry is configured.
+- Intended boundary: owner runtime observation path.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: keep execution quality separate from method correctness.
+
+### Managed AI runtime
+
+- Implementation: Managed AI bootstrap.
+- Durable state: runtime-specific durable dependencies.
+- Production construction: Capability Engine `main.ts` creates runtime bindings when configuration is complete.
+- Intended boundary: governed Capability execution only.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: no authority expansion; missing configuration remains disabled/fail-closed.
+
+### Managed Communication
+
+- Implementation: Managed Communication bootstrap plus Gmail runtime.
+- Durable state: PostgreSQL plus provider state.
+- Production construction: Capability Engine `main.ts` constructs bindings and the optional Gmail sender after #305.
+- Intended boundary: existing authenticated Managed Communication owner boundary.
+- Classification: `PRODUCTION_REACHABLE`.
+- Next action: live-provider authority remains configuration/account bounded.
+
+### Capability source-admission/currentness/source-use production proof
+
+- Implementation: `current-source-admission*`, policy catalog, USPTO Method/Reference currentness and USPTO source-use authority.
+- Durable state: proof is deterministic/recomputable and depends on governed producer state.
+- Production construction: current Capability Engine `main.ts` does not construct a production source-admission/evidence composition path.
+- Intended boundary: owner-local library/evaluator APIs only.
+- Classification: `IMPLEMENTED_NOT_BOOTSTRAPPED`.
+- Next action: #656 is the first explicit promotion-readiness/production-proof vertical slice. Do not promote policy before real governance activation.
+
+### Capability catalog integrity audit
+
+- Implementation: `capability-catalog-integrity.ts` and current-catalog adapter.
+- Durable state: reads durable current registries.
+- Production construction: not mounted as a service route.
+- Intended boundary: read-only owner audit API.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: candidate input to a future Cognitive Control Plane; no auto-remediation.
+
+### Product demand coverage audit
+
+- Implementation: `capability-demand-coverage.ts`.
+- Durable state: deterministic audit; no product-demand registry by design.
+- Production construction: not mounted as a general route.
+- Intended boundary: explicit owner audit over a caller-supplied governed demand descriptor.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: correct boundary. Product remains owner of demand truth.
+
+### Coverage Gap evidence materialization
+
+- Implementation: `capability-coverage-gap-evidence.ts`.
+- Durable state: deterministic evidence; no trigger mutation.
+- Production construction: not mounted as a general route.
+- Intended boundary: owner producer evidence API.
+- Classification: `INTERNAL_ONLY_REACHABLE`.
+- Next action: durable Core admission is currently blocked by #657 persistence, not by producer evidence.
 
 ## Confirmed findings
 
@@ -60,12 +186,12 @@ This is intentional historical layering, but it is now the highest-value maturit
 
 None of the classifications above changes these boundaries:
 
-- Brain Build != Brain activation;
-- BrainGap != Method Improvement trigger;
-- Capability runtime success != method correctness;
-- Runtime Capability/Profile currentness != production source admission;
-- production source admission != Recommendation / filing / payment / Official Truth;
-- managed communication reachability != autonomous provider contact authority.
+- Brain Build != Brain activation.
+- BrainGap != Method Improvement trigger.
+- Capability runtime success != method correctness.
+- Runtime Capability/Profile currentness != production source admission.
+- Production source admission != Recommendation / filing / payment / Official Truth.
+- Managed Communication reachability != autonomous provider contact authority.
 
 ## Next execution order
 
@@ -78,9 +204,9 @@ None of the classifications above changes these boundaries:
 
 Core no longer has a broad “missing runtime” problem. The current maturity pattern is more specific:
 
-- primary auth/Knowledge/Method Outcome/PERFORMANCE_GAP paths are production-reachable;
-- Brain is deliberately library/internal-first and should stay that way until a real consumer exists;
-- Coverage Gap governance is implemented but not durable;
+- Primary auth/Knowledge/Method Outcome/PERFORMANCE_GAP paths are production-reachable.
+- Brain is deliberately library/internal-first and should stay that way until a real consumer exists.
+- Coverage Gap governance is implemented but not durable.
 - Capability production-source governance is implemented in primitives but not yet assembled into a real production promotion vertical slice.
 
 Those two latter gaps are the current highest-value Core maturity work and are now tracked by #657 and #656 respectively.
