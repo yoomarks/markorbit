@@ -1,0 +1,40 @@
+name: tmp-mgsn-568-prettier
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  format-selection:
+    if: github.head_ref == 'tmp-mgsn-568-prettier'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-mgsn-568-prettier
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact Selection files
+        run: |
+          pnpm exec prettier --write services/mgsn/src/provider-selection.ts services/mgsn/tests/provider-selection.test.ts
+      - name: Commit generated formatting
+        run: |
+          if git diff --quiet -- services/mgsn/src/provider-selection.ts services/mgsn/tests/provider-selection.test.ts; then
+            echo 'Already formatted.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/mgsn/src/provider-selection.ts services/mgsn/tests/provider-selection.test.ts
+          git commit -m 'chore: capture exact Prettier output for PR 568'
+          git push origin HEAD:tmp-mgsn-568-prettier
