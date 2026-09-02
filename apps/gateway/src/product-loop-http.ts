@@ -120,7 +120,11 @@ function environmentTimeout(): number | undefined {
 function aiGuideBody(request: JsonRequest): Readonly<Record<string, unknown>> {
   const body = bodyRecord(request);
   const allowedFields = ['expectedTrademarkAssetVersion', 'requestedKinds'] as const;
-  if (Object.keys(body).some((field) => !allowedFields.includes(field as (typeof allowedFields)[number])))
+  if (
+    Object.keys(body).some(
+      (field) => !allowedFields.includes(field as (typeof allowedFields)[number])
+    )
+  )
     throw new HttpError(
       400,
       'INVALID_REQUEST',
@@ -295,17 +299,23 @@ export function createGatewayProductLoopRoutes(
   });
 
   return [
-    route('GET', '/api/lite/today', ['workspace:read']),
-    route('GET', '/api/lite/daily-orbit', ['workspace:read']),
-    route('GET', '/api/lite/daily-workspace', ['workspace:read']),
-    route('GET', '/api/lite/opportunity-candidates', ['workspace:read']),
-    route('GET', '/api/lite/opportunity-candidates/:opportunityCandidateId', ['workspace:read']),
+    route('GET', '/api/lite/today', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/daily-orbit', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/daily-workspace', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/opportunity-candidates', ['workspace:read'], 'READ'),
+    route(
+      'GET',
+      '/api/lite/opportunity-candidates/:opportunityCandidateId',
+      ['workspace:read'],
+      'READ'
+    ),
     route(
       'GET',
       '/api/lite/opportunity-candidates/:opportunityCandidateId/qualification',
-      ['workspace:read']
+      ['workspace:read'],
+      'READ'
     ),
-    route('GET', '/api/lite/trademark-assets', ['workspace:read']),
+    route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
     {
       method: 'GET',
       path: '/api/lite/trademark-assets/:trademarkAssetId',
@@ -322,7 +332,8 @@ export function createGatewayProductLoopRoutes(
     route(
       'GET',
       '/api/lite/trademark-assets/:trademarkAssetId/service-work-package',
-      ['workspace:read']
+      ['workspace:read'],
+      'READ'
     ),
     route('POST', '/api/lite/trademark-assets/:trademarkAssetId/service-work-packages', [
       'matter:create'
@@ -330,18 +341,18 @@ export function createGatewayProductLoopRoutes(
     route('POST', '/api/lite/trademark-service-work-packages/:workPackageId/execution-readiness', [
       'review:perform'
     ]),
-    route('GET', '/api/lite/content-studio/works', ['workspace:read']),
-    route('GET', '/api/lite/content-studio/works/:contentOpportunityId', ['workspace:read']),
+    route('GET', '/api/lite/content-studio/works', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/content-studio/works/:contentOpportunityId', ['workspace:read'], 'READ'),
     route('POST', '/api/lite/content-studio/works/:contentOpportunityId/drafts', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/revisions', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/ready-for-review', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/reviews', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/publish-packages', ['matter:manage']),
-    route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read']),
-    route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read']),
-    route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read']),
-    route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read']),
-    route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read']),
+    route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], 'READ'),
     route('POST', '/api/lite/product-preference-events', ['workspace:read']),
     route('POST', '/api/lite/today/:todayRecommendationId/prepared-actions', ['matter:manage']),
     route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage']),
