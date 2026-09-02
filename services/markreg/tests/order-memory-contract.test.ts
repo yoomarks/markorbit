@@ -4,7 +4,7 @@ import * as prettier from 'prettier';
 import { describe, it } from 'vitest';
 
 describe('Production Intake Prettier probe', () => {
-  it('prints exact hosted Prettier output', async () => {
+  it('prints exact hosted Prettier output as base64', async () => {
     const file = path.resolve('tests/production-intake-postgres.test.ts');
     const input = await readFile(file, 'utf8');
     const config = await prettier.resolveConfig(file);
@@ -13,6 +13,8 @@ describe('Production Intake Prettier probe', () => {
       filepath: file,
     });
 
-    throw new Error(`PRETTIER608_START\n${output}PRETTIER608_END`);
+    throw new Error(
+      `PRETTIER608_B64:${Buffer.from(output, 'utf8').toString('base64')}`,
+    );
   });
 });
