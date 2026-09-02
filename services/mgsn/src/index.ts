@@ -18,6 +18,7 @@ export * from './provider-work-read-model-postgres.js';
 export * from './network-participation.js';
 export * from './network-participation-postgres.js';
 export * from './provider-responsibility.js';
+export * from './provider-responsibility-postgres.js';
 export * from './provider-discovery.js';
 export * from './provider-discovery-postgres.js';
 export * from './provider-selection.js';
