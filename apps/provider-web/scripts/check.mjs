@@ -12,21 +12,40 @@ for (const file of ['main.js', 'provider-work-api.js', 'provider-work-model.js']
 }
 
 const combined = `${await readFile(resolve(root, 'index.html'), 'utf8')}\n${await readFile(resolve(root, 'src', 'main.js'), 'utf8')}`;
-const required = ['Provider Workspace', 'governed MarkOrbit Gateway', 'Official Truth', 'read-only'];
+const required = [
+  'Provider Workspace',
+  'governed MarkOrbit Gateway',
+  'Official Truth',
+  'read-only'
+];
 for (const marker of required) {
   if (!combined.includes(marker)) {
     throw new Error(`Provider Workspace product is missing required marker: ${marker}`);
   }
 }
 
-for (const marker of ['ProviderLogin', 'ProviderAccount', 'ProviderOrganization', 'marketplace', 'bidding']) {
+for (const marker of [
+  'ProviderLogin',
+  'ProviderAccount',
+  'ProviderOrganization',
+  'marketplace',
+  'bidding'
+]) {
   if (combined.includes(marker)) {
     throw new Error(`Provider Workspace must not introduce ${marker}`);
   }
 }
 
-for (const forbiddenAction of ['Accept work', 'Decline work', 'Contact client', 'Submit filing', 'Pay now']) {
+for (const forbiddenAction of [
+  'Accept work',
+  'Decline work',
+  'Contact client',
+  'Submit filing',
+  'Pay now'
+]) {
   if (combined.includes(forbiddenAction)) {
-    throw new Error(`Provider Workspace read-only slice must not add action control: ${forbiddenAction}`);
+    throw new Error(
+      `Provider Workspace read-only slice must not add action control: ${forbiddenAction}`
+    );
   }
 }

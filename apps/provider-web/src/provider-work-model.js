@@ -94,7 +94,10 @@ function responseView(value) {
     }
     return {
       state: source.kind,
-      label: source.decision === 'ACCEPTED' ? 'Response recorded: accepted' : 'Response recorded: declined',
+      label:
+        source.decision === 'ACCEPTED'
+          ? 'Response recorded: accepted'
+          : 'Response recorded: declined',
       detail: `${response.id} · v${response.version}`
     };
   }
@@ -153,14 +156,17 @@ function incomingView(value) {
     throw new ProviderWorkModelError('incomingDataAuthority.state is malformed.');
   }
   if (source.embeddedPrivateFieldValues !== false) {
-    throw new ProviderWorkModelError('Incoming-data projection must not embed private field values.');
+    throw new ProviderWorkModelError(
+      'Incoming-data projection must not embed private field values.'
+    );
   }
   switch (source.state) {
     case 'CURRENTLY_USABLE':
       return {
         state: source.state,
         label: 'Incoming-data authority currently usable',
-        detail: 'Only the exact authorized projection may be resolved separately; no private values are embedded here.'
+        detail:
+          'Only the exact authorized projection may be resolved separately; no private values are embedded here.'
       };
     case 'DENIED':
       if (source.incomingFieldsVisible !== false) {
@@ -173,7 +179,9 @@ function incomingView(value) {
       };
     case 'KNOWN_ABSENT':
       if (source.incomingFieldsVisible !== false) {
-        throw new ProviderWorkModelError('Known-absent incoming-data authority must keep fields hidden.');
+        throw new ProviderWorkModelError(
+          'Known-absent incoming-data authority must keep fields hidden.'
+        );
       }
       return {
         state: source.state,
@@ -181,29 +189,37 @@ function incomingView(value) {
         detail: 'Known absence; incoming fields remain hidden.'
       };
     case 'UNKNOWN':
-      if (source.incomingFieldsVisible !== false || source.reason !== 'AUTHORITY_STATE_NOT_ESTABLISHED') {
+      if (
+        source.incomingFieldsVisible !== false ||
+        source.reason !== 'AUTHORITY_STATE_NOT_ESTABLISHED'
+      ) {
         throw new ProviderWorkModelError('Unknown incoming-data authority must fail closed.');
       }
       return {
         state: source.state,
         label: 'Incoming-data authority unknown',
-        detail: 'Authority state is not established. This is not known absence; incoming fields remain hidden.'
+        detail:
+          'Authority state is not established. This is not known absence; incoming fields remain hidden.'
       };
     default:
       if (source.incomingFieldsVisible !== false) {
-        throw new ProviderWorkModelError('Unavailable incoming-data authority must keep fields hidden.');
+        throw new ProviderWorkModelError(
+          'Unavailable incoming-data authority must keep fields hidden.'
+        );
       }
       return {
         state: source.state,
         label: 'Incoming-data authority source unavailable',
-        detail: 'Current incoming-data permission cannot be established; incoming fields remain hidden.'
+        detail:
+          'Current incoming-data permission cannot be established; incoming fields remain hidden.'
       };
   }
 }
 
 export function toProviderWorkItemViewModel(value) {
   const item = record(value, 'Provider work item');
-  if (item.schemaVersion !== 1) throw new ProviderWorkModelError('Unsupported Provider work schema version.');
+  if (item.schemaVersion !== 1)
+    throw new ProviderWorkModelError('Unsupported Provider work schema version.');
   const provider = record(item.provider, 'provider');
   const allocation = record(item.allocation, 'allocation');
   const servicePackage = record(item.servicePackage, 'servicePackage');
@@ -224,7 +240,10 @@ export function toProviderWorkItemViewModel(value) {
   if (origin.exposureClass !== 'ORIGINATING_PROFESSIONAL_REFERENCE_ONLY') {
     throw new ProviderWorkModelError('Origin projection is broader than allowed.');
   }
-  if (item.allocationIsExistingM4TruthNotCreatedByProjection !== true || item.queuePresenceIsNotActionAuthority !== true) {
+  if (
+    item.allocationIsExistingM4TruthNotCreatedByProjection !== true ||
+    item.queuePresenceIsNotActionAuthority !== true
+  ) {
     throw new ProviderWorkModelError('Provider work authority boundary is malformed.');
   }
   allFalse(item.privacyExclusions, privacyKeys, 'privacyExclusions');
@@ -254,7 +273,8 @@ export function parseProviderWorkListBody(body) {
   }
   const page = record(list.page, 'providerWorkItemList.page');
   positiveVersion(page.limit, 'providerWorkItemList.page.limit');
-  if (page.nextCursor !== undefined) nonEmptyString(page.nextCursor, 'providerWorkItemList.page.nextCursor');
+  if (page.nextCursor !== undefined)
+    nonEmptyString(page.nextCursor, 'providerWorkItemList.page.nextCursor');
   return Object.freeze({
     items: list.items.map(toProviderWorkItemViewModel),
     nextCursor: page.nextCursor,
@@ -265,11 +285,17 @@ export function parseProviderWorkListBody(body) {
 export function parseProviderWorkDetailBody(body) {
   const root = record(body, 'Gateway response');
   const read = record(root.providerWorkItemRead, 'providerWorkItemRead');
-  if (read.schemaVersion !== 1 || read.decision !== 'AUTHORIZED' || read.existenceDisclosed !== true) {
+  if (
+    read.schemaVersion !== 1 ||
+    read.decision !== 'AUTHORIZED' ||
+    read.existenceDisclosed !== true
+  ) {
     throw new ProviderWorkModelError('Provider work detail authorization projection is malformed.');
   }
   if (read.readAuthorityDoesNotAuthorizeMutation !== true) {
-    throw new ProviderWorkModelError('Provider work read authority was widened into mutation authority.');
+    throw new ProviderWorkModelError(
+      'Provider work read authority was widened into mutation authority.'
+    );
   }
   return toProviderWorkItemViewModel(read.item);
 }

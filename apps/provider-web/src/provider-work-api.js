@@ -1,4 +1,5 @@
-const workspaceIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const workspaceIdPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allocationIdPattern = /^allocation_[A-Za-z0-9_-]+$/;
 
 export class ProviderWorkClientError extends Error {
@@ -12,7 +13,9 @@ export class ProviderWorkClientError extends Error {
 }
 
 export function normalizeWorkspaceContext(value) {
-  const normalized = String(value ?? '').trim().toLowerCase();
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
   if (!workspaceIdPattern.test(normalized)) {
     throw new ProviderWorkClientError(
       'INVALID_WORKSPACE_CONTEXT',

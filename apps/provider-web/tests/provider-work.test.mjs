@@ -97,7 +97,13 @@ function item(overrides = {}) {
 }
 
 function response({ ok = true, status = 200, body = {} } = {}) {
-  return { ok, status, async json() { return body; } };
+  return {
+    ok,
+    status,
+    async json() {
+      return body;
+    }
+  };
 }
 
 test('workspace context is normalized but never self-establishes authority', () => {
@@ -135,7 +141,11 @@ test('detail URL encodes only an exact Allocation reference and preserves privac
     workspaceId,
     fetchImpl: async (...args) => {
       calls.push(args);
-      return response({ ok: false, status: 404, body: { error: { code: 'PROVIDER_WORK_ITEM_NOT_FOUND' } } });
+      return response({
+        ok: false,
+        status: 404,
+        body: { error: { code: 'PROVIDER_WORK_ITEM_NOT_FOUND' } }
+      });
     }
   });
   await assert.rejects(
@@ -149,7 +159,8 @@ test('detail URL encodes only an exact Allocation reference and preserves privac
 test('503 remains retryable source failure and is never converted to empty truth', async () => {
   const client = createProviderWorkClient({
     workspaceId,
-    fetchImpl: async () => response({ ok: false, status: 503, body: { error: { code: 'UPSTREAM' } } })
+    fetchImpl: async () =>
+      response({ ok: false, status: 503, body: { error: { code: 'UPSTREAM' } } })
   });
   await assert.rejects(
     () => client.list(),
@@ -207,15 +218,33 @@ test('Provider Return is claim-only and read detail never grants mutation author
 
 test('malformed privacy or authority expansion fails closed', () => {
   assert.throws(
-    () => toProviderWorkItemViewModel(item({ privacyExclusions: { ...privacyExclusions, rawPrivateEvidenceIncluded: true } })),
+    () =>
+      toProviderWorkItemViewModel(
+        item({ privacyExclusions: { ...privacyExclusions, rawPrivateEvidenceIncluded: true } })
+      ),
     ProviderWorkModelError
   );
   assert.throws(
-    () => toProviderWorkItemViewModel(item({ authorityConsequences: { ...authorityConsequences, authorizesExternalContact: true } })),
+    () =>
+      toProviderWorkItemViewModel(
+        item({
+          authorityConsequences: { ...authorityConsequences, authorizesExternalContact: true }
+        })
+      ),
     ProviderWorkModelError
   );
   assert.throws(
-    () => toProviderWorkItemViewModel(item({ incomingDataAuthority: { state: 'UNKNOWN', reason: 'AUTHORITY_STATE_NOT_ESTABLISHED', incomingFieldsVisible: true, embeddedPrivateFieldValues: false } })),
+    () =>
+      toProviderWorkItemViewModel(
+        item({
+          incomingDataAuthority: {
+            state: 'UNKNOWN',
+            reason: 'AUTHORITY_STATE_NOT_ESTABLISHED',
+            incomingFieldsVisible: true,
+            embeddedPrivateFieldValues: false
+          }
+        })
+      ),
     ProviderWorkModelError
   );
 });

@@ -33,7 +33,11 @@ test('Provider Workspace does not introduce duplicate identity or protected acti
     'Submit filing',
     'Pay now'
   ]) {
-    assert.equal(combined.includes(forbidden), false, `unexpected Provider Workspace concept: ${forbidden}`);
+    assert.equal(
+      combined.includes(forbidden),
+      false,
+      `unexpected Provider Workspace concept: ${forbidden}`
+    );
   }
 });
 

@@ -6,7 +6,8 @@ import {
 } from './provider-work-model.js';
 
 const root = document.querySelector('#app');
-if (!(root instanceof HTMLElement)) throw new Error('Provider Workspace root element is unavailable');
+if (!(root instanceof HTMLElement))
+  throw new Error('Provider Workspace root element is unavailable');
 root.dataset.runtime = 'provider-workspace-own-work';
 
 const workspaceForm = document.querySelector('#workspace-form');
@@ -91,13 +92,21 @@ function renderDetailItem(item) {
   const states = document.createElement('div');
   states.className = 'state-grid';
   states.append(
-    stateBlock('Provider response', item.response.state, `${item.response.label}. ${item.response.detail}`),
+    stateBlock(
+      'Provider response',
+      item.response.state,
+      `${item.response.label}. ${item.response.detail}`
+    ),
     stateBlock(
       'Provider Return',
       item.providerReturn.state,
       `${item.providerReturn.label}. ${item.providerReturn.detail}`
     ),
-    stateBlock('Incoming data', item.incoming.state, `${item.incoming.label}. ${item.incoming.detail}`)
+    stateBlock(
+      'Incoming data',
+      item.incoming.state,
+      `${item.incoming.label}. ${item.incoming.detail}`
+    )
   );
 
   const boundary = document.createElement('p');
@@ -114,7 +123,8 @@ function renderQueue() {
   if (items.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.innerHTML = '<strong>No provider work recorded.</strong><span>This is a successful empty queue, not a source failure.</span>';
+    empty.innerHTML =
+      '<strong>No provider work recorded.</strong><span>This is a successful empty queue, not a source failure.</span>';
     queueState.append(empty);
   }
 
@@ -163,7 +173,10 @@ function failClosed(error, surface) {
     detail.className = 'error-state';
     detail.replaceChildren();
     const strong = document.createElement('strong');
-    strong.textContent = error?.code === 'NOT_FOUND_OR_NOT_AUTHORIZED' ? 'Work item unavailable.' : 'Detail unavailable.';
+    strong.textContent =
+      error?.code === 'NOT_FOUND_OR_NOT_AUTHORIZED'
+        ? 'Work item unavailable.'
+        : 'Detail unavailable.';
     const text = document.createElement('span');
     text.textContent = message;
     detail.append(strong, text);
@@ -176,14 +189,22 @@ async function loadQueue({ append = false } = {}) {
   refreshQueue.disabled = true;
   loadMore.disabled = true;
   try {
-    const body = await client.list({ limit: 25, ...(append && nextCursor ? { cursor: nextCursor } : {}) });
+    const body = await client.list({
+      limit: 25,
+      ...(append && nextCursor ? { cursor: nextCursor } : {})
+    });
     const parsed = parseProviderWorkListBody(body);
     items = append ? [...items, ...parsed.items] : parsed.items;
     nextCursor = parsed.nextCursor;
     if (!append) selectedAllocationId = undefined;
     renderQueue();
     workspace.hidden = false;
-    setStatus(items.length === 0 ? 'Provider work loaded: empty queue.' : `Provider work loaded: ${items.length} item${items.length === 1 ? '' : 's'}.`, 'success');
+    setStatus(
+      items.length === 0
+        ? 'Provider work loaded: empty queue.'
+        : `Provider work loaded: ${items.length} item${items.length === 1 ? '' : 's'}.`,
+      'success'
+    );
   } catch (error) {
     if (!append) items = [];
     failClosed(error, 'queue');
@@ -204,7 +225,8 @@ async function loadDetail(allocationId) {
   try {
     const body = await client.detail(allocationId);
     const item = parseProviderWorkDetailBody(body);
-    if (item.allocationId !== allocationId) throw new ProviderWorkModelError('Detail Allocation identity changed in transit.');
+    if (item.allocationId !== allocationId)
+      throw new ProviderWorkModelError('Detail Allocation identity changed in transit.');
     renderDetailItem(item);
     setStatus(`Loaded ${allocationId}.`, 'success');
   } catch (error) {
