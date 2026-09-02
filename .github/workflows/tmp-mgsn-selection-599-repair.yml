@@ -1,15 +1,14 @@
 name: tmp-mgsn-selection-599-repair
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
+  push:
+    branches: [tmp-mgsn-selection-599-repair]
 
 permissions:
   contents: write
 
 jobs:
   repair-controlled-handoff-formal:
-    if: github.head_ref == 'tmp-mgsn-selection-599-repair'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
