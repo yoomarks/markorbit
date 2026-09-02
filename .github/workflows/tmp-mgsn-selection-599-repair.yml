@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-formal-branch:
+  refresh-formal-branch:
     if: github.head_ref == 'tmp-mgsn-selection-599-repair'
     runs-on: ubuntu-latest
     steps:
@@ -16,33 +16,11 @@ jobs:
         with:
           ref: mgsn-selection-durable
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Format owned files
-        run: >-
-          pnpm exec prettier --write
-          services/mgsn/src/provider-selection-postgres.ts
-          services/mgsn/src/durable-runtime.ts
-          services/mgsn/tests/provider-selection-postgres.test.ts
-      - name: Verify static owner checks
-        run: |
-          pnpm build:mgsn-provider-registry-deps
-          pnpm --filter @markorbit/mgsn-service typecheck
-          pnpm --filter @markorbit/mgsn-service lint
-      - name: Commit verified formatting if needed
+      - name: Merge exact latest main into formal Selection branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add services/mgsn/src/provider-selection-postgres.ts services/mgsn/src/durable-runtime.ts services/mgsn/tests/provider-selection-postgres.test.ts
-          if git diff --cached --quiet; then
-            echo 'No changes to commit.'
-            exit 0
-          fi
-          git commit -m 'MGSN: format expanded Provider Selection acceptance'
+          git fetch origin afbc0371f17d677243bae7530bdfa32466462683
+          test "$(git rev-parse FETCH_HEAD)" = "afbc0371f17d677243bae7530bdfa32466462683"
+          git merge --no-ff --no-edit FETCH_HEAD
           git push origin HEAD:mgsn-selection-durable
