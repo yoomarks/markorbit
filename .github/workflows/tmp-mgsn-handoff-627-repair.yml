@@ -1,0 +1,75 @@
+name: TEMP MGSN Handoff 627 repair
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair-verify-push:
+    if: github.head_ref == 'tmp-mgsn-handoff-627-repair'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_mgsn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_mgsn_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      MGSN_TEST_DATABASE_URL: postgres://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-controlled-handoff-durable
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact DTS repair
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/mgsn/src/controlled-privacy-handoff-postgres.ts')
+          s = p.read_text()
+          old = 'return structuredClone(value) as ControlledHandoffMutationResultV1;'
+          new = 'return structuredClone(value) as unknown as ControlledHandoffMutationResultV1;'
+          if old not in s:
+              raise SystemExit('expected DTS cast not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Format exact owner files
+        run: pnpm exec prettier --write services/mgsn/src/controlled-privacy-handoff-postgres.ts services/mgsn/src/durable-runtime.ts services/mgsn/src/index.ts services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts
+      - name: Build MGSN dependency closure
+        run: pnpm turbo run build --filter=@markorbit/mgsn-service...
+      - name: MGSN typecheck and lint
+        run: |
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service lint
+      - name: Run complete MGSN tests with real PostgreSQL
+        run: pnpm --filter @markorbit/mgsn-service test
+      - name: Push verified repair to formal branch
+        run: |
+          if git diff --quiet -- services/mgsn; then
+            echo "No repair changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/mgsn
+          git commit -m "[MGSN-P0] Repair and format durable Controlled Handoff runtime"
+          git push origin HEAD:mgsn-controlled-handoff-durable
