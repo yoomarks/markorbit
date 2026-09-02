@@ -12,6 +12,7 @@ import { PostgresProviderRegistryRepository } from '../src/provider-registry-pos
 import { PostgresProviderResponsibilityRepository } from '../src/provider-responsibility-postgres.js';
 import {
   ProviderResponsibilityService,
+  type CreateProviderResponsibilityProfileCommand,
   type ProviderResponsibilityCommandType,
   type ProviderResponsibilityCommit,
   type ReviseProviderResponsibilityProfileCommand
@@ -63,7 +64,9 @@ function verifiedEvidence(observedAt = initialAt): ProviderResponsibilityEvidenc
   };
 }
 
-function createCommand(overrides: Record<string, unknown> = {}) {
+function createCommand(
+  overrides: Partial<CreateProviderResponsibilityProfileCommand> = {}
+): CreateProviderResponsibilityProfileCommand {
   return {
     schemaVersion: 1 as const,
     providerId,
@@ -160,7 +163,18 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
     );
   }
 
-  async function counts() {
+  interface ResponsibilityRowCounts {
+    identities: number;
+    profiles: number;
+    teams: number;
+    evidence: number;
+    replays: number;
+    audits: number;
+    pointer_audits: number;
+    current_rows: number;
+  }
+
+  async function counts(): Promise<ResponsibilityRowCounts> {
     const result = await database.getPool().query(
       `SELECT
          (SELECT count(*)::int FROM mgsn_provider_responsibility_profile_identities) AS identities,
@@ -172,7 +186,7 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
          (SELECT count(*)::int FROM mgsn_provider_responsibility_pointer_audit) AS pointer_audits,
          (SELECT count(*)::int FROM mgsn_provider_responsibility_current) AS current_rows`
     );
-    return result.rows[0] as Record<string, number>;
+    return result.rows[0] as ResponsibilityRowCounts;
   }
 
   async function createVerified() {
@@ -405,7 +419,7 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
               checked_at,profile_fingerprint_sha256,
               jsonb_set(
                 jsonb_set(profile_record,'{providerResponsibilityProfileId}',to_jsonb($2::text)),
-                '{status}','\"SUSPENDED\"'::jsonb
+                '{status}','"SUSPENDED"'::jsonb
               ),correlation_id,created_by,$3
          FROM mgsn_provider_responsibility_profiles
         WHERE provider_responsibility_profile_id=$1 AND version=1`,
