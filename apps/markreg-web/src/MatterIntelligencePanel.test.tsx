@@ -141,7 +141,9 @@ describe('MatterIntelligencePanel', () => {
     render(<MatterIntelligencePanel formalMatterId="formal-matter_one" client={client} />);
 
     await waitFor(() =>
-      expect(screen.getByText(/No governed Matter Intelligence observations are recorded/i)).toBeTruthy()
+      expect(
+        screen.getByText(/No governed Matter Intelligence observations are recorded/i)
+      ).toBeTruthy()
     );
     expect(screen.queryByText('Matter intelligence unavailable')).toBeNull();
   });
