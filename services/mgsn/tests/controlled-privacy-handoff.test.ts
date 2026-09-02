@@ -256,18 +256,21 @@ describe('MGSN Controlled Privacy Handoff V1 Phase A', () => {
   it('requires exact current CAS and appends replacement versions on the same Handoff identity', async () => {
     const { repository, service } = harness();
     const current = await createCurrent(service);
-    const stale = replacementCommand(current);
-    stale.expectedCurrent = {
-      kind: 'EXACT',
-      controlledHandoffId: current.envelope.controlledHandoffId,
-      version: current.envelope.version + 1
+    const replacement = replacementCommand(current);
+    const stale: AuthorizeOrReplaceControlledHandoffCommandV1 = {
+      ...replacement,
+      expectedCurrent: {
+        kind: 'EXACT',
+        controlledHandoffId: current.envelope.controlledHandoffId,
+        version: current.envelope.version + 1
+      }
     };
     await expect(service.authorizeOrReplace(principal(), stale)).rejects.toMatchObject({
       code: 'STALE_HANDOFF',
       status: 409
     });
 
-    const replaced = await service.authorizeOrReplace(principal(), replacementCommand(current));
+    const replaced = await service.authorizeOrReplace(principal(), replacement);
     expect(replaced).toMatchObject({ mutation: 'REPLACED' });
     expect(replaced.envelope.controlledHandoffId).toBe(current.envelope.controlledHandoffId);
     expect(replaced.envelope.version).toBe(2);
@@ -357,10 +360,14 @@ describe('MGSN Controlled Privacy Handoff V1 Phase A', () => {
       () => 'controlled-handoff_605-currentness' as ControlledHandoffId
     );
     const current = await createCurrent(seed);
-    const stale = new ControlledPrivacyHandoffService(repository, {
-      evaluateCurrentAuthority: () =>
-        Promise.resolve(currentSnapshot({ visibilityAuthorized: false }))
-    }, () => now);
+    const stale = new ControlledPrivacyHandoffService(
+      repository,
+      {
+        evaluateCurrentAuthority: () =>
+          Promise.resolve(currentSnapshot({ visibilityAuthorized: false }))
+      },
+      () => now
+    );
 
     const validation = await stale.validateCurrent(principal(), {
       envelope: { controlledHandoffId: current.envelope.controlledHandoffId, version: 1 },
