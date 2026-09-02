@@ -233,6 +233,42 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
     return { status: response.status, body: (await response.json()) as Record<string, unknown> };
   }
 
+  async function expectMalformedDurableDocument(
+    suffix: string,
+    mutate: (document: Record<string, unknown>) => void,
+    workflowReference = false
+  ) {
+    const asset = await advanceAsset(`malformed-${suffix}`);
+    const command = commandFor(asset, `malformed-${suffix}`);
+    const recorded = await dispositions().record({
+      ...command,
+      ...(workflowReference
+        ? {
+            kind: 'RESOLVED_BY_WORKFLOW_REFERENCE' as const,
+            workflowReference: {
+              kind: 'MATTER' as const,
+              owner: 'MARKREG' as const,
+              referenceId: `matter_${suffix}`,
+              referenceVersion: '1'
+            }
+          }
+        : {})
+    });
+    const document = structuredClone(recorded) as unknown as Record<string, unknown>;
+    mutate(document);
+    await database.getPool().query(
+      `UPDATE lite_trademark_asset_management_dispositions
+          SET document_json=$3::jsonb
+        WHERE workspace_id=$1 AND disposition_id=$2`,
+      [workspaceId, recorded.dispositionId, JSON.stringify(document)]
+    );
+
+    await expect(readThroughHttp(asset.trademarkAssetId)).resolves.toMatchObject({
+      status: 503,
+      body: { code: 'PERSISTENCE_UNAVAILABLE', retryable: true }
+    });
+  }
+
   it('persists exact current Asset, Signal, and Recommendation versions instead of constants', async () => {
     const asset = await advanceAsset();
     const command = commandFor(asset, 'exact-current');
@@ -461,6 +497,102 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
       dispositions().listCurrentForAsset(workspaceId, asset.trademarkAssetId)
     ).rejects.toMatchObject({ code: 'PERSISTENCE_UNAVAILABLE', status: 503, retryable: true });
   });
+
+  it('fails closed when a durable disposition has an unknown top-level field', async () => {
+    await expectMalformedDurableDocument('top-level-field', (document) => {
+      document.unexpected = true;
+    });
+  });
+
+  it.each([
+    [
+      'Asset extra field',
+      'asset',
+      (reference: Record<string, unknown>): void => {
+        reference.extra = true;
+      }
+    ],
+    [
+      'Signal extra field',
+      'signal',
+      (reference: Record<string, unknown>): void => {
+        reference.extra = true;
+      }
+    ],
+    [
+      'Recommendation extra field',
+      'recommendation',
+      (reference: Record<string, unknown>): void => {
+        reference.extra = true;
+      }
+    ],
+    [
+      'missing Signal id',
+      'signal',
+      (reference: Record<string, unknown>): void => {
+        delete reference.id;
+      }
+    ]
+  ] as const)('fails closed for a malformed nested %s', async (_label, field, mutate) => {
+    await expectMalformedDurableDocument(`nested-${field}-${_label}`, (document) => {
+      mutate(document[field] as Record<string, unknown>);
+    });
+  });
+
+  it.each([
+    ['zero document version', 'version', 0],
+    ['unsafe Asset version', 'asset.version', Number.MAX_SAFE_INTEGER + 1],
+    ['fractional Signal version', 'signal.version', 1.5],
+    ['string Recommendation version', 'recommendation.version', '1']
+  ] as const)('fails closed for %s', async (_label, field, value) => {
+    await expectMalformedDurableDocument(`version-${field}`, (document) => {
+      const [parent, child] = field.split('.');
+      if (child) {
+        (document[parent!] as Record<string, unknown>)[child] = value;
+      } else {
+        document[parent!] = value;
+      }
+    });
+  });
+
+  it.each([
+    ['unsupported kind', 'kind', 'UNSUPPORTED'],
+    ['Workspace User owner', 'owner', 'WORKSPACE_USER'],
+    ['unsupported owner', 'owner', 'UNSUPPORTED']
+  ] as const)('fails closed for workflow reference %s', async (_label, field, value) => {
+    await expectMalformedDurableDocument(
+      `workflow-${field}-${value.toLowerCase()}`,
+      (document) => {
+        (document.workflowReference as Record<string, unknown>)[field] = value;
+      },
+      true
+    );
+  });
+
+  it.each([
+    ['empty referenceId', 'referenceId', ''],
+    ['non-string referenceId', 'referenceId', 1],
+    ['empty referenceVersion', 'referenceVersion', ''],
+    ['non-string referenceVersion', 'referenceVersion', 1],
+    ['extra field', 'extra', true]
+  ] as const)('fails closed for workflow reference %s', async (_label, field, value) => {
+    await expectMalformedDurableDocument(
+      `workflow-malformed-${field}-${String(value)}`,
+      (document) => {
+        (document.workflowReference as Record<string, unknown>)[field] = value;
+      },
+      true
+    );
+  });
+
+  it.each(['officialTruthCreated', 'legalConclusionVerified', 'capabilityVerified'] as const)(
+    'fails closed when durable %s is corrupted',
+    async (field) => {
+      await expectMalformedDurableDocument(`authority-${field}`, (document) => {
+        document[field] = true;
+      });
+    }
+  );
 
   it('rejects guessed and stale current-owner references', async () => {
     const asset = await advanceAsset();
