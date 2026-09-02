@@ -8,5 +8,6 @@ const dist = resolve(root, 'dist');
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, 'src'), { recursive: true });
 await cp(resolve(root, 'index.html'), resolve(dist, 'index.html'));
-await cp(resolve(root, 'src', 'main.js'), resolve(dist, 'src', 'main.js'));
-await cp(resolve(root, 'src', 'styles.css'), resolve(dist, 'src', 'styles.css'));
+for (const file of ['main.js', 'provider-work-api.js', 'provider-work-model.js', 'styles.css']) {
+  await cp(resolve(root, 'src', file), resolve(dist, 'src', file));
+}

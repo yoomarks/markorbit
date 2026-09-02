@@ -10,48 +10,43 @@ async function source(path) {
   return readFile(resolve(root, path), 'utf8');
 }
 
-// prettier-ignore
-test('bootstrap exposes only a neutral Provider Workspace shell', async () => {
+test('Provider Workspace exposes read-only queue/detail product boundaries', async () => {
   const html = await source('index.html');
   assert.match(html, /Provider Workspace/);
   assert.match(html, /governed MarkOrbit Gateway/);
-  assert.match(
-    html,
-    /does not create allocation, acceptance, appointment, contact, filing, payment,\s+or Official Truth authority/
-  );
+  assert.match(html, /Queue visibility is read-only context/);
+  assert.match(html, /Official Truth authority/);
+  assert.match(html, /aria-live="polite"/);
 });
 
-// prettier-ignore
-test(
-  'bootstrap does not introduce duplicate provider identity or marketplace concepts',
-  async () => {
-    const combined = `${await source('index.html')}\n${await source('src/main.js')}`;
-    for (const forbidden of [
-      'ProviderLogin',
-      'ProviderAccount',
-      'ProviderOrganization',
-      'marketplace',
-      'bidding'
-    ]) {
-      assert.equal(
-        combined.includes(forbidden),
-        false,
-        `unexpected bootstrap authority concept: ${forbidden}`
-      );
-    }
+test('Provider Workspace does not introduce duplicate identity or protected actions', async () => {
+  const combined = `${await source('index.html')}\n${await source('src/main.js')}`;
+  for (const forbidden of [
+    'ProviderLogin',
+    'ProviderAccount',
+    'ProviderOrganization',
+    'marketplace',
+    'bidding',
+    'Accept work',
+    'Decline work',
+    'Contact client',
+    'Submit filing',
+    'Pay now'
+  ]) {
+    assert.equal(combined.includes(forbidden), false, `unexpected Provider Workspace concept: ${forbidden}`);
   }
-);
+});
 
-// prettier-ignore
-test(
-  'package remains dependency-free so bootstrap requires no lockfile or shared registration change',
-  async () => {
-    const pkg = JSON.parse(await source('package.json'));
-    assert.equal(pkg.name, '@markorbit/provider-web');
-    assert.equal(pkg.dependencies, undefined);
-    assert.equal(pkg.devDependencies, undefined);
-    for (const script of ['build', 'lint', 'typecheck', 'test']) {
-      assert.equal(typeof pkg.scripts[script], 'string');
-    }
+test('package remains dependency-free and validates every product module', async () => {
+  const pkg = JSON.parse(await source('package.json'));
+  assert.equal(pkg.name, '@markorbit/provider-web');
+  assert.equal(pkg.dependencies, undefined);
+  assert.equal(pkg.devDependencies, undefined);
+  assert.match(pkg.scripts.test, /tests\/\*\.test\.mjs/);
+  const build = await source('scripts/build.mjs');
+  const check = await source('scripts/check.mjs');
+  for (const module of ['provider-work-api.js', 'provider-work-model.js']) {
+    assert.match(build, new RegExp(module.replaceAll('.', '\\.')));
+    assert.match(check, new RegExp(module.replaceAll('.', '\\.')));
   }
-);
+});

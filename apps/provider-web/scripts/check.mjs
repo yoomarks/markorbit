@@ -4,28 +4,29 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const entry = resolve(root, 'src', 'main.js');
-const result = spawnSync(process.execPath, ['--check', entry], { stdio: 'inherit' });
+for (const file of ['main.js', 'provider-work-api.js', 'provider-work-model.js']) {
+  const result = spawnSync(process.execPath, ['--check', resolve(root, 'src', file)], {
+    stdio: 'inherit'
+  });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
 
-if (result.status !== 0) process.exit(result.status ?? 1);
-
-const html = await readFile(resolve(root, 'index.html'), 'utf8');
-const required = ['Provider Workspace', 'governed MarkOrbit Gateway', 'Official Truth'];
+const combined = `${await readFile(resolve(root, 'index.html'), 'utf8')}\n${await readFile(resolve(root, 'src', 'main.js'), 'utf8')}`;
+const required = ['Provider Workspace', 'governed MarkOrbit Gateway', 'Official Truth', 'read-only'];
 for (const marker of required) {
-  if (!html.includes(marker)) {
-    throw new Error(`Provider Workspace shell is missing required marker: ${marker}`);
+  if (!combined.includes(marker)) {
+    throw new Error(`Provider Workspace product is missing required marker: ${marker}`);
   }
 }
 
-const forbidden = [
-  'ProviderLogin',
-  'ProviderAccount',
-  'ProviderOrganization',
-  'marketplace',
-  'bidding'
-];
-for (const marker of forbidden) {
-  if (html.includes(marker)) {
-    throw new Error(`Provider Workspace shell must not introduce ${marker}`);
+for (const marker of ['ProviderLogin', 'ProviderAccount', 'ProviderOrganization', 'marketplace', 'bidding']) {
+  if (combined.includes(marker)) {
+    throw new Error(`Provider Workspace must not introduce ${marker}`);
+  }
+}
+
+for (const forbiddenAction of ['Accept work', 'Decline work', 'Contact client', 'Submit filing', 'Pay now']) {
+  if (combined.includes(forbiddenAction)) {
+    throw new Error(`Provider Workspace read-only slice must not add action control: ${forbiddenAction}`);
   }
 }
