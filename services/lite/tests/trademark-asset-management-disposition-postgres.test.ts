@@ -211,6 +211,28 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
     return { status: response.status, body: (await response.json()) as Record<string, unknown> };
   }
 
+  async function readThroughHttp(
+    assetId: string,
+    readPrincipal: WorkspacePrincipal = {
+      ...principal,
+      role: 'READ_ONLY',
+      permissions: ['workspace:read']
+    },
+    requestedWorkspaceId = readPrincipal.workspaceId
+  ) {
+    const response = await fetch(
+      `${baseUrl}/v1/trademark-assets/${assetId}/management-dispositions`,
+      {
+        headers: {
+          'x-markorbit-internal-authorization': internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(readPrincipal),
+          'x-markorbit-workspace-id': requestedWorkspaceId
+        }
+      }
+    );
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  }
+
   it('persists exact current Asset, Signal, and Recommendation versions instead of constants', async () => {
     const asset = await advanceAsset();
     const command = commandFor(asset, 'exact-current');
@@ -299,6 +321,145 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
             .protectedActionAuthorized === false
       )
     ).toBe(true);
+  });
+
+  it.each([
+    'WATCHED',
+    'DEFERRED',
+    'DISMISSED',
+    'CONTINUED',
+    'RESOLVED_BY_WORKFLOW_REFERENCE'
+  ] as const)('reloads the current %s disposition through workspace:read HTTP', async (kind) => {
+    const asset = await advanceAsset(`read-${kind.toLowerCase()}`);
+    const command = commandFor(asset, `read-${kind}`);
+    const recorded = await dispositions().record({
+      ...command,
+      kind,
+      ...(kind === 'RESOLVED_BY_WORKFLOW_REFERENCE'
+        ? {
+            workflowReference: {
+              kind: 'MATTER' as const,
+              owner: 'MARKREG' as const,
+              referenceId: 'matter_read-current',
+              referenceVersion: '1'
+            }
+          }
+        : {})
+    });
+
+    const response = await readThroughHttp(asset.trademarkAssetId);
+    expect(response).toMatchObject({
+      status: 200,
+      body: {
+        schemaVersion: 1,
+        workspaceId,
+        asset: { id: asset.trademarkAssetId, version: asset.version }
+      }
+    });
+    const items = response.body.items as Array<{
+      signal: { id: string; version: number };
+      disposition: unknown;
+    }>;
+    expect(items).toHaveLength(projection(asset).signals.length);
+    expect(items.map((item) => item.signal.id)).toEqual(
+      projection(asset).signals.map((signal) => signal.managementSignalId)
+    );
+    expect(
+      items.find((item) => item.signal.id === command.managementSignal.id)?.disposition
+    ).toEqual(recorded);
+  });
+
+  it('returns null for stale Signal-version history and survives a new store instance', async () => {
+    const original = await advanceAsset('stale-read');
+    const command = commandFor(original, 'stale-read');
+    await dispositions().record(command);
+    const current = await assets().updateWorkspaceMetadata({
+      workspaceId,
+      trademarkAssetId: original.trademarkAssetId,
+      expectedVersion: original.version,
+      workspaceTags: [],
+      workspaceNotes: [],
+      workspacePriority: 'High owner priority',
+      idempotencyKey: 'stale-read-advance'
+    });
+
+    const restartedStore = new PostgresTrademarkAssetManagementDispositionStore(
+      database,
+      database.getPool(),
+      now
+    );
+    const result = await restartedStore.listCurrentForAsset(workspaceId, current.trademarkAssetId);
+    const currentItem = result.items.find((item) => item.signal.id === command.managementSignal.id);
+    expect(result.asset.version).toBe(current.version);
+    expect(currentItem).toMatchObject({
+      signal: { id: command.managementSignal.id, version: current.version },
+      disposition: null
+    });
+  });
+
+  it('chooses the latest exact-current disposition by recordedAt then dispositionId', async () => {
+    const asset = await advanceAsset('latest-read');
+    const first = await dispositions().record({
+      ...commandFor(asset, 'latest-read-first'),
+      kind: 'WATCHED'
+    });
+    const second = await dispositions().record({
+      ...commandFor(asset, 'latest-read-second'),
+      kind: 'DISMISSED'
+    });
+    const tiedAt = '2026-08-21T03:00:00.000Z';
+    await database.getPool().query(
+      `UPDATE lite_trademark_asset_management_dispositions
+          SET recorded_at=$3::timestamptz,
+              document_json=jsonb_set(document_json,'{recordedAt}',to_jsonb($4::text))
+        WHERE workspace_id=$1 AND disposition_id=ANY($2::text[])`,
+      [workspaceId, [first.dispositionId, second.dispositionId], tiedAt, tiedAt]
+    );
+    const expected = [first, second].sort((left, right) =>
+      right.dispositionId.localeCompare(left.dispositionId)
+    )[0]!;
+    const result = await dispositions().listCurrentForAsset(workspaceId, asset.trademarkAssetId);
+    expect(
+      result.items.find((item) => item.signal.id === first.signal.id)?.disposition
+    ).toMatchObject({
+      dispositionId: expected.dispositionId,
+      kind: expected.kind,
+      recordedAt: tiedAt
+    });
+  });
+
+  it('excludes other Asset and cross-Workspace dispositions and hides guessed Assets', async () => {
+    const asset = await advanceAsset('scoped-read');
+    const otherAsset = await advanceAsset('other-read');
+    const own = await dispositions().record(commandFor(asset, 'scoped-read-own'));
+    const other = await dispositions().record(commandFor(otherAsset, 'scoped-read-other'));
+    const result = await dispositions().listCurrentForAsset(workspaceId, asset.trademarkAssetId);
+    expect(result.items.some((item) => item.disposition?.dispositionId === own.dispositionId)).toBe(
+      true
+    );
+    expect(
+      result.items.some((item) => item.disposition?.dispositionId === other.dispositionId)
+    ).toBe(false);
+
+    const otherPrincipal = { ...principal, workspaceId: otherWorkspaceId };
+    expect(await readThroughHttp(asset.trademarkAssetId, otherPrincipal)).toMatchObject({
+      status: 404,
+      body: { code: 'NOT_FOUND' }
+    });
+  });
+
+  it('fails closed for malformed persisted disposition lineage', async () => {
+    const asset = await advanceAsset('corrupt-read');
+    const recorded = await dispositions().record(commandFor(asset, 'corrupt-read'));
+    await database.getPool().query(
+      `UPDATE lite_trademark_asset_management_dispositions
+          SET document_json=jsonb_set(document_json,'{signal,version}','"corrupt"'::jsonb)
+        WHERE workspace_id=$1 AND disposition_id=$2`,
+      [workspaceId, recorded.dispositionId]
+    );
+    await expect(
+      dispositions().listCurrentForAsset(workspaceId, asset.trademarkAssetId)
+    ).rejects.toMatchObject({ code: 'PERSISTENCE_UNAVAILABLE', status: 503, retryable: true });
   });
 
   it('rejects guessed and stale current-owner references', async () => {

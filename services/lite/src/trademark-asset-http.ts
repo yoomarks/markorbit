@@ -40,7 +40,10 @@ export interface TrademarkAssetReadRouteOptions {
   portfolio: TrademarkAssetPortfolioService;
   refreshLedger: PostgresTrademarkAssetRefreshLedger;
   commerce: PostgresTrademarkAssetCommerceStore;
-  dispositions: Pick<PostgresTrademarkAssetManagementDispositionStore, 'record'>;
+  dispositions: Pick<
+    PostgresTrademarkAssetManagementDispositionStore,
+    'record' | 'listCurrentForAsset'
+  >;
   aiGuide: Pick<TrademarkAssetAiGuidePreparer, 'prepare'>;
   now?: () => string;
 }
@@ -421,6 +424,31 @@ export function createTrademarkAssetReadRoutes(
             managementSignals,
             recommendations
           });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trademark-assets/:trademarkAssetId/management-dispositions',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (Object.keys(request.query).length > 0 || request.body !== undefined) {
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'This read accepts only the path Trademark Asset and trusted Workspace Principal.'
+          );
+        }
+        try {
+          return json(
+            200,
+            await options.dispositions.listCurrentForAsset(
+              principal.workspaceId,
+              request.params.trademarkAssetId! as TrademarkAssetId
+            )
+          );
         } catch (error) {
           return mapError(error);
         }

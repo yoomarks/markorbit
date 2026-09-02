@@ -50,6 +50,16 @@ export interface RecordTrademarkAssetManagementDispositionCommand {
   idempotencyKey: string;
 }
 
+export interface CurrentTrademarkAssetManagementDispositionProjection {
+  schemaVersion: 1;
+  workspaceId: string;
+  asset: Readonly<{ id: TrademarkAssetId; version: number }>;
+  items: ReadonlyArray<{
+    signal: Readonly<{ id: TrademarkAssetManagementSignalId; version: number }>;
+    disposition: TrademarkAssetManagementDisposition | null;
+  }>;
+}
+
 export interface TrademarkAssetManagementRecoveryJob {
   schemaVersion: 1;
   recoveryJobId: TrademarkAssetManagementRecoveryJobId;
@@ -209,6 +219,95 @@ function nextDispositionId(): TrademarkAssetManagementDispositionId {
 
 function nextRecoveryJobId(): TrademarkAssetManagementRecoveryJobId {
   return `trademark-asset-management-recovery_${randomUUID().replaceAll('-', '')}`;
+}
+
+function corrupt(message: string): never {
+  throw new TrademarkAssetManagementDispositionError('PERSISTENCE_UNAVAILABLE', message, 503, true);
+}
+
+function objectValue(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    corrupt(`Persisted management disposition ${field} is malformed.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function rowTimestamp(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value !== 'string' || Number.isNaN(new Date(value).valueOf())) {
+    corrupt('Persisted management disposition recordedAt is malformed.');
+  }
+  return new Date(value).toISOString();
+}
+
+function persistedDisposition(row: Row): TrademarkAssetManagementDisposition {
+  const document = objectValue(row.document_json, 'document');
+  const asset = objectValue(document.asset, 'asset reference');
+  const signal = objectValue(document.signal, 'Signal reference');
+  const recommendation =
+    document.recommendation === undefined
+      ? undefined
+      : objectValue(document.recommendation, 'Recommendation reference');
+  const workflowReference =
+    document.workflowReference === undefined
+      ? undefined
+      : objectValue(document.workflowReference, 'workflow reference');
+  const recordedAt = rowTimestamp(row.recorded_at);
+  const dispositionId = String(row.disposition_id);
+  const workspaceId = String(row.workspace_id);
+  const trademarkAssetId = String(row.trademark_asset_id);
+  const managementSignalId = String(row.management_signal_id);
+  let recommendationId: string | undefined;
+  if (row.recommendation_id !== null && row.recommendation_id !== undefined) {
+    if (typeof row.recommendation_id !== 'string') {
+      corrupt('Persisted management disposition Recommendation column is malformed.');
+    }
+    recommendationId = row.recommendation_id;
+  }
+  const dispositionKind = String(row.disposition_kind);
+  const subjectUserId = String(row.subject_user_id);
+
+  if (
+    document.schemaVersion !== 1 ||
+    document.dispositionId !== dispositionId ||
+    document.workspaceId !== workspaceId ||
+    document.version !== Number(row.version) ||
+    !Number.isInteger(document.version) ||
+    Number(document.version) < 1 ||
+    asset.id !== trademarkAssetId ||
+    !Number.isInteger(asset.version) ||
+    Number(asset.version) < 1 ||
+    signal.id !== managementSignalId ||
+    !Number.isInteger(signal.version) ||
+    Number(signal.version) < 1 ||
+    (recommendationId === undefined) !== (recommendation === undefined) ||
+    (recommendation !== undefined &&
+      (recommendation.id !== recommendationId ||
+        !Number.isInteger(recommendation.version) ||
+        Number(recommendation.version) < 1)) ||
+    document.kind !== dispositionKind ||
+    !trademarkAssetManagementDispositionKinds.includes(
+      dispositionKind as TrademarkAssetManagementDispositionKind
+    ) ||
+    document.subjectUserId !== subjectUserId ||
+    typeof document.subjectUserId !== 'string' ||
+    !document.subjectUserId.trim() ||
+    (document.note !== undefined && (typeof document.note !== 'string' || !document.note.trim())) ||
+    (workflowReference !== undefined &&
+      (typeof workflowReference.kind !== 'string' ||
+        typeof workflowReference.owner !== 'string' ||
+        typeof workflowReference.referenceId !== 'string' ||
+        !workflowReference.referenceId.trim() ||
+        (workflowReference.referenceVersion !== undefined &&
+          typeof workflowReference.referenceVersion !== 'string'))) ||
+    rowTimestamp(document.recordedAt) !== recordedAt ||
+    document.officialTruthCreated !== false ||
+    document.legalConclusionVerified !== false ||
+    document.capabilityVerified !== false
+  ) {
+    corrupt('Persisted management disposition lineage is inconsistent.');
+  }
+  return clone(document as unknown as TrademarkAssetManagementDisposition);
 }
 
 export function nextTrademarkAssetManagementRecoveryAttempt(
@@ -544,6 +643,143 @@ export class PostgresTrademarkAssetManagementDispositionStore {
       throw new TrademarkAssetManagementDispositionError(
         'PERSISTENCE_UNAVAILABLE',
         'Trademark Asset management watch state is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
+  async listCurrentForAsset(
+    workspaceIdValue: string,
+    trademarkAssetIdValue: TrademarkAssetId
+  ): Promise<CurrentTrademarkAssetManagementDispositionProjection> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const trademarkAssetId = cleanAssetId(trademarkAssetIdValue);
+    try {
+      return await this.database.transact(
+        async (client) => {
+          const composedAt = timestamp(this.now(), 'now');
+          let current;
+          try {
+            current = await this.currentOwner.resolve(
+              workspaceId,
+              trademarkAssetId,
+              composedAt,
+              client
+            );
+          } catch (error) {
+            if (error instanceof TrademarkAssetPersistenceError && error.code === 'NOT_FOUND') {
+              throw new TrademarkAssetManagementDispositionError(
+                'NOT_FOUND',
+                'Trademark Asset was not found.',
+                404
+              );
+            }
+            throw error;
+          }
+          if (
+            current.asset.workspaceId !== workspaceId ||
+            current.asset.trademarkAssetId !== trademarkAssetId ||
+            !Number.isInteger(current.asset.version) ||
+            current.asset.version < 1
+          ) {
+            corrupt('Current Trademark Asset owner lineage is inconsistent.');
+          }
+
+          const signals = [...current.signals];
+          const signalKeys = new Set<string>();
+          for (const signal of signals) {
+            const key = `${signal.managementSignalId}:${signal.version}`;
+            if (
+              signalKeys.has(key) ||
+              signal.workspaceId !== workspaceId ||
+              signal.asset.id !== trademarkAssetId ||
+              signal.asset.version !== current.asset.version ||
+              !signal.managementSignalId ||
+              !Number.isInteger(signal.version) ||
+              signal.version < 1
+            ) {
+              corrupt('Current Management Signal owner lineage is inconsistent.');
+            }
+            signalKeys.add(key);
+          }
+          for (const recommendation of current.recommendations) {
+            if (
+              recommendation.workspaceId !== workspaceId ||
+              recommendation.asset.id !== trademarkAssetId ||
+              recommendation.asset.version !== current.asset.version ||
+              !Number.isInteger(recommendation.version) ||
+              recommendation.version < 1 ||
+              recommendation.signalReferences.some(
+                (reference) => !signalKeys.has(`${reference.id}:${reference.version}`)
+              )
+            ) {
+              corrupt('Current Management Recommendation owner lineage is inconsistent.');
+            }
+          }
+
+          const result = await client.query(
+            `SELECT workspace_id,disposition_id,version,trademark_asset_id,
+                    management_signal_id,recommendation_id,disposition_kind,
+                    subject_user_id,document_json,recorded_at
+               FROM lite_trademark_asset_management_dispositions
+              WHERE workspace_id=$1 AND trademark_asset_id=$2
+              ORDER BY recorded_at DESC,disposition_id DESC`,
+            [workspaceId, trademarkAssetId]
+          );
+          const latest = new Map<string, TrademarkAssetManagementDisposition>();
+          for (const row of result.rows as Row[]) {
+            const disposition = persistedDisposition(row);
+            if (
+              disposition.workspaceId !== workspaceId ||
+              disposition.asset.id !== trademarkAssetId
+            ) {
+              corrupt('Persisted management disposition owner lineage is inconsistent.');
+            }
+            const key = `${disposition.signal.id}:${disposition.signal.version}`;
+            if (!signalKeys.has(key) || latest.has(key)) continue;
+
+            if (disposition.asset.version !== current.asset.version) {
+              corrupt('Current management disposition Asset lineage is inconsistent.');
+            }
+            if (disposition.recommendation) {
+              const recommendation = current.recommendations.find(
+                (candidate) =>
+                  candidate.recommendationId === disposition.recommendation!.id &&
+                  candidate.version === disposition.recommendation!.version
+              );
+              if (
+                !recommendation ||
+                !recommendation.signalReferences.some(
+                  (reference) =>
+                    reference.id === disposition.signal.id &&
+                    reference.version === disposition.signal.version
+                )
+              ) {
+                corrupt('Current management disposition Recommendation lineage is inconsistent.');
+              }
+            }
+            latest.set(key, disposition);
+          }
+
+          return {
+            schemaVersion: 1,
+            workspaceId,
+            asset: { id: trademarkAssetId, version: current.asset.version },
+            items: signals.map((signal) => ({
+              signal: { id: signal.managementSignalId, version: signal.version },
+              disposition: latest.get(`${signal.managementSignalId}:${signal.version}`) ?? null
+            }))
+          };
+        },
+        { isolation: 'REPEATABLE READ', readOnly: true }
+      );
+    } catch (error) {
+      if (error instanceof TrademarkAssetManagementDispositionError) throw error;
+      throw new TrademarkAssetManagementDispositionError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Current Trademark Asset management dispositions are unavailable.',
         503,
         true,
         { cause: error instanceof Error ? error : undefined }
