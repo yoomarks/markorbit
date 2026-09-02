@@ -183,6 +183,29 @@ export function fixtureClient(list = listFixture(), detail = detailFixture()): C
   return {
     list: () => Promise.resolve(list),
     find: () => Promise.resolve(detail),
+    createDraft: (_opportunity, input) =>
+      Promise.resolve({ ...draft, version: 1, status: 'DRAFT', ...input }),
+    reviseDraft: (target, input) =>
+      Promise.resolve({ ...target, version: target.version + 1, status: 'DRAFT', ...input }),
+    markReadyForReview: (target) =>
+      Promise.resolve({
+        ...target,
+        version: target.version + 1,
+        status: 'READY_FOR_HUMAN_REVIEW'
+      }),
+    recordReview: (target, input) =>
+      Promise.resolve({
+        ...review,
+        contentDraft: { id: target.contentDraftId, version: target.version },
+        expectedContentDraftFingerprintSha256: target.contentDraftFingerprintSha256,
+        ...input
+      }),
+    preparePublishPackage: (target, decision) =>
+      Promise.resolve({
+        ...publishPackage,
+        contentDraft: { id: target.contentDraftId, version: target.version },
+        reviewDecision: { id: decision.contentReviewDecisionId, version: decision.version }
+      }),
     recordUseFeedback: (_publishPackage, outcome) => Promise.resolve({ ...feedback, outcome })
   };
 }

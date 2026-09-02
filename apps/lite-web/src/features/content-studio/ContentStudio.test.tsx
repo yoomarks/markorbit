@@ -104,6 +104,341 @@ describe('Content Studio workspace', () => {
     ).toBeVisible();
     expect(screen.queryByText(/No visual work exists/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Content Pick|Daily Orbit/)).not.toBeInTheDocument();
+    expect(screen.getByText('Governed preparation')).toBeVisible();
+    expect(screen.queryByText('Read only')).not.toBeInTheDocument();
+  });
+
+  it('creates a Draft from exact loaded Opportunity truth and renders only reloaded owner detail', async () => {
+    const noDraft = detailFixture({
+      drafts: [],
+      reviewedDrafts: [],
+      reviews: [],
+      packages: [],
+      feedback: []
+    });
+    const createdDraft = {
+      ...draft,
+      version: 1,
+      status: 'DRAFT' as const,
+      title: 'Owner title',
+      body: 'Owner body'
+    };
+    const created = detailFixture({
+      drafts: [createdDraft],
+      reviewedDrafts: [],
+      reviews: [],
+      packages: [],
+      feedback: []
+    });
+    const client = fixtureClient();
+    const find = vi
+      .fn<ContentStudioClient['find']>()
+      .mockResolvedValueOnce(noDraft)
+      .mockResolvedValueOnce(created);
+    const createDraft = vi.fn(() => Promise.resolve(createdDraft));
+    client.find = find;
+    client.createDraft = createDraft;
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={client}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    const title = await screen.findByLabelText('Draft title');
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Browser title');
+    await userEvent.type(screen.getByLabelText('Draft body'), 'Browser body');
+    await userEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
+
+    expect(await screen.findByRole('heading', { name: 'Revise Draft' })).toBeVisible();
+    expect(screen.getByLabelText('Draft body')).toHaveValue('Owner body');
+    expect(createDraft).toHaveBeenCalledWith(
+      opportunity,
+      { title: 'Browser title', body: 'Browser body' },
+      expect.stringMatching(/^content-studio:create:/)
+    );
+    expect(find).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Browser body')).not.toBeInTheDocument();
+  });
+
+  it('targets only the exact current Draft for revision and Ready for Human Review', async () => {
+    const historical = {
+      ...draft,
+      version: 1,
+      status: 'DRAFT' as const,
+      title: 'Historical title'
+    };
+    const current = {
+      ...draft,
+      version: 3,
+      status: 'DRAFT' as const,
+      title: 'Current title',
+      body: 'Current body'
+    };
+    const before = detailFixture({
+      drafts: [current],
+      reviewedDrafts: [historical],
+      reviews: [],
+      packages: [],
+      feedback: []
+    });
+    const after = detailFixture({
+      drafts: [{ ...current, version: 4, status: 'READY_FOR_HUMAN_REVIEW' }],
+      reviewedDrafts: [historical],
+      reviews: [],
+      packages: [],
+      feedback: []
+    });
+    const client = fixtureClient();
+    client.find = vi
+      .fn<ContentStudioClient['find']>()
+      .mockResolvedValueOnce(before)
+      .mockResolvedValueOnce(after);
+    const markReadyForReview = vi.fn(() => Promise.resolve(after.drafts[0]!));
+    client.markReadyForReview = markReadyForReview;
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={client}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    expect(
+      await screen.findByText(/targets only current Draft content-draft_413 version 3/)
+    ).toBeVisible();
+    expect(screen.getByText('Draft · exact version 1')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Ready for Human Review' }));
+    expect(markReadyForReview).toHaveBeenCalledWith(
+      current,
+      expect.stringMatching(/^content-studio:ready:/)
+    );
+    expect(await screen.findByRole('heading', { name: 'Explicit Human Review' })).toBeVisible();
+  });
+
+  it.each(['APPROVED_FOR_PUBLISH_PACKAGE', 'CHANGES_REQUIRED', 'REJECTED'] as const)(
+    'records explicit human Review outcome %s without browser reviewer identity',
+    async (outcome) => {
+      const ready = { ...draft, version: 4, status: 'READY_FOR_HUMAN_REVIEW' as const };
+      const before = detailFixture({
+        drafts: [ready],
+        reviewedDrafts: [],
+        reviews: [],
+        packages: [],
+        feedback: []
+      });
+      const decision = {
+        ...review,
+        contentDraft: { id: ready.contentDraftId, version: ready.version },
+        outcome,
+        rationale: 'Human rationale'
+      };
+      const after = detailFixture({
+        drafts: [ready],
+        reviewedDrafts: [ready],
+        reviews: [decision],
+        packages: [],
+        feedback: []
+      });
+      const client = fixtureClient();
+      client.find = vi
+        .fn<ContentStudioClient['find']>()
+        .mockResolvedValueOnce(before)
+        .mockResolvedValueOnce(after);
+      const recordReview = vi.fn(() => Promise.resolve(decision));
+      client.recordReview = recordReview;
+      render(
+        <ContentStudio
+          workspaceId={fixtureWorkspaceId}
+          client={client}
+          initialContentOpportunityId={opportunity.contentOpportunityId}
+        />
+      );
+
+      await screen.findByRole('heading', { name: 'Explicit Human Review' });
+      await userEvent.selectOptions(screen.getByLabelText('Review outcome'), outcome);
+      await userEvent.type(screen.getByLabelText('Review rationale'), 'Human rationale');
+      expect(screen.queryByLabelText(/reviewer/i)).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Record Human Review' }));
+      expect(recordReview).toHaveBeenCalledWith(
+        ready,
+        { outcome, rationale: 'Human rationale' },
+        expect.stringMatching(/^content-studio:review:/)
+      );
+      expect(await screen.findByText(outcome)).toBeVisible();
+    }
+  );
+
+  it('prepares a PublishPackage only from the exact current approved Review and reloads owner truth', async () => {
+    const approved = detailFixture({ packages: [], feedback: [] });
+    const packaged = detailFixture({ feedback: [] });
+    const client = fixtureClient();
+    client.find = vi
+      .fn<ContentStudioClient['find']>()
+      .mockResolvedValueOnce(approved)
+      .mockResolvedValueOnce(packaged);
+    const preparePublishPackage = vi.fn(() => Promise.resolve(publishPackage));
+    client.preparePublishPackage = preparePublishPackage;
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={client}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Prepare PublishPackage' }));
+    expect(preparePublishPackage).toHaveBeenCalledWith(
+      draft,
+      review,
+      expect.stringMatching(/^content-studio:package:/)
+    );
+    expect(
+      await screen.findByText(new RegExp(`${publishPackage.publishPackageId}.*version`))
+    ).toBeVisible();
+    expect(screen.getByText(/External publish executed by MarkOrbit:/)).toHaveTextContent('No');
+  });
+
+  it.each([
+    ['CHANGES_REQUIRED', true],
+    ['REJECTED', false]
+  ] as const)('does not expose false package preparation for %s', async (outcome, revisable) => {
+    const current = { ...draft, status: outcome };
+    const decision = { ...review, outcome };
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient(
+          listFixture(),
+          detailFixture({
+            drafts: [current],
+            reviewedDrafts: [current],
+            reviews: [decision],
+            packages: [],
+            feedback: []
+          })
+        )}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+    if (revisable)
+      expect(await screen.findByRole('button', { name: 'Revise Draft' })).toBeVisible();
+    else expect(await screen.findByText(/does not invent a reopen or package path/)).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Prepare PublishPackage' })
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [409, 'Owner truth changed'],
+    [422, 'Owner validation failed'],
+    [503, 'Preparation owner unavailable']
+  ] as const)(
+    'preserves loaded lineage and form content when revision fails with %s',
+    async (status, errorTitle) => {
+      const current = { ...draft, status: 'DRAFT' as const };
+      const detail = detailFixture({
+        drafts: [current],
+        reviewedDrafts: [],
+        reviews: [],
+        packages: [],
+        feedback: []
+      });
+      const client = fixtureClient(listFixture(), detail);
+      client.reviseDraft = vi.fn(() =>
+        Promise.reject(new ContentStudioHttpError(status, 'OWNER_FAILURE', 'Exact owner message'))
+      );
+      render(
+        <ContentStudio
+          workspaceId={fixtureWorkspaceId}
+          client={client}
+          initialContentOpportunityId={opportunity.contentOpportunityId}
+        />
+      );
+      const body = await screen.findByLabelText('Draft body');
+      await userEvent.clear(body);
+      await userEvent.type(body, 'Unsaved retained body');
+      expect(screen.getByRole('button', { name: 'Ready for Human Review' })).toBeDisabled();
+      await userEvent.click(screen.getByRole('button', { name: 'Revise Draft' }));
+      expect(await screen.findByText(errorTitle)).toBeVisible();
+      expect(screen.getByLabelText('Draft body')).toHaveValue('Unsaved retained body');
+      expect(screen.getByText(`Draft · exact version ${current.version}`)).toBeVisible();
+    }
+  );
+
+  it('reports a successful write whose durable refresh fails and retains its logical idempotency key for retry', async () => {
+    const current = { ...draft, status: 'DRAFT' as const };
+    const detail = detailFixture({
+      drafts: [current],
+      reviewedDrafts: [],
+      reviews: [],
+      packages: [],
+      feedback: []
+    });
+    const client = fixtureClient(listFixture(), detail);
+    client.find = vi
+      .fn<ContentStudioClient['find']>()
+      .mockResolvedValueOnce(detail)
+      .mockRejectedValueOnce(
+        new ContentStudioHttpError(503, 'PERSISTENCE_UNAVAILABLE', 'reload failed')
+      )
+      .mockResolvedValueOnce({
+        ...detail,
+        drafts: [{ ...current, version: current.version + 1 }]
+      });
+    const reviseDraft = vi.fn<ContentStudioClient['reviseDraft']>(() =>
+      Promise.resolve({ ...current, version: current.version + 1 })
+    );
+    client.reviseDraft = reviseDraft;
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={client}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Revise Draft' }));
+    expect(await screen.findByText('Write may have succeeded')).toBeVisible();
+    expect(screen.getByText(`Draft · exact version ${current.version}`)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Revise Draft' }));
+
+    expect(await screen.findByText(`Draft · exact version ${current.version + 1}`)).toBeVisible();
+    expect(reviseDraft).toHaveBeenCalledTimes(2);
+    expect(reviseDraft.mock.calls[0]?.[2]).toBe(reviseDraft.mock.calls[1]?.[2]);
+  });
+
+  it('uses a new idempotency key when a failed form payload is materially changed', async () => {
+    const current = { ...draft, status: 'DRAFT' as const };
+    const detail = detailFixture({
+      drafts: [current],
+      reviewedDrafts: [],
+      reviews: [],
+      packages: [],
+      feedback: []
+    });
+    const client = fixtureClient(listFixture(), detail);
+    const reviseDraft = vi.fn<ContentStudioClient['reviseDraft']>(() =>
+      Promise.reject(new ContentStudioHttpError(409, 'VERSION_CONFLICT', 'conflict'))
+    );
+    client.reviseDraft = reviseDraft;
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={client}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+    const body = await screen.findByLabelText('Draft body');
+    await userEvent.click(screen.getByRole('button', { name: 'Revise Draft' }));
+    await screen.findByText('Owner truth changed');
+    await userEvent.type(body, ' changed');
+    await userEvent.click(screen.getByRole('button', { name: 'Revise Draft' }));
+    await screen.findByText('Owner truth changed');
+
+    expect(reviseDraft).toHaveBeenCalledTimes(2);
+    expect(reviseDraft.mock.calls[0]?.[2]).not.toBe(reviseDraft.mock.calls[1]?.[2]);
   });
 
   it('shows a truthful empty Workspace', async () => {
@@ -125,7 +460,7 @@ describe('Content Studio workspace', () => {
     render(
       <ContentStudio
         workspaceId={fixtureWorkspaceId}
-        client={{ list, find: vi.fn(), recordUseFeedback: vi.fn() }}
+        client={{ ...fixtureClient(), list, find: vi.fn(), recordUseFeedback: vi.fn() }}
       />
     );
     await screen.findByText(first.title);
@@ -169,6 +504,7 @@ describe('Content Studio workspace', () => {
 
   it('opens durable work directly when current Orbit or Pick context is absent', async () => {
     const client = {
+      ...fixtureClient(),
       list: vi.fn(() => Promise.reject(new Error('list discovery is not required'))),
       find: vi.fn(() => Promise.resolve(detailFixture())),
       recordUseFeedback: vi.fn()
@@ -279,7 +615,7 @@ describe('Content Studio workspace', () => {
     render(
       <ContentStudio
         workspaceId={fixtureWorkspaceId}
-        client={{ list: vi.fn(), find, recordUseFeedback }}
+        client={{ ...fixtureClient(), list: vi.fn(), find, recordUseFeedback }}
         initialContentOpportunityId="content-opportunity_413"
       />
     );
@@ -336,6 +672,7 @@ describe('Content Studio workspace', () => {
     [503, 'Content Studio unavailable']
   ] as const)('keeps %s distinct from empty', async (status, title) => {
     const client: ContentStudioClient = {
+      ...fixtureClient(),
       list: () => Promise.reject(new ContentStudioHttpError(status, 'OWNER_ERROR', 'failed')),
       find: () => Promise.reject(new Error('unused')),
       recordUseFeedback: () => Promise.reject(new Error('unused'))

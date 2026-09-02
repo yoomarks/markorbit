@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
 import {
   detailFixture,
+  draft,
   feedback,
   listFixture,
+  opportunity,
   publishPackage
 } from '../src/features/content-studio/fixtures.js';
 
@@ -115,6 +117,7 @@ test('Content Studio uses durable Gateway list/detail work and remains readable 
   await expect(page.getByRole('heading', { name: 'Content Studio' })).toBeVisible();
   await expect(page.locator('.mo-topbar')).toContainText('Authenticated');
   await expect(page.getByText('content-opportunity_413')).toBeVisible();
+  await expect(page.getByText('Governed preparation', { exact: true })).toBeVisible();
   await expect(page.getByText('Reviewed draft ready for package')).toBeVisible();
   await expect(page.getByText('Latest Draft Review')).toBeVisible();
   await expect(page.getByText('Latest Publish Package · work-level history')).toBeVisible();
@@ -135,6 +138,99 @@ test('Content Studio uses durable Gateway list/detail work and remains readable 
     '/api/lite/content-studio/works',
     '/api/lite/content-studio/works/content-opportunity_413'
   ]);
+});
+
+test('Content Studio creates a governed Draft and renders only refreshed owner truth', async ({
+  page
+}, testInfo) => {
+  let created = false;
+  let detailReads = 0;
+  let mutationRequest:
+    { headers: Record<string, string>; body: Record<string, unknown>; method: string } | undefined;
+  const noDraft = detailFixture({
+    drafts: [],
+    reviewedDrafts: [],
+    reviews: [],
+    packages: [],
+    feedback: []
+  });
+  const ownerDraft = {
+    ...draft,
+    version: 1,
+    status: 'DRAFT' as const,
+    title: 'Durable owner title',
+    body: 'Durable owner body'
+  };
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf-browser' } })
+  );
+  await page.route('**/api/lite/content-studio/works/content-opportunity_413', (route) => {
+    detailReads += 1;
+    return route.fulfill({
+      json: created
+        ? detailFixture({
+            drafts: [ownerDraft],
+            reviewedDrafts: [],
+            reviews: [],
+            packages: [],
+            feedback: []
+          })
+        : noDraft
+    });
+  });
+  await page.route(
+    '**/api/lite/content-studio/works/content-opportunity_413/drafts',
+    async (route) => {
+      mutationRequest = {
+        headers: route.request().headers(),
+        body: route.request().postDataJSON() as Record<string, unknown>,
+        method: route.request().method()
+      };
+      created = true;
+      return route.fulfill({ status: 201, json: ownerDraft });
+    }
+  );
+
+  await page.goto(
+    '/?workspaceId=38383838-3838-4383-8383-383838383838&contentOpportunityId=content-opportunity_413#content'
+  );
+  await page.getByLabel('Draft title').fill('Browser proposed title');
+  await page.getByLabel('Draft body').fill('Browser proposed body');
+  await page.screenshot({
+    path: testInfo.outputPath('content-studio-create-draft.png'),
+    fullPage: true
+  });
+  await page.getByRole('button', { name: 'Create Draft' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Revise Draft' })).toBeVisible();
+  await expect(page.getByLabel('Draft title')).toHaveValue('Durable owner title');
+  await expect(page.getByLabel('Draft body')).toHaveValue('Durable owner body');
+  expect(detailReads).toBe(2);
+  expect(mutationRequest).toMatchObject({
+    method: 'POST',
+    body: {
+      contentOpportunityVersion: opportunity.version,
+      expectedContentOpportunityFingerprintSha256: opportunity.contentOpportunityFingerprintSha256,
+      title: 'Browser proposed title',
+      body: 'Browser proposed body'
+    }
+  });
+  expect(mutationRequest?.body).not.toHaveProperty('reviewerPrincipalId');
+  expect(mutationRequest?.headers['x-markorbit-workspace-id']).toBe(opportunity.workspaceId);
+  expect(mutationRequest?.headers['x-markorbit-csrf-token']).toBe('csrf-browser');
+  expect(mutationRequest?.headers['idempotency-key']).toMatch(/^content-studio:create:/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Ready for Human Review' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('content-studio-created-mobile.png'),
+    fullPage: true
+  });
 });
 
 test('Content Studio keeps owner failure distinct from empty while Guide remains bounded', async ({

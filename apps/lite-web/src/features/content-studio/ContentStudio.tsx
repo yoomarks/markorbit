@@ -10,8 +10,10 @@ import {
   PageHeader
 } from '@markorbit/ui';
 import type {
+  ContentDraft,
   ContentDraftStatus,
   ContentReviewDecision,
+  ContentReviewOutcome,
   PublishPackage
 } from '@markorbit/contracts/product-loop';
 import {
@@ -31,7 +33,9 @@ export interface ContentStudioProps {
   initialContentOpportunityId?: string;
 }
 
-export function contentWorkStage(work: Readonly<ContentStudioWorkSummary>): string {
+export function contentWorkStage(
+  work: Readonly<Pick<ContentStudioWorkSummary, 'latestDraft'>>
+): string {
   if (!work.latestDraft) return 'Content Opportunity created';
   const labels: Record<ContentDraftStatus, string> = {
     DRAFT: 'Draft in progress',
@@ -48,6 +52,11 @@ function date(value: string) {
   return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(
     new Date(value)
   );
+}
+
+function newIdempotencyKey(action: string) {
+  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  return `content-studio:${action}:${id}`;
 }
 
 function PartialWarning() {
@@ -151,7 +160,7 @@ function WorkList({
       <PageHeader
         title="Content Studio"
         description="Durable content work in this Workspace"
-        actions={<Badge>Read only</Badge>}
+        actions={<Badge>Governed preparation</Badge>}
       />
       <p className="content-studio__intro">
         Today discovers and coordinates daily work. Content Studio keeps the durable Content
@@ -253,15 +262,310 @@ function packageReviews(detail: ContentStudioWorkDetail, review: ContentReviewDe
   );
 }
 
+export function currentDraft(detail: Readonly<ContentStudioWorkDetail>) {
+  return [...detail.drafts, ...detail.reviewedDrafts].reduce<ContentDraft | undefined>(
+    (latest, draft) => (!latest || draft.version > latest.version ? draft : latest),
+    undefined
+  );
+}
+
+function MutationFailure({ error }: { error: ContentStudioHttpError }) {
+  const copy =
+    error.code === 'DURABLE_RELOAD_FAILED'
+      ? [
+          'Write may have succeeded',
+          'The owner accepted the write, but current durable truth could not be reloaded. Reload before taking another action.'
+        ]
+      : error.status === 401
+        ? ['Sign in required', 'An authenticated session is required for this preparation action.']
+        : error.status === 403
+          ? [
+              'Preparation permission required',
+              'Permission, Origin, or CSRF validation denied this preparation action.'
+            ]
+          : error.status === 404
+            ? [
+                'Exact work unavailable',
+                'This exact work or Draft is unavailable in the current Workspace.'
+              ]
+            : error.status === 409
+              ? [
+                  'Owner truth changed',
+                  'The version, fingerprint, transition, prior decision, package, or idempotency state conflicts with current owner truth. Reload durable detail before trying again.'
+                ]
+              : error.status === 422
+                ? ['Owner validation failed', error.message]
+                : error.status === 503
+                  ? [
+                      'Preparation owner unavailable',
+                      'The owner or persistence boundary is unavailable. Loaded lineage and form input remain unchanged.'
+                    ]
+                  : ['Preparation action failed', error.message];
+  return (
+    <Alert tone="danger" title={copy[0] ?? 'Preparation action failed'}>
+      {copy[1] ?? error.message}
+    </Alert>
+  );
+}
+
+type PreparationInput = Readonly<{ title: string; body: string }>;
+type ReviewInput = Readonly<{ outcome: ContentReviewOutcome; rationale: string }>;
+
+function PreparationWorkspace({
+  value,
+  busyAction,
+  mutationError,
+  createDraft,
+  reviseDraft,
+  markReady,
+  recordReview,
+  preparePackage
+}: {
+  value: ContentStudioWorkDetail;
+  busyAction: string;
+  mutationError: { action: string; error: ContentStudioHttpError } | undefined;
+  createDraft: (input: PreparationInput) => void;
+  reviseDraft: (draft: ContentDraft, input: PreparationInput) => void;
+  markReady: (draft: ContentDraft) => void;
+  recordReview: (draft: ContentDraft, input: ReviewInput) => void;
+  preparePackage: (draft: ContentDraft, review: ContentReviewDecision) => void;
+}) {
+  const draft = currentDraft(value);
+  const review = draft ? reviewFor(value, draft.contentDraftId, draft.version) : undefined;
+  const packages = review ? packageReviews(value, review) : [];
+  const [title, setTitle] = useState(draft?.title ?? value.opportunity.title);
+  const [body, setBody] = useState(draft?.body ?? '');
+  const [outcome, setOutcome] = useState<ContentReviewOutcome>('APPROVED_FOR_PUBLISH_PACKAGE');
+  const [rationale, setRationale] = useState('');
+  useEffect(() => {
+    setTitle(draft?.title ?? value.opportunity.title);
+    setBody(draft?.body ?? '');
+    setOutcome('APPROVED_FOR_PUBLISH_PACKAGE');
+    setRationale('');
+  }, [draft?.contentDraftId, draft?.version, value.opportunity.title]);
+  const editable =
+    draft?.status === 'DRAFT' ||
+    draft?.status === 'CHANGES_REQUIRED' ||
+    review?.outcome === 'CHANGES_REQUIRED';
+  const canReview = draft?.status === 'READY_FOR_HUMAN_REVIEW' && !review;
+  const canPackage = review?.outcome === 'APPROVED_FOR_PUBLISH_PACKAGE' && packages.length === 0;
+  const busy = busyAction !== '';
+  const hasUnsavedRevision = Boolean(draft && (title !== draft.title || body !== draft.body));
+
+  return (
+    <section className="content-studio__preparation" aria-labelledby="preparation-heading">
+      <div className="content-studio__row">
+        <div>
+          <p className="content-studio__eyebrow">Governed preparation workspace</p>
+          <h2 id="preparation-heading">Current owner-permitted action</h2>
+        </div>
+        {draft ? <Badge>{contentWorkStage({ latestDraft: draft })}</Badge> : null}
+      </div>
+      {!draft && value.opportunity.status === 'ACCEPTED_FOR_PREPARATION' ? (
+        <Card>
+          <h3>Create Draft</h3>
+          <p>
+            Create the first Draft against this exact accepted Content Opportunity version and
+            fingerprint.
+          </p>
+          <form
+            className="content-studio__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              createDraft({ title, body });
+            }}
+          >
+            <label>
+              Draft title
+              <input
+                value={title}
+                maxLength={500}
+                required
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            <label>
+              Draft body
+              <textarea
+                value={body}
+                maxLength={100000}
+                required
+                rows={10}
+                onChange={(event) => setBody(event.target.value)}
+              />
+            </label>
+            <Button type="submit" disabled={busy}>
+              {busyAction === 'create' ? 'Creating and reloading…' : 'Create Draft'}
+            </Button>
+          </form>
+          {mutationError?.action === 'create' ? (
+            <MutationFailure error={mutationError.error} />
+          ) : null}
+        </Card>
+      ) : draft && editable ? (
+        <Card>
+          <h3>
+            {review?.outcome === 'CHANGES_REQUIRED' || draft.status === 'CHANGES_REQUIRED'
+              ? 'Revise changes-required Draft'
+              : 'Revise Draft'}
+          </h3>
+          <p>
+            This form targets only current Draft {draft.contentDraftId} version {draft.version}.
+            Historical versions remain read-only lineage.
+          </p>
+          <form
+            className="content-studio__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              reviseDraft(draft, { title, body });
+            }}
+          >
+            <label>
+              Draft title
+              <input
+                value={title}
+                maxLength={500}
+                required
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            <label>
+              Draft body
+              <textarea
+                value={body}
+                maxLength={100000}
+                required
+                rows={10}
+                onChange={(event) => setBody(event.target.value)}
+              />
+            </label>
+            <div className="content-studio__form-actions">
+              <Button type="submit" disabled={busy}>
+                {busyAction === 'revise' ? 'Revising and reloading…' : 'Revise Draft'}
+              </Button>
+              {draft.status === 'DRAFT' && !review ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busyAction !== '' || hasUnsavedRevision}
+                  onClick={() => markReady(draft)}
+                >
+                  {busyAction === 'ready'
+                    ? 'Marking ready and reloading…'
+                    : 'Ready for Human Review'}
+                </Button>
+              ) : null}
+            </div>
+            {draft.status === 'DRAFT' && hasUnsavedRevision ? (
+              <p className="content-studio__pending" role="status">
+                Save this revision before marking the durable Draft ready for Human Review.
+              </p>
+            ) : null}
+          </form>
+          {mutationError?.action === 'revise' || mutationError?.action === 'ready' ? (
+            <MutationFailure error={mutationError.error} />
+          ) : null}
+        </Card>
+      ) : draft && canReview ? (
+        <Card>
+          <h3>Explicit Human Review</h3>
+          <p>
+            Review the exact current Draft. Reviewer identity comes only from the authenticated
+            Principal and is never supplied by this browser form.
+          </p>
+          <form
+            className="content-studio__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              recordReview(draft, { outcome, rationale });
+            }}
+          >
+            <label>
+              Review outcome
+              <select
+                value={outcome}
+                onChange={(event) => setOutcome(event.target.value as ContentReviewOutcome)}
+              >
+                <option value="APPROVED_FOR_PUBLISH_PACKAGE">
+                  Approved for PublishPackage preparation
+                </option>
+                <option value="CHANGES_REQUIRED">Changes required</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+            <label>
+              Review rationale
+              <textarea
+                value={rationale}
+                maxLength={4000}
+                required
+                rows={5}
+                onChange={(event) => setRationale(event.target.value)}
+              />
+            </label>
+            <Button type="submit" disabled={busy}>
+              {busyAction === 'review' ? 'Recording review and reloading…' : 'Record Human Review'}
+            </Button>
+          </form>
+          {mutationError?.action === 'review' ? (
+            <MutationFailure error={mutationError.error} />
+          ) : null}
+        </Card>
+      ) : draft && canPackage && review ? (
+        <Card>
+          <h3>Prepare PublishPackage</h3>
+          <p>
+            The exact approved Human Review Decision permits package preparation. This does not
+            publish externally.
+          </p>
+          <Button disabled={busy} onClick={() => preparePackage(draft, review)}>
+            {busyAction === 'package'
+              ? 'Preparing package and reloading…'
+              : 'Prepare PublishPackage'}
+          </Button>
+          {mutationError?.action === 'package' ? (
+            <MutationFailure error={mutationError.error} />
+          ) : null}
+        </Card>
+      ) : (
+        <Card>
+          <h3>No preparation action available</h3>
+          <p>
+            {draft?.status === 'REJECTED' || review?.outcome === 'REJECTED'
+              ? 'This exact Draft was rejected. Content Studio does not invent a reopen or package path.'
+              : packages.length
+                ? 'A PublishPackage is already prepared. It remains distinct from external publication.'
+                : 'Current owner truth does not permit another preparation action.'}
+          </p>
+        </Card>
+      )}
+    </section>
+  );
+}
+
 function WorkDetail({
   value,
   back,
+  busyAction,
+  mutationError,
+  createDraft,
+  reviseDraft,
+  markReady,
+  recordReview,
+  preparePackage,
   recordFeedback,
   feedbackBusyPackage,
   feedbackError
 }: {
   value: ContentStudioWorkDetail;
   back: () => void;
+  busyAction: string;
+  mutationError: { action: string; error: ContentStudioHttpError } | undefined;
+  createDraft: (input: PreparationInput) => void;
+  reviseDraft: (draft: ContentDraft, input: PreparationInput) => void;
+  markReady: (draft: ContentDraft) => void;
+  recordReview: (draft: ContentDraft, input: ReviewInput) => void;
+  preparePackage: (draft: ContentDraft, review: ContentReviewDecision) => void;
   recordFeedback: (
     publishPackage: Readonly<PublishPackage>,
     outcome: ContentStudioFeedbackOutcome
@@ -311,6 +615,16 @@ function WorkDetail({
         </dl>
         <SourceList sources={opportunity.sources} />
       </Card>
+      <PreparationWorkspace
+        value={value}
+        busyAction={busyAction || (feedbackBusyPackage ? 'feedback' : '')}
+        mutationError={mutationError}
+        createDraft={createDraft}
+        reviseDraft={reviseDraft}
+        markReady={markReady}
+        recordReview={recordReview}
+        preparePackage={preparePackage}
+      />
       <section aria-labelledby="lineage-heading">
         <h2 id="lineage-heading">Version lineage</h2>
         {drafts.length === 0 ? (
@@ -421,7 +735,9 @@ function WorkDetail({
                                       <Button
                                         key={outcome}
                                         variant="secondary"
-                                        disabled={feedbackBusyPackage === packageKey}
+                                        disabled={
+                                          feedbackBusyPackage === packageKey || busyAction !== ''
+                                        }
                                         onClick={() => recordFeedback(pkg, outcome)}
                                       >
                                         {label}
@@ -473,12 +789,58 @@ export function ContentStudio({
   const [error, setError] = useState<ContentStudioHttpError>();
   const [loadingMore, setLoadingMore] = useState(false);
   const [feedbackBusyPackage, setFeedbackBusyPackage] = useState('');
+  const [busyAction, setBusyAction] = useState('');
+  const [mutationError, setMutationError] = useState<{
+    action: string;
+    error: ContentStudioHttpError;
+  }>();
   const [feedbackError, setFeedbackError] = useState<{
     packageKey: string;
     error: ContentStudioHttpError;
   }>();
   const [retryVersion, setRetryVersion] = useState(0);
   const origin = useRef<HTMLButtonElement | null>(null);
+  const preparationKeys = useRef(new Map<string, string>());
+
+  const runPreparation = (
+    action: string,
+    payload: unknown,
+    write: (idempotencyKey: string) => Promise<unknown>
+  ) => {
+    if (!detail || busyAction) return;
+    const signature = `${action}:${JSON.stringify(payload)}`;
+    const key = preparationKeys.current.get(signature) ?? newIdempotencyKey(action);
+    preparationKeys.current.set(signature, key);
+    setBusyAction(action);
+    setMutationError(undefined);
+    let writeSucceeded = false;
+    write(key)
+      .then(() => {
+        writeSucceeded = true;
+        return client.find(detail.opportunity.contentOpportunityId);
+      })
+      .then((next) => {
+        setDetail(next);
+        preparationKeys.current.delete(signature);
+      })
+      .catch((cause) => {
+        const error =
+          cause instanceof ContentStudioHttpError
+            ? cause
+            : new ContentStudioHttpError(
+                503,
+                writeSucceeded ? 'DURABLE_RELOAD_FAILED' : 'PREPARATION_MUTATION_FAILED',
+                cause instanceof Error ? cause.message : 'Preparation action failed.'
+              );
+        setMutationError({
+          action,
+          error: writeSucceeded
+            ? new ContentStudioHttpError(503, 'DURABLE_RELOAD_FAILED', error.message)
+            : error
+        });
+      })
+      .finally(() => setBusyAction(''));
+  };
 
   const loadList = () => {
     setError(undefined);
@@ -536,6 +898,46 @@ export function ContentStudio({
     return detail ? (
       <WorkDetail
         value={detail}
+        busyAction={busyAction}
+        mutationError={mutationError}
+        createDraft={(input) =>
+          runPreparation('create', input, (key) =>
+            client.createDraft(detail.opportunity, input, key)
+          )
+        }
+        reviseDraft={(draft, input) =>
+          runPreparation(
+            'revise',
+            { draftId: draft.contentDraftId, version: draft.version, ...input },
+            (key) => client.reviseDraft(draft, input, key)
+          )
+        }
+        markReady={(draft) =>
+          runPreparation(
+            'ready',
+            { draftId: draft.contentDraftId, version: draft.version },
+            (key) => client.markReadyForReview(draft, key)
+          )
+        }
+        recordReview={(draft, input) =>
+          runPreparation(
+            'review',
+            { draftId: draft.contentDraftId, version: draft.version, ...input },
+            (key) => client.recordReview(draft, input, key)
+          )
+        }
+        preparePackage={(draft, review) =>
+          runPreparation(
+            'package',
+            {
+              draftId: draft.contentDraftId,
+              draftVersion: draft.version,
+              reviewId: review.contentReviewDecisionId,
+              reviewVersion: review.version
+            },
+            (key) => client.preparePublishPackage(draft, review, key)
+          )
+        }
         feedbackBusyPackage={feedbackBusyPackage}
         feedbackError={feedbackError}
         recordFeedback={(publishPackage, outcome) => {
@@ -562,6 +964,7 @@ export function ContentStudio({
             .finally(() => setFeedbackBusyPackage(''));
         }}
         back={() => {
+          setMutationError(undefined);
           setSelected(undefined);
           setTimeout(() => origin.current?.focus());
         }}

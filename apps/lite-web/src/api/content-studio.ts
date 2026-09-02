@@ -2,6 +2,7 @@ import type {
   ContentDraft,
   ContentOpportunity,
   ContentReviewDecision,
+  ContentReviewOutcome,
   ProductLoopFeedbackOutcome,
   ProductLoopUseFeedback,
   PublishPackage
@@ -67,6 +68,27 @@ export class ContentStudioHttpError extends Error {
 export interface ContentStudioClient {
   list(after?: string): Promise<ContentStudioWorkList>;
   find(contentOpportunityId: string): Promise<ContentStudioWorkDetail>;
+  createDraft(
+    opportunity: Readonly<ContentOpportunity>,
+    input: Readonly<{ title: string; body: string }>,
+    idempotencyKey: string
+  ): Promise<ContentDraft>;
+  reviseDraft(
+    draft: Readonly<ContentDraft>,
+    input: Readonly<{ title: string; body: string }>,
+    idempotencyKey: string
+  ): Promise<ContentDraft>;
+  markReadyForReview(draft: Readonly<ContentDraft>, idempotencyKey: string): Promise<ContentDraft>;
+  recordReview(
+    draft: Readonly<ContentDraft>,
+    input: Readonly<{ outcome: ContentReviewOutcome; rationale: string }>,
+    idempotencyKey: string
+  ): Promise<ContentReviewDecision>;
+  preparePublishPackage(
+    draft: Readonly<ContentDraft>,
+    review: Readonly<ContentReviewDecision>,
+    idempotencyKey: string
+  ): Promise<PublishPackage>;
   recordUseFeedback(
     publishPackage: Readonly<PublishPackage>,
     outcome: ContentStudioFeedbackOutcome
@@ -94,7 +116,8 @@ async function request<T>(
   workspaceId: string,
   method: 'GET' | 'POST' = 'GET',
   body?: unknown,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  includeWorkspaceId = true
 ): Promise<T> {
   const csrf = method === 'GET' ? '' : await csrfToken();
   let response: Response;
@@ -110,7 +133,12 @@ async function request<T>(
       },
       ...(method === 'GET'
         ? {}
-        : { body: JSON.stringify({ workspaceId, ...(body as Record<string, unknown>) }) })
+        : {
+            body: JSON.stringify({
+              ...(includeWorkspaceId ? { workspaceId } : {}),
+              ...(body as Record<string, unknown>)
+            })
+          })
     });
   } catch (cause) {
     throw new ContentStudioHttpError(
@@ -147,6 +175,75 @@ export function createContentStudioClient(workspaceId: string): ContentStudioCli
       request<ContentStudioWorkDetail>(
         `/api/lite/content-studio/works/${encodeURIComponent(contentOpportunityId)}`,
         workspaceId
+      ),
+    createDraft: (opportunity, input, idempotencyKey) =>
+      request<ContentDraft>(
+        `/api/lite/content-studio/works/${encodeURIComponent(opportunity.contentOpportunityId)}/drafts`,
+        workspaceId,
+        'POST',
+        {
+          contentOpportunityVersion: opportunity.version,
+          expectedContentOpportunityFingerprintSha256:
+            opportunity.contentOpportunityFingerprintSha256,
+          title: input.title,
+          body: input.body
+        },
+        idempotencyKey,
+        false
+      ),
+    reviseDraft: (draft, input, idempotencyKey) =>
+      request<ContentDraft>(
+        `/api/lite/content-drafts/${encodeURIComponent(draft.contentDraftId)}/revisions`,
+        workspaceId,
+        'POST',
+        {
+          expectedVersion: draft.version,
+          expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256,
+          title: input.title,
+          body: input.body
+        },
+        idempotencyKey,
+        false
+      ),
+    markReadyForReview: (draft, idempotencyKey) =>
+      request<ContentDraft>(
+        `/api/lite/content-drafts/${encodeURIComponent(draft.contentDraftId)}/ready-for-review`,
+        workspaceId,
+        'POST',
+        {
+          expectedVersion: draft.version,
+          expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256
+        },
+        idempotencyKey,
+        false
+      ),
+    recordReview: (draft, input, idempotencyKey) =>
+      request<ContentReviewDecision>(
+        `/api/lite/content-drafts/${encodeURIComponent(draft.contentDraftId)}/reviews`,
+        workspaceId,
+        'POST',
+        {
+          contentDraftVersion: draft.version,
+          expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256,
+          outcome: input.outcome,
+          rationale: input.rationale
+        },
+        idempotencyKey,
+        false
+      ),
+    preparePublishPackage: (draft, review, idempotencyKey) =>
+      request<PublishPackage>(
+        `/api/lite/content-drafts/${encodeURIComponent(draft.contentDraftId)}/publish-packages`,
+        workspaceId,
+        'POST',
+        {
+          contentDraftVersion: draft.version,
+          expectedContentDraftFingerprintSha256: draft.contentDraftFingerprintSha256,
+          reviewDecisionId: review.contentReviewDecisionId,
+          reviewDecisionVersion: review.version
+        },
+        idempotencyKey,
+        false
       ),
     recordUseFeedback: (publishPackage, outcome) =>
       request<ProductLoopUseFeedback>(

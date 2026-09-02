@@ -3,9 +3,11 @@ import { ContentStudio } from './ContentStudio.js';
 import { ContentStudioHttpError } from '../../api/content-studio.js';
 import {
   detailFixture,
+  draft,
   fixtureClient,
   fixtureWorkspaceId,
   listFixture,
+  review,
   summaryFixture
 } from './fixtures.js';
 
@@ -43,17 +45,74 @@ export const DraftWithoutReview: Story = {
     ...args,
     client: fixtureClient(
       listFixture(),
-      detailFixture({ reviews: [], packages: [], feedback: [] })
+      detailFixture({
+        drafts: [{ ...draft, status: 'DRAFT' }],
+        reviewedDrafts: [],
+        reviews: [],
+        packages: [],
+        feedback: []
+      })
     ),
     initialContentOpportunityId: 'content-opportunity_413'
   }
 };
-export const ExactReview: Story = {
+export const ReadyForReview: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture(),
+      detailFixture({
+        drafts: [{ ...draft, status: 'READY_FOR_HUMAN_REVIEW' }],
+        reviewedDrafts: [],
+        reviews: [],
+        packages: [],
+        feedback: []
+      })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const ChangesRequired: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture(),
+      detailFixture({
+        drafts: [{ ...draft, status: 'CHANGES_REQUIRED' }],
+        reviewedDrafts: [draft],
+        reviews: [{ ...review, outcome: 'CHANGES_REQUIRED' }],
+        packages: [],
+        feedback: []
+      })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const Rejected: Story = {
+  args: {
+    ...args,
+    client: fixtureClient(
+      listFixture(),
+      detailFixture({
+        drafts: [{ ...draft, status: 'REJECTED' }],
+        reviewedDrafts: [draft],
+        reviews: [{ ...review, outcome: 'REJECTED' }],
+        packages: [],
+        feedback: []
+      })
+    ),
+    initialContentOpportunityId: 'content-opportunity_413'
+  }
+};
+export const ApprovedPackageReady: Story = {
   args: {
     ...args,
     client: fixtureClient(listFixture(), detailFixture({ packages: [], feedback: [] })),
     initialContentOpportunityId: 'content-opportunity_413'
   }
+};
+export const PackagePresent: Story = {
+  args: { ...args, initialContentOpportunityId: 'content-opportunity_413' }
 };
 export const FeedbackAvailable: Story = {
   args: {
@@ -85,6 +144,59 @@ export const FeedbackMutationError: Story = {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 };
+export const PreparationMutationError: Story = {
+  args: {
+    ...args,
+    client: {
+      ...fixtureClient(
+        listFixture(),
+        detailFixture({
+          drafts: [{ ...draft, status: 'DRAFT' }],
+          reviewedDrafts: [],
+          reviews: [],
+          packages: [],
+          feedback: []
+        })
+      ),
+      reviseDraft: () =>
+        Promise.reject(new ContentStudioHttpError(409, 'VERSION_CONFLICT', 'owner truth changed'))
+    },
+    initialContentOpportunityId: 'content-opportunity_413'
+  },
+  play: async ({ canvasElement }) => {
+    const action = Array.from(canvasElement.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Revise Draft'
+    );
+    action?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+};
+export const PreparationBusy: Story = {
+  args: {
+    ...args,
+    client: {
+      ...fixtureClient(
+        listFixture(),
+        detailFixture({
+          drafts: [{ ...draft, status: 'DRAFT' }],
+          reviewedDrafts: [],
+          reviews: [],
+          packages: [],
+          feedback: []
+        })
+      ),
+      reviseDraft: () => new Promise(() => undefined)
+    },
+    initialContentOpportunityId: 'content-opportunity_413'
+  },
+  play: async ({ canvasElement }) => {
+    const action = Array.from(canvasElement.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Revise Draft'
+    );
+    action?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+};
 export const Pagination: Story = {
   args: { ...args, client: fixtureClient(listFixture([summaryFixture()], 'next-page')) }
 };
@@ -92,6 +204,7 @@ export const PermissionDenied: Story = {
   args: {
     ...args,
     client: {
+      ...fixtureClient(),
       list: () => Promise.reject(new ContentStudioHttpError(403, 'PERMISSION_DENIED', 'denied')),
       find: () => Promise.reject(new Error('unused')),
       recordUseFeedback: () => Promise.reject(new Error('unused'))
@@ -102,6 +215,7 @@ export const PersistenceUnavailable: Story = {
   args: {
     ...args,
     client: {
+      ...fixtureClient(),
       list: () =>
         Promise.reject(new ContentStudioHttpError(503, 'PERSISTENCE_UNAVAILABLE', 'offline')),
       find: () => Promise.reject(new Error('unused')),
