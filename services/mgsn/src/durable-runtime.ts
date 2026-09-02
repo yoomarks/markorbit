@@ -1,6 +1,11 @@
 import type { ManagedDatabase } from '@markorbit/persistence';
 import { AllocationProviderAcceptanceService } from './allocation-provider-acceptance.js';
 import { PostgresAllocationProviderAcceptanceRepository } from './allocation-provider-acceptance-postgres.js';
+import {
+  ControlledPrivacyHandoffService,
+  type ControlledHandoffCurrentAuthoritySource
+} from './controlled-privacy-handoff.js';
+import { PostgresControlledHandoffRepository } from './controlled-privacy-handoff-postgres.js';
 import type { MgsnHttpServices } from './http.js';
 import { NetworkParticipationService } from './network-participation.js';
 import { PostgresNetworkParticipationRepository } from './network-participation-postgres.js';
@@ -46,17 +51,38 @@ const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySo
   }
 };
 
+// Persisted AUTHORIZED history never substitutes for current disclosure permission.
+const unavailableControlledHandoffAuthority: ControlledHandoffCurrentAuthoritySource = {
+  evaluateCurrentAuthority() {
+    return Promise.resolve({
+      authorityAvailable: false,
+      selectionCurrent: false,
+      selectionScopeMatch: false,
+      sourceVersionsMatch: false,
+      sourceAccessCurrent: false,
+      participationActive: false,
+      visibilityAuthorized: false,
+      directExecutorEstablished: false,
+      hiddenIntermediaryDetected: false,
+      evidenceArtifactAccessAuthorized: false,
+      checkedAuthorityReferences: []
+    });
+  }
+};
+
 export interface DurableMgsnServicesOptions {
   database: ManagedDatabase;
   coreUrl: string;
   executionUrl: string;
   internalServiceSecret: string;
   providerSelectionCurrentAuthoritySource?: ProviderSelectionCurrentAuthoritySource;
+  controlledHandoffCurrentAuthoritySource?: ControlledHandoffCurrentAuthoritySource;
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
   providerResponsibility: ProviderResponsibilityService;
   providerSelection: ProviderSelectionService;
+  controlledHandoff: ControlledPrivacyHandoffService;
 };
 
 export function createDurableMgsnServices(
@@ -83,6 +109,10 @@ export function createDurableMgsnServices(
     query
   );
   const providerSelectionRepository = new PostgresProviderSelectionRepository(
+    options.database,
+    query
+  );
+  const controlledHandoffRepository = new PostgresControlledHandoffRepository(
     options.database,
     query
   );
@@ -134,6 +164,10 @@ export function createDurableMgsnServices(
     providerSelection: new ProviderSelectionService(
       providerSelectionRepository,
       options.providerSelectionCurrentAuthoritySource ?? unavailableProviderSelectionAuthority
+    ),
+    controlledHandoff: new ControlledPrivacyHandoffService(
+      controlledHandoffRepository,
+      options.controlledHandoffCurrentAuthoritySource ?? unavailableControlledHandoffAuthority
     )
   };
 }
