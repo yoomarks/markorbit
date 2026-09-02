@@ -20,6 +20,7 @@ export * from './network-participation-postgres.js';
 export * from './provider-responsibility.js';
 export * from './provider-discovery.js';
 export * from './provider-discovery-postgres.js';
+export * from './provider-selection.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';
