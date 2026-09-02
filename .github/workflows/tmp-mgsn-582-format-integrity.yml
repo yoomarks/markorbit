@@ -1,4 +1,4 @@
-# Temporary one-shot type/lint repair for PR #582; NEVER MERGE.
+# Temporary one-shot latest-main refresh for PR #582; NEVER MERGE.
 name: tmp-mgsn-582-format-integrity
 
 on:
@@ -9,67 +9,26 @@ permissions:
   contents: write
 
 jobs:
-  repair-formal-integrity-test:
+  refresh-formal-mgsn-to-latest-main:
     if: github.head_ref == 'tmp-mgsn-582-hardening'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: mgsn-o
-          fetch-depth: 1
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Repair integrity-test command, row-count and SQL literal types
+          fetch-depth: 0
+      - name: Merge exact latest main into formal MGSN branch
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path('services/mgsn/tests/provider-responsibility-postgres-integrity.test.ts')
-          s = p.read_text()
-
-          old_import = """  ProviderResponsibilityService,\n  type ProviderResponsibilityCommandType,\n  type ProviderResponsibilityCommit,\n  type ReviseProviderResponsibilityProfileCommand\n"""
-          new_import = """  ProviderResponsibilityService,\n  type CreateProviderResponsibilityProfileCommand,\n  type ProviderResponsibilityCommandType,\n  type ProviderResponsibilityCommit,\n  type ReviseProviderResponsibilityProfileCommand\n"""
-          if old_import not in s:
-              raise SystemExit('missing create-command import target')
-          s = s.replace(old_import, new_import, 1)
-
-          old_helper = "function createCommand(overrides: Record<string, unknown> = {}) {"
-          new_helper = """function createCommand(\n  overrides: Partial<CreateProviderResponsibilityProfileCommand> = {}\n): CreateProviderResponsibilityProfileCommand {"""
-          if old_helper not in s:
-              raise SystemExit('missing createCommand target')
-          s = s.replace(old_helper, new_helper, 1)
-
-          old_counts = """  async function counts() {\n    const result = await database.getPool().query(\n      `SELECT\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_profile_identities) AS identities,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_profiles) AS profiles,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_execution_team_references) AS teams,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_evidence_references) AS evidence,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_command_replays) AS replays,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_owner_audit_events) AS audits,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_pointer_audit) AS pointer_audits,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_current) AS current_rows`\n    );\n    return result.rows[0] as Record<string, number>;\n  }"""
-          new_counts = """  interface ResponsibilityRowCounts {\n    identities: number;\n    profiles: number;\n    teams: number;\n    evidence: number;\n    replays: number;\n    audits: number;\n    pointer_audits: number;\n    current_rows: number;\n  }\n\n  async function counts(): Promise<ResponsibilityRowCounts> {\n    const result = await database.getPool().query(\n      `SELECT\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_profile_identities) AS identities,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_profiles) AS profiles,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_execution_team_references) AS teams,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_evidence_references) AS evidence,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_command_replays) AS replays,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_owner_audit_events) AS audits,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_pointer_audit) AS pointer_audits,\n         (SELECT count(*)::int FROM mgsn_provider_responsibility_current) AS current_rows`\n    );\n    return result.rows[0] as ResponsibilityRowCounts;\n  }"""
-          if old_counts not in s:
-              raise SystemExit('missing counts target')
-          s = s.replace(old_counts, new_counts, 1)
-
-          escaped = "'\\\"SUSPENDED\\\"'::jsonb"
-          literal = "'\"SUSPENDED\"'::jsonb"
-          if escaped not in s:
-              raise SystemExit('missing SQL JSON literal target')
-          s = s.replace(escaped, literal, 1)
-          p.write_text(s)
-          PY
-      - name: Format and verify MGSN types and lint
-        run: |
-          pnpm exec prettier --write services/mgsn/tests/provider-responsibility-postgres-integrity.test.ts
-          pnpm --filter @markorbit/mgsn-service... build
-          pnpm --filter @markorbit/mgsn-service typecheck
-          pnpm --filter @markorbit/mgsn-service lint
-      - name: Commit repaired integrity proof harness
-        shell: bash
-        run: |
+          set -euo pipefail
+          expected_main='1cce1ae941ddd03ccc24b3d23275f774614918f4'
+          git fetch origin main
+          actual_main="$(git rev-parse origin/main)"
+          test "$actual_main" = "$expected_main" || {
+            echo "main moved: expected $expected_main got $actual_main"
+            exit 1
+          }
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add services/mgsn/tests/provider-responsibility-postgres-integrity.test.ts
-          git commit -m 'test(mgsn): type durable responsibility integrity proofs'
+          git merge --no-edit "$expected_main"
           git push origin HEAD:mgsn-o
