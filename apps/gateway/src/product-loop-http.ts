@@ -41,6 +41,8 @@ const actorSpoofFields = [
   'membershipId'
 ] as const;
 
+type ProductLoopSecurityMode = 'READ' | 'DURABLE_MUTATION' | 'ADVISORY_POST';
+
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
@@ -115,6 +117,22 @@ function environmentTimeout(): number | undefined {
   return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
+function aiGuideBody(request: JsonRequest): Readonly<Record<string, unknown>> {
+  const body = bodyRecord(request);
+  const allowedFields = ['expectedTrademarkAssetVersion', 'requestedKinds'] as const;
+  if (
+    Object.keys(body).some(
+      (field) => !allowedFields.includes(field as (typeof allowedFields)[number])
+    )
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only expectedTrademarkAssetVersion and requestedKinds may be forwarded to the AI Guide owner.'
+    );
+  return body;
+}
+
 export function createGatewayProductLoopRoutes(
   options: GatewayProductLoopOptions
 ): readonly JsonRoute[] {
@@ -124,7 +142,7 @@ export function createGatewayProductLoopRoutes(
 
   const authenticate = async (
     request: JsonRequest,
-    mutation: boolean,
+    securityMode: ProductLoopSecurityMode,
     permissions: readonly Permission[]
   ): Promise<WorkspacePrincipal> => {
     if (!options.authenticationClient)
@@ -134,7 +152,8 @@ export function createGatewayProductLoopRoutes(
         'Authentication service is unavailable.',
         true
       );
-    const body = mutation ? bodyRecord(request) : undefined;
+    const protectedPost = securityMode !== 'READ';
+    const body = protectedPost ? bodyRecord(request) : undefined;
     if (body) rejectActorSpoof(body);
     const requestedWorkspaceId = workspaceId(request, body);
     try {
@@ -143,15 +162,15 @@ export function createGatewayProductLoopRoutes(
         requestedWorkspaceId,
         request.headers['x-correlation-id']
       );
-      if (mutation) {
+      if (protectedPost) {
         requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
         validateCsrf(
           principal.sessionId,
           options.csrfSecret,
           request.headers['x-markorbit-csrf-token']
         );
-        idempotency(request, body!);
       }
+      if (securityMode === 'DURABLE_MUTATION') idempotency(request, body!);
       if (!hasPermissions(principal, permissions))
         throw new AuthenticationError('PERMISSION_DENIED', 'Product-loop permission is required.');
       return principal;
@@ -163,7 +182,12 @@ export function createGatewayProductLoopRoutes(
   const liteCall = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
-    input: { method?: 'GET' | 'POST'; path?: string; body?: unknown } = {}
+    input: {
+      method?: 'GET' | 'POST';
+      path?: string;
+      body?: unknown;
+      forwardIdempotency?: boolean;
+    } = {}
   ): Promise<{ status: number; body: unknown }> => {
     if (!options.internalServiceSecret)
       throw new HttpError(
@@ -189,7 +213,7 @@ export function createGatewayProductLoopRoutes(
           ...(request.headers['x-request-id']
             ? { 'x-request-id': request.headers['x-request-id'] }
             : {}),
-          ...(request.headers['idempotency-key']
+          ...(input.forwardIdempotency !== false && request.headers['idempotency-key']
             ? { 'idempotency-key': request.headers['idempotency-key'] }
             : {})
         },
@@ -208,7 +232,7 @@ export function createGatewayProductLoopRoutes(
   };
 
   const trademarkAssetDetail = async (request: JsonRequest): Promise<ReturnType<typeof json>> => {
-    const principal = await authenticate(request, false, ['workspace:read']);
+    const principal = await authenticate(request, 'READ', ['workspace:read']);
     const base = await liteCall(request, principal);
     if (base.status !== 200) return json(base.status, base.body);
 
@@ -248,42 +272,57 @@ export function createGatewayProductLoopRoutes(
     }
   };
 
+  const trademarkAssetAiGuide = async (request: JsonRequest): Promise<ReturnType<typeof json>> => {
+    const principal = await authenticate(request, 'ADVISORY_POST', ['workspace:read']);
+    const body = aiGuideBody(request);
+    const response = await liteCall(request, principal, {
+      body,
+      forwardIdempotency: false
+    });
+    return json(response.status, response.body);
+  };
+
   const route = (
     method: JsonRoute['method'],
     path: string,
     permissions: readonly Permission[],
-    mutation = method !== 'GET'
+    securityMode: ProductLoopSecurityMode = method === 'GET' ? 'READ' : 'DURABLE_MUTATION'
   ): JsonRoute => ({
     method,
     path,
     handle: async (request) => {
-      const principal = await authenticate(request, mutation, permissions);
+      const principal = await authenticate(request, securityMode, permissions);
       return forward(request, principal);
     }
   });
 
   return [
-    route('GET', '/api/lite/today', ['workspace:read'], false),
-    route('GET', '/api/lite/daily-orbit', ['workspace:read'], false),
-    route('GET', '/api/lite/daily-workspace', ['workspace:read'], false),
-    route('GET', '/api/lite/opportunity-candidates', ['workspace:read'], false),
+    route('GET', '/api/lite/today', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/daily-orbit', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/daily-workspace', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/opportunity-candidates', ['workspace:read'], 'READ'),
     route(
       'GET',
       '/api/lite/opportunity-candidates/:opportunityCandidateId',
       ['workspace:read'],
-      false
+      'READ'
     ),
     route(
       'GET',
       '/api/lite/opportunity-candidates/:opportunityCandidateId/qualification',
       ['workspace:read'],
-      false
+      'READ'
     ),
-    route('GET', '/api/lite/trademark-assets', ['workspace:read'], false),
+    route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
     {
       method: 'GET',
       path: '/api/lite/trademark-assets/:trademarkAssetId',
       handle: trademarkAssetDetail
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/trademark-assets/:trademarkAssetId/ai-guide',
+      handle: trademarkAssetAiGuide
     },
     route('POST', '/api/lite/trademark-assets/:trademarkAssetId/commerce-profile', [
       'matter:manage'
@@ -292,7 +331,7 @@ export function createGatewayProductLoopRoutes(
       'GET',
       '/api/lite/trademark-assets/:trademarkAssetId/service-work-package',
       ['workspace:read'],
-      false
+      'READ'
     ),
     route('POST', '/api/lite/trademark-assets/:trademarkAssetId/service-work-packages', [
       'matter:create'
@@ -300,18 +339,23 @@ export function createGatewayProductLoopRoutes(
     route('POST', '/api/lite/trademark-service-work-packages/:workPackageId/execution-readiness', [
       'review:perform'
     ]),
-    route('GET', '/api/lite/content-studio/works', ['workspace:read'], false),
-    route('GET', '/api/lite/content-studio/works/:contentOpportunityId', ['workspace:read'], false),
+    route('GET', '/api/lite/content-studio/works', ['workspace:read'], 'READ'),
+    route(
+      'GET',
+      '/api/lite/content-studio/works/:contentOpportunityId',
+      ['workspace:read'],
+      'READ'
+    ),
     route('POST', '/api/lite/content-studio/works/:contentOpportunityId/drafts', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/revisions', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/ready-for-review', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/reviews', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/publish-packages', ['matter:manage']),
-    route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], false),
-    route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], false),
-    route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], false),
-    route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read'], false),
-    route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], false),
+    route('GET', '/api/lite/content-kits/:contentPickId', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/visual-briefs/:visualBriefId', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/visual-outputs/:visualOutputReferenceId', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/analytics/product-loop-conversions', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/prepared-actions/:preparedActionId', ['workspace:read'], 'READ'),
     route('POST', '/api/lite/product-preference-events', ['workspace:read']),
     route('POST', '/api/lite/today/:todayRecommendationId/prepared-actions', ['matter:manage']),
     route('POST', '/api/lite/prepared-actions/:preparedActionId/confirm', ['matter:manage']),
