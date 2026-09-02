@@ -141,6 +141,7 @@
     "0087_mgsn_controlled_privacy_handoff": "@markorbit/mgsn-service",
     "0088_mgsn_controlled_privacy_handoff_integrity": "@markorbit/mgsn-service",
     "0089_mgsn_outcome_trust_evidence": "@markorbit/mgsn-service",
-    "0090_mgsn_outcome_trust_evidence_audit_integrity": "@markorbit/mgsn-service"
+    "0090_mgsn_outcome_trust_evidence_audit_integrity": "@markorbit/mgsn-service",
+    "0091_core_method_improvement_coverage_gap": "@markorbit/core-service"
   }
 }
