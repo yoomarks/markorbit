@@ -9,16 +9,74 @@
   </head>
   <body>
     <main id="app" aria-labelledby="provider-workspace-title">
-      <section class="shell" aria-live="polite">
-        <p class="eyebrow">MarkOrbit</p>
-        <h1 id="provider-workspace-title">Provider Workspace</h1>
-        <p class="summary">
-          Authenticated provider work will appear here through the governed MarkOrbit Gateway.
-        </p>
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">MarkOrbit · governed provider work</p>
+          <h1 id="provider-workspace-title">Provider Workspace</h1>
+          <p class="summary">
+            Read your Workspace's current work queue through the governed MarkOrbit Gateway.
+          </p>
+        </div>
         <p class="boundary">
-          This shell does not create allocation, acceptance, appointment, contact, filing, payment,
-          or Official Truth authority.
+          Queue visibility is read-only context. It does not create allocation, acceptance,
+          appointment, contact, filing, payment, or Official Truth authority.
         </p>
+      </header>
+
+      <section class="workspace-context" aria-labelledby="workspace-context-title">
+        <div>
+          <h2 id="workspace-context-title">Workspace context</h2>
+          <p>
+            Enter the Core Workspace ID you are operating in. The browser value selects context
+            only; your MarkOrbit session, membership and permissions are still verified by Gateway +
+            Core.
+          </p>
+        </div>
+        <form id="workspace-form" class="workspace-form">
+          <label for="workspace-id">Core Workspace ID</label>
+          <div class="field-row">
+            <input
+              id="workspace-id"
+              name="workspaceId"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="018f0000-0000-7000-8000-000000000000"
+              required
+            />
+            <button type="submit">Load own work</button>
+          </div>
+        </form>
+      </section>
+
+      <p id="status" class="status" role="status" aria-live="polite">
+        Choose a Provider Workspace context to load work.
+      </p>
+
+      <section id="workspace" class="workspace-grid" hidden>
+        <section class="panel queue-panel" aria-labelledby="queue-title">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Own work</p>
+              <h2 id="queue-title">Queue</h2>
+            </div>
+            <button id="refresh-queue" class="secondary" type="button">Refresh</button>
+          </div>
+          <div id="queue-state"></div>
+          <ol id="queue-list" class="queue-list" aria-label="Provider work items"></ol>
+          <button id="load-more" class="secondary load-more" type="button" hidden>Load more</button>
+        </section>
+
+        <section class="panel detail-panel" aria-labelledby="detail-title">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Exact read</p>
+              <h2 id="detail-title">Work item detail</h2>
+            </div>
+          </div>
+          <div id="detail" class="detail-empty">
+            Select a work item to inspect its bounded read-only projection.
+          </div>
+        </section>
       </section>
     </main>
     <script type="module" src="./src/main.js"></script>
