@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { WorkspacePrincipal } from '@markorbit/contracts';
+import { AuthenticationError, type WorkspacePrincipal } from '@markorbit/contracts';
+import { csrfToken } from '../src/auth.js';
 import type { CoreAuthenticationClient } from '../src/auth.js';
 import { createGatewayProductLoopRoutes } from '../src/product-loop-http.js';
 
@@ -17,7 +18,7 @@ const principal: WorkspacePrincipal = {
   workspaceId,
   membershipId: 'membership_integration_373',
   role: 'WORKSPACE_ADMIN',
-  permissions: ['workspace:read']
+  permissions: ['workspace:read', 'matter:manage']
 };
 const resolveWorkspace = vi.fn(() => Promise.resolve(principal));
 const auth: CoreAuthenticationClient = {
@@ -65,6 +66,10 @@ function sessionHeaders(targetWorkspaceId = workspaceId): Record<string, string>
     cookie: 'mo_session=token-373',
     'x-markorbit-workspace-id': targetWorkspaceId
   };
+}
+
+function withoutHeader(headers: Record<string, string>, name: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(headers).filter(([key]) => key !== name));
 }
 
 afterEach(() => {
@@ -249,8 +254,294 @@ describe('Gateway Content Studio authenticated read boundary', () => {
 
   it('registers only the two requested Content Studio read routes', () => {
     const studioRoutes = createGatewayProductLoopRoutes(options)
-      .filter((candidate) => candidate.path.startsWith(listPath))
+      .filter((candidate) => candidate.method === 'GET' && candidate.path.startsWith(listPath))
       .map((candidate) => `${candidate.method} ${candidate.path}`);
     expect(studioRoutes).toEqual([`GET ${listPath}`, `GET ${detailPath}`]);
+  });
+});
+
+// prettier-ignore
+describe('Gateway Content Studio governed preparation mutation boundary', () => {
+  const contentDraftId = 'content-draft_540';
+  const mutationCases = [
+    {
+      name: 'create draft',
+      routePath: '/api/lite/content-studio/works/:contentOpportunityId/drafts',
+      browserPath: `/api/lite/content-studio/works/${contentOpportunityId}/drafts`,
+      litePath: `/v1/content-studio/works/${contentOpportunityId}/drafts`,
+      params: { contentOpportunityId },
+      body: {
+        contentOpportunityVersion: 3,
+        expectedContentOpportunityFingerprintSha256: 'a'.repeat(64),
+        title: 'Draft title',
+        body: 'Draft body'
+      }
+    },
+    {
+      name: 'revise draft',
+      routePath: '/api/lite/content-drafts/:contentDraftId/revisions',
+      browserPath: `/api/lite/content-drafts/${contentDraftId}/revisions`,
+      litePath: `/v1/content-drafts/${contentDraftId}/revisions`,
+      params: { contentDraftId },
+      body: {
+        expectedVersion: 4,
+        expectedContentDraftFingerprintSha256: 'b'.repeat(64),
+        title: 'Revised title',
+        body: 'Revised body'
+      }
+    },
+    {
+      name: 'ready for review',
+      routePath: '/api/lite/content-drafts/:contentDraftId/ready-for-review',
+      browserPath: `/api/lite/content-drafts/${contentDraftId}/ready-for-review`,
+      litePath: `/v1/content-drafts/${contentDraftId}/ready-for-review`,
+      params: { contentDraftId },
+      body: {
+        expectedVersion: 5,
+        expectedContentDraftFingerprintSha256: 'c'.repeat(64)
+      }
+    },
+    {
+      name: 'record review',
+      routePath: '/api/lite/content-drafts/:contentDraftId/reviews',
+      browserPath: `/api/lite/content-drafts/${contentDraftId}/reviews`,
+      litePath: `/v1/content-drafts/${contentDraftId}/reviews`,
+      params: { contentDraftId },
+      body: {
+        contentDraftVersion: 6,
+        expectedContentDraftFingerprintSha256: 'd'.repeat(64),
+        outcome: 'APPROVED',
+        rationale: 'Ready for governed publish-package preparation.'
+      }
+    },
+    {
+      name: 'prepare publish package',
+      routePath: '/api/lite/content-drafts/:contentDraftId/publish-packages',
+      browserPath: `/api/lite/content-drafts/${contentDraftId}/publish-packages`,
+      litePath: `/v1/content-drafts/${contentDraftId}/publish-packages`,
+      params: { contentDraftId },
+      body: {
+        contentDraftVersion: 6,
+        expectedContentDraftFingerprintSha256: 'e'.repeat(64),
+        reviewDecisionId: 'content-review-decision_540',
+        reviewDecisionVersion: 1
+      }
+    }
+  ] as const;
+
+  const mutationRoute = (path: string) => {
+    const value = createGatewayProductLoopRoutes(options).find(
+      (candidate) => candidate.method === 'POST' && candidate.path === path
+    );
+    if (!value) throw new Error(`POST ${path} route missing`);
+    return value;
+  };
+
+  const mutationHeaders = (overrides: Record<string, string> = {}) => ({
+    ...sessionHeaders(),
+    origin: options.allowedOrigins[0]!,
+    'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+    'idempotency-key': 'content-studio-idempotency-540',
+    'x-correlation-id': 'correlation-540',
+    'x-request-id': 'request-540',
+    ...overrides
+  });
+
+  const mutationRequest = (
+    path: string,
+    body: Record<string, unknown>,
+    headers: Record<string, string>,
+    params: Record<string, string>
+  ) => ({ method: 'POST' as const, path, params, query: {}, headers, body });
+
+  it('registers the existing two GETs plus exactly five governed Content Studio POSTs', () => {
+    const studioRoutes = createGatewayProductLoopRoutes(options)
+      .filter(
+        (candidate) =>
+          candidate.path.startsWith('/api/lite/content-studio/') ||
+          candidate.path.startsWith('/api/lite/content-drafts/')
+      )
+      .map((candidate) => `${candidate.method} ${candidate.path}`);
+    expect(studioRoutes).toEqual([
+      `GET ${listPath}`,
+      `GET ${detailPath}`,
+      'POST /api/lite/content-studio/works/:contentOpportunityId/drafts',
+      'POST /api/lite/content-drafts/:contentDraftId/revisions',
+      'POST /api/lite/content-drafts/:contentDraftId/ready-for-review',
+      'POST /api/lite/content-drafts/:contentDraftId/reviews',
+      'POST /api/lite/content-drafts/:contentDraftId/publish-packages'
+    ]);
+  });
+
+  it.each(mutationCases)(
+    'forwards $name through trusted Principal, Workspace and mutation headers',
+    async ({ routePath, browserPath, litePath, params, body }) => {
+      const downstream = vi.fn((url: string, init: RequestInit) => {
+        expect(url).toBe(`http://lite.test${litePath}`);
+        expect(init.method).toBe('POST');
+        if (typeof init.body !== 'string') throw new Error('Expected JSON string request body.');
+        expect(JSON.parse(init.body)).toEqual(body);
+        const headers = init.headers as Record<string, string>;
+        expect(headers['x-markorbit-internal-authorization']).toBe(options.internalServiceSecret);
+        expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
+        expect(headers['idempotency-key']).toBe('content-studio-idempotency-540');
+        expect(headers['x-correlation-id']).toBe('correlation-540');
+        expect(headers['x-request-id']).toBe('request-540');
+        const envelope = JSON.parse(
+          Buffer.from(headers['x-markorbit-principal']!, 'base64url').toString('utf8')
+        ) as { principal: WorkspacePrincipal };
+        expect(envelope.principal).toMatchObject({
+          userId: principal.userId,
+          workspaceId,
+          membershipId: principal.membershipId
+        });
+        expect(envelope.principal).not.toHaveProperty('reviewerPrincipalId');
+        return jsonResponse(201, { schemaVersion: 1, accepted: true });
+      });
+      vi.stubGlobal('fetch', downstream);
+      const result = await mutationRoute(routePath).handle(
+        mutationRequest(browserPath, { ...body }, mutationHeaders(), { ...params })
+      );
+      expect(result.status).toBe(201);
+      expect(result.body).toEqual({ schemaVersion: 1, accepted: true });
+      expect(downstream).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each(mutationCases)(
+    'fails $name before Lite when the session is missing',
+    async ({ routePath, browserPath, params, body }) => {
+      const downstream = vi.fn();
+      vi.stubGlobal('fetch', downstream);
+      const headers = withoutHeader(mutationHeaders(), 'cookie');
+      await expect(
+        mutationRoute(routePath).handle(
+          mutationRequest(browserPath, { ...body }, headers, { ...params })
+        )
+      ).rejects.toMatchObject({ status: 401, code: 'AUTHENTICATION_REQUIRED' });
+      expect(downstream).not.toHaveBeenCalled();
+    }
+  );
+
+  it('fails before Lite when Workspace context is missing or Core denies Workspace membership', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const first = mutationCases[0];
+    const missingHeaders = withoutHeader(mutationHeaders(), 'x-markorbit-workspace-id');
+    await expect(
+      mutationRoute(first.routePath).handle(
+        mutationRequest(first.browserPath, { ...first.body }, missingHeaders, { ...first.params })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_WORKSPACE_CONTEXT' });
+
+    resolveWorkspace.mockRejectedValueOnce(
+      new AuthenticationError('MEMBERSHIP_REQUIRED', 'Workspace membership is required.')
+    );
+    await expect(
+      mutationRoute(first.routePath).handle(
+        mutationRequest(
+          first.browserPath,
+          { ...first.body },
+          mutationHeaders({ 'x-markorbit-workspace-id': otherWorkspaceId }),
+          { ...first.params }
+        )
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'MEMBERSHIP_REQUIRED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('fails before Lite when matter:manage is missing', async () => {
+    const first = mutationCases[0];
+    resolveWorkspace.mockResolvedValueOnce({ ...principal, permissions: ['workspace:read'] });
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    await expect(
+      mutationRoute(first.routePath).handle(
+        mutationRequest(first.browserPath, { ...first.body }, mutationHeaders(), { ...first.params })
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('fails before Lite for untrusted Origin, invalid CSRF, and missing idempotency', async () => {
+    const first = mutationCases[0];
+    const failureCases = [
+      {
+        headers: mutationHeaders({ origin: 'https://evil.example' }),
+        status: 403,
+        code: 'UNTRUSTED_ORIGIN'
+      },
+      {
+        headers: withoutHeader(mutationHeaders(), 'x-markorbit-csrf-token'),
+        status: 403,
+        code: 'INVALID_CSRF_TOKEN'
+      },
+      {
+        headers: mutationHeaders({ 'x-markorbit-csrf-token': 'invalid' }),
+        status: 403,
+        code: 'INVALID_CSRF_TOKEN'
+      },
+      {
+        headers: withoutHeader(mutationHeaders(), 'idempotency-key'),
+        status: 400,
+        code: 'INVALID_REQUEST'
+      }
+    ] as const;
+    for (const failure of failureCases) {
+      const downstream = vi.fn();
+      vi.stubGlobal('fetch', downstream);
+      await expect(
+        mutationRoute(first.routePath).handle(
+          mutationRequest(first.browserPath, { ...first.body }, failure.headers, { ...first.params })
+        )
+      ).rejects.toMatchObject({ status: failure.status, code: failure.code });
+      expect(downstream).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each(['reviewerPrincipalId', 'actorId', 'userId', 'membershipId'])(
+    'rejects browser actor spoof field %s before Lite',
+    async (field) => {
+      const review = mutationCases[3];
+      const downstream = vi.fn();
+      vi.stubGlobal('fetch', downstream);
+      await expect(
+        mutationRoute(review.routePath).handle(
+          mutationRequest(
+            review.browserPath,
+            { ...review.body, [field]: 'spoofed-browser-authority' },
+            mutationHeaders(),
+            { ...review.params }
+          )
+        )
+      ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+      expect(downstream).not.toHaveBeenCalled();
+    }
+  );
+
+  it('preserves Lite mutation status/body semantics and transport failure', async () => {
+    const first = mutationCases[0];
+    for (const status of [400, 403, 404, 409, 422, 503]) {
+      const body = { code: `LITE_MUTATION_${status}`, marker: `status-${status}` };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => jsonResponse(status, body))
+      );
+      const result = await mutationRoute(first.routePath).handle(
+        mutationRequest(first.browserPath, { ...first.body }, mutationHeaders(), { ...first.params })
+      );
+      expect(result.status).toBe(status);
+      expect(result.body).toEqual(body);
+    }
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('Lite offline')))
+    );
+    await expect(
+      mutationRoute(first.routePath).handle(
+        mutationRequest(first.browserPath, { ...first.body }, mutationHeaders(), { ...first.params })
+      )
+    ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE' });
   });
 });
