@@ -9,6 +9,11 @@ import { PostgresControlledHandoffRepository } from './controlled-privacy-handof
 import type { MgsnHttpServices } from './http.js';
 import { NetworkParticipationService } from './network-participation.js';
 import { PostgresNetworkParticipationRepository } from './network-participation-postgres.js';
+import {
+  OutcomeTrustEvidenceService,
+  type TrustEvidenceCurrentAuthoritySource
+} from './outcome-trust-evidence.js';
+import { PostgresOutcomeTrustEvidenceRepository } from './outcome-trust-evidence-postgres.js';
 import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
 import { ProviderResponsibilityService } from './provider-responsibility.js';
@@ -70,6 +75,22 @@ const unavailableControlledHandoffAuthority: ControlledHandoffCurrentAuthoritySo
   }
 };
 
+// Durable Trust Evidence is historical/contextual evidence only. Serving still requires a live owner authority.
+const unavailableTrustEvidenceCurrentAuthority: TrustEvidenceCurrentAuthoritySource = {
+  evaluateCurrentAuthority() {
+    return Promise.resolve({
+      authorityAvailable: false,
+      participationActive: false,
+      visibilityAuthorized: false,
+      relationshipAuthorityCurrent: false,
+      sourceAuthoritiesCurrent: false,
+      contextMatches: false,
+      executorAttributionCurrent: false,
+      authorityReferences: []
+    });
+  }
+};
+
 export interface DurableMgsnServicesOptions {
   database: ManagedDatabase;
   coreUrl: string;
@@ -77,12 +98,14 @@ export interface DurableMgsnServicesOptions {
   internalServiceSecret: string;
   providerSelectionCurrentAuthoritySource?: ProviderSelectionCurrentAuthoritySource;
   controlledHandoffCurrentAuthoritySource?: ControlledHandoffCurrentAuthoritySource;
+  trustEvidenceCurrentAuthoritySource?: TrustEvidenceCurrentAuthoritySource;
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
   providerResponsibility: ProviderResponsibilityService;
   providerSelection: ProviderSelectionService;
   controlledHandoff: ControlledPrivacyHandoffService;
+  outcomeTrustEvidence: OutcomeTrustEvidenceService;
 };
 
 export function createDurableMgsnServices(
@@ -113,6 +136,10 @@ export function createDurableMgsnServices(
     query
   );
   const controlledHandoffRepository = new PostgresControlledHandoffRepository(
+    options.database,
+    query
+  );
+  const outcomeTrustEvidenceRepository = new PostgresOutcomeTrustEvidenceRepository(
     options.database,
     query
   );
@@ -168,6 +195,10 @@ export function createDurableMgsnServices(
     controlledHandoff: new ControlledPrivacyHandoffService(
       controlledHandoffRepository,
       options.controlledHandoffCurrentAuthoritySource ?? unavailableControlledHandoffAuthority
+    ),
+    outcomeTrustEvidence: new OutcomeTrustEvidenceService(
+      outcomeTrustEvidenceRepository,
+      options.trustEvidenceCurrentAuthoritySource ?? unavailableTrustEvidenceCurrentAuthority
     )
   };
 }
