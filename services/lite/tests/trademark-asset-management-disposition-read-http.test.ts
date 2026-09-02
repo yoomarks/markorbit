@@ -61,7 +61,8 @@ function setup() {
       candidate.method === 'GET' &&
       candidate.path === '/v1/trademark-assets/:trademarkAssetId/management-dispositions'
   );
-  if (matching.length !== 1) throw new Error('Exact-current disposition GET route must exist once.');
+  if (matching.length !== 1)
+    throw new Error('Exact-current disposition GET route must exist once.');
   const route = matching[0]!;
   const request: JsonRequest = {
     method: 'GET',
@@ -97,12 +98,7 @@ describe('authenticated Trademark Asset management disposition read HTTP boundar
   it.each([
     ['x-markorbit-internal-authorization', 'wrong', 401, 'UNTRUSTED_INTERNAL_CALLER'],
     ['x-markorbit-principal', 'invalid', 401, 'INVALID_INTERNAL_PRINCIPAL'],
-    [
-      'x-markorbit-workspace-id',
-      '22222222-2222-4222-8222-222222222222',
-      404,
-      'WORKSPACE_MISMATCH'
-    ]
+    ['x-markorbit-workspace-id', '22222222-2222-4222-8222-222222222222', 404, 'WORKSPACE_MISMATCH']
   ] as const)('rejects invalid %s before owner read', async (header, value, status, code) => {
     const { dispositions, route, request } = setup();
     await expect(

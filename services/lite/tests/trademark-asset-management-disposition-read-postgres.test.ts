@@ -234,9 +234,7 @@ suite('PostgreSQL exact-current Trademark Asset management disposition read', ()
     });
 
     const read = await dispositions().listCurrentForAsset(workspaceId, asset.trademarkAssetId);
-    const item = read.items.find(
-      (candidate) => candidate.signal.id === base.managementSignal.id
-    );
+    const item = read.items.find((candidate) => candidate.signal.id === base.managementSignal.id);
     expect(item?.disposition).toEqual(recorded);
     expect(item?.disposition?.workflowReference).toEqual(workflowReference);
     expect(item?.disposition?.officialTruthCreated).toBe(false);
@@ -282,9 +280,9 @@ suite('PostgreSQL exact-current Trademark Asset management disposition read', ()
     expect(
       read.items.some((item) => item.disposition?.dispositionId === firstRecorded.dispositionId)
     ).toBe(true);
-    expect(
-      read.items.some((item) => item.disposition?.asset.id === second.trademarkAssetId)
-    ).toBe(false);
+    expect(read.items.some((item) => item.disposition?.asset.id === second.trademarkAssetId)).toBe(
+      false
+    );
     await expect(
       dispositions().listCurrentForAsset(otherWorkspaceId, first.trademarkAssetId)
     ).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
@@ -292,9 +290,7 @@ suite('PostgreSQL exact-current Trademark Asset management disposition read', ()
 
   it('survives service restart from durable PostgreSQL truth', async () => {
     const asset = await admitAsset('restart');
-    const recorded = await dispositions().record(
-      commandFor(asset, 'restart-record', 'DISMISSED')
-    );
+    const recorded = await dispositions().record(commandFor(asset, 'restart-record', 'DISMISSED'));
 
     const firstRuntime = await startReadRuntime(dispositions());
     const first = await readThroughHttp(firstRuntime, asset.trademarkAssetId);

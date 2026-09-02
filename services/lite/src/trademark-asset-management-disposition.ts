@@ -352,7 +352,9 @@ function persistedDisposition(
   }
   const rowWorkspaceId = persistedText(row.workspace_id, 'workspace_id', 100).toLowerCase();
   if (rowWorkspaceId !== workspaceId) {
-    return corruptDisposition('normalized workspace lineage does not match the requested Workspace.');
+    return corruptDisposition(
+      'normalized workspace lineage does not match the requested Workspace.'
+    );
   }
   const version = persistedVersion(document.version, 'document_json.version');
   if (version !== persistedVersion(row.version, 'version')) {
