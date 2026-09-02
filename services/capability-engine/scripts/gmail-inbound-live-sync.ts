@@ -29,7 +29,6 @@ if (!argument) {
   );
 }
 const resume = argument === '--resume';
-const anchorProviderMessageId = resume ? undefined : argument;
 
 const runtime = resolveManagedCommunicationRuntimeConfigV1(process.env);
 if (!runtime) {
@@ -80,7 +79,7 @@ try {
         foundation,
         workspaceId: runtime.workspaceId,
         accountRef: runtime.accountRef,
-        anchorProviderMessageId: anchorProviderMessageId!
+        anchorProviderMessageId: argument
       });
 
   process.stdout.write(
