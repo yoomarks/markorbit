@@ -6,7 +6,7 @@
   "description": "Capability registry, composition, context compilation and invocation boundary.",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/index.ts src/main.ts src/governed-runtime-bootstrap.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/governed-runtime-bootstrap.ts src/production-source-explainability.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:runtime-registry:postgres": "vitest run tests/runtime-capability-registry-postgres.test.ts",
     "test:observation-ledger:postgres": "vitest run tests/capability-observation-ledger-postgres.test.ts",
@@ -34,6 +34,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./production-source-explainability": {
+      "types": "./dist/production-source-explainability.d.ts",
+      "import": "./dist/production-source-explainability.js"
     }
   }
 }
