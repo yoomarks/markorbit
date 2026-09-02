@@ -31,6 +31,7 @@
     "mgsn_network_participation": "@markorbit/mgsn-service",
     "mgsn_provider_responsibility": "@markorbit/mgsn-service",
     "mgsn_provider_selection": "@markorbit/mgsn-service",
+    "mgsn_controlled_privacy_handoff": "@markorbit/mgsn-service",
     "execution_provider_return_evidence": "@markorbit/execution-service",
     "execution_evidence_review": "@markorbit/execution-service",
     "execution_reviewed_source_handoff": "@markorbit/execution-service",
@@ -135,6 +136,8 @@
     "0083_markreg_early_funnel": "@markorbit/markreg-service",
     "0084_mgsn_provider_responsibility_replay_audit": "@markorbit/mgsn-service",
     "0085_mgsn_provider_selection": "@markorbit/mgsn-service",
-    "0086_lite_visual_content_opportunity_lineage": "@markorbit/lite-service"
+    "0086_lite_visual_content_opportunity_lineage": "@markorbit/lite-service",
+    "0087_mgsn_controlled_privacy_handoff": "@markorbit/mgsn-service",
+    "0088_mgsn_controlled_privacy_handoff_integrity": "@markorbit/mgsn-service"
   }
 }
