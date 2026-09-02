@@ -23,8 +23,8 @@ export * from './provider-discovery.js';
 export * from './provider-discovery-postgres.js';
 export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
-// Phase A exports domain lifecycle/current validation only; durable Handoff persistence remains Integration-owned.
 export * from './controlled-privacy-handoff.js';
+export * from './controlled-privacy-handoff-postgres.js';
 // Phase A exposes contextual advisory Trust evaluation only; it creates no universal score, rank, or routing authority.
 export * from './outcome-trust-evidence.js';
 export * from './runtime-dependencies.js';
