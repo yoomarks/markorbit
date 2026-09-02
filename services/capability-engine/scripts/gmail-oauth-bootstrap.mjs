@@ -67,7 +67,9 @@ await new Promise((resolve, reject) => {
 });
 
 const address = server.address();
-if (!address || typeof address === 'string') throw new Error('Could not allocate local OAuth callback port.');
+if (!address || typeof address === 'string') {
+  throw new Error('Could not allocate local OAuth callback port.');
+}
 const redirectUri = `http://127.0.0.1:${address.port}/oauth2/callback`;
 const authorizationUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
 authorizationUrl.search = new URLSearchParams({
@@ -80,7 +82,9 @@ authorizationUrl.search = new URLSearchParams({
   state
 }).toString();
 
-process.stdout.write('\nOpen this URL in your browser and authorize the approved Gmail test account:\n\n');
+process.stdout.write(
+  '\nOpen this URL in your browser and authorize the approved Gmail test account:\n\n'
+);
 process.stdout.write(`${authorizationUrl.toString()}\n\n`);
 
 try {
@@ -105,7 +109,9 @@ try {
       'Google did not return a refresh_token. Revoke the test app grant if necessary and rerun with consent.'
     );
   }
-  process.stdout.write('\nAuthorization succeeded. Store the following value in your local secret manager only.\n');
+  process.stdout.write(
+    '\nAuthorization succeeded. Store the following value in your local secret manager only.\n'
+  );
   process.stdout.write('Do not commit it, paste it into GitHub, or send it in chat.\n\n');
   process.stdout.write(`MO_MANAGED_COMMUNICATION_GMAIL_REFRESH_TOKEN=${token.refresh_token}\n`);
 } finally {
