@@ -1,3 +1,4 @@
+# Temporary verifier only; NEVER MERGE. Human-authored sync to permit CI after bot hardening push.
 name: tmp-mgsn-582-hardening-v2
 
 on:
