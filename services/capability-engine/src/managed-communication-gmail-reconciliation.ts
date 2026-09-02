@@ -1,4 +1,7 @@
-import type { ManagedCommunicationFoundationStoreV1 } from './managed-communication-foundation.js';
+import {
+  managedCommunicationNormalizedIdsV1,
+  type ManagedCommunicationFoundationStoreV1
+} from './managed-communication-foundation.js';
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
 import {
   GmailManagedCommunicationInboundV1,
@@ -57,6 +60,43 @@ export async function reconcileGmailManagedCommunicationProviderMessageV1(
     throw new Error(
       'Gmail message reconciliation requires an existing durable history checkpoint.'
     );
+  }
+
+  const normalizedIds = managedCommunicationNormalizedIdsV1({
+    workspaceId,
+    accountRef,
+    provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+    providerMessageId
+  });
+  const existingEvidence = await options.exactEvidence.resolveExactEvidence({
+    workspaceId,
+    accountRef,
+    messageId: normalizedIds.messageId
+  });
+  if (existingEvidence) {
+    const existingMessage = await options.foundation.resolveMessage(
+      workspaceId,
+      accountRef,
+      normalizedIds.messageId
+    );
+    if (
+      existingMessage.direction !== 'INBOUND' ||
+      existingMessage.providerObservation.provider !== GMAIL_MANAGED_COMMUNICATION_PROVIDER ||
+      existingMessage.providerObservation.providerMessageId !== providerMessageId ||
+      existingEvidence.provider !== GMAIL_MANAGED_COMMUNICATION_PROVIDER ||
+      existingEvidence.providerMessageId !== providerMessageId ||
+      existingEvidence.mediaType !== 'message/rfc822' ||
+      existingMessage.providerObservation.observedAt !== existingEvidence.observedAt
+    ) {
+      throw new Error(
+        'Gmail message reconciliation durable replay state does not match immutable provider evidence.'
+      );
+    }
+    return Object.freeze({
+      initialized: false,
+      imported: 0,
+      providerCursor: checkpoint.providerCursor
+    });
   }
 
   const full = await options.client.message(providerMessageId, 'full');
