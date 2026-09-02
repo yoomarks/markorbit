@@ -79,7 +79,10 @@ function createCommand(overrides: Record<string, unknown> = {}) {
         contactDataEmbedded: false as const
       }
     ],
-    legallyRequiredDistinctSigner: { kind: 'NONE' as const, distinctSignerRequired: false as const },
+    legallyRequiredDistinctSigner: {
+      kind: 'NONE' as const,
+      distinctSignerRequired: false as const
+    },
     evidenceReferences: [providerEvidence()],
     effectiveFrom: '2026-09-01T00:00:00.000Z',
     effectiveUntil: '2026-10-01T00:00:00.000Z',
@@ -230,11 +233,15 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
 
   it('keeps no-row authority unknown across repository and service restart', async () => {
     await expect(repository().findCurrentProfile(providerId, workspaceId)).resolves.toBeUndefined();
-    await expect(service().assessCurrent(providerId, workspaceId, initialAt)).resolves.toMatchObject({
+    await expect(
+      service().assessCurrent(providerId, workspaceId, initialAt)
+    ).resolves.toMatchObject({
       state: 'UNKNOWN_OR_UNPROVEN',
       directExecutorEstablished: false
     });
-    await expect(service().assessCurrent(providerId, workspaceId, initialAt)).resolves.toMatchObject({
+    await expect(
+      service().assessCurrent(providerId, workspaceId, initialAt)
+    ).resolves.toMatchObject({
       state: 'UNKNOWN_OR_UNPROVEN'
     });
   });
@@ -266,19 +273,22 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
       receivesHandoffDataByDefault: false,
       doesNotReplaceFinalExecutionProvider: true
     });
-    expect(restarted?.evidenceReferences.every((item) => item.artifactAccessAuthorized === false)).toBe(
-      true
-    );
-    expect(Object.values(restarted?.authorityConsequences ?? {}).every((value) => value === false)).toBe(
-      true
-    );
+    expect(
+      restarted?.evidenceReferences.every((item) => item.artifactAccessAuthorized === false)
+    ).toBe(true);
+    expect(
+      Object.values(restarted?.authorityConsequences ?? {}).every((value) => value === false)
+    ).toBe(true);
   });
 
   it('deduplicates concurrent exact same-key creates into one physical mutation', async () => {
     const first = service('provider-responsibility_same-key-a');
     const second = service('provider-responsibility_same-key-b');
     const command = createCommand({ idempotencyKey: 'same-key-create-integrity' });
-    const results = await Promise.all([first.createProfile(principal, command), second.createProfile(principal, command)]);
+    const results = await Promise.all([
+      first.createProfile(principal, command),
+      second.createProfile(principal, command)
+    ]);
     expect(results[0]).toEqual(results[1]);
     expect(await counts()).toMatchObject({
       identities: 1,
@@ -326,7 +336,9 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
         occurredAt: laterAt
       }
     };
-    await expect(repository().commit(mutation)).rejects.toMatchObject({ code: 'PERSISTENCE_UNAVAILABLE' });
+    await expect(repository().commit(mutation)).rejects.toMatchObject({
+      code: 'PERSISTENCE_UNAVAILABLE'
+    });
     expect(await counts()).toMatchObject({
       identities: 1,
       profiles: 1,
@@ -359,12 +371,15 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
     for (const statement of statements) {
       await expect(database.getPool().query(statement, [profileId])).rejects.toBeTruthy();
     }
-    await expect(repository().findCurrentProfile(providerId, workspaceId)).resolves.toEqual(created);
+    await expect(repository().findCurrentProfile(providerId, workspaceId)).resolves.toEqual(
+      created
+    );
   });
 
   it('fails closed when canonical JSON conflicts with normalized immutable profile truth', async () => {
     const created = await service().createProfile(principal, createCommand());
-    const malformedId = 'provider-responsibility_malformed-integrity' as ProviderResponsibilityProfileId;
+    const malformedId =
+      'provider-responsibility_malformed-integrity' as ProviderResponsibilityProfileId;
     await database.getPool().query(
       `INSERT INTO mgsn_provider_responsibility_profile_identities(
          provider_responsibility_profile_id,provider_id,provider_workspace_id,created_at
@@ -564,7 +579,9 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
     expect(after.audits - before.audits).toBe(1);
     expect(after.current_rows).toBe(1);
     const current = await repository().findCurrentProfile(providerId, workspaceId);
-    expect(current?.providerResponsibilityProfileId).not.toBe(created.providerResponsibilityProfileId);
+    expect(current?.providerResponsibilityProfileId).not.toBe(
+      created.providerResponsibilityProfileId
+    );
     expect(current?.version).toBe(1);
   });
 });
