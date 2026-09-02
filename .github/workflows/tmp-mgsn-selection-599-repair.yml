@@ -24,55 +24,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Fix exact static defects
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('services/mgsn/src/provider-selection-postgres.ts')
-          s = p.read_text()
-          replacements = [
-            (
-              "return structuredClone(value) as ProviderSelectionMutationResultV1;",
-              "return structuredClone(value) as unknown as ProviderSelectionMutationResultV1;",
-              'canonical replay cast target not found'
-            ),
-            (
-              "selection.revocationReasonCode ?? null,",
-              "selection.status === 'REVOKED' ? selection.revocationReasonCode : null,",
-              'revocation reason target not found'
-            ),
-            (
-              "providerSelectionId: String(value.previous_provider_selection_id) as ProviderSelectionId,",
-              "providerSelectionId: value.previous_provider_selection_id as ProviderSelectionId,",
-              'previous selection id target not found'
-            )
-          ]
-          for old, new, message in replacements:
-            if old not in s:
-              raise SystemExit(message)
-            s = s.replace(old, new, 1)
-          p.write_text(s)
-
-          p = Path('services/mgsn/src/durable-runtime.ts')
-          s = p.read_text()
-          old = "  async evaluateCurrentAuthority() {\n    return {"
-          new = "  evaluateCurrentAuthority() {\n    return Promise.resolve({"
-          if old not in s:
-            raise SystemExit('fail-closed authority method target not found')
-          s = s.replace(old, new, 1)
-          old = "      checkedAuthorityReferences: []\n    };\n  }"
-          new = "      checkedAuthorityReferences: []\n    });\n  }"
-          if old not in s:
-            raise SystemExit('fail-closed authority return target not found')
-          p.write_text(s.replace(old, new, 1))
-
-          p = Path('services/mgsn/tests/provider-selection-postgres.test.ts')
-          s = p.read_text()
-          old = """    const left = structuredClone(fixture.createCommand);\n    const right = structuredClone(fixture.createCommand);\n    left.idempotencyKey = 'provider-selection:598:left';\n    right.idempotencyKey = 'provider-selection:598:right';\n    left.commandFingerprintSha256 = 'a'.repeat(64);\n    right.commandFingerprintSha256 = 'b'.repeat(64);"""
-          new = """    const left = {\n      ...structuredClone(fixture.createCommand),\n      idempotencyKey: 'provider-selection:598:left',\n      commandFingerprintSha256: 'a'.repeat(64)\n    };\n    const right = {\n      ...structuredClone(fixture.createCommand),\n      idempotencyKey: 'provider-selection:598:right',\n      commandFingerprintSha256: 'b'.repeat(64)\n    };"""
-          if old not in s:
-            raise SystemExit('readonly concurrent command target not found')
-          p.write_text(s.replace(old, new, 1))
       - name: Format owned files
         run: >-
           pnpm exec prettier --write
@@ -84,7 +35,7 @@ jobs:
           pnpm build:mgsn-provider-registry-deps
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
-      - name: Commit verified repair
+      - name: Commit verified formatting if needed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -93,5 +44,5 @@ jobs:
             echo 'No changes to commit.'
             exit 0
           fi
-          git commit -m 'MGSN: repair durable Provider Selection static checks'
+          git commit -m 'MGSN: format expanded Provider Selection acceptance'
           git push origin HEAD:mgsn-selection-durable
