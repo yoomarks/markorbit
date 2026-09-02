@@ -1,9 +1,9 @@
 import type { ManagedCommunicationFoundationStoreV1 } from './managed-communication-foundation.js';
 import {
   GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+  type GmailManagedCommunicationClientV1,
   type GmailManagedCommunicationInboundResultV1,
-  GmailManagedCommunicationClientV1,
-  GmailManagedCommunicationInboundV1
+  type GmailManagedCommunicationInboundV1
 } from './managed-communication-gmail.js';
 
 export interface GmailManagedCommunicationAnchoredSyncOptionsV1 {
