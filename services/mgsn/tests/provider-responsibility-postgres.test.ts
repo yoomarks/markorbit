@@ -162,8 +162,14 @@ suite('Provider Responsibility PostgreSQL repository', () => {
 
   it('survives restart through verification, suspend, governed revalidation, resume and replay', async () => {
     const created = await service().createProfile(principal, createCommand());
-    expect(created).toMatchObject({ version: 1, status: 'CURRENT', directResponsibilityStatus: 'ATTESTED' });
-    await expect(service().assessCurrent(providerId, workspaceId, initialAt)).resolves.toMatchObject({
+    expect(created).toMatchObject({
+      version: 1,
+      status: 'CURRENT',
+      directResponsibilityStatus: 'ATTESTED'
+    });
+    await expect(
+      service().assessCurrent(providerId, workspaceId, initialAt)
+    ).resolves.toMatchObject({
       state: 'UNKNOWN_OR_UNPROVEN'
     });
 
@@ -181,7 +187,9 @@ suite('Provider Responsibility PostgreSQL repository', () => {
     };
     const verified = await service().recordVerification(verifier, verification);
     expect(verified.version).toBe(2);
-    await expect(service().assessCurrent(providerId, workspaceId, initialAt)).resolves.toMatchObject({
+    await expect(
+      service().assessCurrent(providerId, workspaceId, initialAt)
+    ).resolves.toMatchObject({
       state: 'DIRECT_FINAL_EXECUTOR_ESTABLISHED'
     });
 
@@ -220,8 +228,14 @@ suite('Provider Responsibility PostgreSQL repository', () => {
       correlationId: 'correlation_revalidate-responsibility-postgres'
     };
     const revalidated = await service().revalidateCurrentAuthority(verifier, revalidation);
-    expect(revalidated).toMatchObject({ version: 4, status: 'SUSPENDED', authorityState: 'CURRENT' });
-    await expect(service().assessCurrent(providerId, workspaceId, afterSuspensionAt)).resolves.toMatchObject({
+    expect(revalidated).toMatchObject({
+      version: 4,
+      status: 'SUSPENDED',
+      authorityState: 'CURRENT'
+    });
+    await expect(
+      service().assessCurrent(providerId, workspaceId, afterSuspensionAt)
+    ).resolves.toMatchObject({
       state: 'PROFILE_SUSPENDED'
     });
 
@@ -236,7 +250,9 @@ suite('Provider Responsibility PostgreSQL repository', () => {
       correlationId: 'correlation_resume-responsibility-postgres'
     });
     expect(resumed).toMatchObject({ version: 5, status: 'CURRENT', authorityState: 'CURRENT' });
-    await expect(restarted.assessCurrent(providerId, workspaceId, afterSuspensionAt)).resolves.toMatchObject({
+    await expect(
+      restarted.assessCurrent(providerId, workspaceId, afterSuspensionAt)
+    ).resolves.toMatchObject({
       state: 'DIRECT_FINAL_EXECUTOR_ESTABLISHED'
     });
 
@@ -303,11 +319,15 @@ suite('Provider Responsibility PostgreSQL repository', () => {
       })
     );
     expect(rejoined.version).toBe(1);
-    expect(rejoined.providerResponsibilityProfileId).not.toBe(created.providerResponsibilityProfileId);
-    await expect(
-      repository().findCurrentProfile(providerId, workspaceId)
-    ).resolves.toMatchObject({ providerResponsibilityProfileId: rejoined.providerResponsibilityProfileId });
-    const oldHistory = await repository().listProfileHistory(created.providerResponsibilityProfileId);
+    expect(rejoined.providerResponsibilityProfileId).not.toBe(
+      created.providerResponsibilityProfileId
+    );
+    await expect(repository().findCurrentProfile(providerId, workspaceId)).resolves.toMatchObject({
+      providerResponsibilityProfileId: rejoined.providerResponsibilityProfileId
+    });
+    const oldHistory = await repository().listProfileHistory(
+      created.providerResponsibilityProfileId
+    );
     expect(oldHistory.at(-1)?.status).toBe('REVOKED');
   });
 });

@@ -31,7 +31,9 @@ export type DurableMgsnServices = MgsnHttpServices & {
   providerResponsibility: ProviderResponsibilityService;
 };
 
-export function createDurableMgsnServices(options: DurableMgsnServicesOptions): DurableMgsnServices {
+export function createDurableMgsnServices(
+  options: DurableMgsnServicesOptions
+): DurableMgsnServices {
   const query = options.database.getPool();
   const providerRepository = new PostgresProviderRegistryRepository(options.database, query);
   const servicePackageRepository = new PostgresServicePackageEligibilityRepository(

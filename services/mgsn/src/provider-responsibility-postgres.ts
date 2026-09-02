@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { noProviderResponsibilityAuthorityConsequences } from '@markorbit/contracts/provider-responsibility';
 import type {
   ProviderResponsibilityEvidenceReferenceV1,
   ProviderResponsibilityExecutionTeamReferenceV1,
@@ -131,7 +133,11 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
           return replay;
         }
 
-        const current = await this.lockCurrent(client, mutation.providerId, mutation.providerWorkspaceId);
+        const current = await this.lockCurrent(
+          client,
+          mutation.providerId,
+          mutation.providerWorkspaceId
+        );
         const currentId = current?.profileId ?? null;
         const currentVersion = current?.version ?? null;
         if (
@@ -211,7 +217,12 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
           );
         }
 
-        await this.insertProfile(client, mutation.profile, mutation.audit.actorReference, mutation.audit.occurredAt);
+        await this.insertProfile(
+          client,
+          mutation.profile,
+          mutation.audit.actorReference,
+          mutation.audit.occurredAt
+        );
         await this.insertTeamReferences(client, mutation.profile, mutation.audit.occurredAt);
         await this.insertEvidenceReferences(client, mutation.profile, mutation.audit.occurredAt);
         await this.setCurrentPointer(client, mutation);
@@ -221,13 +232,6 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
       });
     } catch (cause) {
       if (cause instanceof ProviderResponsibilityError) throw cause;
-      if ((cause as { code?: string }).code === '23505') {
-        throw new ProviderResponsibilityError(
-          'IDEMPOTENCY_CONFLICT',
-          'Concurrent Provider Responsibility mutation conflicted with durable state.',
-          409
-        );
-      }
       throw this.unavailable(cause);
     }
   }
@@ -266,7 +270,7 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
                 request_fingerprint_sha256,occurred_at
            FROM mgsn_provider_responsibility_owner_audit_events
           WHERE provider_responsibility_profile_id=$1
-          ORDER BY occurred_at ASC,audit_id ASC`,
+          ORDER BY audit_id ASC`,
         [providerResponsibilityProfileId]
       );
       return result.rows.map((row) => this.mapAudit(row as Row));
@@ -326,6 +330,18 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
         503
       );
     }
+    const persisted = await this.requireProfile(
+      client,
+      response.providerResponsibilityProfileId,
+      response.version
+    );
+    if (JSON.stringify(response) !== JSON.stringify(persisted)) {
+      throw new ProviderResponsibilityError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Provider Responsibility replay response conflicts with persisted canonical profile truth.',
+        503
+      );
+    }
     return {
       scopeKey: String(row.scope_key),
       idempotencyKey: String(row.idempotency_key),
@@ -335,7 +351,11 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
     };
   }
 
-  private async lockCurrent(client: QueryClient, providerId: ProviderId, providerWorkspaceId: string) {
+  private async lockCurrent(
+    client: QueryClient,
+    providerId: ProviderId,
+    providerWorkspaceId: string
+  ) {
     const result = await client.query(
       `SELECT provider_responsibility_profile_id,profile_version
          FROM mgsn_provider_responsibility_current
@@ -370,14 +390,16 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
   private assertCommitConsistency(mutation: ProviderResponsibilityCommit) {
     if (
       mutation.profile.providerId !== mutation.providerId ||
-      mutation.profile.providerWorkspaceId.toLowerCase() !== mutation.providerWorkspaceId.toLowerCase() ||
+      mutation.profile.providerWorkspaceId.toLowerCase() !==
+        mutation.providerWorkspaceId.toLowerCase() ||
       mutation.replay.response.providerResponsibilityProfileId !==
         mutation.profile.providerResponsibilityProfileId ||
       mutation.replay.response.version !== mutation.profile.version ||
       mutation.audit.providerResponsibilityProfileId !==
         mutation.profile.providerResponsibilityProfileId ||
       mutation.audit.providerId !== mutation.providerId ||
-      mutation.audit.providerWorkspaceId.toLowerCase() !== mutation.providerWorkspaceId.toLowerCase() ||
+      mutation.audit.providerWorkspaceId.toLowerCase() !==
+        mutation.providerWorkspaceId.toLowerCase() ||
       mutation.audit.newVersion !== mutation.profile.version
     ) {
       throw new ProviderResponsibilityError(
@@ -499,12 +521,6 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
   }
 
   private async setCurrentPointer(client: QueryClient, mutation: ProviderResponsibilityCommit) {
-    const current = await client.query(
-      `SELECT 1
-         FROM mgsn_provider_responsibility_current
-        WHERE provider_id=$1 AND provider_workspace_id=$2`,
-      [mutation.providerId, mutation.providerWorkspaceId]
-    );
     const values = [
       mutation.providerId,
       mutation.providerWorkspaceId,
@@ -514,13 +530,20 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
       mutation.profile.correlationId,
       mutation.audit.occurredAt
     ];
-    if (current.rowCount) {
-      await client.query(
+    if (mutation.expectedCurrentProfileId !== null) {
+      const updated = await client.query(
         `UPDATE mgsn_provider_responsibility_current
             SET provider_responsibility_profile_id=$3,profile_version=$4,set_by=$5,correlation_id=$6,set_at=$7
           WHERE provider_id=$1 AND provider_workspace_id=$2`,
         values
       );
+      if (!updated.rowCount) {
+        throw new ProviderResponsibilityError(
+          'PERSISTENCE_UNAVAILABLE',
+          'Locked Provider Responsibility current pointer disappeared during mutation.',
+          503
+        );
+      }
     } else {
       await client.query(
         `INSERT INTO mgsn_provider_responsibility_current(
@@ -599,6 +622,25 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
     const profile = this.profileRecord(row.profile_record);
     this.assertNormalizedProfile(row, profile);
 
+    const identityResult = await client.query(
+      `SELECT provider_id,provider_workspace_id::text AS provider_workspace_id
+         FROM mgsn_provider_responsibility_profile_identities
+        WHERE provider_responsibility_profile_id=$1`,
+      [providerResponsibilityProfileId]
+    );
+    if (
+      identityResult.rowCount !== 1 ||
+      String((identityResult.rows[0] as Row).provider_id) !== profile.providerId ||
+      String((identityResult.rows[0] as Row).provider_workspace_id).toLowerCase() !==
+        profile.providerWorkspaceId.toLowerCase()
+    ) {
+      throw new ProviderResponsibilityError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Provider Responsibility immutable identity conflicts with canonical profile lineage.',
+        503
+      );
+    }
+
     const teamResult = await client.query(
       `SELECT team_reference,role_reference,identity_authority_reference,contact_data_embedded
          FROM mgsn_provider_responsibility_execution_team_references
@@ -607,12 +649,21 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
       [providerResponsibilityProfileId, version]
     );
     const teams = (teamResult.rows as Row[]).map(
-      (team): ProviderResponsibilityExecutionTeamReferenceV1 => ({
-        teamReference: String(team.team_reference),
-        roleReference: String(team.role_reference),
-        identityAuthorityReference: String(team.identity_authority_reference),
-        contactDataEmbedded: false
-      })
+      (team): ProviderResponsibilityExecutionTeamReferenceV1 => {
+        if (team.contact_data_embedded !== false) {
+          throw new ProviderResponsibilityError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Provider Responsibility team history contains forbidden embedded contact data.',
+            503
+          );
+        }
+        return {
+          teamReference: String(team.team_reference),
+          roleReference: String(team.role_reference),
+          identityAuthorityReference: String(team.identity_authority_reference),
+          contactDataEmbedded: false
+        };
+      }
     );
 
     const evidenceResult = await client.query(
@@ -625,26 +676,39 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
       [providerResponsibilityProfileId, version]
     );
     const evidence = (evidenceResult.rows as Row[]).map(
-      (item): ProviderResponsibilityEvidenceReferenceV1 => ({
-        evidenceReference: String(item.evidence_reference),
-        sourceOwner: String(item.source_owner) as ProviderResponsibilityEvidenceReferenceV1['sourceOwner'],
-        sourceType: String(item.source_type),
-        sourceId: String(item.source_id),
-        sourceVersion: item.source_version as number | string,
-        sourceFingerprintSha256: String(item.source_fingerprint_sha256),
-        authorityClass: String(item.authority_class) as ProviderResponsibilityEvidenceReferenceV1['authorityClass'],
-        verificationState: String(
-          item.verification_state
-        ) as ProviderResponsibilityEvidenceReferenceV1['verificationState'],
-        observedAt: this.timestamp(item.observed_at),
-        ...(item.effective_from == null
-          ? {}
-          : { effectiveFrom: this.timestamp(item.effective_from) }),
-        ...(item.effective_until == null
-          ? {}
-          : { effectiveUntil: this.timestamp(item.effective_until) }),
-        artifactAccessAuthorized: false
-      })
+      (item): ProviderResponsibilityEvidenceReferenceV1 => {
+        if (item.artifact_access_authorized !== false) {
+          throw new ProviderResponsibilityError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Provider Responsibility evidence history contains forbidden artifact access authority.',
+            503
+          );
+        }
+        return {
+          evidenceReference: String(item.evidence_reference),
+          sourceOwner: String(
+            item.source_owner
+          ) as ProviderResponsibilityEvidenceReferenceV1['sourceOwner'],
+          sourceType: String(item.source_type),
+          sourceId: String(item.source_id),
+          sourceVersion: item.source_version as number | string,
+          sourceFingerprintSha256: String(item.source_fingerprint_sha256),
+          authorityClass: String(
+            item.authority_class
+          ) as ProviderResponsibilityEvidenceReferenceV1['authorityClass'],
+          verificationState: String(
+            item.verification_state
+          ) as ProviderResponsibilityEvidenceReferenceV1['verificationState'],
+          observedAt: this.timestamp(item.observed_at),
+          ...(item.effective_from == null
+            ? {}
+            : { effectiveFrom: this.timestamp(item.effective_from) }),
+          ...(item.effective_until == null
+            ? {}
+            : { effectiveUntil: this.timestamp(item.effective_until) }),
+          artifactAccessAuthorized: false
+        };
+      }
     );
 
     if (
@@ -662,6 +726,22 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
 
   private assertNormalizedProfile(row: Row, profile: ProviderResponsibilityProfileV1) {
     const signer = profile.legallyRequiredDistinctSigner;
+    const withoutFingerprint = Object.fromEntries(
+      Object.entries(profile).filter(([key]) => key !== 'profileFingerprintSha256')
+    );
+    const expectedProfileFingerprintSha256 = createHash('sha256')
+      .update(JSON.stringify(withoutFingerprint))
+      .digest('hex');
+    const expectedConsequenceKeys = Object.keys(
+      noProviderResponsibilityAuthorityConsequences
+    ).sort();
+    const actualConsequenceKeys = Object.keys(profile.authorityConsequences).sort();
+    const authorityConsequencesMatch =
+      JSON.stringify(expectedConsequenceKeys) === JSON.stringify(actualConsequenceKeys) &&
+      actualConsequenceKeys.every(
+        (key) =>
+          profile.authorityConsequences[key as keyof typeof profile.authorityConsequences] === false
+      );
     const signerMatches =
       signer.kind === 'NONE'
         ? String(row.signer_kind) === 'NONE' &&
@@ -669,10 +749,14 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
           row.signer_identity_authority_reference == null &&
           row.signer_legal_basis_reference == null &&
           row.signer_jurisdiction == null &&
-          row.signer_function == null
+          row.signer_function == null &&
+          row.signer_transparently_disclosed == null &&
+          row.signer_receives_handoff_data_by_default == null &&
+          row.signer_does_not_replace_final_execution_provider == null
         : String(row.signer_kind) === 'REQUIRED' &&
           String(row.signer_reference) === signer.signerReference &&
-          String(row.signer_identity_authority_reference) === signer.signerIdentityAuthorityReference &&
+          String(row.signer_identity_authority_reference) ===
+            signer.signerIdentityAuthorityReference &&
           String(row.signer_legal_basis_reference) === signer.legalBasisReference &&
           String(row.signer_jurisdiction) === signer.jurisdiction &&
           String(row.signer_function) === signer.function &&
@@ -685,7 +769,8 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
       profile.providerResponsibilityProfileId !== String(row.provider_responsibility_profile_id) ||
       profile.version !== Number(row.version) ||
       profile.providerId !== String(row.provider_id) ||
-      profile.providerWorkspaceId.toLowerCase() !== String(row.provider_workspace_id).toLowerCase() ||
+      profile.providerWorkspaceId.toLowerCase() !==
+        String(row.provider_workspace_id).toLowerCase() ||
       profile.status !== String(row.status) ||
       profile.finalExecutorStatus !== String(row.final_executor_status) ||
       profile.directResponsibilityStatus !== String(row.direct_responsibility_status) ||
@@ -697,9 +782,10 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
         (row.effective_until == null ? null : this.timestamp(row.effective_until)) ||
       profile.checkedAt !== this.timestamp(row.checked_at) ||
       profile.profileFingerprintSha256 !== String(row.profile_fingerprint_sha256) ||
+      profile.profileFingerprintSha256 !== expectedProfileFingerprintSha256 ||
       profile.correlationId !== String(row.correlation_id) ||
       !signerMatches ||
-      Object.values(profile.authorityConsequences).some((value) => value !== false)
+      !authorityConsequencesMatch
     ) {
       throw new ProviderResponsibilityError(
         'PERSISTENCE_UNAVAILABLE',
