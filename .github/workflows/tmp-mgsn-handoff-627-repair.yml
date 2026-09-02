@@ -40,7 +40,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply exact DTS repair
+      - name: Apply exact DTS and lint repairs
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -51,6 +51,14 @@ jobs:
           if old not in s:
               raise SystemExit('expected DTS cast not found')
           p.write_text(s.replace(old, new, 1))
+
+          t = Path('services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts')
+          s = t.read_text()
+          old = "() => 'provider-selection_fixture-394' as ProviderSelectionId"
+          new = "() => 'provider-selection_fixture-394'"
+          if old not in s:
+              raise SystemExit('expected unnecessary test assertion not found')
+          t.write_text(s.replace(old, new, 1))
           PY
       - name: Format exact owner files
         run: pnpm exec prettier --write services/mgsn/src/controlled-privacy-handoff-postgres.ts services/mgsn/src/durable-runtime.ts services/mgsn/src/index.ts services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts
