@@ -12,6 +12,7 @@ describe('Production Intake Prettier probe', () => {
       ...(config ?? {}),
       filepath: file
     });
-    console.log('PRETTIER608_START\n' + output + 'PRETTIER608_END');
+
+    throw new Error('PRETTIER608_START\n' + output + 'PRETTIER608_END');
   });
 });
