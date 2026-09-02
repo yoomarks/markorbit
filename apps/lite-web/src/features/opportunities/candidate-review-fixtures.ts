@@ -36,6 +36,14 @@ export const candidateFixture: OpportunityCandidate = {
   updatedAt: '2026-08-31T09:00:00.000Z'
 };
 
+export const dispositionedCandidateFixture: OpportunityCandidate = {
+  ...candidateFixture,
+  version: candidateFixture.version + 1,
+  status: 'DISPOSITIONED',
+  opportunityCandidateFingerprintSha256: 'd'.repeat(64),
+  updatedAt: '2026-08-31T10:00:00.000Z'
+};
+
 export function qualificationFixture(
   outcome: OpportunityQualificationOutcome,
   candidateVersion: number = candidateFixture.version
@@ -64,6 +72,11 @@ export function fixtureCandidateClient(
   return {
     list: () => Promise.resolve({ items, nextCursor: null }),
     load: () => Promise.resolve(candidateFixture),
-    loadQualification: () => Promise.resolve(decision)
+    loadQualification: () => Promise.resolve(decision),
+    qualify: () =>
+      Promise.resolve({
+        decision: decision ?? qualificationFixture('DEFERRED'),
+        currentCandidate: dispositionedCandidateFixture
+      })
   };
 }

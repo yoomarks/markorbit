@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type {
   OpportunityCandidate,
   OpportunityCandidateId,
@@ -16,7 +16,8 @@ import {
   KeyValueList,
   LoadingState,
   PageHeader,
-  StatusBadge
+  StatusBadge,
+  TextArea
 } from '@markorbit/ui';
 import {
   createOpportunityCandidateClient,
@@ -25,6 +26,29 @@ import {
 } from '../../api/opportunity-candidates.js';
 
 type LoadState = 'loading' | 'ready' | 'error';
+type QualificationState = 'idle' | 'submitting' | 'reloading' | 'error' | 'reload-error';
+
+const qualificationOptions: readonly {
+  value: OpportunityQualificationOutcome;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'QUALIFIED_FOR_MARKREG',
+    label: 'Qualified for MarkReg',
+    description: 'Record suitability for a later MarkReg handoff; no formal Opportunity is created.'
+  },
+  {
+    value: 'REJECTED',
+    label: 'Reject Candidate',
+    description: 'Record that this Candidate should not progress from this review.'
+  },
+  {
+    value: 'DEFERRED',
+    label: 'Defer Candidate',
+    description: 'Record that a human decision is deferred pending later review.'
+  }
+];
 
 const candidateTone = (status: OpportunityCandidateStatus) =>
   status === 'OPEN' ? 'info' : status === 'UNDER_REVIEW' ? 'warning' : 'pending';
@@ -53,6 +77,21 @@ function errorCopy(error: unknown, subject: 'list' | 'detail') {
     title: 'Candidate Review temporarily unavailable',
     description: `The ${subject} could not be loaded. This failure is not an empty Workspace and no fixture data was substituted.`
   };
+}
+
+function qualificationErrorCopy(error: unknown) {
+  const status = error instanceof OpportunityCandidateHttpError ? error.status : 503;
+  if (status === 401)
+    return 'Your authenticated session is required. Sign in again; the Candidate evidence and rationale remain loaded.';
+  if (status === 403)
+    return 'Qualification was denied by Workspace permission, Origin, or CSRF policy. The Candidate evidence and rationale remain loaded.';
+  if (status === 404)
+    return 'This Candidate is unavailable in the current Workspace. Reload durable truth before trying again.';
+  if (status === 409)
+    return 'Qualification conflicted with the current Candidate version, fingerprint, transition, Decision, or idempotency state. Reload durable truth before submitting again.';
+  if (status === 422)
+    return 'The Qualification outcome or rationale was not accepted. Review the entered rationale and try again.';
+  return 'Qualification is temporarily unavailable. The Candidate evidence and rationale remain loaded; no local Decision was created.';
 }
 
 function CandidateStatus({ status }: { status: OpportunityCandidateStatus }) {
@@ -125,6 +164,98 @@ function QualificationDecision({
   );
 }
 
+function QualificationControls({
+  candidate,
+  state,
+  outcome,
+  rationale,
+  error,
+  onOutcomeChange,
+  onRationaleChange,
+  onSubmit,
+  onReload
+}: {
+  candidate: Readonly<OpportunityCandidate>;
+  state: QualificationState;
+  outcome: OpportunityQualificationOutcome | undefined;
+  rationale: string;
+  error: unknown;
+  onOutcomeChange: (outcome: OpportunityQualificationOutcome) => void;
+  onRationaleChange: (rationale: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onReload: () => void;
+}) {
+  const busy = state === 'submitting' || state === 'reloading';
+  const locked = state === 'reload-error';
+  return (
+    <Card>
+      <h2>Record human Qualification</h2>
+      <p>
+        Review exact Candidate v{candidate.version} and its fingerprint above. This is a human
+        review decision, not a customer instruction or a Formal MarkReg Opportunity.
+      </p>
+      <form className="candidate-qualification-form" onSubmit={onSubmit}>
+        <fieldset disabled={busy || locked}>
+          <legend>Qualification outcome</legend>
+          <div className="candidate-qualification-options">
+            {qualificationOptions.map((option) => (
+              <label key={option.value}>
+                <input
+                  type="radio"
+                  name="qualification-outcome"
+                  value={option.value}
+                  checked={outcome === option.value}
+                  onChange={() => onOutcomeChange(option.value)}
+                />
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <TextArea
+          label="Human rationale"
+          value={rationale}
+          onChange={(event) => onRationaleChange(event.currentTarget.value)}
+          disabled={busy || locked}
+          rows={5}
+          required
+          error={state === 'error' && !rationale.trim() ? 'Enter a rationale.' : undefined}
+        />
+        {state === 'error' && (
+          <Alert tone="danger" title="Qualification was not recorded">
+            {qualificationErrorCopy(error)}
+          </Alert>
+        )}
+        {state === 'reload-error' && (
+          <Alert tone="warning" title="Reload durable Qualification truth">
+            The POST completed, but the Candidate and Qualification Decision could not be reloaded.
+            Your submitted outcome and rationale remain visible. Reload durable truth before any new
+            submission.
+          </Alert>
+        )}
+        <div className="candidate-qualification-actions">
+          {locked ? (
+            <Button type="button" onClick={onReload}>
+              Reload Candidate and Qualification
+            </Button>
+          ) : (
+            <Button type="submit" disabled={busy || !outcome || !rationale.trim()}>
+              {state === 'submitting'
+                ? 'Recording Qualification…'
+                : state === 'reloading'
+                  ? 'Reloading durable truth…'
+                  : 'Record human Qualification'}
+            </Button>
+          )}
+        </div>
+      </form>
+    </Card>
+  );
+}
+
 function CandidateDetail({
   candidateId,
   client,
@@ -138,6 +269,12 @@ function CandidateDetail({
   const [candidate, setCandidate] = useState<OpportunityCandidate>();
   const [decision, setDecision] = useState<OpportunityQualificationDecision | null>(null);
   const [error, setError] = useState<unknown>();
+  const [qualificationState, setQualificationState] = useState<QualificationState>('idle');
+  const [qualificationError, setQualificationError] = useState<unknown>();
+  const [outcome, setOutcome] = useState<OpportunityQualificationOutcome>();
+  const [rationale, setRationale] = useState('');
+  const qualificationKeys = useRef(new Map<string, string>());
+  const successfulSignature = useRef<string>();
   const load = useCallback(() => {
     setState('loading');
     setError(undefined);
@@ -154,6 +291,60 @@ function CandidateDetail({
     );
   }, [candidateId, client]);
   useEffect(load, [load]);
+  const reloadDurableTruth = useCallback(() => {
+    setQualificationState('reloading');
+    setQualificationError(undefined);
+    void Promise.all([client.load(candidateId), client.loadQualification(candidateId)]).then(
+      ([nextCandidate, nextDecision]) => {
+        setCandidate(nextCandidate);
+        setDecision(nextDecision);
+        const signature = successfulSignature.current;
+        if (signature && !nextDecision) {
+          setQualificationState('reload-error');
+          return;
+        }
+        setQualificationState('idle');
+        if (signature) {
+          qualificationKeys.current.delete(signature);
+          successfulSignature.current = undefined;
+        }
+      },
+      (cause: unknown) => {
+        setQualificationError(cause);
+        setQualificationState('reload-error');
+      }
+    );
+  }, [candidateId, client]);
+  const submitQualification = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!candidate || !outcome || !rationale.trim() || qualificationState === 'reload-error')
+      return;
+    const input = {
+      candidateVersion: candidate.version,
+      expectedCandidateFingerprintSha256: candidate.opportunityCandidateFingerprintSha256,
+      outcome,
+      rationale: rationale.trim()
+    };
+    const signature = JSON.stringify(input);
+    const idempotencyKey =
+      qualificationKeys.current.get(signature) ??
+      `opportunity-qualification:${crypto.randomUUID()}`;
+    qualificationKeys.current.set(signature, idempotencyKey);
+    setQualificationState('submitting');
+    setQualificationError(undefined);
+    void client.qualify(candidateId, input, idempotencyKey).then(
+      () => {
+        successfulSignature.current = signature;
+        reloadDurableTruth();
+      },
+      (cause: unknown) => {
+        setQualificationError(cause);
+        setQualificationState('error');
+      }
+    );
+  };
+  const qualificationEligible =
+    candidate && !decision && (candidate.status === 'OPEN' || candidate.status === 'UNDER_REVIEW');
   return (
     <>
       <Button variant="secondary" onClick={onBack}>
@@ -168,7 +359,7 @@ function CandidateDetail({
           <PageHeader
             title={candidate.title}
             description="Opportunity Center / Candidate Review / Candidate detail"
-            actions={<Badge>Read-only owner truth</Badge>}
+            actions={<Badge>Live owner truth</Badge>}
           />
           <Alert title="Candidate boundary">
             Candidate is not confirmed customer demand. Qualification is not customer instruction.
@@ -230,9 +421,28 @@ function CandidateDetail({
             </Card>
           </div>
           <QualificationDecision candidate={candidate} decision={decision} />
+          {qualificationEligible ? (
+            <QualificationControls
+              candidate={candidate}
+              state={qualificationState}
+              outcome={outcome}
+              rationale={rationale}
+              error={qualificationError}
+              onOutcomeChange={setOutcome}
+              onRationaleChange={setRationale}
+              onSubmit={submitQualification}
+              onReload={reloadDurableTruth}
+            />
+          ) : !decision && candidate.status === 'DISPOSITIONED' ? (
+            <Alert tone="warning" title="Qualification unavailable">
+              This Candidate is already DISPOSITIONED and cannot receive another Qualification
+              Decision.
+            </Alert>
+          ) : null}
           <Alert tone="warning" title="Authority Note">
-            Reading or reviewing this Candidate does not contact a customer; create a Formal
-            Opportunity, Intake, Order, or Matter; authorize payment; or authorize filing.
+            Reading, reviewing, or qualifying this Candidate does not contact a customer; create a
+            Formal Opportunity, Intake, Order, Matter, Payment, or Filing; authorize payment; or
+            authorize filing.
           </Alert>
         </>
       ) : null}
@@ -322,7 +532,7 @@ export function CandidateReview({
       <PageHeader
         title="Opportunity Center"
         description="Candidate Review · Workspace-backed evidence for human qualification"
-        actions={<Badge>Live · read-only</Badge>}
+        actions={<Badge>Live · human review</Badge>}
       />
       <Alert title="Candidate Review boundary">
         Candidate is not confirmed customer demand. Candidate existence does not mean a customer was
