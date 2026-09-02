@@ -101,7 +101,10 @@ export interface MatterIntelligenceQuery {
 }
 
 export interface MatterIntelligenceClient {
-  get(formalMatterId: string, query?: MatterIntelligenceQuery): Promise<MatterIntelligenceProjection>;
+  get(
+    formalMatterId: string,
+    query?: MatterIntelligenceQuery
+  ): Promise<MatterIntelligenceProjection>;
 }
 
 export function createMatterIntelligenceClient(
