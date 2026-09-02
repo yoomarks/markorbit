@@ -4,7 +4,9 @@ import {
   type TrademarkAssetManagementDisposition,
   type TrademarkAssetManagementDispositionId,
   type TrademarkAssetManagementDispositionKind,
+  type TrademarkAssetManagementRecommendation,
   type TrademarkAssetManagementRecommendationId,
+  type TrademarkAssetManagementSignal,
   type TrademarkAssetManagementSignalId
 } from '@markorbit/contracts/trademark-asset-management';
 import type {
@@ -13,6 +15,11 @@ import type {
 } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
+import {
+  PostgresTrademarkAssetManagementCurrentOwnerResolver,
+  type TrademarkAssetManagementCurrentOwnerResolver
+} from './trademark-asset-management-current-owner.js';
+import { TrademarkAssetPersistenceError } from './trademark-asset.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -27,8 +34,15 @@ export type TrademarkAssetManagementRecoveryStatus =
 export interface RecordTrademarkAssetManagementDispositionCommand {
   workspaceId: string;
   trademarkAssetId: TrademarkAssetId;
-  managementSignalId: TrademarkAssetManagementSignalId;
-  recommendationId?: TrademarkAssetManagementRecommendationId;
+  expectedTrademarkAssetVersion: number;
+  managementSignal: Readonly<{
+    id: TrademarkAssetManagementSignalId;
+    version: number;
+  }>;
+  recommendation?: Readonly<{
+    id: TrademarkAssetManagementRecommendationId;
+    version: number;
+  }>;
   kind: TrademarkAssetManagementDispositionKind;
   subjectUserId: string;
   note?: string;
@@ -65,6 +79,7 @@ export interface TrademarkAssetManagementRecoveryAttemptDecision {
 export type TrademarkAssetManagementDispositionErrorCode =
   | 'INVALID_INPUT'
   | 'NOT_FOUND'
+  | 'VERSION_CONFLICT'
   | 'IDEMPOTENCY_CONFLICT'
   | 'LEASE_CONFLICT'
   | 'PERSISTENCE_UNAVAILABLE';
@@ -133,6 +148,61 @@ function timestamp(value: string, field: string): string {
   return parsed.toISOString();
 }
 
+function exactVersion(value: unknown, field: string): number {
+  if (!Number.isInteger(value) || Number(value) < 1) {
+    throw new TrademarkAssetManagementDispositionError(
+      'INVALID_INPUT',
+      `${field} must be a positive integer.`,
+      400
+    );
+  }
+  return Number(value);
+}
+
+function exactSignal(
+  signals: readonly Readonly<TrademarkAssetManagementSignal>[],
+  id: TrademarkAssetManagementSignalId,
+  version: number
+): TrademarkAssetManagementSignal {
+  const signal = signals.find((candidate) => candidate.managementSignalId === id);
+  if (!signal) {
+    throw new TrademarkAssetManagementDispositionError(
+      'NOT_FOUND',
+      'Management Signal was not found in the current owner projection.',
+      404
+    );
+  }
+  if (signal.version !== version) {
+    throw new TrademarkAssetManagementDispositionError(
+      'VERSION_CONFLICT',
+      'Management Signal changed since the requested version.'
+    );
+  }
+  return signal;
+}
+
+function exactRecommendation(
+  recommendations: readonly Readonly<TrademarkAssetManagementRecommendation>[],
+  id: TrademarkAssetManagementRecommendationId,
+  version: number
+): TrademarkAssetManagementRecommendation {
+  const recommendation = recommendations.find((candidate) => candidate.recommendationId === id);
+  if (!recommendation) {
+    throw new TrademarkAssetManagementDispositionError(
+      'NOT_FOUND',
+      'Management Recommendation was not found in the current owner projection.',
+      404
+    );
+  }
+  if (recommendation.version !== version) {
+    throw new TrademarkAssetManagementDispositionError(
+      'VERSION_CONFLICT',
+      'Management Recommendation changed since the requested version.'
+    );
+  }
+  return recommendation;
+}
+
 function nextDispositionId(): TrademarkAssetManagementDispositionId {
   return `trademark-asset-management-disposition_${randomUUID().replaceAll('-', '')}`;
 }
@@ -196,7 +266,10 @@ export class PostgresTrademarkAssetManagementDispositionStore {
     private readonly query: QueryClient,
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly dispositionId: () => TrademarkAssetManagementDispositionId = nextDispositionId,
-    private readonly recoveryJobId: () => TrademarkAssetManagementRecoveryJobId = nextRecoveryJobId
+    private readonly recoveryJobId: () => TrademarkAssetManagementRecoveryJobId = nextRecoveryJobId,
+    private readonly currentOwner: TrademarkAssetManagementCurrentOwnerResolver = new PostgresTrademarkAssetManagementCurrentOwnerResolver(
+      database
+    )
   ) {}
 
   async record(
@@ -204,17 +277,28 @@ export class PostgresTrademarkAssetManagementDispositionStore {
   ): Promise<TrademarkAssetManagementDisposition> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const trademarkAssetId = cleanAssetId(command.trademarkAssetId);
+    const expectedTrademarkAssetVersion = exactVersion(
+      command.expectedTrademarkAssetVersion,
+      'expectedTrademarkAssetVersion'
+    );
     const managementSignalId = cleanText(
-      command.managementSignalId,
-      'managementSignalId',
+      command.managementSignal.id,
+      'managementSignal.id',
       300
     ) as TrademarkAssetManagementSignalId;
-    const recommendationId = command.recommendationId
+    const managementSignalVersion = exactVersion(
+      command.managementSignal.version,
+      'managementSignal.version'
+    );
+    const recommendationId = command.recommendation
       ? (cleanText(
-          command.recommendationId,
-          'recommendationId',
+          command.recommendation.id,
+          'recommendation.id',
           300
         ) as TrademarkAssetManagementRecommendationId)
+      : undefined;
+    const recommendationVersion = command.recommendation
+      ? exactVersion(command.recommendation.version, 'recommendation.version')
       : undefined;
     if (!trademarkAssetManagementDispositionKinds.includes(command.kind)) {
       throw new TrademarkAssetManagementDispositionError(
@@ -229,8 +313,11 @@ export class PostgresTrademarkAssetManagementDispositionStore {
     const requestFingerprintSha256 = fingerprint({
       workspaceId,
       trademarkAssetId,
-      managementSignalId,
-      recommendationId: recommendationId ?? null,
+      expectedTrademarkAssetVersion,
+      managementSignal: { id: managementSignalId, version: managementSignalVersion },
+      recommendation: recommendationId
+        ? { id: recommendationId, version: recommendationVersion }
+        : null,
       kind: command.kind,
       subjectUserId,
       note: note ?? null,
@@ -260,28 +347,82 @@ export class PostgresTrademarkAssetManagementDispositionStore {
           return clone(prior.result_json as TrademarkAssetManagementDisposition);
         }
 
-        const asset = await client.query(
-          `SELECT 1 FROM lite_trademark_assets
-            WHERE workspace_id=$1 AND trademark_asset_id=$2`,
-          [workspaceId, trademarkAssetId]
-        );
-        if (!asset.rows[0]) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `${workspaceId}:trademark-asset-id:${trademarkAssetId}`
+        ]);
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `${workspaceId}:trademark-asset-refresh:${trademarkAssetId}`
+        ]);
+        const recordedAt = timestamp(this.now(), 'now');
+        let current;
+        try {
+          current = await this.currentOwner.resolve(
+            workspaceId,
+            trademarkAssetId,
+            recordedAt,
+            client
+          );
+        } catch (error) {
+          if (error instanceof TrademarkAssetPersistenceError && error.code === 'NOT_FOUND') {
+            throw new TrademarkAssetManagementDispositionError(
+              'NOT_FOUND',
+              'Trademark Asset was not found.',
+              404
+            );
+          }
+          throw error;
+        }
+        if (current.asset.version !== expectedTrademarkAssetVersion) {
           throw new TrademarkAssetManagementDispositionError(
-            'NOT_FOUND',
-            'Trademark Asset was not found.',
-            404
+            'VERSION_CONFLICT',
+            'Trademark Asset changed since the requested version.'
+          );
+        }
+        const signal = exactSignal(current.signals, managementSignalId, managementSignalVersion);
+        if (
+          signal.workspaceId !== workspaceId ||
+          signal.asset.id !== trademarkAssetId ||
+          signal.asset.version !== current.asset.version
+        ) {
+          throw new TrademarkAssetManagementDispositionError(
+            'VERSION_CONFLICT',
+            'Management Signal does not belong to the exact current Workspace Asset.'
+          );
+        }
+        const recommendation = recommendationId
+          ? exactRecommendation(current.recommendations, recommendationId, recommendationVersion!)
+          : undefined;
+        if (
+          recommendation &&
+          (recommendation.workspaceId !== workspaceId ||
+            recommendation.asset.id !== trademarkAssetId ||
+            recommendation.asset.version !== current.asset.version ||
+            !recommendation.signalReferences.some(
+              (reference) =>
+                reference.id === signal.managementSignalId && reference.version === signal.version
+            ))
+        ) {
+          throw new TrademarkAssetManagementDispositionError(
+            'VERSION_CONFLICT',
+            'Management Recommendation is not exactly linked to the selected current Signal.'
           );
         }
 
-        const recordedAt = timestamp(this.now(), 'now');
         const disposition: TrademarkAssetManagementDisposition = {
           schemaVersion: 1,
           dispositionId: this.dispositionId(),
           workspaceId,
           version: 1,
-          asset: { id: trademarkAssetId, version: 1 },
-          signal: { id: managementSignalId, version: 1 },
-          ...(recommendationId ? { recommendation: { id: recommendationId, version: 1 } } : {}),
+          asset: { id: trademarkAssetId, version: current.asset.version },
+          signal: { id: signal.managementSignalId, version: signal.version },
+          ...(recommendation
+            ? {
+                recommendation: {
+                  id: recommendation.recommendationId,
+                  version: recommendation.version
+                }
+              }
+            : {}),
           kind: command.kind,
           subjectUserId,
           ...(note ? { note } : {}),

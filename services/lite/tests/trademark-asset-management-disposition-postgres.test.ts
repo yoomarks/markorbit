@@ -2,6 +2,9 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import { PostgresTrademarkAssetManagementDispositionStore } from '../src/trademark-asset-management-disposition.js';
+import { prepareTrademarkAssetManagementRecommendations } from '../src/trademark-asset-management-recommendation.js';
+import { deriveTrademarkAssetManagementSignals } from '../src/trademark-asset-management-signal.js';
+import { composeTrademarkAssetView } from '../src/trademark-asset-view.js';
 import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
@@ -84,66 +87,222 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
 
   afterAll(() => database.close());
 
-  async function admitAsset() {
+  async function admitAsset(suffix = 'primary') {
     return assets().admit({
       workspaceId,
-      identity: { jurisdiction: 'US', markText: 'MARKORBIT' },
+      identity: { jurisdiction: 'US', markText: `MARKORBIT ${suffix}` },
       workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: false }],
       sourceReferences: [admissionSource],
-      idempotencyKey: 'm11-wp07-admit'
+      idempotencyKey: `m11-wp07-admit-${suffix}`
     });
   }
 
-  it('persists private dispositions idempotently and exposes only current watch/defer state', async () => {
-    const asset = await admitAsset();
-    const signal = 'trademark-asset-management-signal_watch-1' as const;
-    const first = await dispositions().record({
+  async function advanceAsset(suffix = 'primary') {
+    const asset = await admitAsset(suffix);
+    return assets().updateWorkspaceMetadata({
       workspaceId,
       trademarkAssetId: asset.trademarkAssetId,
-      managementSignalId: signal,
-      kind: 'WATCHED',
-      subjectUserId: 'user_m11-wp07',
-      note: 'Watch this source-owned change.',
-      idempotencyKey: 'watch-1'
+      expectedVersion: asset.version,
+      workspaceTags: [],
+      workspaceNotes: [],
+      workspacePriority: 'High owner priority',
+      idempotencyKey: `m11-wp07-update-${suffix}`
     });
-    const replay = await dispositions().record({
+  }
+
+  function projection(asset: Awaited<ReturnType<typeof admitAsset>>) {
+    const composedAt = '2026-08-21T02:00:00.000Z';
+    const view = composeTrademarkAssetView({ anchor: asset, composedAt });
+    const signals = deriveTrademarkAssetManagementSignals(view, undefined, composedAt);
+    const recommendations = prepareTrademarkAssetManagementRecommendations({
+      signals,
+      relatedOwnerReferences: view.anchor.relations,
+      createdAt: composedAt
+    });
+    return { signals, recommendations };
+  }
+
+  function commandFor(
+    asset: Awaited<ReturnType<typeof admitAsset>>,
+    idempotencyKey: string,
+    signalIndex = 0,
+    recommendationIndex: number | undefined = signalIndex
+  ) {
+    const current = projection(asset);
+    const signal = current.signals[signalIndex]!;
+    const recommendation =
+      recommendationIndex === undefined ? undefined : current.recommendations[recommendationIndex]!;
+    return {
       workspaceId,
       trademarkAssetId: asset.trademarkAssetId,
-      managementSignalId: signal,
-      kind: 'WATCHED',
+      expectedTrademarkAssetVersion: asset.version,
+      managementSignal: { id: signal.managementSignalId, version: signal.version },
+      ...(recommendation
+        ? {
+            recommendation: {
+              id: recommendation.recommendationId,
+              version: recommendation.version
+            }
+          }
+        : {}),
+      kind: 'WATCHED' as const,
       subjectUserId: 'user_m11-wp07',
-      note: 'Watch this source-owned change.',
-      idempotencyKey: 'watch-1'
-    });
-    expect(replay).toEqual(first);
-    expect(first).toMatchObject({
+      idempotencyKey
+    };
+  }
+
+  it('persists exact current Asset, Signal, and Recommendation versions instead of constants', async () => {
+    const asset = await advanceAsset();
+    const command = commandFor(asset, 'exact-current');
+    const result = await dispositions().record(command);
+    expect(asset.version).toBeGreaterThan(1);
+    expect(result).toMatchObject({
+      asset: { id: asset.trademarkAssetId, version: asset.version },
+      signal: command.managementSignal,
+      recommendation: command.recommendation,
       officialTruthCreated: false,
       legalConclusionVerified: false,
       capabilityVerified: false
     });
-    expect(await dispositions().listWatchState(workspaceId)).toEqual([first]);
+    const persisted = await database.getPool().query(
+      `SELECT document_json FROM lite_trademark_asset_management_dispositions
+        WHERE workspace_id=$1 AND disposition_id=$2`,
+      [workspaceId, result.dispositionId]
+    );
+    const persistedDocument = (persisted.rows[0] as { document_json?: unknown } | undefined)
+      ?.document_json;
+    expect(persistedDocument).toMatchObject({
+      asset: { version: asset.version },
+      signal: { version: asset.version },
+      recommendation: { version: asset.version }
+    });
+  });
+
+  it('rejects guessed and stale current-owner references', async () => {
+    const asset = await advanceAsset();
+    const exact = commandFor(asset, 'validation-base');
+    await expect(
+      dispositions().record({
+        ...exact,
+        managementSignal: {
+          ...exact.managementSignal,
+          id: 'trademark-asset-management-signal_guessed'
+        },
+        idempotencyKey: 'guessed-signal'
+      })
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(
+      dispositions().record({
+        ...exact,
+        recommendation: {
+          ...exact.recommendation!,
+          id: 'trademark-asset-management-recommendation_guessed'
+        },
+        idempotencyKey: 'guessed-recommendation'
+      })
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(
+      dispositions().record({
+        ...exact,
+        expectedTrademarkAssetVersion: asset.version - 1,
+        idempotencyKey: 'stale-asset'
+      })
+    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+    await expect(
+      dispositions().record({
+        ...exact,
+        managementSignal: { ...exact.managementSignal, version: asset.version - 1 },
+        idempotencyKey: 'stale-signal'
+      })
+    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+    await expect(
+      dispositions().record({
+        ...exact,
+        recommendation: { ...exact.recommendation!, version: asset.version - 1 },
+        idempotencyKey: 'stale-recommendation'
+      })
+    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+  });
+
+  it('rejects cross-Asset and unlinked Signal/Recommendation references', async () => {
+    const asset = await advanceAsset('first');
+    const otherAsset = await advanceAsset('second');
+    const exact = commandFor(asset, 'link-base');
+    const other = commandFor(otherAsset, 'other-base');
+
+    await expect(
+      dispositions().record({
+        ...exact,
+        managementSignal: other.managementSignal,
+        idempotencyKey: 'cross-asset-signal'
+      })
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(
+      dispositions().record({
+        ...exact,
+        recommendation: other.recommendation!,
+        idempotencyKey: 'cross-asset-recommendation'
+      })
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    const unlinked = commandFor(asset, 'unlinked', 0, 1);
+    await expect(dispositions().record(unlinked)).rejects.toMatchObject({
+      code: 'VERSION_CONFLICT'
+    });
+  });
+
+  it('re-resolves new requests while preserving exact historical idempotent replay', async () => {
+    const originalAsset = await admitAsset();
+    const originalCommand = commandFor(originalAsset, 'historical-replay');
+    const historical = await dispositions().record(originalCommand);
+    const currentAsset = await assets().updateWorkspaceMetadata({
+      workspaceId,
+      trademarkAssetId: originalAsset.trademarkAssetId,
+      expectedVersion: originalAsset.version,
+      workspaceTags: [],
+      workspaceNotes: [],
+      workspacePriority: 'High owner priority',
+      idempotencyKey: 'advance-after-disposition'
+    });
+
+    expect(currentAsset.version).toBeGreaterThan(originalAsset.version);
+    await expect(dispositions().record(originalCommand)).resolves.toEqual(historical);
+    await expect(
+      dispositions().record({ ...originalCommand, idempotencyKey: 'new-after-owner-change' })
+    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+  });
+
+  it('keeps WATCHED, DEFERRED, and DISMISSED as private Product dispositions', async () => {
+    const asset = await advanceAsset();
+    for (const kind of ['WATCHED', 'DEFERRED', 'DISMISSED'] as const) {
+      const result = await dispositions().record({
+        ...commandFor(asset, `private-${kind}`),
+        kind
+      });
+      expect(result).toMatchObject({
+        kind,
+        officialTruthCreated: false,
+        legalConclusionVerified: false,
+        capabilityVerified: false
+      });
+    }
+  });
+
+  it('exposes only current watch/defer state', async () => {
+    const asset = await advanceAsset();
+    const watched = await dispositions().record(commandFor(asset, 'watch-1'));
+    expect(await dispositions().listWatchState(workspaceId)).toEqual([watched]);
 
     await dispositions().record({
-      workspaceId,
-      trademarkAssetId: asset.trademarkAssetId,
-      managementSignalId: signal,
-      kind: 'CONTINUED',
-      subjectUserId: 'user_m11-wp07',
-      idempotencyKey: 'watch-continued'
+      ...commandFor(asset, 'watch-continued'),
+      kind: 'CONTINUED'
     });
     expect(await dispositions().listWatchState(workspaceId)).toEqual([]);
   });
 
   it('rejects idempotency key reuse for a different disposition', async () => {
-    const asset = await admitAsset();
-    const base = {
-      workspaceId,
-      trademarkAssetId: asset.trademarkAssetId,
-      managementSignalId: 'trademark-asset-management-signal_conflict' as const,
-      kind: 'WATCHED' as const,
-      subjectUserId: 'user_m11-wp07',
-      idempotencyKey: 'same-key'
-    };
+    const asset = await advanceAsset();
+    const base = commandFor(asset, 'same-key');
     await dispositions().record(base);
     await expect(dispositions().record({ ...base, kind: 'DISMISSED' })).rejects.toMatchObject({
       code: 'IDEMPOTENCY_CONFLICT'
@@ -152,27 +311,21 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
 
   it('keeps workspace boundaries when a direct Asset ID is guessed', async () => {
     const asset = await admitAsset();
+    const exact = commandFor(asset, 'cross-workspace');
     await expect(
       dispositions().record({
+        ...exact,
         workspaceId: otherWorkspaceId,
-        trademarkAssetId: asset.trademarkAssetId,
-        managementSignalId: 'trademark-asset-management-signal_cross-workspace',
-        kind: 'WATCHED',
-        subjectUserId: 'user_other',
-        idempotencyKey: 'cross-workspace'
+        subjectUserId: 'user_other'
       })
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
   it('leases internal recovery work, retries with backoff, then dead-letters and replays explicitly', async () => {
-    const asset = await admitAsset();
+    const asset = await advanceAsset();
     await dispositions().record({
-      workspaceId,
-      trademarkAssetId: asset.trademarkAssetId,
-      managementSignalId: 'trademark-asset-management-signal_recovery',
-      kind: 'DEFERRED',
-      subjectUserId: 'user_m11-wp07',
-      idempotencyKey: 'recovery-disposition'
+      ...commandFor(asset, 'recovery-disposition'),
+      kind: 'DEFERRED'
     });
 
     const store = dispositions();
