@@ -1,4 +1,4 @@
-# Temporary one-shot type repair for PR #582; NEVER MERGE.
+# Temporary one-shot type/lint repair for PR #582; NEVER MERGE.
 name: tmp-mgsn-582-format-integrity
 
 on:
@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Repair integrity-test command and row-count types
+      - name: Repair integrity-test command, row-count and SQL literal types
         shell: bash
         run: |
           python3 - <<'PY'
@@ -51,15 +51,21 @@ jobs:
           if old_counts not in s:
               raise SystemExit('missing counts target')
           s = s.replace(old_counts, new_counts, 1)
+
+          escaped = "'\\\"SUSPENDED\\\"'::jsonb"
+          literal = "'\"SUSPENDED\"'::jsonb"
+          if escaped not in s:
+              raise SystemExit('missing SQL JSON literal target')
+          s = s.replace(escaped, literal, 1)
           p.write_text(s)
           PY
-      - name: Format and typecheck MGSN
+      - name: Format and verify MGSN types and lint
         run: |
           pnpm exec prettier --write services/mgsn/tests/provider-responsibility-postgres-integrity.test.ts
           pnpm --filter @markorbit/mgsn-service... build
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
-      - name: Commit repaired integrity types
+      - name: Commit repaired integrity proof harness
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
