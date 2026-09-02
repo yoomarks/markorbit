@@ -58,7 +58,7 @@ describe('Gmail Managed Communication production runtime wiring', () => {
     const fetchImpl = vi.fn();
     const sender = createGmailManagedCommunicationSenderFromEnvironmentV1(
       enabledEnvironment(),
-      fetchImpl as unknown as typeof globalThis.fetch
+      fetchImpl
     );
     expect(sender).toBeDefined();
     expect(fetchImpl).not.toHaveBeenCalled();
