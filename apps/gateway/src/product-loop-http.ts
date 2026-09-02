@@ -272,9 +272,7 @@ export function createGatewayProductLoopRoutes(
     }
   };
 
-  const trademarkAssetAiGuide = async (
-    request: JsonRequest
-  ): Promise<ReturnType<typeof json>> => {
+  const trademarkAssetAiGuide = async (request: JsonRequest): Promise<ReturnType<typeof json>> => {
     const principal = await authenticate(request, 'ADVISORY_POST', ['workspace:read']);
     const body = aiGuideBody(request);
     const response = await liteCall(request, principal, {
@@ -342,7 +340,12 @@ export function createGatewayProductLoopRoutes(
       'review:perform'
     ]),
     route('GET', '/api/lite/content-studio/works', ['workspace:read'], 'READ'),
-    route('GET', '/api/lite/content-studio/works/:contentOpportunityId', ['workspace:read'], 'READ'),
+    route(
+      'GET',
+      '/api/lite/content-studio/works/:contentOpportunityId',
+      ['workspace:read'],
+      'READ'
+    ),
     route('POST', '/api/lite/content-studio/works/:contentOpportunityId/drafts', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/revisions', ['matter:manage']),
     route('POST', '/api/lite/content-drafts/:contentDraftId/ready-for-review', ['matter:manage']),
