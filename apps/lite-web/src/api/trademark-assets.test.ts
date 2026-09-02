@@ -128,4 +128,76 @@ describe('Trademark Asset client', () => {
       sellerRole: 'OWNER'
     });
   });
+
+  it('prepares bounded AI Guide suggestions with CSRF and no caller authority fields', async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchMock: typeof fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      requests.push({ url, ...(init ? { init } : {}) });
+      if (url.endsWith('/api/auth/session')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ csrfToken: 'csrf-ai-guide' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          })
+        );
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            schemaVersion: 1,
+            workspaceId,
+            subjectUserId: 'server-derived-user',
+            trademarkAssetId: 'trademark-asset_test',
+            trademarkAssetVersion: 3,
+            contextReferences: [],
+            evidence: [],
+            suggestions: [],
+            staleOrConflictingEvidencePresent: false,
+            officialTruthCreatedByGuide: false,
+            officialStatusVerifiedByGuide: false,
+            deadlineCertifiedByGuide: false,
+            externalActionAuthorizedByGuide: false,
+            customerOrProviderContactAuthorizedByGuide: false,
+            paidExecutionAuthorizedByGuide: false,
+            generatedAt: '2026-09-02T00:00:00.000Z'
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await createTrademarkAssetClient(workspaceId).prepareAiGuide(
+      'trademark-asset_test',
+      {
+        expectedTrademarkAssetVersion: 3,
+        requestedKinds: ['EXPLAIN_ASSET', 'IDENTIFY_MISSING_INFORMATION', 'PREPARE_CHECKLIST']
+      }
+    );
+
+    expect(result.trademarkAssetVersion).toBe(3);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]?.url).toContain('/api/auth/session');
+    const preparation = requests[1]!;
+    expect(preparation.url).toContain('/api/lite/trademark-assets/trademark-asset_test/ai-guide');
+    expect(preparation.init?.method).toBe('POST');
+    expect(preparation.init?.credentials).toBe('include');
+    const headers = new Headers(preparation.init?.headers);
+    expect(headers.get('x-markorbit-workspace-id')).toBe(workspaceId);
+    expect(headers.get('x-markorbit-csrf-token')).toBe('csrf-ai-guide');
+    expect(headers.has('idempotency-key')).toBe(false);
+    const body = preparation.init?.body;
+    if (typeof body !== 'string') throw new Error('Expected a JSON request body.');
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      expectedTrademarkAssetVersion: 3,
+      requestedKinds: ['EXPLAIN_ASSET', 'IDENTIFY_MISSING_INFORMATION', 'PREPARE_CHECKLIST']
+    });
+    expect(parsed).not.toHaveProperty('workspaceId');
+    expect(parsed).not.toHaveProperty('subjectUserId');
+    expect(parsed).not.toHaveProperty('principal');
+    expect(parsed).not.toHaveProperty('provenance');
+    expect(parsed).not.toHaveProperty('contextReferences');
+  });
 });
