@@ -100,8 +100,8 @@ function ObservationCard({ item }: { item: MatterIntelligenceReadItem }) {
           </ol>
           {!item.reviewHistoryComplete && (
             <p>
-              Showing {item.reviewHistory.length} of {item.reviewHistoryTotal} review versions within
-              the bounded read limit.
+              Showing {item.reviewHistory.length} of {item.reviewHistoryTotal} review versions
+              within the bounded read limit.
             </p>
           )}
         </details>
@@ -174,8 +174,8 @@ export function MatterIntelligencePanel({
       {state.value.total === 0 ? (
         <Card>
           <p>
-            No governed Matter Intelligence observations are recorded for this Formal Matter. This is
-            a successful empty read, not a service failure.
+            No governed Matter Intelligence observations are recorded for this Formal Matter. This
+            is a successful empty read, not a service failure.
           </p>
         </Card>
       ) : (
@@ -185,8 +185,8 @@ export function MatterIntelligencePanel({
           ))}
           {state.value.total > state.value.items.length && (
             <p>
-              Showing {state.value.items.length} of {state.value.total} observations from this bounded
-              read.
+              Showing {state.value.items.length} of {state.value.total} observations from this
+              bounded read.
             </p>
           )}
         </>
