@@ -1,38 +1,44 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import type {
-  ManagedCommunicationExactEvidenceAdmissionOutcomeV1 as EvidenceOutcome,
-  ManagedCommunicationExactEvidenceAdmissionV1 as EvidenceAdmission,
-  ManagedCommunicationExactEvidenceRefV1 as EvidenceRef,
-  ManagedCommunicationExactEvidenceStoreV1 as EvidenceStore
-} from '../src/managed-communication-exact-evidence.js';
 import {
   InMemoryManagedCommunicationFoundationV1,
   managedCommunicationNormalizedIdsV1
 } from '../src/managed-communication-foundation.js';
+import type {
+  ManagedCommunicationExactEvidenceAdmissionOutcomeV1,
+  ManagedCommunicationExactEvidenceAdmissionV1,
+  ManagedCommunicationExactEvidenceRefV1,
+  ManagedCommunicationExactEvidenceStoreV1
+} from '../src/managed-communication-exact-evidence.js';
+import { syncGmailManagedCommunicationInboundFromAnchorV1 } from '../src/managed-communication-gmail-anchor.js';
 import {
-  syncGmailManagedCommunicationInboundFromAnchorV1
-} from '../src/managed-communication-gmail-anchor.js';
-import {
-  GMAIL_MANAGED_COMMUNICATION_PROVIDER,
   GmailManagedCommunicationClientV1,
-  GmailManagedCommunicationInboundV1
+  GmailManagedCommunicationInboundV1,
+  GMAIL_MANAGED_COMMUNICATION_PROVIDER
 } from '../src/managed-communication-gmail.js';
 
 const workspaceId = 'workspace_gmail_anchor_test';
 const accountRef = 'communication-account_gmail_anchor_test';
 const providerAccountRef = 'operator@example.test';
-const anchorId = 'gmail-outbound-anchor';
-const threadId = 'gmail-live-thread';
-const replyId = 'gmail-inbound-reply';
+const anchorProviderMessageId = 'gmail-outbound-anchor';
+const providerThreadId = 'gmail-live-thread';
+const replyProviderMessageId = 'gmail-inbound-reply';
+const config = Object.freeze({
+  clientId: 'client-id-test-only',
+  clientSecret: 'client-secret-test-only',
+  refreshToken: 'refresh-token-test-only',
+  providerAccountRef
+});
 
-function json(value: unknown): Promise<Response> {
-  return Promise.resolve(
-    new Response(JSON.stringify(value), {
-      status: 200,
-      headers: { 'content-type': 'application/json' }
-    })
-  );
+function json(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { 'content-type': 'application/json' }
+  });
+}
+
+function resolvedJson(value: unknown, status = 200): Promise<Response> {
+  return Promise.resolve(json(value, status));
 }
 
 function requestUrl(input: RequestInfo | URL): string {
@@ -40,63 +46,60 @@ function requestUrl(input: RequestInfo | URL): string {
   return input instanceof URL ? input.toString() : input.url;
 }
 
-class MemoryEvidenceStore implements EvidenceStore {
-  readonly admissions: EvidenceAdmission[] = [];
-  private readonly rows = new Map<string, EvidenceRef>();
+function sha256(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
 
-  admitExactEvidence(input: EvidenceAdmission): Promise<EvidenceOutcome> {
-    const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
-    const existing = this.rows.get(key);
-    if (existing) {
-      return Promise.resolve({
-        schemaVersion: 1,
-        disposition: 'REPLAYED',
-        evidence: existing
-      });
-    }
+class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceStoreV1 {
+  readonly admissions: ManagedCommunicationExactEvidenceAdmissionV1[] = [];
+  private readonly rows = new Map<string, ManagedCommunicationExactEvidenceRefV1>();
 
+  admitExactEvidence(
+    input: ManagedCommunicationExactEvidenceAdmissionV1
+  ): Promise<ManagedCommunicationExactEvidenceAdmissionOutcomeV1> {
     this.admissions.push({
       ...input,
       rawPayload: Uint8Array.from(input.rawPayload),
       headers: input.headers.map((header) => ({ ...header })),
       ...(input.metadata ? { metadata: { ...input.metadata } } : {})
     });
-    const sha256 = createHash('sha256').update(input.rawPayload).digest('hex');
-    const evidence: EvidenceRef = Object.freeze({
-      schemaVersion: 1,
-      evidenceRef: `commevidence_anchor_${sha256.slice(0, 20)}`,
-      sha256,
+    const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
+    const existing = this.rows.get(key);
+    if (existing) {
+      return Promise.resolve(
+        Object.freeze({ schemaVersion: 1, disposition: 'REPLAYED', evidence: existing })
+      );
+    }
+    const evidenceSha256 = sha256(input.rawPayload);
+    const evidence = Object.freeze({
+      schemaVersion: 1 as const,
+      evidenceRef: `commevidence_test_${evidenceSha256.slice(0, 20)}`,
+      sha256: evidenceSha256,
       mediaType: input.mediaType,
       sizeBytes: input.rawPayload.byteLength,
       observedAt: input.observedAt,
       provider: input.provider,
       providerMessageId: input.providerMessageId,
-      headers: Object.freeze(
-        input.headers.map((header) => Object.freeze({ ...header }))
-      ),
+      headers: Object.freeze(input.headers.map((header) => Object.freeze({ ...header }))),
       metadata: Object.freeze({ ...(input.metadata ?? {}) })
     });
     this.rows.set(key, evidence);
-    return Promise.resolve({
-      schemaVersion: 1,
-      disposition: 'ADMITTED',
-      evidence
-    });
+    return Promise.resolve(Object.freeze({ schemaVersion: 1, disposition: 'ADMITTED', evidence }));
   }
 
   resolveExactEvidence(input: {
     workspaceId: string;
     accountRef: string;
     messageId: string;
-  }): Promise<EvidenceRef | undefined> {
+  }): Promise<ManagedCommunicationExactEvidenceRefV1 | undefined> {
     const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
     return Promise.resolve(this.rows.get(key));
   }
 }
 
-async function createFoundation() {
-  const foundation = new InMemoryManagedCommunicationFoundationV1();
-  await foundation.registerAccount({
+async function foundation() {
+  const value = new InMemoryManagedCommunicationFoundationV1();
+  await value.registerAccount({
     workspaceId,
     accountRef,
     channel: 'EMAIL',
@@ -104,12 +107,12 @@ async function createFoundation() {
     providerAccountRef,
     now: '2026-09-02T03:45:00.000Z'
   });
-  return foundation;
+  return value;
 }
 
-function createHarness(
-  foundation: InMemoryManagedCommunicationFoundationV1,
-  exactEvidence: MemoryEvidenceStore
+function clientAndInbound(
+  foundationStore: InMemoryManagedCommunicationFoundationV1,
+  exactEvidence: RecordingExactEvidenceStore
 ) {
   const historyStarts: string[] = [];
   const rawReply = [
@@ -123,12 +126,12 @@ function createHarness(
   const fetchImpl = vi.fn((input: RequestInfo | URL) => {
     const url = requestUrl(input);
     if (url === 'https://oauth2.googleapis.com/token') {
-      return json({ access_token: 'access-token-test-only', expires_in: 3600 });
+      return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
     }
-    if (url.includes(`/messages/${anchorId}?format=full`)) {
-      return json({
-        id: anchorId,
-        threadId,
+    if (url.includes(`/messages/${anchorProviderMessageId}?format=full`)) {
+      return resolvedJson({
+        id: anchorProviderMessageId,
+        threadId: providerThreadId,
         historyId: '100',
         internalDate: '1788320947000',
         payload: {
@@ -138,34 +141,33 @@ function createHarness(
             { name: 'To', value: 'expert@example.test' },
             { name: 'Subject', value: 'MarkOrbit Gmail Live Pilot' }
           ],
-          body: {
-            data: Buffer.from('Please reply.', 'utf8').toString('base64url')
-          }
+          body: { data: Buffer.from('Please reply.', 'utf8').toString('base64url') }
         }
       });
     }
     if (url.includes('/users/me/history?')) {
-      const start = new URL(url).searchParams.get('startHistoryId') ?? '';
+      const parsed = new URL(url);
+      const start = parsed.searchParams.get('startHistoryId') ?? '';
       historyStarts.push(start);
       if (start === '100') {
-        return json({
+        return resolvedJson({
           historyId: '101',
           history: [
             {
               messagesAdded: [
-                { message: { id: anchorId } },
-                { message: { id: replyId } }
+                { message: { id: anchorProviderMessageId } },
+                { message: { id: replyProviderMessageId } }
               ]
             }
           ]
         });
       }
-      return json({ historyId: '101', history: [] });
+      return resolvedJson({ historyId: '101', history: [] });
     }
-    if (url.includes(`/messages/${replyId}?format=full`)) {
-      return json({
-        id: replyId,
-        threadId,
+    if (url.includes(`/messages/${replyProviderMessageId}?format=full`)) {
+      return resolvedJson({
+        id: replyProviderMessageId,
+        threadId: providerThreadId,
         historyId: '101',
         internalDate: '1788321000000',
         payload: {
@@ -186,29 +188,20 @@ function createHarness(
         }
       });
     }
-    if (url.includes(`/messages/${replyId}?format=raw`)) {
-      return json({
-        id: replyId,
-        threadId,
+    if (url.includes(`/messages/${replyProviderMessageId}?format=raw`)) {
+      return resolvedJson({
+        id: replyProviderMessageId,
+        threadId: providerThreadId,
         raw: Buffer.from(rawReply, 'utf8').toString('base64url')
       });
     }
     return Promise.reject(new Error(`Unexpected provider request: ${url}`));
   }) as typeof fetch;
 
-  const client = new GmailManagedCommunicationClientV1(
-    {
-      clientId: 'client-id-test-only',
-      clientSecret: 'client-secret-test-only',
-      refreshToken: 'refresh-token-test-only',
-      providerAccountRef
-    },
-    fetchImpl,
-    () => 30_000
-  );
+  const client = new GmailManagedCommunicationClientV1(config, fetchImpl, () => 30_000);
   const inbound = new GmailManagedCommunicationInboundV1({
     client,
-    foundation,
+    foundation: foundationStore,
     exactEvidence,
     workspaceId,
     accountRef,
@@ -217,53 +210,50 @@ function createHarness(
   return { client, inbound, historyStarts, rawReply };
 }
 
-describe('anchored Gmail inbound synchronization', () => {
-  it('imports an anchored live reply exactly once', async () => {
-    const foundation = await createFoundation();
-    const exactEvidence = new MemoryEvidenceStore();
-    const harness = createHarness(foundation, exactEvidence);
+describe('anchored Gmail Managed Communication inbound synchronization', () => {
+  it('anchors before an existing reply, admits exact evidence, and replays without duplication', async () => {
+    const foundationStore = await foundation();
+    const exactEvidence = new RecordingExactEvidenceStore();
+    const { client, inbound, historyStarts, rawReply } = clientAndInbound(
+      foundationStore,
+      exactEvidence
+    );
 
     await expect(
       syncGmailManagedCommunicationInboundFromAnchorV1({
-        client: harness.client,
-        inbound: harness.inbound,
-        foundation,
+        client,
+        inbound,
+        foundation: foundationStore,
         workspaceId,
         accountRef,
-        anchorProviderMessageId: anchorId,
+        anchorProviderMessageId,
         now: () => '2026-09-02T03:49:30.000Z'
       })
-    ).resolves.toEqual({
-      initialized: false,
-      imported: 1,
-      providerCursor: '101'
-    });
+    ).resolves.toEqual({ initialized: false, imported: 1, providerCursor: '101' });
 
     const replyIds = managedCommunicationNormalizedIdsV1({
       workspaceId,
       accountRef,
       provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-      providerMessageId: replyId,
-      providerThreadId: threadId
+      providerMessageId: replyProviderMessageId,
+      providerThreadId
     });
     const outboundIds = managedCommunicationNormalizedIdsV1({
       workspaceId,
       accountRef,
       provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
-      providerMessageId: anchorId,
-      providerThreadId: threadId
+      providerMessageId: anchorProviderMessageId,
+      providerThreadId
     });
     expect(replyIds.threadRef).toBe(outboundIds.threadRef);
 
-    const normalized = await foundation.resolveMessage(
+    const normalized = await foundationStore.resolveMessage(
       workspaceId,
       accountRef,
       replyIds.messageId
     );
     expect(normalized.direction).toBe('INBOUND');
-    expect(normalized.textBody).toBe(
-      'MarkOrbit Gmail live pilot reply confirmed.'
-    );
+    expect(normalized.textBody).toBe('MarkOrbit Gmail live pilot reply confirmed.');
     expect(normalized.threadRef).toBe(outboundIds.threadRef);
 
     const evidence = await exactEvidence.resolveExactEvidence({
@@ -274,34 +264,30 @@ describe('anchored Gmail inbound synchronization', () => {
     expect(evidence).toMatchObject({
       mediaType: 'message/rfc822',
       provider: 'GMAIL',
-      providerMessageId: replyId,
+      providerMessageId: replyProviderMessageId,
       metadata: {
-        gmailMessageId: replyId,
-        gmailThreadId: threadId,
+        gmailMessageId: replyProviderMessageId,
+        gmailThreadId: providerThreadId,
         gmailHistoryId: '101'
       }
     });
-    expect(evidence?.sha256).toBe(
-      createHash('sha256').update(harness.rawReply).digest('hex')
-    );
-    const sensitiveHeader = evidence?.headers.some(
-      (header) => header.name.toLowerCase() === 'authorization'
-    );
-    expect(sensitiveHeader).toBe(false);
+    expect(evidence?.sha256).toBe(sha256(Buffer.from(rawReply, 'utf8')));
+    const headerNames = evidence?.headers.map((item) => item.name.toLowerCase()) ?? [];
+    expect(headerNames).not.toContain('authorization');
     expect(exactEvidence.admissions).toHaveLength(1);
 
-    await expect(harness.inbound.syncOnce()).resolves.toEqual({
+    await expect(inbound.syncOnce()).resolves.toEqual({
       initialized: false,
       imported: 0,
       providerCursor: '101'
     });
-    expect(harness.historyStarts).toEqual(['100', '101']);
+    expect(historyStarts).toEqual(['100', '101']);
     expect(exactEvidence.admissions).toHaveLength(1);
   });
 
-  it('rejects a conflicting existing cursor', async () => {
-    const foundation = await createFoundation();
-    await foundation.saveCheckpoint({
+  it('fails closed instead of replacing a different existing provider cursor', async () => {
+    const foundationStore = await foundation();
+    await foundationStore.saveCheckpoint({
       workspaceId,
       accountRef,
       checkpointRef: 'gmail-history:999',
@@ -309,21 +295,19 @@ describe('anchored Gmail inbound synchronization', () => {
       observedAt: '2026-09-02T03:48:00.000Z',
       now: '2026-09-02T03:48:00.000Z'
     });
-    const exactEvidence = new MemoryEvidenceStore();
-    const harness = createHarness(foundation, exactEvidence);
+    const exactEvidence = new RecordingExactEvidenceStore();
+    const { client, inbound } = clientAndInbound(foundationStore, exactEvidence);
 
     await expect(
       syncGmailManagedCommunicationInboundFromAnchorV1({
-        client: harness.client,
-        inbound: harness.inbound,
-        foundation,
+        client,
+        inbound,
+        foundation: foundationStore,
         workspaceId,
         accountRef,
-        anchorProviderMessageId: anchorId
+        anchorProviderMessageId
       })
-    ).rejects.toThrow(
-      'refuses to replace an existing different provider cursor'
-    );
+    ).rejects.toThrow('refuses to replace an existing different provider cursor');
     expect(exactEvidence.admissions).toHaveLength(0);
   });
 });
