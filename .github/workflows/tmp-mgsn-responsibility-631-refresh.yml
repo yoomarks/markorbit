@@ -1,0 +1,36 @@
+name: TEMP MGSN Responsibility 631 refresh
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-mgsn-responsibility-631-refresh.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout refreshed branch
+        uses: actions/checkout@v4
+        with:
+          ref: mgsn-responsibility-631-refreshed
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Cherry-pick verified fix
+        run: |
+          git fetch origin b48ce05432b8c5fb1e7ee82b09d7f35a2ef4351c
+          git cherry-pick b48ce05432b8c5fb1e7ee82b09d7f35a2ef4351c
+      - name: Verify exact scope
+        run: |
+          test "$(git diff --name-only HEAD^ HEAD | wc -l)" -eq 3
+          git diff --name-only HEAD^ HEAD | grep -Fx 'services/mgsn/src/provider-responsibility-postgres.ts'
+          git diff --name-only HEAD^ HEAD | grep -Fx 'services/mgsn/src/provider-responsibility.ts'
+          git diff --name-only HEAD^ HEAD | grep -Fx 'services/mgsn/tests/provider-responsibility-postgres-integrity.test.ts'
+      - name: Push refreshed branch
+        run: git push origin HEAD:mgsn-responsibility-631-refreshed
