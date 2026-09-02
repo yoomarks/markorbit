@@ -244,6 +244,7 @@ function communicationError(error: unknown): never {
       throw new HttpError(409, error.code, error.message, error.retryable);
     case 'PROVIDER_RESULT_INVALID':
       throw new HttpError(502, error.code, error.message, false);
+    case 'PROVIDER_NOT_READY':
     case 'PERSISTENCE_UNAVAILABLE':
       throw new HttpError(503, error.code, error.message, error.retryable);
   }

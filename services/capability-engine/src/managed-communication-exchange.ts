@@ -115,6 +115,7 @@ export interface ManagedCommunicationSendClaimStoreV1 {
   claim(
     command: Readonly<ManagedCommunicationSendClaimCommandV1>
   ): Promise<ManagedCommunicationSendClaimResultV1>;
+  releaseClaim(command: Readonly<ManagedCommunicationSendIdentityV1>): Promise<void>;
   markDispatching(command: Readonly<ManagedCommunicationSendIdentityV1>): Promise<void>;
   complete(command: Readonly<ManagedCommunicationSendCompletionV1>): Promise<void>;
   markReconciliationRequired(
@@ -122,15 +123,25 @@ export interface ManagedCommunicationSendClaimStoreV1 {
   ): Promise<void>;
 }
 
+export interface ManagedCommunicationProviderSendContextV1 {
+  sendId: string;
+  workspaceId: string;
+  account: Readonly<ManagedCommunicationAccountBindingV1>;
+  correlationId: string;
+}
+
+export interface ManagedCommunicationPreparedProviderSendV1 {
+  dispatch(): Promise<Readonly<ManagedCommunicationProviderSendResultV1>>;
+}
+
 export interface ManagedCommunicationProviderSenderV1 {
+  prepare?(
+    request: Readonly<ManagedCommunicationSendRequestV1>,
+    context: Readonly<ManagedCommunicationProviderSendContextV1>
+  ): Promise<Readonly<ManagedCommunicationPreparedProviderSendV1>>;
   send(
     request: Readonly<ManagedCommunicationSendRequestV1>,
-    context: Readonly<{
-      sendId: string;
-      workspaceId: string;
-      account: Readonly<ManagedCommunicationAccountBindingV1>;
-      correlationId: string;
-    }>
+    context: Readonly<ManagedCommunicationProviderSendContextV1>
   ): Promise<Readonly<ManagedCommunicationProviderSendResultV1>>;
 }
 
@@ -146,6 +157,7 @@ export type ManagedCommunicationExchangeErrorCode =
   | 'INVALID_SEND_REQUEST'
   | 'IDEMPOTENCY_CONFLICT'
   | 'SEND_IN_PROGRESS'
+  | 'PROVIDER_NOT_READY'
   | 'RECONCILIATION_REQUIRED'
   | 'PERSISTENCE_UNAVAILABLE'
   | 'PROVIDER_RESULT_INVALID'
@@ -363,6 +375,13 @@ export class InMemoryManagedCommunicationSendClaimStoreV1 implements ManagedComm
     existing.leaseExpiresAt = command.leaseExpiresAt;
     existing.updatedAt = command.now;
     return Promise.resolve({ kind: 'ACQUIRED', sendId: existing.sendId });
+  }
+
+  releaseClaim(command: Readonly<ManagedCommunicationSendIdentityV1>): Promise<void> {
+    const row = this.requireOwned(command, 'CLAIMED');
+    row.leaseExpiresAt = command.now;
+    row.updatedAt = command.now;
+    return Promise.resolve();
   }
 
   markDispatching(command: Readonly<ManagedCommunicationSendIdentityV1>): Promise<void> {
@@ -588,6 +607,17 @@ export class PostgresManagedCommunicationSendClaimStoreV1 implements ManagedComm
     }
   }
 
+  async releaseClaim(command: Readonly<ManagedCommunicationSendIdentityV1>): Promise<void> {
+    await this.transition(
+      `UPDATE capability_communication_send_claims
+          SET lease_expires_at=$7,updated_at=$7
+        WHERE workspace_id=$1 AND account_ref=$2 AND idempotency_key_sha256=$3
+          AND request_fingerprint_sha256=$4 AND send_id=$5 AND owner_token=$6
+          AND state='CLAIMED'`,
+      command
+    );
+  }
+
   async markDispatching(command: Readonly<ManagedCommunicationSendIdentityV1>): Promise<void> {
     await this.transition(
       `UPDATE capability_communication_send_claims
@@ -807,16 +837,57 @@ export class ManagedCommunicationExchangeV1 {
       ownerToken,
       now: this.now()
     } as const;
-    await this.options.claims.markDispatching(identity);
+
+    const providerContext: Readonly<ManagedCommunicationProviderSendContextV1> = {
+      sendId: claim.sendId,
+      workspaceId,
+      account,
+      correlationId
+    };
+
+    let preparedProviderSend: Readonly<ManagedCommunicationPreparedProviderSendV1> | undefined;
+
+    if (this.options.sender.prepare) {
+      try {
+        const prepared = await this.options.sender.prepare(request, providerContext);
+        if (!prepared || typeof prepared.dispatch !== 'function') {
+          throw new Error('Provider preparation returned an invalid dispatch boundary.');
+        }
+        preparedProviderSend = prepared;
+      } catch (error) {
+        try {
+          await this.options.claims.releaseClaim({
+            ...identity,
+            now: this.now()
+          });
+        } catch (releaseError) {
+          throw new ManagedCommunicationExchangeError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Provider readiness failed before delivery became possible, but the claimed send could not be released safely.',
+            true,
+            { cause: releaseError instanceof Error ? releaseError : undefined }
+          );
+        }
+
+        throw new ManagedCommunicationExchangeError(
+          'PROVIDER_NOT_READY',
+          'Provider readiness failed before delivery became possible; the same idempotency key may be retried safely.',
+          true,
+          { cause: error instanceof Error ? error : undefined }
+        );
+      }
+    }
+
+    await this.options.claims.markDispatching({
+      ...identity,
+      now: this.now()
+    });
 
     let providerResult: Readonly<ManagedCommunicationProviderSendResultV1>;
     try {
-      providerResult = await this.options.sender.send(request, {
-        sendId: claim.sendId,
-        workspaceId,
-        account,
-        correlationId
-      });
+      providerResult = preparedProviderSend
+        ? await preparedProviderSend.dispatch()
+        : await this.options.sender.send(request, providerContext);
     } catch (error) {
       await this.reconcile(identity, 'PROVIDER_THROW_AFTER_DISPATCH_MARK');
       throw new ManagedCommunicationExchangeError(
