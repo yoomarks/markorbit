@@ -87,7 +87,7 @@ function canonicalReplay(value: unknown): ProviderSelectionMutationResultV1 {
     throw new Error('Persisted Human Provider Selection replay is malformed.');
   }
   canonicalSelection(value.selection);
-  return structuredClone(value) as ProviderSelectionMutationResultV1;
+  return structuredClone(value) as unknown as ProviderSelectionMutationResultV1;
 }
 
 function sameReference(
@@ -137,10 +137,14 @@ export class PostgresProviderSelectionRepository implements ProviderSelectionRep
     }
   }
 
-  async commit(mutation: ProviderSelectionCommit): Promise<ProviderSelectionReplayRecord | undefined> {
+  async commit(
+    mutation: ProviderSelectionCommit
+  ): Promise<ProviderSelectionReplayRecord | undefined> {
     try {
       return await this.database.transact(async (client) => {
-        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [mutation.scopeKey]);
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          mutation.scopeKey
+        ]);
 
         const existingReplay = await this.readReplay(
           client,
@@ -195,7 +199,11 @@ export class PostgresProviderSelectionRepository implements ProviderSelectionRep
 
         const head = mutation.newCurrent ?? mutation.appendedSelections.at(-1);
         if (!head) {
-          throw new ProviderSelectionError('INVALID_INPUT', 'Selection commit has no durable head.', 422);
+          throw new ProviderSelectionError(
+            'INVALID_INPUT',
+            'Selection commit has no durable head.',
+            422
+          );
         }
         await this.writeScopeState(client, mutation, head);
         await this.insertReplay(client, mutation.replay);
@@ -232,7 +240,7 @@ export class PostgresProviderSelectionRepository implements ProviderSelectionRep
         const value = row as Row;
         const previous = value.previous_provider_selection_id
           ? {
-              providerSelectionId: String(value.previous_provider_selection_id) as ProviderSelectionId,
+              providerSelectionId: value.previous_provider_selection_id as ProviderSelectionId,
               version: Number(value.previous_selection_version),
               scopeVersion: Number(value.previous_scope_version)
             }
@@ -271,12 +279,17 @@ export class PostgresProviderSelectionRepository implements ProviderSelectionRep
     const row = result.rows[0] as Row | undefined;
     if (!row) return { scopeVersion: 0 };
     const scopeVersion = Number(row.scope_version);
-    if (!positiveInteger(scopeVersion)) throw new Error('Persisted Selection scope version is malformed.');
+    if (!positiveInteger(scopeVersion))
+      throw new Error('Persisted Selection scope version is malformed.');
     if (!row.current_provider_selection_id) return { scopeVersion };
     const current = await client.query(
       `SELECT * FROM mgsn_provider_selection_versions
        WHERE provider_selection_id=$1 AND version=$2 AND scope_version=$3`,
-      [row.current_provider_selection_id, row.current_selection_version, row.current_selection_scope_version]
+      [
+        row.current_provider_selection_id,
+        row.current_selection_version,
+        row.current_selection_scope_version
+      ]
     );
     if (!current.rows[0]) throw new Error('Persisted Selection current pointer is dangling.');
     const selection = this.selectionFromRow(current.rows[0] as Row);
@@ -320,11 +333,13 @@ export class PostgresProviderSelectionRepository implements ProviderSelectionRep
       selection.version !== Number(row.version) ||
       selection.scopeVersion !== scopeVersion ||
       selection.status !== row.status ||
-      selection.requesterWorkspaceId.toLowerCase() !== String(row.requester_workspace_id).toLowerCase() ||
+      selection.requesterWorkspaceId.toLowerCase() !==
+        String(row.requester_workspace_id).toLowerCase() ||
       selection.scope.owner !== row.scope_owner ||
       selection.scope.reference !== row.scope_reference ||
       selection.scope.fingerprintSha256 !== row.scope_fingerprint_sha256 ||
-      selection.sourceLineage.discoveryCandidate.providerDiscoveryCandidateId !== row.discovery_candidate_id ||
+      selection.sourceLineage.discoveryCandidate.providerDiscoveryCandidateId !==
+        row.discovery_candidate_id ||
       selection.sourceLineage.discoveryCandidate.candidateFingerprintSha256 !==
         row.discovery_candidate_fingerprint_sha256 ||
       selection.sourceLineage.provider.providerId !== row.provider_id ||
@@ -458,7 +473,7 @@ export class PostgresProviderSelectionRepository implements ProviderSelectionRep
         selection.supersededBy?.version ?? null,
         selection.supersededBy?.scopeVersion ?? null,
         selection.revokedAt ?? null,
-        selection.revocationReasonCode ?? null,
+        selection.status === 'REVOKED' ? selection.revocationReasonCode : null,
         selection.correlationId,
         JSON.stringify(selection),
         selection.selectedAt

@@ -114,7 +114,13 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
         provider_id,provider_workspace_id,display_name,operational_status,version,provider_record,
         created_by,updated_by,created_at,updated_at
       ) VALUES($1,$2,'Selection Provider 598','ACTIVE',1,$3::jsonb,$4,$4,$5,$5)`,
-      [provider.providerId, provider.providerWorkspaceId, JSON.stringify({ providerId: provider.providerId }), principal.actorId, at]
+      [
+        provider.providerId,
+        provider.providerWorkspaceId,
+        JSON.stringify({ providerId: provider.providerId }),
+        principal.actorId,
+        at
+      ]
     );
     await database.getPool().query(
       `INSERT INTO mgsn_provider_supply_capabilities(
@@ -169,7 +175,9 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
   afterAll(() => database.close());
 
   it('persists create, restart read, exact replay, and fail-closed historical usability separation', async () => {
-    expect(await repository().findScopeState('provider-selection:missing')).toEqual({ scopeVersion: 0 });
+    expect(await repository().findScopeState('provider-selection:missing')).toEqual({
+      scopeVersion: 0
+    });
     const created = await service().createOrReplace(
       principal,
       structuredClone(fixture.createCommand)
@@ -183,16 +191,22 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
       structuredClone(fixture.createCommand)
     );
     expect(replayed).toMatchObject({ mutation: 'CREATED', replayed: true });
-    expect(await repository().listSelectionHistory(created.selection.providerSelectionId)).toHaveLength(1);
+    expect(
+      await repository().listSelectionHistory(created.selection.providerSelectionId)
+    ).toHaveLength(1);
   });
 
   it('serializes different-key concurrent first-create with one winner and zero loser residue', async () => {
-    const left = structuredClone(fixture.createCommand);
-    const right = structuredClone(fixture.createCommand);
-    left.idempotencyKey = 'provider-selection:598:left';
-    right.idempotencyKey = 'provider-selection:598:right';
-    left.commandFingerprintSha256 = 'a'.repeat(64);
-    right.commandFingerprintSha256 = 'b'.repeat(64);
+    const left = {
+      ...structuredClone(fixture.createCommand),
+      idempotencyKey: 'provider-selection:598:left',
+      commandFingerprintSha256: 'a'.repeat(64)
+    };
+    const right = {
+      ...structuredClone(fixture.createCommand),
+      idempotencyKey: 'provider-selection:598:right',
+      commandFingerprintSha256: 'b'.repeat(64)
+    };
     const results = await Promise.allSettled([
       service().createOrReplace(principal, left),
       service().createOrReplace(principal, right)
@@ -207,7 +221,13 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
         (SELECT count(*)::int FROM mgsn_provider_selection_command_replays) AS replays,
         (SELECT count(*)::int FROM mgsn_provider_selection_owner_audit_events) AS audits`
     );
-    expect(counts.rows[0]).toEqual({ identities: 1, versions: 1, scopes: 1, replays: 1, audits: 1 });
+    expect(counts.rows[0]).toEqual({
+      identities: 1,
+      versions: 1,
+      scopes: 1,
+      replays: 1,
+      audits: 1
+    });
   });
 
   it('keeps replay and owner audit append-only', async () => {
@@ -216,7 +236,9 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
       database.getPool().query('DELETE FROM mgsn_provider_selection_command_replays')
     ).rejects.toThrow();
     await expect(
-      database.getPool().query('UPDATE mgsn_provider_selection_owner_audit_events SET actor_id=actor_id')
+      database
+        .getPool()
+        .query('UPDATE mgsn_provider_selection_owner_audit_events SET actor_id=actor_id')
     ).rejects.toThrow();
   });
 });

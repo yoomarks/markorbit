@@ -26,8 +26,8 @@ import { ServicePackageEligibilityService } from './service-package-eligibility.
 import { PostgresServicePackageEligibilityRepository } from './service-package-eligibility-postgres.js';
 
 const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySource = {
-  async evaluateCurrentAuthority() {
-    return {
+  evaluateCurrentAuthority() {
+    return Promise.resolve({
       authorityAvailable: false,
       requesterAuthorityCurrent: false,
       actorAuthorityCurrent: false,
@@ -41,7 +41,7 @@ const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySo
       directExecutorEstablished: false,
       sourceVersionsMatch: false,
       checkedAuthorityReferences: []
-    };
+    });
   }
 };
 
@@ -81,7 +81,10 @@ export function createDurableMgsnServices(
     options.database,
     query
   );
-  const providerSelectionRepository = new PostgresProviderSelectionRepository(options.database, query);
+  const providerSelectionRepository = new PostgresProviderSelectionRepository(
+    options.database,
+    query
+  );
   const coreWorkspaces = new HttpCoreWorkspaceIdentitySource(
     options.coreUrl,
     options.internalServiceSecret
