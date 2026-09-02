@@ -18,6 +18,11 @@ import { deriveTrademarkAssetAttention } from './trademark-asset-attention.js';
 import { deriveTrademarkAssetManagementSignals } from './trademark-asset-management-signal.js';
 import { prepareTrademarkAssetManagementRecommendations } from './trademark-asset-management-recommendation.js';
 import {
+  TrademarkAssetManagementDispositionError,
+  type PostgresTrademarkAssetManagementDispositionStore,
+  type RecordTrademarkAssetManagementDispositionCommand
+} from './trademark-asset-management-disposition.js';
+import {
   TrademarkAssetRefreshError,
   type PostgresTrademarkAssetRefreshLedger
 } from './trademark-asset-refresh.js';
@@ -35,6 +40,7 @@ export interface TrademarkAssetReadRouteOptions {
   portfolio: TrademarkAssetPortfolioService;
   refreshLedger: PostgresTrademarkAssetRefreshLedger;
   commerce: PostgresTrademarkAssetCommerceStore;
+  dispositions: Pick<PostgresTrademarkAssetManagementDispositionStore, 'record'>;
   aiGuide: Pick<TrademarkAssetAiGuidePreparer, 'prepare'>;
   now?: () => string;
 }
@@ -94,10 +100,101 @@ function mapError(error: unknown): never {
   if (
     error instanceof TrademarkAssetPersistenceError ||
     error instanceof TrademarkAssetRefreshError ||
-    error instanceof TrademarkAssetCommerceError
+    error instanceof TrademarkAssetCommerceError ||
+    error instanceof TrademarkAssetManagementDispositionError
   )
     throw new HttpError(error.status, error.code, error.message, error.retryable);
   throw error;
+}
+
+const browserDispositionKinds = ['WATCHED', 'DEFERRED', 'DISMISSED', 'CONTINUED'] as const;
+
+function exactReference(value: unknown, field: string): { id: string; version: number } {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be an object.`);
+  const reference = value as Record<string, unknown>;
+  if (
+    Object.keys(reference).some((key) => key !== 'id' && key !== 'version') ||
+    typeof reference.id !== 'string' ||
+    !reference.id.trim() ||
+    !Number.isInteger(reference.version) ||
+    (reference.version as number) < 1
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      `${field} must contain only a non-empty id and positive integer version.`
+    );
+  return { id: reference.id, version: reference.version as number };
+}
+
+function managementDispositionCommand(
+  request: JsonRequest,
+  principal: WorkspacePrincipal
+): RecordTrademarkAssetManagementDispositionCommand {
+  if (!principal.permissions.includes('matter:manage'))
+    throw new HttpError(403, 'PERMISSION_DENIED', 'matter:manage permission is required.');
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const body = request.body as Record<string, unknown>;
+  const fields = [
+    'expectedTrademarkAssetVersion',
+    'managementSignal',
+    'recommendation',
+    'kind',
+    'note'
+  ] as const;
+  if (Object.keys(body).some((field) => !fields.includes(field as (typeof fields)[number])))
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only exact-current disposition fields are accepted; identity, authority, workflow and external-action fields are forbidden.'
+    );
+  if (
+    !Number.isInteger(body.expectedTrademarkAssetVersion) ||
+    (body.expectedTrademarkAssetVersion as number) < 1
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'expectedTrademarkAssetVersion must be a positive integer.'
+    );
+  const managementSignal = exactReference(
+    body.managementSignal,
+    'managementSignal'
+  ) as RecordTrademarkAssetManagementDispositionCommand['managementSignal'];
+  const recommendation =
+    body.recommendation === undefined
+      ? undefined
+      : (exactReference(body.recommendation, 'recommendation') as NonNullable<
+          RecordTrademarkAssetManagementDispositionCommand['recommendation']
+        >);
+  if (
+    typeof body.kind !== 'string' ||
+    !browserDispositionKinds.includes(body.kind as (typeof browserDispositionKinds)[number])
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'kind must be WATCHED, DEFERRED, DISMISSED, or CONTINUED.'
+    );
+  if (body.note !== undefined && (typeof body.note !== 'string' || !body.note.trim()))
+    throw new HttpError(400, 'INVALID_REQUEST', 'note must be a non-empty string when provided.');
+  const idempotencyKey = request.headers['idempotency-key'];
+  if (!idempotencyKey?.trim())
+    throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+
+  return {
+    workspaceId: principal.workspaceId,
+    trademarkAssetId: request.params.trademarkAssetId! as TrademarkAssetId,
+    expectedTrademarkAssetVersion: body.expectedTrademarkAssetVersion as number,
+    managementSignal,
+    ...(recommendation ? { recommendation } : {}),
+    kind: body.kind as (typeof browserDispositionKinds)[number],
+    subjectUserId: principal.userId,
+    ...(body.note !== undefined ? { note: body.note } : {}),
+    idempotencyKey
+  };
 }
 
 function commerceInput(
@@ -378,6 +475,20 @@ export function createTrademarkAssetReadRoutes(
               requestedKinds: input.requestedKinds
             })
           );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trademark-assets/:trademarkAssetId/management-dispositions',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        const command = managementDispositionCommand(request, principal);
+        try {
+          const disposition = await options.dispositions.record(command);
+          return json(200, { disposition });
         } catch (error) {
           return mapError(error);
         }

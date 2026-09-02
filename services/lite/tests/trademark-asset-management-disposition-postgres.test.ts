@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
+import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
+import {
+  createTrademarkAssetReadRoutes,
+  type TrademarkAssetReadRouteOptions
+} from '../src/trademark-asset-http.js';
 import { PostgresTrademarkAssetManagementDispositionStore } from '../src/trademark-asset-management-disposition.js';
 import { prepareTrademarkAssetManagementRecommendations } from '../src/trademark-asset-management-recommendation.js';
 import { deriveTrademarkAssetManagementSignals } from '../src/trademark-asset-management-signal.js';
@@ -17,6 +23,17 @@ if (required && !url) {
 const suite = url ? describe : describe.skip;
 const workspaceId = '96969696-9696-4969-8969-969696969696';
 const otherWorkspaceId = '97979797-9797-4979-8979-979797979797';
+const internalServiceSecret = 'lite-management-disposition-postgres-secret';
+const principal: WorkspacePrincipal = {
+  kind: 'WORKSPACE',
+  userId: '11111111-1111-4111-8111-111111111111',
+  sessionId: 'session_management_disposition_postgres',
+  sessionExpiresAt: '2030-01-01T00:00:00.000Z',
+  workspaceId,
+  membershipId: 'membership_management_disposition_postgres',
+  role: 'MATTER_MANAGER',
+  permissions: ['workspace:read', 'matter:manage']
+};
 const admissionSource = {
   owner: 'WORKSPACE_USER',
   kind: 'WORKSPACE_ADMISSION',
@@ -28,6 +45,8 @@ const admissionSource = {
 
 suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () => {
   let clock = 0;
+  let runtime: ServiceRuntime;
+  let baseUrl: string;
   const database = new ManagedDatabase({
     connection: { url: url! },
     applicationName: 'lite-trademark-asset-management-disposition-test',
@@ -69,6 +88,22 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
        ON CONFLICT (workspace_id) DO NOTHING`,
       [workspaceId, otherWorkspaceId]
     );
+    runtime = createServiceRuntime(
+      { name: 'lite-management-disposition-postgres-test', port: 0, version: '0.1.0' },
+      {
+        routes: createTrademarkAssetReadRoutes({
+          internalServiceSecret,
+          assets: {},
+          commerce: {},
+          dispositions: dispositions(),
+          portfolio: {},
+          refreshLedger: {},
+          aiGuide: {}
+        } as unknown as TrademarkAssetReadRouteOptions)
+      }
+    );
+    await runtime.start();
+    baseUrl = `http://127.0.0.1:${runtime.listeningPort}`;
   });
 
   beforeEach(async () => {
@@ -85,7 +120,10 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
     );
   });
 
-  afterAll(() => database.close());
+  afterAll(async () => {
+    await runtime?.stop();
+    await database.close();
+  });
 
   async function admitAsset(suffix = 'primary') {
     return assets().admit({
@@ -151,6 +189,28 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
     };
   }
 
+  async function recordThroughHttp(
+    assetId: string,
+    requestBody: Record<string, unknown>,
+    idempotencyKey: string
+  ) {
+    const response = await fetch(
+      `${baseUrl}/v1/trademark-assets/${assetId}/management-dispositions`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': workspaceId,
+          'idempotency-key': idempotencyKey
+        },
+        body: JSON.stringify(requestBody)
+      }
+    );
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  }
+
   it('persists exact current Asset, Signal, and Recommendation versions instead of constants', async () => {
     const asset = await advanceAsset();
     const command = commandFor(asset, 'exact-current');
@@ -176,6 +236,69 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
       signal: { version: asset.version },
       recommendation: { version: asset.version }
     });
+  });
+
+  it('records and idempotently replays exact durable current-owner truth through authenticated HTTP', async () => {
+    const asset = await advanceAsset('http');
+    const command = commandFor(asset, 'http-exact-current');
+    const requestBody = {
+      expectedTrademarkAssetVersion: command.expectedTrademarkAssetVersion,
+      managementSignal: command.managementSignal,
+      recommendation: command.recommendation,
+      kind: 'CONTINUED',
+      note: 'Continue private Product management.'
+    };
+
+    const first = await recordThroughHttp(
+      asset.trademarkAssetId,
+      requestBody,
+      command.idempotencyKey
+    );
+    expect(first).toMatchObject({
+      status: 200,
+      body: {
+        disposition: {
+          workspaceId,
+          asset: { id: asset.trademarkAssetId, version: asset.version },
+          signal: command.managementSignal,
+          recommendation: command.recommendation,
+          kind: 'CONTINUED',
+          subjectUserId: principal.userId,
+          officialTruthCreated: false,
+          legalConclusionVerified: false,
+          capabilityVerified: false
+        }
+      }
+    });
+    const replay = await recordThroughHttp(
+      asset.trademarkAssetId,
+      requestBody,
+      command.idempotencyKey
+    );
+    expect(replay).toEqual(first);
+
+    const returned = first.body.disposition as { dispositionId: string };
+    const persisted = await database.getPool().query(
+      `SELECT document_json FROM lite_trademark_asset_management_dispositions
+        WHERE workspace_id=$1 AND disposition_id=$2`,
+      [workspaceId, returned.dispositionId]
+    );
+    expect((persisted.rows[0] as { document_json: unknown }).document_json).toEqual(
+      first.body.disposition
+    );
+    const recovery = await database.getPool().query(
+      `SELECT payload_json FROM lite_trademark_asset_management_recovery_jobs
+        WHERE workspace_id=$1 AND disposition_id=$2`,
+      [workspaceId, returned.dispositionId]
+    );
+    expect(recovery.rows).toHaveLength(2);
+    expect(
+      recovery.rows.every(
+        (row) =>
+          (row as { payload_json: { protectedActionAuthorized: boolean } }).payload_json
+            .protectedActionAuthorized === false
+      )
+    ).toBe(true);
   });
 
   it('rejects guessed and stale current-owner references', async () => {
