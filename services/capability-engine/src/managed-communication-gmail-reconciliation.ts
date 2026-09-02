@@ -85,8 +85,7 @@ export async function reconcileGmailManagedCommunicationProviderMessageV1(
       existingMessage.providerObservation.providerMessageId !== providerMessageId ||
       existingEvidence.provider !== GMAIL_MANAGED_COMMUNICATION_PROVIDER ||
       existingEvidence.providerMessageId !== providerMessageId ||
-      existingEvidence.mediaType !== 'message/rfc822' ||
-      existingMessage.providerObservation.observedAt !== existingEvidence.observedAt
+      existingEvidence.mediaType !== 'message/rfc822'
     ) {
       throw new Error(
         'Gmail message reconciliation durable replay state does not match immutable provider evidence.'
