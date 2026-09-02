@@ -18,7 +18,9 @@ import {
 const fixture = controlledHandoffContractFixtureV1;
 const now = '2026-09-01T09:45:00.000Z';
 
-function principal(overrides: Partial<ControlledHandoffPrincipal> = {}): ControlledHandoffPrincipal {
+function principal(
+  overrides: Partial<ControlledHandoffPrincipal> = {}
+): ControlledHandoffPrincipal {
   const authority = fixture.authorizeCommand.trustedHumanAuthority;
   return {
     workspaceId: authority.originatingWorkspaceId,
@@ -208,16 +210,13 @@ describe('MGSN Controlled Privacy Handoff V1 Phase A', () => {
     ['VISIBILITY_NO_LONGER_AUTHORIZED', { visibilityAuthorized: false }],
     ['DIRECT_EXECUTOR_NOT_ESTABLISHED', { directExecutorEstablished: false }],
     ['HIDDEN_INTERMEDIARY_DETECTED', { hiddenIntermediaryDetected: true }]
-  ] as const)(
-    'fails authorize closed for %s',
-    async (denialReason, overrides) => {
-      const { service } = harness(currentSnapshot(overrides));
-      await expect(createCurrent(service)).rejects.toMatchObject({
-        code: 'CURRENT_AUTHORITY_DENIED',
-        denialReason
-      });
-    }
-  );
+  ] as const)('fails authorize closed for %s', async (denialReason, overrides) => {
+    const { service } = harness(currentSnapshot(overrides));
+    await expect(createCurrent(service)).rejects.toMatchObject({
+      code: 'CURRENT_AUTHORITY_DENIED',
+      denialReason
+    });
+  });
 
   it('fails authorize closed when current authority source is unavailable', async () => {
     const { service } = harness(new Error('authority outage'));
@@ -357,7 +356,7 @@ describe('MGSN Controlled Privacy Handoff V1 Phase A', () => {
       repository,
       positive,
       () => now,
-      () => 'controlled-handoff_605-currentness' as ControlledHandoffId
+      () => 'controlled-handoff_605-currentness'
     );
     const current = await createCurrent(seed);
     const stale = new ControlledPrivacyHandoffService(
@@ -377,6 +376,33 @@ describe('MGSN Controlled Privacy Handoff V1 Phase A', () => {
     expect(validation).toMatchObject({
       decision: 'DENY',
       denialReason: 'VISIBILITY_NO_LONGER_AUTHORIZED'
+    });
+  });
+
+  it('returns a fail-closed validation result when current authority evaluation is unavailable', async () => {
+    const repository = new InMemoryControlledHandoffRepository();
+    const seed = new ControlledPrivacyHandoffService(
+      repository,
+      { evaluateCurrentAuthority: () => Promise.resolve(currentSnapshot()) },
+      () => now,
+      () => 'controlled-handoff_605-outage'
+    );
+    const current = await createCurrent(seed);
+    const outage = new ControlledPrivacyHandoffService(
+      repository,
+      { evaluateCurrentAuthority: () => Promise.reject(new Error('outage')) },
+      () => now
+    );
+    const validation = await outage.validateCurrent(principal(), {
+      envelope: { controlledHandoffId: current.envelope.controlledHandoffId, version: 1 },
+      purpose: 'HANDOFF_CONSUMPTION',
+      attempt: attempt()
+    });
+    expect(validation).toMatchObject({
+      decision: 'DENY',
+      denialReason: 'AUTHORITY_UNAVAILABLE',
+      currentlyUsable: false,
+      currentExactDisclosurePermitted: false
     });
   });
 });

@@ -75,8 +75,13 @@ interface ControlledHandoffCommit {
 
 export interface ControlledHandoffRepository {
   findSlotState(slotKey: string): Promise<ControlledHandoffSlotState>;
-  findLatest(controlledHandoffId: ControlledHandoffId): Promise<ControlledHandoffEnvelopeV1 | undefined>;
-  findReplay(slotKey: string, idempotencyKey: string): Promise<ControlledHandoffReplayRecord | undefined>;
+  findLatest(
+    controlledHandoffId: ControlledHandoffId
+  ): Promise<ControlledHandoffEnvelopeV1 | undefined>;
+  findReplay(
+    slotKey: string,
+    idempotencyKey: string
+  ): Promise<ControlledHandoffReplayRecord | undefined>;
   commit(mutation: ControlledHandoffCommit): Promise<void>;
 }
 
@@ -167,10 +172,15 @@ function runtimeProjectionGuard(command: AuthorizeOrReplaceControlledHandoffComm
     !sha256.test(projection.projectionFingerprintSha256) ||
     !sha256.test(projection.sourceSetFingerprintSha256)
   ) {
-    throw new ControlledHandoffError('INVALID_INPUT', 400, 'Controlled Handoff projection is invalid.');
+    throw new ControlledHandoffError(
+      'INVALID_INPUT',
+      400,
+      'Controlled Handoff projection is invalid.'
+    );
   }
   if (
-    projection.forbiddenGenericDataClasses.length !== controlledHandoffForbiddenGenericDataClasses.length ||
+    projection.forbiddenGenericDataClasses.length !==
+      controlledHandoffForbiddenGenericDataClasses.length ||
     controlledHandoffForbiddenGenericDataClasses.some(
       (dataClass) => !projection.forbiddenGenericDataClasses.includes(dataClass)
     )
@@ -219,7 +229,11 @@ function commandGuard(command: AuthorizeOrReplaceControlledHandoffCommandV1): vo
     !sha256.test(command.commandFingerprintSha256) ||
     !nonEmpty(command.correlationId)
   ) {
-    throw new ControlledHandoffError('INVALID_INPUT', 400, 'Controlled Handoff command is invalid.');
+    throw new ControlledHandoffError(
+      'INVALID_INPUT',
+      400,
+      'Controlled Handoff command is invalid.'
+    );
   }
   const validFrom = Date.parse(command.validFrom);
   const validUntil = Date.parse(command.validUntil);
@@ -249,7 +263,11 @@ function commandGuard(command: AuthorizeOrReplaceControlledHandoffCommandV1): vo
     command.sourceLineage.currentAuthorityRevalidationRequiredBeforeConsumption !== true ||
     command.sourceLineage.evidenceReferenceVisibilityDoesNotGrantArtifactRetrieval !== true
   ) {
-    throw new ControlledHandoffError('INVALID_INPUT', 400, 'Controlled Handoff source lineage is invalid.');
+    throw new ControlledHandoffError(
+      'INVALID_INPUT',
+      400,
+      'Controlled Handoff source lineage is invalid.'
+    );
   }
   const preview = command.privacyPreviewAcknowledgement;
   if (
@@ -260,8 +278,10 @@ function commandGuard(command: AuthorizeOrReplaceControlledHandoffCommandV1): vo
     preview.recipientProviderWorkspaceId !== command.recipient.providerWorkspaceId ||
     !sameSelectionReference(preview.selection, selection.selection) ||
     preview.purposeFingerprintSha256 !== command.purpose.purposeFingerprintSha256 ||
-    preview.projectionFingerprintSha256 !== command.authorizedProjection.projectionFingerprintSha256 ||
-    preview.sourceSetFingerprintSha256 !== command.authorizedProjection.sourceSetFingerprintSha256 ||
+    preview.projectionFingerprintSha256 !==
+      command.authorizedProjection.projectionFingerprintSha256 ||
+    preview.sourceSetFingerprintSha256 !==
+      command.authorizedProjection.sourceSetFingerprintSha256 ||
     !sha256.test(preview.previewFingerprintSha256)
   ) {
     throw new ControlledHandoffError(
@@ -274,7 +294,7 @@ function commandGuard(command: AuthorizeOrReplaceControlledHandoffCommandV1): vo
 
 function assertPrincipal(
   principal: ControlledHandoffPrincipal,
-  authority: AuthorizeOrReplaceControlledHandoffCommandV1['trustedHumanAuthority'] | RevokeControlledHandoffCommandV1['trustedHumanAuthority']
+  authority: AuthorizeOrReplaceControlledHandoffCommandV1['trustedHumanAuthority']
 ): void {
   if (principal.actorKind !== 'HUMAN_USER') {
     throw new ControlledHandoffError(
@@ -336,20 +356,23 @@ export class InMemoryControlledHandoffRepository implements ControlledHandoffRep
   private readonly history = new Map<ControlledHandoffId, ControlledHandoffEnvelopeV1[]>();
   private readonly replay = new Map<string, ControlledHandoffReplayRecord>();
 
-  async findSlotState(key: string): Promise<ControlledHandoffSlotState> {
+  findSlotState(key: string): Promise<ControlledHandoffSlotState> {
     const state = this.slots.get(key);
-    return state ? clone(state) : { current: undefined, version: 0 };
+    return Promise.resolve(state ? clone(state) : { current: undefined, version: 0 });
   }
 
-  async findLatest(id: ControlledHandoffId): Promise<ControlledHandoffEnvelopeV1 | undefined> {
-    return clone(this.history.get(id)?.at(-1));
+  findLatest(id: ControlledHandoffId): Promise<ControlledHandoffEnvelopeV1 | undefined> {
+    return Promise.resolve(clone(this.history.get(id)?.at(-1)));
   }
 
-  async findReplay(key: string, idempotencyKey: string): Promise<ControlledHandoffReplayRecord | undefined> {
-    return clone(this.replay.get(`${key}\u0000${idempotencyKey}`));
+  findReplay(
+    key: string,
+    idempotencyKey: string
+  ): Promise<ControlledHandoffReplayRecord | undefined> {
+    return Promise.resolve(clone(this.replay.get(`${key}\u0000${idempotencyKey}`)));
   }
 
-  async commit(mutation: ControlledHandoffCommit): Promise<void> {
+  commit(mutation: ControlledHandoffCommit): Promise<void> {
     const state = this.slots.get(mutation.slotKey) ?? { current: undefined, version: 0 };
     if (mutation.expectedCurrent.kind === 'ABSENT') {
       if (state.current) {
@@ -364,7 +387,11 @@ export class InMemoryControlledHandoffRepository implements ControlledHandoffRep
     }
     const replayMapKey = `${mutation.slotKey}\u0000${mutation.replayKey}`;
     if (this.replay.has(replayMapKey)) {
-      throw new ControlledHandoffError('IDEMPOTENCY_CONFLICT', 409, 'Replay key already committed.');
+      throw new ControlledHandoffError(
+        'IDEMPOTENCY_CONFLICT',
+        409,
+        'Replay key already committed.'
+      );
     }
     const history = this.history.get(mutation.next.controlledHandoffId) ?? [];
     history.push(clone(mutation.next));
@@ -374,6 +401,7 @@ export class InMemoryControlledHandoffRepository implements ControlledHandoffRep
       version: state.version + 1
     });
     this.replay.set(replayMapKey, clone(mutation.replay));
+    return Promise.resolve();
   }
 
   listHistory(id: ControlledHandoffId): ControlledHandoffEnvelopeV1[] {
@@ -506,11 +534,19 @@ export class ControlledPrivacyHandoffService {
       !Number.isInteger(command.target.version) ||
       command.target.version <= 0
     ) {
-      throw new ControlledHandoffError('INVALID_INPUT', 400, 'Controlled Handoff revocation is invalid.');
+      throw new ControlledHandoffError(
+        'INVALID_INPUT',
+        400,
+        'Controlled Handoff revocation is invalid.'
+      );
     }
     const current = await this.repository.findLatest(command.target.controlledHandoffId);
     if (!current || current.originatingWorkspaceId !== principal.workspaceId) {
-      throw new ControlledHandoffError('HANDOFF_NOT_FOUND', 404, 'Controlled Handoff was not found.');
+      throw new ControlledHandoffError(
+        'HANDOFF_NOT_FOUND',
+        404,
+        'Controlled Handoff was not found.'
+      );
     }
     const key = this.slotKeyFromEnvelope(current);
     const existingReplay = await this.repository.findReplay(key, command.idempotencyKey);
@@ -520,7 +556,11 @@ export class ControlledPrivacyHandoffService {
         existingReplay.actorId !== principal.actorId ||
         existingReplay.principalReference !== principal.principalReference
       ) {
-        throw new ControlledHandoffError('IDEMPOTENCY_CONFLICT', 409, 'Revocation replay conflicts.');
+        throw new ControlledHandoffError(
+          'IDEMPOTENCY_CONFLICT',
+          409,
+          'Revocation replay conflicts.'
+        );
       }
       return replayResult(existingReplay);
     }
@@ -540,7 +580,9 @@ export class ControlledPrivacyHandoffService {
       revocationReasonCode: command.reasonCode,
       correlationId: command.correlationId
     };
-    const { envelopeFingerprintSha256: _oldFingerprint, ...withoutFingerprint } = base;
+    const withoutFingerprint = Object.fromEntries(
+      Object.entries(base).filter(([key]) => key !== 'envelopeFingerprintSha256')
+    );
     const revoked: ControlledHandoffEnvelopeV1 = {
       ...base,
       envelopeFingerprintSha256: canonicalHash(withoutFingerprint)
@@ -584,7 +626,11 @@ export class ControlledPrivacyHandoffService {
   ): Promise<ControlledHandoffCurrentValidationV1> {
     const envelope = await this.repository.findLatest(input.envelope.controlledHandoffId);
     if (!envelope || envelope.originatingWorkspaceId !== principal.workspaceId) {
-      throw new ControlledHandoffError('HANDOFF_NOT_FOUND', 404, 'Controlled Handoff was not found.');
+      throw new ControlledHandoffError(
+        'HANDOFF_NOT_FOUND',
+        404,
+        'Controlled Handoff was not found.'
+      );
     }
     const deny = (
       denialReason: ControlledHandoffValidationDenialReason,
@@ -629,15 +675,21 @@ export class ControlledPrivacyHandoffService {
     if (
       input.attempt.projectionFingerprintSha256 !==
         envelope.authorizedProjection.projectionFingerprintSha256 ||
-      input.attempt.sourceSetFingerprintSha256 !== envelope.authorizedProjection.sourceSetFingerprintSha256
+      input.attempt.sourceSetFingerprintSha256 !==
+        envelope.authorizedProjection.sourceSetFingerprintSha256
     ) {
       return deny('PROJECTION_MISMATCH');
     }
-    const snapshot = await this.evaluateAuthority({
-      envelope,
-      purpose: input.purpose,
-      attempt: input.attempt
-    });
+    let snapshot: ControlledHandoffCurrentAuthoritySnapshot;
+    try {
+      snapshot = await this.currentAuthority.evaluateCurrentAuthority({
+        envelope,
+        purpose: input.purpose,
+        attempt: input.attempt
+      });
+    } catch {
+      return deny('AUTHORITY_UNAVAILABLE');
+    }
     const authorityDenial = denialFromAuthority(snapshot, input.attempt.artifactRetrievalRequested);
     if (authorityDenial) return deny(authorityDenial, snapshot.checkedAuthorityReferences);
     return {
