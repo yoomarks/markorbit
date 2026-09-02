@@ -4,6 +4,7 @@ import { resolveManagedCommunicationRuntimeConfigV1 } from '../src/managed-commu
 import { PostgresManagedCommunicationExactEvidenceStoreV1 } from '../src/managed-communication-exact-evidence.js';
 import { PostgresManagedCommunicationFoundationV1 } from '../src/managed-communication-foundation.js';
 import { syncGmailManagedCommunicationInboundFromAnchorV1 } from '../src/managed-communication-gmail-anchor.js';
+import { reconcileGmailManagedCommunicationProviderMessageV1 } from '../src/managed-communication-gmail-reconciliation.js';
 import {
   GmailManagedCommunicationClientV1,
   GmailManagedCommunicationInboundV1
@@ -25,10 +26,15 @@ function requiredEnvironment(name: string, maximum: number): string {
 const argument = process.argv[2]?.trim();
 if (!argument) {
   throw new Error(
-    'Usage: pnpm exec tsx services/capability-engine/scripts/gmail-inbound-live-sync.ts <anchor-provider-message-id|--resume>'
+    'Usage: pnpm exec tsx services/capability-engine/scripts/gmail-inbound-live-sync.ts <anchor-provider-message-id|--resume|--message provider-message-id>'
   );
 }
 const resume = argument === '--resume';
+const reconcileMessage = argument === '--message';
+const providerMessageId = reconcileMessage ? process.argv[3]?.trim() : undefined;
+if (reconcileMessage && !providerMessageId) {
+  throw new Error('--message requires one Gmail provider message ID.');
+}
 
 const runtime = resolveManagedCommunicationRuntimeConfigV1(process.env);
 if (!runtime) {
@@ -73,20 +79,29 @@ try {
 
   const result = resume
     ? await inbound.syncOnce()
-    : await syncGmailManagedCommunicationInboundFromAnchorV1({
-        client,
-        inbound,
-        foundation,
-        workspaceId: runtime.workspaceId,
-        accountRef: runtime.accountRef,
-        anchorProviderMessageId: argument
-      });
+    : reconcileMessage
+      ? await reconcileGmailManagedCommunicationProviderMessageV1({
+          client,
+          foundation,
+          exactEvidence,
+          workspaceId: runtime.workspaceId,
+          accountRef: runtime.accountRef,
+          providerMessageId: providerMessageId!
+        })
+      : await syncGmailManagedCommunicationInboundFromAnchorV1({
+          client,
+          inbound,
+          foundation,
+          workspaceId: runtime.workspaceId,
+          accountRef: runtime.accountRef,
+          anchorProviderMessageId: argument
+        });
 
   process.stdout.write(
     `${JSON.stringify(
       {
         schemaVersion: 1,
-        mode: resume ? 'RESUME' : 'ANCHORED',
+        mode: resume ? 'RESUME' : reconcileMessage ? 'MESSAGE' : 'ANCHORED',
         workspaceId: runtime.workspaceId,
         accountRef: runtime.accountRef,
         initialized: result.initialized,
