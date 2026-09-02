@@ -54,6 +54,11 @@ jobs:
 
           t = Path('services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts')
           s = t.read_text()
+          old = "import {\n  providerSelectionContractFixtureV1,\n  type ProviderSelectionId\n} from '@markorbit/contracts/provider-selection';"
+          new = "import { providerSelectionContractFixtureV1 } from '@markorbit/contracts/provider-selection';"
+          if old not in s:
+              raise SystemExit('expected ProviderSelectionId import not found')
+          s = s.replace(old, new, 1)
           old = "() => 'provider-selection_fixture-394' as ProviderSelectionId"
           new = "() => 'provider-selection_fixture-394'"
           if old not in s:
