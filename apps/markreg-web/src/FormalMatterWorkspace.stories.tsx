@@ -1,6 +1,6 @@
 import type { FormalMatter } from '@markorbit/contracts';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Card } from '@markorbit/ui';
+import { Alert, Card } from '@markorbit/ui';
 import { FormalMatterWorkspace } from './FormalMatterWorkspace.js';
 
 const matter = {
@@ -57,6 +57,19 @@ const lifecycle = ({ disabled }: { disabled: boolean }) => (
   </Card>
 );
 
+const intelligence = () => (
+  <>
+    <Alert tone="info" title="Descriptive analytical evidence">
+      Historical evidence only — not prediction, legal conclusion, office status, or Official Truth.
+    </Alert>
+    <Card>
+      <strong>180 days · P50_TO_P75</strong>
+      <p>Current Human Review: CONFIRMED</p>
+      <p>Story-only presentation seam. Production uses the live MatterIntelligencePanel.</p>
+    </Card>
+  </>
+);
+
 const meta = {
   title: 'MarkReg/Formal Matter Workspace',
   component: FormalMatterWorkspace,
@@ -70,7 +83,8 @@ export const CurrentMatter: Story = {
     matter,
     expectedVersion: '5',
     actualVersion: '5',
-    renderLifecycle: lifecycle
+    renderLifecycle: lifecycle,
+    renderIntelligence: intelligence
   }
 };
 
@@ -80,6 +94,7 @@ export const StaleDirectLink: Story = {
     expectedVersion: '4',
     actualVersion: '5',
     versionMismatch: true,
-    renderLifecycle: lifecycle
+    renderLifecycle: lifecycle,
+    renderIntelligence: intelligence
   }
 };

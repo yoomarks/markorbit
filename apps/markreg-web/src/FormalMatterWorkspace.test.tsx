@@ -64,12 +64,14 @@ afterEach(cleanup);
 describe('FormalMatterWorkspace', () => {
   it('turns durable Formal Matter truth into a customer workspace without fabricating authority', () => {
     const renderLifecycle = vi.fn(() => <div>Lifecycle truth</div>);
+    const renderIntelligence = vi.fn(() => <div>Matter Intelligence truth</div>);
     render(
       <FormalMatterWorkspace
         matter={matter}
         expectedVersion="5"
         actualVersion="5"
         renderLifecycle={renderLifecycle}
+        renderIntelligence={renderIntelligence}
       />
     );
 
@@ -87,10 +89,13 @@ describe('FormalMatterWorkspace', () => {
     const quoteLink = screen.getByRole('link', { name: 'Open source Quote' });
     expect(quoteLink.getAttribute('href')).toContain('quoteVersion=quote-v4');
     expect(screen.queryByRole('link', { name: /Matter Draft/ })).toBeNull();
-    expect(screen.getByText(/does not mean no intelligence exists/i)).toBeTruthy();
+    expect(screen.getByText('Matter Intelligence truth')).toBeTruthy();
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: false
+    });
+    expect(renderIntelligence).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
     });
   });
 
@@ -98,6 +103,7 @@ describe('FormalMatterWorkspace', () => {
     const renderLifecycle = vi.fn(({ disabled }: { disabled: boolean }) => (
       <div>{disabled ? 'Lifecycle disabled' : 'Lifecycle enabled'}</div>
     ));
+    const renderIntelligence = vi.fn(() => <div>Read-only intelligence</div>);
     render(
       <FormalMatterWorkspace
         matter={matter}
@@ -105,15 +111,20 @@ describe('FormalMatterWorkspace', () => {
         actualVersion="5"
         versionMismatch
         renderLifecycle={renderLifecycle}
+        renderIntelligence={renderIntelligence}
       />
     );
 
     expect(screen.getByText('Version mismatch')).toBeTruthy();
     expect(screen.getByText(/expected version 4/i)).toBeTruthy();
     expect(screen.getByText('Lifecycle disabled')).toBeTruthy();
+    expect(screen.getByText('Read-only intelligence')).toBeTruthy();
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: true
+    });
+    expect(renderIntelligence).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
     });
   });
 });
