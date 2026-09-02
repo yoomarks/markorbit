@@ -57,6 +57,20 @@ const lifecycle = ({ disabled }: { disabled: boolean }) => (
   </Card>
 );
 
+const evidence = () => (
+  <>
+    <Alert tone="info" title="Read-only evidence context">
+      Reviewed Evidence and Provider Return are not Official Truth; Lifecycle Projection is not
+      Official Status.
+    </Alert>
+    <Card>
+      <strong>1 current Document Package · 0 historical packages</strong>
+      <p>Lifecycle evidence remains non-official and source-current.</p>
+      <p>Story-only presentation seam. Production uses the live FormalMatterEvidencePanel.</p>
+    </Card>
+  </>
+);
+
 const intelligence = () => (
   <>
     <Alert tone="info" title="Descriptive analytical evidence">
@@ -84,6 +98,7 @@ export const CurrentMatter: Story = {
     expectedVersion: '5',
     actualVersion: '5',
     renderLifecycle: lifecycle,
+    renderEvidence: evidence,
     renderIntelligence: intelligence
   }
 };
@@ -95,6 +110,7 @@ export const StaleDirectLink: Story = {
     actualVersion: '5',
     versionMismatch: true,
     renderLifecycle: lifecycle,
+    renderEvidence: evidence,
     renderIntelligence: intelligence
   }
 };
