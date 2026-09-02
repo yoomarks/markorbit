@@ -109,7 +109,7 @@ const projection = {
 afterEach(cleanup);
 
 describe('MatterIntelligencePanel', () => {
-  it('renders durable analytical truth, stale lineage, Human Review and provenance without authority', async () => {
+  it('renders governed analytical truth without creating authority', async () => {
     const client = {
       get: vi.fn(() => Promise.resolve(projection))
     } as MatterIntelligenceClient;
@@ -156,6 +156,8 @@ describe('MatterIntelligencePanel', () => {
     render(<MatterIntelligencePanel formalMatterId="formal-matter_one" client={client} />);
 
     await waitFor(() => expect(screen.getByText('Matter intelligence unavailable')).toBeTruthy());
-    expect(screen.queryByText(/No governed Matter Intelligence observations are recorded/i)).toBeNull();
+    expect(
+      screen.queryByText(/No governed Matter Intelligence observations are recorded/i)
+    ).toBeNull();
   });
 });
