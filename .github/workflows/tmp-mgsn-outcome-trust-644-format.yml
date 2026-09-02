@@ -40,6 +40,23 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Repair exact durable-lineage test fixtures
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/mgsn/tests/outcome-trust-evidence-postgres.test.ts')
+          s = p.read_text()
+          old = """    const divergent = {\n      ...item,\n      limitations: [{ code: 'CONTEXT_LIMITED' as const, explanation: 'Different immutable body.' }]\n    };\n    await expect(repository().putEvidenceItem(divergent)).rejects.toMatchObject({"""
+          new = """    const divergentBody = {\n      ...item,\n      limitations: [{ code: 'CONTEXT_LIMITED' as const, explanation: 'Different immutable body.' }]\n    };\n    const divergent = {\n      ...divergentBody,\n      trustEvidenceItemFingerprintSha256: trustEvidenceItemFingerprintV1(divergentBody)\n    };\n    await expect(repository().putEvidenceItem(divergent)).rejects.toMatchObject({"""
+          if old not in s:
+              raise SystemExit('divergent evidence fixture block not found')
+          s = s.replace(old, new, 1)
+          old = """    const wrongContext = {\n      ...projected,\n      contextFingerprintSha256: hash('9')\n    };\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
+          new = """    const wrongContextBody = {\n      ...projected,\n      contextFingerprintSha256: hash('9')\n    };\n    const wrongContext = {\n      ...wrongContextBody,\n      projectionFingerprintSha256:\n        trustEvidenceVisibilityProjectionFingerprintV1(wrongContextBody)\n    };\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
+          if old not in s:
+              raise SystemExit('wrong-context projection fixture block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Format exact owner files
         run: pnpm exec prettier --write services/mgsn/src/outcome-trust-evidence-postgres.ts services/mgsn/tests/outcome-trust-evidence-postgres.test.ts
       - name: Build MGSN dependency closure
@@ -50,14 +67,14 @@ jobs:
           pnpm --filter @markorbit/mgsn-service lint
       - name: Run complete MGSN tests with real PostgreSQL
         run: pnpm --filter @markorbit/mgsn-service test
-      - name: Push verified formatting to formal branch
+      - name: Push verified repair and formatting to formal branch
         run: |
           if git diff --quiet -- services/mgsn; then
-            echo "No formatting changes required."
+            echo "No repair changes required."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add services/mgsn/src/outcome-trust-evidence-postgres.ts services/mgsn/tests/outcome-trust-evidence-postgres.test.ts
-          git commit -m "[MGSN-P0] Format durable Outcome & Trust Evidence runtime"
+          git commit -m "[MGSN-P0] Verify durable Outcome & Trust Evidence lineage tests"
           git push origin HEAD:mgsn-outcome-trust-durable
