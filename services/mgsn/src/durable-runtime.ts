@@ -6,6 +6,8 @@ import { NetworkParticipationService } from './network-participation.js';
 import { PostgresNetworkParticipationRepository } from './network-participation-postgres.js';
 import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
+import { ProviderResponsibilityService } from './provider-responsibility.js';
+import { PostgresProviderResponsibilityRepository } from './provider-responsibility-postgres.js';
 import { ProviderReturnService } from './provider-return.js';
 import { PostgresProviderReturnRepository } from './provider-return-postgres.js';
 import { ProviderWorkReadModelService } from './provider-work-read-model.js';
@@ -25,7 +27,13 @@ export interface DurableMgsnServicesOptions {
   internalServiceSecret: string;
 }
 
-export function createDurableMgsnServices(options: DurableMgsnServicesOptions): MgsnHttpServices {
+export type DurableMgsnServices = MgsnHttpServices & {
+  providerResponsibility: ProviderResponsibilityService;
+};
+
+export function createDurableMgsnServices(
+  options: DurableMgsnServicesOptions
+): DurableMgsnServices {
   const query = options.database.getPool();
   const providerRepository = new PostgresProviderRegistryRepository(options.database, query);
   const servicePackageRepository = new PostgresServicePackageEligibilityRepository(
@@ -39,6 +47,10 @@ export function createDurableMgsnServices(options: DurableMgsnServicesOptions): 
   const providerReturnRepository = new PostgresProviderReturnRepository(options.database, query);
   const providerWorkReadRepository = new PostgresProviderWorkReadRepository(query);
   const networkParticipationRepository = new PostgresNetworkParticipationRepository(
+    options.database,
+    query
+  );
+  const providerResponsibilityRepository = new PostgresProviderResponsibilityRepository(
     options.database,
     query
   );
@@ -81,6 +93,10 @@ export function createDurableMgsnServices(options: DurableMgsnServicesOptions): 
     ),
     networkParticipation: new NetworkParticipationService(
       networkParticipationRepository,
+      providerRepository
+    ),
+    providerResponsibility: new ProviderResponsibilityService(
+      providerResponsibilityRepository,
       providerRepository
     )
   };
