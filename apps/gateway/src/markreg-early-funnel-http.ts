@@ -116,6 +116,7 @@ function trustedActor(
   };
 }
 
+// prettier-ignore
 export function createGatewayMarkRegEarlyFunnelRoutes(
   options: GatewayMarkRegEarlyFunnelOptions
 ): readonly JsonRoute[] {
