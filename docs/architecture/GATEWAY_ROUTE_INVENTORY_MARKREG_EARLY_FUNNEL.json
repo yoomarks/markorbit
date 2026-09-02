@@ -46,6 +46,17 @@
       "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
       "authorityConsequenceResponse": "NONE_EXTERNAL",
       "httpIntegrationTestFile": "apps/gateway/tests/matter-intelligence-http.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/formal-matters/:formalMatterId/evidence",
+      "owner": "markreg",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/formal-matter-evidence-http.test.ts"
     }
   ]
 }
