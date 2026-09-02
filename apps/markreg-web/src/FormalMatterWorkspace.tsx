@@ -1,6 +1,7 @@
 import type { FormalMatter } from '@markorbit/contracts';
 import { Alert, Button, Card, KeyValueList, PageHeader } from '@markorbit/ui';
 import type { ReactNode } from 'react';
+import { FormalMatterEvidencePanel } from './FormalMatterEvidencePanel.js';
 import { LifecyclePanel } from './LifecyclePanel.js';
 import { MatterIntelligencePanel } from './MatterIntelligencePanel.js';
 import { serializeMarkregRoute } from './routing/markreg-route.js';
@@ -10,10 +11,16 @@ export type FormalMatterLifecycleRenderer = (input: {
   disabled: boolean;
 }) => ReactNode;
 
+export type FormalMatterEvidenceRenderer = (input: { formalMatterId: string }) => ReactNode;
+
 export type FormalMatterIntelligenceRenderer = (input: { formalMatterId: string }) => ReactNode;
 
 const defaultLifecycle: FormalMatterLifecycleRenderer = ({ formalMatterId, disabled }) => (
   <LifecyclePanel formalMatterId={formalMatterId} disabled={disabled} embedded />
+);
+
+const defaultEvidence: FormalMatterEvidenceRenderer = ({ formalMatterId }) => (
+  <FormalMatterEvidencePanel formalMatterId={formalMatterId} />
 );
 
 const defaultIntelligence: FormalMatterIntelligenceRenderer = ({ formalMatterId }) => (
@@ -35,6 +42,7 @@ export function FormalMatterWorkspace({
   versionMismatch = false,
   readOnly = false,
   renderLifecycle = defaultLifecycle,
+  renderEvidence = defaultEvidence,
   renderIntelligence = defaultIntelligence
 }: {
   matter: FormalMatter;
@@ -43,6 +51,7 @@ export function FormalMatterWorkspace({
   versionMismatch?: boolean;
   readOnly?: boolean;
   renderLifecycle?: FormalMatterLifecycleRenderer;
+  renderEvidence?: FormalMatterEvidenceRenderer;
   renderIntelligence?: FormalMatterIntelligenceRenderer;
 }) {
   const preparation = matter.sourceSnapshot.preparation;
@@ -180,6 +189,11 @@ export function FormalMatterWorkspace({
             </p>
           </details>
         </Card>
+      </section>
+
+      <section aria-labelledby="matter-evidence-heading">
+        <h2 id="matter-evidence-heading">Evidence context</h2>
+        {renderEvidence({ formalMatterId: String(matter.formalMatterId) })}
       </section>
 
       <section aria-labelledby="matter-lifecycle-heading">
