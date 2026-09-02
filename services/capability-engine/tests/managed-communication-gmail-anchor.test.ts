@@ -10,7 +10,9 @@ import {
   InMemoryManagedCommunicationFoundationV1,
   managedCommunicationNormalizedIdsV1
 } from '../src/managed-communication-foundation.js';
-import { syncGmailManagedCommunicationInboundFromAnchorV1 } from '../src/managed-communication-gmail-anchor.js';
+import {
+  syncGmailManagedCommunicationInboundFromAnchorV1
+} from '../src/managed-communication-gmail-anchor.js';
 import {
   GMAIL_MANAGED_COMMUNICATION_PROVIDER,
   GmailManagedCommunicationClientV1,
@@ -319,7 +321,9 @@ describe('anchored Gmail inbound synchronization', () => {
         accountRef,
         anchorProviderMessageId: anchorId
       })
-    ).rejects.toThrow('refuses to replace an existing different provider cursor');
+    ).rejects.toThrow(
+      'refuses to replace an existing different provider cursor'
+    );
     expect(exactEvidence.admissions).toHaveLength(0);
   });
 });
