@@ -10,6 +10,11 @@ import { ProviderResponsibilityService } from './provider-responsibility.js';
 import { PostgresProviderResponsibilityRepository } from './provider-responsibility-postgres.js';
 import { ProviderReturnService } from './provider-return.js';
 import { PostgresProviderReturnRepository } from './provider-return-postgres.js';
+import {
+  ProviderSelectionService,
+  type ProviderSelectionCurrentAuthoritySource
+} from './provider-selection.js';
+import { PostgresProviderSelectionRepository } from './provider-selection-postgres.js';
 import { ProviderWorkReadModelService } from './provider-work-read-model.js';
 import { PostgresProviderWorkReadRepository } from './provider-work-read-model-postgres.js';
 import {
@@ -20,15 +25,38 @@ import {
 import { ServicePackageEligibilityService } from './service-package-eligibility.js';
 import { PostgresServicePackageEligibilityRepository } from './service-package-eligibility-postgres.js';
 
+// Durable Selection history is never a substitute for current requester/provider authority.
+const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySource = {
+  evaluateCurrentAuthority() {
+    return Promise.resolve({
+      authorityAvailable: false,
+      requesterAuthorityCurrent: false,
+      actorAuthorityCurrent: false,
+      candidateCurrent: false,
+      participationActive: false,
+      visibilityAuthorized: false,
+      trustedRelationshipRequired: false,
+      trustedRelationshipCurrent: false,
+      providerOperational: false,
+      supplyCurrent: false,
+      directExecutorEstablished: false,
+      sourceVersionsMatch: false,
+      checkedAuthorityReferences: []
+    });
+  }
+};
+
 export interface DurableMgsnServicesOptions {
   database: ManagedDatabase;
   coreUrl: string;
   executionUrl: string;
   internalServiceSecret: string;
+  providerSelectionCurrentAuthoritySource?: ProviderSelectionCurrentAuthoritySource;
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
   providerResponsibility: ProviderResponsibilityService;
+  providerSelection: ProviderSelectionService;
 };
 
 export function createDurableMgsnServices(
@@ -51,6 +79,10 @@ export function createDurableMgsnServices(
     query
   );
   const providerResponsibilityRepository = new PostgresProviderResponsibilityRepository(
+    options.database,
+    query
+  );
+  const providerSelectionRepository = new PostgresProviderSelectionRepository(
     options.database,
     query
   );
@@ -98,6 +130,10 @@ export function createDurableMgsnServices(
     providerResponsibility: new ProviderResponsibilityService(
       providerResponsibilityRepository,
       providerRepository
+    ),
+    providerSelection: new ProviderSelectionService(
+      providerSelectionRepository,
+      options.providerSelectionCurrentAuthoritySource ?? unavailableProviderSelectionAuthority
     )
   };
 }
