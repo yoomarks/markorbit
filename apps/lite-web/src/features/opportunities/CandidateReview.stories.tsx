@@ -4,6 +4,7 @@ import { OpportunityCandidateHttpError } from '../../api/opportunity-candidates.
 import { CandidateReview } from './CandidateReview.js';
 import {
   candidateFixture,
+  dispositionedCandidateFixture,
   fixtureCandidateClient,
   qualificationFixture
 } from './candidate-review-fixtures.js';
@@ -11,7 +12,8 @@ import {
 const pendingClient: OpportunityCandidateClient = {
   list: () => new Promise(() => undefined),
   load: () => new Promise(() => undefined),
-  loadQualification: () => new Promise(() => undefined)
+  loadQualification: () => new Promise(() => undefined),
+  qualify: () => new Promise(() => undefined)
 };
 
 const errorClient: OpportunityCandidateClient = {
@@ -57,6 +59,15 @@ export const DetailLoading: Story = {
 export const NoDecision: Story = {
   args: { initialSelected: candidateFixture.opportunityCandidateId }
 };
+export const DispositionedWithoutDecision: Story = {
+  args: {
+    initialSelected: candidateFixture.opportunityCandidateId,
+    client: {
+      ...fixtureCandidateClient(),
+      load: () => Promise.resolve(dispositionedCandidateFixture)
+    }
+  }
+};
 export const QualifiedForMarkReg: Story = {
   args: {
     initialSelected: candidateFixture.opportunityCandidateId,
@@ -81,8 +92,65 @@ export const HistoricalReviewedVersion: Story = {
     client: fixtureCandidateClient(qualificationFixture('DEFERRED', 2))
   }
 };
+const submitDeferredQualification = async (canvasElement: HTMLElement) => {
+  const radio = canvasElement.querySelector<HTMLInputElement>('input[value="DEFERRED"]');
+  const textarea = canvasElement.querySelector<HTMLTextAreaElement>('textarea');
+  radio?.click();
+  if (textarea) {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(
+      textarea,
+      'Fixture rationale preserved for visual review.'
+    );
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  canvasElement.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+};
+export const QualificationConflict: Story = {
+  args: {
+    initialSelected: candidateFixture.opportunityCandidateId,
+    client: {
+      ...fixtureCandidateClient(),
+      qualify: () =>
+        Promise.reject(
+          new OpportunityCandidateHttpError(409, 'CANDIDATE_VERSION_CONFLICT', 'Stale Candidate')
+        )
+    }
+  },
+  play: async ({ canvasElement }) => submitDeferredQualification(canvasElement)
+};
+export const InvalidQualification: Story = {
+  args: {
+    initialSelected: candidateFixture.opportunityCandidateId,
+    client: {
+      ...fixtureCandidateClient(),
+      qualify: () =>
+        Promise.reject(
+          new OpportunityCandidateHttpError(422, 'INVALID_RATIONALE', 'Invalid rationale')
+        )
+    }
+  },
+  play: async ({ canvasElement }) => submitDeferredQualification(canvasElement)
+};
+export const QualificationUnavailable: Story = {
+  args: {
+    initialSelected: candidateFixture.opportunityCandidateId,
+    client: {
+      ...fixtureCandidateClient(),
+      qualify: () =>
+        Promise.reject(
+          new OpportunityCandidateHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Unavailable', true)
+        )
+    }
+  },
+  play: async ({ canvasElement }) => submitDeferredQualification(canvasElement)
+};
 export const Mobile390: Story = {
-  args: { client: fixtureCandidateClient(qualificationFixture('QUALIFIED_FOR_MARKREG')) },
+  args: {
+    initialSelected: candidateFixture.opportunityCandidateId,
+    client: fixtureCandidateClient()
+  },
   parameters: {
     viewport: {
       defaultViewport: 'mobile1',

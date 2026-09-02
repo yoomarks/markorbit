@@ -133,3 +133,97 @@ test('null Qualification remains no decision and 503 remains an error', async ({
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'No Opportunity Candidates' })).toHaveCount(0);
 });
+
+test('authenticated human Qualification POSTs exact evidence then renders durable refresh', async ({
+  page
+}, testInfo) => {
+  let durableCandidate: object = candidate;
+  let durableDecision: object | null = null;
+  let mutation:
+    { headers: Record<string, string>; body: Record<string, unknown>; path: string } | undefined;
+  let detailReads = 0;
+  let qualificationReads = 0;
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf-browser-583' } })
+  );
+  await page.route(
+    (url) => url.pathname.startsWith('/api/lite/opportunity-candidates'),
+    async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      if (url.pathname.endsWith('/qualification') && request.method() === 'POST') {
+        mutation = {
+          headers: request.headers(),
+          body: request.postDataJSON() as Record<string, unknown>,
+          path: url.pathname
+        };
+        durableCandidate = {
+          ...candidate,
+          version: 4,
+          status: 'DISPOSITIONED',
+          opportunityCandidateFingerprintSha256: 'd'.repeat(64),
+          updatedAt: '2026-09-02T09:00:00.000Z'
+        };
+        durableDecision = {
+          ...historicalDecision,
+          candidate: { id: candidate.opportunityCandidateId, version: candidate.version },
+          expectedCandidateFingerprintSha256: candidate.opportunityCandidateFingerprintSha256,
+          outcome: 'DEFERRED',
+          rationale: 'Browser human reviewed exact evidence.',
+          decidedAt: '2026-09-02T09:00:00.000Z'
+        };
+        return route.fulfill({
+          status: 201,
+          json: { decision: durableDecision, currentCandidate: durableCandidate }
+        });
+      }
+      if (url.pathname.endsWith('/qualification')) {
+        qualificationReads += 1;
+        return route.fulfill({ json: durableDecision });
+      }
+      if (url.pathname.endsWith(candidate.opportunityCandidateId)) {
+        detailReads += 1;
+        return route.fulfill({ json: durableCandidate });
+      }
+      return route.fulfill({ json: { items: [candidate], nextCursor: null } });
+    }
+  );
+
+  await page.goto('/?workspaceId=workspace-browser#opportunities');
+  await page.getByRole('button', { name: 'Review Candidate details' }).click();
+  await expect(page.getByRole('heading', { name: 'Record human Qualification' })).toBeVisible();
+  await page.getByRole('radio', { name: /Defer Candidate/ }).check();
+  await page
+    .getByRole('textbox', { name: 'Human rationale' })
+    .fill('Browser human reviewed exact evidence.');
+  await page.screenshot({
+    path: testInfo.outputPath('human-qualification-form.png'),
+    fullPage: true
+  });
+  await page.getByRole('button', { name: 'Record human Qualification' }).click();
+
+  await expect(page.getByText('Qualification outcome: DEFERRED')).toBeVisible();
+  await expect(page.getByText('Candidate status: DISPOSITIONED')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Record human Qualification' })).toHaveCount(0);
+  expect(detailReads).toBe(2);
+  expect(qualificationReads).toBe(2);
+  expect(mutation?.path).toBe(
+    `/api/lite/opportunity-candidates/${candidate.opportunityCandidateId}/qualification`
+  );
+  expect(mutation?.headers['x-markorbit-workspace-id']).toBe('workspace-browser');
+  expect(mutation?.headers['x-markorbit-csrf-token']).toBe('csrf-browser-583');
+  expect(mutation?.headers['idempotency-key']).toBeTruthy();
+  expect(mutation?.body).toEqual({
+    candidateVersion: candidate.version,
+    expectedCandidateFingerprintSha256: candidate.opportunityCandidateFingerprintSha256,
+    outcome: 'DEFERRED',
+    rationale: 'Browser human reviewed exact evidence.'
+  });
+  expect(JSON.stringify(mutation?.body)).not.toMatch(
+    /workspaceId|decidedByPrincipalId|actorId|userId|principalId|membershipId/
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({ path: testInfo.outputPath('human-qualification.png'), fullPage: true });
+});

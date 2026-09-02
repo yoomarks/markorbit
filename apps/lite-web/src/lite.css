@@ -81,6 +81,55 @@
   padding-top: var(--mo-space-lg);
   border-top: 1px solid var(--mo-border);
 }
+.candidate-qualification-form {
+  display: grid;
+  gap: var(--mo-space-lg);
+}
+.candidate-qualification-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.candidate-qualification-form legend {
+  margin-bottom: var(--mo-space-sm);
+  font-weight: 700;
+}
+.candidate-qualification-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mo-space-md);
+}
+.candidate-qualification-options label {
+  display: flex;
+  gap: var(--mo-space-sm);
+  align-items: flex-start;
+  min-width: 0;
+  padding: var(--mo-space-md);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius);
+  cursor: pointer;
+}
+.candidate-qualification-options label:has(input:checked) {
+  border-color: var(--mo-brand);
+  box-shadow: 0 0 0 1px var(--mo-brand);
+}
+.candidate-qualification-options input {
+  margin-top: 0.2rem;
+}
+.candidate-qualification-options span,
+.candidate-qualification-options small {
+  display: block;
+  min-width: 0;
+}
+.candidate-qualification-options small {
+  margin-top: var(--mo-space-xs);
+  color: var(--mo-secondary);
+}
+.candidate-qualification-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .review-check {
   display: grid;
   grid-template-columns: minmax(14rem, 1.2fr) minmax(10rem, 0.7fr) minmax(14rem, 1fr);
@@ -134,13 +183,18 @@
   }
   .lite-grid,
   .lite-detail-grid,
-  .review-check {
+  .review-check,
+  .candidate-qualification-options {
     grid-template-columns: 1fr;
   }
   .review-actions {
     flex-direction: column;
   }
   .review-actions .mo-button {
+    width: 100%;
+    min-height: 44px;
+  }
+  .candidate-qualification-actions .mo-button {
     width: 100%;
     min-height: 44px;
   }
