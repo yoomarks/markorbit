@@ -16,12 +16,10 @@ import {
   type RevokeProviderSelectionCommandV1
 } from '@markorbit/contracts/provider-selection';
 
-export const PROVIDER_SELECTION_VALIDATION_POLICY_VERSION =
-  'mgsn-provider-selection-validation-v1';
+export const PROVIDER_SELECTION_VALIDATION_POLICY_VERSION = 'mgsn-provider-selection-validation-v1';
 
 const sha256Pattern = /^[0-9a-f]{64}$/;
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface ProviderSelectionPrincipal {
   workspaceId: string;
@@ -126,7 +124,9 @@ export interface ProviderSelectionCommit {
 
 export interface ProviderSelectionRepository {
   findScopeState(scopeKey: string): Promise<ProviderSelectionScopeState>;
-  findLatestSelection(providerSelectionId: ProviderSelectionId): Promise<ProviderSelectionV1 | undefined>;
+  findLatestSelection(
+    providerSelectionId: ProviderSelectionId
+  ): Promise<ProviderSelectionV1 | undefined>;
   findReplay(
     scopeKey: string,
     idempotencyKey: string
@@ -144,9 +144,7 @@ function replayKey(scopeKey: string, idempotencyKey: string): string {
   return `${scopeKey}:${idempotencyKey}`;
 }
 
-function selectionReference(
-  selection: ProviderSelectionV1
-): ProviderSelectionVersionReferenceV1 {
+function selectionReference(selection: ProviderSelectionV1): ProviderSelectionVersionReferenceV1 {
   return {
     providerSelectionId: selection.providerSelectionId,
     version: selection.version,
@@ -194,10 +192,7 @@ export class InMemoryProviderSelectionRepository implements ProviderSelectionRep
 
   // No await: CAS, immutable appends, pointer, replay and audit commit in one JS turn.
   commit(mutation: ProviderSelectionCommit): Promise<ProviderSelectionReplayRecord | undefined> {
-    const replayLookupKey = replayKey(
-      mutation.replay.scopeKey,
-      mutation.replay.idempotencyKey
-    );
+    const replayLookupKey = replayKey(mutation.replay.scopeKey, mutation.replay.idempotencyKey);
     const existingReplay = this.replays.get(replayLookupKey);
     if (existingReplay) {
       if (
@@ -355,11 +350,7 @@ function cleanWorkspaceId(value: unknown, field: string): string {
 function instant(value: unknown, field: string): string {
   const text = cleanText(value, field, 100);
   if (!Number.isFinite(Date.parse(text))) {
-    throw new ProviderSelectionError(
-      'INVALID_INPUT',
-      `${field} must be an ISO timestamp.`,
-      422
-    );
+    throw new ProviderSelectionError('INVALID_INPUT', `${field} must be an ISO timestamp.`, 422);
   }
   return new Date(text).toISOString();
 }
@@ -461,10 +452,7 @@ function assertLineage(
     'providerDiscoveryCandidateId',
     200
   );
-  exactSha256(
-    lineage.discoveryCandidate.candidateFingerprintSha256,
-    'candidateFingerprintSha256'
-  );
+  exactSha256(lineage.discoveryCandidate.candidateFingerprintSha256, 'candidateFingerprintSha256');
   instant(lineage.discoveryCandidate.generatedAt, 'candidate.generatedAt');
   cleanText(lineage.discoveryCandidate.evaluationPolicyVersion, 'evaluationPolicyVersion', 200);
   cleanText(lineage.provider.providerId, 'providerId', 200);
@@ -490,8 +478,7 @@ function assertLineage(
   );
   instant(lineage.visibilityAuthorizationAtReview.evaluatedAt, 'visibility.evaluatedAt');
   if (
-    lineage.visibilityAuthorizationAtReview.currentAuthorityRevalidationRequiredBeforeServe !==
-    true
+    lineage.visibilityAuthorizationAtReview.currentAuthorityRevalidationRequiredBeforeServe !== true
   ) {
     throw new ProviderSelectionError(
       'INVALID_INPUT',
@@ -533,9 +520,7 @@ function assertLineage(
   }
 }
 
-function assertAcknowledgement(
-  command: CreateOrReplaceProviderSelectionCommandV1
-): void {
+function assertAcknowledgement(command: CreateOrReplaceProviderSelectionCommandV1): void {
   const acknowledgement = command.acknowledgement;
   if (
     acknowledgement.affirmativeHumanAction !== true ||
@@ -592,10 +577,7 @@ function assertTrustedAuthority(
   authority: Readonly<ProviderSelectionTrustedHumanAuthorityV1>
 ): string {
   const principalWorkspaceId = cleanWorkspaceId(principal.workspaceId, 'principal.workspaceId');
-  const requesterWorkspaceId = cleanWorkspaceId(
-    requesterWorkspaceIdInput,
-    'requesterWorkspaceId'
-  );
+  const requesterWorkspaceId = cleanWorkspaceId(requesterWorkspaceIdInput, 'requesterWorkspaceId');
   const authorityWorkspaceId = cleanWorkspaceId(
     authority.requesterWorkspaceId,
     'trustedHumanAuthority.requesterWorkspaceId'
@@ -997,12 +979,7 @@ export class ProviderSelectionService {
     const requesterWorkspaceId = assertRevokeCommand(principal, command);
     const key = selectionScopeKey(requesterWorkspaceId, command.scope);
     const fingerprint = effectiveCommandFingerprint(principal, command);
-    const replay = await this.findReplay(
-      key,
-      command.idempotencyKey,
-      fingerprint,
-      'REVOKED'
-    );
+    const replay = await this.findReplay(key, command.idempotencyKey, fingerprint, 'REVOKED');
     if (replay) {
       return replay;
     }

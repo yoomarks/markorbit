@@ -32,8 +32,7 @@ function principal(
     selectionAuthorityReference: authority.selectionAuthorityReference,
     selectionAuthorityVersion: authority.selectionAuthorityVersion,
     authenticatedAt: authority.authenticatedAt,
-    affirmativeHumanActionEvidenceReference:
-      authority.affirmativeHumanActionEvidenceReference,
+    affirmativeHumanActionEvidenceReference: authority.affirmativeHumanActionEvidenceReference,
     ...overrides
   };
 }
@@ -55,8 +54,7 @@ function currentSnapshot(
     directExecutorEstablished: true,
     sourceVersionsMatch: true,
     checkedAuthorityReferences: [
-      fixture.currentSelection.sourceLineage.visibilityAuthorizationAtReview
-        .networkParticipationId,
+      fixture.currentSelection.sourceLineage.visibilityAuthorizationAtReview.networkParticipationId,
       fixture.currentSelection.sourceLineage.provider.providerId,
       fixture.currentSelection.sourceLineage.providerSupplyCapability.id
     ]
@@ -136,9 +134,7 @@ function revokeCommand(
   };
 }
 
-function harness(
-  value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()
-) {
+function harness(value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()) {
   const repository = new InMemoryProviderSelectionRepository();
   const source = authoritySource(value);
   let sequence = 0;
@@ -245,12 +241,12 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
       }
     });
 
-    await expect(
-      service.createOrReplace(principal(), nonAffirmative)
-    ).rejects.toMatchObject({ code: 'HUMAN_ACTION_REQUIRED' });
-    await expect(
-      service.createOrReplace(principal(), mismatchedCandidate)
-    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    await expect(service.createOrReplace(principal(), nonAffirmative)).rejects.toMatchObject({
+      code: 'HUMAN_ACTION_REQUIRED'
+    });
+    await expect(service.createOrReplace(principal(), mismatchedCandidate)).rejects.toMatchObject({
+      code: 'INVALID_INPUT'
+    });
   });
 
   it('rejects protected-data acknowledgement flags and mismatched reviewed scope', async () => {
@@ -269,12 +265,12 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
       }
     });
 
-    await expect(
-      service.createOrReplace(principal(), protectedData)
-    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
-    await expect(
-      service.createOrReplace(principal(), wrongScopeReview)
-    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    await expect(service.createOrReplace(principal(), protectedData)).rejects.toMatchObject({
+      code: 'INVALID_INPUT'
+    });
+    await expect(service.createOrReplace(principal(), wrongScopeReview)).rejects.toMatchObject({
+      code: 'INVALID_INPUT'
+    });
   });
 
   it('requires exact Discovery Need lineage for the Selection scope', async () => {
@@ -727,9 +723,7 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
 
     const recreated = await service.createOrReplace(principal(), rejoin);
 
-    expect(recreated.selection.providerSelectionId).not.toBe(
-      current.selection.providerSelectionId
-    );
+    expect(recreated.selection.providerSelectionId).not.toBe(current.selection.providerSelectionId);
     expect(recreated.selection).toMatchObject({
       status: 'CURRENT',
       version: 1,
