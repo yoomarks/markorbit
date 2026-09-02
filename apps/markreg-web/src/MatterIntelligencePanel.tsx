@@ -159,7 +159,7 @@ export function MatterIntelligencePanel({
   if (state.kind === 'ERROR')
     return (
       <Alert tone="warning" title="Matter intelligence unavailable">
-        The governed analytical read could not be loaded. The Formal Matter itself is unchanged.{' '}
+        The governed analytical read could not be loaded. The Matter is unchanged.{' '}
         <Button onClick={() => void load()}>Retry</Button>
       </Alert>
     );
