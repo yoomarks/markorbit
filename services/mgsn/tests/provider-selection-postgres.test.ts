@@ -283,7 +283,9 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
     const service = serviceWith();
     const current = await service.createOrReplace(principal, createCommand());
     const replaced = await service.createOrReplace(principal, replacementCommand(current));
-    const oldHistory = await repository().listSelectionHistory(current.selection.providerSelectionId);
+    const oldHistory = await repository().listSelectionHistory(
+      current.selection.providerSelectionId
+    );
 
     expect(replaced).toMatchObject({ mutation: 'REPLACED', replayed: false });
     expect(replaced.selection).toMatchObject({ status: 'CURRENT', version: 1, scopeVersion: 2 });
@@ -387,15 +389,14 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
     const state = await repository().findScopeState(scopeKey);
     expect(state.scopeVersion).toBe(2);
-    expect((await repository().listAuditHistory(scopeKey))).toHaveLength(2);
+    expect(await repository().listAuditHistory(scopeKey)).toHaveLength(2);
     expect((await counts()).replays).toBe(2);
   });
 
   it('keeps persisted CURRENT lifecycle separate from current usability, including durable runtime default', async () => {
     const created = await serviceWith().createOrReplace(principal, createCommand());
     const deniedSource: ProviderSelectionCurrentAuthoritySource = {
-      evaluateCurrentAuthority: () =>
-        Promise.resolve({ ...snapshot, visibilityAuthorized: false })
+      evaluateCurrentAuthority: () => Promise.resolve({ ...snapshot, visibilityAuthorized: false })
     };
     const denied = await serviceWith(deniedSource).validateCurrent(principal, {
       scope: created.selection.scope,
