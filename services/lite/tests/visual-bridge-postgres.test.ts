@@ -128,8 +128,29 @@ suite('PostgreSQL Lite Visual Bridge', () => {
     await database
       .getPool()
       .query(
-        'TRUNCATE lite_visual_bridge_commands,lite_visual_output_references,lite_visual_requests,lite_visual_briefs CASCADE'
+        'TRUNCATE lite_visual_bridge_commands,lite_visual_output_references,lite_visual_requests,lite_visual_briefs,lite_content_opportunities,lite_today_recommendations CASCADE'
       );
+    await database.getPool().query(
+      `INSERT INTO lite_today_recommendations(
+        workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,
+        document_json,created_at,updated_at
+      ) VALUES($1,'today-recommendation_visual',1,$2,'{}'::jsonb,$3,$3)`,
+      [workspaceId, 'a'.repeat(64), kit.createdAt]
+    );
+    await database.getPool().query(
+      `INSERT INTO lite_content_opportunities(
+        workspace_id,content_opportunity_id,version,source_recommendation_id,
+        source_recommendation_version,content_opportunity_fingerprint_sha256,
+        document_json,created_at,updated_at
+      ) VALUES($1,$2,$3,'today-recommendation_visual',1,$4,'{}'::jsonb,$5,$5)`,
+      [
+        workspaceId,
+        kit.contentOpportunity.id,
+        kit.contentOpportunity.version,
+        'a'.repeat(64),
+        kit.createdAt
+      ]
+    );
   });
 
   afterAll(() => database.close());
@@ -157,6 +178,22 @@ suite('PostgreSQL Lite Visual Bridge', () => {
       paidExecutionAuthorized: false
     });
     expect(created.visualBriefFingerprintSha256).toMatch(/^[0-9a-f]{64}$/u);
+    expect(
+      (
+        await database.getPool().query<{
+          content_opportunity_id: string;
+          content_opportunity_version: number;
+        }>(
+          `SELECT content_opportunity_id,content_opportunity_version
+           FROM lite_visual_briefs
+           WHERE workspace_id=$1 AND visual_brief_id=$2 AND version=$3`,
+          [workspaceId, created.brief.visualBriefId, created.brief.version]
+        )
+      ).rows[0]
+    ).toEqual({
+      content_opportunity_id: kit.contentOpportunity.id,
+      content_opportunity_version: kit.contentOpportunity.version
+    });
     expect(
       await visualStore.listByContentKit(workspaceId, {
         id: kit.contentKitId,

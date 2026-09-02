@@ -8,12 +8,14 @@ import type {
   ContentOpportunity,
   ProductLoopSourceReference
 } from '@markorbit/contracts/product-loop';
+import type { VisualBrief, VisualOutputReference } from '@markorbit/contracts/daily-workspace';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import {
   PostgresContentStudioReader,
   type ContentStudioWorkDetail,
   type ContentStudioWorkList
 } from '../src/content-studio.js';
+import type { VisualBriefRecord } from '../src/visual-bridge.js';
 import { PostgresLiteContentPreparationStore } from '../src/content-preparation.js';
 import { PostgresProductLoopFeedbackStore } from '../src/feedback.js';
 import { DailyOrbitService, PostgresDailySignalReader } from '../src/daily-orbit.js';
@@ -278,6 +280,96 @@ suite('#372 PostgreSQL Content Studio stable work reads', () => {
     );
   }
 
+  async function insertVisualBrief(
+    opportunity: ContentOpportunity,
+    key: string,
+    options: Readonly<{ legacy?: boolean; scope?: string; createdAt?: string }> = {}
+  ): Promise<VisualBriefRecord> {
+    const scope = options.scope ?? opportunity.workspaceId;
+    const createdAt = options.createdAt ?? now();
+    const brief: VisualBrief = {
+      schemaVersion: 1,
+      visualBriefId: `visual-brief_${key}`,
+      workspaceId: scope,
+      version: 1,
+      contentKit: { id: `content-kit_${key}`, version: 1 },
+      title: `Visual ${key}`,
+      keyMessage: 'Explain the durable source.',
+      audience: 'Trademark practitioners',
+      outputKind: 'MOMENTS_SOCIAL_CARD',
+      aspectRatio: '1:1',
+      styleIntent: 'Clear editorial visual',
+      requestedIpPackage: 'MOKI',
+      sceneIntent: `Scene ${key}`,
+      reuseFirstRequired: true,
+      paidExecutionAuthorized: false,
+      createdAt
+    };
+    const record: VisualBriefRecord = {
+      brief,
+      visualBriefFingerprintSha256: 'b'.repeat(64),
+      consumerIdentity: { ipId: 'MOKI', styleId: 'markorbit-lite-editorial-v1' }
+    };
+    await database.getPool().query(
+      `INSERT INTO lite_visual_briefs(
+        workspace_id,visual_brief_id,version,content_kit_id,content_kit_version,
+        content_opportunity_id,content_opportunity_version,
+        visual_brief_fingerprint_sha256,document_json,created_at
+      ) VALUES($1,$2,1,$3,1,$4,$5,$6,$7::jsonb,$8)`,
+      [
+        scope,
+        brief.visualBriefId,
+        brief.contentKit.id,
+        options.legacy ? null : opportunity.contentOpportunityId,
+        options.legacy ? null : opportunity.version,
+        record.visualBriefFingerprintSha256,
+        JSON.stringify(record),
+        createdAt
+      ]
+    );
+    return record;
+  }
+
+  async function insertVisualOutput(
+    record: VisualBriefRecord,
+    key: string,
+    createdAt = now()
+  ): Promise<VisualOutputReference> {
+    const output: VisualOutputReference = {
+      schemaVersion: 1,
+      visualOutputReferenceId: `visual-output_${key}`,
+      workspaceId: record.brief.workspaceId,
+      version: 1,
+      visualBrief: { id: record.brief.visualBriefId, version: record.brief.version },
+      owner: 'VISUAL_ENGINE',
+      requestReference: `illustration-request://${key}`,
+      outputReference: `delivery://${key}`,
+      status: 'READY',
+      qcStatus: 'PASS',
+      providerExecutionAuthorizedByLite: false,
+      paidExecutionAuthorizedByLite: false,
+      createdAt
+    };
+    await database.getPool().query(
+      `INSERT INTO lite_visual_output_references(
+        workspace_id,visual_output_reference_id,version,visual_brief_id,visual_brief_version,
+        request_reference,output_reference,status,qc_status,document_json,created_at
+      ) VALUES($1,$2,1,$3,1,$4,$5,$6,$7,$8::jsonb,$9)`,
+      [
+        output.workspaceId,
+        output.visualOutputReferenceId,
+        output.visualBrief.id,
+        output.requestReference,
+        output.outputReference,
+        output.status,
+        output.qcStatus,
+        JSON.stringify(output),
+        createdAt
+      ]
+    );
+    return output;
+  }
+
   it('returns a truthful empty Workspace and accepted work without a Draft through actual main.ts HTTP', async () => {
     expect(await get<ContentStudioWorkList>()).toMatchObject({
       status: 200,
@@ -285,6 +377,7 @@ suite('#372 PostgreSQL Content Studio stable work reads', () => {
     });
     const { opportunity } = await work('no-draft');
     const list = await get<ContentStudioWorkList>();
+    expect(list.body).toMatchObject({ partial: false, warnings: [] });
     expect(list.body.items).toHaveLength(1);
     expect(list.body.items[0]).toMatchObject({
       contentOpportunity: { id: opportunity.contentOpportunityId, version: 1 },
@@ -304,9 +397,99 @@ suite('#372 PostgreSQL Content Studio stable work reads', () => {
         reviews: [],
         publishPackages: [],
         feedback: [],
-        partial: true,
-        warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+        visualBriefs: [],
+        visualOutputs: [],
+        partial: false,
+        warnings: []
       }
+    });
+  });
+
+  it('reads exact ordered Visual Brief and Output lineage and survives reader restart', async () => {
+    const { opportunity } = await work('visual-history');
+    const later = await insertVisualBrief(opportunity, 'later', {
+      createdAt: '2026-08-31T02:00:00.000Z'
+    });
+    const earlier = await insertVisualBrief(opportunity, 'earlier', {
+      createdAt: '2026-08-31T01:00:00.000Z'
+    });
+    const laterOutput = await insertVisualOutput(later, 'later', '2026-08-31T04:00:00.000Z');
+    const earlierOutput = await insertVisualOutput(earlier, 'earlier', '2026-08-31T03:00:00.000Z');
+
+    const restarted = new PostgresContentStudioReader(database);
+    const detail = await restarted.find(workspaceId, opportunity.contentOpportunityId);
+    expect(detail.visualBriefs).toEqual([earlier, later]);
+    expect(detail.visualOutputs).toEqual([earlierOutput, laterOutput]);
+    expect(detail).toMatchObject({ partial: false, warnings: [] });
+    expect((await restarted.list(workspaceId)).items[0]).toMatchObject({
+      visualBriefCount: 2,
+      visualOutputCount: 2
+    });
+  });
+
+  it('isolates Visual lineage by exact ContentOpportunity version and Workspace', async () => {
+    const { opportunity } = await work('visual-isolation');
+    const v1Brief = await insertVisualBrief(opportunity, 'v1');
+    await insertVisualOutput(v1Brief, 'v1');
+    const nextRecommendation = await writer('visual-isolation-v2').createRecommendation({
+      workspaceId,
+      title: 'Version two source',
+      explanation: 'Version isolation',
+      sources: [source],
+      idempotencyKey: 'rec-visual-isolation-v2'
+    });
+    const versionTwo: ContentOpportunity = {
+      ...opportunity,
+      version: 2,
+      sourceRecommendation: { id: nextRecommendation.todayRecommendationId, version: 1 },
+      updatedAt: now()
+    };
+    await insertOpportunity(versionTwo);
+    const other = await work('visual-other', otherWorkspaceId);
+    const otherBrief = await insertVisualBrief(other.opportunity, 'other', {
+      scope: otherWorkspaceId
+    });
+    await insertVisualOutput(otherBrief, 'other');
+
+    const detail = await reader.find(workspaceId, opportunity.contentOpportunityId);
+    expect(detail.opportunity.version).toBe(2);
+    expect(detail.visualBriefs).toEqual([]);
+    expect(detail.visualOutputs).toEqual([]);
+    expect(
+      (await reader.find(otherWorkspaceId, other.opportunity.contentOpportunityId)).visualBriefs
+    ).toEqual([otherBrief]);
+  });
+
+  it('fails closed for legacy NULL lineage while returning stable linked history', async () => {
+    const { opportunity } = await work('mixed-visual');
+    const linked = await insertVisualBrief(opportunity, 'linked');
+    const linkedOutput = await insertVisualOutput(linked, 'linked');
+    await insertVisualBrief(opportunity, 'legacy', { legacy: true });
+
+    const detail = await reader.find(workspaceId, opportunity.contentOpportunityId);
+    expect(detail.visualBriefs).toEqual([linked]);
+    expect(detail.visualOutputs).toEqual([linkedOutput]);
+    expect(detail).toMatchObject({
+      partial: true,
+      warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+    });
+    expect(await reader.list(workspaceId)).toMatchObject({
+      partial: true,
+      warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
+    });
+  });
+
+  it('does not infer a legacy NULL Visual Brief into an exact empty work', async () => {
+    const owner = await work('legacy-owner');
+    const emptyWork = await work('legacy-empty');
+    await insertVisualBrief(owner.opportunity, 'legacy-only', { legacy: true });
+
+    const detail = await reader.find(workspaceId, emptyWork.opportunity.contentOpportunityId);
+    expect(detail.visualBriefs).toEqual([]);
+    expect(detail.visualOutputs).toEqual([]);
+    expect(detail).toMatchObject({
+      partial: true,
+      warnings: ['VISUAL_HISTORY_NOT_DISCOVERABLE']
     });
   });
 

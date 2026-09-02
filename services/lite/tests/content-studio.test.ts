@@ -66,7 +66,7 @@ const empty: ContentStudioWorkList = {
 };
 
 describe('#372 Content Studio failure and HTTP boundaries', () => {
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5, 6, 7])(
     'fails explicitly when persistence query %i fails, never absent artifacts',
     async (failedQuery) => {
       let count = 0;
