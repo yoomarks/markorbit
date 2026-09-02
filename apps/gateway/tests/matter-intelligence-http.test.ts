@@ -77,6 +77,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// prettier-ignore
 describe('Gateway governed Matter Intelligence read', () => {
   it('forwards the exact matter identity, bounded query and trusted Workspace Principal', async () => {
     const projection = {
