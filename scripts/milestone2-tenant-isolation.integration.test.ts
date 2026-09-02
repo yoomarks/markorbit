@@ -100,15 +100,13 @@ suite.sequential('TASK 026 fully durable multi-tenant authority matrix', () => {
       );
       await db[owner].start();
     }
-    await db.Core.getPool().query(
-      'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
-    );
-    await db.MarkReg.getPool().query(
-      'DROP TABLE IF EXISTS checkout_commands,checkout_sessions,commercial_prices,commercial_products,markreg_recommended_action_commands,markreg_recommended_action_audit,markreg_recommended_actions,markreg_lifecycle_commands,markreg_lifecycle_views,markreg_lifecycle_events,order_audit,order_commands,orders,markreg_denial_audit,document_package_audit,document_package_commands,document_instruction_entries,document_package_items,document_packages,formal_matter_audit,formal_matter_commands,formal_matters,matter_drafts,customer_confirmations CASCADE; DROP FUNCTION IF EXISTS reject_markreg_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
-    );
-    await db.Execution.getPool().query(
-      'DROP TABLE IF EXISTS execution_reviewed_source_handoff_audit,execution_reviewed_source_handoffs,execution_reviewed_source_admission_commands,execution_reviewed_source_admissions,execution_evidence_review_audit,execution_evidence_review_commands,execution_evidence_correction_requests,execution_evidence_review_decisions,execution_evidence_review_sources,execution_provider_return_evidence_audit,execution_provider_return_evidence_commands,execution_provider_return_evidence_receipts,filing_execution_task_drafts,execution_releases,filing_authorizations,filing_governance_commands,filing_governance_audit,professional_review_audit,professional_review_commands,professional_review_cases CASCADE; DROP FUNCTION IF EXISTS reject_execution_evidence_review_audit_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_execution_provider_return_evidence_audit_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_filing_governance_audit_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
-    );
+    for (const owner of Object.keys(urls) as (keyof typeof urls)[]) {
+      await db[owner]
+        .getPool()
+        .query(
+          'DROP SCHEMA IF EXISTS markorbit_persistence CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public'
+        );
+    }
     const directory = path.resolve('infrastructure/persistence/migrations'),
       owners = path.resolve('infrastructure/persistence/migration-owners.json');
     for (const owner of Object.keys(urls) as (keyof typeof urls)[]) {

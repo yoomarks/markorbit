@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'scripts/milestone2-migrations.integration.test.ts'
+      - 'scripts/milestone2-tenant-isolation.integration.test.ts'
       - '.github/workflows/milestone-2-reliability.yml'
   workflow_dispatch:
   schedule:
@@ -64,16 +65,16 @@ jobs:
       - name: Install browser for full reliability matrix
         if: github.event_name != 'pull_request'
         run: pnpm exec playwright install --with-deps chromium
-      - name: Exact-head migration reliability
+      - name: Exact-head migration and tenant-isolation reliability
         if: github.event_name == 'pull_request'
         run: |
           mkdir -p .artifacts
-          if pnpm test:milestone2:migrations > .artifacts/milestone-2-migrations.log 2>&1; then
+          if (pnpm test:milestone2:migrations && pnpm test:milestone2:tenant-isolation) > .artifacts/milestone-2-exact-head.log 2>&1; then
             status=0
           else
             status=$?
           fi
-          cat .artifacts/milestone-2-migrations.log
+          cat .artifacts/milestone-2-exact-head.log
           exit "$status"
       - name: Ordered executable reliability matrix
         if: github.event_name != 'pull_request'
@@ -92,6 +93,7 @@ jobs:
         with:
           name: milestone-2-reliability-failure
           path: |
+            .artifacts/milestone-2-exact-head.log
             .artifacts/milestone-2-migrations.log
             .artifacts/milestone-2-reliability.log
             .artifacts/milestone-runtime/
