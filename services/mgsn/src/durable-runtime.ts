@@ -25,6 +25,7 @@ import {
 import { ServicePackageEligibilityService } from './service-package-eligibility.js';
 import { PostgresServicePackageEligibilityRepository } from './service-package-eligibility-postgres.js';
 
+// Durable Selection history is never a substitute for current requester/provider authority.
 const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySource = {
   evaluateCurrentAuthority() {
     return Promise.resolve({
