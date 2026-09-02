@@ -359,13 +359,16 @@ export class PostgresVisualBridgeStore implements ContentKitVisualBriefReference
         await client.query(
           `INSERT INTO lite_visual_briefs(
             workspace_id,visual_brief_id,version,content_kit_id,content_kit_version,
+            content_opportunity_id,content_opportunity_version,
             visual_brief_fingerprint_sha256,document_json,created_at
-          ) VALUES($1,$2,1,$3,$4,$5,$6::jsonb,$7)`,
+          ) VALUES($1,$2,1,$3,$4,$5,$6,$7,$8::jsonb,$9)`,
           [
             workspaceId,
             brief.visualBriefId,
             kit.contentKitId,
             kit.version,
+            kit.contentOpportunity.id,
+            kit.contentOpportunity.version,
             visualBriefFingerprintSha256,
             JSON.stringify(record),
             createdAt

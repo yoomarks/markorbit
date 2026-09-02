@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { noProviderResponsibilityAuthorityConsequences } from '@markorbit/contracts/provider-responsibility';
 import type {
   ProviderResponsibilityEvidenceReferenceV1,
@@ -712,8 +712,8 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
     );
 
     if (
-      JSON.stringify(teams) !== JSON.stringify(profile.executionTeamReferences) ||
-      JSON.stringify(evidence) !== JSON.stringify(profile.evidenceReferences)
+      !isDeepStrictEqual(teams, profile.executionTeamReferences) ||
+      !isDeepStrictEqual(evidence, profile.evidenceReferences)
     ) {
       throw new ProviderResponsibilityError(
         'PERSISTENCE_UNAVAILABLE',
@@ -726,12 +726,6 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
 
   private assertNormalizedProfile(row: Row, profile: ProviderResponsibilityProfileV1) {
     const signer = profile.legallyRequiredDistinctSigner;
-    const withoutFingerprint = Object.fromEntries(
-      Object.entries(profile).filter(([key]) => key !== 'profileFingerprintSha256')
-    );
-    const expectedProfileFingerprintSha256 = createHash('sha256')
-      .update(JSON.stringify(withoutFingerprint))
-      .digest('hex');
     const expectedConsequenceKeys = Object.keys(
       noProviderResponsibilityAuthorityConsequences
     ).sort();
@@ -782,7 +776,6 @@ export class PostgresProviderResponsibilityRepository implements ProviderRespons
         (row.effective_until == null ? null : this.timestamp(row.effective_until)) ||
       profile.checkedAt !== this.timestamp(row.checked_at) ||
       profile.profileFingerprintSha256 !== String(row.profile_fingerprint_sha256) ||
-      profile.profileFingerprintSha256 !== expectedProfileFingerprintSha256 ||
       profile.correlationId !== String(row.correlation_id) ||
       !signerMatches ||
       !authorityConsequencesMatch

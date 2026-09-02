@@ -431,12 +431,25 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
     const service = serviceWith();
     const current = await service.createOrReplace(principal, createCommand());
     await service.createOrReplace(principal, replacementCommand(current));
-    await database.getPool().query(
-      `UPDATE mgsn_provider_selection_scope_state
-       SET current_provider_selection_id=$2,current_selection_version=2,current_selection_scope_version=2
-       WHERE scope_key=$1`,
-      [scopeKey, current.selection.providerSelectionId]
-    );
+    await database
+      .getPool()
+      .query(
+        'ALTER TABLE mgsn_provider_selection_scope_state DISABLE TRIGGER mgsn_provider_selection_scope_state_guard'
+      );
+    try {
+      await database.getPool().query(
+        `UPDATE mgsn_provider_selection_scope_state
+         SET current_provider_selection_id=$2,current_selection_version=2,current_selection_scope_version=2
+         WHERE scope_key=$1`,
+        [scopeKey, current.selection.providerSelectionId]
+      );
+    } finally {
+      await database
+        .getPool()
+        .query(
+          'ALTER TABLE mgsn_provider_selection_scope_state ENABLE TRIGGER mgsn_provider_selection_scope_state_guard'
+        );
+    }
 
     await expect(repository().findScopeState(scopeKey)).rejects.toMatchObject({
       code: 'AUTHORITY_UNAVAILABLE',
