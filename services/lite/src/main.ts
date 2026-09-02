@@ -42,6 +42,7 @@ import {
   ProductPreferenceService
 } from './preference-target.js';
 import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';
+import { TrademarkAssetAiGuidePreparer } from './trademark-asset-ai-guide.js';
 import { PostgresTrademarkAssetCommerceStore } from './trademark-asset-commerce.js';
 import { PostgresTrademarkServiceWorkPackageStore } from './trademark-service-work-package.js';
 import { createTrademarkServiceWorkbenchRoutes } from './trademark-service-workbench-http.js';
@@ -96,6 +97,7 @@ const trademarkAssetCommerceStore = new PostgresTrademarkAssetCommerceStore(
 );
 const trademarkAssetPortfolio = new TrademarkAssetPortfolioService(pool, trademarkAssetStore);
 const trademarkAssetRefreshLedger = new PostgresTrademarkAssetRefreshLedger(database, pool);
+const trademarkAssetAiGuide = new TrademarkAssetAiGuidePreparer();
 const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStore(database, pool);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
@@ -309,6 +311,7 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createTrademarkAssetReadRoutes({
       internalServiceSecret,
       assets: trademarkAssetStore,
+      aiGuide: trademarkAssetAiGuide,
       commerce: trademarkAssetCommerceStore,
       portfolio: trademarkAssetPortfolio,
       refreshLedger: trademarkAssetRefreshLedger

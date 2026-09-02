@@ -1,10 +1,13 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import type { PrepareTrademarkAssetAiGuideInput } from '@markorbit/contracts/trademark-asset-ai-guide';
 import type { UpsertTrademarkAssetCommerceProfileInput } from '@markorbit/contracts/trademark-asset-commerce';
 import type {
+  AiGuideSuggestionKind,
   TrademarkAssetId,
   TrademarkAssetWorkspaceRelationshipKind
 } from '@markorbit/contracts/trademark-asset-workspace';
+import { aiGuideSuggestionKinds } from '@markorbit/contracts/trademark-asset-workspace';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   TrademarkAssetPersistenceError,
@@ -24,6 +27,7 @@ import {
   TrademarkAssetCommerceError,
   type PostgresTrademarkAssetCommerceStore
 } from './trademark-asset-commerce.js';
+import type { TrademarkAssetAiGuidePreparer } from './trademark-asset-ai-guide.js';
 
 export interface TrademarkAssetReadRouteOptions {
   internalServiceSecret: string;
@@ -31,6 +35,7 @@ export interface TrademarkAssetReadRouteOptions {
   portfolio: TrademarkAssetPortfolioService;
   refreshLedger: PostgresTrademarkAssetRefreshLedger;
   commerce: PostgresTrademarkAssetCommerceStore;
+  aiGuide: Pick<TrademarkAssetAiGuidePreparer, 'prepare'>;
   now?: () => string;
 }
 
@@ -147,6 +152,56 @@ function commerceInput(
     trademarkAssetId: request.params.trademarkAssetId! as TrademarkAssetId,
     idempotencyKey: key
   } as UpsertTrademarkAssetCommerceProfileInput;
+}
+
+function aiGuideInput(
+  request: JsonRequest,
+  principal: WorkspacePrincipal
+): PrepareTrademarkAssetAiGuideInput {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const body = request.body as Record<string, unknown>;
+  const fields = ['expectedTrademarkAssetVersion', 'requestedKinds'] as const;
+  if (Object.keys(body).some((field) => !fields.includes(field as (typeof fields)[number])))
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only expectedTrademarkAssetVersion and requestedKinds are accepted; identity, authority, evidence and context come from trusted owner state.'
+    );
+  if (
+    !Number.isInteger(body.expectedTrademarkAssetVersion) ||
+    (body.expectedTrademarkAssetVersion as number) < 1
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'expectedTrademarkAssetVersion must be a positive integer.'
+    );
+  if (!Array.isArray(body.requestedKinds) || body.requestedKinds.length === 0)
+    throw new HttpError(400, 'INVALID_REQUEST', 'requestedKinds must be a non-empty array.');
+  if (body.requestedKinds.length > aiGuideSuggestionKinds.length)
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      `requestedKinds must contain at most ${aiGuideSuggestionKinds.length} kinds.`
+    );
+  if (
+    body.requestedKinds.some(
+      (kind) =>
+        typeof kind !== 'string' || !aiGuideSuggestionKinds.includes(kind as AiGuideSuggestionKind)
+    )
+  )
+    throw new HttpError(400, 'INVALID_REQUEST', 'requestedKinds contains an unsupported kind.');
+  if (new Set(body.requestedKinds).size !== body.requestedKinds.length)
+    throw new HttpError(400, 'INVALID_REQUEST', 'requestedKinds must not contain duplicates.');
+
+  return {
+    workspaceId: principal.workspaceId,
+    subjectUserId: principal.userId,
+    trademarkAssetId: request.params.trademarkAssetId! as TrademarkAssetId,
+    expectedTrademarkAssetVersion: body.expectedTrademarkAssetVersion as number,
+    requestedKinds: body.requestedKinds as AiGuideSuggestionKind[]
+  };
 }
 
 export function createTrademarkAssetReadRoutes(
@@ -283,6 +338,46 @@ export function createTrademarkAssetReadRoutes(
         try {
           const commerceProfile = await options.commerce.upsert(input);
           return json(200, { commerceProfile });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trademark-assets/:trademarkAssetId/ai-guide',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        const input = aiGuideInput(request, principal);
+        try {
+          const anchor = await options.assets.get(input.workspaceId, input.trademarkAssetId);
+          if (anchor.version !== input.expectedTrademarkAssetVersion)
+            throw new HttpError(
+              409,
+              'ASSET_VERSION_CONFLICT',
+              'Trademark Asset changed; refresh before preparing its AI Guide.'
+            );
+          const commerceProfile = await options.commerce.get(
+            input.workspaceId,
+            input.trademarkAssetId
+          );
+          if (commerceProfile && commerceProfile.trademarkAssetVersion !== anchor.version)
+            throw new HttpError(
+              409,
+              'COMMERCE_PROFILE_VERSION_CONFLICT',
+              'Commerce Profile is stale for the current Trademark Asset version.'
+            );
+          const view = composeTrademarkAssetView({ anchor, composedAt: now() });
+          return json(
+            200,
+            options.aiGuide.prepare({
+              workspaceId: input.workspaceId,
+              subjectUserId: input.subjectUserId,
+              view,
+              ...(commerceProfile ? { commerceProfile } : {}),
+              requestedKinds: input.requestedKinds
+            })
+          );
         } catch (error) {
           return mapError(error);
         }
