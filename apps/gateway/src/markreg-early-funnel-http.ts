@@ -170,7 +170,7 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
       return mapAuthentication(
         new AuthenticationError(
           'PERMISSION_DENIED',
-          'workspace:read permission is required for Matter Intelligence reads.'
+          'workspace:read permission is required for governed Formal Matter reads.'
         )
       );
     return principal;
@@ -214,9 +214,10 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
-  const forwardMatterIntelligence = async (
+  const forwardFormalMatterRead = async (
     request: JsonRequest,
-    principal: WorkspacePrincipal
+    principal: WorkspacePrincipal,
+    projection: 'intelligence' | 'evidence'
   ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
@@ -234,7 +235,7 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     const formalMatterId = encodeURIComponent(request.params.formalMatterId ?? '');
     try {
       const response = await fetch(
-        `${options.markRegUrl}/internal/v1/formal-matters/${formalMatterId}/intelligence${search ? `?${search}` : ''}`,
+        `${options.markRegUrl}/internal/v1/formal-matters/${formalMatterId}/${projection}${search ? `?${search}` : ''}`,
         {
           method: 'GET',
           headers: {
@@ -263,7 +264,16 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     path: '/api/markreg/formal-matters/:formalMatterId/intelligence',
     handle: async (request) => {
       const principal = await authenticateRead(request);
-      return forwardMatterIntelligence(request, principal);
+      return forwardFormalMatterRead(request, principal, 'intelligence');
+    }
+  };
+
+  const formalMatterEvidenceRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/formal-matters/:formalMatterId/evidence',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      return forwardFormalMatterRead(request, principal, 'evidence');
     }
   };
 
@@ -368,5 +378,11 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
-  return [intakeRoute, quoteRoute, confirmationRoute, matterIntelligenceRoute];
+  return [
+    intakeRoute,
+    quoteRoute,
+    confirmationRoute,
+    matterIntelligenceRoute,
+    formalMatterEvidenceRoute
+  ];
 }
