@@ -15,7 +15,12 @@ import {
   opportunity,
   publishPackage,
   review,
-  summaryFixture
+  secondVisualBriefRecord,
+  secondVisualOutput,
+  summaryFixture,
+  visualBriefRecord,
+  visualOutput,
+  alternateVisualOutput
 } from './fixtures.js';
 
 afterEach(cleanup);
@@ -105,7 +110,100 @@ describe('Content Studio workspace', () => {
     expect(screen.queryByText(/No visual work exists/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Content Pick|Daily Orbit/)).not.toBeInTheDocument();
     expect(screen.getByText('Governed preparation')).toBeVisible();
+    expect(screen.getByText('Durable Visual Briefs')).toBeVisible();
+    expect(screen.getByText('Durable Visual Outputs')).toBeVisible();
     expect(screen.queryByText('Read only')).not.toBeInTheDocument();
+  });
+
+  it('distinguishes complete-empty Visual coverage from partial unknown coverage', async () => {
+    const emptySummary = summaryFixture({ visualBriefCount: 0, visualOutputCount: 0 });
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient(
+          listFixture([emptySummary], null, { partial: false, warnings: [] }),
+          detailFixture({ visualBriefs: [], visualOutputs: [], partial: false, warnings: [] })
+        )}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    expect(await screen.findByText('No Visual / Media lineage')).toBeVisible();
+    expect(screen.getByText(/Owner coverage is complete/)).toBeVisible();
+    expect(screen.queryByText(/Legacy Workspace history may exist/)).not.toBeInTheDocument();
+    cleanup();
+
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient(
+          listFixture([emptySummary]),
+          detailFixture({ visualBriefs: [], visualOutputs: [] })
+        )}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    expect(await screen.findByText(/Legacy Workspace history may exist/)).toBeVisible();
+    expect(screen.queryByText(/Owner coverage is complete/)).not.toBeInTheDocument();
+  });
+
+  it('groups multiple outputs only under their exact Visual Brief id and version', async () => {
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient(
+          listFixture(),
+          detailFixture({
+            visualBriefs: [visualBriefRecord, secondVisualBriefRecord],
+            visualOutputs: [secondVisualOutput, alternateVisualOutput, visualOutput]
+          })
+        )}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Visual / Media lineage' })).toBeVisible();
+    const firstOutputs = screen.getByRole('region', {
+      name: `Visual Outputs for ${visualBriefRecord.brief.visualBriefId} version ${visualBriefRecord.brief.version}`
+    });
+    const secondOutputs = screen.getByRole('region', {
+      name: `Visual Outputs for ${secondVisualBriefRecord.brief.visualBriefId} version ${secondVisualBriefRecord.brief.version}`
+    });
+    expect(within(firstOutputs).getByText(visualOutput.visualOutputReferenceId)).toBeVisible();
+    expect(
+      within(firstOutputs).getByText(alternateVisualOutput.visualOutputReferenceId)
+    ).toBeVisible();
+    expect(within(firstOutputs).queryByText(secondVisualOutput.visualOutputReferenceId)).toBeNull();
+    expect(
+      within(secondOutputs).getByText(secondVisualOutput.visualOutputReferenceId)
+    ).toBeVisible();
+    expect(within(secondOutputs).queryByText(visualOutput.visualOutputReferenceId)).toBeNull();
+  });
+
+  it('shows owner output/QC/reference truth without execution, publication, or artifact authority', async () => {
+    render(
+      <ContentStudio
+        workspaceId={fixtureWorkspaceId}
+        client={fixtureClient()}
+        initialContentOpportunityId={opportunity.contentOpportunityId}
+      />
+    );
+
+    expect(await screen.findByText(visualOutput.visualOutputReferenceId)).toBeVisible();
+    expect(screen.getByText('Visual and media history is partially discoverable')).toBeVisible();
+    expect(screen.getByText(visualOutput.status)).toBeVisible();
+    expect(screen.getByText(visualOutput.qcStatus!)).toBeVisible();
+    expect(screen.getByText(visualOutput.requestReference)).toBeVisible();
+    const outputReference = screen.getByText(visualOutput.outputReference!);
+    expect(outputReference.closest('a')).toBeNull();
+    expect(screen.getByText(visualBriefRecord.visualBriefFingerprintSha256)).toBeVisible();
+    expect(screen.getByText('Provider execution authorized by Lite')).toBeVisible();
+    expect(screen.getByText('Paid execution authorized by Lite')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: /generate|request visual|approve qc|publish/i })
+    ).toBeNull();
+    expect(screen.queryByRole('link', { name: /download|artifact/i })).toBeNull();
   });
 
   it('creates a Draft from exact loaded Opportunity truth and renders only reloaded owner detail', async () => {

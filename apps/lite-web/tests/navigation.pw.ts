@@ -121,11 +121,24 @@ test('Content Studio uses durable Gateway list/detail work and remains readable 
   await expect(page.getByText('Reviewed draft ready for package')).toBeVisible();
   await expect(page.getByText('Latest Draft Review')).toBeVisible();
   await expect(page.getByText('Latest Publish Package · work-level history')).toBeVisible();
+  await expect(page.getByText('Durable Visual Briefs')).toBeVisible();
+  await expect(page.getByText('Durable Visual Outputs')).toBeVisible();
   await expect(
     page.getByText(/Historical visual\/media lineage is not fully discoverable/)
   ).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('content-studio-list.png'), fullPage: true });
   await page.getByRole('button', { name: 'View lineage' }).click();
+  await expect(page.getByRole('heading', { name: 'Visual / Media lineage' })).toBeVisible();
+  await expect(page.getByText('visual-brief_413')).toBeVisible();
+  await expect(page.getByText('visual-output_413')).toBeVisible();
+  await expect(page.getByText('PASS_WITH_WARNINGS')).toBeVisible();
+  await expect(page.getByText('library://visual-output-413')).not.toHaveAttribute('href');
+  await expect(page.getByText('Provider execution authorized by Lite')).toBeVisible();
+  await expect(page.getByText('Paid execution authorized by Lite')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /generate|request visual|approve qc|publish/i })
+  ).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /download|artifact/i })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Version lineage' })).toBeVisible();
   await expect(page.getByText('USER_REPORTED_PUBLISHED')).toBeVisible();
   await expect(page.getByText(/independently verified by MarkOrbit: No/)).toBeVisible();
