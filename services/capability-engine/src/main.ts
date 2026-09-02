@@ -84,8 +84,9 @@ if (milestoneFixtureMode) {
           )
         }
       : rawManagedAiRuntime;
-  const managedCommunicationSender =
-    createGmailManagedCommunicationSenderFromEnvironmentV1(process.env);
+  const managedCommunicationSender = createGmailManagedCommunicationSenderFromEnvironmentV1(
+    process.env
+  );
   const managedCommunicationRuntime = await createManagedCommunicationRuntimeBindingsV1({
     environment: process.env,
     database,
