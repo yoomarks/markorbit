@@ -1,0 +1,14 @@
+{
+  "name": "@markorbit/provider-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ./scripts/serve.mjs",
+    "build": "node ./scripts/build.mjs",
+    "preview": "node ./scripts/serve.mjs dist",
+    "lint": "node ./scripts/check.mjs",
+    "typecheck": "node ./scripts/check.mjs",
+    "test": "node --test ./tests/bootstrap.test.mjs"
+  }
+}
