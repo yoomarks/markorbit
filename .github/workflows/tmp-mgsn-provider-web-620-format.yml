@@ -1,0 +1,45 @@
+name: TEMP MGSN Provider Web 620 formatter
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  format-verify-push:
+    if: github.head_ref == 'tmp-mgsn-provider-web-620-format'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-provider-web-own-work
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format Provider Web only
+        run: pnpm exec prettier --write apps/provider-web
+      - name: Verify Provider Web package
+        run: |
+          pnpm --filter @markorbit/provider-web lint
+          pnpm --filter @markorbit/provider-web typecheck
+          pnpm --filter @markorbit/provider-web test
+          pnpm --filter @markorbit/provider-web build
+      - name: Push formatter result to formal branch
+        run: |
+          if git diff --quiet -- apps/provider-web; then
+            echo "No formatter changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/provider-web
+          git commit -m "[MGSN-P0] Format Provider Workspace own-work product"
+          git push origin HEAD:mgsn-provider-web-own-work
