@@ -180,10 +180,9 @@ function clientAndInbound(
             { name: 'X-Trace-Id', value: 'trace-anchor-1' }
           ],
           body: {
-            data: Buffer.from(
-              'MarkOrbit Gmail live pilot reply confirmed.',
-              'utf8'
-            ).toString('base64url')
+            data: Buffer.from('MarkOrbit Gmail live pilot reply confirmed.', 'utf8').toString(
+              'base64url'
+            )
           }
         }
       });
