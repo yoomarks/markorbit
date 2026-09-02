@@ -284,8 +284,17 @@ jobs:
       - name: MGSN integration
         if: github.event_name == 'push' || needs.detect.outputs.mgsn == 'true'
         run: |
-          pnpm test:mgsn-provider-registry:postgres
-          pnpm --filter @markorbit/mgsn-service exec vitest run tests/service-package-eligibility-postgres.test.ts tests/allocation-provider-acceptance-postgres.test.ts tests/provider-return-postgres.test.ts
+          # Every MGSN PostgreSQL suite resets/migrates the same isolated database.
+          # Discover suites by convention, then isolate each one in its own Vitest process.
+          pnpm exec turbo run build --filter=@markorbit/mgsn-service...
+          cd services/mgsn
+          for test_file in tests/*postgres*.test.ts; do
+            echo "Running $test_file"
+            if ! pnpm exec vitest run "$test_file"; then
+              echo "::error title=MGSN PostgreSQL suite failed::$test_file"
+              exit 1
+            fi
+          done
       - name: Payment integration
         if: github.event_name == 'push' || needs.detect.outputs.payment == 'true'
         run: |
