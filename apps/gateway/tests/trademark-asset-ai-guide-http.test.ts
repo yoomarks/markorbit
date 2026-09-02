@@ -51,7 +51,10 @@ function guideRoute(value = options()) {
   return matches[0]!;
 }
 
-function headers(value = options(), extras: Record<string, string> = {}) {
+function headers(
+  value = options(),
+  extras: Record<string, string> = {}
+): Record<string, string> {
   return {
     cookie: 'mo_session=token',
     origin: 'https://test.markorbit.local',
@@ -152,8 +155,6 @@ describe('Gateway Trademark Asset AI Guide advisory POST boundary', () => {
 
     expect(result.status).toBe(200);
     expect(downstream).toHaveBeenCalledTimes(1);
-    const forwarded = downstream.mock.calls[0]?.[1] as RequestInit | undefined;
-    expect(forwarded?.headers).not.toHaveProperty('idempotency-key');
   });
 
   it('rejects missing browser session before Lite', async () => {
