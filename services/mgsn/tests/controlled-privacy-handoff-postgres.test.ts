@@ -6,10 +6,7 @@ import {
   type ControlledHandoffId,
   type RevokeControlledHandoffCommandV1
 } from '@markorbit/contracts/controlled-privacy-handoff';
-import {
-  providerSelectionContractFixtureV1,
-  type ProviderSelectionId
-} from '@markorbit/contracts/provider-selection';
+import { providerSelectionContractFixtureV1 } from '@markorbit/contracts/provider-selection';
 import { ManagedDatabase } from '@markorbit/persistence';
 import {
   ControlledPrivacyHandoffService,
@@ -94,7 +91,8 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     selectionAuthorityReference: selectionAuthority.selectionAuthorityReference,
     selectionAuthorityVersion: selectionAuthority.selectionAuthorityVersion,
     authenticatedAt: selectionAuthority.authenticatedAt,
-    affirmativeHumanActionEvidenceReference: selectionAuthority.affirmativeHumanActionEvidenceReference
+    affirmativeHumanActionEvidenceReference:
+      selectionAuthority.affirmativeHumanActionEvidenceReference
   };
 
   const handoffAuthority = fixture.authorizeCommand.trustedHumanAuthority;
@@ -107,11 +105,11 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     handoffAuthorityReference: handoffAuthority.handoffAuthorityReference,
     handoffAuthorityVersion: handoffAuthority.handoffAuthorityVersion,
     authenticatedAt: handoffAuthority.authenticatedAt,
-    affirmativeHumanActionEvidenceReference: handoffAuthority.affirmativeHumanActionEvidenceReference
+    affirmativeHumanActionEvidenceReference:
+      handoffAuthority.affirmativeHumanActionEvidenceReference
   };
 
-  const repository = () =>
-    new PostgresControlledHandoffRepository(database, database.getPool());
+  const repository = () => new PostgresControlledHandoffRepository(database, database.getPool());
   const handoffSource = (
     overrides: Partial<ControlledHandoffCurrentAuthoritySnapshot> = {}
   ): ControlledHandoffCurrentAuthoritySource => ({
@@ -254,12 +252,15 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
         selectionAt
       ]
     );
-    const selectionRepository = new PostgresProviderSelectionRepository(database, database.getPool());
+    const selectionRepository = new PostgresProviderSelectionRepository(
+      database,
+      database.getPool()
+    );
     const selectionService = new ProviderSelectionService(
       selectionRepository,
       { evaluateCurrentAuthority: () => Promise.resolve(selectionSnapshot) },
       () => selectionAt,
-      () => 'provider-selection_fixture-394' as ProviderSelectionId
+      () => 'provider-selection_fixture-394'
     );
     await selectionService.createOrReplace(
       selectionPrincipal,
@@ -315,7 +316,9 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     const service = serviceWith();
     const created = await service.authorizeOrReplace(handoffPrincipal, authorizeCommand());
     expect(created).toMatchObject({ mutation: 'AUTHORIZED', replayed: false });
-    expect(await repository().findLatest(created.envelope.controlledHandoffId)).toEqual(created.envelope);
+    expect(await repository().findLatest(created.envelope.controlledHandoffId)).toEqual(
+      created.envelope
+    );
     expect(await repository().findSlotState(slotKey())).toEqual({
       current: created.envelope,
       version: 1
@@ -330,7 +333,10 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
   it('appends exact replacement on the same identity and preserves immutable history', async () => {
     const service = serviceWith();
     const current = await service.authorizeOrReplace(handoffPrincipal, authorizeCommand());
-    const replaced = await service.authorizeOrReplace(handoffPrincipal, replacementCommand(current));
+    const replaced = await service.authorizeOrReplace(
+      handoffPrincipal,
+      replacementCommand(current)
+    );
     const history = await repository().listHistory(current.envelope.controlledHandoffId);
 
     expect(replaced).toMatchObject({ mutation: 'REPLACED', replayed: false });
@@ -339,7 +345,10 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     expect(history).toHaveLength(2);
     expect(history[0]).toEqual(current.envelope);
     expect(history[1]).toEqual(replaced.envelope);
-    expect(await repository().findSlotState(slotKey())).toEqual({ current: replaced.envelope, version: 2 });
+    expect(await repository().findSlotState(slotKey())).toEqual({
+      current: replaced.envelope,
+      version: 2
+    });
   });
 
   it('rejects stale replacement with zero durable residue', async () => {
@@ -368,7 +377,10 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     expect(await repository().findSlotState(slotKey())).toEqual({ current: undefined, version: 2 });
     expect(await repository().listHistory(current.envelope.controlledHandoffId)).toHaveLength(2);
 
-    const replayedCreate = await serviceWith().authorizeOrReplace(handoffPrincipal, authorizeCommand());
+    const replayedCreate = await serviceWith().authorizeOrReplace(
+      handoffPrincipal,
+      authorizeCommand()
+    );
     expect(replayedCreate).toMatchObject({ mutation: 'AUTHORIZED', replayed: true });
     expect(await repository().findSlotState(slotKey())).toEqual({ current: undefined, version: 2 });
 
@@ -380,7 +392,10 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     const fresh = await serviceWith().authorizeOrReplace(handoffPrincipal, freshCommand);
     expect(fresh.envelope.controlledHandoffId).not.toBe(current.envelope.controlledHandoffId);
     expect(fresh.envelope.version).toBe(1);
-    expect(await repository().findSlotState(slotKey())).toEqual({ current: fresh.envelope, version: 3 });
+    expect(await repository().findSlotState(slotKey())).toEqual({
+      current: fresh.envelope,
+      version: 3
+    });
   });
 
   it('serializes different-key first authorization and replace-vs-revoke races', async () => {
@@ -400,7 +415,11 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     expect(first.filter((result) => result.status === 'rejected')).toHaveLength(1);
     expect(await counts()).toEqual({ identities: 1, versions: 1, slots: 1, replays: 1, audits: 1 });
 
-    const current = (first.find((result) => result.status === 'fulfilled') as PromiseFulfilledResult<Awaited<ReturnType<ControlledPrivacyHandoffService['authorizeOrReplace']>>>).value;
+    const current = (
+      first.find((result) => result.status === 'fulfilled') as PromiseFulfilledResult<
+        Awaited<ReturnType<ControlledPrivacyHandoffService['authorizeOrReplace']>>
+      >
+    ).value;
     const raced = await Promise.allSettled([
       serviceWith().authorizeOrReplace(handoffPrincipal, replacementCommand(current)),
       serviceWith().revoke(handoffPrincipal, revokeCommand(current))
@@ -416,9 +435,15 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     const created = await serviceWith().authorizeOrReplace(handoffPrincipal, authorizeCommand());
     const attempt = structuredClone(fixture.validForExactConsumption.attempt);
 
-    const denied = await serviceWith(handoffSource({ visibilityAuthorized: false })).validateCurrent(
+    const denied = await serviceWith(
+      handoffSource({ visibilityAuthorized: false })
+    ).validateCurrent(
       { workspaceId: handoffPrincipal.workspaceId },
-      { envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 }, purpose: 'HANDOFF_CONSUMPTION', attempt }
+      {
+        envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 },
+        purpose: 'HANDOFF_CONSUMPTION',
+        attempt
+      }
     );
     expect(denied).toMatchObject({
       decision: 'DENY',
@@ -430,14 +455,22 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     const expiredAttempt = { ...attempt, attemptedAt: created.envelope.validUntil };
     const expired = await serviceWith().validateCurrent(
       { workspaceId: handoffPrincipal.workspaceId },
-      { envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 }, purpose: 'HANDOFF_CONSUMPTION', attempt: expiredAttempt }
+      {
+        envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 },
+        purpose: 'HANDOFF_CONSUMPTION',
+        attempt: expiredAttempt
+      }
     );
     expect(expired).toMatchObject({ decision: 'DENY', denialReason: 'HANDOFF_EXPIRED' });
 
     const artifactAttempt = { ...attempt, artifactRetrievalRequested: true };
     const artifactDenied = await serviceWith().validateCurrent(
       { workspaceId: handoffPrincipal.workspaceId },
-      { envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 }, purpose: 'HANDOFF_CONSUMPTION', attempt: artifactAttempt }
+      {
+        envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 },
+        purpose: 'HANDOFF_CONSUMPTION',
+        attempt: artifactAttempt
+      }
     );
     expect(artifactDenied).toMatchObject({
       decision: 'DENY',
@@ -452,7 +485,11 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
     });
     const unavailable = await durable.controlledHandoff.validateCurrent(
       { workspaceId: handoffPrincipal.workspaceId },
-      { envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 }, purpose: 'HANDOFF_CONSUMPTION', attempt }
+      {
+        envelope: { controlledHandoffId: created.envelope.controlledHandoffId, version: 1 },
+        purpose: 'HANDOFF_CONSUMPTION',
+        attempt
+      }
     );
     expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'AUTHORITY_UNAVAILABLE' });
   });
@@ -460,21 +497,26 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
   it('enforces append-only guards and fails closed on deliberately corrupted normalized lineage', async () => {
     const created = await serviceWith().authorizeOrReplace(handoffPrincipal, authorizeCommand());
     await expect(
-      database.getPool().query(
-        `UPDATE mgsn_controlled_handoff_command_replays SET correlation_id='tampered' WHERE slot_key=$1`,
-        [slotKey()]
-      )
+      database
+        .getPool()
+        .query(
+          `UPDATE mgsn_controlled_handoff_command_replays SET correlation_id='tampered' WHERE slot_key=$1`,
+          [slotKey()]
+        )
     ).rejects.toBeTruthy();
     await expect(
-      database.getPool().query(
-        `DELETE FROM mgsn_controlled_handoff_owner_audit_events WHERE slot_key=$1`,
-        [slotKey()]
-      )
+      database
+        .getPool()
+        .query(`DELETE FROM mgsn_controlled_handoff_owner_audit_events WHERE slot_key=$1`, [
+          slotKey()
+        ])
     ).rejects.toBeTruthy();
 
-    await database.getPool().query(
-      'ALTER TABLE mgsn_controlled_handoff_versions DISABLE TRIGGER mgsn_controlled_handoff_versions_append_only'
-    );
+    await database
+      .getPool()
+      .query(
+        'ALTER TABLE mgsn_controlled_handoff_versions DISABLE TRIGGER mgsn_controlled_handoff_versions_append_only'
+      );
     try {
       await database.getPool().query(
         `UPDATE mgsn_controlled_handoff_versions
@@ -483,11 +525,15 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
         ['0'.repeat(64), created.envelope.controlledHandoffId]
       );
     } finally {
-      await database.getPool().query(
-        'ALTER TABLE mgsn_controlled_handoff_versions ENABLE TRIGGER mgsn_controlled_handoff_versions_append_only'
-      );
+      await database
+        .getPool()
+        .query(
+          'ALTER TABLE mgsn_controlled_handoff_versions ENABLE TRIGGER mgsn_controlled_handoff_versions_append_only'
+        );
     }
-    await expect(repository().findLatest(created.envelope.controlledHandoffId)).rejects.toMatchObject({
+    await expect(
+      repository().findLatest(created.envelope.controlledHandoffId)
+    ).rejects.toMatchObject({
       code: 'AUTHORITY_UNAVAILABLE',
       status: 503
     });

@@ -32,7 +32,8 @@ function positiveInteger(value: unknown): value is number {
 
 function iso(value: unknown): string {
   const date = new Date(value as string | number | Date);
-  if (Number.isNaN(date.valueOf())) throw new Error('Persisted Controlled Handoff timestamp is malformed.');
+  if (Number.isNaN(date.valueOf()))
+    throw new Error('Persisted Controlled Handoff timestamp is malformed.');
   return date.toISOString();
 }
 
@@ -111,7 +112,7 @@ function canonicalResult(value: unknown): ControlledHandoffMutationResultV1 {
     throw new Error('Persisted Controlled Handoff replay result is malformed.');
   }
   canonicalEnvelope(value.envelope);
-  return structuredClone(value) as ControlledHandoffMutationResultV1;
+  return structuredClone(value) as unknown as ControlledHandoffMutationResultV1;
 }
 
 function sameCurrent(
@@ -169,7 +170,9 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
   async commit(mutation: HandoffCommit): Promise<void> {
     try {
       await this.database.transact(async (client) => {
-        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [mutation.slotKey]);
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          mutation.slotKey
+        ]);
 
         const replay = await this.readReplay(client, mutation.slotKey, mutation.replayKey);
         if (replay) {
@@ -189,7 +192,11 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
 
         const state = await this.readSlotState(client, mutation.slotKey, true);
         if (!sameCurrent(state.current, mutation.expectedCurrent)) {
-          throw new ControlledHandoffError('STALE_HANDOFF', 409, 'Expected current Handoff is stale.');
+          throw new ControlledHandoffError(
+            'STALE_HANDOFF',
+            409,
+            'Expected current Handoff is stale.'
+          );
         }
         if (
           mutation.previous &&
@@ -197,17 +204,29 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
             state.current.controlledHandoffId !== mutation.previous.controlledHandoffId ||
             state.current.version !== mutation.previous.version)
         ) {
-          throw new ControlledHandoffError('STALE_HANDOFF', 409, 'Controlled Handoff changed before commit.');
+          throw new ControlledHandoffError(
+            'STALE_HANDOFF',
+            409,
+            'Controlled Handoff changed before commit.'
+          );
         }
         if (!mutation.previous && mutation.next.version !== 1) {
-          throw new ControlledHandoffError('STALE_HANDOFF', 409, 'Fresh Handoff identity must begin at version 1.');
+          throw new ControlledHandoffError(
+            'STALE_HANDOFF',
+            409,
+            'Fresh Handoff identity must begin at version 1.'
+          );
         }
         if (
           mutation.previous &&
           (mutation.next.controlledHandoffId !== mutation.previous.controlledHandoffId ||
             mutation.next.version !== mutation.previous.version + 1)
         ) {
-          throw new ControlledHandoffError('STALE_HANDOFF', 409, 'Handoff history is not appendable.');
+          throw new ControlledHandoffError(
+            'STALE_HANDOFF',
+            409,
+            'Handoff history is not appendable.'
+          );
         }
 
         await this.ensureIdentity(client, mutation.slotKey, mutation.next);
@@ -222,7 +241,9 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
     }
   }
 
-  async listHistory(controlledHandoffId: ControlledHandoffId): Promise<ControlledHandoffEnvelopeV1[]> {
+  async listHistory(
+    controlledHandoffId: ControlledHandoffId
+  ): Promise<ControlledHandoffEnvelopeV1[]> {
     try {
       const result = await this.query.query(
         `SELECT * FROM mgsn_controlled_handoff_versions
@@ -235,7 +256,11 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
     }
   }
 
-  private async readSlotState(client: QueryClient, slotKey: string, lock = false): Promise<HandoffSlotState> {
+  private async readSlotState(
+    client: QueryClient,
+    slotKey: string,
+    lock = false
+  ): Promise<HandoffSlotState> {
     const result = await client.query(
       `SELECT * FROM mgsn_controlled_handoff_slot_state WHERE slot_key=$1${lock ? ' FOR UPDATE' : ''}`,
       [slotKey]
@@ -243,7 +268,8 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
     const row = result.rows[0] as Row | undefined;
     if (!row) return { current: undefined, version: 0 };
     const revision = Number(row.slot_revision);
-    if (!positiveInteger(revision)) throw new Error('Persisted Controlled Handoff slot revision is malformed.');
+    if (!positiveInteger(revision))
+      throw new Error('Persisted Controlled Handoff slot revision is malformed.');
 
     const headResult = await client.query(
       `SELECT * FROM mgsn_controlled_handoff_versions
@@ -266,12 +292,18 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
       throw new Error('Persisted Controlled Handoff current pointer differs from slot head.');
     }
     if (head.status !== 'AUTHORIZED') {
-      throw new Error('Persisted Controlled Handoff current pointer references non-authorized history.');
+      throw new Error(
+        'Persisted Controlled Handoff current pointer references non-authorized history.'
+      );
     }
     return { current: head, version: revision };
   }
 
-  private async readReplay(client: QueryClient, slotKey: string, idempotencyKey: string): Promise<HandoffReplay> {
+  private async readReplay(
+    client: QueryClient,
+    slotKey: string,
+    idempotencyKey: string
+  ): Promise<HandoffReplay> {
     const result = await client.query(
       `SELECT * FROM mgsn_controlled_handoff_command_replays
        WHERE slot_key=$1 AND idempotency_key=$2`,
@@ -305,16 +337,20 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
     if (
       envelope.controlledHandoffId !== row.controlled_handoff_id ||
       envelope.version !== Number(row.version) ||
-      envelope.originatingWorkspaceId.toLowerCase() !== String(row.originating_workspace_id).toLowerCase() ||
+      envelope.originatingWorkspaceId.toLowerCase() !==
+        String(row.originating_workspace_id).toLowerCase() ||
       envelope.recipient.providerId !== row.recipient_provider_id ||
-      envelope.recipient.providerWorkspaceId.toLowerCase() !== String(row.recipient_provider_workspace_id).toLowerCase() ||
+      envelope.recipient.providerWorkspaceId.toLowerCase() !==
+        String(row.recipient_provider_workspace_id).toLowerCase() ||
       envelope.recipient.role !== row.recipient_role ||
       envelope.purpose.code !== row.purpose_code ||
       envelope.purpose.contextReference !== row.purpose_context_reference ||
       envelope.purpose.instructionReference !== row.purpose_instruction_reference ||
       envelope.purpose.purposeFingerprintSha256 !== row.purpose_fingerprint_sha256 ||
-      envelope.authorizedProjection.projectionFingerprintSha256 !== row.projection_fingerprint_sha256 ||
-      envelope.authorizedProjection.sourceSetFingerprintSha256 !== row.source_set_fingerprint_sha256 ||
+      envelope.authorizedProjection.projectionFingerprintSha256 !==
+        row.projection_fingerprint_sha256 ||
+      envelope.authorizedProjection.sourceSetFingerprintSha256 !==
+        row.source_set_fingerprint_sha256 ||
       selection.selection.providerSelectionId !== row.selection_provider_selection_id ||
       selection.selection.version !== Number(row.selection_version) ||
       selection.selection.scopeVersion !== Number(row.selection_scope_version) ||
@@ -326,7 +362,8 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
       selection.currentSelectionValidation.decision !== row.selection_validation_decision ||
       direct.disclosureState !== row.direct_executor_disclosure_state ||
       direct.finalExecutionProviderId !== row.final_execution_provider_id ||
-      direct.finalExecutionProviderWorkspaceId.toLowerCase() !== String(row.final_execution_provider_workspace_id).toLowerCase() ||
+      direct.finalExecutionProviderWorkspaceId.toLowerCase() !==
+        String(row.final_execution_provider_workspace_id).toLowerCase() ||
       direct.authorityReference !== row.direct_executor_authority_reference ||
       authority.source !== row.trusted_authority_source ||
       authority.authorizingActorId !== row.authorizing_actor_id ||
@@ -341,21 +378,38 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
       iso(envelope.validFrom) !== iso(row.valid_from) ||
       iso(envelope.validUntil) !== iso(row.valid_until)
     ) {
-      throw new Error('Persisted Controlled Handoff normalized lineage contradicts canonical envelope.');
+      throw new Error(
+        'Persisted Controlled Handoff normalized lineage contradicts canonical envelope.'
+      );
     }
-    if (JSON.stringify(selection.selectionScope.version) !== JSON.stringify(versionValue(row.selection_scope_reference_version))) {
+    if (
+      JSON.stringify(selection.selectionScope.version) !==
+      JSON.stringify(versionValue(row.selection_scope_reference_version))
+    ) {
       throw new Error('Persisted Controlled Handoff Selection scope version is contradictory.');
     }
-    if (JSON.stringify(direct.authorityVersion) !== JSON.stringify(versionValue(row.direct_executor_authority_version))) {
-      throw new Error('Persisted Controlled Handoff Direct Executor authority version is contradictory.');
+    if (
+      JSON.stringify(direct.authorityVersion) !==
+      JSON.stringify(versionValue(row.direct_executor_authority_version))
+    ) {
+      throw new Error(
+        'Persisted Controlled Handoff Direct Executor authority version is contradictory.'
+      );
     }
-    if (JSON.stringify(authority.handoffAuthorityVersion) !== JSON.stringify(versionValue(row.handoff_authority_version))) {
+    if (
+      JSON.stringify(authority.handoffAuthorityVersion) !==
+      JSON.stringify(versionValue(row.handoff_authority_version))
+    ) {
       throw new Error('Persisted Controlled Handoff human authority version is contradictory.');
     }
     return envelope;
   }
 
-  private async ensureIdentity(client: QueryClient, slotKey: string, envelope: ControlledHandoffEnvelopeV1) {
+  private async ensureIdentity(
+    client: QueryClient,
+    slotKey: string,
+    envelope: ControlledHandoffEnvelopeV1
+  ) {
     await client.query(
       `INSERT INTO mgsn_controlled_handoff_identities(
          controlled_handoff_id,originating_workspace_id,slot_key,recipient_provider_id,
@@ -374,7 +428,11 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
     );
   }
 
-  private async insertEnvelope(client: QueryClient, slotKey: string, envelope: ControlledHandoffEnvelopeV1) {
+  private async insertEnvelope(
+    client: QueryClient,
+    slotKey: string,
+    envelope: ControlledHandoffEnvelopeV1
+  ) {
     const json = JSON.stringify(envelope);
     await client.query(
       `INSERT INTO mgsn_controlled_handoff_versions(
@@ -455,37 +513,57 @@ export class PostgresControlledHandoffRepository implements ControlledHandoffRep
     );
   }
 
-  private async writeSlotState(client: QueryClient, mutation: HandoffCommit, previousRevision: number) {
+  private async writeSlotState(
+    client: QueryClient,
+    mutation: HandoffCommit,
+    previousRevision: number
+  ) {
     const next = mutation.next;
     const revision = previousRevision + 1;
     const at = next.status === 'REVOKED' ? next.revokedAt : next.authorizedAt;
-    await client.query(
-      `INSERT INTO mgsn_controlled_handoff_slot_state(
-         slot_key,originating_workspace_id,slot_revision,head_controlled_handoff_id,head_version,
-         current_controlled_handoff_id,current_version,set_by_principal_reference,correlation_id,updated_at
-       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       ON CONFLICT (slot_key) DO UPDATE SET
-         slot_revision=EXCLUDED.slot_revision,
-         head_controlled_handoff_id=EXCLUDED.head_controlled_handoff_id,
-         head_version=EXCLUDED.head_version,
-         current_controlled_handoff_id=EXCLUDED.current_controlled_handoff_id,
-         current_version=EXCLUDED.current_version,
-         set_by_principal_reference=EXCLUDED.set_by_principal_reference,
-         correlation_id=EXCLUDED.correlation_id,
-         updated_at=EXCLUDED.updated_at`,
-      [
-        mutation.slotKey,
-        next.originatingWorkspaceId,
-        revision,
-        next.controlledHandoffId,
-        next.version,
-        next.status === 'AUTHORIZED' ? next.controlledHandoffId : null,
-        next.status === 'AUTHORIZED' ? next.version : null,
-        mutation.replay.principalReference,
-        next.correlationId,
-        at
-      ]
+    const values = [
+      mutation.slotKey,
+      next.originatingWorkspaceId,
+      revision,
+      next.controlledHandoffId,
+      next.version,
+      next.status === 'AUTHORIZED' ? next.controlledHandoffId : null,
+      next.status === 'AUTHORIZED' ? next.version : null,
+      mutation.replay.principalReference,
+      next.correlationId,
+      at
+    ];
+    if (previousRevision === 0) {
+      await client.query(
+        `INSERT INTO mgsn_controlled_handoff_slot_state(
+           slot_key,originating_workspace_id,slot_revision,head_controlled_handoff_id,head_version,
+           current_controlled_handoff_id,current_version,set_by_principal_reference,correlation_id,updated_at
+         ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        values
+      );
+      return;
+    }
+
+    const updated = await client.query(
+      `UPDATE mgsn_controlled_handoff_slot_state SET
+         slot_revision=$3,
+         head_controlled_handoff_id=$4,
+         head_version=$5,
+         current_controlled_handoff_id=$6,
+         current_version=$7,
+         set_by_principal_reference=$8,
+         correlation_id=$9,
+         updated_at=$10
+       WHERE slot_key=$1 AND originating_workspace_id=$2 AND slot_revision=$11`,
+      [...values, previousRevision]
     );
+    if (updated.rowCount !== 1) {
+      throw new ControlledHandoffError(
+        'STALE_HANDOFF',
+        409,
+        'Controlled Handoff slot revision changed before commit.'
+      );
+    }
   }
 
   private async insertReplay(client: QueryClient, mutation: HandoffCommit) {
