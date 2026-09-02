@@ -84,8 +84,8 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 91);
-assert.equal(inventory.length, 91);
+assert.equal(source.length, 92);
+assert.equal(inventory.length, 92);
 assert.equal(
   source.filter(
     (x) =>
@@ -94,8 +94,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  85
+  86
 );
 console.log(
-  'Gateway inventory PASS: 91 runtime routes; authenticated Early Funnel, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
+  'Gateway inventory PASS: 92 runtime routes; authenticated Early Funnel, Matter Intelligence, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
 );

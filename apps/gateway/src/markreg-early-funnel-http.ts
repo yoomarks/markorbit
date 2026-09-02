@@ -33,6 +33,7 @@ const topLevelAuthorityFields = [
   'membershipId',
   'subjectUserId'
 ] as const;
+const matterIntelligenceQueryFields = ['page', 'pageSize', 'reviewHistoryLimit'] as const;
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
@@ -115,12 +116,13 @@ function trustedActor(
   };
 }
 
+// prettier-ignore
 export function createGatewayMarkRegEarlyFunnelRoutes(
   options: GatewayMarkRegEarlyFunnelOptions
 ): readonly JsonRoute[] {
   if (options.fixtureTestRuntime && !options.authenticationClient) return [];
 
-  const authenticate = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
+  const resolveWorkspacePrincipal = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
     if (!options.authenticationClient)
       throw new HttpError(
         503,
@@ -132,11 +134,19 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     if (!workspaceId)
       throw new HttpError(400, 'INVALID_WORKSPACE_CONTEXT', 'Workspace context is required.');
     try {
-      const principal = await options.authenticationClient.resolveWorkspace(
+      return await options.authenticationClient.resolveWorkspace(
         token(request),
         workspaceId,
         request.headers['x-correlation-id']
       );
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
+
+  const authenticate = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
+    const principal = await resolveWorkspacePrincipal(request);
+    try {
       requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
       validateCsrf(
         principal.sessionId,
@@ -152,6 +162,18 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     } catch (error) {
       return mapAuthentication(error);
     }
+  };
+
+  const authenticateRead = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
+    const principal = await resolveWorkspacePrincipal(request);
+    if (!principal.permissions.includes('workspace:read'))
+      return mapAuthentication(
+        new AuthenticationError(
+          'PERMISSION_DENIED',
+          'workspace:read permission is required for Matter Intelligence reads.'
+        )
+      );
+    return principal;
   };
 
   const forward = async (
@@ -189,6 +211,59 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
+  const forwardMatterIntelligence = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'MarkReg service authentication is unavailable.',
+        true
+      );
+    const query = new URLSearchParams();
+    for (const field of matterIntelligenceQueryFields) {
+      const value = request.query[field];
+      if (value !== undefined) query.set(field, value);
+    }
+    const search = query.toString();
+    const formalMatterId = encodeURIComponent(request.params.formalMatterId ?? '');
+    try {
+      const response = await fetch(
+        `${options.markRegUrl}/internal/v1/formal-matters/${formalMatterId}/intelligence${search ? `?${search}` : ''}`,
+        {
+          method: 'GET',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': options.internalServiceSecret,
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+            'x-markorbit-workspace-id': principal.workspaceId,
+            ...(request.headers['x-correlation-id']
+              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+              : {}),
+            ...(request.headers['x-request-id']
+              ? { 'x-request-id': request.headers['x-request-id'] }
+              : {})
+          }
+        }
+      );
+      return json(response.status, await response.json());
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
+  const matterIntelligenceRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/formal-matters/:formalMatterId/intelligence',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      return forwardMatterIntelligence(request, principal);
     }
   };
 
@@ -293,5 +368,5 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
-  return [intakeRoute, quoteRoute, confirmationRoute];
+  return [intakeRoute, quoteRoute, confirmationRoute, matterIntelligenceRoute];
 }
