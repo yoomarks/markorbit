@@ -7,6 +7,7 @@ import type {
   ContentReviewOutcome,
   OpportunityCandidateId,
   OpportunityQualificationDecisionId,
+  OpportunityQualificationOutcome,
   PreparedActionId,
   ProductLoopFeedbackOutcome,
   ProductLoopUseFeedback,
@@ -140,9 +141,16 @@ function planOf(value: unknown): PreparedActionPlan {
 }
 
 function exactBody(body: Body, fields: readonly string[]): void {
-  const actorField = ['reviewerPrincipalId', 'actorId', 'userId', 'confirmedByPrincipalId'].find(
-    (field) => body[field] !== undefined
-  );
+  const actorField = [
+    'workspaceId',
+    'reviewerPrincipalId',
+    'decidedByPrincipalId',
+    'actorId',
+    'userId',
+    'principalId',
+    'membershipId',
+    'confirmedByPrincipalId'
+  ].find((field) => body[field] !== undefined);
   if (actorField)
     throw new HttpError(
       400,
@@ -419,6 +427,42 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
             await options.candidateStore.listLatestCandidates(principal.workspaceId, {
               ...(request.query.limit !== undefined ? { limit: Number(request.query.limit) } : {}),
               ...(request.query.cursor !== undefined ? { cursor: request.query.cursor } : {})
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/opportunity-candidates/:opportunityCandidateId/qualification',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:manage');
+        const body = bodyOf(request);
+        exactBody(body, [
+          'candidateVersion',
+          'expectedCandidateFingerprintSha256',
+          'outcome',
+          'rationale'
+        ]);
+        try {
+          return json(
+            201,
+            await options.candidateStore.recordQualification({
+              workspaceId: principal.workspaceId,
+              candidate: {
+                id: request.params.opportunityCandidateId! as OpportunityCandidateId,
+                version: positive(body.candidateVersion, 'candidateVersion')
+              },
+              expectedCandidateFingerprintSha256: text(
+                body.expectedCandidateFingerprintSha256,
+                'expectedCandidateFingerprintSha256'
+              ),
+              outcome: text(body.outcome, 'outcome') as OpportunityQualificationOutcome,
+              rationale: text(body.rationale, 'rationale'),
+              decidedByPrincipalId: principal.userId,
+              idempotencyKey: keyOf(request)
             })
           );
         } catch (error) {
