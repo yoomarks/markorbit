@@ -131,6 +131,7 @@
     "0080_mgsn_provider_responsibility": "@markorbit/mgsn-service",
     "0081_core_brain_gap_registry": "@markorbit/core-service",
     "0082_markreg_preparation_locks": "@markorbit/markreg-service",
-    "0083_markreg_early_funnel": "@markorbit/markreg-service"
+    "0083_markreg_early_funnel": "@markorbit/markreg-service",
+    "0084_mgsn_provider_responsibility_replay_audit": "@markorbit/mgsn-service"
   }
 }
