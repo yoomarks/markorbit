@@ -251,7 +251,7 @@ suite('Provider Responsibility PostgreSQL integrity', () => {
       service().assessCurrent(providerId, workspaceId, initialAt)
     ).resolves.toMatchObject({
       state: 'UNKNOWN_OR_UNPROVEN',
-      directExecutorEstablished: false
+      assessment: null
     });
     await expect(
       service().assessCurrent(providerId, workspaceId, initialAt)

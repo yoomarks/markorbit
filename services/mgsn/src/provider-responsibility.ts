@@ -1186,7 +1186,7 @@ export class ProviderResponsibilityService {
         providerResponsibilityProfileId: input.profile.providerResponsibilityProfileId,
         providerId: input.profile.providerId,
         providerWorkspaceId: input.profile.providerWorkspaceId,
-        previousVersion: input.current?.version ?? null,
+        previousVersion: input.action === 'CREATED' ? null : (input.current?.version ?? null),
         newVersion: input.profile.version,
         action: input.action,
         actorReference: input.actorReference,
