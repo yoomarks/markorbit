@@ -181,10 +181,7 @@ export function MatterIntelligencePanel({
       ) : (
         <>
           {state.value.items.map((item) => (
-            <ObservationCard
-              key={item.observation.matterIntelligenceObservationId}
-              item={item}
-            />
+            <ObservationCard key={item.observation.matterIntelligenceObservationId} item={item} />
           ))}
           {state.value.total > state.value.items.length && (
             <p>
