@@ -1,0 +1,1 @@
+Trigger the updated NEVER-MERGE verifier for PR #645. This file must never merge.
