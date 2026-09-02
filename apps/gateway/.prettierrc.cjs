@@ -1,3 +1,4 @@
+// Current-base formatter probe for #577; never merge this file.
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
