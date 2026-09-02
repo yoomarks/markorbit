@@ -183,6 +183,7 @@ describe('Gmail Managed Communication explicit provider-message reconciliation',
 
     expect(first).toEqual({ initialized: false, imported: 1, providerCursor: '4504417' });
     expect(replay).toEqual({ initialized: false, imported: 0, providerCursor: '4504417' });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
     await expect(store.latestCheckpoint(workspaceId, accountRef)).resolves.toMatchObject({
       checkpointRef: 'gmail-history:4504417',
       providerCursor: '4504417',
@@ -210,7 +211,7 @@ describe('Gmail Managed Communication explicit provider-message reconciliation',
       }
     });
 
-    expect(exactEvidence.admissions).toHaveLength(2);
+    expect(exactEvidence.admissions).toHaveLength(1);
     expect(Buffer.from(exactEvidence.admissions[0]!.rawPayload).toString('utf8')).toBe(rawMessage);
     expect(exactEvidence.admissions[0]!.mediaType).toBe('message/rfc822');
     expect(exactEvidence.admissions[0]!.metadata).toEqual({
