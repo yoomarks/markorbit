@@ -65,6 +65,8 @@ jobs:
           test = test.replace("() => 'provider-selection_direct-executor' as ProviderSelectionId", "() => 'provider-selection_direct-executor'")
           test_path.write_text(test)
           PY
+      - name: Build typed MGSN dependency closure
+        run: pnpm build:mgsn-provider-registry-deps
       - name: Format and verify exact files
         run: |
           pnpm exec prettier --write services/mgsn/src/provider-selection.ts services/mgsn/tests/provider-selection.test.ts
