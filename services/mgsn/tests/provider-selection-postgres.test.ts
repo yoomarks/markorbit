@@ -2,9 +2,12 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   providerSelectionContractFixtureV1,
-  type ProviderSelectionId
+  type CreateOrReplaceProviderSelectionCommandV1,
+  type ProviderSelectionId,
+  type RevokeProviderSelectionCommandV1
 } from '@markorbit/contracts/provider-selection';
 import { ManagedDatabase } from '@markorbit/persistence';
+import { createDurableMgsnServices } from '../src/durable-runtime.js';
 import { PostgresProviderSelectionRepository } from '../src/provider-selection-postgres.js';
 import {
   ProviderSelectionService,
@@ -67,14 +70,94 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
     authenticatedAt: authority.authenticatedAt,
     affirmativeHumanActionEvidenceReference: authority.affirmativeHumanActionEvidenceReference
   };
+  const scopeKey = [
+    'provider-selection',
+    fixture.createCommand.requesterWorkspaceId,
+    fixture.createCommand.scope.owner,
+    encodeURIComponent(fixture.createCommand.scope.reference)
+  ].join(':');
   const repository = () => new PostgresProviderSelectionRepository(database, database.getPool());
-  const service = () =>
+  const serviceWith = (source: ProviderSelectionCurrentAuthoritySource = authoritySource) =>
     new ProviderSelectionService(
       repository(),
-      authoritySource,
+      source,
       () => at,
       () => `provider-selection_598_${++sequence}` as ProviderSelectionId
     );
+
+  function createCommand(
+    overrides: Partial<CreateOrReplaceProviderSelectionCommandV1> = {}
+  ): CreateOrReplaceProviderSelectionCommandV1 {
+    return { ...structuredClone(fixture.createCommand), ...overrides };
+  }
+
+  function replacementCommand(
+    current: Awaited<ReturnType<ProviderSelectionService['createOrReplace']>>
+  ): CreateOrReplaceProviderSelectionCommandV1 {
+    const base = fixture.createCommand;
+    const candidateId =
+      'provider-discovery-candidate_selection-598-replacement' as typeof base.sourceLineage.discoveryCandidate.providerDiscoveryCandidateId;
+    const candidateFingerprintSha256 = '8'.repeat(64);
+    return {
+      ...structuredClone(base),
+      sourceLineage: {
+        ...structuredClone(base.sourceLineage),
+        discoveryCandidate: {
+          ...structuredClone(base.sourceLineage.discoveryCandidate),
+          providerDiscoveryCandidateId: candidateId,
+          candidateFingerprintSha256
+        }
+      },
+      acknowledgement: {
+        ...structuredClone(base.acknowledgement),
+        reviewedCandidateId: candidateId,
+        reviewedCandidateFingerprintSha256: candidateFingerprintSha256
+      },
+      expectedCurrent: {
+        kind: 'EXACT',
+        providerSelectionId: current.selection.providerSelectionId,
+        version: current.selection.version,
+        expectedScopeVersion: current.selection.scopeVersion
+      },
+      idempotencyKey: 'provider-selection:598:replace',
+      commandFingerprintSha256: 'c'.repeat(64),
+      correlationId: 'correlation_selection_598_replace'
+    };
+  }
+
+  function revokeCommand(
+    current: Awaited<ReturnType<ProviderSelectionService['createOrReplace']>>
+  ): RevokeProviderSelectionCommandV1 {
+    return {
+      ...structuredClone(fixture.revokeCommand),
+      target: {
+        providerSelectionId: current.selection.providerSelectionId,
+        version: current.selection.version,
+        scopeVersion: current.selection.scopeVersion
+      },
+      idempotencyKey: 'provider-selection:598:revoke',
+      commandFingerprintSha256: 'd'.repeat(64),
+      correlationId: 'correlation_selection_598_revoke'
+    };
+  }
+
+  async function counts() {
+    const result = await database.getPool().query(
+      `SELECT
+        (SELECT count(*)::int FROM mgsn_provider_selection_identities) AS identities,
+        (SELECT count(*)::int FROM mgsn_provider_selection_versions) AS versions,
+        (SELECT count(*)::int FROM mgsn_provider_selection_scope_state) AS scopes,
+        (SELECT count(*)::int FROM mgsn_provider_selection_command_replays) AS replays,
+        (SELECT count(*)::int FROM mgsn_provider_selection_owner_audit_events) AS audits`
+    );
+    return result.rows[0] as {
+      identities: number;
+      versions: number;
+      scopes: number;
+      replays: number;
+      audits: number;
+    };
+  }
 
   beforeAll(async () => {
     await database.start();
@@ -88,6 +171,7 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
 
   beforeEach(async () => {
     sequence = 0;
+    vi.clearAllMocks();
     await database.getPool().query(
       `TRUNCATE
         mgsn_provider_selection_owner_audit_events,
@@ -174,54 +258,117 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
 
   afterAll(() => database.close());
 
-  it('persists create, restart read, exact replay, and fail-closed historical usability separation', async () => {
+  it('persists create, restart read and exact replay', async () => {
     expect(await repository().findScopeState('provider-selection:missing')).toEqual({
       scopeVersion: 0
     });
-    const created = await service().createOrReplace(
-      principal,
-      structuredClone(fixture.createCommand)
-    );
+    const created = await serviceWith().createOrReplace(principal, createCommand());
     expect(created).toMatchObject({ mutation: 'CREATED', replayed: false });
     expect(await repository().findLatestSelection(created.selection.providerSelectionId)).toEqual(
       created.selection
     );
-    const replayed = await service().createOrReplace(
-      principal,
-      structuredClone(fixture.createCommand)
-    );
+    expect(await repository().findScopeState(scopeKey)).toEqual({
+      scopeVersion: 1,
+      current: created.selection
+    });
+    const replayed = await serviceWith().createOrReplace(principal, createCommand());
     expect(replayed).toMatchObject({ mutation: 'CREATED', replayed: true });
+    expect(replayed.selection).toEqual(created.selection);
     expect(
       await repository().listSelectionHistory(created.selection.providerSelectionId)
     ).toHaveLength(1);
   });
 
+  it('atomically replaces the exact current Selection and preserves immutable old history', async () => {
+    const service = serviceWith();
+    const current = await service.createOrReplace(principal, createCommand());
+    const replaced = await service.createOrReplace(principal, replacementCommand(current));
+    const oldHistory = await repository().listSelectionHistory(current.selection.providerSelectionId);
+
+    expect(replaced).toMatchObject({ mutation: 'REPLACED', replayed: false });
+    expect(replaced.selection).toMatchObject({ status: 'CURRENT', version: 1, scopeVersion: 2 });
+    expect(replaced.selection.providerSelectionId).not.toBe(current.selection.providerSelectionId);
+    expect(oldHistory).toHaveLength(2);
+    expect(oldHistory.at(-1)).toMatchObject({
+      status: 'SUPERSEDED',
+      version: 2,
+      scopeVersion: 2,
+      supersededBy: {
+        providerSelectionId: replaced.selection.providerSelectionId,
+        version: 1,
+        scopeVersion: 2
+      }
+    });
+    expect(await repository().findScopeState(scopeKey)).toEqual({
+      scopeVersion: 2,
+      current: replaced.selection
+    });
+  });
+
+  it('persists exact revoke across restart and historical create replay cannot restore CURRENT', async () => {
+    const service = serviceWith();
+    const current = await service.createOrReplace(principal, createCommand());
+    const revoked = await service.revoke(principal, revokeCommand(current));
+
+    expect(revoked.selection).toMatchObject({
+      status: 'REVOKED',
+      version: 2,
+      scopeVersion: 2,
+      revocationReasonCode: 'HUMAN_WITHDRAWAL'
+    });
+    expect(await repository().findScopeState(scopeKey)).toEqual({ scopeVersion: 2 });
+    expect(await repository().findLatestSelection(current.selection.providerSelectionId)).toEqual(
+      revoked.selection
+    );
+
+    const replayedCreate = await serviceWith().createOrReplace(principal, createCommand());
+    expect(replayedCreate).toMatchObject({ replayed: true, mutation: 'CREATED' });
+    expect(replayedCreate.selection.status).toBe('CURRENT');
+    expect(await repository().findScopeState(scopeKey)).toEqual({ scopeVersion: 2 });
+  });
+
+  it('rejects stale replacement with zero history, replay, audit or pointer residue', async () => {
+    const service = serviceWith();
+    const current = await service.createOrReplace(principal, createCommand());
+    const replacement = replacementCommand(current);
+    const stale: CreateOrReplaceProviderSelectionCommandV1 = {
+      ...replacement,
+      expectedCurrent: {
+        ...replacement.expectedCurrent,
+        expectedScopeVersion: current.selection.scopeVersion + 1
+      }
+    };
+    const before = await counts();
+
+    await expect(service.createOrReplace(principal, stale)).rejects.toMatchObject({
+      code: 'STALE_SELECTION',
+      status: 409
+    });
+    expect(await counts()).toEqual(before);
+    expect(await repository().findScopeState(scopeKey)).toEqual({
+      scopeVersion: 1,
+      current: current.selection
+    });
+  });
+
   it('serializes different-key concurrent first-create with one winner and zero loser residue', async () => {
-    const left = {
-      ...structuredClone(fixture.createCommand),
+    const left: CreateOrReplaceProviderSelectionCommandV1 = {
+      ...createCommand(),
       idempotencyKey: 'provider-selection:598:left',
       commandFingerprintSha256: 'a'.repeat(64)
     };
-    const right = {
-      ...structuredClone(fixture.createCommand),
+    const right: CreateOrReplaceProviderSelectionCommandV1 = {
+      ...createCommand(),
       idempotencyKey: 'provider-selection:598:right',
       commandFingerprintSha256: 'b'.repeat(64)
     };
     const results = await Promise.allSettled([
-      service().createOrReplace(principal, left),
-      service().createOrReplace(principal, right)
+      serviceWith().createOrReplace(principal, left),
+      serviceWith().createOrReplace(principal, right)
     ]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
-    const counts = await database.getPool().query(
-      `SELECT
-        (SELECT count(*)::int FROM mgsn_provider_selection_identities) AS identities,
-        (SELECT count(*)::int FROM mgsn_provider_selection_versions) AS versions,
-        (SELECT count(*)::int FROM mgsn_provider_selection_scope_state) AS scopes,
-        (SELECT count(*)::int FROM mgsn_provider_selection_command_replays) AS replays,
-        (SELECT count(*)::int FROM mgsn_provider_selection_owner_audit_events) AS audits`
-    );
-    expect(counts.rows[0]).toEqual({
+    expect(await counts()).toEqual({
       identities: 1,
       versions: 1,
       scopes: 1,
@@ -230,8 +377,74 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
     });
   });
 
+  it('serializes concurrent replace and revoke against the same exact current target', async () => {
+    const seed = await serviceWith().createOrReplace(principal, createCommand());
+    const results = await Promise.allSettled([
+      serviceWith().createOrReplace(principal, replacementCommand(seed)),
+      serviceWith().revoke(principal, revokeCommand(seed))
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const state = await repository().findScopeState(scopeKey);
+    expect(state.scopeVersion).toBe(2);
+    expect((await repository().listAuditHistory(scopeKey))).toHaveLength(2);
+    expect((await counts()).replays).toBe(2);
+  });
+
+  it('keeps persisted CURRENT lifecycle separate from current usability, including durable runtime default', async () => {
+    const created = await serviceWith().createOrReplace(principal, createCommand());
+    const deniedSource: ProviderSelectionCurrentAuthoritySource = {
+      evaluateCurrentAuthority: () =>
+        Promise.resolve({ ...snapshot, visibilityAuthorized: false })
+    };
+    const denied = await serviceWith(deniedSource).validateCurrent(principal, {
+      scope: created.selection.scope,
+      providerSelectionId: created.selection.providerSelectionId,
+      purpose: 'CONTROLLED_HANDOFF_REVIEW'
+    });
+    expect(denied).toMatchObject({
+      decision: 'DENY',
+      currentlyUsable: false,
+      denialReason: 'VISIBILITY_NO_LONGER_AUTHORIZED'
+    });
+
+    const durable = createDurableMgsnServices({
+      database,
+      coreUrl: 'http://127.0.0.1:1',
+      executionUrl: 'http://127.0.0.1:1',
+      internalServiceSecret: 'selection-598-test-secret'
+    });
+    const unavailable = await durable.providerSelection.validateCurrent(principal, {
+      scope: created.selection.scope,
+      providerSelectionId: created.selection.providerSelectionId,
+      purpose: 'ALLOCATION_PREREQUISITE_REVIEW'
+    });
+    expect(unavailable).toMatchObject({
+      decision: 'DENY',
+      currentlyUsable: false,
+      denialReason: 'AUTHORITY_UNAVAILABLE'
+    });
+  });
+
+  it('fails closed when a valid FK current pointer contradicts canonical lifecycle', async () => {
+    const service = serviceWith();
+    const current = await service.createOrReplace(principal, createCommand());
+    await service.createOrReplace(principal, replacementCommand(current));
+    await database.getPool().query(
+      `UPDATE mgsn_provider_selection_scope_state
+       SET current_provider_selection_id=$2,current_selection_version=2,current_selection_scope_version=2
+       WHERE scope_key=$1`,
+      [scopeKey, current.selection.providerSelectionId]
+    );
+
+    await expect(repository().findScopeState(scopeKey)).rejects.toMatchObject({
+      code: 'AUTHORITY_UNAVAILABLE',
+      status: 503
+    });
+  });
+
   it('keeps replay and owner audit append-only', async () => {
-    await service().createOrReplace(principal, structuredClone(fixture.createCommand));
+    await serviceWith().createOrReplace(principal, createCommand());
     await expect(
       database.getPool().query('DELETE FROM mgsn_provider_selection_command_replays')
     ).rejects.toThrow();
