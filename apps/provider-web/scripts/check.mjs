@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// This owner-authored assertion file also anchors exact-head Provider Web CI after mechanical formatting.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 for (const file of ['main.js', 'provider-work-api.js', 'provider-work-model.js']) {
   const result = spawnSync(process.execPath, ['--check', resolve(root, 'src', file)], {
