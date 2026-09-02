@@ -30,6 +30,7 @@
     "mgsn_provider_return": "@markorbit/mgsn-service",
     "mgsn_network_participation": "@markorbit/mgsn-service",
     "mgsn_provider_responsibility": "@markorbit/mgsn-service",
+    "mgsn_provider_selection": "@markorbit/mgsn-service",
     "execution_provider_return_evidence": "@markorbit/execution-service",
     "execution_evidence_review": "@markorbit/execution-service",
     "execution_reviewed_source_handoff": "@markorbit/execution-service",
@@ -132,6 +133,7 @@
     "0081_core_brain_gap_registry": "@markorbit/core-service",
     "0082_markreg_preparation_locks": "@markorbit/markreg-service",
     "0083_markreg_early_funnel": "@markorbit/markreg-service",
-    "0084_mgsn_provider_responsibility_replay_audit": "@markorbit/mgsn-service"
+    "0084_mgsn_provider_responsibility_replay_audit": "@markorbit/mgsn-service",
+    "0085_mgsn_provider_selection": "@markorbit/mgsn-service"
   }
 }
