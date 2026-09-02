@@ -87,6 +87,18 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
     const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
     return Promise.resolve(this.rows.get(key));
   }
+
+  replaceObservedAtForTest(input: {
+    workspaceId: string;
+    accountRef: string;
+    messageId: string;
+    observedAt: string;
+  }): void {
+    const key = `${input.workspaceId}\u0000${input.accountRef}\u0000${input.messageId}`;
+    const existing = this.rows.get(key);
+    if (!existing) throw new Error('Expected exact evidence row for replay test.');
+    this.rows.set(key, Object.freeze({ ...existing, observedAt: input.observedAt }));
+  }
 }
 
 async function foundation(providerAccount = providerAccountRef) {
@@ -170,6 +182,18 @@ describe('Gmail Managed Communication explicit provider-message reconciliation',
       accountRef,
       providerMessageId: 'gmail-reconcile-1',
       now: () => '2026-09-02T06:02:00.000Z'
+    });
+    const replayIds = managedCommunicationNormalizedIdsV1({
+      workspaceId,
+      accountRef,
+      provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+      providerMessageId: 'gmail-reconcile-1'
+    });
+    exactEvidence.replaceObservedAtForTest({
+      workspaceId,
+      accountRef,
+      messageId: replayIds.messageId,
+      observedAt: '2026-09-02T06:02:00.500Z'
     });
     const replay = await reconcileGmailManagedCommunicationProviderMessageV1({
       client,
