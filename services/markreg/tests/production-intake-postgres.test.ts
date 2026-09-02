@@ -185,7 +185,9 @@ suite('PostgreSQL Production Intake', () => {
     const other = await service().create(principal(otherWorkspaceId), command());
     expect(other.workspaceId).toBe(otherWorkspaceId);
     expect(other.intakeId).not.toBe(first.intakeId);
-    await expect(service().get(principal(otherWorkspaceId), first.intakeId)).rejects.toMatchObject({
+    await expect(
+      service().get(principal(otherWorkspaceId), first.intakeId)
+    ).rejects.toMatchObject({
       code: 'PRODUCTION_INTAKE_NOT_FOUND',
       status: 404
     });
