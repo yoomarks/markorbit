@@ -9,9 +9,13 @@ import {
   type TrademarkAssetManagementSignal,
   type TrademarkAssetManagementSignalId
 } from '@markorbit/contracts/trademark-asset-management';
-import type {
-  TrademarkAssetId,
-  TrademarkAssetRelation
+import {
+  trademarkAssetRelationKinds,
+  trademarkAssetSourceOwners,
+  type TrademarkAssetId,
+  type TrademarkAssetRelation,
+  type TrademarkAssetRelationKind,
+  type TrademarkAssetSourceOwner
 } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
@@ -232,16 +236,65 @@ function objectValue(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function exactKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = []
+): boolean {
+  const allowed = new Set([...required, ...optional]);
+  const keys = Object.keys(value);
+  return (
+    required.every((key) => Object.hasOwn(value, key)) && keys.every((key) => allowed.has(key))
+  );
+}
+
+function persistedText(value: unknown, field: string, max = 300): string {
+  if (typeof value !== 'string' || !value.trim() || value !== value.trim() || value.length > max) {
+    corrupt(`Persisted management disposition ${field} is malformed.`);
+  }
+  return value;
+}
+
+function persistedVersion(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+    corrupt(`Persisted management disposition ${field} is malformed.`);
+  }
+  return value as number;
+}
+
 function rowTimestamp(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
-  if (typeof value !== 'string' || Number.isNaN(new Date(value).valueOf())) {
+  const text = persistedText(value, 'recordedAt', 100);
+  if (Number.isNaN(new Date(text).valueOf())) {
     corrupt('Persisted management disposition recordedAt is malformed.');
   }
-  return new Date(value).toISOString();
+  return new Date(text).toISOString();
 }
 
 function persistedDisposition(row: Row): TrademarkAssetManagementDisposition {
   const document = objectValue(row.document_json, 'document');
+  if (
+    !exactKeys(
+      document,
+      [
+        'schemaVersion',
+        'dispositionId',
+        'workspaceId',
+        'version',
+        'asset',
+        'signal',
+        'kind',
+        'subjectUserId',
+        'recordedAt',
+        'officialTruthCreated',
+        'legalConclusionVerified',
+        'capabilityVerified'
+      ],
+      ['recommendation', 'note', 'workflowReference']
+    )
+  ) {
+    corrupt('Persisted management disposition document fields are malformed.');
+  }
   const asset = objectValue(document.asset, 'asset reference');
   const signal = objectValue(document.signal, 'Signal reference');
   const recommendation =
@@ -253,61 +306,115 @@ function persistedDisposition(row: Row): TrademarkAssetManagementDisposition {
       ? undefined
       : objectValue(document.workflowReference, 'workflow reference');
   const recordedAt = rowTimestamp(row.recorded_at);
-  const dispositionId = String(row.disposition_id);
-  const workspaceId = String(row.workspace_id);
-  const trademarkAssetId = String(row.trademark_asset_id);
-  const managementSignalId = String(row.management_signal_id);
+  const dispositionId = persistedText(row.disposition_id, 'dispositionId column');
+  const workspaceId = persistedText(row.workspace_id, 'workspaceId column', 100);
+  const trademarkAssetId = persistedText(row.trademark_asset_id, 'Asset column');
+  const managementSignalId = persistedText(row.management_signal_id, 'Signal column');
+  const version = persistedVersion(row.version, 'version column');
   let recommendationId: string | undefined;
   if (row.recommendation_id !== null && row.recommendation_id !== undefined) {
-    if (typeof row.recommendation_id !== 'string') {
-      corrupt('Persisted management disposition Recommendation column is malformed.');
-    }
-    recommendationId = row.recommendation_id;
+    recommendationId = persistedText(row.recommendation_id, 'Recommendation column');
   }
-  const dispositionKind = String(row.disposition_kind);
-  const subjectUserId = String(row.subject_user_id);
+  const dispositionKind = persistedText(row.disposition_kind, 'kind column', 100);
+  const subjectUserId = persistedText(row.subject_user_id, 'subjectUserId column');
+  const documentDispositionId = persistedText(document.dispositionId, 'dispositionId');
+  const documentWorkspaceId = persistedText(document.workspaceId, 'workspaceId', 100);
+  const documentVersion = persistedVersion(document.version, 'version');
+  const assetId = persistedText(asset.id, 'Asset id');
+  const assetVersion = persistedVersion(asset.version, 'Asset version');
+  const signalId = persistedText(signal.id, 'Signal id');
+  const signalVersion = persistedVersion(signal.version, 'Signal version');
+  const documentKind = persistedText(document.kind, 'kind', 100);
+  const documentSubjectUserId = persistedText(document.subjectUserId, 'subjectUserId');
+  const note = document.note === undefined ? undefined : persistedText(document.note, 'note', 4000);
+  const documentRecordedAt = rowTimestamp(document.recordedAt);
+
+  if (!exactKeys(asset, ['id', 'version']) || !exactKeys(signal, ['id', 'version'])) {
+    corrupt('Persisted management disposition exact reference fields are malformed.');
+  }
+
+  let recommendationReference:
+    { id: TrademarkAssetManagementRecommendationId; version: number } | undefined;
+  if (recommendation !== undefined) {
+    if (!exactKeys(recommendation, ['id', 'version'])) {
+      corrupt('Persisted management disposition Recommendation reference fields are malformed.');
+    }
+    recommendationReference = {
+      id: persistedText(
+        recommendation.id,
+        'Recommendation id'
+      ) as TrademarkAssetManagementRecommendationId,
+      version: persistedVersion(recommendation.version, 'Recommendation version')
+    };
+  }
+
+  let validatedWorkflowReference: TrademarkAssetRelation | undefined;
+  if (workflowReference !== undefined) {
+    if (!exactKeys(workflowReference, ['kind', 'owner', 'referenceId'], ['referenceVersion'])) {
+      corrupt('Persisted management disposition workflow reference fields are malformed.');
+    }
+    const workflowKind = persistedText(workflowReference.kind, 'workflow kind', 100);
+    const workflowOwner = persistedText(workflowReference.owner, 'workflow owner', 100);
+    const referenceId = persistedText(workflowReference.referenceId, 'workflow referenceId');
+    const referenceVersion =
+      workflowReference.referenceVersion === undefined
+        ? undefined
+        : persistedText(workflowReference.referenceVersion, 'workflow referenceVersion');
+    if (
+      !trademarkAssetRelationKinds.includes(workflowKind as TrademarkAssetRelationKind) ||
+      !trademarkAssetSourceOwners.includes(workflowOwner as TrademarkAssetSourceOwner) ||
+      workflowOwner === 'WORKSPACE_USER'
+    ) {
+      corrupt('Persisted management disposition workflow reference is malformed.');
+    }
+    validatedWorkflowReference = {
+      kind: workflowKind as TrademarkAssetRelationKind,
+      owner: workflowOwner as Exclude<TrademarkAssetSourceOwner, 'WORKSPACE_USER'>,
+      referenceId,
+      ...(referenceVersion === undefined ? {} : { referenceVersion })
+    };
+  }
 
   if (
     document.schemaVersion !== 1 ||
-    document.dispositionId !== dispositionId ||
-    document.workspaceId !== workspaceId ||
-    document.version !== Number(row.version) ||
-    !Number.isInteger(document.version) ||
-    Number(document.version) < 1 ||
-    asset.id !== trademarkAssetId ||
-    !Number.isInteger(asset.version) ||
-    Number(asset.version) < 1 ||
-    signal.id !== managementSignalId ||
-    !Number.isInteger(signal.version) ||
-    Number(signal.version) < 1 ||
-    (recommendationId === undefined) !== (recommendation === undefined) ||
-    (recommendation !== undefined &&
-      (recommendation.id !== recommendationId ||
-        !Number.isInteger(recommendation.version) ||
-        Number(recommendation.version) < 1)) ||
-    document.kind !== dispositionKind ||
+    documentDispositionId !== dispositionId ||
+    documentWorkspaceId !== workspaceId ||
+    documentVersion !== version ||
+    assetId !== trademarkAssetId ||
+    signalId !== managementSignalId ||
+    (recommendationId === undefined) !== (recommendationReference === undefined) ||
+    (recommendationReference !== undefined && recommendationReference.id !== recommendationId) ||
+    documentKind !== dispositionKind ||
     !trademarkAssetManagementDispositionKinds.includes(
       dispositionKind as TrademarkAssetManagementDispositionKind
     ) ||
-    document.subjectUserId !== subjectUserId ||
-    typeof document.subjectUserId !== 'string' ||
-    !document.subjectUserId.trim() ||
-    (document.note !== undefined && (typeof document.note !== 'string' || !document.note.trim())) ||
-    (workflowReference !== undefined &&
-      (typeof workflowReference.kind !== 'string' ||
-        typeof workflowReference.owner !== 'string' ||
-        typeof workflowReference.referenceId !== 'string' ||
-        !workflowReference.referenceId.trim() ||
-        (workflowReference.referenceVersion !== undefined &&
-          typeof workflowReference.referenceVersion !== 'string'))) ||
-    rowTimestamp(document.recordedAt) !== recordedAt ||
+    documentSubjectUserId !== subjectUserId ||
+    documentRecordedAt !== recordedAt ||
     document.officialTruthCreated !== false ||
     document.legalConclusionVerified !== false ||
     document.capabilityVerified !== false
   ) {
     corrupt('Persisted management disposition lineage is inconsistent.');
   }
-  return clone(document as unknown as TrademarkAssetManagementDisposition);
+  return {
+    schemaVersion: 1,
+    dispositionId: dispositionId as TrademarkAssetManagementDispositionId,
+    workspaceId,
+    version,
+    asset: { id: assetId as TrademarkAssetId, version: assetVersion },
+    signal: { id: signalId as TrademarkAssetManagementSignalId, version: signalVersion },
+    ...(recommendationReference === undefined ? {} : { recommendation: recommendationReference }),
+    kind: dispositionKind as TrademarkAssetManagementDispositionKind,
+    subjectUserId,
+    ...(note === undefined ? {} : { note }),
+    ...(validatedWorkflowReference === undefined
+      ? {}
+      : { workflowReference: validatedWorkflowReference }),
+    recordedAt,
+    officialTruthCreated: false,
+    legalConclusionVerified: false,
+    capabilityVerified: false
+  };
 }
 
 export function nextTrademarkAssetManagementRecoveryAttempt(
