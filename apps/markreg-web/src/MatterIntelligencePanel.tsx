@@ -10,10 +10,7 @@ import {
 
 const defaultClient = createMatterIntelligenceClient();
 
-type State =
-  | { kind: 'LOADING' }
-  | { kind: 'READY'; value: MatterIntelligenceProjection }
-  | { kind: 'ERROR' };
+type State = { kind: 'LOADING' } | { kind: 'READY'; value: MatterIntelligenceProjection } | { kind: 'ERROR' };
 
 const displayTimestamp = (value: string) => {
   const parsed = new Date(value);
