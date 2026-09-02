@@ -9,19 +9,13 @@ permissions:
   contents: write
 
 jobs:
-  format-and-verify-handoff:
+  format-and-verify-outcome-trust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: mgsn-controlled-handoff-phase-a
+          ref: mgsn-outcome-trust-phase-a
           fetch-depth: 0
-      - uses: actions/checkout@v4
-        with:
-          ref: tmp-mgsn-selection-599-repair
-          path: _repair
-          sparse-checkout: .github/tmp-mgsn-handoff-606-repair.mjs
-          sparse-checkout-cone-mode: false
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -30,8 +24,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: node _repair/.github/tmp-mgsn-handoff-606-repair.mjs
-      - run: pnpm exec prettier --write services/mgsn/src/controlled-privacy-handoff.ts services/mgsn/src/index.ts services/mgsn/tests/controlled-privacy-handoff.test.ts
+      - run: pnpm exec prettier --write services/mgsn/src/outcome-trust-evidence.ts services/mgsn/src/index.ts services/mgsn/tests/outcome-trust-evidence.test.ts
       - run: pnpm build:mgsn-provider-registry-deps
       - run: pnpm --filter @markorbit/mgsn-service typecheck
       - run: pnpm --filter @markorbit/mgsn-service lint
@@ -39,7 +32,7 @@ jobs:
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add services/mgsn/src/controlled-privacy-handoff.ts services/mgsn/src/index.ts services/mgsn/tests/controlled-privacy-handoff.test.ts
+          git add services/mgsn/src/outcome-trust-evidence.ts services/mgsn/src/index.ts services/mgsn/tests/outcome-trust-evidence.test.ts
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'MGSN: harden Controlled Handoff Phase A validation'
-          git push origin HEAD:mgsn-controlled-handoff-phase-a
+          git commit -m 'MGSN: format Outcome Trust Evidence Phase A'
+          git push origin HEAD:mgsn-outcome-trust-phase-a
