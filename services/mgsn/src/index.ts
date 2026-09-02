@@ -26,8 +26,10 @@ export * from './provider-selection-postgres.js';
 export * from './controlled-privacy-handoff.js';
 // Durable Handoff persistence records governed disclosure authority only; it grants no Provider engagement, Allocation, Acceptance, Filing, Payment, or Official Truth authority.
 export * from './controlled-privacy-handoff-postgres.js';
-// Phase A exposes contextual advisory Trust evaluation only; it creates no universal score, rank, or routing authority.
+// Trust Evidence remains contextual advisory history; persistence creates no score, rank, winner, routing, artifact, Filing, Payment, or Official Truth authority.
 export * from './outcome-trust-evidence.js';
+// Durable Trust Evidence storage never establishes current exposure authority; serving must revalidate current authority at runtime.
+export * from './outcome-trust-evidence-postgres.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';
