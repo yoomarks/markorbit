@@ -68,6 +68,8 @@ import {
   PostgresMarkRegMethodOutcomeEvidenceSourceV1
 } from './method-outcome-evidence-emission.js';
 import { FailClosedPreparationRepository } from './fail-closed-preparation.js';
+import { PostgresDurablePreparationLockService } from './durable-preparation-lock.js';
+import { createDurablePreparationLockRoutes } from './durable-preparation-lock-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -188,6 +190,11 @@ if (fixtureRuntime) {
       return ((await response.json()) as { reviewCase: ProfessionalReviewCase }).reviewCase;
     }
   });
+  const durablePreparationLockService = new PostgresDurablePreparationLockService(database, pool);
+  const durablePreparationLockRoutes = createDurablePreparationLockRoutes({
+    internalServiceSecret,
+    service: durablePreparationLockService
+  });
   const lifecycleRepository = new PostgresLifecycleProjectionRepository(database, pool);
   const formalMatterEvidenceReadService = new FormalMatterEvidenceReadService({
     formalMatters: formalMatterRepository,
@@ -250,6 +257,7 @@ if (fixtureRuntime) {
     internalServiceSecret,
     executionUrl,
     extraRoutes: [
+      ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,
       ...commercialAdminRoutes,
       ...lifecycleRoutes,
