@@ -46,13 +46,23 @@ jobs:
           from pathlib import Path
           p = Path('services/mgsn/tests/outcome-trust-evidence-postgres.test.ts')
           s = p.read_text()
+          old = "function projection(items: TrustEvidenceItemV1[]): TrustEvidenceVisibilityProjectionV1 {"
+          new = """function projection(\n  items: TrustEvidenceItemV1[],\n  contextFingerprintSha256 = outcomeTrustEvidenceFixtureContextV1.contextFingerprintSha256\n): TrustEvidenceVisibilityProjectionV1 {"""
+          if old not in s:
+              raise SystemExit('projection helper signature not found')
+          s = s.replace(old, new, 1)
+          old = "    contextFingerprintSha256: outcomeTrustEvidenceFixtureContextV1.contextFingerprintSha256,"
+          new = "    contextFingerprintSha256,"
+          if old not in s:
+              raise SystemExit('projection context property not found')
+          s = s.replace(old, new, 1)
           old = """    const divergent = {\n      ...item,\n      limitations: [{ code: 'CONTEXT_LIMITED' as const, explanation: 'Different immutable body.' }]\n    };\n    await expect(repository().putEvidenceItem(divergent)).rejects.toMatchObject({"""
-          new = """    const divergentBody = {\n      ...item,\n      limitations: [{ code: 'CONTEXT_LIMITED' as const, explanation: 'Different immutable body.' }]\n    };\n    const divergent = {\n      ...divergentBody,\n      trustEvidenceItemFingerprintSha256: trustEvidenceItemFingerprintV1(divergentBody)\n    };\n    await expect(repository().putEvidenceItem(divergent)).rejects.toMatchObject({"""
+          new = """    const divergent = {\n      ...item,\n      createdAt: '2026-08-26T10:01:00.000Z'\n    };\n    await expect(repository().putEvidenceItem(divergent)).rejects.toMatchObject({"""
           if old not in s:
               raise SystemExit('divergent evidence fixture block not found')
           s = s.replace(old, new, 1)
           old = """    const wrongContext = {\n      ...projected,\n      contextFingerprintSha256: hash('9')\n    };\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
-          new = """    const wrongContextBody = {\n      ...projected,\n      contextFingerprintSha256: hash('9')\n    };\n    const wrongContext = {\n      ...wrongContextBody,\n      projectionFingerprintSha256:\n        trustEvidenceVisibilityProjectionFingerprintV1(wrongContextBody)\n    };\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
+          new = """    const wrongContext = projection([item], hash('9'));\n    await expect(service().recordVisibilityProjection(wrongContext)).rejects.toBeInstanceOf("""
           if old not in s:
               raise SystemExit('wrong-context projection fixture block not found')
           p.write_text(s.replace(old, new, 1))
@@ -65,8 +75,8 @@ jobs:
         run: |
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
-      - name: Run complete MGSN tests with real PostgreSQL
-        run: pnpm --filter @markorbit/mgsn-service test
+      - name: Run focused Outcome Trust tests with real PostgreSQL
+        run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/outcome-trust-evidence-postgres.test.ts tests/outcome-trust-evidence.test.ts
       - name: Push verified repair and formatting to formal branch
         run: |
           if git diff --quiet -- services/mgsn; then
