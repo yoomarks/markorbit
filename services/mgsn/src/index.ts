@@ -24,6 +24,7 @@ export * from './provider-discovery-postgres.js';
 export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
 export * from './controlled-privacy-handoff.js';
+// Durable Handoff persistence records governed disclosure authority only; it grants no Provider engagement, Allocation, Acceptance, Filing, Payment, or Official Truth authority.
 export * from './controlled-privacy-handoff-postgres.js';
 // Phase A exposes contextual advisory Trust evaluation only; it creates no universal score, rank, or routing authority.
 export * from './outcome-trust-evidence.js';
