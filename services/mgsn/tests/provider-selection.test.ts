@@ -59,20 +59,24 @@ function currentSnapshot(
       fixture.currentSelection.sourceLineage.providerSupplyCapability.id
     ]
   };
-  return { ...base, ...overrides } as ProviderSelectionCurrentAuthoritySnapshot;
+  return { ...base, ...overrides };
+}
+
+function authorityEvaluator(
+  value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()
+) {
+  return vi.fn(() => {
+    if (value instanceof Error) {
+      return Promise.reject(value);
+    }
+    return Promise.resolve(value);
+  });
 }
 
 function authoritySource(
   value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()
 ): ProviderSelectionCurrentAuthoritySource {
-  return {
-    evaluateCurrentAuthority: vi.fn(async () => {
-      if (value instanceof Error) {
-        throw value;
-      }
-      return value;
-    })
-  };
+  return { evaluateCurrentAuthority: authorityEvaluator(value) };
 }
 
 function createCommand(
@@ -136,7 +140,8 @@ function revokeCommand(
 
 function harness(value: ProviderSelectionCurrentAuthoritySnapshot | Error = currentSnapshot()) {
   const repository = new InMemoryProviderSelectionRepository();
-  const source = authoritySource(value);
+  const evaluateCurrentAuthority = authorityEvaluator(value);
+  const source: ProviderSelectionCurrentAuthoritySource = { evaluateCurrentAuthority };
   let sequence = 0;
   const service = new ProviderSelectionService(
     repository,
@@ -144,7 +149,7 @@ function harness(value: ProviderSelectionCurrentAuthoritySnapshot | Error = curr
     () => at,
     () => `provider-selection_test-${++sequence}` as ProviderSelectionId
   );
-  return { repository, service, source };
+  return { repository, service, evaluateCurrentAuthority };
 }
 
 async function createCurrent(
@@ -189,17 +194,17 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
   it.each(['SYSTEM', 'AI_AGENT'] as const)(
     'rejects %s callers because Selection requires human action',
     async (actorKind) => {
-      const { service, source } = harness();
+      const { service, evaluateCurrentAuthority } = harness();
 
       await expect(
         service.createOrReplace(principal({ actorKind }), createCommand())
       ).rejects.toMatchObject({ code: 'HUMAN_ACTION_REQUIRED', status: 403 });
-      expect(source.evaluateCurrentAuthority).not.toHaveBeenCalled();
+      expect(evaluateCurrentAuthority).not.toHaveBeenCalled();
     }
   );
 
   it('rejects a wrong trusted Workspace before reading current authority', async () => {
-    const { service, source } = harness();
+    const { service, evaluateCurrentAuthority } = harness();
 
     await expect(
       service.createOrReplace(
@@ -207,11 +212,11 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
         createCommand()
       )
     ).rejects.toMatchObject({ code: 'REQUESTER_WORKSPACE_MISMATCH', status: 403 });
-    expect(source.evaluateCurrentAuthority).not.toHaveBeenCalled();
+    expect(evaluateCurrentAuthority).not.toHaveBeenCalled();
   });
 
   it('rejects selecting actor and trusted authority mismatches', async () => {
-    const { service, source } = harness();
+    const { service, evaluateCurrentAuthority } = harness();
 
     await expect(
       service.createOrReplace(principal({ actorId: 'user_spoofed' }), createCommand())
@@ -222,7 +227,7 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
         createCommand()
       )
     ).rejects.toMatchObject({ code: 'SELECTING_ACTOR_MISMATCH', status: 403 });
-    expect(source.evaluateCurrentAuthority).not.toHaveBeenCalled();
+    expect(evaluateCurrentAuthority).not.toHaveBeenCalled();
   });
 
   it('rejects non-affirmative or mismatched human acknowledgement at runtime', async () => {
@@ -433,9 +438,9 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
   });
 
   it('revokes the exact current Selection without positive candidate revalidation', async () => {
-    const { repository, service, source } = harness();
+    const { repository, service, evaluateCurrentAuthority } = harness();
     const current = await createCurrent(service);
-    vi.mocked(source.evaluateCurrentAuthority).mockRejectedValue(
+    evaluateCurrentAuthority.mockRejectedValue(
       new Error('candidate source unavailable after human withdrawal')
     );
 
@@ -456,18 +461,18 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
       revocationReasonCode: 'HUMAN_WITHDRAWAL'
     });
     expect(state).toEqual({ scopeVersion: 2 });
-    expect(source.evaluateCurrentAuthority).toHaveBeenCalledTimes(1);
+    expect(evaluateCurrentAuthority).toHaveBeenCalledTimes(1);
   });
 
   it('replays the exact historical mutation without re-establishing current usability', async () => {
-    const { service, source } = harness();
+    const { service, evaluateCurrentAuthority } = harness();
     const created = await createCurrent(service);
     const replayed = await service.createOrReplace(principal(), createCommand());
 
     expect(replayed.selection).toEqual(created.selection);
     expect(replayed.replayed).toBe(true);
     expect(replayed.replayDoesNotEstablishCurrentUsability).toBe(true);
-    expect(source.evaluateCurrentAuthority).toHaveBeenCalledTimes(1);
+    expect(evaluateCurrentAuthority).toHaveBeenCalledTimes(1);
   });
 
   it('conflicts when an idempotency key is reused with a different effective fingerprint', async () => {
@@ -497,7 +502,7 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
         new InMemoryProviderSelectionRepository(),
         authoritySource(currentSnapshot()),
         () => at,
-        () => 'provider-selection_lifecycle-test' as ProviderSelectionId
+        () => 'provider-selection_lifecycle-test'
       )
     );
     const validationRepository = new InMemoryProviderSelectionRepository();
@@ -588,7 +593,7 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
       repository,
       authoritySource(currentSnapshot()),
       () => at,
-      () => 'provider-selection_authority-outage' as ProviderSelectionId
+      () => 'provider-selection_authority-outage'
     );
     const created = await seed.createOrReplace(principal(), createCommand());
     const service = new ProviderSelectionService(
@@ -610,9 +615,9 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
   });
 
   it('does not disclose another Workspace Selection through current validation', async () => {
-    const { service, source } = harness();
+    const { service, evaluateCurrentAuthority } = harness();
     const created = await createCurrent(service);
-    const callsBefore = vi.mocked(source.evaluateCurrentAuthority).mock.calls.length;
+    const callsBefore = evaluateCurrentAuthority.mock.calls.length;
 
     await expect(
       service.validateCurrent(
@@ -624,7 +629,7 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
         }
       )
     ).rejects.toMatchObject({ code: 'SELECTION_NOT_FOUND', status: 404 });
-    expect(source.evaluateCurrentAuthority).toHaveBeenCalledTimes(callsBefore);
+    expect(evaluateCurrentAuthority).toHaveBeenCalledTimes(callsBefore);
   });
 
   it('does not let Provider operational or Supply currentness substitute for Direct Executor', async () => {
@@ -633,7 +638,7 @@ describe('MGSN Human Provider Selection V1 Phase A', () => {
       repository,
       authoritySource(currentSnapshot()),
       () => at,
-      () => 'provider-selection_direct-executor' as ProviderSelectionId
+      () => 'provider-selection_direct-executor'
     );
     const created = await seed.createOrReplace(principal(), createCommand());
     const service = new ProviderSelectionService(

@@ -171,23 +171,23 @@ export class InMemoryProviderSelectionRepository implements ProviderSelectionRep
   private readonly replays = new Map<string, ProviderSelectionReplayRecord>();
   private readonly audits = new Map<string, ProviderSelectionAuditEvent[]>();
 
-  async findScopeState(scopeKey: string): Promise<ProviderSelectionScopeState> {
+  findScopeState(scopeKey: string): Promise<ProviderSelectionScopeState> {
     const currentId = this.currentByScope.get(scopeKey);
     const current = currentId ? this.histories.get(currentId)?.at(-1) : undefined;
-    return {
+    return Promise.resolve({
       scopeVersion: this.scopeVersions.get(scopeKey) ?? 0,
       ...(current ? { current: copy(current) } : {})
-    };
+    });
   }
 
-  async findLatestSelection(providerSelectionId: ProviderSelectionId) {
+  findLatestSelection(providerSelectionId: ProviderSelectionId) {
     const latest = this.histories.get(providerSelectionId)?.at(-1);
-    return latest ? copy(latest) : undefined;
+    return Promise.resolve(latest ? copy(latest) : undefined);
   }
 
-  async findReplay(scopeKey: string, idempotencyKey: string) {
+  findReplay(scopeKey: string, idempotencyKey: string) {
     const replay = this.replays.get(replayKey(scopeKey, idempotencyKey));
-    return replay ? copy(replay) : undefined;
+    return Promise.resolve(replay ? copy(replay) : undefined);
   }
 
   // No await: CAS, immutable appends, pointer, replay and audit commit in one JS turn.
@@ -296,12 +296,12 @@ export class InMemoryProviderSelectionRepository implements ProviderSelectionRep
     return Promise.resolve(undefined);
   }
 
-  async listSelectionHistory(providerSelectionId: ProviderSelectionId) {
-    return copy(this.histories.get(providerSelectionId) ?? []);
+  listSelectionHistory(providerSelectionId: ProviderSelectionId) {
+    return Promise.resolve(copy(this.histories.get(providerSelectionId) ?? []));
   }
 
-  async listAuditHistory(scopeKey: string) {
-    return copy(this.audits.get(scopeKey) ?? []);
+  listAuditHistory(scopeKey: string) {
+    return Promise.resolve(copy(this.audits.get(scopeKey) ?? []));
   }
 }
 
