@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { WorkspacePrincipal } from '@markorbit/contracts';
+import { AuthenticationError, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { CoreAuthenticationClient } from '../src/auth.js';
+import { csrfToken } from '../src/auth.js';
 import { createGatewayProductLoopRoutes } from '../src/product-loop-http.js';
 
 const workspaceId = '36363636-3636-4363-8363-363636363636';
@@ -18,7 +19,7 @@ const principal: WorkspacePrincipal = {
   workspaceId,
   membershipId: 'membership_integration_366',
   role: 'WORKSPACE_ADMIN',
-  permissions: ['workspace:read']
+  permissions: ['workspace:read', 'matter:manage']
 };
 const resolveWorkspace = vi.fn(() => Promise.resolve(principal));
 const auth: CoreAuthenticationClient = {
@@ -43,6 +44,14 @@ function route(path: string) {
   return value;
 }
 
+function mutationRoute(path = qualificationPath) {
+  const matches = createGatewayProductLoopRoutes(options).filter(
+    (candidate) => candidate.method === 'POST' && candidate.path === path
+  );
+  if (!matches[0]) throw new Error(`POST ${path} route missing`);
+  return { matches, route: matches[0] };
+}
+
 function request(
   path: string,
   headers: Record<string, string>,
@@ -50,6 +59,15 @@ function request(
   params: Record<string, string> = {}
 ) {
   return { method: 'GET' as const, path, params, query, headers, body: undefined };
+}
+
+function postRequest(
+  path: string,
+  body: unknown,
+  headers: Record<string, string>,
+  params: Record<string, string> = {}
+) {
+  return { method: 'POST' as const, path, params, query: {}, headers, body };
 }
 
 function jsonResponse(status: number, body: unknown): Promise<Response> {
@@ -68,6 +86,40 @@ function sessionHeaders(targetWorkspaceId = workspaceId): Record<string, string>
   };
 }
 
+function mutationHeaders(
+  extras: Record<string, string> = {},
+  targetWorkspaceId = workspaceId
+): Record<string, string> {
+  return {
+    ...sessionHeaders(targetWorkspaceId),
+    origin: 'https://test.markorbit.local',
+    'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+    'idempotency-key': 'qualification-366',
+    ...extras
+  };
+}
+
+function qualificationBody() {
+  return {
+    candidateVersion: 3,
+    expectedCandidateFingerprintSha256: 'a'.repeat(64),
+    outcome: 'QUALIFIED_FOR_MARKREG',
+    rationale: 'Human reviewed the candidate and explicitly qualified it.'
+  };
+}
+
+function qualificationRequest(
+  body: unknown = qualificationBody(),
+  headers: Record<string, string> = mutationHeaders()
+) {
+  return postRequest(
+    `/api/lite/opportunity-candidates/${candidateId}/qualification`,
+    body,
+    headers,
+    { opportunityCandidateId: candidateId }
+  );
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -78,23 +130,6 @@ describe('Gateway Opportunity Candidate authenticated read boundary', () => {
     const downstream = vi.fn((url: string, init: RequestInit) => {
       expect(url).toBe('http://lite.test/v1/opportunity-candidates?limit=25&cursor=next%2Fpage');
       expect(init.method).toBe('GET');
-      expect(init.body).toBeUndefined();
-      const headers = init.headers as Record<string, string>;
-      expect(headers['x-markorbit-internal-authorization']).toBe(
-        'integration-366-internal-key-0123456789'
-      );
-      expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
-      expect(headers['x-correlation-id']).toBe('correlation-366');
-      expect(headers['x-request-id']).toBe('request-366');
-      const encodedPrincipal = headers['x-markorbit-principal'];
-      const envelope = JSON.parse(Buffer.from(encodedPrincipal!, 'base64url').toString('utf8')) as {
-        principal: WorkspacePrincipal;
-      };
-      expect(envelope.principal).toMatchObject({
-        userId: principal.userId,
-        workspaceId,
-        membershipId: principal.membershipId
-      });
       return jsonResponse(200, {
         schemaVersion: 1,
         workspaceId,
@@ -115,6 +150,22 @@ describe('Gateway Opportunity Candidate authenticated read boundary', () => {
     expect(result.status).toBe(200);
     expect(result.body).toMatchObject({ workspaceId, nextCursor: 'next/page' });
     expect(resolveWorkspace).toHaveBeenCalledWith('token-366', workspaceId, 'correlation-366');
+    const init = downstream.mock.calls[0]?.[1] as RequestInit;
+    const forwarded = init.headers as Record<string, string>;
+    expect(forwarded['x-markorbit-internal-authorization']).toBe(
+      'integration-366-internal-key-0123456789'
+    );
+    expect(forwarded['x-markorbit-workspace-id']).toBe(workspaceId);
+    expect(forwarded['x-correlation-id']).toBe('correlation-366');
+    expect(forwarded['x-request-id']).toBe('request-366');
+    const envelope = JSON.parse(
+      Buffer.from(forwarded['x-markorbit-principal']!, 'base64url').toString('utf8')
+    ) as { principal: WorkspacePrincipal };
+    expect(envelope.principal).toMatchObject({
+      userId: principal.userId,
+      workspaceId,
+      membershipId: principal.membershipId
+    });
   });
 
   it('forwards Candidate detail as a pure authenticated read', async () => {
@@ -259,15 +310,229 @@ describe('Gateway Opportunity Candidate authenticated read boundary', () => {
       }
     );
   });
+});
 
-  it('registers only the three requested Opportunity Candidate read routes', () => {
+describe('#575 Gateway explicit human Opportunity Qualification mutation boundary', () => {
+  it('registers exactly once and forwards the exact durable owner command with trusted context', async () => {
+    const disposition = {
+      decision: {
+        outcome: 'QUALIFIED_FOR_MARKREG',
+        decidedByPrincipalId: principal.userId,
+        rationale: qualificationBody().rationale,
+        formalOpportunityCreated: false,
+        customerContacted: false
+      },
+      currentCandidate: {
+        opportunityCandidateId: candidateId,
+        version: 4,
+        status: 'DISPOSITIONED',
+        formalOpportunityCreated: false,
+        customerContacted: false
+      }
+    };
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe(`${liteCandidateUrl}/qualification`);
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual(qualificationBody());
+      const forwarded = init.headers as Record<string, string>;
+      expect(forwarded['x-markorbit-internal-authorization']).toBe(options.internalServiceSecret);
+      expect(forwarded['x-markorbit-workspace-id']).toBe(workspaceId);
+      expect(forwarded['idempotency-key']).toBe('qualification-366');
+      expect(forwarded['x-correlation-id']).toBe('correlation-qualification-366');
+      expect(forwarded['x-request-id']).toBe('request-qualification-366');
+      expect(forwarded).not.toHaveProperty('cookie');
+      const envelope = JSON.parse(
+        Buffer.from(forwarded['x-markorbit-principal']!, 'base64url').toString('utf8')
+      ) as { principal: WorkspacePrincipal };
+      expect(envelope.principal).toMatchObject({
+        userId: principal.userId,
+        workspaceId,
+        membershipId: principal.membershipId
+      });
+      return jsonResponse(201, disposition);
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const h = mutationRoute();
+    expect(h.matches).toHaveLength(1);
+    const result = await h.route.handle(
+      qualificationRequest(
+        qualificationBody(),
+        mutationHeaders({
+          'x-correlation-id': 'correlation-qualification-366',
+          'x-request-id': 'request-qualification-366'
+        })
+      )
+    );
+
+    expect(resolveWorkspace).toHaveBeenCalledWith(
+      'token-366',
+      workspaceId,
+      'correlation-qualification-366'
+    );
+    expect(result).toEqual({ status: 201, body: disposition });
+    expect(result.body).toMatchObject({
+      decision: { formalOpportunityCreated: false, customerContacted: false },
+      currentCandidate: { formalOpportunityCreated: false, customerContacted: false }
+    });
+  });
+
+  it('requires authenticated Core membership and matter:manage before Lite access', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const h = mutationRoute();
+
+    await expect(
+      h.route.handle(
+        qualificationRequest(qualificationBody(), {
+          ...mutationHeaders(),
+          cookie: ''
+        })
+      )
+    ).rejects.toMatchObject({ status: 401, code: 'AUTHENTICATION_REQUIRED' });
+
+    resolveWorkspace.mockRejectedValueOnce(
+      new AuthenticationError('MEMBERSHIP_REQUIRED', 'Workspace membership is required.')
+    );
+    await expect(h.route.handle(qualificationRequest())).rejects.toMatchObject({
+      status: 403,
+      code: 'MEMBERSHIP_REQUIRED'
+    });
+
+    resolveWorkspace.mockResolvedValueOnce({ ...principal, permissions: ['workspace:read'] });
+    await expect(h.route.handle(qualificationRequest())).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSION_DENIED'
+    });
+
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('requires authoritative Workspace, trusted Origin, valid CSRF, and Idempotency-Key', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const h = mutationRoute();
+
+    const missingWorkspace = mutationHeaders();
+    delete missingWorkspace['x-markorbit-workspace-id'];
+    await expect(
+      h.route.handle(qualificationRequest(qualificationBody(), missingWorkspace))
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_WORKSPACE_CONTEXT' });
+
+    await expect(
+      h.route.handle(
+        qualificationRequest(
+          qualificationBody(),
+          mutationHeaders({ origin: 'https://attacker.example' })
+        )
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'UNTRUSTED_ORIGIN' });
+
+    await expect(
+      h.route.handle(
+        qualificationRequest(
+          qualificationBody(),
+          mutationHeaders({ 'x-markorbit-csrf-token': 'invalid' })
+        )
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'INVALID_CSRF_TOKEN' });
+
+    const missingIdempotency = mutationHeaders();
+    delete missingIdempotency['idempotency-key'];
+    await expect(
+      h.route.handle(qualificationRequest(qualificationBody(), missingIdempotency))
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'workspaceId',
+    'decidedByPrincipalId',
+    'actorId',
+    'userId',
+    'principalId',
+    'membershipId'
+  ])('rejects browser authority spoof field %s before Lite', async (field) => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const h = mutationRoute();
+    await expect(
+      h.route.handle(
+        qualificationRequest({
+          ...qualificationBody(),
+          [field]: field === 'workspaceId' ? workspaceId : 'spoofed-authority'
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it.each([400, 404, 409, 422, 503])(
+    'preserves exact owner %i status/body without manufacturing fallback state',
+    async (status) => {
+      const body = { code: `OWNER_${status}`, details: { exact: true, status } };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => jsonResponse(status, body))
+      );
+      const result = await mutationRoute().route.handle(qualificationRequest());
+      expect(result).toEqual({ status, body });
+    }
+  );
+
+  it('maps Lite transport failure to DOWNSTREAM_UNAVAILABLE 503', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('Lite offline')))
+    );
+    await expect(mutationRoute().route.handle(qualificationRequest())).rejects.toMatchObject({
+      status: 503,
+      code: 'DOWNSTREAM_UNAVAILABLE'
+    });
+  });
+
+  it('does not change the existing durable POST workspace-body convention', async () => {
+    const feedbackPath = '/api/lite/publish-packages/:publishPackageId/use-feedback';
+    const concretePath = '/api/lite/publish-packages/publish-package_366/use-feedback';
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/publish-packages/publish-package_366/use-feedback');
+      expect(JSON.parse(init.body as string)).toEqual({
+        workspaceId,
+        publishPackageVersion: 1,
+        expectedPublishPackageFingerprintSha256: 'b'.repeat(64),
+        outcome: 'USER_REPORTED_USED'
+      });
+      return jsonResponse(201, { preserved: true });
+    });
+    vi.stubGlobal('fetch', downstream);
+    const feedback = mutationRoute(feedbackPath);
+    expect(feedback.matches).toHaveLength(1);
+    const result = await feedback.route.handle(
+      postRequest(
+        concretePath,
+        {
+          workspaceId,
+          publishPackageVersion: 1,
+          expectedPublishPackageFingerprintSha256: 'b'.repeat(64),
+          outcome: 'USER_REPORTED_USED'
+        },
+        mutationHeaders({ 'idempotency-key': 'feedback-preserved-366' }),
+        { publishPackageId: 'publish-package_366' }
+      )
+    );
+    expect(result).toEqual({ status: 201, body: { preserved: true } });
+  });
+
+  it('keeps the three Candidate GET routes unchanged and adds only the requested POST route', () => {
     const candidateRoutes = createGatewayProductLoopRoutes(options)
       .filter((candidate) => candidate.path.startsWith(listPath))
       .map((candidate) => `${candidate.method} ${candidate.path}`);
     expect(candidateRoutes).toEqual([
       `GET ${listPath}`,
       `GET ${detailPath}`,
-      `GET ${qualificationPath}`
+      `GET ${qualificationPath}`,
+      `POST ${qualificationPath}`
     ]);
   });
 });

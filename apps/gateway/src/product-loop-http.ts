@@ -41,6 +41,8 @@ const actorSpoofFields = [
   'membershipId'
 ] as const;
 
+const opportunityQualificationAuthoritySpoofFields = ['workspaceId', 'principalId'] as const;
+
 type ProductLoopSecurityMode = 'READ' | 'DURABLE_MUTATION' | 'ADVISORY_POST';
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -75,8 +77,15 @@ function mapAuthentication(error: unknown): never {
   throw new HttpError(status, error.code, error.message, status === 503);
 }
 
-function rejectActorSpoof(body: Readonly<Record<string, unknown>>): void {
-  if (actorSpoofFields.some((field) => Object.prototype.hasOwnProperty.call(body, field)))
+function rejectActorSpoof(
+  body: Readonly<Record<string, unknown>>,
+  additionalFields: readonly string[] = []
+): void {
+  if (
+    [...actorSpoofFields, ...additionalFields].some((field) =>
+      Object.prototype.hasOwnProperty.call(body, field)
+    )
+  )
     throw new HttpError(
       400,
       'ACTOR_SPOOF_REJECTED',
@@ -143,7 +152,8 @@ export function createGatewayProductLoopRoutes(
   const authenticate = async (
     request: JsonRequest,
     securityMode: ProductLoopSecurityMode,
-    permissions: readonly Permission[]
+    permissions: readonly Permission[],
+    additionalSpoofFields: readonly string[] = []
   ): Promise<WorkspacePrincipal> => {
     if (!options.authenticationClient)
       throw new HttpError(
@@ -154,7 +164,7 @@ export function createGatewayProductLoopRoutes(
       );
     const protectedPost = securityMode !== 'READ';
     const body = protectedPost ? bodyRecord(request) : undefined;
-    if (body) rejectActorSpoof(body);
+    if (body) rejectActorSpoof(body, additionalSpoofFields);
     const requestedWorkspaceId = workspaceId(request, body);
     try {
       const principal = await options.authenticationClient.resolveWorkspace(
@@ -286,12 +296,18 @@ export function createGatewayProductLoopRoutes(
     method: JsonRoute['method'],
     path: string,
     permissions: readonly Permission[],
-    securityMode: ProductLoopSecurityMode = method === 'GET' ? 'READ' : 'DURABLE_MUTATION'
+    securityMode: ProductLoopSecurityMode = method === 'GET' ? 'READ' : 'DURABLE_MUTATION',
+    additionalSpoofFields: readonly string[] = []
   ): JsonRoute => ({
     method,
     path,
     handle: async (request) => {
-      const principal = await authenticate(request, securityMode, permissions);
+      const principal = await authenticate(
+        request,
+        securityMode,
+        permissions,
+        additionalSpoofFields
+      );
       return forward(request, principal);
     }
   });
@@ -312,6 +328,13 @@ export function createGatewayProductLoopRoutes(
       '/api/lite/opportunity-candidates/:opportunityCandidateId/qualification',
       ['workspace:read'],
       'READ'
+    ),
+    route(
+      'POST',
+      '/api/lite/opportunity-candidates/:opportunityCandidateId/qualification',
+      ['matter:manage'],
+      'DURABLE_MUTATION',
+      opportunityQualificationAuthoritySpoofFields
     ),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
     {
