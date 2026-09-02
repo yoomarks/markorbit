@@ -29,7 +29,9 @@ describe('Gmail Managed Communication production runtime wiring', () => {
     delete environment[GMAIL_CLIENT_SECRET_ENV];
     delete environment[GMAIL_REFRESH_TOKEN_ENV];
 
-    expect(createGmailManagedCommunicationSenderFromEnvironmentV1(environment, fetchImpl)).toBeUndefined();
+    expect(
+      createGmailManagedCommunicationSenderFromEnvironmentV1(environment, fetchImpl)
+    ).toBeUndefined();
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -38,18 +40,18 @@ describe('Gmail Managed Communication production runtime wiring', () => {
     (name) => {
       const environment = enabledEnvironment();
       delete environment[name];
-      expect(() => createGmailManagedCommunicationSenderFromEnvironmentV1(environment, vi.fn())).toThrow(
-        `${name} is required`
-      );
+      expect(() =>
+        createGmailManagedCommunicationSenderFromEnvironmentV1(environment, vi.fn())
+      ).toThrow(`${name} is required`);
     }
   );
 
   it('fails closed for an authorized non-Gmail provider', () => {
     const environment = enabledEnvironment();
     environment.MO_MANAGED_COMMUNICATION_PROVIDER = 'SMTP';
-    expect(() => createGmailManagedCommunicationSenderFromEnvironmentV1(environment, vi.fn())).toThrow(
-      'currently supports only provider GMAIL'
-    );
+    expect(() =>
+      createGmailManagedCommunicationSenderFromEnvironmentV1(environment, vi.fn())
+    ).toThrow('currently supports only provider GMAIL');
   });
 
   it('constructs the Gmail sender without any OAuth or Gmail network request', () => {
