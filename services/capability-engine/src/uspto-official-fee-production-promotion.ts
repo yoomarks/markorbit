@@ -50,9 +50,7 @@ export function materializeApprovedUsptoOfficialFeeGovernedActivationV1() {
     USPTO_OFFICIAL_FEE_GOVERNED_COMPILATION_INPUT_V1
   );
   if (prepared.status !== 'PREPARED') {
-    throw new Error(
-      `USPTO governed successor is not preparation-ready: ${prepared.status}.`
-    );
+    throw new Error(`USPTO governed successor is not preparation-ready: ${prepared.status}.`);
   }
 
   const predecessor = prepared.validatedSuccessor;

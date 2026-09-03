@@ -43,9 +43,7 @@ describe('USPTO official-fee production promotion governance', () => {
     });
     expect(decision.target.selectionPriority).toBe(100);
     expect(decision.target.limitations).toEqual(first.predecessor.limitations);
-    expect(first.activationEvidenceRef).toBe(
-      executableMethodActivationEvidenceRefV1(decision)
-    );
+    expect(first.activationEvidenceRef).toBe(executableMethodActivationEvidenceRefV1(decision));
     expect(activePackage.lifecycle).toBe('ACTIVE');
     expect(activePackage.packageVersion).toBe(first.predecessor.packageVersion + 1);
     expect(activePackage.activationDecisionId).toBe(decision.decisionId);

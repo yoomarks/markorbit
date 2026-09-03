@@ -35,7 +35,9 @@ export const usptoOfficialFeeSourceAdmissionPolicyV2 = Object.freeze({
   implementationKey: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey,
   inputSchemaId: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.inputSchemaId,
   outputSchemaId: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.outputSchemaId,
-  allowedCallerProducts: [...USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.allowedCallerProducts],
+  allowedCallerProducts: [
+    ...USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.allowedCallerProducts
+  ],
   maximumRiskClass: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.maximumRiskClass,
   methodCurrentness: 'REQUIRED' as const,
   referenceCurrentness: 'REQUIRED' as const

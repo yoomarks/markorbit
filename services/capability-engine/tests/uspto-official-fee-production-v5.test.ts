@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  compileUsptoOfficialFeeMethodPackageV1
-} from '@markorbit/contracts/brain-official-fee-method';
+import { compileUsptoOfficialFeeMethodPackageV1 } from '@markorbit/contracts/brain-official-fee-method';
 import type { CapabilityRequestV2Command } from '@markorbit/contracts/capability-runtime';
 
 import { GovernedCapabilityRuntime } from '../src/capability-runtime.js';
@@ -83,7 +81,8 @@ function command(): CapabilityRequestV2Command {
       callerProduct: 'MARKREG',
       permissionContextRef: 'permission_uspto_real_production_v5'
     },
-    purpose: 'Materialize the first governed production-admissible USPTO fee Resolver source proof.',
+    purpose:
+      'Materialize the first governed production-admissible USPTO fee Resolver source proof.',
     input: {
       jurisdiction: 'US',
       authority: 'USPTO',
