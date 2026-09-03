@@ -5,7 +5,8 @@ import { noRecommendationSourceAuthorityConsequences } from '@markorbit/contract
 
 import {
   HttpCapabilityRecommendationSourceReaderV1,
-  projectRecommendationSourceReferenceV1
+  projectRecommendationSourceReferenceV1,
+  type CapabilityProductionSourceExecutionReferenceTransportV1
 } from '../src/recommendation-source.js';
 
 const principal: WorkspacePrincipal = {
@@ -20,6 +21,16 @@ const principal: WorkspacePrincipal = {
 };
 const internalServiceSecret = 'markreg-recommendation-source-secret-32-bytes-min';
 
+function productionReference(): CapabilityProductionSourceExecutionReferenceTransportV1 {
+  return {
+    schemaVersion: 1,
+    idempotencyKey: 'source-read-1',
+    requestFingerprintSha256: 'a'.repeat(64),
+    capabilityRequestId: 'capreq_source_read',
+    sessionReceiptId: 'session-receipt_source_read'
+  };
+}
+
 function productionRead() {
   const authority = {
     productBusinessStateCreated: false,
@@ -32,13 +43,7 @@ function productionRead() {
   return {
     schemaVersion: 1,
     status: 'PRODUCTION_ADMISSIBLE',
-    reference: {
-      schemaVersion: 1,
-      idempotencyKey: 'source-read-1',
-      requestFingerprintSha256: 'a'.repeat(64),
-      capabilityRequestId: 'capreq_source_read',
-      sessionReceiptId: 'session-receipt_source_read'
-    },
+    reference: productionReference(),
     historical: {
       capabilityRequestId: 'capreq_source_read',
       implementationBindingId: 'implementation-binding_source_read',
@@ -190,20 +195,30 @@ describe('MarkReg production Recommendation source boundary', () => {
     });
 
     const authorityBearing = productionRead();
-    authorityBearing.source.authority.productAuthorizationGranted = true as never;
-    expect(projectRecommendationSourceReferenceV1(authorityBearing)).toMatchObject({
+    const invalidAuthorityBearing = {
+      ...authorityBearing,
+      source: {
+        ...authorityBearing.source,
+        authority: {
+          ...authorityBearing.source.authority,
+          productAuthorizationGranted: true
+        }
+      }
+    };
+    expect(projectRecommendationSourceReferenceV1(invalidAuthorityBearing)).toMatchObject({
       status: 'INVALID_PRODUCER_RESPONSE'
     });
   });
 
   it('sends only the exact producer reference under trusted MarkReg Workspace headers', async () => {
-    const fetcher = vi.fn(() =>
-      Promise.resolve(
-        new Response(JSON.stringify(productionRead()), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        })
-      )
+    const fetcher = vi.fn(
+      (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+        Promise.resolve(
+          new Response(JSON.stringify(productionRead()), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          })
+        )
     );
     const reader = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal/',
@@ -211,11 +226,7 @@ describe('MarkReg production Recommendation source boundary', () => {
       fetcher
     );
 
-    const result = await reader.read(
-      productionRead().reference,
-      principal,
-      'correlation_source_read'
-    );
+    const result = await reader.read(productionReference(), principal, 'correlation_source_read');
 
     expect(result.status).toBe('PRODUCTION_ADMISSIBLE');
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -227,16 +238,19 @@ describe('MarkReg production Recommendation source boundary', () => {
     expect(headers['x-markorbit-workspace-id']).toBe(principal.workspaceId);
     expect(headers['x-markorbit-caller-product']).toBe('MARKREG');
     expect(headers['x-correlation-id']).toBe('correlation_source_read');
-    expect(JSON.parse(String(init?.body))).toEqual(productionRead().reference);
+    expect(JSON.parse(String(init?.body))).toEqual(productionReference());
   });
 
   it('fails closed for network, HTTP and malformed JSON producer failures', async () => {
     const network = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(() => Promise.reject(new Error('offline')))
+      vi.fn(
+        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+          Promise.reject(new Error('offline'))
+      )
     );
-    await expect(network.read(productionRead().reference, principal)).resolves.toMatchObject({
+    await expect(network.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'UNAVAILABLE',
       retryable: true,
       code: 'CAPABILITY_SOURCE_READ_UNAVAILABLE'
@@ -245,9 +259,12 @@ describe('MarkReg production Recommendation source boundary', () => {
     const denied = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(() => Promise.resolve(new Response('{}', { status: 403 })))
+      vi.fn(
+        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+          Promise.resolve(new Response('{}', { status: 403 }))
+      )
     );
-    await expect(denied.read(productionRead().reference, principal)).resolves.toMatchObject({
+    await expect(denied.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'UNAVAILABLE',
       retryable: false,
       code: 'CAPABILITY_SOURCE_READ_HTTP_403'
@@ -256,9 +273,12 @@ describe('MarkReg production Recommendation source boundary', () => {
     const malformed = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(() => Promise.resolve(new Response('not-json', { status: 200 })))
+      vi.fn(
+        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+          Promise.resolve(new Response('not-json', { status: 200 }))
+      )
     );
-    await expect(malformed.read(productionRead().reference, principal)).resolves.toMatchObject({
+    await expect(malformed.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'INVALID_PRODUCER_RESPONSE',
       code: 'INVALID_CAPABILITY_SOURCE_JSON'
     });
