@@ -19,6 +19,7 @@ import {
 import {
   createTrademarkAssetClient,
   TrademarkAssetHttpError,
+  type CurrentTrademarkAssetManagementDispositionProjection,
   type TrademarkAssetClient,
   type TrademarkAssetDetailResponse,
   type TrademarkAssetPortfolioManagementEntry,
@@ -71,6 +72,10 @@ export function TrademarkAssetPortfolio({
   );
   const [selectedId, setSelectedId] = useState<TrademarkAssetId>();
   const [detail, setDetail] = useState<TrademarkAssetDetailResponse>();
+  const [managementDispositions, setManagementDispositions] =
+    useState<CurrentTrademarkAssetManagementDispositionProjection>();
+  const [managementDispositionReadUnavailable, setManagementDispositionReadUnavailable] =
+    useState(false);
   const [serviceWorkPackage, setServiceWorkPackage] = useState<TrademarkServiceWorkPackage>();
   const [detailState, setDetailState] = useState<LoadState>('ready');
   const [detailErrorStatus, setDetailErrorStatus] = useState<number>();
@@ -96,9 +101,20 @@ export function TrademarkAssetPortfolio({
     void loadPortfolio();
   }, [loadPortfolio]);
 
+  const reloadManagementDispositions = async (
+    trademarkAssetId: TrademarkAssetId
+  ): Promise<CurrentTrademarkAssetManagementDispositionProjection> => {
+    const projection = await client.loadManagementDispositions(trademarkAssetId);
+    setManagementDispositions(projection);
+    setManagementDispositionReadUnavailable(false);
+    return projection;
+  };
+
   const openAsset = async (trademarkAssetId: TrademarkAssetId) => {
     setSelectedId(trademarkAssetId);
     setDetail(undefined);
+    setManagementDispositions(undefined);
+    setManagementDispositionReadUnavailable(false);
     setServiceWorkPackage(undefined);
     setDetailState('loading');
     setDetailErrorStatus(undefined);
@@ -109,6 +125,11 @@ export function TrademarkAssetPortfolio({
       ]);
       setDetail(loadedDetail);
       setServiceWorkPackage(loadedWorkPackage);
+      try {
+        await reloadManagementDispositions(trademarkAssetId);
+      } catch {
+        setManagementDispositionReadUnavailable(true);
+      }
       setDetailState('ready');
     } catch (error) {
       setDetailErrorStatus(error instanceof TrademarkAssetHttpError ? error.status : 503);
@@ -154,6 +175,13 @@ export function TrademarkAssetPortfolio({
             {...(detail.latestRefresh ? { latestRefresh: detail.latestRefresh } : {})}
             managementSignals={detail.managementSignals ?? []}
             recommendations={detail.recommendations ?? []}
+            {...(managementDispositions ? { managementDispositions } : {})}
+            managementDispositionReadUnavailable={managementDispositionReadUnavailable}
+            onRecordManagementDisposition={(input, idempotencyKey) =>
+              client.recordManagementDisposition(selectedId, input, idempotencyKey)
+            }
+            onReloadManagementDispositions={() => reloadManagementDispositions(selectedId)}
+            onReloadAsset={() => openAsset(selectedId)}
             onPrepareAiGuide={(input) => client.prepareAiGuide(selectedId, input)}
             {...(detail.commerceProfile ? { commerceProfile: detail.commerceProfile } : {})}
             onSaveCommerceProfile={async (input) => {
