@@ -1,0 +1,62 @@
+name: tmp-699-lint-fix
+on:
+  push:
+    branches:
+      - tmp/699-lint-fix
+permissions:
+  contents: write
+jobs:
+  fix-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/699-lint-fix
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact lint fixes
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          function replaceExact(path, before, after) {
+            const source = fs.readFileSync(path, 'utf8');
+            if (!source.includes(before)) throw new Error(`missing expected text in ${path}`);
+            fs.writeFileSync(path, source.replace(before, after));
+          }
+          const test = 'apps/markreg-web/src/ProductionIntakePlanning.test.tsx';
+          replaceExact(
+            test,
+            `    const api = client();\n    render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);\n\n    expect(screen.getByText(/Customer-supplied Intake only/)).toBeTruthy();`,
+            `    const create = vi.fn<ProductionIntakeClient['create']>(() =>\n      Promise.resolve({ intake: record })\n    );\n    const get = vi.fn<ProductionIntakeClient['get']>(() => Promise.resolve({ intake: record }));\n    const api = client({ create, get });\n    render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);\n\n    expect(screen.getByText(/Customer-supplied Intake only/)).toBeTruthy();`
+          );
+          replaceExact(test, `    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));\n    const submitted = vi.mocked(api.create).mock.calls[0]![0] as CreateProductionIntakeCommandV1;`, `    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));\n    const submitted = create.mock.calls[0]![0];`);
+          replaceExact(test, `    await waitFor(() => expect(api.get).toHaveBeenCalledWith(record.intakeId));`, `    await waitFor(() => expect(get).toHaveBeenCalledWith(record.intakeId));`);
+          replaceExact(
+            test,
+            `    const api = client();\n    render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);\n\n    expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();\n    expect(api.get).toHaveBeenCalledWith(record.intakeId);\n    expect(api.create).not.toHaveBeenCalled();`,
+            `    const create = vi.fn<ProductionIntakeClient['create']>(() =>\n      Promise.resolve({ intake: record })\n    );\n    const get = vi.fn<ProductionIntakeClient['get']>(() => Promise.resolve({ intake: record }));\n    const api = client({ create, get });\n    render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);\n\n    expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();\n    expect(get).toHaveBeenCalledWith(record.intakeId);\n    expect(create).not.toHaveBeenCalled();`
+          );
+          const component = 'apps/markreg-web/src/ProductionIntakePlanning.tsx';
+          replaceExact(component, `    // eslint-disable-next-line react-hooks/exhaustive-deps\n`, '');
+          NODE
+          pnpm exec prettier --write apps/markreg-web/src/ProductionIntakePlanning.test.tsx apps/markreg-web/src/ProductionIntakePlanning.tsx
+      - name: Verify MarkReg Web
+        run: |
+          pnpm --filter @markorbit/markreg-web lint
+          pnpm --filter @markorbit/markreg-web typecheck
+          pnpm --filter @markorbit/markreg-web test
+      - name: Commit exact verified output
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/markreg-web/src/ProductionIntakePlanning.test.tsx apps/markreg-web/src/ProductionIntakePlanning.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: temporary #699 lint-verified output'
+          git push origin HEAD:tmp/699-lint-fix
