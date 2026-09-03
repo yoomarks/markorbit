@@ -1,6 +1,4 @@
-import {
-  CurrentCapabilitySourceAdmissionPolicyContentTrackingEvaluatorV1
-} from './current-source-admission-evidence-v5.js';
+import { CurrentCapabilitySourceAdmissionPolicyContentTrackingEvaluatorV1 } from './current-source-admission-evidence-v5.js';
 import type {
   CurrentImplementationProfileAuthority,
   CurrentRuntimeCapabilityAuthority
@@ -15,9 +13,7 @@ import { UsptoOfficialFeeMethodCurrentnessAuthorityV1 } from './uspto-official-f
 import { currentApprovedUsptoOfficialFeeMethodActivationAuthorityV1 } from './uspto-official-fee-production-promotion.js';
 import { promotedCapabilitySourceAdmissionPolicyCatalogV2 } from './uspto-official-fee-production-policy.js';
 import { UsptoOfficialFeeReferenceCurrentnessAuthorityV1 } from './uspto-official-fee-reference-currentness.js';
-import type {
-  OfficialFeeReferenceReaderV1
-} from './uspto-official-fee-resolver-pilot.js';
+import type { OfficialFeeReferenceReaderV1 } from './uspto-official-fee-resolver-pilot.js';
 import { UsptoOfficialFeeSourceUseContextAuthorityV1 } from './uspto-official-fee-source-use.js';
 import type { CapabilityRuntimeExecution } from './capability-runtime.js';
 

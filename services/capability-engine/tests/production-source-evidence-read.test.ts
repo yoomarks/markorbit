@@ -216,7 +216,9 @@ describe('trusted production source evidence read V1', () => {
     const execution = await persistProductionExecution(populated);
     const reference = capabilityProductionSourceExecutionReferenceV1(execution);
 
-    await expect(reader(new InMemoryCapabilityRuntimeReplayStoreV1()).read(reference)).resolves.toMatchObject({
+    await expect(
+      reader(new InMemoryCapabilityRuntimeReplayStoreV1()).read(reference)
+    ).resolves.toMatchObject({
       status: 'NOT_FOUND'
     });
     await expect(
@@ -230,7 +232,10 @@ describe('trusted production source evidence read V1', () => {
         ...reference,
         sessionReceiptId: 'session-receipt_wrong-execution'
       })
-    ).resolves.toMatchObject({ status: 'CONFLICT', denial: { code: 'EXECUTION_REFERENCE_CONFLICT' } });
+    ).resolves.toMatchObject({
+      status: 'CONFLICT',
+      denial: { code: 'EXECUTION_REFERENCE_CONFLICT' }
+    });
 
     const inProgress = new InMemoryCapabilityRuntimeReplayStoreV1();
     await inProgress.claim({
@@ -261,8 +266,7 @@ describe('trusted production source evidence read V1', () => {
   it('does not reinterpret execution without the canonical ACTIVE successor evidence as production', async () => {
     const execution = await baseRuntime().invoke(command('uspto-production-source-read-legacy'));
     const activation = materializeApprovedUsptoOfficialFeeGovernedActivationV1();
-    const activePackageRef =
-      `brain-method-package:${activation.activePackage.packageId}@${activation.activePackage.packageVersion}`;
+    const activePackageRef = `brain-method-package:${activation.activePackage.packageId}@${activation.activePackage.packageVersion}`;
     const historicalOnly = {
       ...execution,
       outcome: {
@@ -300,8 +304,9 @@ describe('trusted production source evidence read V1', () => {
     const execution = await persistProductionExecution(store);
     const reference = capabilityProductionSourceExecutionReferenceV1(execution);
 
-    function unavailableStore(code: 'PERSISTENCE_UNAVAILABLE' | 'INVALID_PERSISTED_REPLAY'):
-      CapabilityRuntimeReplayStoreV1 {
+    function unavailableStore(
+      code: 'PERSISTENCE_UNAVAILABLE' | 'INVALID_PERSISTED_REPLAY'
+    ): CapabilityRuntimeReplayStoreV1 {
       const failure = () =>
         Promise.reject(new CapabilityRuntimeReplayStoreError(code, `forced ${code}`));
       return {
@@ -310,15 +315,19 @@ describe('trusted production source evidence read V1', () => {
         complete: failure,
         release: failure,
         waitForCompletion: failure
-      } as CapabilityRuntimeReplayStoreV1;
+      };
     }
 
-    await expect(reader(unavailableStore('PERSISTENCE_UNAVAILABLE')).read(reference)).resolves.toMatchObject({
+    await expect(
+      reader(unavailableStore('PERSISTENCE_UNAVAILABLE')).read(reference)
+    ).resolves.toMatchObject({
       status: 'UNAVAILABLE',
       retryable: true,
       denial: { code: 'PERSISTENCE_UNAVAILABLE' }
     });
-    await expect(reader(unavailableStore('INVALID_PERSISTED_REPLAY')).read(reference)).resolves.toMatchObject({
+    await expect(
+      reader(unavailableStore('INVALID_PERSISTED_REPLAY')).read(reference)
+    ).resolves.toMatchObject({
       status: 'UNAVAILABLE',
       retryable: false,
       denial: { code: 'INVALID_PERSISTED_REPLAY' }

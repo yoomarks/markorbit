@@ -5,9 +5,7 @@ import {
   CapabilityRuntimeReplayStoreError,
   type CapabilityRuntimeReplayStoreV1
 } from './capability-runtime-replay-store.js';
-import {
-  capabilityRuntimeRequestFingerprintSha256V1
-} from './durable-governed-capability-runtime.js';
+import { capabilityRuntimeRequestFingerprintSha256V1 } from './durable-governed-capability-runtime.js';
 import {
   CapabilitySourceAdmissionEvidenceV5Error,
   CurrentCapabilitySourceAdmissionEvidenceMaterializerV5,
@@ -117,7 +115,12 @@ export type CapabilityProductionSourceEvidenceReadResultV1 =
     }>;
 
 function text(value: unknown, field: string, maximum = 500): string {
-  if (typeof value !== 'string' || value.length < 1 || value.length > maximum || value.trim() !== value)
+  if (
+    typeof value !== 'string' ||
+    value.length < 1 ||
+    value.length > maximum ||
+    value.trim() !== value
+  )
     throw new TypeError(`${field} must contain 1 to ${maximum} exact characters.`);
   return value;
 }
@@ -181,9 +184,13 @@ export function parseCapabilityProductionSourceExecutionReferenceV1(
   ];
   const unknown = Object.keys(input).filter((key) => !expected.includes(key));
   if (unknown.length)
-    throw new TypeError(`Capability production source execution reference has unsupported fields: ${unknown.join(', ')}.`);
+    throw new TypeError(
+      `Capability production source execution reference has unsupported fields: ${unknown.join(', ')}.`
+    );
   if (input.schemaVersion !== 1)
-    throw new TypeError('Capability production source execution reference schemaVersion must be 1.');
+    throw new TypeError(
+      'Capability production source execution reference schemaVersion must be 1.'
+    );
   const idempotencyKey = text(input.idempotencyKey, 'idempotencyKey', 300);
   const requestFingerprintSha256 = text(
     input.requestFingerprintSha256,
@@ -343,7 +350,9 @@ function replayUnavailable(
 }
 
 export class CapabilityProductionSourceEvidenceReadServiceV1 {
-  constructor(private readonly options: Readonly<CapabilityProductionSourceEvidenceReadServiceOptionsV1>) {}
+  constructor(
+    private readonly options: Readonly<CapabilityProductionSourceEvidenceReadServiceOptionsV1>
+  ) {}
 
   async read(value: unknown): Promise<CapabilityProductionSourceEvidenceReadResultV1> {
     const reference = parseCapabilityProductionSourceExecutionReferenceV1(value);
@@ -372,7 +381,8 @@ export class CapabilityProductionSourceEvidenceReadServiceV1 {
         reference,
         denial: {
           code: 'REPLAY_IDENTITY_CONFLICT',
-          reason: 'The durable idempotency identity belongs to a different normalized Capability request.'
+          reason:
+            'The durable idempotency identity belongs to a different normalized Capability request.'
         },
         authority: capabilitySourceAdmissionNoAuthorityConsequences
       };
@@ -385,7 +395,8 @@ export class CapabilityProductionSourceEvidenceReadServiceV1 {
         retryable: true,
         denial: {
           code: 'EXECUTION_IN_PROGRESS',
-          reason: 'The governed Capability execution is still in progress and has no immutable completed source yet.'
+          reason:
+            'The governed Capability execution is still in progress and has no immutable completed source yet.'
         },
         authority: capabilitySourceAdmissionNoAuthorityConsequences
       };
@@ -438,7 +449,8 @@ export class CapabilityProductionSourceEvidenceReadServiceV1 {
         retryable: false,
         denial: {
           code: 'PRODUCER_EVIDENCE_INTEGRITY_FAILURE',
-          reason: 'Current production source evidence could not be projected through the canonical producer read model.'
+          reason:
+            'Current production source evidence could not be projected through the canonical producer read model.'
         },
         authority: capabilitySourceAdmissionNoAuthorityConsequences
       };
