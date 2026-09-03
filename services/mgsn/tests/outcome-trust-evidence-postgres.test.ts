@@ -358,7 +358,7 @@ suite('MGSN P0 #633 durable Outcome & Trust Evidence', () => {
     });
   });
 
-  it('durable runtime defaults current exposure to fail closed and never treats persisted history as serving authority', async () => {
+  it('durable runtime revalidates current exposure and never treats persisted history as serving authority', async () => {
     const durable = createDurableMgsnServices({
       database,
       coreUrl: 'http://core.invalid',
@@ -376,7 +376,7 @@ suite('MGSN P0 #633 durable Outcome & Trust Evidence', () => {
       )
     ).resolves.toMatchObject({
       decision: 'DENY',
-      reason: 'AUTHORITY_UNAVAILABLE',
+      reason: 'PARTICIPATION_NOT_ACTIVE',
       artifactAccessAuthorized: false,
       authorityConsequences: noTrustEvidenceAuthorityConsequences
     });
