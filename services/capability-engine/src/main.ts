@@ -101,16 +101,16 @@ if (milestoneFixtureMode) {
     managedAiRuntime,
     internalServiceSecret
   });
-  const observedGovernedCapabilityRuntime =
-    rawGovernedCapabilityRuntime && telemetrySink
-      ? new ObservedGovernedCapabilityRuntimeV1(rawGovernedCapabilityRuntime, telemetrySink)
-      : rawGovernedCapabilityRuntime;
-  const governedCapabilityRuntime = observedGovernedCapabilityRuntime
+  const durableGovernedCapabilityRuntime = rawGovernedCapabilityRuntime
     ? new DurableGovernedCapabilityRuntimeV1({
-        runtime: observedGovernedCapabilityRuntime,
+        runtime: rawGovernedCapabilityRuntime,
         replayStore: new PostgresCapabilityRuntimeReplayStoreV1(database, pool)
       })
     : null;
+  const governedCapabilityRuntime =
+    durableGovernedCapabilityRuntime && telemetrySink
+      ? new ObservedGovernedCapabilityRuntimeV1(durableGovernedCapabilityRuntime, telemetrySink)
+      : durableGovernedCapabilityRuntime;
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
