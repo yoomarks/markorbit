@@ -1,0 +1,46 @@
+name: tmp-724-prettier-probe
+
+on:
+  push:
+    branches:
+      - 'tmp/724-prettier-probe'
+
+permissions:
+  contents: write
+
+jobs:
+  prettier-write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/724-prettier-probe
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Commit exact Prettier output to temporary branch
+        run: |
+          pnpm exec prettier --write \
+            apps/markreg-web/src/ProductionIntakeFlow.tsx \
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx \
+            apps/markreg-web/src/WorkspaceHome.production-intake.test.tsx
+          if git diff --quiet -- \
+            apps/markreg-web/src/ProductionIntakeFlow.tsx \
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx \
+            apps/markreg-web/src/WorkspaceHome.production-intake.test.tsx; then
+            echo 'already formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/markreg-web/src/ProductionIntakeFlow.tsx \
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx \
+            apps/markreg-web/src/WorkspaceHome.production-intake.test.tsx
+          git commit -m 'style: temporary #724 exact prettier output'
+          git push origin HEAD:tmp/724-prettier-probe
