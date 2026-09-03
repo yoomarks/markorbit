@@ -1,0 +1,69 @@
+name: tmp-656-refresh-stale-policy-tests
+
+on:
+  push:
+    branches:
+      - capability/656-uspto-production-promotion
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: capability/656-uspto-production-promotion
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Refresh stale policy expectations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+            'services/capability-engine/tests/current-source-admission-evidence-v3.test.ts': (
+              """  it('keeps every current Phase 4 source-admission policy explicitly PILOT', () => {\n    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.every((entry) => entry.maturityClass === 'PILOT')\n    ).toBe(true);\n  });""",
+              """  it('keeps the three CN Phase 4 policies PILOT while governed USPTO v2 is production-admissible', () => {\n    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')\n    ).toHaveLength(3);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.filter(\n        (entry) => entry.maturityClass === 'PRODUCTION_ADMISSIBLE'\n      )\n    ).toEqual([\n      expect.objectContaining({\n        policyId: 'source-admission-policy.uspto-official-fee-resolver.v2',\n        policyVersion: 2,\n        maturityClass: 'PRODUCTION_ADMISSIBLE'\n      })\n    ]);\n  });"""
+            ),
+            'services/capability-engine/tests/source-admission-policy-content-provenance.test.ts': (
+              """  it('does not manufacture content provenance for the four current PILOT policies', () => {\n    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.every((entry) => entry.maturityClass === 'PILOT')\n    ).toBe(true);\n    expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput())).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n    expect(\n      currentCapabilitySourceAdmissionPolicyContentProvenanceV1.evaluate(policyInput())\n    ).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n  });""",
+              """  it('does not manufacture content provenance for the three current CN PILOT policies', () => {\n    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')\n    ).toHaveLength(3);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.filter(\n        (entry) => entry.maturityClass === 'PRODUCTION_ADMISSIBLE'\n      )\n    ).toHaveLength(1);\n    expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput())).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n    expect(\n      currentCapabilitySourceAdmissionPolicyContentProvenanceV1.evaluate(policyInput())\n    ).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n  });"""
+            ),
+            'services/capability-engine/tests/source-admission-policy-provenance.test.ts': (
+              """  it('does not manufacture provenance for the four current PILOT policies', () => {\n    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.every((entry) => entry.maturityClass === 'PILOT')\n    ).toBe(true);\n    expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput())).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n    expect(\n      currentCapabilitySourceAdmissionPolicyProvenanceV1.evaluate(policyInput())\n    ).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n  });""",
+              """  it('does not manufacture provenance for the three current CN PILOT policies', () => {\n    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')\n    ).toHaveLength(3);\n    expect(\n      currentCapabilitySourceAdmissionPoliciesV1.filter(\n        (entry) => entry.maturityClass === 'PRODUCTION_ADMISSIBLE'\n      )\n    ).toHaveLength(1);\n    expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput())).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n    expect(\n      currentCapabilitySourceAdmissionPolicyProvenanceV1.evaluate(policyInput())\n    ).toMatchObject({\n      applicability: 'UNSUPPORTED'\n    });\n  });"""
+            ),
+            'services/capability-engine/tests/uspto-official-fee-method-currentness.test.ts': (
+              """  it('does not promote the live USPTO source policy beyond PILOT', async () => {\n    const fixture = approvedActivationFixture();\n    const execution = executionWithActivePackageEvidence(\n      await legacyExecution(),\n      fixture.activePackage\n    );\n\n    const policy = currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput(execution));\n\n    expect(policy).toMatchObject({ applicability: 'UNSUPPORTED' });\n    if (policy.applicability !== 'UNSUPPORTED') throw new Error('expected PILOT policy rejection');\n    expect(policy.reason).toContain('PILOT');\n  });""",
+              """  it('uses the live governed USPTO v2 policy while preserving Method and Reference currentness gates', async () => {\n    const fixture = approvedActivationFixture();\n    const execution = executionWithActivePackageEvidence(\n      await legacyExecution(),\n      fixture.activePackage\n    );\n\n    const policy = currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput(execution));\n\n    expect(policy).toEqual({\n      applicability: 'SUPPORTED',\n      methodCurrentness: 'REQUIRED',\n      referenceCurrentness: 'REQUIRED'\n    });\n  });"""
+            ),
+            'services/capability-engine/tests/uspto-official-fee-source-use.test.ts': (
+              """  it('does not reinterpret the current repository USPTO source policy as production-admissible', async () => {\n    const execution = await historicalExecution();\n    const result = currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate({\n      execution,\n      currentCapability: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,\n      currentImplementation: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE\n    });\n\n    expect(result).toMatchObject({ applicability: 'UNSUPPORTED' });\n    if (result.applicability === 'UNSUPPORTED') {\n      expect(result.reason).toContain('pilot');\n    }\n  });""",
+              """  it('uses the live governed USPTO v2 policy without bypassing producer currentness gates', async () => {\n    const execution = await historicalExecution();\n    const result = currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate({\n      execution,\n      currentCapability: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,\n      currentImplementation: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE\n    });\n\n    expect(result).toEqual({\n      applicability: 'SUPPORTED',\n      methodCurrentness: 'REQUIRED',\n      referenceCurrentness: 'REQUIRED'\n    });\n  });"""
+            )
+          }
+
+          for filename, (old, new) in replacements.items():
+            path = Path(filename)
+            text = path.read_text()
+            if old not in text:
+              raise SystemExit(f'expected stale block not found: {filename}')
+            path.write_text(text.replace(old, new, 1))
+          PY
+      - run: pnpm exec prettier --write services/capability-engine/tests/current-source-admission-evidence-v3.test.ts services/capability-engine/tests/source-admission-policy-content-provenance.test.ts services/capability-engine/tests/source-admission-policy-provenance.test.ts services/capability-engine/tests/uspto-official-fee-method-currentness.test.ts services/capability-engine/tests/uspto-official-fee-source-use.test.ts
+      - run: git rm .github/workflows/tmp-656-refresh-stale-policy-tests.yml
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/capability-engine/tests/current-source-admission-evidence-v3.test.ts services/capability-engine/tests/source-admission-policy-content-provenance.test.ts services/capability-engine/tests/source-admission-policy-provenance.test.ts services/capability-engine/tests/uspto-official-fee-method-currentness.test.ts services/capability-engine/tests/uspto-official-fee-source-use.test.ts
+          git commit -m 'test(capability): align current policy expectations after #659 approval'
+          git push origin HEAD:capability/656-uspto-production-promotion
