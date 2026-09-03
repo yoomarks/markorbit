@@ -64,15 +64,13 @@ function exactCurrentPackage(work: Readonly<ContentStudioWorkSummary>) {
   const publishPackage = work.latestPublishPackage;
   return Boolean(
     draft &&
-      publishPackage &&
-      publishPackage.contentDraft.id === draft.contentDraftId &&
-      Number(publishPackage.contentDraft.version) === draft.version
+    publishPackage &&
+    publishPackage.contentDraft.id === draft.contentDraftId &&
+    Number(publishPackage.contentDraft.version) === draft.version
   );
 }
 
-export function contentWorkTriage(
-  work: Readonly<ContentStudioWorkSummary>
-): ContentTriageFilter {
+export function contentWorkTriage(work: Readonly<ContentStudioWorkSummary>): ContentTriageFilter {
   if (!work.latestDraft) return 'NEEDS_ACTION';
   switch (work.latestDraft.status) {
     case 'DRAFT':
@@ -223,9 +221,7 @@ function WorkList({
         if (!normalizedQuery) return true;
         return `${work.title} ${work.rationale}`.toLowerCase().includes(normalizedQuery);
       })
-      .sort(
-        (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
-      );
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
   }, [filter, query, value.items]);
 
   return (
@@ -248,11 +244,7 @@ function WorkList({
         />
       ) : (
         <>
-          <div
-            className="content-studio__triage"
-            role="search"
-            aria-label="Content work triage"
-          >
+          <div className="content-studio__triage" role="search" aria-label="Content work triage">
             <TextInput
               label="Search loaded content work"
               value={query}
