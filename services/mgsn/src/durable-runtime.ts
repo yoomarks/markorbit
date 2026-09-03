@@ -14,6 +14,9 @@ import {
   type TrustEvidenceCurrentAuthoritySource
 } from './outcome-trust-evidence.js';
 import { PostgresOutcomeTrustEvidenceRepository } from './outcome-trust-evidence-postgres.js';
+import { ProviderDiscoveryCurrentResponsibilityService } from './provider-discovery-current-responsibility.js';
+import { PostgresProviderDiscoverySourceRepository } from './provider-discovery-postgres.js';
+import { ProviderDiscoveryService } from './provider-discovery.js';
 import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
 import { ProviderResponsibilityService } from './provider-responsibility.js';
@@ -128,6 +131,7 @@ export interface DurableMgsnServicesOptions {
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
+  providerDiscovery: ProviderDiscoveryCurrentResponsibilityService;
   providerResponsibility: ProviderResponsibilityService;
   providerSelection: ProviderSelectionService;
   controlledHandoff: ControlledPrivacyHandoffService;
@@ -154,6 +158,7 @@ export function createDurableMgsnServices(
     options.database,
     query
   );
+  const providerDiscoveryRepository = new PostgresProviderDiscoverySourceRepository(query);
   const providerResponsibilityRepository = new PostgresProviderResponsibilityRepository(
     options.database,
     query
@@ -181,6 +186,10 @@ export function createDurableMgsnServices(
   const evidenceHandoff = new HttpProviderReturnEvidenceHandoffTarget(
     options.executionUrl,
     options.internalServiceSecret
+  );
+  const providerResponsibility = new ProviderResponsibilityService(
+    providerResponsibilityRepository,
+    providerRepository
   );
 
   return {
@@ -211,10 +220,11 @@ export function createDurableMgsnServices(
       networkParticipationRepository,
       providerRepository
     ),
-    providerResponsibility: new ProviderResponsibilityService(
-      providerResponsibilityRepository,
-      providerRepository
+    providerDiscovery: new ProviderDiscoveryCurrentResponsibilityService(
+      new ProviderDiscoveryService(providerDiscoveryRepository),
+      providerResponsibility
     ),
+    providerResponsibility,
     providerSelection: new ProviderSelectionService(
       providerSelectionRepository,
       options.providerSelectionCurrentAuthoritySource ?? unavailableProviderSelectionAuthority

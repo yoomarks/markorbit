@@ -21,6 +21,7 @@ export * from './provider-responsibility.js';
 export * from './provider-responsibility-postgres.js';
 export * from './provider-discovery.js';
 export * from './provider-discovery-postgres.js';
+export * from './provider-discovery-current-responsibility.js';
 export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
 export * from './controlled-privacy-handoff.js';
