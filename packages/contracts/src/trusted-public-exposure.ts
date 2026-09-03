@@ -204,6 +204,13 @@ function isHexSha256(value: unknown): value is string {
   return typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 }
 
+function isTrustedPublicFieldClass(value: unknown): value is TrustedPublicFieldClassV1 {
+  return (
+    typeof value === 'string' &&
+    (trustedPublicFieldClasses as readonly string[]).includes(value)
+  );
+}
+
 function hasNoAuthorityConsequences(value: unknown): value is TrustedPublicAuthorityConsequencesV1 {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
@@ -267,12 +274,15 @@ export function parseTrustedPublicEligibilityAuthorizationV1(
     throw new Error('Invalid authority');
   if (!item.purpose || !trustedPublicAudienceKinds.includes(item.audience))
     throw new Error('Invalid purpose/audience');
-  if (!Array.isArray(item.allowedFields) || item.allowedFields.length === 0)
+
+  const rawAllowedFields: unknown = item.allowedFields;
+  if (!Array.isArray(rawAllowedFields) || rawAllowedFields.length === 0)
     throw new Error('Empty public allowlist');
-  if (new Set(item.allowedFields).size !== item.allowedFields.length)
-    throw new Error('Duplicate public field');
-  if (item.allowedFields.some((field) => !trustedPublicFieldClasses.includes(field)))
+  const allowedFields: readonly unknown[] = rawAllowedFields;
+  if (new Set(allowedFields).size !== allowedFields.length) throw new Error('Duplicate public field');
+  if (allowedFields.some((field) => !isTrustedPublicFieldClass(field)))
     throw new Error('Invalid public field');
+
   if (!Array.isArray(item.sourceAuthorities) || item.sourceAuthorities.length === 0)
     throw new Error('Missing source authority');
   item.sourceAuthorities.forEach(assertSourceAuthority);
@@ -307,25 +317,31 @@ export function parseTrustedPublicProjectionV1(value: unknown): TrustedPublicPro
   if (item.schemaVersion !== 1 || item.version < 1 || !item.subjectProviderId || !item.purpose) {
     throw new Error('Invalid projection identity');
   }
+
+  const rawFields: unknown = item.fields;
   if (
     !trustedPublicAudienceKinds.includes(item.audience) ||
-    !Array.isArray(item.fields) ||
-    item.fields.length === 0
+    !Array.isArray(rawFields) ||
+    rawFields.length === 0
   ) {
     throw new Error('Invalid projection audience/fields');
   }
-  if (item.fields.some((field) => !trustedPublicFieldClasses.includes(field.fieldClass))) {
-    throw new Error('Invalid projection field');
-  }
-  for (const field of item.fields) {
+  const fields: readonly unknown[] = rawFields;
+  for (const fieldValue of fields) {
+    if (!fieldValue || typeof fieldValue !== 'object') throw new Error('Invalid projection field');
+    const field = fieldValue as Partial<TrustedPublicProjectionFieldV1>;
+    if (!isTrustedPublicFieldClass(field.fieldClass)) throw new Error('Invalid projection field');
     assertSourceAuthority(field.sourceAuthority);
-    if (field.trustEvidenceReference) {
+
+    const trust = field.trustEvidenceReference;
+    if (trust !== undefined) {
       if (
-        !field.trustEvidenceReference.trustEvidenceItemId ||
-        field.trustEvidenceReference.trustEvidenceItemVersion < 1 ||
-        !isHexSha256(field.trustEvidenceReference.trustEvidenceItemFingerprintSha256) ||
-        !field.trustEvidenceReference.publicAudienceAuthorizationReference ||
-        field.trustEvidenceReference.artifactRetrievalAuthorized !== false
+        !trust.trustEvidenceItemId ||
+        !Number.isInteger(trust.trustEvidenceItemVersion) ||
+        trust.trustEvidenceItemVersion < 1 ||
+        !isHexSha256(trust.trustEvidenceItemFingerprintSha256) ||
+        !trust.publicAudienceAuthorizationReference ||
+        trust.artifactRetrievalAuthorized !== false
       ) {
         throw new Error('Invalid Trust Evidence public reference');
       }
