@@ -1,18 +1,8 @@
 name: Product Loop Feedback Observability
 
-# Exact-head gate for PLC-WP-06 manual use feedback and Product-loop evidence.
+# Manual diagnostic entrypoint. Automated PR/main coverage is owned by validation.yml affected gates.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/product-loop-feedback-observability.yml'
-      - 'apps/gateway/src/product-loop-http.ts'
-      - 'apps/gateway/tests/product-loop-http.test.ts'
-      - 'apps/lite-web/**'
-      - 'services/lite/**'
-      - 'packages/contracts/src/product-loop.ts'
-      - 'infrastructure/persistence/migrations/0043_lite_product_loop_feedback.sql'
-      - 'scripts/product-loop-today-runtime.integration.test.ts'
 
 permissions:
   contents: read
@@ -48,20 +38,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Validate ownership boundaries
-        run: pnpm validate:workspace && pnpm validate:persistence-boundaries
-      - name: Check repository formatting
-        run: pnpm format:check
-      - name: Build WP-06 dependency closure
-        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
-      - name: Lint and typecheck WP-06 packages
-        run: |
-          pnpm --filter @markorbit/lite-service lint
-          pnpm --filter @markorbit/lite-service typecheck
-          pnpm --filter @markorbit/gateway lint
-          pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/lite-web lint
-          pnpm --filter @markorbit/lite-web typecheck
+      - name: Build feedback dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway...
       - name: Run real PostgreSQL Product-loop feedback tests
         run: pnpm --filter @markorbit/lite-service exec vitest run tests/product-loop-feedback-postgres.test.ts
       - name: Run Gateway Product-loop boundary tests
