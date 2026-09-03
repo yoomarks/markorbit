@@ -137,6 +137,16 @@ export function TrademarkAssetPortfolio({
     }
   };
 
+  const reloadAssetCurrentness = async (trademarkAssetId: TrademarkAssetId) => {
+    const loadedDetail = await client.load(trademarkAssetId);
+    setDetail(loadedDetail);
+    try {
+      await reloadManagementDispositions(trademarkAssetId);
+    } catch {
+      setManagementDispositionReadUnavailable(true);
+    }
+  };
+
   const managementEntry = (trademarkAssetId: TrademarkAssetId) =>
     managementByAsset.find((entry) => entry.trademarkAssetId === trademarkAssetId);
 
@@ -181,7 +191,7 @@ export function TrademarkAssetPortfolio({
               client.recordManagementDisposition(selectedId, input, idempotencyKey)
             }
             onReloadManagementDispositions={() => reloadManagementDispositions(selectedId)}
-            onReloadAsset={() => openAsset(selectedId)}
+            onReloadAsset={() => reloadAssetCurrentness(selectedId)}
             onPrepareAiGuide={(input) => client.prepareAiGuide(selectedId, input)}
             {...(detail.commerceProfile ? { commerceProfile: detail.commerceProfile } : {})}
             onSaveCommerceProfile={async (input) => {
