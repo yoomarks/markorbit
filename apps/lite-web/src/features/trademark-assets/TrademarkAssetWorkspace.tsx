@@ -35,9 +35,7 @@ export interface TrademarkAssetWorkspaceProps {
     input: Readonly<RecordTrademarkAssetManagementDispositionInput>,
     idempotencyKey: string
   ) => Promise<TrademarkAssetManagementDisposition>;
-  onReloadManagementDispositions?: () => Promise<
-    CurrentTrademarkAssetManagementDispositionProjection
-  >;
+  onReloadManagementDispositions?: () => Promise<CurrentTrademarkAssetManagementDispositionProjection>;
   onReloadAsset?: () => Promise<void>;
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   onSaveCommerceProfile?: (
@@ -159,8 +157,7 @@ export function TrademarkAssetWorkspace({
     if (!onRecordManagementDisposition || !onReloadManagementDispositions || pendingMutation) {
       return;
     }
-    const idempotencyKey =
-      `trademark-disposition-${view.trademarkAssetId}-${signal.managementSignalId}-${signal.version}-${kind}-${crypto.randomUUID()}`;
+    const idempotencyKey = `trademark-disposition-${view.trademarkAssetId}-${signal.managementSignalId}-${signal.version}-${kind}-${crypto.randomUUID()}`;
     const context: PendingMutation = {
       assetVersion: view.anchor.version,
       signalId: signal.managementSignalId,
