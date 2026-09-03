@@ -198,10 +198,7 @@ export function TrademarkAssetWorkspace({
           (item) =>
             item.signal.id === signal.managementSignalId && item.signal.version === signal.version
         )?.disposition;
-        if (
-          !confirmed ||
-          (kind === 'CONTINUED' && confirmed.kind !== 'CONTINUED')
-        ) {
+        if (!confirmed || (kind === 'CONTINUED' && confirmed.kind !== 'CONTINUED')) {
           setPendingMutation({ ...context, phase: 'reload-required' });
           return;
         }
@@ -299,13 +296,15 @@ export function TrademarkAssetWorkspace({
             {managementSignals.map((signal) => {
               const recommendation = recommendationForSignal(signal);
               const disposition = dispositionForSignal(signal);
-              const resolvedByOwner = disposition?.kind === 'RESOLVED_BY_WORKFLOW_REFERENCE';
+              const resolvedByOwner =
+                disposition?.kind === 'RESOLVED_BY_WORKFLOW_REFERENCE';
               const mutationForSignal =
                 pendingMutation?.signalId === signal.managementSignalId &&
                 pendingMutation.signalVersion === signal.version
                   ? pendingMutation
                   : undefined;
-              const confirming = recommendation?.recommendationId === confirmingRecommendationId;
+              const confirming =
+                recommendation?.recommendationId === confirmingRecommendationId;
               const controlsDisabled =
                 Boolean(mutationForSignal) ||
                 resolvedByOwner ||
@@ -332,7 +331,9 @@ export function TrademarkAssetWorkspace({
                         : ' · private Product management truth; source truth is unchanged.'}
                     </p>
                   ) : !managementDispositionReadUnavailable ? (
-                    <p role="status">No durable disposition for this exact current Signal version.</p>
+                    <p role="status">
+                      No durable disposition for this exact current Signal version.
+                    </p>
                   ) : null}
                   {recommendation ? (
                     <div className="trademark-asset-workspace__recommendation">
