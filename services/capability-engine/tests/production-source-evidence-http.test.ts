@@ -86,7 +86,7 @@ describe('trusted Capability production source evidence HTTP boundary', () => {
       inspect: vi.fn(() => Promise.resolve(replayFor('workspace_other')))
     };
     const route = createCapabilityProductionSourceEvidenceRoutesV1({
-      reader: reader as never,
+      reader,
       replayStore,
       internalServiceSecret
     })[0]!;
@@ -102,7 +102,7 @@ describe('trusted Capability production source evidence HTTP boundary', () => {
     const reader = { read: vi.fn() };
     const replayStore = { inspect: vi.fn(() => Promise.resolve(replayFor())) };
     const route = createCapabilityProductionSourceEvidenceRoutesV1({
-      reader: reader as never,
+      reader,
       replayStore,
       internalServiceSecret
     })[0]!;
