@@ -105,16 +105,25 @@ describe('Trademark Asset management disposition browser client', () => {
       'x-markorbit-csrf-token': 'csrf-browser-token',
       'idempotency-key': idempotencyKey
     });
-    expect(JSON.parse(String(init.body))).toEqual(input);
-    expect(JSON.parse(String(init.body))).not.toMatchObject({
-      workspaceId,
-      trademarkAssetId: assetId,
-      subjectUserId: expect.anything(),
-      workflowReference: expect.anything(),
-      authority: expect.anything(),
-      source: expect.anything(),
-      provider: expect.anything(),
-      model: expect.anything()
-    });
+    expect(typeof init.body).toBe('string');
+    if (typeof init.body !== 'string') throw new Error('Expected a JSON disposition request body.');
+    const parsedBody: unknown = JSON.parse(init.body);
+    if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+      throw new Error('Expected a JSON disposition request object.');
+    }
+    const postedBody = parsedBody as Record<string, unknown>;
+    expect(postedBody).toEqual(input);
+    for (const forbiddenField of [
+      'workspaceId',
+      'trademarkAssetId',
+      'subjectUserId',
+      'workflowReference',
+      'authority',
+      'source',
+      'provider',
+      'model'
+    ]) {
+      expect(postedBody).not.toHaveProperty(forbiddenField);
+    }
   });
 });
