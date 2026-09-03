@@ -19,6 +19,7 @@ import { PostgresImplementationProfileRegistryV1 } from './implementation-profil
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
 import { createGmailManagedCommunicationSenderFromEnvironmentV1 } from './managed-communication-gmail-runtime.js';
+import { HttpCoreOfficialFeeReferenceReaderV1 } from './official-fee-reference-http-reader.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -38,6 +39,7 @@ if (milestoneFixtureMode) {
       'MO_INTERNAL_SERVICE_SECRET is required for the durable Capability Engine runtime.'
     );
   const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
 
   database = new ManagedDatabase(
     parseDatabaseConfig({
@@ -53,6 +55,10 @@ if (milestoneFixtureMode) {
   const implementationProfiles = new PostgresImplementationProfileRegistryV1(database, pool);
   const sourceAuthority = new HttpExecutionCapabilityObservationSourceAuthority(
     executionUrl,
+    internalServiceSecret
+  );
+  const officialFeeReferences = new HttpCoreOfficialFeeReferenceReaderV1(
+    coreUrl,
     internalServiceSecret
   );
   const observationLedger = new PostgresCapabilityObservationLedger(
@@ -99,6 +105,7 @@ if (milestoneFixtureMode) {
     definitions: registry,
     implementationProfiles,
     managedAiRuntime,
+    officialFeeReferences,
     internalServiceSecret
   });
   const durableGovernedCapabilityRuntime = rawGovernedCapabilityRuntime
