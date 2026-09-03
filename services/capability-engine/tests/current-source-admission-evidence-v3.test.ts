@@ -339,10 +339,21 @@ describe('Capability production source-use evidence V3', () => {
     ).rejects.toMatchObject({ code: 'SOURCE_USE_CONTEXT_UNAVAILABLE' });
   });
 
-  it('keeps every current Phase 4 source-admission policy explicitly PILOT', () => {
+  it('keeps the three CN Phase 4 policies PILOT while governed USPTO v2 is production-admissible', () => {
     expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
     expect(
-      currentCapabilitySourceAdmissionPoliciesV1.every((entry) => entry.maturityClass === 'PILOT')
-    ).toBe(true);
+      currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')
+    ).toHaveLength(3);
+    expect(
+      currentCapabilitySourceAdmissionPoliciesV1.filter(
+        (entry) => entry.maturityClass === 'PRODUCTION_ADMISSIBLE'
+      )
+    ).toEqual([
+      expect.objectContaining({
+        policyId: 'source-admission-policy.uspto-official-fee-resolver.v2',
+        policyVersion: 2,
+        maturityClass: 'PRODUCTION_ADMISSIBLE'
+      })
+    ]);
   });
 });

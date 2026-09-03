@@ -401,7 +401,7 @@ describe('USPTO official-fee Method currentness authority V1', () => {
     expect(resolveCurrent).not.toHaveBeenCalled();
   });
 
-  it('does not promote the live USPTO source policy beyond PILOT', async () => {
+  it('uses the live governed USPTO v2 policy while preserving Method and Reference currentness gates', async () => {
     const fixture = approvedActivationFixture();
     const execution = executionWithActivePackageEvidence(
       await legacyExecution(),
@@ -410,8 +410,10 @@ describe('USPTO official-fee Method currentness authority V1', () => {
 
     const policy = currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput(execution));
 
-    expect(policy).toMatchObject({ applicability: 'UNSUPPORTED' });
-    if (policy.applicability !== 'UNSUPPORTED') throw new Error('expected PILOT policy rejection');
-    expect(policy.reason).toContain('PILOT');
+    expect(policy).toEqual({
+      applicability: 'SUPPORTED',
+      methodCurrentness: 'REQUIRED',
+      referenceCurrentness: 'REQUIRED'
+    });
   });
 });
