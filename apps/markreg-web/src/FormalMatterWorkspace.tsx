@@ -116,8 +116,9 @@ export function FormalMatterWorkspace({
       )}
       <Alert tone="info" title="Governed product truth">
         Matter ≠ Filing. Lifecycle Projection ≠ Official Status. Recommended Action ≠ authorization.
-        Nothing in this workspace submits, pays, appoints, contacts a provider, or creates Official
-        Truth by consequence.
+        Matter Intelligence ≠ legal/professional conclusion. Evidence Projection ≠ Official Truth.
+        Viewing or acknowledging this workspace does not create a payment, invoice, professional
+        appointment, external submission, or official application.
       </Alert>
 
       <section
