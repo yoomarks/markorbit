@@ -144,8 +144,8 @@ export class ProviderDiscoveryCurrentResponsibilityService {
     const assessment = assessmentResult.assessment;
     const sourceVersion = responsibilitySourceVersion(assessment);
     const directExecutorEvidence = responsibilityEvidence(assessment, sourceVersion);
-    const { candidateFingerprintSha256: _historicalFingerprint, ...historicalCandidate } =
-      candidate;
+    const { candidateFingerprintSha256, ...historicalCandidate } = candidate;
+    void candidateFingerprintSha256;
     const withoutFingerprint = {
       ...historicalCandidate,
       suitabilityEvidence: [...candidate.suitabilityEvidence, ...directExecutorEvidence],
