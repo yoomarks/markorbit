@@ -49,3 +49,5 @@ jobs:
           git rm .github/workflows/tmp-710-validation.yml
           git commit -m "ci: remove temporary #710 validation workflow"
           git push
+
+# rerun after repository Prettier applied
