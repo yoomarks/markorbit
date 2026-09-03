@@ -1,0 +1,37 @@
+name: Temporary Lite 676 Prettier
+
+on:
+  push:
+    branches:
+      - lite/trademark-management-disposition-web-676
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lite/trademark-management-disposition-web-676
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format Lite 676 and self-clean
+        run: |
+          pnpm exec prettier --write apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx
+          git checkout 2b4b5b8d92ed6e6c6f942914a5792bd740613717 -- apps/lite-web/src/api/daily-workspace.test.ts
+          git rm .github/workflows/tmp-lite676-prettier.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.tsx apps/lite-web/src/api/daily-workspace.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "style(lite): apply hosted Prettier to trademark disposition workspace"
+          git push origin HEAD:lite/trademark-management-disposition-web-676
