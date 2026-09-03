@@ -1,0 +1,55 @@
+name: TEMP NEVER MERGE Trusted Public Exposure Contract
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/temp-653-trusted-public-format.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration-mgsn-trusted-public-exposure-contract
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add package subpath and build entry
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'packages/contracts/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.exports['./trusted-public-exposure'] = {
+            types: './dist/trusted-public-exposure.d.ts',
+            import: './dist/trusted-public-exposure.js',
+            default: './dist/trusted-public-exposure.js'
+          };
+          const needle = 'src/outcome-trust-evidence.ts';
+          const addition = `${needle} src/trusted-public-exposure.ts`;
+          if (!pkg.scripts.build.includes('src/trusted-public-exposure.ts')) {
+            if (!pkg.scripts.build.includes(needle)) throw new Error('Expected outcome-trust-evidence build entry missing');
+            pkg.scripts.build = pkg.scripts.build.replace(needle, addition);
+          }
+          fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+      - run: pnpm prettier --write packages/contracts/src/trusted-public-exposure.ts packages/contracts/tests/trusted-public-exposure.test.ts packages/contracts/package.json
+      - run: pnpm prettier --check packages/contracts/src/trusted-public-exposure.ts packages/contracts/tests/trusted-public-exposure.test.ts packages/contracts/package.json
+      - name: Push verified contract formatting and manifest wiring to formal branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/contracts/src/trusted-public-exposure.ts packages/contracts/tests/trusted-public-exposure.test.ts packages/contracts/package.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m '[INTEGRATION][MGSN-P0] Format and export Trusted Public Exposure contract'
+          git push origin HEAD:integration-mgsn-trusted-public-exposure-contract
