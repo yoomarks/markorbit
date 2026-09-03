@@ -87,6 +87,12 @@ function response(status: number, value: unknown): Promise<Response> {
   );
 }
 
+function mockDownstream(status: number, value: unknown) {
+  return vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(() =>
+    response(status, value)
+  );
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -177,23 +183,33 @@ describe('authenticated Filing Governance Gateway bridge', () => {
     vi.stubGlobal('fetch', downstream);
     await expect(
       handler()(
-        request('POST', '/api/execution/execution-releases/release_701/evaluate', {}, {
-          origin: 'https://evil.example'
-        })
+        request(
+          'POST',
+          '/api/execution/execution-releases/release_701/evaluate',
+          {},
+          {
+            origin: 'https://evil.example'
+          }
+        )
       )
     ).rejects.toMatchObject({ status: 403, code: 'UNTRUSTED_ORIGIN' });
     await expect(
       handler()(
-        request('PATCH', '/api/execution/execution-releases/release_701/assignment', {}, {
-          'x-markorbit-csrf-token': 'invalid'
-        })
+        request(
+          'PATCH',
+          '/api/execution/execution-releases/release_701/assignment',
+          {},
+          {
+            'x-markorbit-csrf-token': 'invalid'
+          }
+        )
       )
     ).rejects.toMatchObject({ status: 403, code: 'INVALID_CSRF_TOKEN' });
     expect(downstream).not.toHaveBeenCalled();
   });
 
   it('requires Idempotency-Key only for owner-idempotent governed commands', async () => {
-    const downstream = vi.fn(() => response(200, { ok: true }));
+    const downstream = mockDownstream(200, { ok: true });
     vi.stubGlobal('fetch', downstream);
     for (const path of [
       '/api/execution/filing-authorizations',
@@ -219,7 +235,7 @@ describe('authenticated Filing Governance Gateway bridge', () => {
   });
 
   it('rejects generic browser authority spoof fields but preserves authorizedParty', async () => {
-    const downstream = vi.fn(() => response(200, { ok: true }));
+    const downstream = mockDownstream(200, { ok: true });
     vi.stubGlobal('fetch', downstream);
     await expect(
       handler()(
@@ -242,13 +258,14 @@ describe('authenticated Filing Governance Gateway bridge', () => {
     expect(result.status).toBe(200);
     const init = downstream.mock.calls[0]![1];
     if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
-    expect(JSON.parse(init.body)).toMatchObject({
+    const requestBody = init.body;
+    expect(JSON.parse(requestBody)).toMatchObject({
       authorizedParty: { partyId: 'customer_701', displayName: 'Alex Owner' }
     });
   });
 
   it('strips browser acknowledgedBy and decidedBy because Execution binds trusted principal user', async () => {
-    const downstream = vi.fn(() => response(200, { ok: true }));
+    const downstream = mockDownstream(200, { ok: true });
     vi.stubGlobal('fetch', downstream);
     await handler()(
       request(
@@ -269,7 +286,8 @@ describe('authenticated Filing Governance Gateway bridge', () => {
     for (const call of downstream.mock.calls) {
       const init = call[1];
       if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
-      const body = JSON.parse(init.body) as Record<string, unknown>;
+      const requestBody = init.body;
+      const body = JSON.parse(requestBody) as Record<string, unknown>;
       expect(body.acknowledgedBy).toBeUndefined();
       expect(body.decidedBy).toBeUndefined();
     }
@@ -278,7 +296,7 @@ describe('authenticated Filing Governance Gateway bridge', () => {
   it('preserves owner 400/403/404/409/503 status and body exactly', async () => {
     for (const status of [400, 403, 404, 409, 503]) {
       const owner = { code: `OWNER_${status}`, status };
-      vi.stubGlobal('fetch', vi.fn(() => response(status, owner)));
+      vi.stubGlobal('fetch', mockDownstream(status, owner));
       const result = await handler()(
         request('GET', '/api/execution/filing-authorizations/authorization_701')
       );
@@ -291,11 +309,16 @@ describe('authenticated Filing Governance Gateway bridge', () => {
       handler(
         client({
           resolveWorkspace: () =>
-            Promise.reject(new AuthenticationError('MEMBERSHIP_REQUIRED', 'Membership is required.'))
+            Promise.reject(
+              new AuthenticationError('MEMBERSHIP_REQUIRED', 'Membership is required.')
+            )
         })
       )(request('GET', '/api/execution/execution-releases'))
     ).rejects.toMatchObject({ status: 403, code: 'MEMBERSHIP_REQUIRED' });
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline')))
+    );
     await expect(
       handler()(request('GET', '/api/execution/execution-releases'))
     ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE' });
@@ -308,9 +331,13 @@ describe('authenticated Filing Governance Gateway bridge', () => {
   });
 
   it('allows anonymous forwarding only in explicit fixture test runtime', async () => {
-    const downstream = vi.fn(() => response(200, { fixture: true }));
+    const downstream = mockDownstream(200, { fixture: true });
     vi.stubGlobal('fetch', downstream);
-    const result = await handler(null, { fixtureTestRuntime: true }, false)(
+    const result = await handler(
+      null,
+      { fixtureTestRuntime: true },
+      false
+    )(
       request('POST', '/api/execution/execution-releases/release_701/evaluate', {}, { cookie: '' })
     );
     expect(result).toEqual({ status: 200, body: { fixture: true } });
