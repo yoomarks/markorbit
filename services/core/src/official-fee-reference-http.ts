@@ -63,8 +63,7 @@ function parseQuery(value: unknown): OfficialFeeResolutionQueryV1 {
 
 function translate(error: unknown): never {
   if (!(error instanceof OfficialFeeReferenceStoreError)) throw error;
-  if (error.code === 'INVALID_INPUT')
-    throw new HttpError(400, error.code, error.message, false);
+  if (error.code === 'INVALID_INPUT') throw new HttpError(400, error.code, error.message, false);
   if (error.code === 'NO_CURRENT_REFERENCE')
     throw new HttpError(404, error.code, error.message, false);
   if (error.code === 'AMBIGUOUS_CURRENT_REFERENCE')
