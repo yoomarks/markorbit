@@ -94,17 +94,56 @@ replaceExact(
 const focused = 'apps/gateway/tests/filing-governance-http.test.ts';
 replaceExact(
   focused,
+  `function response(status: number, value: unknown): Promise<Response> {
+  return Promise.resolve(
+    new Response(JSON.stringify(value), {
+      status,
+      headers: { 'content-type': 'application/json' }
+    })
+  );
+}
+`,
+  `function response(status: number, value: unknown): Promise<Response> {
+  return Promise.resolve(
+    new Response(JSON.stringify(value), {
+      status,
+      headers: { 'content-type': 'application/json' }
+    })
+  );
+}
+
+function mockDownstream(status: number, value: unknown) {
+  return vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(() =>
+    response(status, value)
+  );
+}
+`
+);
+let source = fs.readFileSync(focused, 'utf8');
+source = source.replaceAll(
+  `vi.fn(() => response(200, { ok: true }))`,
+  `mockDownstream(200, { ok: true })`
+);
+source = source.replace(
+  `vi.fn(() => response(200, { fixture: true }))`,
+  `mockDownstream(200, { fixture: true })`
+);
+source = source.replace(
+  `vi.stubGlobal('fetch', vi.fn(() => response(status, owner)));`,
+  `vi.stubGlobal('fetch', mockDownstream(status, owner));`
+);
+source = source.replace(
   `    if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
     expect(JSON.parse(init.body)).toMatchObject({`,
   `    if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
     const requestBody = init.body;
     expect(JSON.parse(requestBody)).toMatchObject({`
 );
-replaceExact(
-  focused,
+source = source.replace(
   `      if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
       const body = JSON.parse(init.body) as Record<string, unknown>;`,
   `      if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
       const requestBody = init.body;
       const body = JSON.parse(requestBody) as Record<string, unknown>;`
 );
+fs.writeFileSync(focused, source);
