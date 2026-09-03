@@ -35,7 +35,9 @@ export interface TrademarkAssetWorkspaceProps {
     input: Readonly<RecordTrademarkAssetManagementDispositionInput>,
     idempotencyKey: string
   ) => Promise<TrademarkAssetManagementDisposition>;
-  onReloadManagementDispositions?: () => Promise<CurrentTrademarkAssetManagementDispositionProjection>;
+  onReloadManagementDispositions?: () => Promise<
+    CurrentTrademarkAssetManagementDispositionProjection
+  >;
   onReloadAsset?: () => Promise<void>;
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   onSaveCommerceProfile?: (
@@ -151,8 +153,11 @@ export function TrademarkAssetWorkspace({
     recommendation: Readonly<TrademarkAssetManagementRecommendation> | undefined,
     kind: BrowserTrademarkAssetManagementDispositionKind
   ) => {
-    if (!onRecordManagementDisposition || !onReloadManagementDispositions || pendingMutation) return;
-    const idempotencyKey = `trademark-disposition-${view.trademarkAssetId}-${signal.managementSignalId}-${signal.version}-${kind}-${crypto.randomUUID()}`;
+    if (!onRecordManagementDisposition || !onReloadManagementDispositions || pendingMutation) {
+      return;
+    }
+    const idempotencyKey =
+      `trademark-disposition-${view.trademarkAssetId}-${signal.managementSignalId}-${signal.version}-${kind}-${crypto.randomUUID()}`;
     const context: PendingMutation = {
       signalId: signal.managementSignalId,
       signalVersion: signal.version,
@@ -371,8 +376,8 @@ export function TrademarkAssetWorkspace({
                       </div>
                       {confirming && !mutationForSignal ? (
                         <p role="status">
-                          Confirming records Product continuation before opening the governed surface.
-                          It does not authorize a filing or other protected action.
+                          Confirming records Product continuation before opening the governed
+                          surface. It does not authorize a filing or other protected action.
                         </p>
                       ) : null}
                       {mutationForSignal?.phase === 'submitting' ? (
@@ -397,8 +402,8 @@ export function TrademarkAssetWorkspace({
                       ) : null}
                       {mutationForSignal?.phase === 'unavailable' ? (
                         <p role="status">
-                          The disposition service is unavailable. No local success was created and this
-                          logical action remains locked.
+                          The disposition service is unavailable. No local success was created and
+                          this logical action remains locked.
                         </p>
                       ) : null}
                     </div>
