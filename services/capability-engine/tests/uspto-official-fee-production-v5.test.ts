@@ -13,6 +13,7 @@ import { CapabilitySourceAdmissionPolicyCatalogContentProvenanceV1 } from '../sr
 import { UsptoOfficialFeeMethodCurrentnessAuthorityV1 } from '../src/uspto-official-fee-method-currentness.js';
 import {
   USPTO_OFFICIAL_FEE_GOVERNED_COMPILATION_INPUT_V1,
+  createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1,
   currentApprovedUsptoOfficialFeeMethodActivationAuthorityV1,
   materializeApprovedUsptoOfficialFeeGovernedActivationV1
 } from '../src/uspto-official-fee-production-promotion.js';
@@ -30,7 +31,6 @@ import {
   USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA,
   USPTO_OFFICIAL_FEE_RESOLVER_OPERATION,
   USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA,
-  createUsptoOfficialFeeResolverCapabilityExecutorV1,
   validateUsptoOfficialFeeResolverInputV1,
   validateUsptoOfficialFeeResolverOutputV1
 } from '../src/uspto-official-fee-resolver-pilot.js';
@@ -105,7 +105,6 @@ function command(): CapabilityRequestV2Command {
 }
 
 async function governedExecution() {
-  const pkg = acceptedPackage();
   const runtime = new GovernedCapabilityRuntime({
     definitions: {
       findCurrent: () => Promise.resolve(USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION)
@@ -127,21 +126,12 @@ async function governedExecution() {
         schemaId === USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA &&
         validateUsptoOfficialFeeResolverOutputV1(value)
     },
-    executor: createUsptoOfficialFeeResolverCapabilityExecutorV1(pkg, {
+    executor: createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1({
       resolveCurrent: () => acceptedReference()
     }),
     now: () => '2026-08-29T04:20:00.000Z'
   });
-  const raw = await runtime.invoke(command());
-  const activation = materializeApprovedUsptoOfficialFeeGovernedActivationV1();
-  const activePackageRef = `brain-method-package:${activation.activePackage.packageId}@${activation.activePackage.packageVersion}`;
-  const evidenceRefs = [...raw.receipt.evidenceRefs, activePackageRef];
-  return {
-    ...raw,
-    outcome: { ...raw.outcome, evidenceRefs },
-    returnValue: { ...raw.returnValue, evidenceRefs },
-    receipt: { ...raw.receipt, evidenceRefs }
-  };
+  return runtime.invoke(command());
 }
 
 function productionMaterializer() {
@@ -194,6 +184,9 @@ describe('real USPTO official-fee production-admissible V5 source', () => {
       activationId: activation.decision.decisionId
     });
     expect(evidence.sourceUse).toMatchObject({ currentness: 'CURRENT' });
+    expect(execution.receipt.evidenceRefs).not.toContain(
+      `brain-method-package:${activation.legacyPilot.packageId}@${activation.legacyPilot.packageVersion}`
+    );
     expect(Object.values(evidence.authority).every((value) => value === false)).toBe(true);
   });
 
