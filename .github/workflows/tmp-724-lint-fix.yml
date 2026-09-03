@@ -1,0 +1,100 @@
+name: tmp-724-lint-fix
+
+on:
+  push:
+    branches:
+      - 'tmp/724-lint-fix'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/724-lint-fix
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact lint repairs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          test_path = Path('apps/markreg-web/src/ProductionIntakeFlow.test.tsx')
+          text = test_path.read_text()
+
+          old = "import type { ProductionIntakeV1 } from '@markorbit/contracts/markreg-early-funnel';"
+          new = """import type {
+            CreateProductionIntakeCommandV1,
+            ProductionIntakeV1
+          } from '@markorbit/contracts/markreg-early-funnel';"""
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          old = """  it('renders only the GET owner readback after the durable create', async () => {
+            const productionClient = client();
+            const user = userEvent.setup();"""
+          new = """  it('renders only the GET owner readback after the durable create', async () => {
+            const create = vi.fn(() =>
+              Promise.resolve({
+                ...durableIntake,
+                input: {
+                  ...durableIntake.input,
+                  businessContext: 'POST response must not be rendered'
+                }
+              })
+            );
+            const get = vi.fn(() => Promise.resolve(durableIntake));
+            const productionClient = client({ create, get });
+            const user = userEvent.setup();"""
+          assert old in text
+          text = text.replace(old, new, 1)
+          text = text.replace('expect(productionClient.create).toHaveBeenCalledTimes(1);', 'expect(create).toHaveBeenCalledTimes(1);', 1)
+          text = text.replace("expect(productionClient.get).toHaveBeenCalledWith('production-intake_699');", "expect(get).toHaveBeenCalledWith('production-intake_699');", 1)
+          text = text.replace(
+            'const firstCommand = create.mock.calls[0]![0];',
+            'const firstCommand = create.mock.calls[0]![0] as CreateProductionIntakeCommandV1;',
+            1
+          )
+          text = text.replace(
+            'const secondCommand = create.mock.calls[1]![0];',
+            'const secondCommand = create.mock.calls[1]![0] as CreateProductionIntakeCommandV1;',
+            1
+          )
+          test_path.write_text(text)
+
+          flow_path = Path('apps/markreg-web/src/ProductionIntakeFlow.tsx')
+          flow = flow_path.read_text()
+          old = 'const next = { ...draft, [key]: value } as ProductionIntakeDraft;'
+          new = 'const next = { ...draft, [key]: value };'
+          assert old in flow
+          flow_path.write_text(flow.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write \
+            apps/markreg-web/src/ProductionIntakeFlow.tsx \
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx
+      - name: Validate MarkReg Web lint typecheck test
+        run: |
+          pnpm --filter @markorbit/contracts build
+          pnpm --filter @markorbit/ui build
+          pnpm --filter @markorbit/markreg-web lint
+          pnpm --filter @markorbit/markreg-web typecheck
+          pnpm --filter @markorbit/markreg-web test
+      - name: Commit validated lint repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/markreg-web/src/ProductionIntakeFlow.tsx \
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx
+          git commit -m 'test(markreg): satisfy #699 strict lint typing'
+          git push origin HEAD:tmp/724-lint-fix
