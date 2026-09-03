@@ -75,9 +75,7 @@ function hasBoundedNetworkGrant(
  * result grants only bounded Trust explanation serving; it cannot select, allocate, contact, file,
  * pay, retrieve artifacts or create Official Truth.
  */
-export class MgsnTrustEvidenceCurrentAuthoritySource
-  implements TrustEvidenceCurrentAuthoritySource
-{
+export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCurrentAuthoritySource {
   constructor(
     private readonly network: TrustEvidenceNetworkAuthoritySource,
     private readonly providerReturns: TrustEvidenceProviderReturnSource,
@@ -200,13 +198,11 @@ export class MgsnTrustEvidenceCurrentAuthoritySource
 
     const authorityReferences: string[] = [];
     for (const item of items) {
-      if (item.source.kind !== 'PROVIDER_CLAIM')
-        return { current: false, authorityReferences };
+      if (item.source.kind !== 'PROVIDER_CLAIM') return { current: false, authorityReferences };
 
       // V1 has no generic current-owner verifier for embedded evidence references. Preserve their
       // provenance, but do not claim current source authority until such a source exists.
-      if (item.evidenceReferences.length > 0)
-        return { current: false, authorityReferences };
+      if (item.evidenceReferences.length > 0) return { current: false, authorityReferences };
 
       const source = item.source;
       const current = await this.providerReturns.findProviderReturn(source.providerReturnId);
@@ -264,8 +260,7 @@ export class MgsnTrustEvidenceCurrentAuthoritySource
         attribution.profile.providerResponsibilityProfileId ===
           assessment.profile.providerResponsibilityProfileId &&
         attribution.profile.version === assessment.profile.version &&
-        attribution.profile.profileFingerprintSha256 ===
-          assessment.profile.profileFingerprintSha256
+        attribution.profile.profileFingerprintSha256 === assessment.profile.profileFingerprintSha256
     );
     if (!exactHistoricalLineage) return { current: false, authorityReferences: [] };
 
