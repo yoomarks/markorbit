@@ -34,6 +34,10 @@ import {
 } from './runtime-dependencies.js';
 import { ServicePackageEligibilityService } from './service-package-eligibility.js';
 import { PostgresServicePackageEligibilityRepository } from './service-package-eligibility-postgres.js';
+import {
+  TrustedPublicExposureService,
+  type TrustedPublicCurrentAuthoritySource
+} from './trusted-public-exposure.js';
 
 // Durable Selection history is never a substitute for current requester/provider authority.
 const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySource = {
@@ -91,6 +95,27 @@ const unavailableTrustEvidenceAuthority: TrustEvidenceCurrentAuthoritySource = {
   }
 };
 
+// Shared public eligibility/projection metadata never establishes current public serving authority.
+const unavailableTrustedPublicAuthority: TrustedPublicCurrentAuthoritySource = {
+  evaluateCurrentAuthority() {
+    return Promise.resolve({
+      authorityAvailable: false,
+      providerIdentityCurrent: false,
+      organizationIdentityCurrent: false,
+      participationCurrent: false,
+      visibilityCurrent: false,
+      purposeAuthorized: false,
+      audienceAuthorized: false,
+      sourceAuthoritiesCurrent: false,
+      sourceVersionsMatch: false,
+      sourceOwnerAuthorizationCurrent: false,
+      trustAuthorityCurrent: false,
+      directExecutorEstablished: false,
+      authorityReferences: []
+    });
+  }
+};
+
 export interface DurableMgsnServicesOptions {
   database: ManagedDatabase;
   coreUrl: string;
@@ -99,6 +124,7 @@ export interface DurableMgsnServicesOptions {
   providerSelectionCurrentAuthoritySource?: ProviderSelectionCurrentAuthoritySource;
   controlledHandoffCurrentAuthoritySource?: ControlledHandoffCurrentAuthoritySource;
   trustEvidenceCurrentAuthoritySource?: TrustEvidenceCurrentAuthoritySource;
+  trustedPublicCurrentAuthoritySource?: TrustedPublicCurrentAuthoritySource;
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
@@ -106,6 +132,7 @@ export type DurableMgsnServices = MgsnHttpServices & {
   providerSelection: ProviderSelectionService;
   controlledHandoff: ControlledPrivacyHandoffService;
   outcomeTrustEvidence: OutcomeTrustEvidenceService;
+  trustedPublicExposure: TrustedPublicExposureService;
 };
 
 export function createDurableMgsnServices(
@@ -199,6 +226,9 @@ export function createDurableMgsnServices(
     outcomeTrustEvidence: new OutcomeTrustEvidenceService(
       outcomeTrustEvidenceRepository,
       options.trustEvidenceCurrentAuthoritySource ?? unavailableTrustEvidenceAuthority
+    ),
+    trustedPublicExposure: new TrustedPublicExposureService(
+      options.trustedPublicCurrentAuthoritySource ?? unavailableTrustedPublicAuthority
     )
   };
 }
