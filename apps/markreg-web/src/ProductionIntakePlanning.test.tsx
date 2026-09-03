@@ -172,7 +172,9 @@ describe('production durable Intake planning', () => {
 
     await completeDraft(user);
     await user.click(screen.getByRole('button', { name: 'Create durable Intake' }));
-    expect(await screen.findByRole('heading', { name: 'Submission outcome uncertain' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Submission outcome uncertain' })
+    ).toBeTruthy();
     await user.click(screen.getByRole('button', { name: /Retry/i }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));

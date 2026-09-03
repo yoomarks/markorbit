@@ -116,22 +116,28 @@ describe('durable Production Intake browser client', () => {
     expect(init?.headers).not.toHaveProperty('X-MarkOrbit-CSRF-Token');
   });
 
-  it.each([400, 401, 403, 409, 503])('preserves HTTP %s as a distinguishable MarkReg error', async (status) => {
-    const fetcher = vi.fn(() =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({
-            code: `STATUS_${status}`,
-            message: `status ${status}`,
-            correlationId: 'correlation_699',
-            retryable: status === 503
-          }),
-          { status, headers: { 'content-type': 'application/json' } }
+  it.each([400, 401, 403, 409, 503])(
+    'preserves HTTP %s as a distinguishable MarkReg error',
+    async (status) => {
+      const fetcher = vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              code: `STATUS_${status}`,
+              message: `status ${status}`,
+              correlationId: 'correlation_699',
+              retryable: status === 503
+            }),
+            { status, headers: { 'content-type': 'application/json' } }
+          )
         )
-      )
-    );
-    const client = createProductionIntakeClient(createApiClient('', 10_000, fetcher));
+      );
+      const client = createProductionIntakeClient(createApiClient('', 10_000, fetcher));
 
-    await expect(client.create(command)).rejects.toMatchObject({ status, code: `STATUS_${status}` });
-  });
+      await expect(client.create(command)).rejects.toMatchObject({
+        status,
+        code: `STATUS_${status}`
+      });
+    }
+  );
 });

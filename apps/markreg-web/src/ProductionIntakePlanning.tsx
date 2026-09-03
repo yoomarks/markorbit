@@ -205,7 +205,9 @@ function failureView(error: unknown, read = false): FailureView {
       };
     default:
       return {
-        title: read ? 'Durable Intake could not be loaded' : 'Production Intake could not be created',
+        title: read
+          ? 'Durable Intake could not be loaded'
+          : 'Production Intake could not be created',
         description: error.message,
         canEdit: !read
       };
@@ -594,7 +596,10 @@ function Review({ draft }: { draft: ProductionIntakeDraft }) {
           { key: 'Applicant', value: `${draft.applicantName} · ${draft.applicantType}` },
           { key: 'Applicant country / region', value: draft.applicantCountry },
           { key: 'Trademark', value: `${draft.trademarkText} · ${draft.trademarkType}` },
-          { key: 'Target jurisdictions', value: jurisdictions(draft.targetJurisdictions).join(', ') },
+          {
+            key: 'Target jurisdictions',
+            value: jurisdictions(draft.targetJurisdictions).join(', ')
+          },
           { key: 'Goods / services', value: draft.goodsServices },
           { key: 'Business context', value: draft.businessContext },
           { key: 'Filing goal', value: draft.filingGoal }
