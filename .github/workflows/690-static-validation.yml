@@ -33,11 +33,14 @@ jobs:
       - run: pnpm format:check
       - run: pnpm --filter @markorbit/core-service lint
       - run: pnpm --filter @markorbit/core-service typecheck
-      - run: pnpm --filter @markorbit/core-service build
-      - run: pnpm --filter @markorbit/core-service exec vitest run tests/official-fee-reference-http.test.ts
       - run: pnpm --filter @markorbit/capability-engine lint
       - run: pnpm --filter @markorbit/capability-engine typecheck
-      - run: pnpm --filter @markorbit/capability-engine build
+      - name: Build Core and Capability dependency closures
+        run: >-
+          pnpm exec turbo run build
+          --filter=@markorbit/core-service...
+          --filter=@markorbit/capability-engine...
+      - run: pnpm --filter @markorbit/core-service exec vitest run tests/official-fee-reference-http.test.ts
       - run: >-
           pnpm --filter @markorbit/capability-engine exec vitest run
           tests/official-fee-reference-http-reader.test.ts
