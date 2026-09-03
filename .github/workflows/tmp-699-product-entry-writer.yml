@@ -1,0 +1,79 @@
+name: tmp-699-product-entry-writer
+on:
+  push:
+    branches:
+      - tmp/699-prettier-probe
+permissions:
+  contents: write
+jobs:
+  rewrite:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/699-prettier-probe
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rewrite production planning default and test
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          function replaceExact(path, before, after) {
+            const source = fs.readFileSync(path, 'utf8');
+            if (!source.includes(before)) throw new Error(`missing expected text in ${path}: ${before}`);
+            fs.writeFileSync(path, source.replace(before, after));
+          }
+
+          const home = 'apps/markreg-web/src/WorkspaceHome.tsx';
+          replaceExact(home, "import { MarkregApp } from './App.js';", "import { ProductionIntakePlanning } from './ProductionIntakePlanning.js';");
+          replaceExact(home, "  renderPlanning = () => <MarkregApp />", "  renderPlanning = () => <ProductionIntakePlanning />");
+          replaceExact(
+            home,
+            'description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing remains a fixture-only consultation until its production gates are complete."',
+            'description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing records durable customer-supplied Production Intake before any Recommendation is available."'
+          );
+          replaceExact(
+            home,
+            '                  separately below. Planning a consultation does not create an Order, Payment,\n                  Matter, or Filing.',
+            '                  separately below. Planning a new filing creates only durable Production Intake;\n                  it does not create a Recommendation, Order, Payment, Matter, or Filing.'
+          );
+
+          const main = 'apps/markreg-web/src/main.tsx';
+          replaceExact(main, "import { ProductionIntakePlanning } from './ProductionIntakePlanning.js';\n", '');
+          replaceExact(
+            main,
+            '    <MarkregAccountEntry\n      renderProduct={() => (\n        <MarkregWorkspaceHome renderPlanning={() => <ProductionIntakePlanning />} />\n      )}\n    />',
+            '    <MarkregAccountEntry renderProduct={() => <MarkregWorkspaceHome />} />'
+          );
+
+          const test = 'apps/markreg-web/src/WorkspaceHome.test.tsx';
+          replaceExact(
+            test,
+            '        matterClient={matterClient(() => Promise.resolve(matterPage([matter])))}\n        renderPlanning={() => <div>Fixture planning consultation</div>}\n',
+            '        matterClient={matterClient(() => Promise.resolve(matterPage([matter])))}\n'
+          );
+          replaceExact(
+            test,
+            "    expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();\n    await user.click(screen.getAllByRole('button', { name: 'Plan a new filing' })[0]!);\n    expect(await screen.findByText('Fixture planning consultation')).toBeTruthy();",
+            "    expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();\n    expect(screen.queryByText(/fixture-only consultation/i)).toBeNull();\n    await user.click(screen.getAllByRole('button', { name: 'Plan a new filing' })[0]!);\n    expect(await screen.findByText(/Customer-supplied Intake only/)).toBeTruthy();"
+          );
+          NODE
+          pnpm exec prettier --write \
+            apps/markreg-web/src/WorkspaceHome.tsx \
+            apps/markreg-web/src/WorkspaceHome.test.tsx \
+            apps/markreg-web/src/main.tsx
+      - name: Commit exact product-entry output
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/markreg-web/src/WorkspaceHome.tsx apps/markreg-web/src/WorkspaceHome.test.tsx apps/markreg-web/src/main.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: temporary #699 durable Workspace planning default'
+          git push origin HEAD:tmp/699-prettier-probe
