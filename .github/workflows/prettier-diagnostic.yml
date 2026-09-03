@@ -9,8 +9,11 @@ on:
       - services/core/src/method-improvement-coverage-gap-postgres.ts
       - services/core/tests/method-improvement-coverage-gap-postgres.test.ts
 
+permissions:
+  contents: write
+
 jobs:
-  format-diff:
+  format-and-cleanup:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +25,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier diff
+      - name: Apply exact Prettier formatting and remove diagnostic workflow
         run: |
           pnpm exec prettier --write services/core/src/method-improvement-coverage-gap-postgres.ts services/core/tests/method-improvement-coverage-gap-postgres.test.ts
-          git diff -- services/core/src/method-improvement-coverage-gap-postgres.ts services/core/tests/method-improvement-coverage-gap-postgres.test.ts
+          rm .github/workflows/prettier-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/core/src/method-improvement-coverage-gap-postgres.ts services/core/tests/method-improvement-coverage-gap-postgres.test.ts .github/workflows/prettier-diagnostic.yml
+          git commit -m "[CORE-P0] Apply repository Prettier formatting"
+          git push origin HEAD:core/664-coverage-gap-postgres-bootstrap
