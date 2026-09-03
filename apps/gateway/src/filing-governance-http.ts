@@ -28,7 +28,13 @@ const authorityFields = new Set([
   'actorId',
   'userId',
   'membershipId',
-  'subjectUserId'
+  'subjectUserId',
+  'sessionId',
+  'sessionExpiresAt',
+  'role',
+  'permissions',
+  'principal',
+  'requestedBy'
 ]);
 
 const idempotentMutation = (request: JsonRequest): boolean =>
