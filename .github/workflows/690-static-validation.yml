@@ -10,7 +10,7 @@ on:
 permissions:
   contents: write
 
-# Temporary owner-boundary validation; removed after the full gate passes. Rerun after lint fixes.
+# Temporary owner-boundary validation; removed after the full gate passes. Rerun after binding assertion fix.
 jobs:
   validate:
     runs-on: ubuntu-latest
