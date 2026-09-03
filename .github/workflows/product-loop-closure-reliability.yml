@@ -1,11 +1,8 @@
 name: Product Loop Closure Reliability
 
+# Manual diagnostic entrypoint. Automated PR/main/nightly coverage is owned by validation.yml affected gates.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '7 4 * * *'
 
 permissions:
   contents: read
@@ -66,20 +63,8 @@ jobs:
           CREATE DATABASE markorbit_wp07_lite_integration;
           CREATE DATABASE markorbit_wp07_markreg_integration;
           SQL
-      - name: Validate ownership and formatting
-        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm format:check
       - name: Build Product-loop dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
-      - name: Lint and typecheck Product-loop owners
-        run: |
-          pnpm --filter @markorbit/lite-service lint
-          pnpm --filter @markorbit/lite-service typecheck
-          pnpm --filter @markorbit/markreg-service lint
-          pnpm --filter @markorbit/markreg-service typecheck
-          pnpm --filter @markorbit/gateway lint
-          pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/lite-web lint
-          pnpm --filter @markorbit/lite-web typecheck
       - name: Run focused Lite reliability matrix
         run: |
           pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts

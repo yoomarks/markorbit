@@ -1,27 +1,8 @@
 name: Product Loop Today Prepared Action
 
-# Exact-head gate for the authenticated Daily Workspace SEE -> CREATE -> MOVE journey.
+# Manual diagnostic entrypoint. Automated PR/main coverage is owned by validation.yml affected gates.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/product-loop-today-prepared-action.yml'
-      - 'apps/gateway/src/product-loop-http.ts'
-      - 'apps/gateway/tests/product-loop-http.test.ts'
-      - 'apps/gateway/tests/product-loop-daily-workspace-http.test.ts'
-      - 'apps/lite-web/**'
-      - 'services/lite/**'
-      - 'services/markreg/**'
-      - 'packages/contracts/src/product-loop.ts'
-      - 'packages/contracts/src/daily-workspace.ts'
-      - 'infrastructure/persistence/migrations/0042_lite_prepared_action_journey.sql'
-      - 'infrastructure/persistence/migrations/0052_lite_daily_signals.sql'
-      - 'infrastructure/persistence/migrations/0053_lite_visual_bridge.sql'
-      - 'infrastructure/persistence/migrations/0054_lite_product_preferences.sql'
-      - 'scripts/product-loop-today-runtime.integration.test.ts'
-      - 'scripts/product-loop-today-real-runtime.ts'
-      - 'tests/e2e/product-loop-today-real-runtime.spec.ts'
-      - 'playwright.product-loop-today-real-runtime.config.ts'
 
 permissions:
   contents: read
@@ -57,20 +38,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Validate ownership boundaries
-        run: pnpm validate:workspace && pnpm validate:persistence-boundaries
-      - name: Build M9 Daily Workspace dependency closure
+      - name: Build Daily Workspace dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
-      - name: Lint and typecheck M9 Daily Workspace packages
-        run: |
-          pnpm --filter @markorbit/lite-service lint
-          pnpm --filter @markorbit/lite-service typecheck
-          pnpm --filter @markorbit/markreg-service lint
-          pnpm --filter @markorbit/markreg-service typecheck
-          pnpm --filter @markorbit/gateway lint
-          pnpm --filter @markorbit/gateway typecheck
-          pnpm --filter @markorbit/lite-web lint
-          pnpm --filter @markorbit/lite-web typecheck
       - name: Create isolated preference acceptance database
         env:
           PGPASSWORD: markorbit-test-only
@@ -126,7 +95,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
-      - name: Build M9 Daily Workspace browser dependency closure
+      - name: Build Daily Workspace browser dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
       - name: Run desktop and mobile Daily Workspace journey
         run: pnpm exec playwright test -c playwright.product-loop-today-real-runtime.config.ts
