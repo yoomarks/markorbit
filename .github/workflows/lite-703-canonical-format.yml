@@ -1,0 +1,45 @@
+name: lite-703-canonical-format
+
+on:
+  push:
+    branches:
+      - lite/content-studio-triage-689
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply canonical Prettier output
+        run: |
+          pnpm exec prettier --write \
+            apps/lite-web/src/features/content-studio/ContentStudio.tsx \
+            apps/lite-web/src/features/content-studio/ContentStudio.triage.test.tsx
+      - name: Commit formatter output
+        run: |
+          git config user.name "markorbit-ci"
+          git config user.email "markorbit-ci@users.noreply.github.com"
+          git add \
+            apps/lite-web/src/features/content-studio/ContentStudio.tsx \
+            apps/lite-web/src/features/content-studio/ContentStudio.triage.test.tsx
+          if git diff --cached --quiet; then
+            echo "No formatter changes required."
+            exit 0
+          fi
+          git commit -m "style(lite): apply canonical Content Studio triage formatting"
+          git push origin HEAD:${GITHUB_REF_NAME}
