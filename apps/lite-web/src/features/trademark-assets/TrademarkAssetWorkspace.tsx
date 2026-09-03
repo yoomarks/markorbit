@@ -35,9 +35,7 @@ export interface TrademarkAssetWorkspaceProps {
     input: Readonly<RecordTrademarkAssetManagementDispositionInput>,
     idempotencyKey: string
   ) => Promise<TrademarkAssetManagementDisposition>;
-  onReloadManagementDispositions?: () => Promise<
-    CurrentTrademarkAssetManagementDispositionProjection
-  >;
+  onReloadManagementDispositions?: () => Promise<CurrentTrademarkAssetManagementDispositionProjection>;
   onReloadAsset?: () => Promise<void>;
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   onSaveCommerceProfile?: (
@@ -296,15 +294,13 @@ export function TrademarkAssetWorkspace({
             {managementSignals.map((signal) => {
               const recommendation = recommendationForSignal(signal);
               const disposition = dispositionForSignal(signal);
-              const resolvedByOwner =
-                disposition?.kind === 'RESOLVED_BY_WORKFLOW_REFERENCE';
+              const resolvedByOwner = disposition?.kind === 'RESOLVED_BY_WORKFLOW_REFERENCE';
               const mutationForSignal =
                 pendingMutation?.signalId === signal.managementSignalId &&
                 pendingMutation.signalVersion === signal.version
                   ? pendingMutation
                   : undefined;
-              const confirming =
-                recommendation?.recommendationId === confirmingRecommendationId;
+              const confirming = recommendation?.recommendationId === confirmingRecommendationId;
               const controlsDisabled =
                 Boolean(mutationForSignal) ||
                 resolvedByOwner ||
@@ -405,8 +401,8 @@ export function TrademarkAssetWorkspace({
                       ) : null}
                       {mutationForSignal?.phase === 'stale' ? (
                         <p role="status">
-                          The Asset or Signal changed. Current owner truth is being reloaded; choose an
-                          action again only against the new exact Signal version.
+                          The Asset or Signal changed. Current owner truth is being reloaded; choose
+                          an action again only against the new exact Signal version.
                         </p>
                       ) : null}
                       {mutationForSignal?.phase === 'unavailable' ? (
