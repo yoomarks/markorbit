@@ -51,3 +51,4 @@ jobs:
           git push
 
 # rerun after repository Prettier applied
+# rerun after MarkReg lint autofix
