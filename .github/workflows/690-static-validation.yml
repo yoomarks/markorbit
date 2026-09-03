@@ -1,0 +1,36 @@
+name: Validate #690 integration branch
+
+on:
+  push:
+    branches:
+      - integration/690-official-fee-reference-read
+    paths:
+      - .github/workflows/690-static-validation.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/690-official-fee-reference-read
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm --filter @markorbit/core-service lint
+      - run: pnpm --filter @markorbit/core-service typecheck
+      - run: pnpm --filter @markorbit/core-service build
+      - run: pnpm --filter @markorbit/core-service exec vitest run tests/official-fee-reference-http.test.ts
+      - run: pnpm --filter @markorbit/capability-engine lint
+      - run: pnpm --filter @markorbit/capability-engine typecheck
+      - run: pnpm --filter @markorbit/capability-engine build
+      - run: >-
+          pnpm --filter @markorbit/capability-engine exec vitest run
+          tests/official-fee-reference-http-reader.test.ts
+          tests/uspto-official-fee-production-bootstrap.test.ts
+          tests/uspto-official-fee-reference-currentness.test.ts
+          tests/governed-runtime-bootstrap.test.ts
