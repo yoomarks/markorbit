@@ -42,6 +42,7 @@ const actorSpoofFields = [
 ] as const;
 
 const opportunityQualificationAuthoritySpoofFields = ['workspaceId', 'principalId'] as const;
+const browserManagementDispositionKinds = ['WATCHED', 'DEFERRED', 'DISMISSED', 'CONTINUED'] as const;
 
 type ProductLoopSecurityMode = 'READ' | 'DURABLE_MUTATION' | 'ADVISORY_POST';
 
@@ -138,6 +139,39 @@ function aiGuideBody(request: JsonRequest): Readonly<Record<string, unknown>> {
       400,
       'INVALID_REQUEST',
       'Only expectedTrademarkAssetVersion and requestedKinds may be forwarded to the AI Guide owner.'
+    );
+  return body;
+}
+
+function managementDispositionBody(request: JsonRequest): Readonly<Record<string, unknown>> {
+  const body = bodyRecord(request);
+  const allowedFields = [
+    'expectedTrademarkAssetVersion',
+    'managementSignal',
+    'recommendation',
+    'kind',
+    'note'
+  ] as const;
+  if (
+    Object.keys(body).some(
+      (field) => !allowedFields.includes(field as (typeof allowedFields)[number])
+    )
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only exact-current disposition fields may be forwarded; identity, authority, workflow, source and external-action fields are forbidden.'
+    );
+  if (
+    typeof body.kind !== 'string' ||
+    !browserManagementDispositionKinds.includes(
+      body.kind as (typeof browserManagementDispositionKinds)[number]
+    )
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'kind must be WATCHED, DEFERRED, DISMISSED, or CONTINUED.'
     );
   return body;
 }
@@ -292,6 +326,15 @@ export function createGatewayProductLoopRoutes(
     return json(response.status, response.body);
   };
 
+  const trademarkAssetManagementDisposition = async (
+    request: JsonRequest
+  ): Promise<ReturnType<typeof json>> => {
+    const principal = await authenticate(request, 'DURABLE_MUTATION', ['matter:manage']);
+    const body = managementDispositionBody(request);
+    const response = await liteCall(request, principal, { body });
+    return json(response.status, response.body);
+  };
+
   const route = (
     method: JsonRoute['method'],
     path: string,
@@ -341,6 +384,17 @@ export function createGatewayProductLoopRoutes(
       method: 'GET',
       path: '/api/lite/trademark-assets/:trademarkAssetId',
       handle: trademarkAssetDetail
+    },
+    route(
+      'GET',
+      '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
+      ['workspace:read'],
+      'READ'
+    ),
+    {
+      method: 'POST',
+      path: '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
+      handle: trademarkAssetManagementDisposition
     },
     {
       method: 'POST',
