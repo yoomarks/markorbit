@@ -326,6 +326,18 @@ export function createGatewayProductLoopRoutes(
     return json(response.status, response.body);
   };
 
+  const trademarkAssetManagementDispositionRead = async (
+    request: JsonRequest
+  ): Promise<ReturnType<typeof json>> => {
+    const principal = await authenticate(request, 'READ', ['workspace:read']);
+    const response = await liteCall(request, principal, {
+      method: 'GET',
+      path: `/v1/trademark-assets/${encodeURIComponent(request.params.trademarkAssetId!)}/management-dispositions`,
+      forwardIdempotency: false
+    });
+    return json(response.status, response.body);
+  };
+
   const trademarkAssetManagementDisposition = async (
     request: JsonRequest
   ): Promise<ReturnType<typeof json>> => {
@@ -385,12 +397,11 @@ export function createGatewayProductLoopRoutes(
       path: '/api/lite/trademark-assets/:trademarkAssetId',
       handle: trademarkAssetDetail
     },
-    route(
-      'GET',
-      '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
-      ['workspace:read'],
-      'READ'
-    ),
+    {
+      method: 'GET',
+      path: '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
+      handle: trademarkAssetManagementDispositionRead
+    },
     {
       method: 'POST',
       path: '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
