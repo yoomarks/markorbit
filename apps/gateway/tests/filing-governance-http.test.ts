@@ -234,19 +234,29 @@ describe('authenticated Filing Governance Gateway bridge', () => {
     }
   });
 
-  it('rejects generic browser authority spoof fields but preserves authorizedParty', async () => {
+  it('rejects browser caller authority spoof fields but preserves authorizedParty', async () => {
     const downstream = mockDownstream(200, { ok: true });
     vi.stubGlobal('fetch', downstream);
-    await expect(
-      handler()(
-        request(
-          'POST',
-          '/api/execution/filing-authorizations',
-          { workspaceId, actorId: 'browser_actor' },
-          { 'idempotency-key': 'spoof-701' }
+    const spoofBodies: readonly Record<string, unknown>[] = [
+      { workspaceId },
+      { actorId: 'browser_actor' },
+      { role: 'OWNER' },
+      { permissions: ['execution:manage'] },
+      { principal: { workspaceId, userId } },
+      { requestedBy: 'browser_actor' },
+      { sessionId: 'browser_session' }
+    ];
+    for (const spoofBody of spoofBodies) {
+      await expect(
+        handler()(
+          request('POST', '/api/execution/filing-authorizations', spoofBody, {
+            'idempotency-key': 'spoof-701'
+          })
         )
-      )
-    ).rejects.toMatchObject({ status: 400, code: 'INVALID_EXECUTION_AUTHORITY' });
+      ).rejects.toMatchObject({ status: 400, code: 'INVALID_EXECUTION_AUTHORITY' });
+    }
+    expect(downstream).not.toHaveBeenCalled();
+
     const result = await handler()(
       request(
         'POST',
