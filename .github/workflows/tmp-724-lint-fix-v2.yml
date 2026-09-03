@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply exact lint repairs
+      - name: Apply exact lint and typecheck repairs
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -83,10 +83,32 @@ jobs:
           count = flow.count(old)
           assert count == 1, (old, count)
           flow_path.write_text(flow.replace(old, new, 1))
+
+          api_test_path = Path('apps/markreg-web/src/api/production-intake.test.ts')
+          api_text = api_test_path.read_text()
+          api_replacements = [
+              (
+                  "    const post = vi.fn(() => Promise.resolve({ intake }));",
+                  """    const post = vi.fn(
+              (_path: string, _body: unknown, _headers?: Record<string, string>) =>
+                Promise.resolve({ intake })
+            );"""
+              ),
+              (
+                  "    const body = post.mock.calls[0]![1] as Record<string, unknown>;",
+                  "    const body = post.mock.calls[0]![1];"
+              ),
+          ]
+          for old, new in api_replacements:
+              count = api_text.count(old)
+              assert count == 1, (old, count)
+              api_text = api_text.replace(old, new, 1)
+          api_test_path.write_text(api_text)
           PY
           pnpm exec prettier --write \
             apps/markreg-web/src/ProductionIntakeFlow.tsx \
-            apps/markreg-web/src/ProductionIntakeFlow.test.tsx
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts
       - name: Validate MarkReg Web lint typecheck test
         run: |
           pnpm --filter @markorbit/contracts build
@@ -94,12 +116,13 @@ jobs:
           pnpm --filter @markorbit/markreg-web lint
           pnpm --filter @markorbit/markreg-web typecheck
           pnpm --filter @markorbit/markreg-web test
-      - name: Commit validated lint repair
+      - name: Commit validated repair
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             apps/markreg-web/src/ProductionIntakeFlow.tsx \
-            apps/markreg-web/src/ProductionIntakeFlow.test.tsx
-          git commit -m 'test(markreg): satisfy #699 strict lint typing'
+            apps/markreg-web/src/ProductionIntakeFlow.test.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts
+          git commit -m 'test(markreg): satisfy #699 strict Web validation'
           git push origin HEAD:tmp/724-lint-fix-v2
