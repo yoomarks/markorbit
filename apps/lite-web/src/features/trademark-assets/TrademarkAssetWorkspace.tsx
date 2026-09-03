@@ -35,7 +35,9 @@ export interface TrademarkAssetWorkspaceProps {
     input: Readonly<RecordTrademarkAssetManagementDispositionInput>,
     idempotencyKey: string
   ) => Promise<TrademarkAssetManagementDisposition>;
-  onReloadManagementDispositions?: () => Promise<CurrentTrademarkAssetManagementDispositionProjection>;
+  onReloadManagementDispositions?: () => Promise<
+    CurrentTrademarkAssetManagementDispositionProjection
+  >;
   onReloadAsset?: () => Promise<void>;
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   onSaveCommerceProfile?: (
@@ -196,7 +198,10 @@ export function TrademarkAssetWorkspace({
           (item) =>
             item.signal.id === signal.managementSignalId && item.signal.version === signal.version
         )?.disposition;
-        if (!confirmed || (kind === 'CONTINUED' && confirmed.kind !== 'CONTINUED')) {
+        if (
+          !confirmed ||
+          (kind === 'CONTINUED' && confirmed.kind !== 'CONTINUED')
+        ) {
           setPendingMutation({ ...context, phase: 'reload-required' });
           return;
         }
