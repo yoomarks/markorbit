@@ -2,18 +2,19 @@ name: TEMP NEVER MERGE MGSN Trusted Public Format
 
 on:
   pull_request:
-    paths:
-      - '.github/workflows/temp-never-merge-mgsn-685-format.yml'
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  format:
+  verify-format-push:
+    if: github.head_ref == 'tmp-mgsn-685-trusted-public-format'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: mgsn-trusted-public-exposure-runtime
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
@@ -23,27 +24,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Format and verify MGSN Trusted Public runtime
+      - name: Format exact owner files
         run: |
-          pnpm prettier --write services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
-          pnpm prettier --check services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
-          pnpm --filter @markorbit/mgsn-service lint
+          pnpm exec prettier --write services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
+          pnpm exec prettier --check services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
+      - name: Build MGSN dependency closure
+        run: pnpm turbo run build --filter=@markorbit/mgsn-service...
+      - name: MGSN typecheck and lint
+        run: |
           pnpm --filter @markorbit/mgsn-service typecheck
-          pnpm --filter @markorbit/mgsn-service test -- tests/trusted-public-exposure.test.ts
-          cp services/mgsn/src/trusted-public-exposure.ts /tmp/trusted-public-exposure.ts
-          cp services/mgsn/tests/trusted-public-exposure.test.ts /tmp/trusted-public-exposure.test.ts
-      - name: Push only formatted MGSN files to formal branch
+          pnpm --filter @markorbit/mgsn-service lint
+      - name: Run focused Trusted Public tests
+        run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/trusted-public-exposure.test.ts
+      - name: Push only verified formatting to formal branch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin mgsn-trusted-public-exposure-runtime
-          git checkout -B formal origin/mgsn-trusted-public-exposure-runtime
-          cp /tmp/trusted-public-exposure.ts services/mgsn/src/trusted-public-exposure.ts
-          cp /tmp/trusted-public-exposure.test.ts services/mgsn/tests/trusted-public-exposure.test.ts
-          git add services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
-          if git diff --cached --quiet; then
+          if git diff --quiet -- services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts; then
             echo "No formatting changes required"
             exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
           git commit -m "[MGSN-P0] Format Trusted Public serve runtime"
           git push origin HEAD:mgsn-trusted-public-exposure-runtime
