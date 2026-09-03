@@ -268,7 +268,7 @@ integration('trusted production source evidence PostgreSQL read', () => {
           SET execution_json=jsonb_set(
             execution_json,
             '{receipt,sessionReceiptId}',
-            '\"session-receipt_tampered-production-source\"'::jsonb,
+            '"session-receipt_tampered-production-source"'::jsonb,
             false
           )`
     );
