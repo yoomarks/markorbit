@@ -16,8 +16,14 @@ export type TrustEvidenceNetworkAuthoritySource = Pick<
   'findCurrentParticipation' | 'findLatestParticipation' | 'findCurrentVisibilityPolicy'
 >;
 export type TrustEvidenceProviderSource = Pick<ProviderRegistryRepository, 'findProviderById'>;
-export type TrustEvidenceProviderReturnSource = Pick<ProviderReturnRepository, 'findProviderReturn'>;
-export type TrustEvidenceResponsibilitySource = Pick<ProviderResponsibilityService, 'assessCurrent'>;
+export type TrustEvidenceProviderReturnSource = Pick<
+  ProviderReturnRepository,
+  'findProviderReturn'
+>;
+export type TrustEvidenceResponsibilitySource = Pick<
+  ProviderResponsibilityService,
+  'assessCurrent'
+>;
 
 const unavailableSnapshot = Object.freeze({
   authorityAvailable: false,
@@ -47,9 +53,7 @@ function contextsMatch(
 }
 
 function hasBoundedNetworkGrant(
-  policy: Awaited<
-    ReturnType<TrustEvidenceNetworkAuthoritySource['findCurrentVisibilityPolicy']>
-  >
+  policy: Awaited<ReturnType<TrustEvidenceNetworkAuthoritySource['findCurrentVisibilityPolicy']>>
 ): boolean {
   return Boolean(
     policy?.scope === 'BOUNDED_PUBLIC' &&
@@ -71,7 +75,9 @@ function hasBoundedNetworkGrant(
  * result grants only bounded Trust explanation serving; it cannot select, allocate, contact, file,
  * pay, retrieve artifacts or create Official Truth.
  */
-export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCurrentAuthoritySource {
+export class MgsnTrustEvidenceCurrentAuthoritySource
+  implements TrustEvidenceCurrentAuthoritySource
+{
   constructor(
     private readonly network: TrustEvidenceNetworkAuthoritySource,
     private readonly providerReturns: TrustEvidenceProviderReturnSource,
@@ -118,10 +124,7 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
     const historicalParticipation = await this.network.findLatestParticipation(
       historical.networkParticipationId
     );
-    if (
-      !historicalParticipation ||
-      historicalParticipation.providerId !== projection.providerId
-    ) {
+    if (!historicalParticipation || historicalParticipation.providerId !== projection.providerId) {
       return {
         authorityAvailable: true,
         participationActive: false,
