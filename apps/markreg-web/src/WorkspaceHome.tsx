@@ -12,7 +12,6 @@ import {
   TextInput
 } from '@markorbit/ui';
 import { useEffect, useState, type ReactNode } from 'react';
-import { MarkregApp } from './App.js';
 import { MarkregApiError } from './api/errors.js';
 import { createFormalMatterListClient, type FormalMatterListClient } from './api/formal-matter.js';
 import {
@@ -21,6 +20,7 @@ import {
   type OrderListView,
   type OrderView
 } from './api/order.js';
+import { ProductionIntakeFlow } from './ProductionIntakeFlow.js';
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 const PAGE_SIZE = 10;
@@ -112,7 +112,7 @@ const defaultMatterClient = createFormalMatterListClient();
 export function MarkregWorkspaceHome({
   client = defaultOrderClient,
   matterClient = defaultMatterClient,
-  renderPlanning = () => <MarkregApp />
+  renderPlanning = () => <ProductionIntakeFlow />
 }: {
   client?: OrderClient;
   matterClient?: FormalMatterListClient;
@@ -303,11 +303,11 @@ export function MarkregWorkspaceHome({
     <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
       <PageHeader
         title="Trademark Workspace"
-        description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing remains a fixture-only consultation until its production gates are complete."
+        description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing now begins with a durable customer-supplied Production Intake."
       />
       <Alert tone="warning" title="Authority boundary">
-        Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing. A Formal Matter does not mean an external
-        filing has occurred.
+        Intake ≠ Recommendation ≠ Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing. A Formal Matter does
+        not mean an external filing has occurred.
       </Alert>
       <div className="markreg-workspace-primary-actions">
         <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
@@ -361,7 +361,7 @@ export function MarkregWorkspaceHome({
                 <h3>No service Orders yet</h3>
                 <p>
                   This Workspace has no durable Orders. Formal Matters, if any, remain visible
-                  separately below. Planning a consultation does not create an Order, Payment,
+                  separately below. Recording a Production Intake does not create an Order, Payment,
                   Matter, or Filing.
                 </p>
                 <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
