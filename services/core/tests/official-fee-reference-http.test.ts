@@ -56,7 +56,11 @@ function exactQuery(): OfficialFeeResolutionQueryV1 {
   };
 }
 
-function route(resolveCurrent: (query: Readonly<OfficialFeeResolutionQueryV1>) => unknown) {
+function route(
+  resolveCurrent: (
+    query: Readonly<OfficialFeeResolutionQueryV1>
+  ) => Readonly<OfficialFeeReferenceV1> | Promise<Readonly<OfficialFeeReferenceV1>>
+) {
   return createOfficialFeeReferenceRoutesV1({
     internalServiceSecret: secret,
     references: { resolveCurrent }
