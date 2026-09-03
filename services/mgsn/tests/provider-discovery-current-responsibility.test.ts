@@ -38,7 +38,7 @@ function positiveAssessment(
       providerWorkspaceId: candidate.providerWorkspaceId
     },
     profile: {
-      providerResponsibilityProfileId: 'provider-responsibility_discovery-707',
+      providerResponsibilityProfileId: 'provider-responsibility_discovery-707' as const,
       version: 4,
       profileFingerprintSha256: 'a'.repeat(64)
     },
@@ -182,6 +182,9 @@ describe('MGSN P0 #707 Provider Discovery current responsibility composition', (
 
   it('preserves Provider attribution for the transparent legally-required signer positive case', async () => {
     const assessment = positiveAssessment('DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED');
+    if (assessment.state !== 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED') {
+      throw new Error('required signer assessment expected');
+    }
     const result = await evaluate(responsibility({ state: assessment.state, assessment }));
     if (result.status !== 'CANDIDATES') throw new Error('candidate expected');
     const serialized = JSON.stringify(result);
