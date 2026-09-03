@@ -24,6 +24,7 @@ jobs:
       - run: |
           pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/events build
+          pnpm --filter @markorbit/service-kit build
           pnpm --filter @markorbit/gateway lint
           pnpm --filter @markorbit/gateway typecheck
           pnpm --filter @markorbit/gateway exec vitest run tests/filing-governance-http.test.ts tests/filing-authorization-execution-release.test.ts tests/execution-negative-path-matrix.test.ts
