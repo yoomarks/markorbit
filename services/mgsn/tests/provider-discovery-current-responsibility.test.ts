@@ -62,8 +62,13 @@ function positiveAssessment(
           kind: 'REQUIRED',
           distinctSignerRequired: true,
           signerReference: 'signer:transparent-707',
-          signerFunction: 'SIGNING_OR_FILING_ONLY',
-          receivesHandoffData: false
+          signerIdentityAuthorityReference: 'authority:signer-identity-707',
+          legalBasisReference: 'legal-basis:signer-707',
+          jurisdiction: 'US',
+          function: 'SIGNING_OR_FILING_ONLY',
+          transparentlyDisclosed: true,
+          receivesHandoffDataByDefault: false,
+          doesNotReplaceFinalExecutionProvider: true
         }
       }
     : {
@@ -189,12 +194,24 @@ describe('MGSN P0 #707 Provider Discovery current responsibility composition', (
   it('does not expose positive responsibility proof when evidence-reference projection is not authorized', async () => {
     const base = fixture();
     if (base.status !== 'CANDIDATES') throw new Error('candidate expected');
-    base.candidates[0].authorizedProjection.fields = base.candidates[0].authorizedProjection.fields.filter(
-      (field) => field.dataClass !== 'PROVIDER_EVIDENCE_REFERENCE'
-    );
+    const candidate = base.candidates[0];
+    const withoutEvidenceProjection: ProviderDiscoveryResultV1 = {
+      ...base,
+      candidates: [
+        {
+          ...candidate,
+          authorizedProjection: {
+            ...candidate.authorizedProjection,
+            fields: candidate.authorizedProjection.fields.filter(
+              (field) => field.dataClass !== 'PROVIDER_EVIDENCE_REFERENCE'
+            )
+          }
+        }
+      ]
+    };
     const assessment = positiveAssessment();
     const currentResponsibility = responsibility({ state: assessment.state, assessment });
-    const result = await evaluate(currentResponsibility, discovery(base));
+    const result = await evaluate(currentResponsibility, discovery(withoutEvidenceProjection));
     if (result.status !== 'CANDIDATES') throw new Error('candidate expected');
     expect(result.candidates[0].directExecutorDisclosure.state).toBe('UNPROVEN');
     expect(result.candidates[0].explanation.limitations.map((item) => item.code)).toContain(
