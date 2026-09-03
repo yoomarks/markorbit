@@ -42,6 +42,17 @@ const actorSpoofFields = [
 ] as const;
 
 const opportunityQualificationAuthoritySpoofFields = ['workspaceId', 'principalId'] as const;
+const trademarkManagementDispositionAuthoritySpoofFields = [
+  'workspaceId',
+  'principalId',
+  'trademarkAssetId',
+  'workflowReference',
+  'authority',
+  'source',
+  'officialTruth',
+  'provider',
+  'model'
+] as const;
 
 type ProductLoopSecurityMode = 'READ' | 'DURABLE_MUTATION' | 'ADVISORY_POST';
 
@@ -347,6 +358,19 @@ export function createGatewayProductLoopRoutes(
       path: '/api/lite/trademark-assets/:trademarkAssetId/ai-guide',
       handle: trademarkAssetAiGuide
     },
+    route(
+      'GET',
+      '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
+      ['workspace:read'],
+      'READ'
+    ),
+    route(
+      'POST',
+      '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',
+      ['matter:manage'],
+      'DURABLE_MUTATION',
+      trademarkManagementDispositionAuthoritySpoofFields
+    ),
     route('POST', '/api/lite/trademark-assets/:trademarkAssetId/commerce-profile', [
       'matter:manage'
     ]),
