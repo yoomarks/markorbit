@@ -1,21 +1,20 @@
 name: tmp-699-prettier-probe
 
 on:
-  pull_request:
-    paths:
-      - 'apps/markreg-web/src/ProductionIntakePlanning.tsx'
-      - 'apps/markreg-web/src/ProductionIntakePlanning.test.tsx'
-      - 'apps/markreg-web/src/api/production-intake.test.ts'
-      - '.github/workflows/tmp-699-prettier-probe.yml'
+  push:
+    branches:
+      - 'tmp/699-prettier-probe'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  prettier-diff:
+  prettier-write:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: tmp/699-prettier-probe
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -24,13 +23,24 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier patch
+      - name: Commit exact Prettier output to temporary branch
         run: |
           pnpm exec prettier --write \
             apps/markreg-web/src/ProductionIntakePlanning.tsx \
             apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
             apps/markreg-web/src/api/production-intake.test.ts
-          git --no-pager diff -- \
+          if git diff --quiet -- \
+            apps/markreg-web/src/ProductionIntakePlanning.tsx \
+            apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts; then
+            echo 'already formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
             apps/markreg-web/src/ProductionIntakePlanning.tsx \
             apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
             apps/markreg-web/src/api/production-intake.test.ts
+          git commit -m 'style: temporary #699 exact prettier output'
+          git push origin HEAD:tmp/699-prettier-probe
