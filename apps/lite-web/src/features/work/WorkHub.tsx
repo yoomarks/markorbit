@@ -10,7 +10,7 @@ function open(hash: 'work-professional-review' | 'work-execution-release' | 'wor
 
 export function WorkHub({ workspaceId }: WorkHubProps) {
   return (
-    <section aria-labelledby="work-hub-heading">
+    <section aria-label="Work hub">
       <PageHeader
         title="Work"
         description="Professional work surfaces, with their current product maturity shown explicitly"
@@ -26,7 +26,7 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
           <div className="lite-row">
             <div>
               <p>Governed review queue</p>
-              <h2 id="work-hub-heading">Professional Review</h2>
+              <h2>Professional Review</h2>
             </div>
             <Badge>Live governed</Badge>
           </div>
@@ -34,10 +34,7 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
             Review exact Matter Draft evidence, resolve blocking checks, and record a bounded human
             review decision without performing an external filing.
           </p>
-          <Button
-            disabled={!workspaceId}
-            onClick={() => open('work-professional-review')}
-          >
+          <Button disabled={!workspaceId} onClick={() => open('work-professional-review')}>
             {workspaceId ? 'Open Professional Review' : 'Select a Workspace first'}
           </Button>
         </Card>
