@@ -1,0 +1,125 @@
+name: Apply #690 owner-boundary patches
+
+on:
+  push:
+    branches:
+      - integration/690-official-fee-reference-read
+    paths:
+      - .github/workflows/690-official-fee-reference-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/690-official-fee-reference-read
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply bounded patches
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              actual = text.count(old)
+              if actual < count:
+                  raise SystemExit(f'{path}: expected at least {count} matches, found {actual}: {old!r}')
+              text = text.replace(old, new, count)
+              p.write_text(text)
+
+          core = 'services/core/src/index.ts'
+          replace(
+              core,
+              "import type { MethodOutcomeReportServiceV1 } from './method-outcome-report.js';\n",
+              "import type { MethodOutcomeReportServiceV1 } from './method-outcome-report.js';\nimport {\n  createOfficialFeeReferenceRoutesV1,\n  type OfficialFeeReferenceResolutionAuthorityV1\n} from './official-fee-reference-http.js';\n"
+          )
+          replace(
+              core,
+              "  methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;\n  internalServiceSecret?: string;\n",
+              "  methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;\n  officialFeeReferences?: Readonly<OfficialFeeReferenceResolutionAuthorityV1>;\n  internalServiceSecret?: string;\n"
+          )
+          replace(
+              core,
+              "  if (options.methodImprovementAdmissions && !secret)\n    throw new Error('internalServiceSecret is required for Method Improvement admission.');\n",
+              "  if (options.methodImprovementAdmissions && !secret)\n    throw new Error('internalServiceSecret is required for Method Improvement admission.');\n  if (options.officialFeeReferences && !secret)\n    throw new Error('internalServiceSecret is required for Official Fee Reference reads.');\n"
+          )
+          replace(
+              core,
+              "  const methodImprovementRoutes =\n    options.methodImprovementAdmissions && secret\n      ? createMethodImprovementRoutesV1({\n          service: options.methodImprovementAdmissions,\n          internalServiceSecret: secret\n        })\n      : [];\n",
+              "  const methodImprovementRoutes =\n    options.methodImprovementAdmissions && secret\n      ? createMethodImprovementRoutesV1({\n          service: options.methodImprovementAdmissions,\n          internalServiceSecret: secret\n        })\n      : [];\n  const officialFeeReferenceRoutes =\n    options.officialFeeReferences && secret\n      ? createOfficialFeeReferenceRoutesV1({\n          references: options.officialFeeReferences,\n          internalServiceSecret: secret\n        })\n      : [];\n"
+          )
+          replace(
+              core,
+              "  routes.push(\n    ...methodOutcomeEvidenceRoutes,\n    ...methodOutcomeReportRoutes,\n    ...methodImprovementRoutes\n  );\n",
+              "  routes.push(\n    ...methodOutcomeEvidenceRoutes,\n    ...methodOutcomeReportRoutes,\n    ...methodImprovementRoutes,\n    ...officialFeeReferenceRoutes\n  );\n"
+          )
+          replace(
+              core,
+              "export * from './method-improvement-http.js';\n",
+              "export * from './method-improvement-http.js';\nexport * from './official-fee-reference-http.js';\nexport * from './official-fee-reference-store.js';\nexport * from './official-fee-reference-store-postgres.js';\n"
+          )
+
+          pilot = 'services/capability-engine/src/uspto-official-fee-resolver-pilot.ts'
+          replace(
+              pilot,
+              "  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): unknown;\n",
+              "  resolveCurrent(\n    query: Readonly<OfficialFeeReferenceReaderQueryV1>\n  ): unknown | Promise<unknown>;\n"
+          )
+
+          currentness = 'services/capability-engine/src/uspto-official-fee-reference-currentness.ts'
+          replace(
+              currentness,
+              "  evaluate(\n    input: Readonly<CapabilitySourceAdmissionPolicyInput>\n  ): CapabilityReferenceCurrentnessResult {\n",
+              "  async evaluate(\n    input: Readonly<CapabilitySourceAdmissionPolicyInput>\n  ): Promise<CapabilityReferenceCurrentnessResult> {\n"
+          )
+          replace(
+              currentness,
+              "      currentValue = this.options.references.resolveCurrent({\n",
+              "      currentValue = await this.options.references.resolveCurrent({\n"
+          )
+
+          tests = 'services/capability-engine/tests/uspto-official-fee-reference-currentness.test.ts'
+          p = Path(tests)
+          text = p.read_text()
+          text = text.replace('const result = authority.evaluate(', 'const result = await authority.evaluate(')
+          text = text.replace('expect(authority.evaluate(', 'expect(await authority.evaluate(')
+          text = text.replace('      authority.evaluate({', '      await authority.evaluate({')
+          p.write_text(text)
+
+          capability_index = 'services/capability-engine/src/index.ts'
+          replace(
+              capability_index,
+              "export * from './milestone-capability-request-fixture.js';\n",
+              "export * from './milestone-capability-request-fixture.js';\nexport * from './official-fee-reference-http-reader.js';\n"
+          )
+      - name: Format patched files
+        run: >-
+          pnpm exec prettier --write
+          services/core/src/index.ts
+          services/core/src/main.ts
+          services/core/src/official-fee-reference-http.ts
+          services/capability-engine/src/index.ts
+          services/capability-engine/src/main.ts
+          services/capability-engine/src/governed-runtime-bootstrap.ts
+          services/capability-engine/src/official-fee-reference-http-reader.ts
+          services/capability-engine/src/uspto-official-fee-resolver-pilot.ts
+          services/capability-engine/src/uspto-official-fee-reference-currentness.ts
+          services/capability-engine/tests/uspto-official-fee-reference-currentness.test.ts
+      - name: Remove patch workflow and commit
+        run: |
+          rm .github/workflows/690-official-fee-reference-patch.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "[INTEGRATION][CORE-P0] Apply Official Fee Reference owner-boundary wiring"
+          git push origin HEAD:integration/690-official-fee-reference-read
