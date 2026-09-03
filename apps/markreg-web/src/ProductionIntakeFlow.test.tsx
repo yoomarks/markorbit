@@ -41,10 +41,12 @@ const durableIntake: ProductionIntakeV1 = {
 };
 
 const client = (overrides: Partial<ProductionIntakeClient> = {}): ProductionIntakeClient => ({
-  create: vi.fn(() => Promise.resolve({
-    ...durableIntake,
-    input: { ...durableIntake.input, businessContext: 'POST response must not be rendered' }
-  })),
+  create: vi.fn(() =>
+    Promise.resolve({
+      ...durableIntake,
+      input: { ...durableIntake.input, businessContext: 'POST response must not be rendered' }
+    })
+  ),
   get: vi.fn(() => Promise.resolve(durableIntake)),
   ...overrides
 });
@@ -66,7 +68,10 @@ async function fillAndReview(user: ReturnType<typeof userEvent.setup>) {
   ]);
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-  await user.type(screen.getByLabelText('Goods / services source text'), 'Downloadable software and SaaS.');
+  await user.type(
+    screen.getByLabelText('Goods / services source text'),
+    'Downloadable software and SaaS.'
+  );
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 
   await user.type(screen.getByLabelText('Business context'), 'Customer submitted launch context');
@@ -97,7 +102,9 @@ describe('durable Production Intake flow', () => {
   it('retries an uncertain write with the same logical idempotency identity', async () => {
     const create = vi
       .fn()
-      .mockRejectedValueOnce(new MarkregApiError('recoverable', 'temporary', 'correlation_x', 'OWNER_503'))
+      .mockRejectedValueOnce(
+        new MarkregApiError('recoverable', 'temporary', 'correlation_x', 'OWNER_503')
+      )
       .mockResolvedValueOnce(durableIntake);
     const productionClient = client({ create });
     const user = userEvent.setup();
@@ -105,7 +112,9 @@ describe('durable Production Intake flow', () => {
 
     await fillAndReview(user);
     await user.click(screen.getByRole('button', { name: 'Submit Production Intake' }));
-    expect(await screen.findByRole('heading', { name: 'Submission outcome is uncertain' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Submission outcome is uncertain' })
+    ).toBeTruthy();
 
     const firstCommand = create.mock.calls[0]![0];
     await user.click(screen.getByRole('button', { name: 'Try again' }));
