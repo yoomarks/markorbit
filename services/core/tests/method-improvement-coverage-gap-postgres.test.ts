@@ -52,8 +52,8 @@ function digest(character: string): string {
 }
 
 function source(
-  coverageStatus: 'MISSING_RUNTIME_CAPABILITY' | 'NO_APPROVED_IMPLEMENTATION' =
-    'MISSING_RUNTIME_CAPABILITY'
+  coverageStatus:
+    'MISSING_RUNTIME_CAPABILITY' | 'NO_APPROVED_IMPLEMENTATION' = 'MISSING_RUNTIME_CAPABILITY'
 ): MethodImprovementCoverageGapEvidenceSourceV1 {
   const evidenceFingerprintSha256 = digest('a');
   const candidateFingerprintSha256 = digest('c');
@@ -204,8 +204,11 @@ integration('PostgreSQL Coverage Gap Method Improvement admission', () => {
     expect(replay.trigger).toEqual(first.trigger);
     expect(replay.researchMission).toEqual(first.researchMission);
     expect(
-      (await database.getPool().query('SELECT 1 FROM core_method_improvement_coverage_gap_triggers'))
-        .rowCount
+      (
+        await database
+          .getPool()
+          .query('SELECT 1 FROM core_method_improvement_coverage_gap_triggers')
+      ).rowCount
     ).toBe(1);
     expect(
       (

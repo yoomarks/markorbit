@@ -154,8 +154,7 @@ function targetColumns(input: Readonly<PreparedMethodImprovementCoverageGapAdmis
       predecessorMethodRef: target.predecessor.methodRef,
       predecessorMethodVersionRef: target.predecessor.methodVersionRef,
       predecessorEvaluationRef: target.predecessor.evaluationRef,
-      predecessorPackageFingerprintSha256:
-        target.predecessor.packageFingerprintSha256 ?? null,
+      predecessorPackageFingerprintSha256: target.predecessor.packageFingerprintSha256 ?? null,
       targetDemandId: null,
       targetDemandFingerprintSha256: null
     };
@@ -252,9 +251,7 @@ async function insertAdmission(
   };
 }
 
-export class PostgresMethodImprovementCoverageGapAdmissionRepositoryV1
-  implements MethodImprovementCoverageGapAdmissionRepositoryV1
-{
+export class PostgresMethodImprovementCoverageGapAdmissionRepositoryV1 implements MethodImprovementCoverageGapAdmissionRepositoryV1 {
   constructor(private readonly database: ManagedDatabase) {}
 
   async admit(
