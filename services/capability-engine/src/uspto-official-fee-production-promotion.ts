@@ -118,7 +118,9 @@ class ApprovedUsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMeth
       })
     );
     if (Date.parse(reference.effectiveFrom) > Date.parse(requestInput.asOf)) {
-      throw new TypeError('Accepted Official Fee reference is not effective at the requested time.');
+      throw new TypeError(
+        'Accepted Official Fee reference is not effective at the requested time.'
+      );
     }
     if (
       reference.packageId !== activation.legacyPilot.packageId ||
@@ -147,9 +149,12 @@ class ApprovedUsptoOfficialFeeSourceResolutionRunnerV1 implements ExecutableMeth
         packageId: reference.packageId,
         methodId: reference.methodId,
         methodVersionId: reference.methodVersionId,
-        sourceIdentityFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
-        replayIdentityFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
-        materializationFingerprintSha256: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256
+        sourceIdentityFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
+        replayIdentityFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
+        materializationFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256
       },
       limitations: [...input.package.limitations],
       knowledgeResearchInvoked: false,
@@ -185,8 +190,7 @@ export function createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1(
     },
     selectionContext: new UsptoOfficialFeeMethodSelectionContextResolverV1(),
     runners: {
-      resolve: (kind) =>
-        kind === USPTO_OFFICIAL_FEE_RESOLVER_EXECUTABLE_KIND ? runner : undefined
+      resolve: (kind) => (kind === USPTO_OFFICIAL_FEE_RESOLVER_EXECUTABLE_KIND ? runner : undefined)
     }
   });
 }
