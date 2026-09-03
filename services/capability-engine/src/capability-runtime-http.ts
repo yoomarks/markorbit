@@ -15,6 +15,7 @@ import {
   type CapabilityRuntimeExecution,
   type GovernedCapabilityRuntime
 } from './capability-runtime.js';
+import { capabilityProductionSourceExecutionReferenceV1 } from './production-source-evidence-read.js';
 
 export interface CapabilityRuntimeHttpOptionsV2 {
   runtime: Pick<GovernedCapabilityRuntime, 'invoke'>;
@@ -164,7 +165,10 @@ export function createCapabilityRuntimeRoutesV2(
           }
 
           const execution: CapabilityRuntimeExecution = await options.runtime.invoke(command);
-          return json(execution.replayed ? 200 : 201, execution);
+          return json(execution.replayed ? 200 : 201, {
+            ...execution,
+            sourceEvidenceReadReference: capabilityProductionSourceExecutionReferenceV1(execution)
+          });
         } catch (error) {
           throw toHttpError(error);
         }

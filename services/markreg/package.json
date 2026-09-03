@@ -6,7 +6,7 @@
   "description": "Dual-channel international trademark recommendation, order and Matter service.",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/index.ts src/main.ts src/lifecycle-projection.ts src/lifecycle-handoff-http.ts src/lifecycle-surface-http.ts src/recommended-action.ts src/formal-opportunity.ts src/formal-opportunity-http.ts src/knowledge-case-promotion.ts src/knowledge-case-promotion-postgres.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/lifecycle-projection.ts src/lifecycle-handoff-http.ts src/lifecycle-surface-http.ts src/recommended-action.ts src/formal-opportunity.ts src/formal-opportunity-http.ts src/knowledge-case-promotion.ts src/knowledge-case-promotion-postgres.ts src/recommendation-source.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -56,6 +56,10 @@
     "./knowledge-case-promotion-postgres": {
       "types": "./dist/knowledge-case-promotion-postgres.d.ts",
       "import": "./dist/knowledge-case-promotion-postgres.js"
+    },
+    "./recommendation-source": {
+      "types": "./dist/recommendation-source.d.ts",
+      "import": "./dist/recommendation-source.js"
     }
   }
 }
