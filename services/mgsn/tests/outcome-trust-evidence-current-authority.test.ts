@@ -142,29 +142,29 @@ function networkSource(
     'currentParticipation' in overrides ? overrides.currentParticipation : participation;
   const currentPolicy = 'currentPolicy' in overrides ? overrides.currentPolicy : policy;
   return {
-    findLatestParticipation: async () => {
-      if (overrides.throwOnRead) throw new Error('network unavailable');
-      return participation;
-    },
-    findCurrentParticipation: async () => {
-      if (overrides.throwOnRead) throw new Error('network unavailable');
-      return currentParticipation;
-    },
-    findCurrentVisibilityPolicy: async () => {
-      if (overrides.throwOnRead) throw new Error('network unavailable');
-      return currentPolicy;
-    }
+    findLatestParticipation: () =>
+      overrides.throwOnRead
+        ? Promise.reject(new Error('network unavailable'))
+        : Promise.resolve(participation),
+    findCurrentParticipation: () =>
+      overrides.throwOnRead
+        ? Promise.reject(new Error('network unavailable'))
+        : Promise.resolve(currentParticipation),
+    findCurrentVisibilityPolicy: () =>
+      overrides.throwOnRead
+        ? Promise.reject(new Error('network unavailable'))
+        : Promise.resolve(currentPolicy)
   };
 }
 
 function returnSource(
   current: ProviderReturnRecord | undefined = providerReturn
 ): TrustEvidenceProviderReturnSource {
-  return { findProviderReturn: async () => current };
+  return { findProviderReturn: () => Promise.resolve(current) };
 }
 
 const providerSource: TrustEvidenceProviderSource = {
-  findProviderById: async () => provider
+  findProviderById: () => Promise.resolve(provider)
 };
 
 type ResponsibilityAssessment = Awaited<
@@ -175,11 +175,12 @@ function responsibilitySource(
   assessment: ResponsibilityAssessment = responsibilityAssessment
 ): TrustEvidenceResponsibilitySource {
   return {
-    assessCurrent: async () => ({
-      state: assessment?.state ?? 'UNKNOWN_OR_UNPROVEN',
-      assessment
-    })
-  } as TrustEvidenceResponsibilitySource;
+    assessCurrent: () =>
+      Promise.resolve({
+        state: assessment?.state ?? 'UNKNOWN_OR_UNPROVEN',
+        assessment
+      })
+  };
 }
 
 function authority(
