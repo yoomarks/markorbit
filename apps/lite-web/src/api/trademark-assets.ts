@@ -10,8 +10,12 @@ import type {
 } from '@markorbit/contracts/trademark-service-workbench';
 import type {
   TrademarkAssetManagementChangeReference,
+  TrademarkAssetManagementDisposition,
+  TrademarkAssetManagementDispositionKind,
   TrademarkAssetManagementRecommendation,
+  TrademarkAssetManagementRecommendationId,
   TrademarkAssetManagementSignal,
+  TrademarkAssetManagementSignalId,
   TrademarkAssetManagementSignalSeverity
 } from '@markorbit/contracts/trademark-asset-management';
 import type {
@@ -82,6 +86,35 @@ export interface TrademarkAssetDetailResponse {
   readonly recommendations?: readonly Readonly<TrademarkAssetManagementRecommendation>[];
 }
 
+export interface CurrentTrademarkAssetManagementDispositionProjection {
+  readonly schemaVersion: 1;
+  readonly workspaceId: string;
+  readonly asset: Readonly<{ id: TrademarkAssetId; version: number }>;
+  readonly items: ReadonlyArray<{
+    readonly signal: Readonly<{ id: TrademarkAssetManagementSignalId; version: number }>;
+    readonly disposition: Readonly<TrademarkAssetManagementDisposition> | null;
+  }>;
+}
+
+export type BrowserTrademarkAssetManagementDispositionKind = Extract<
+  TrademarkAssetManagementDispositionKind,
+  'WATCHED' | 'DEFERRED' | 'DISMISSED' | 'CONTINUED'
+>;
+
+export interface RecordTrademarkAssetManagementDispositionInput {
+  readonly expectedTrademarkAssetVersion: number;
+  readonly managementSignal: Readonly<{
+    id: TrademarkAssetManagementSignalId;
+    version: number;
+  }>;
+  readonly recommendation?: Readonly<{
+    id: TrademarkAssetManagementRecommendationId;
+    version: number;
+  }>;
+  readonly kind: BrowserTrademarkAssetManagementDispositionKind;
+  readonly note?: string;
+}
+
 export type SaveTrademarkAssetCommerceProfileInput = Omit<
   UpsertTrademarkAssetCommerceProfileInput,
   'workspaceId' | 'trademarkAssetId' | 'idempotencyKey'
@@ -101,6 +134,14 @@ export type PrepareTrademarkAssetAiGuideRequest = Pick<
 export interface TrademarkAssetClient {
   search(input?: Readonly<TrademarkAssetSearchInput>): Promise<TrademarkAssetPortfolioResponse>;
   load(trademarkAssetId: TrademarkAssetId): Promise<TrademarkAssetDetailResponse>;
+  loadManagementDispositions(
+    trademarkAssetId: TrademarkAssetId
+  ): Promise<CurrentTrademarkAssetManagementDispositionProjection>;
+  recordManagementDisposition(
+    trademarkAssetId: TrademarkAssetId,
+    input: Readonly<RecordTrademarkAssetManagementDispositionInput>,
+    idempotencyKey: string
+  ): Promise<TrademarkAssetManagementDisposition>;
   prepareAiGuide(
     trademarkAssetId: TrademarkAssetId,
     input: Readonly<PrepareTrademarkAssetAiGuideRequest>
@@ -212,6 +253,25 @@ export function createTrademarkAssetClient(workspaceId: string): TrademarkAssetC
         `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}`,
         workspaceId
       ),
+    loadManagementDispositions: (trademarkAssetId) =>
+      request<CurrentTrademarkAssetManagementDispositionProjection>(
+        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/management-dispositions`,
+        workspaceId
+      ),
+    recordManagementDisposition: async (trademarkAssetId, input, idempotencyKey) => {
+      const csrfToken = await currentCsrfToken();
+      const response = await request<{ disposition: TrademarkAssetManagementDisposition }>(
+        `/api/lite/trademark-assets/${encodeURIComponent(trademarkAssetId)}/management-dispositions`,
+        workspaceId,
+        {
+          method: 'POST',
+          body: input,
+          idempotencyKey,
+          csrfToken
+        }
+      );
+      return response.disposition;
+    },
     prepareAiGuide: async (trademarkAssetId, input) => {
       const csrfToken = await currentCsrfToken();
       return request<TrademarkAssetAiGuidePreparedResult>(

@@ -72,6 +72,13 @@ const commerceProfile: TrademarkAssetCommerceProfile = {
   updatedAt: '2026-08-20T02:00:00.000Z'
 };
 
+const managementDispositions = {
+  schemaVersion: 1,
+  workspaceId,
+  asset: { id: view.trademarkAssetId, version: 3 },
+  items: []
+} as const;
+
 afterEach(cleanup);
 
 function clientWithLoad(load: TrademarkAssetClient['load']): TrademarkAssetClient {
@@ -84,6 +91,8 @@ function clientWithLoad(load: TrademarkAssetClient['load']): TrademarkAssetClien
       officialTruthVerifiedByLite: false
     }),
     load,
+    loadManagementDispositions: vi.fn().mockResolvedValue(managementDispositions),
+    recordManagementDisposition: vi.fn(),
     prepareAiGuide: vi.fn(),
     saveCommerceProfile: vi.fn(),
     loadServiceWorkPackage: vi.fn().mockResolvedValue(undefined),
@@ -94,6 +103,7 @@ function clientWithLoad(load: TrademarkAssetClient['load']): TrademarkAssetClien
 describe('TrademarkAssetPortfolio', () => {
   it('loads the workspace portfolio and opens a read-only composed view', async () => {
     const load = vi.fn().mockResolvedValue({ view, commerceProfile: null });
+    const loadManagementDispositions = vi.fn().mockResolvedValue(managementDispositions);
     const loadServiceWorkPackage = vi.fn().mockResolvedValue(undefined);
     const client: TrademarkAssetClient = {
       search: vi.fn().mockResolvedValue({
@@ -104,6 +114,8 @@ describe('TrademarkAssetPortfolio', () => {
         officialTruthVerifiedByLite: false
       }),
       load,
+      loadManagementDispositions,
+      recordManagementDisposition: vi.fn(),
       prepareAiGuide: vi.fn(),
       saveCommerceProfile: vi.fn(),
       loadServiceWorkPackage,
@@ -119,6 +131,7 @@ describe('TrademarkAssetPortfolio', () => {
     await user.click(screen.getByRole('button', { name: 'View asset details' }));
 
     await waitFor(() => expect(load).toHaveBeenCalledWith('trademark-asset_test'));
+    expect(loadManagementDispositions).toHaveBeenCalledWith('trademark-asset_test');
     expect(loadServiceWorkPackage).toHaveBeenCalledWith('trademark-asset_test');
     expect(await screen.findByText(/Source facts are read-only/i)).toBeInTheDocument();
     expect(screen.getByText(/AI output is advisory/i)).toBeInTheDocument();
@@ -156,6 +169,32 @@ describe('TrademarkAssetPortfolio', () => {
     expect(screen.getByRole('heading', { name: 'MARK ORBIT' })).toBeInTheDocument();
     expect(screen.getByText('Durably reloaded sale context')).toBeInTheDocument();
     expect(screen.getByText(/Source facts are read-only/i)).toBeInTheDocument();
+  });
+
+  it('preserves loaded Asset when durable disposition read is unavailable', async () => {
+    const client: TrademarkAssetClient = {
+      ...clientWithLoad(vi.fn().mockResolvedValue({ view, commerceProfile })),
+      loadManagementDispositions: vi
+        .fn()
+        .mockRejectedValue(
+          new TrademarkAssetHttpError(
+            503,
+            'DOWNSTREAM_UNAVAILABLE',
+            'Disposition read unavailable.',
+            true
+          )
+        )
+    };
+    const user = userEvent.setup();
+    render(<TrademarkAssetPortfolio workspaceId={workspaceId} client={client} />);
+
+    await user.click(await screen.findByRole('button', { name: 'View asset details' }));
+
+    expect(await screen.findByRole('heading', { name: 'MARK ORBIT' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Durable management disposition truth is unavailable/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Durably reloaded sale context')).toBeInTheDocument();
   });
 
   it.each([

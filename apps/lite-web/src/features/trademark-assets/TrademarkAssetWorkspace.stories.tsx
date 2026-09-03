@@ -1,9 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/trademark-asset-ai-guide';
 import type { TrademarkAssetCommerceProfile } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
-import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/trademark-asset-ai-guide';
+import type {
+  TrademarkAssetManagementDisposition,
+  TrademarkAssetManagementRecommendation,
+  TrademarkAssetManagementSignal
+} from '@markorbit/contracts/trademark-asset-management';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 
+const workspaceId = '11111111-1111-4111-8111-111111111111';
 const source = {
   owner: 'MARKREG',
   kind: 'MARKREG_LIFECYCLE_PROJECTION',
@@ -16,12 +22,12 @@ const source = {
 const view: TrademarkAssetView = {
   schemaVersion: 1,
   trademarkAssetId: 'trademark-asset_story',
-  workspaceId: '11111111-1111-4111-8111-111111111111',
+  workspaceId,
   anchorVersion: 3,
   anchor: {
     schemaVersion: 1,
     trademarkAssetId: 'trademark-asset_story',
-    workspaceId: '11111111-1111-4111-8111-111111111111',
+    workspaceId,
     version: 3,
     identity: { jurisdiction: 'US', markText: 'NORTH STAR' },
     externalIdentifiers: [],
@@ -54,6 +60,87 @@ const view: TrademarkAssetView = {
   legalDeadlineCertified: false,
   protectedActionAuthorized: false
 };
+
+const managementSignal: TrademarkAssetManagementSignal = {
+  schemaVersion: 1,
+  managementSignalId: 'trademark-asset-management-signal_story',
+  workspaceId,
+  version: 4,
+  asset: { id: view.trademarkAssetId, version: view.anchor.version },
+  dimension: 'USER_PRIORITY',
+  severity: 'IMPORTANT',
+  reason: 'Review this private Product signal before deciding the next step.',
+  changes: [],
+  evidence: [source],
+  freshness: 'CURRENT',
+  generatedAt: '2026-09-03T01:00:00.000Z',
+  legalDeadlineCertified: false,
+  officialStatusVerifiedByLite: false,
+  legalConclusionVerified: false,
+  conflictResolvedByLite: false,
+  executionAuthorized: false
+};
+
+const managementRecommendation: TrademarkAssetManagementRecommendation = {
+  schemaVersion: 1,
+  recommendationId: 'trademark-asset-management-recommendation_story',
+  workspaceId,
+  version: 2,
+  asset: { id: view.trademarkAssetId, version: view.anchor.version },
+  signalReferences: [
+    { id: managementSignal.managementSignalId, version: managementSignal.version }
+  ],
+  kind: 'WATCH',
+  title: 'Keep under private review',
+  explanation: 'This recommendation remains Product guidance, not official or execution truth.',
+  evidence: [source],
+  relatedOwnerReferences: [],
+  staleOrConflictingEvidencePresent: false,
+  userConfirmationRequired: true,
+  officialTruthVerified: false,
+  legalDeadlineCertified: false,
+  filingAuthorized: false,
+  customerOrProviderContactAuthorized: false,
+  externalPublicationAuthorized: false,
+  paidExecutionAuthorized: false,
+  capabilityVerified: false,
+  createdAt: '2026-09-03T01:00:00.000Z'
+};
+
+function disposition(kind: TrademarkAssetManagementDisposition['kind']) {
+  return {
+    schemaVersion: 1,
+    dispositionId: `trademark-asset-management-disposition_story-${kind.toLowerCase()}`,
+    workspaceId,
+    version: 1,
+    asset: { id: view.trademarkAssetId, version: view.anchor.version },
+    signal: { id: managementSignal.managementSignalId, version: managementSignal.version },
+    recommendation: {
+      id: managementRecommendation.recommendationId,
+      version: managementRecommendation.version
+    },
+    kind,
+    subjectUserId: 'fixture-user',
+    recordedAt: '2026-09-03T01:05:00.000Z',
+    officialTruthCreated: false,
+    legalConclusionVerified: false,
+    capabilityVerified: false
+  } as TrademarkAssetManagementDisposition;
+}
+
+function dispositionProjection(value: TrademarkAssetManagementDisposition | null) {
+  return {
+    schemaVersion: 1 as const,
+    workspaceId,
+    asset: { id: view.trademarkAssetId, version: view.anchor.version },
+    items: [
+      {
+        signal: { id: managementSignal.managementSignalId, version: managementSignal.version },
+        disposition: value
+      }
+    ]
+  };
+}
 
 const profile: TrademarkAssetCommerceProfile = {
   schemaVersion: 1,
@@ -152,6 +239,13 @@ const aiGuideResult: TrademarkAssetAiGuidePreparedResult = {
   generatedAt: '2026-09-02T09:00:00.000Z'
 };
 
+const durableManagementArgs = {
+  managementSignals: [managementSignal],
+  recommendations: [managementRecommendation],
+  onRecordManagementDisposition: () => Promise.resolve(disposition('WATCHED')),
+  onReloadManagementDispositions: () => Promise.resolve(dispositionProjection(null))
+};
+
 const meta = {
   title: 'Lite/Trademark Asset/Sell-side Workspace',
   component: TrademarkAssetWorkspace,
@@ -197,6 +291,70 @@ export const NarrowCommerceProfile: Story = {
   },
   parameters: {
     viewport: { defaultViewport: 'mobile1' }
+  }
+};
+
+export const NoDurableDisposition: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(null)
+  }
+};
+
+export const DurableWatched: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(disposition('WATCHED'))
+  }
+};
+
+export const DurableDeferred: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(disposition('DEFERRED'))
+  }
+};
+
+export const DurableDismissed: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(disposition('DISMISSED'))
+  }
+};
+
+export const DurableContinued: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(disposition('CONTINUED'))
+  }
+};
+
+export const OwnerResolvedReadOnly: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(disposition('RESOLVED_BY_WORKFLOW_REFERENCE'))
+  }
+};
+
+export const DurableReadUnavailable: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositionReadUnavailable: true
+  }
+};
+
+export const DurableManagementMobile390: Story = {
+  args: {
+    ...durableManagementArgs,
+    managementDispositions: dispositionProjection(disposition('WATCHED'))
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile390',
+      viewports: {
+        mobile390: { name: '390px mobile', styles: { width: '390px', height: '844px' } }
+      }
+    }
   }
 };
 
