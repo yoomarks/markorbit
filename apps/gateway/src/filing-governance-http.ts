@@ -81,10 +81,7 @@ function mapAuthentication(error: unknown): never {
 }
 
 export function createGatewayFilingGovernanceHandler(options: GatewayFilingGovernanceOptions) {
-  const fixtureMode =
-    options.fixtureTestRuntime === true &&
-    options.authenticationClient === undefined &&
-    options.internalServiceSecret === undefined;
+  const fixtureMode = options.fixtureTestRuntime === true;
 
   const correlation = (request: JsonRequest) => request.headers['x-correlation-id'];
   const token = (request: JsonRequest) => {
