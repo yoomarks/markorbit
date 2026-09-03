@@ -73,11 +73,15 @@ export function FormalMatterWorkspace({
     recordId: String(matter.sourceQuoteId),
     expectedVersion: String(matter.sourceQuoteVersion)
   });
-  const summaryItems = [
+  const identityItems = [
     ...(trademark ? [{ key: 'Trademark', value: trademark }] : []),
-    ...(applicant ? [{ key: 'Applicant', value: applicant }] : []),
-    ...(applicantAddress ? [{ key: 'Applicant address', value: applicantAddress }] : []),
     ...(jurisdiction ? [{ key: 'Jurisdiction', value: jurisdiction }] : []),
+    ...(applicant ? [{ key: 'Applicant', value: applicant }] : []),
+    { key: 'Governed status', value: matter.status },
+    { key: 'Updated', value: displayTimestamp(matter.updatedAt) }
+  ];
+  const scopeItems = [
+    ...(applicantAddress ? [{ key: 'Applicant address', value: applicantAddress }] : []),
     ...(classes ? [{ key: 'Classes', value: classes }] : []),
     ...(goodsServices ? [{ key: 'Goods / services', value: goodsServices }] : []),
     ...(filingBasis ? [{ key: 'Filing basis', value: filingBasis }] : []),
@@ -95,7 +99,7 @@ export function FormalMatterWorkspace({
     <main className="markreg-workspace-home" aria-label="Formal Matter workspace">
       <PageHeader
         title="Trademark Matter"
-        description="Review the durable Matter record, its exact source lineage, and governed lifecycle without treating internal product state as an external filing or office status."
+        description="See the current governed Matter, what needs attention, and the evidence behind it without treating product state as an external filing or office status."
       />
 
       {versionMismatch && (
@@ -110,29 +114,38 @@ export function FormalMatterWorkspace({
           This Matter state cannot progress from this view.
         </Alert>
       )}
-      <Alert tone="warning" title="Authority boundary">
-        Matter ≠ Filing. Lifecycle Projection ≠ Official Status. Viewing or acknowledging this
-        workspace does not create a payment, invoice, professional appointment, external submission,
-        or official application.
+      <Alert tone="info" title="Governed product truth">
+        Matter ≠ Filing. Lifecycle Projection ≠ Official Status. Recommended Action ≠ authorization.
+        Nothing in this workspace submits, pays, appoints, contacts a provider, or creates Official
+        Truth by consequence.
       </Alert>
 
-      <section className="markreg-workspace-list" aria-labelledby="matter-overview-heading">
-        <h2 id="matter-overview-heading">Matter overview</h2>
+      <section
+        className="markreg-workspace-list markreg-matter-priority"
+        aria-labelledby="matter-current-heading"
+      >
+        <h2 id="matter-current-heading">Current matter</h2>
         <Card>
-          <KeyValueList
-            items={[
-              { key: 'Formal Matter ID', value: matter.formalMatterId },
-              { key: 'Kind', value: matter.kind },
-              { key: 'Governed status', value: matter.status },
-              { key: 'Current version', value: matter.version },
-              { key: 'Updated', value: displayTimestamp(matter.updatedAt) }
-            ]}
-          />
+          <KeyValueList items={identityItems} />
         </Card>
+      </section>
+
+      <section
+        className="markreg-workspace-list markreg-matter-priority"
+        aria-labelledby="matter-lifecycle-heading"
+      >
+        <h2 id="matter-lifecycle-heading">Needs attention</h2>
+        {renderLifecycle({
+          formalMatterId: String(matter.formalMatterId),
+          disabled: lifecycleDisabled
+        })}
+      </section>
+
+      <section className="markreg-workspace-list" aria-labelledby="matter-scope-heading">
+        <h2 id="matter-scope-heading">Application scope</h2>
         <Card>
-          <h3>Captured preparation</h3>
-          {summaryItems.length > 0 ? (
-            <KeyValueList items={summaryItems} />
+          {scopeItems.length > 0 ? (
+            <KeyValueList items={scopeItems} />
           ) : (
             <p>No additional preparation summary is present in this Matter snapshot.</p>
           )}
@@ -143,70 +156,73 @@ export function FormalMatterWorkspace({
         </Card>
       </section>
 
-      <section className="markreg-workspace-list" aria-labelledby="matter-lineage-heading">
-        <h2 id="matter-lineage-heading">Source lineage</h2>
-        <Card>
-          <KeyValueList
-            items={[
-              {
-                key: 'Customer Confirmation',
-                value: `${matter.sourceCustomerConfirmationId} · version ${matter.sourceCustomerConfirmationVersion}`
-              },
-              {
-                key: 'Matter Draft',
-                value: `${matter.sourceMatterDraftId} · version ${matter.sourceMatterDraftVersion}`
-              },
-              {
-                key: 'Quote',
-                value: `${matter.sourceQuoteId} · version ${matter.sourceQuoteVersion}`
-              }
-            ]}
-          />
-          <div className="markreg-workspace-order-actions">
-            <a href={confirmationRoute}>Open Customer Confirmation</a>
-            <a href={quoteRoute}>Open source Quote</a>
-          </div>
-          <p>
-            The Matter Draft identity/version remains pinned here. This workspace does not
-            manufacture a direct-link identity that is not present in the Formal Matter snapshot.
-          </p>
-        </Card>
-        <Card>
-          <details>
-            <summary>Snapshot and provenance details</summary>
-            <KeyValueList
-              items={[
-                { key: 'Snapshot schema', value: matter.snapshotSchemaVersion },
-                { key: 'Snapshot SHA-256', value: matter.snapshotSha256 },
-                { key: 'Created by', value: matter.createdByUserId },
-                { key: 'Created', value: displayTimestamp(matter.createdAt) },
-                { key: 'Updated', value: displayTimestamp(matter.updatedAt) }
-              ]}
-            />
-            <p>
-              The fingerprint identifies the captured MarkReg source snapshot. It is provenance, not
-              proof that an external filing or trademark-office event occurred.
-            </p>
-          </details>
-        </Card>
-      </section>
-
       <section aria-labelledby="matter-evidence-heading">
-        <h2 id="matter-evidence-heading">Evidence context</h2>
+        <h2 id="matter-evidence-heading">Evidence</h2>
         {renderEvidence({ formalMatterId: String(matter.formalMatterId) })}
-      </section>
-
-      <section aria-labelledby="matter-lifecycle-heading">
-        <h2 id="matter-lifecycle-heading">Governed lifecycle</h2>
-        {renderLifecycle({
-          formalMatterId: String(matter.formalMatterId),
-          disabled: lifecycleDisabled
-        })}
       </section>
 
       <section aria-labelledby="matter-intelligence-heading">
         <h2 id="matter-intelligence-heading">Matter intelligence</h2>
         {renderIntelligence({ formalMatterId: String(matter.formalMatterId) })}
+      </section>
+
+      <section
+        className="markreg-workspace-list markreg-matter-secondary"
+        aria-labelledby="matter-record-heading"
+      >
+        <h2 id="matter-record-heading">Record and provenance</h2>
+        <details className="markreg-matter-record-details">
+          <summary>Record details and source lineage</summary>
+          <div className="markreg-workspace-list">
+            <Card>
+              <h3>Exact Matter record</h3>
+              <KeyValueList
+                items={[
+                  { key: 'Formal Matter ID', value: matter.formalMatterId },
+                  { key: 'Kind', value: matter.kind },
+                  { key: 'Current version', value: matter.version },
+                  { key: 'Snapshot schema', value: matter.snapshotSchemaVersion },
+                  { key: 'Snapshot SHA-256', value: matter.snapshotSha256 },
+                  { key: 'Created by', value: matter.createdByUserId },
+                  { key: 'Created', value: displayTimestamp(matter.createdAt) },
+                  { key: 'Updated', value: displayTimestamp(matter.updatedAt) }
+                ]}
+              />
+              <p>
+                The fingerprint identifies the captured MarkReg source snapshot. It is provenance,
+                not proof that an external filing or trademark-office event occurred.
+              </p>
+            </Card>
+            <Card>
+              <h3>Source lineage</h3>
+              <KeyValueList
+                items={[
+                  {
+                    key: 'Customer Confirmation',
+                    value: `${matter.sourceCustomerConfirmationId} · version ${matter.sourceCustomerConfirmationVersion}`
+                  },
+                  {
+                    key: 'Matter Draft',
+                    value: `${matter.sourceMatterDraftId} · version ${matter.sourceMatterDraftVersion}`
+                  },
+                  {
+                    key: 'Quote',
+                    value: `${matter.sourceQuoteId} · version ${matter.sourceQuoteVersion}`
+                  }
+                ]}
+              />
+              <div className="markreg-workspace-order-actions">
+                <a href={confirmationRoute}>Open Customer Confirmation</a>
+                <a href={quoteRoute}>Open source Quote</a>
+              </div>
+              <p>
+                The Matter Draft identity/version remains pinned here. This workspace does not
+                manufacture a direct-link identity that is not present in the Formal Matter
+                snapshot.
+              </p>
+            </Card>
+          </div>
+        </details>
       </section>
 
       <p>
