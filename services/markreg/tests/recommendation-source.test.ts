@@ -245,9 +245,8 @@ describe('MarkReg production Recommendation source boundary', () => {
     const network = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(
-        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-          Promise.reject(new Error('offline'))
+      vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+        Promise.reject(new Error('offline'))
       )
     );
     await expect(network.read(productionReference(), principal)).resolves.toMatchObject({
@@ -259,9 +258,8 @@ describe('MarkReg production Recommendation source boundary', () => {
     const denied = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(
-        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-          Promise.resolve(new Response('{}', { status: 403 }))
+      vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+        Promise.resolve(new Response('{}', { status: 403 }))
       )
     );
     await expect(denied.read(productionReference(), principal)).resolves.toMatchObject({
@@ -273,9 +271,8 @@ describe('MarkReg production Recommendation source boundary', () => {
     const malformed = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(
-        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-          Promise.resolve(new Response('not-json', { status: 200 }))
+      vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
+        Promise.resolve(new Response('not-json', { status: 200 }))
       )
     );
     await expect(malformed.read(productionReference(), principal)).resolves.toMatchObject({
