@@ -53,3 +53,4 @@ jobs:
 # rerun after repository Prettier applied
 # rerun after MarkReg lint autofix
 # rerun after typed MarkReg test formatting
+# rerun after typed fetch mocks
