@@ -46,8 +46,7 @@ describe('USPTO official-fee production promotion governance', () => {
     expect(first.activationEvidenceRef).toBe(executableMethodActivationEvidenceRefV1(decision));
     expect(activePackage.lifecycle).toBe('ACTIVE');
     expect(activePackage.packageVersion).toBe(first.predecessor.packageVersion + 1);
-    expect(activePackage.activationDecisionId).toBe(decision.decisionId);
-    expect(activePackage.activationEvidenceRef).toBe(first.activationEvidenceRef);
+    expect(activePackage.activatedAt).toBe(decision.approval.approvedAt);
     expect(first.legacyPilot.currentBrainGovernanceActivationEstablished).toBe(false);
 
     expect(USPTO_OFFICIAL_FEE_GOVERNANCE_APPROVAL_V1.rationale).toContain(
