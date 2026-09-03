@@ -31,20 +31,17 @@ jobs:
 
           test_path = Path('apps/markreg-web/src/ProductionIntakeFlow.test.tsx')
           text = test_path.read_text()
-
-          old = "import type { ProductionIntakeV1 } from '@markorbit/contracts/markreg-early-funnel';"
-          new = """import type {
+          replacements = [
+              (
+                  "import type { ProductionIntakeV1 } from '@markorbit/contracts/markreg-early-funnel';",
+                  """import type {
             CreateProductionIntakeCommandV1,
             ProductionIntakeV1
           } from '@markorbit/contracts/markreg-early-funnel';"""
-          assert old in text
-          text = text.replace(old, new, 1)
-
-          old = """  it('renders only the GET owner readback after the durable create', async () => {
-            const productionClient = client();
-            const user = userEvent.setup();"""
-          new = """  it('renders only the GET owner readback after the durable create', async () => {
-            const create = vi.fn(() =>
+              ),
+              (
+                  "    const productionClient = client();",
+                  """    const create = vi.fn(() =>
               Promise.resolve({
                 ...durableIntake,
                 input: {
@@ -54,29 +51,37 @@ jobs:
               })
             );
             const get = vi.fn(() => Promise.resolve(durableIntake));
-            const productionClient = client({ create, get });
-            const user = userEvent.setup();"""
-          assert old in text
-          text = text.replace(old, new, 1)
-          text = text.replace('expect(productionClient.create).toHaveBeenCalledTimes(1);', 'expect(create).toHaveBeenCalledTimes(1);', 1)
-          text = text.replace("expect(productionClient.get).toHaveBeenCalledWith('production-intake_699');", "expect(get).toHaveBeenCalledWith('production-intake_699');", 1)
-          text = text.replace(
-            'const firstCommand = create.mock.calls[0]![0];',
-            'const firstCommand = create.mock.calls[0]![0] as CreateProductionIntakeCommandV1;',
-            1
-          )
-          text = text.replace(
-            'const secondCommand = create.mock.calls[1]![0];',
-            'const secondCommand = create.mock.calls[1]![0] as CreateProductionIntakeCommandV1;',
-            1
-          )
+            const productionClient = client({ create, get });"""
+              ),
+              (
+                  "    expect(productionClient.create).toHaveBeenCalledTimes(1);",
+                  "    expect(create).toHaveBeenCalledTimes(1);"
+              ),
+              (
+                  "    expect(productionClient.get).toHaveBeenCalledWith('production-intake_699');",
+                  "    expect(get).toHaveBeenCalledWith('production-intake_699');"
+              ),
+              (
+                  "    const firstCommand = create.mock.calls[0]![0];",
+                  "    const firstCommand = create.mock.calls[0]![0] as CreateProductionIntakeCommandV1;"
+              ),
+              (
+                  "    const secondCommand = create.mock.calls[1]![0];",
+                  "    const secondCommand = create.mock.calls[1]![0] as CreateProductionIntakeCommandV1;"
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              assert count == 1, (old, count)
+              text = text.replace(old, new, 1)
           test_path.write_text(text)
 
           flow_path = Path('apps/markreg-web/src/ProductionIntakeFlow.tsx')
           flow = flow_path.read_text()
-          old = 'const next = { ...draft, [key]: value } as ProductionIntakeDraft;'
-          new = 'const next = { ...draft, [key]: value };'
-          assert old in flow
+          old = "    const next = { ...draft, [key]: value } as ProductionIntakeDraft;"
+          new = "    const next = { ...draft, [key]: value };"
+          count = flow.count(old)
+          assert count == 1, (old, count)
           flow_path.write_text(flow.replace(old, new, 1))
           PY
           pnpm exec prettier --write \
