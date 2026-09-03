@@ -46,11 +46,18 @@ jobs:
           const component = 'apps/markreg-web/src/ProductionIntakePlanning.tsx';
           replaceExact(component, `    // eslint-disable-next-line react-hooks/exhaustive-deps\n`, '');
           const apiTest = 'apps/markreg-web/src/api/production-intake.test.ts';
-          const apiSource = fs.readFileSync(apiTest, 'utf8');
+          let apiSource = fs.readFileSync(apiTest, 'utf8');
           const marker = 'const fetcher = vi.fn(() =>';
           const count = apiSource.split(marker).length - 1;
           if (count !== 3) throw new Error(`expected 3 fetch mocks, found ${count}`);
-          fs.writeFileSync(apiTest, apiSource.replaceAll(marker, 'const fetcher = vi.fn<typeof fetch>(() =>'));
+          apiSource = apiSource.replaceAll(marker, 'const fetcher = vi.fn<typeof fetch>(() =>');
+          const bodyBefore = `    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;`;
+          if (!apiSource.includes(bodyBefore)) throw new Error('missing request body parse');
+          apiSource = apiSource.replace(
+            bodyBefore,
+            `    if (typeof init?.body !== 'string') throw new Error('expected JSON request body');\n    const body = JSON.parse(init.body) as Record<string, unknown>;`
+          );
+          fs.writeFileSync(apiTest, apiSource);
           NODE
           pnpm exec prettier --write \
             apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
