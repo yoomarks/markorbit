@@ -290,6 +290,36 @@ function pilotEntry(
   };
 }
 
+export const historicalUsptoOfficialFeeSourceAdmissionPolicyV1 = Object.freeze(
+  pilotEntry(
+    'source-admission-policy.uspto-official-fee-resolver.v1',
+    USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
+    USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE,
+    'Phase 4 official-fee resolver remains a historical pilot; official-source provenance did not itself promote the Capability result to a generic production source.'
+  )
+);
+
+export const usptoOfficialFeeSourceAdmissionPolicyV2 = Object.freeze({
+  schemaVersion: 1 as const,
+  policyId: 'source-admission-policy.uspto-official-fee-resolver.v2',
+  policyVersion: 2,
+  maturityClass: 'PRODUCTION_ADMISSIBLE' as const,
+  capabilityId: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION.capabilityId,
+  capabilityVersion: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION.capabilityVersion,
+  implementationProfileId:
+    USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationProfileId,
+  implementationProfileVersion: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.version,
+  implementationKey: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey,
+  inputSchemaId: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.inputSchemaId,
+  outputSchemaId: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.outputSchemaId,
+  allowedCallerProducts: [
+    ...USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.allowedCallerProducts
+  ],
+  maximumRiskClass: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.maximumRiskClass,
+  methodCurrentness: 'REQUIRED' as const,
+  referenceCurrentness: 'REQUIRED' as const
+}) satisfies Readonly<CapabilitySourceAdmissionPolicyEntryV1>;
+
 export const currentCapabilitySourceAdmissionPoliciesV1 = Object.freeze([
   pilotEntry(
     'source-admission-policy.cn-duration-analytical.v1',
@@ -309,12 +339,7 @@ export const currentCapabilitySourceAdmissionPoliciesV1 = Object.freeze([
     CN_PRELIMINARY_PUBLICATION_DISCOVERY_IMPLEMENTATION_PROFILE,
     'Phase 4 objective fact discovery remains a pilot and is not a production Recommendation source by consequence.'
   ),
-  pilotEntry(
-    'source-admission-policy.uspto-official-fee-resolver.v1',
-    USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
-    USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE,
-    'Phase 4 official-fee resolver remains a pilot; official-source provenance does not itself promote the Capability result to a generic production source.'
-  )
+  usptoOfficialFeeSourceAdmissionPolicyV2
 ]);
 
 export const currentCapabilitySourceAdmissionPolicyCatalogV1 =
