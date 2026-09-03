@@ -94,11 +94,16 @@ describe('Capability source-admission policy provenance', () => {
     expect(second.policy).not.toEqual(first.policy);
   });
 
-  it('does not manufacture provenance for the four current PILOT policies', () => {
+  it('does not manufacture provenance for the three current CN PILOT policies', () => {
     expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
     expect(
-      currentCapabilitySourceAdmissionPoliciesV1.every((entry) => entry.maturityClass === 'PILOT')
-    ).toBe(true);
+      currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')
+    ).toHaveLength(3);
+    expect(
+      currentCapabilitySourceAdmissionPoliciesV1.filter(
+        (entry) => entry.maturityClass === 'PRODUCTION_ADMISSIBLE'
+      )
+    ).toHaveLength(1);
     expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput())).toMatchObject({
       applicability: 'UNSUPPORTED'
     });
