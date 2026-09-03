@@ -70,6 +70,8 @@ import {
 import { FailClosedPreparationRepository } from './fail-closed-preparation.js';
 import { PostgresDurablePreparationLockService } from './durable-preparation-lock.js';
 import { createDurablePreparationLockRoutes } from './durable-preparation-lock-http.js';
+import { PostgresProductionIntakeService } from './production-intake.js';
+import { createProductionIntakeRoutes } from './production-intake-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
@@ -190,6 +192,11 @@ if (fixtureRuntime) {
       return ((await response.json()) as { reviewCase: ProfessionalReviewCase }).reviewCase;
     }
   });
+  const productionIntakeService = new PostgresProductionIntakeService(database, pool);
+  const productionIntakeRoutes = createProductionIntakeRoutes({
+    internalServiceSecret,
+    service: productionIntakeService
+  });
   const durablePreparationLockService = new PostgresDurablePreparationLockService(database, pool);
   const durablePreparationLockRoutes = createDurablePreparationLockRoutes({
     internalServiceSecret,
@@ -257,6 +264,7 @@ if (fixtureRuntime) {
     internalServiceSecret,
     executionUrl,
     extraRoutes: [
+      ...productionIntakeRoutes,
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,
       ...commercialAdminRoutes,
