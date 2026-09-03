@@ -128,8 +128,7 @@ describe('USPTO governed online production bootstrap', () => {
       }
     });
     expect(result.binding.implementation).toMatchObject({
-      implementationProfileId:
-        USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationProfileId,
+      id: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationProfileId,
       kind: 'DETERMINISTIC_SERVICE',
       implementationKey: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey
     });
