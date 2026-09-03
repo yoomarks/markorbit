@@ -36,6 +36,7 @@ export * from './mgsn-http.js';
 export * from './product-loop-http.js';
 export * from './data-engine-product-http.js';
 export * from './markreg-early-funnel-http.js';
+export * from './preparation-lock-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -57,6 +58,7 @@ import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
+import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -385,6 +387,20 @@ export function createRuntime(options: GatewayOptions = {}) {
       );
     }
   };
+  const preparationLock = createGatewayPreparationLockHandler({
+    markRegUrl,
+    ...(authenticationClient ? { authenticationClient } : {}),
+    ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+      ? {
+          internalServiceSecret: (options.internalServiceSecret ??
+            process.env.MO_INTERNAL_SERVICE_SECRET)!
+        }
+      : {}),
+    csrfSecret,
+    allowedOrigins,
+    fixtureTestRuntime: milestoneTestRuntime
+  });
+
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
@@ -968,7 +984,9 @@ export function createRuntime(options: GatewayOptions = {}) {
           handle: (r: JsonRequest) =>
             path.startsWith('/api/markreg/document-packages')
               ? documentPackage(r, method !== 'GET')
-              : forward(r, r.path.replace('/api/markreg', '/v1'))
+              : path.startsWith('/api/markreg/preparation-locks')
+                ? preparationLock(r)
+                : forward(r, r.path.replace('/api/markreg', '/v1'))
         })),
         ...[
           '/api/lite/professional-review-cases',
