@@ -89,10 +89,10 @@ jobs:
           api_replacements = [
               (
                   "    const post = vi.fn(() => Promise.resolve({ intake }));",
-                  """    const post = vi.fn(
-              (_path: string, _body: unknown, _headers?: Record<string, string>) =>
-                Promise.resolve({ intake })
-            );"""
+                  """    const post = vi.fn((...args: [string, unknown, Record<string, string>?]) => {
+              expect(args).toHaveLength(3);
+              return Promise.resolve({ intake });
+            });"""
               ),
               (
                   "    const body = post.mock.calls[0]![1] as Record<string, unknown>;",
