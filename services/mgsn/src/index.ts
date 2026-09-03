@@ -30,6 +30,8 @@ export * from './controlled-privacy-handoff-postgres.js';
 export * from './outcome-trust-evidence.js';
 // Durable Trust Evidence storage never establishes current exposure authority; serving must revalidate current authority at runtime.
 export * from './outcome-trust-evidence-postgres.js';
+// Trusted Public eligibility/projection metadata is historical authorization input only; every positive serve requires fresh current-authority revalidation.
+export * from './trusted-public-exposure.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';
