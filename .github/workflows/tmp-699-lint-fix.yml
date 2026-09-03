@@ -21,7 +21,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply exact lint fixes
+      - name: Apply exact lint and type fixes
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -45,8 +45,17 @@ jobs:
           );
           const component = 'apps/markreg-web/src/ProductionIntakePlanning.tsx';
           replaceExact(component, `    // eslint-disable-next-line react-hooks/exhaustive-deps\n`, '');
+          const apiTest = 'apps/markreg-web/src/api/production-intake.test.ts';
+          const apiSource = fs.readFileSync(apiTest, 'utf8');
+          const marker = 'const fetcher = vi.fn(() =>';
+          const count = apiSource.split(marker).length - 1;
+          if (count !== 3) throw new Error(`expected 3 fetch mocks, found ${count}`);
+          fs.writeFileSync(apiTest, apiSource.replaceAll(marker, 'const fetcher = vi.fn<typeof fetch>(() =>'));
           NODE
-          pnpm exec prettier --write apps/markreg-web/src/ProductionIntakePlanning.test.tsx apps/markreg-web/src/ProductionIntakePlanning.tsx
+          pnpm exec prettier --write \
+            apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
+            apps/markreg-web/src/ProductionIntakePlanning.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts
       - name: Verify MarkReg Web
         run: |
           pnpm --filter @markorbit/markreg-web lint
@@ -56,7 +65,10 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add apps/markreg-web/src/ProductionIntakePlanning.test.tsx apps/markreg-web/src/ProductionIntakePlanning.tsx
+          git add \
+            apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
+            apps/markreg-web/src/ProductionIntakePlanning.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts
           git diff --cached --quiet && exit 0
-          git commit -m 'fix: temporary #699 lint-verified output'
+          git commit -m 'fix: temporary #699 lint-type-verified output'
           git push origin HEAD:tmp/699-lint-fix
