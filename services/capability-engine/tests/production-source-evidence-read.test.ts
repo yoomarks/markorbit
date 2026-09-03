@@ -48,7 +48,7 @@ function acceptedPackage() {
   return compiled.package;
 }
 
-function acceptedReference() {
+function acceptedReference(amountMinor: number = 35000) {
   const pkg = acceptedPackage();
   return {
     schemaVersion: 1,
@@ -57,7 +57,7 @@ function acceptedReference() {
     jurisdiction: 'US',
     authority: 'USPTO',
     currency: 'USD',
-    amountMinor: 35000,
+    amountMinor,
     unit: 'PER_CLASS',
     effectiveFrom: EFFECTIVE_FROM,
     status: 'CURRENT',
@@ -255,7 +255,7 @@ describe('trusted production source evidence read V1', () => {
     const store = new InMemoryCapabilityRuntimeReplayStoreV1();
     const execution = await persistProductionExecution(store);
     const reference = capabilityProductionSourceExecutionReferenceV1(execution);
-    const changedReference = { ...acceptedReference(), amountMinor: 36000 };
+    const changedReference = acceptedReference(36000);
 
     await expect(reader(store, changedReference).read(reference)).resolves.toMatchObject({
       status: 'DENIED',
