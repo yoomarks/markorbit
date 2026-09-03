@@ -20,6 +20,8 @@ jobs:
     name: Detect changed scope
     runs-on: ubuntu-latest
     outputs:
+      diff_base: ${{ steps.diff.outputs.base }}
+      diff_head: ${{ steps.diff.outputs.head }}
       core: ${{ steps.scope.outputs.core }}
       lite: ${{ steps.scope.outputs.lite }}
       capability: ${{ steps.scope.outputs.capability }}
@@ -41,6 +43,7 @@ jobs:
       browser_product_loop: ${{ steps.scope.outputs.browser_product_loop }}
       product_loop: ${{ steps.scope.outputs.product_loop }}
       mgsn_durability: ${{ steps.scope.outputs.mgsn_durability }}
+      production_runtime: ${{ steps.scope.outputs.production_runtime }}
       hard_gate: ${{ steps.scope.outputs.hard_gate }}
       l1_fast: ${{ steps.scope.outputs.l1_fast }}
       l2_merge: ${{ steps.scope.outputs.l2_merge }}
@@ -54,20 +57,42 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Detect affected CI domains
-        id: scope
+      - name: Resolve authoritative diff baseline
+        id: diff
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PUSH_BASE_SHA: ${{ github.event.before }}
           PUSH_HEAD_SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            node scripts/ci-detect-scope.mjs --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
+            BASE="$(git merge-base "$PR_BASE_SHA" "$PR_HEAD_SHA")"
+            HEAD="$PR_HEAD_SHA"
+            FULL=false
           elif [ "${{ github.event_name }}" = "push" ] && [ -n "$PUSH_BASE_SHA" ] && ! echo "$PUSH_BASE_SHA" | grep -Eq '^0+$'; then
-            node scripts/ci-detect-scope.mjs --base "$PUSH_BASE_SHA" --head "$PUSH_HEAD_SHA"
+            BASE="$PUSH_BASE_SHA"
+            HEAD="$PUSH_HEAD_SHA"
+            FULL=false
           else
+            BASE=""
+            HEAD=""
+            FULL=true
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
+      - name: Detect affected CI domains
+        id: scope
+        env:
+          DIFF_BASE: ${{ steps.diff.outputs.base }}
+          DIFF_HEAD: ${{ steps.diff.outputs.head }}
+          FULL_SCOPE: ${{ steps.diff.outputs.full }}
+        run: |
+          if [ "$FULL_SCOPE" = "true" ]; then
             node scripts/ci-detect-scope.mjs --full
+          else
+            node scripts/ci-detect-scope.mjs --base "$DIFF_BASE" --head "$DIFF_HEAD"
           fi
 
   l1_fast:
@@ -90,14 +115,14 @@ jobs:
         run: node --test scripts/ci-detect-scope.test.mjs
       - name: Format-check changed files only
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ needs.detect.outputs.diff_base }}
+          HEAD_SHA: ${{ needs.detect.outputs.diff_head }}
         run: |
           git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$HEAD_SHA" \
             | xargs -0 -r pnpm exec prettier --check --ignore-unknown
       - name: Affected lint, typecheck and unit tests
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ needs.detect.outputs.diff_base }}
         run: pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]"
       - name: Shared and CI governance boundaries
         if: needs.detect.outputs.hard_gate == 'true'
@@ -127,7 +152,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build affected dependency closure
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ needs.detect.outputs.diff_base }}
         run: pnpm exec turbo run build --filter="...[$BASE_SHA]"
       - name: Gateway boundary tests
         if: needs.detect.outputs.gateway == 'true'
@@ -195,7 +220,7 @@ jobs:
       LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_content_test
       LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
       LITE_CANDIDATE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_candidate_test
-      LITE_CANDIDATE_POSTGRES_REQUIRED: '1'
+      LITE_CANDIDATE_POSTGRES_TEST_REQUIRED: '1'
       LITE_FEEDBACK_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_feedback_test
       LITE_FEEDBACK_POSTGRES_REQUIRED: '1'
       LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_lite_prepared_test
@@ -534,8 +559,14 @@ jobs:
         run: pnpm format:check
       - name: Shared ownership and persistence boundaries
         run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm test:gateway-inventory
-      - name: Full workspace regression
-        run: pnpm lint && pnpm typecheck && pnpm test && pnpm build
+      - name: Full repository lint
+        run: pnpm lint
+      - name: Full workspace typecheck
+        run: pnpm typecheck
+      - name: Full workspace tests
+        run: pnpm test
+      - name: Full workspace build
+        run: pnpm build
       - name: Full story matrix
         run: pnpm test:story-matrix
 
