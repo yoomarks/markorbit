@@ -299,7 +299,7 @@ function WorkList({
                       <dd>{date(work.updatedAt)}</dd>
                     </div>
                   </dl>
-                  <details>
+                  <details open>
                     <summary>Owner lineage and provenance</summary>
                     <dl className="content-studio__facts">
                       <div>
