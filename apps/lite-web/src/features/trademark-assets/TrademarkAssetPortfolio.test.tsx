@@ -174,9 +174,16 @@ describe('TrademarkAssetPortfolio', () => {
   it('preserves loaded Asset when durable disposition read is unavailable', async () => {
     const client: TrademarkAssetClient = {
       ...clientWithLoad(vi.fn().mockResolvedValue({ view, commerceProfile })),
-      loadManagementDispositions: vi.fn().mockRejectedValue(
-        new TrademarkAssetHttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Disposition read unavailable.', true)
-      )
+      loadManagementDispositions: vi
+        .fn()
+        .mockRejectedValue(
+          new TrademarkAssetHttpError(
+            503,
+            'DOWNSTREAM_UNAVAILABLE',
+            'Disposition read unavailable.',
+            true
+          )
+        )
     };
     const user = userEvent.setup();
     render(<TrademarkAssetPortfolio workspaceId={workspaceId} client={client} />);
@@ -184,7 +191,9 @@ describe('TrademarkAssetPortfolio', () => {
     await user.click(await screen.findByRole('button', { name: 'View asset details' }));
 
     expect(await screen.findByRole('heading', { name: 'MARK ORBIT' })).toBeInTheDocument();
-    expect(screen.getByText(/Durable management disposition truth is unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Durable management disposition truth is unavailable/i)
+    ).toBeInTheDocument();
     expect(screen.getByText('Durably reloaded sale context')).toBeInTheDocument();
   });
 
