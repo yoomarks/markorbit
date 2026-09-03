@@ -93,10 +93,7 @@ describe('Trusted Public Exposure V1', () => {
     expect(parseTrustedPublicEligibilityAuthorizationV1(value)).toEqual(value);
     expect(value.publicExposureGrantedByEligibilityAlone).toBe(false);
     expect(value.currentAuthorityRevalidationRequiredBeforeServe).toBe(true);
-    expect(trustedPublicEligibilityFingerprintV1({
-      ...value,
-      eligibilityFingerprintSha256: undefined as never
-    } as never)).not.toBe('');
+    expect(value.eligibilityFingerprintSha256).toHaveLength(64);
   });
 
   it('parses a privacy-safe projection without artifact, relationship or commercial authority', () => {
