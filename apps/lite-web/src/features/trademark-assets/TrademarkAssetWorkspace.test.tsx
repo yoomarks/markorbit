@@ -130,15 +130,6 @@ function durableDisposition(kind: 'WATCHED' | 'RESOLVED_BY_WORKFLOW_REFERENCE') 
     recommendation: { id: recommendation.recommendationId, version: recommendation.version },
     kind,
     subjectUserId: '22222222-2222-4222-8222-222222222222',
-    ...(kind === 'RESOLVED_BY_WORKFLOW_REFERENCE'
-      ? {
-          workflowReference: {
-            kind: 'RELATED_MATTER' as const,
-            owner: 'MARKREG' as const,
-            referenceId: 'matter_1'
-          }
-        }
-      : {}),
     recordedAt: '2026-09-03T01:02:00.000Z',
     officialTruthCreated: false,
     legalConclusionVerified: false,
@@ -243,7 +234,9 @@ describe('TrademarkAssetWorkspace', () => {
       />
     );
 
-    expect(screen.getByText(/No durable disposition for this exact current Signal version/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No durable disposition for this exact current Signal version/)
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Durable disposition:/)).not.toBeInTheDocument();
   });
 
@@ -292,7 +285,7 @@ describe('TrademarkAssetWorkspace', () => {
     });
     expect(record.mock.calls[0]?.[1]).toMatch(/^trademark-disposition-/);
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText(/logical action remains locked/i)).toBeInTheDocument();
+    expect(await screen.findByText(/action remains locked/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Watch' })).toBeDisabled();
   });
 });
