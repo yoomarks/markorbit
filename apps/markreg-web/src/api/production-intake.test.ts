@@ -46,7 +46,10 @@ const command = {
 
 describe('Production Intake Web client', () => {
   it('writes through the authenticated Gateway without browser authority fields', async () => {
-    const post = vi.fn(() => Promise.resolve({ intake }));
+    const post = vi.fn((...args: [string, unknown, Record<string, string>?]) => {
+      expect(args).toHaveLength(3);
+      return Promise.resolve({ intake });
+    });
     const api = { post } as unknown as ApiClient;
     const client = createProductionIntakeClient(api);
 
@@ -64,7 +67,7 @@ describe('Production Intake Web client', () => {
         'X-Correlation-ID': 'correlation_699'
       }
     );
-    const body = post.mock.calls[0]![1] as Record<string, unknown>;
+    const body = post.mock.calls[0]![1];
     expect(body).not.toHaveProperty('workspaceId');
     expect(body).not.toHaveProperty('actor');
     expect(body).not.toHaveProperty('userId');

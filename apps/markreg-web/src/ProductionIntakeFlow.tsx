@@ -240,7 +240,7 @@ export function ProductionIntakeFlow({
   }, [client]);
 
   const update = (key: keyof ProductionIntakeDraft, value: string | string[]) => {
-    const next = { ...draft, [key]: value } as ProductionIntakeDraft;
+    const next = { ...draft, [key]: value };
     setDraft(next);
     setErrors((current) => ({ ...current, [key]: undefined }));
     if (submission.current?.fingerprint !== fingerprint(next)) {

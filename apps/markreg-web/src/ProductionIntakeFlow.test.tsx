@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
-import type { ProductionIntakeV1 } from '@markorbit/contracts/markreg-early-funnel';
+import type {
+  CreateProductionIntakeCommandV1,
+  ProductionIntakeV1
+} from '@markorbit/contracts/markreg-early-funnel';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -83,7 +86,17 @@ describe('durable Production Intake flow', () => {
   beforeEach(() => sessionStorage.clear());
 
   it('renders only the GET owner readback after the durable create', async () => {
-    const productionClient = client();
+    const create = vi.fn(() =>
+      Promise.resolve({
+        ...durableIntake,
+        input: {
+          ...durableIntake.input,
+          businessContext: 'POST response must not be rendered'
+        }
+      })
+    );
+    const get = vi.fn(() => Promise.resolve(durableIntake));
+    const productionClient = client({ create, get });
     const user = userEvent.setup();
     render(<ProductionIntakeFlow client={productionClient} />);
 
@@ -91,8 +104,8 @@ describe('durable Production Intake flow', () => {
     await user.click(screen.getByRole('button', { name: 'Submit Production Intake' }));
 
     expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();
-    expect(productionClient.create).toHaveBeenCalledTimes(1);
-    expect(productionClient.get).toHaveBeenCalledWith('production-intake_699');
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(get).toHaveBeenCalledWith('production-intake_699');
     expect(screen.getByText('Durable owner readback context')).toBeTruthy();
     expect(screen.queryByText('POST response must not be rendered')).toBeNull();
     expect(screen.queryByText('Essential Protection')).toBeNull();
@@ -113,13 +126,13 @@ describe('durable Production Intake flow', () => {
     await fillAndReview(user);
     await user.click(screen.getByRole('button', { name: 'Submit Production Intake' }));
     expect(
-      await screen.findByRole('heading', { name: 'Submission outcome is uncertain' })
+      await screen.findByRole('heading', { name: 'Submission outcome is uncertain', level: 1 })
     ).toBeTruthy();
 
-    const firstCommand = create.mock.calls[0]![0];
+    const firstCommand = create.mock.calls[0]![0] as CreateProductionIntakeCommandV1;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
-    const secondCommand = create.mock.calls[1]![0];
+    const secondCommand = create.mock.calls[1]![0] as CreateProductionIntakeCommandV1;
     expect(secondCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
     expect(secondCommand.correlationId).toBe(firstCommand.correlationId);
     expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();
