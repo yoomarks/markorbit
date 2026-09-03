@@ -8,10 +8,12 @@ import {
   PostgresRuntimeCapabilityRegistry
 } from './index.js';
 import { ObservedManagedAiExecutionAuthorityV1 } from './capability-audit-telemetry.js';
+import { PostgresCapabilityRuntimeReplayStoreV1 } from './capability-runtime-replay-store.js';
 import {
   createCapabilityAuditTelemetrySinkFromEnvironmentV1,
   ObservedGovernedCapabilityRuntimeV1
 } from './capability-runtime-quality-telemetry.js';
+import { DurableGovernedCapabilityRuntimeV1 } from './durable-governed-capability-runtime.js';
 import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
@@ -99,10 +101,16 @@ if (milestoneFixtureMode) {
     managedAiRuntime,
     internalServiceSecret
   });
-  const governedCapabilityRuntime =
+  const observedGovernedCapabilityRuntime =
     rawGovernedCapabilityRuntime && telemetrySink
       ? new ObservedGovernedCapabilityRuntimeV1(rawGovernedCapabilityRuntime, telemetrySink)
       : rawGovernedCapabilityRuntime;
+  const governedCapabilityRuntime = observedGovernedCapabilityRuntime
+    ? new DurableGovernedCapabilityRuntimeV1({
+        runtime: observedGovernedCapabilityRuntime,
+        replayStore: new PostgresCapabilityRuntimeReplayStoreV1(database, pool)
+      })
+    : null;
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
