@@ -1,0 +1,51 @@
+name: tmp-710-validation
+
+on:
+  push:
+    branches:
+      - integration/710-capability-recommendation-source
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tmp-710-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format and owner boundaries
+        run: |
+          pnpm format:check
+          pnpm validate:persistence-boundaries
+      - name: Build Capability and MarkReg dependency closures
+        run: |
+          pnpm exec turbo run build --filter=@markorbit/capability-engine...
+          pnpm exec turbo run build --filter=@markorbit/markreg-service...
+      - name: Lint and typecheck
+        run: |
+          pnpm --filter @markorbit/capability-engine lint
+          pnpm --filter @markorbit/capability-engine typecheck
+          pnpm --filter @markorbit/markreg-service lint
+          pnpm --filter @markorbit/markreg-service typecheck
+      - name: Targeted acceptance
+        run: |
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/production-source-evidence-read.test.ts tests/production-source-evidence-http.test.ts tests/capability-runtime-http.test.ts
+          pnpm --filter @markorbit/markreg-service exec vitest run tests/recommendation-source.test.ts
+      - name: Remove temporary workflow after success
+        if: success()
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/tmp-710-validation.yml
+          git commit -m "ci: remove temporary #710 validation workflow"
+          git push
