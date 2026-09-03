@@ -167,8 +167,12 @@ const providerSource: TrustEvidenceProviderSource = {
   findProviderById: async () => provider
 };
 
+type ResponsibilityAssessment = Awaited<
+  ReturnType<TrustEvidenceResponsibilitySource['assessCurrent']>
+>['assessment'];
+
 function responsibilitySource(
-  assessment: typeof responsibilityAssessment | null = responsibilityAssessment
+  assessment: ResponsibilityAssessment = responsibilityAssessment
 ): TrustEvidenceResponsibilitySource {
   return {
     assessCurrent: async () => ({
