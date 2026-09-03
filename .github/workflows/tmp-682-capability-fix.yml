@@ -1,0 +1,48 @@
+name: Temporary #682 Capability formatter
+
+on:
+  push:
+    branches:
+      - capability/682-production-source-evidence-read
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: capability/682-production-source-evidence-read
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fix exact #682 lint and formatting
+        run: |
+          pnpm exec eslint services/capability-engine/tests/production-source-evidence-read.test.ts --fix
+          pnpm exec prettier --write \
+            services/capability-engine/package.json \
+            services/capability-engine/src/durable-governed-capability-runtime.ts \
+            services/capability-engine/src/main.ts \
+            services/capability-engine/src/production-source-evidence-read.ts \
+            services/capability-engine/src/uspto-official-fee-production-source-evidence.ts \
+            services/capability-engine/tests/production-source-evidence-read.test.ts \
+            services/capability-engine/tests/production-source-evidence-read-postgres.test.ts
+      - name: Remove temporary workflow and push formatted tree
+        run: |
+          git rm .github/workflows/tmp-682-capability-fix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/capability-engine
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "[CAPABILITY-P0] Apply exact #682 lint and formatting"
+          git push origin HEAD:capability/682-production-source-evidence-read
