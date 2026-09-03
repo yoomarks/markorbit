@@ -66,7 +66,7 @@ function location(url: string, event: 'hashchange' | 'popstate' = 'hashchange') 
 
 describe('Lite shell navigation truth', () => {
   it('resolves every primary navigation click with exactly one active item', async () => {
-    window.history.replaceState(null, '', '/?workspaceId=workspace-1#work-customers');
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
     render(<LiteApp />);
     const user = userEvent.setup();
     const nav = screen.getByRole('navigation', { name: 'Primary' });
@@ -76,7 +76,7 @@ describe('Lite shell navigation truth', () => {
       ['Content', 'Content Studio workspace-1', '#content'],
       ['Opportunities', 'Opportunity Center workspace-1', '#opportunities'],
       ['Trademarks', 'Trademarks workspace-1', '#trademarks'],
-      ['Work', 'Customers', '#work-customers'],
+      ['Work', 'Work', '#work'],
       ['Capability', 'Capability workspace-1', '#capability'],
       ['Guide', 'Guide', '#guide']
     ] as const) {
@@ -127,6 +127,19 @@ describe('Lite shell navigation truth', () => {
     }
   );
 
+  it('makes Work a truthful overview instead of opening fixture Customers', () => {
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
+    render(<LiteApp />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
+    expect(screen.getByText('Mixed maturity')).toBeVisible();
+    expect(screen.getByText('Work · workspace-1')).toBeVisible();
+    expect(screen.getByText('Live governed')).toBeVisible();
+    expect(screen.getByText('Hardening in progress')).toBeVisible();
+    expect(screen.getByText('Fixture preview')).toBeVisible();
+    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
+  });
+
   it('keeps Customers fixture-labelled in every fixture state even with a Workspace', () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1');
     const { rerender } = render(<LiteApp initialSurface="customers" />);
@@ -150,19 +163,18 @@ describe('Lite shell navigation truth', () => {
   });
 
   it('synchronizes Work subnavigation with URL and browser history', async () => {
-    window.history.replaceState(null, '', '/?workspaceId=workspace-1#work-customers');
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
     render(<LiteApp />);
     const user = userEvent.setup();
-    for (const [label, hash] of [
-      ['Professional Review', '#work-professional-review'],
-      ['Execution Release', '#work-execution-release'],
-      ['Customers', '#work-customers']
+    for (const [label, hash, heading] of [
+      ['Professional Review', '#work-professional-review', /Professional Review/],
+      ['Execution Release', '#work-execution-release', /Execution Release/],
+      ['Customers', '#work-customers', /Customers/],
+      ['Overview', '#work', /^Work$/]
     ] as const) {
       const button = screen.getByRole('button', { name: label });
       await user.click(button);
-      expect(
-        await screen.findByRole('heading', { level: 1, name: new RegExp(label) })
-      ).toBeVisible();
+      expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible();
       expect(window.location.hash).toBe(hash);
       expect(window.location.search).toBe('?workspaceId=workspace-1');
       expect(button).toHaveAttribute('aria-current', 'page');
@@ -177,6 +189,14 @@ describe('Lite shell navigation truth', () => {
       'Professional Review workspace-2'
     );
     expect(screen.getByText('Workspace · workspace-2')).toBeVisible();
+  });
+
+  it('keeps the live Professional Review action disabled on Work when no Workspace is selected', () => {
+    window.history.replaceState(null, '', '/#work');
+    render(<LiteApp />);
+    expect(screen.getByRole('button', { name: 'Select a Workspace first' })).toBeDisabled();
+    expect(screen.getByText('Work · Workspace not selected')).toBeVisible();
+    expect(screen.getByText('Mixed maturity')).toBeVisible();
   });
 
   it('labels Execution Release as API-backed without claiming authenticated Workspace scope', () => {
