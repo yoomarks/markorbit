@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseExecutableMethodPackageV1 } from '@markorbit/contracts/brain-method';
 import {
   executableMethodActivationEvidenceRefV1,
   executableMethodPackageFingerprintV1,
   parseExecutableMethodPackageActivationDecisionV1
 } from '@markorbit/contracts/brain-method-activation';
-import { parseExecutableMethodPackageV1 } from '@markorbit/contracts/brain-method';
 
 import {
   USPTO_OFFICIAL_FEE_GOVERNANCE_APPROVAL_V1,
@@ -33,8 +33,8 @@ describe('USPTO official-fee production promotion governance', () => {
     );
     expect(decision).toMatchObject({
       decision: 'APPROVED',
-      authority: 'BRAIN_GOVERNANCE',
       approval: {
+        authority: 'BRAIN_GOVERNANCE',
         policyVersion: 'brain-governance-v1',
         approvedBy: 'yoomarks',
         approvalTicketRef: 'github:issue/659',
@@ -48,6 +48,7 @@ describe('USPTO official-fee production promotion governance', () => {
     expect(activePackage.packageVersion).toBe(first.predecessor.packageVersion + 1);
     expect(activePackage.activationDecisionId).toBe(decision.decisionId);
     expect(activePackage.activationEvidenceRef).toBe(first.activationEvidenceRef);
+    expect(first.legacyPilot.currentBrainGovernanceActivationEstablished).toBe(false);
 
     expect(USPTO_OFFICIAL_FEE_GOVERNANCE_APPROVAL_V1.rationale).toContain(
       'no Recommendation, Quote, Filing, Payment'
