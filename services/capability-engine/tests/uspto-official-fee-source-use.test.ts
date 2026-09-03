@@ -349,7 +349,7 @@ describe('USPTO official-fee source-use context authority V1', () => {
     expect(resolve(execution, withoutReference)).toMatchObject({ status: 'UNSUPPORTED' });
   });
 
-  it('does not reinterpret the current repository USPTO source policy as production-admissible', async () => {
+  it('uses the live governed USPTO v2 policy without bypassing producer currentness gates', async () => {
     const execution = await historicalExecution();
     const result = currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate({
       execution,
@@ -357,9 +357,10 @@ describe('USPTO official-fee source-use context authority V1', () => {
       currentImplementation: USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE
     });
 
-    expect(result).toMatchObject({ applicability: 'UNSUPPORTED' });
-    if (result.applicability === 'UNSUPPORTED') {
-      expect(result.reason).toContain('pilot');
-    }
+    expect(result).toEqual({
+      applicability: 'SUPPORTED',
+      methodCurrentness: 'REQUIRED',
+      referenceCurrentness: 'REQUIRED'
+    });
   });
 });

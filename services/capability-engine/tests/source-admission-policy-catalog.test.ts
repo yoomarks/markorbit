@@ -21,6 +21,8 @@ import {
   CapabilitySourceAdmissionPolicyCatalogV1,
   currentCapabilitySourceAdmissionPoliciesV1,
   currentCapabilitySourceAdmissionPolicyCatalogV1,
+  historicalUsptoOfficialFeeSourceAdmissionPolicyV1,
+  usptoOfficialFeeSourceAdmissionPolicyV2,
   type CapabilitySourceAdmissionPolicyEntryV1
 } from '../src/source-admission-policy-catalog.js';
 import {
@@ -37,10 +39,6 @@ const currentPilots = [
   [
     CN_PRELIMINARY_PUBLICATION_DISCOVERY_CAPABILITY_DEFINITION,
     CN_PRELIMINARY_PUBLICATION_DISCOVERY_IMPLEMENTATION_PROFILE
-  ],
-  [
-    USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
-    USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE
   ]
 ] as const;
 
@@ -111,13 +109,13 @@ function expectCatalogError(
 }
 
 describe('Capability source-admission policy catalog V1', () => {
-  it('explicitly classifies all four current Phase 4 families as PILOT and denies production admission', () => {
+  it('keeps the three CN Phase 4 families PILOT and promotes only exact USPTO to current v2', () => {
     expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
     expect(currentCapabilitySourceAdmissionPoliciesV1.map((entry) => entry.maturityClass)).toEqual([
       'PILOT',
       'PILOT',
       'PILOT',
-      'PILOT'
+      'PRODUCTION_ADMISSIBLE'
     ]);
 
     for (const [definition, profile] of currentPilots) {
@@ -127,6 +125,29 @@ describe('Capability source-admission policy catalog V1', () => {
         applicability: 'UNSUPPORTED'
       });
     }
+
+    expect(historicalUsptoOfficialFeeSourceAdmissionPolicyV1).toMatchObject({
+      policyId: 'source-admission-policy.uspto-official-fee-resolver.v1',
+      policyVersion: 1,
+      maturityClass: 'PILOT'
+    });
+    expect(
+      currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(
+        policyInput(
+          USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
+          USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE
+        )
+      )
+    ).toEqual({
+      applicability: 'SUPPORTED',
+      methodCurrentness: 'REQUIRED',
+      referenceCurrentness: 'REQUIRED'
+    });
+    expect(
+      currentCapabilitySourceAdmissionPoliciesV1.filter((entry) =>
+        entry.policyId.startsWith('source-admission-policy.uspto-official-fee-resolver.')
+      )
+    ).toEqual([usptoOfficialFeeSourceAdmissionPolicyV2]);
   });
 
   it('fails closed when no policy exists for the exact current binding', () => {
