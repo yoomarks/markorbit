@@ -21,7 +21,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply exact lint and type fixes
+      - name: Apply exact lint, type and test fixes
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -43,8 +43,19 @@ jobs:
             `    const api = client();\n    render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);\n\n    expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();\n    expect(api.get).toHaveBeenCalledWith(record.intakeId);\n    expect(api.create).not.toHaveBeenCalled();`,
             `    const create = vi.fn<ProductionIntakeClient['create']>(() =>\n      Promise.resolve({ intake: record })\n    );\n    const get = vi.fn<ProductionIntakeClient['get']>(() => Promise.resolve({ intake: record }));\n    const api = client({ create, get });\n    render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);\n\n    expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();\n    expect(get).toHaveBeenCalledWith(record.intakeId);\n    expect(create).not.toHaveBeenCalled();`
           );
+          const retryMarker = "screen.getByRole('button', { name: /Retry/i })";
+          let testSource = fs.readFileSync(test, 'utf8');
+          const retryCount = testSource.split(retryMarker).length - 1;
+          if (retryCount !== 2) throw new Error(`expected 2 Retry selectors, found ${retryCount}`);
+          testSource = testSource.replaceAll(
+            retryMarker,
+            "screen.getByRole('button', { name: 'Try again' })"
+          );
+          fs.writeFileSync(test, testSource);
+
           const component = 'apps/markreg-web/src/ProductionIntakePlanning.tsx';
           replaceExact(component, `    // eslint-disable-next-line react-hooks/exhaustive-deps\n`, '');
+
           const apiTest = 'apps/markreg-web/src/api/production-intake.test.ts';
           let apiSource = fs.readFileSync(apiTest, 'utf8');
           const marker = 'const fetcher = vi.fn(() =>';
@@ -63,10 +74,11 @@ jobs:
             apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
             apps/markreg-web/src/ProductionIntakePlanning.tsx \
             apps/markreg-web/src/api/production-intake.test.ts
-      - name: Verify MarkReg Web
+      - name: Verify MarkReg Web with dependency closure
         run: |
           pnpm --filter @markorbit/markreg-web lint
           pnpm --filter @markorbit/markreg-web typecheck
+          pnpm --filter @markorbit/contracts build
           pnpm --filter @markorbit/markreg-web test
       - name: Commit exact verified output
         run: |
@@ -77,5 +89,5 @@ jobs:
             apps/markreg-web/src/ProductionIntakePlanning.tsx \
             apps/markreg-web/src/api/production-intake.test.ts
           git diff --cached --quiet && exit 0
-          git commit -m 'fix: temporary #699 lint-type-verified output'
+          git commit -m 'fix: temporary #699 lint-type-test-verified output'
           git push origin HEAD:tmp/699-lint-fix
