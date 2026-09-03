@@ -13,8 +13,8 @@ afterEach(cleanup);
 
 it('prints exact hosted Prettier output as base64', async () => {
   const files = [
-    path.resolve('apps/lite-web/src/features/content-studio/ContentStudio.tsx'),
-    path.resolve('apps/lite-web/src/features/content-studio/ContentStudio.triage.test.tsx')
+    path.resolve('src/features/content-studio/ContentStudio.tsx'),
+    path.resolve('src/features/content-studio/ContentStudio.triage.test.tsx')
   ];
   const outputs: Array<[string, string]> = [];
   for (const file of files) {
