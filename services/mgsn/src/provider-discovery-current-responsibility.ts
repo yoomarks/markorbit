@@ -9,7 +9,10 @@ import { providerDiscoveryFingerprint } from './provider-discovery.js';
 import type { ProviderResponsibilityService } from './provider-responsibility.js';
 
 export type ProviderDiscoveryEvaluationSource = Pick<ProviderDiscoveryService, 'evaluate'>;
-export type ProviderDiscoveryResponsibilitySource = Pick<ProviderResponsibilityService, 'assessCurrent'>;
+export type ProviderDiscoveryResponsibilitySource = Pick<
+  ProviderResponsibilityService,
+  'assessCurrent'
+>;
 
 function evidenceReferencesAuthorized(candidate: Readonly<ProviderDiscoveryCandidateV1>): boolean {
   return candidate.authorizedProjection.fields.some(
@@ -19,7 +22,9 @@ function evidenceReferencesAuthorized(candidate: Readonly<ProviderDiscoveryCandi
 }
 
 function isPositiveDirectExecutorAssessment(
-  assessment: Awaited<ReturnType<ProviderDiscoveryResponsibilitySource['assessCurrent']>>['assessment']
+  assessment: Awaited<
+    ReturnType<ProviderDiscoveryResponsibilitySource['assessCurrent']>
+  >['assessment']
 ): assessment is NonNullable<
   Awaited<ReturnType<ProviderDiscoveryResponsibilitySource['assessCurrent']>>['assessment']
 > {
