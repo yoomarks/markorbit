@@ -90,3 +90,21 @@ replaceExact(
     milestoneTestRuntime: true
   });`
 );
+
+const focused = 'apps/gateway/tests/filing-governance-http.test.ts';
+replaceExact(
+  focused,
+  `    if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
+    expect(JSON.parse(init.body)).toMatchObject({`,
+  `    if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
+    const requestBody = init.body;
+    expect(JSON.parse(requestBody)).toMatchObject({`
+);
+replaceExact(
+  focused,
+  `      if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
+      const body = JSON.parse(init.body) as Record<string, unknown>;`,
+  `      if (!init || typeof init.body !== 'string') throw new Error('Expected request body.');
+      const requestBody = init.body;
+      const body = JSON.parse(requestBody) as Record<string, unknown>;`
+);
