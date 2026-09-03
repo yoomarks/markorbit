@@ -1,0 +1,28 @@
+name: Prettier Diagnostic
+
+on:
+  push:
+    branches:
+      - core/664-coverage-gap-postgres-bootstrap
+    paths:
+      - .github/workflows/prettier-diagnostic.yml
+      - services/core/src/method-improvement-coverage-gap-postgres.ts
+      - services/core/tests/method-improvement-coverage-gap-postgres.test.ts
+
+jobs:
+  format-diff:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm exec prettier --write services/core/src/method-improvement-coverage-gap-postgres.ts services/core/tests/method-improvement-coverage-gap-postgres.test.ts
+          git diff -- services/core/src/method-improvement-coverage-gap-postgres.ts services/core/tests/method-improvement-coverage-gap-postgres.test.ts
