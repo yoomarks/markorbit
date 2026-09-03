@@ -117,7 +117,8 @@ async function start() {
   await markreg.start();
   const gateway = createGateway({
     port: 0,
-    markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`
+    markRegUrl: `http://127.0.0.1:${markreg.listeningPort}`,
+    milestoneTestRuntime: true
   });
   active.push(gateway);
   await gateway.start();
