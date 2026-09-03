@@ -323,10 +323,12 @@ describe('TrademarkAssetWorkspace', () => {
     expect(window.location.hash).toBe('');
   });
 
-  it('keeps the workspace visible on 409 and clears the old lock when Asset version changes', async () => {
+  it('preserves workspace and clears the stale lock after an Asset version change', async () => {
     const record = vi
       .fn()
-      .mockRejectedValue(new TrademarkAssetHttpError(409, 'ASSET_VERSION_CONFLICT', 'Asset changed.'));
+      .mockRejectedValue(
+        new TrademarkAssetHttpError(409, 'ASSET_VERSION_CONFLICT', 'Asset changed.')
+      );
     const reloadAsset = vi.fn().mockResolvedValue(undefined);
     const reload = vi.fn().mockResolvedValue(projection(null));
     const user = userEvent.setup();
