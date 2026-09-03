@@ -22,6 +22,7 @@ import type { FixtureState, RelatedRecord } from './features/shared/view-models.
 import './lite.css';
 import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
 import { ExecutionReleaseView } from './features/execution-release/ExecutionRelease.js';
+import { WorkHub } from './features/work/WorkHub.js';
 import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 import { TodayWorkspace } from './features/today/TodayWorkspace.js';
 import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
@@ -47,6 +48,7 @@ type Surface =
   | 'guide'
   | 'trademarks'
   | 'capability'
+  | 'work'
   | 'customers'
   | 'opportunities'
   | 'professional-review'
@@ -57,6 +59,7 @@ const surfacesByHash: Readonly<Record<string, Surface>> = {
   '#content': 'content',
   '#opportunities': 'opportunities',
   '#trademarks': 'trademarks',
+  '#work': 'work',
   '#work-customers': 'customers',
   '#work-professional-review': 'professional-review',
   '#work-execution-release': 'execution-release',
@@ -334,9 +337,13 @@ export function LiteApp({
     };
   }, [workspaceId]);
   const isWork =
-    surface === 'customers' || surface === 'professional-review' || surface === 'execution-release';
+    surface === 'work' ||
+    surface === 'customers' ||
+    surface === 'professional-review' ||
+    surface === 'execution-release';
   const isFixture = surface === 'customers';
   const isEntry = surface === 'guide';
+  const isWorkHub = surface === 'work';
   return (
     <AppShell
       brand="MarkOrbit Lite"
@@ -344,7 +351,7 @@ export function LiteApp({
         <SideNavigation
           items={nav.map((label) => ({
             label,
-            href: label === 'Work' ? '#work-customers' : `#${label.toLowerCase()}`,
+            href: label === 'Work' ? '#work' : `#${label.toLowerCase()}`,
             active: isWork ? label === 'Work' : label.toLowerCase() === surface
           }))}
         />
@@ -356,7 +363,9 @@ export function LiteApp({
               ? 'Northstar IP · Fixture workspace'
               : surface === 'execution-release'
                 ? 'Work · Execution API'
-                : `Workspace · ${activeWorkspaceId || 'not selected'}`
+                : isWorkHub
+                  ? `Work · ${activeWorkspaceId || 'Workspace not selected'}`
+                  : `Workspace · ${activeWorkspaceId || 'not selected'}`
           }
           actions={
             <Badge>
@@ -366,9 +375,11 @@ export function LiteApp({
                   ? 'Not yet promoted'
                   : surface === 'execution-release'
                     ? 'API-backed'
-                    : activeWorkspaceId
-                      ? 'Authenticated'
-                      : 'Workspace required'}
+                    : isWorkHub
+                      ? 'Mixed maturity'
+                      : activeWorkspaceId
+                        ? 'Authenticated'
+                        : 'Workspace required'}
             </Badge>
           }
         />
@@ -379,13 +390,13 @@ export function LiteApp({
         {isWork && (
           <nav className="lite-subnav" aria-label="Workspace view">
             <Button
-              variant={surface === 'customers' ? 'primary' : 'secondary'}
-              aria-current={surface === 'customers' ? 'page' : undefined}
+              variant={surface === 'work' ? 'primary' : 'secondary'}
+              aria-current={surface === 'work' ? 'page' : undefined}
               onClick={() => {
-                window.location.hash = 'work-customers';
+                window.location.hash = 'work';
               }}
             >
-              Customers
+              Overview
             </Button>
             <Button
               variant={surface === 'professional-review' ? 'primary' : 'secondary'}
@@ -404,6 +415,15 @@ export function LiteApp({
               }}
             >
               Execution Release
+            </Button>
+            <Button
+              variant={surface === 'customers' ? 'primary' : 'secondary'}
+              aria-current={surface === 'customers' ? 'page' : undefined}
+              onClick={() => {
+                window.location.hash = 'work-customers';
+              }}
+            >
+              Customers
             </Button>
           </nav>
         )}
@@ -477,6 +497,8 @@ export function LiteApp({
               action={<a href="#today">Open Today</a>}
             />
           </>
+        ) : surface === 'work' ? (
+          <WorkHub workspaceId={activeWorkspaceId} />
         ) : surface === 'customers' ? (
           <Customers
             key={initialCustomerId}
