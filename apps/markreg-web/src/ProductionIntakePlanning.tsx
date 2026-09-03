@@ -261,7 +261,6 @@ export function ProductionIntakePlanning({
     if (!existingPointer) return;
     void readDurable(existingPointer, false);
     // The durable pointer is the only local submitted-state value. Material truth comes from GET.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const update = (key: keyof ProductionIntakeDraft, value: string) => {

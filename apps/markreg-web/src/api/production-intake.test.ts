@@ -57,7 +57,7 @@ describe('durable Production Intake browser client', () => {
   });
 
   it('posts only customer Intake material while browser auth, Workspace, CSRF, idempotency and correlation stay in headers', async () => {
-    const fetcher = vi.fn(() =>
+    const fetcher = vi.fn<typeof fetch>(() =>
       Promise.resolve(
         new Response(JSON.stringify(envelope), {
           status: 200,
@@ -79,7 +79,8 @@ describe('durable Production Intake browser client', () => {
       'Idempotency-Key': 'production-intake-key-699',
       'X-Correlation-ID': 'correlation_699'
     });
-    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    if (typeof init?.body !== 'string') throw new Error('expected JSON request body');
+    const body = JSON.parse(init.body) as Record<string, unknown>;
     expect(body).toEqual({
       schemaVersion: 1,
       channel: 'MARKREG_DIRECT',
@@ -94,7 +95,7 @@ describe('durable Production Intake browser client', () => {
   });
 
   it('reloads durable owner truth with GET and the current Workspace session boundary', async () => {
-    const fetcher = vi.fn(() =>
+    const fetcher = vi.fn<typeof fetch>(() =>
       Promise.resolve(
         new Response(JSON.stringify(envelope), {
           status: 200,
@@ -119,7 +120,7 @@ describe('durable Production Intake browser client', () => {
   it.each([400, 401, 403, 409, 503])(
     'preserves HTTP %s as a distinguishable MarkReg error',
     async (status) => {
-      const fetcher = vi.fn(() =>
+      const fetcher = vi.fn<typeof fetch>(() =>
         Promise.resolve(
           new Response(
             JSON.stringify({

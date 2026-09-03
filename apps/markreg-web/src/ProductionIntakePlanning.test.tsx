@@ -108,7 +108,11 @@ describe('production durable Intake planning', () => {
 
   it('creates durable Intake, reads it back from the owner route and never renders fixture options', async () => {
     const user = userEvent.setup();
-    const api = client();
+    const create = vi.fn<ProductionIntakeClient['create']>(() =>
+      Promise.resolve({ intake: record })
+    );
+    const get = vi.fn<ProductionIntakeClient['get']>(() => Promise.resolve({ intake: record }));
+    const api = client({ create, get });
     render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);
 
     expect(screen.getByText(/Customer-supplied Intake only/)).toBeTruthy();
@@ -116,8 +120,8 @@ describe('production durable Intake planning', () => {
     expect(screen.getByRole('heading', { name: 'Customer-supplied Intake summary' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Create durable Intake' }));
 
-    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
-    const submitted = vi.mocked(api.create).mock.calls[0]![0] as CreateProductionIntakeCommandV1;
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const submitted = create.mock.calls[0]![0];
     expect(submitted).toMatchObject({
       schemaVersion: 1,
       channel: 'MARKREG_DIRECT',
@@ -126,7 +130,7 @@ describe('production durable Intake planning', () => {
     });
     expect(submitted).not.toHaveProperty('actor');
     expect(submitted).not.toHaveProperty('workspaceId');
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith(record.intakeId));
+    await waitFor(() => expect(get).toHaveBeenCalledWith(record.intakeId));
     expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();
     expect(screen.getByText(/Recommendation remains gated/)).toBeTruthy();
     expect(screen.queryByText('Essential Protection')).toBeNull();
@@ -143,12 +147,16 @@ describe('production durable Intake planning', () => {
       `markreg-production-intake-draft-v1:${workspaceId}`,
       JSON.stringify({ ...draft, applicantName: 'stale local material' })
     );
-    const api = client();
+    const create = vi.fn<ProductionIntakeClient['create']>(() =>
+      Promise.resolve({ intake: record })
+    );
+    const get = vi.fn<ProductionIntakeClient['get']>(() => Promise.resolve({ intake: record }));
+    const api = client({ create, get });
     render(<ProductionIntakePlanning client={api} workspaceId={workspaceId} />);
 
     expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();
-    expect(api.get).toHaveBeenCalledWith(record.intakeId);
-    expect(api.create).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledWith(record.intakeId);
+    expect(create).not.toHaveBeenCalled();
     expect(screen.getByText(/Orbit Labs Ltd./)).toBeTruthy();
     expect(screen.queryByText('stale local material')).toBeNull();
   });
@@ -175,7 +183,7 @@ describe('production durable Intake planning', () => {
     expect(
       await screen.findByRole('heading', { name: 'Submission outcome uncertain' })
     ).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: /Retry/i }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
     const first = create.mock.calls[0]![0] as CreateProductionIntakeCommandV1;
@@ -208,7 +216,7 @@ describe('production durable Intake planning', () => {
     expect(
       await screen.findByRole('heading', { name: 'Intake saved; durable readback is uncertain' })
     ).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: /Retry/i }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();
     expect(create).toHaveBeenCalledTimes(1);
