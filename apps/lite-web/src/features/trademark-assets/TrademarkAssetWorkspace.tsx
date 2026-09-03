@@ -53,6 +53,7 @@ export interface TrademarkAssetWorkspaceProps {
 
 type MutationPhase = 'submitting' | 'reload-required' | 'stale' | 'unavailable';
 interface PendingMutation {
+  assetVersion: number;
   signalId: string;
   signalVersion: number;
   recommendationId?: string;
@@ -137,16 +138,18 @@ export function TrademarkAssetWorkspace({
 
   useEffect(() => {
     if (!pendingMutation) return;
-    const stillCurrent = managementSignals.some(
-      (signal) =>
-        signal.managementSignalId === pendingMutation.signalId &&
-        signal.version === pendingMutation.signalVersion
-    );
+    const stillCurrent =
+      view.anchor.version === pendingMutation.assetVersion &&
+      managementSignals.some(
+        (signal) =>
+          signal.managementSignalId === pendingMutation.signalId &&
+          signal.version === pendingMutation.signalVersion
+      );
     if (!stillCurrent) {
       setPendingMutation(undefined);
       setConfirmingRecommendationId(undefined);
     }
-  }, [managementSignals, pendingMutation]);
+  }, [managementSignals, pendingMutation, view.anchor.version]);
 
   const captureDisposition = async (
     signal: Readonly<TrademarkAssetManagementSignal>,
@@ -159,6 +162,7 @@ export function TrademarkAssetWorkspace({
     const idempotencyKey =
       `trademark-disposition-${view.trademarkAssetId}-${signal.managementSignalId}-${signal.version}-${kind}-${crypto.randomUUID()}`;
     const context: PendingMutation = {
+      assetVersion: view.anchor.version,
       signalId: signal.managementSignalId,
       signalVersion: signal.version,
       ...(recommendation
@@ -195,7 +199,7 @@ export function TrademarkAssetWorkspace({
           (item) =>
             item.signal.id === signal.managementSignalId && item.signal.version === signal.version
         )?.disposition;
-        if (!confirmed) {
+        if (!confirmed || (kind === 'CONTINUED' && confirmed.kind !== 'CONTINUED')) {
           setPendingMutation({ ...context, phase: 'reload-required' });
           return;
         }
@@ -230,7 +234,9 @@ export function TrademarkAssetWorkspace({
           item.signal.id === pendingMutation.signalId &&
           item.signal.version === pendingMutation.signalVersion
       )?.disposition;
-      if (confirmed) {
+      const continuedConfirmed =
+        pendingMutation.kind !== 'CONTINUED' || confirmed?.kind === 'CONTINUED';
+      if (confirmed && continuedConfirmed) {
         const recommendation = recommendations.find(
           (candidate) =>
             candidate.recommendationId === pendingMutation.recommendationId &&
