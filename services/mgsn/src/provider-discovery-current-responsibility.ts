@@ -30,10 +30,10 @@ function isPositiveDirectExecutorAssessment(
 > {
   return Boolean(
     assessment?.directExecutorEstablished === true &&
-      (assessment.state === 'DIRECT_FINAL_EXECUTOR_ESTABLISHED' ||
-        assessment.state === 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED') &&
-      assessment.profileAuthorityState === 'CURRENT' &&
-      assessment.evidenceReferences.length > 0
+    (assessment.state === 'DIRECT_FINAL_EXECUTOR_ESTABLISHED' ||
+      assessment.state === 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED') &&
+    assessment.profileAuthorityState === 'CURRENT' &&
+    assessment.evidenceReferences.length > 0
   );
 }
 
