@@ -27,11 +27,15 @@ describe('MarkReg production planning entry', () => {
     render(<MarkregWorkspaceHome client={orderClient} matterClient={matterClient} />);
 
     expect(
-      await screen.findByText(/Planning a new filing now begins with a durable customer-supplied Production Intake/)
+      await screen.findByText(
+        /Planning a new filing now begins with a durable customer-supplied Production Intake/
+      )
     ).toBeTruthy();
     await user.click(screen.getAllByRole('button', { name: 'Plan a new filing' })[0]!);
 
-    expect(await screen.findByRole('heading', { name: 'Plan a new trademark filing' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Plan a new trademark filing' })
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Start Production Intake' })).toBeTruthy();
     expect(screen.queryByText(/fixture-only planning options/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Start consultation' })).toBeNull();

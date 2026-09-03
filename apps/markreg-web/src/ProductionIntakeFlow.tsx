@@ -149,42 +149,50 @@ function errorCopy(status: FlowStatus): { title: string; description: string } {
     case 'authentication':
       return {
         title: 'Sign in again to continue',
-        description: 'Your saved answers remain in this browser. An authenticated Workspace session is required before a Production Intake can be created or read.'
+        description:
+          'Your saved answers remain in this browser. An authenticated Workspace session is required before a Production Intake can be created or read.'
       };
     case 'permission':
       return {
         title: 'Workspace permission required',
-        description: 'Your current Workspace role or browser security context cannot create this Production Intake. No fixture Recommendation will be used as a fallback.'
+        description:
+          'Your current Workspace role or browser security context cannot create this Production Intake. No fixture Recommendation will be used as a fallback.'
       };
     case 'invalid':
       return {
         title: 'Review the intake details',
-        description: 'The durable Intake boundary rejected one or more submitted values. Return to Review and correct the customer-supplied information before submitting again.'
+        description:
+          'The durable Intake boundary rejected one or more submitted values. Return to Review and correct the customer-supplied information before submitting again.'
       };
     case 'conflict':
       return {
         title: 'Submission identity conflict',
-        description: 'This logical submission key was already used for different material. Review the answers before starting a new logical submission; MarkReg will not silently create another Intake.'
+        description:
+          'This logical submission key was already used for different material. Review the answers before starting a new logical submission; MarkReg will not silently create another Intake.'
       };
     case 'unavailable':
       return {
         title: 'Submission outcome is uncertain',
-        description: 'The Gateway did not return a reliable outcome. Retry uses the same idempotency key and correlation ID so the same logical Production Intake is replayed safely.'
+        description:
+          'The Gateway did not return a reliable outcome. Retry uses the same idempotency key and correlation ID so the same logical Production Intake is replayed safely.'
       };
     case 'readback-unavailable':
       return {
         title: 'Durable Intake read is temporarily unavailable',
-        description: 'The submission returned a durable Intake identity, but MarkReg cannot currently read the owner record back. No submitted form state is being shown as durable truth.'
+        description:
+          'The submission returned a durable Intake identity, but MarkReg cannot currently read the owner record back. No submitted form state is being shown as durable truth.'
       };
     case 'not-found':
       return {
         title: 'Durable Intake is not available in this Workspace',
-        description: 'The saved Intake reference cannot be read from the current authenticated Workspace. MarkReg will not reconstruct it from browser form state.'
+        description:
+          'The saved Intake reference cannot be read from the current authenticated Workspace. MarkReg will not reconstruct it from browser form state.'
       };
     default:
       return {
         title: 'Production Intake cannot continue safely',
-        description: 'MarkReg could not complete the durable Intake operation safely. No Recommendation, Order, Matter, Payment, Filing, or Official Truth has been created by this screen.'
+        description:
+          'MarkReg could not complete the durable Intake operation safely. No Recommendation, Order, Matter, Payment, Filing, or Official Truth has been created by this screen.'
       };
   }
 }
@@ -203,7 +211,9 @@ export function ProductionIntakeFlow({
   const [errors, setErrors] = useState<Partial<Record<keyof ProductionIntakeDraft, string>>>({});
   const [status, setStatus] = useState<FlowStatus>(savedIntakeId ? 'reading' : 'editing');
   const [intake, setIntake] = useState<ProductionIntakeV1>();
-  const submission = useRef<SubmissionIdentity | undefined>(load<SubmissionIdentity>(SUBMISSION_KEY));
+  const submission = useRef<SubmissionIdentity | undefined>(
+    load<SubmissionIdentity>(SUBMISSION_KEY)
+  );
   const durableIntakeId = useRef<string | undefined>(savedIntakeId);
   const pending = useRef(false);
 
@@ -324,7 +334,9 @@ export function ProductionIntakeFlow({
       <main className="markreg-page" aria-label="Production Intake">
         <Stepper steps={labels} current={5} />
         <LoadingState label="Recording your durable Production Intake" />
-        <p className="mo-center">Do not resubmit in another tab. This logical request has a stable replay identity.</p>
+        <p className="mo-center">
+          Do not resubmit in another tab. This logical request has a stable replay identity.
+        </p>
       </main>
     );
 
@@ -347,7 +359,8 @@ export function ProductionIntakeFlow({
       <main className="markreg-page" aria-label="Production Intake">
         <PageHeader title={copy.title} description={copy.description} />
         <Alert tone="warning" title="Authority boundary">
-          Production Intake = customer-supplied input. Intake ≠ Recommendation ≠ authorization. No fixture flow is used as fallback.
+          Production Intake = customer-supplied input. Intake ≠ Recommendation ≠ authorization. No
+          fixture flow is used as fallback.
         </Alert>
         <ErrorState
           title={copy.title}
@@ -372,7 +385,9 @@ export function ProductionIntakeFlow({
             </Button>
           )}
           {(status === 'authentication' || status === 'permission' || status === 'not-found') && (
-            <Button variant="secondary" onClick={startNew}>Start a new Intake</Button>
+            <Button variant="secondary" onClick={startNew}>
+              Start a new Intake
+            </Button>
           )}
         </div>
       </main>
@@ -387,11 +402,16 @@ export function ProductionIntakeFlow({
           description="Record your filing context as a durable Production Intake in the current Workspace."
         />
         <Alert tone="warning" title="Intake is not advice or a filing">
-          Your answers are customer-supplied input. This step does not verify Official Truth, create a Recommendation, authorize a protected action, create an Order or Matter, take Payment, or file anything.
+          Your answers are customer-supplied input. This step does not verify Official Truth, create
+          a Recommendation, authorize a protected action, create an Order or Matter, take Payment,
+          or file anything.
         </Alert>
         <Card>
           <h2>Start durable intake</h2>
-          <p>Answer six focused steps. You can review the information before it is sent through the authenticated Gateway.</p>
+          <p>
+            Answer six focused steps. You can review the information before it is sent through the
+            authenticated Gateway.
+          </p>
           <Button onClick={() => setStarted(true)}>Start Production Intake</Button>
         </Card>
       </main>
@@ -405,15 +425,22 @@ export function ProductionIntakeFlow({
         description={why[step] ?? ''}
       />
       <Alert tone="warning" title="Customer-supplied input only">
-        Intake ≠ Recommendation. These answers are not verified official data and do not create legal or professional approval.
+        Intake ≠ Recommendation. These answers are not verified official data and do not create
+        legal or professional approval.
       </Alert>
       <Card>
         <div className="markreg-form">{fields(step, draft, update, errors)}</div>
         {step === 5 && <Review draft={draft} edit={setStep} />}
         <div className="markreg-actions">
-          {step > 0 && <Button variant="secondary" onClick={() => setStep((value) => value - 1)}>Back</Button>}
+          {step > 0 && (
+            <Button variant="secondary" onClick={() => setStep((value) => value - 1)}>
+              Back
+            </Button>
+          )}
           {step < 5 ? (
-            <Button onClick={() => validate() && setStep((value) => Math.min(5, value + 1))}>Continue</Button>
+            <Button onClick={() => validate() && setStep((value) => Math.min(5, value + 1))}>
+              Continue
+            </Button>
           ) : (
             <Button onClick={() => void submit()}>Submit Production Intake</Button>
           )}
@@ -442,23 +469,51 @@ function fields(
     case 0:
       return (
         <>
-          <Select id="applicantType" label="Applicant type" value={draft.applicantType} error={errors.applicantType} onChange={(event) => update('applicantType', event.currentTarget.value)}>
+          <Select
+            id="applicantType"
+            label="Applicant type"
+            value={draft.applicantType}
+            error={errors.applicantType}
+            onChange={(event) => update('applicantType', event.currentTarget.value)}
+          >
             <option value="">Select one</option>
             <option value="INDIVIDUAL">Individual</option>
             <option value="ORGANIZATION">Organization / company</option>
             <option value="OTHER">Other</option>
           </Select>
-          <TextInput id="applicantName" label="Applicant name" value={draft.applicantName} error={errors.applicantName} onChange={(event) => update('applicantName', event.currentTarget.value)} />
-          <Select id="applicantCountry" label="Applicant country" value={draft.applicantCountry} error={errors.applicantCountry} onChange={(event) => update('applicantCountry', event.currentTarget.value)}>
+          <TextInput
+            id="applicantName"
+            label="Applicant name"
+            value={draft.applicantName}
+            error={errors.applicantName}
+            onChange={(event) => update('applicantName', event.currentTarget.value)}
+          />
+          <Select
+            id="applicantCountry"
+            label="Applicant country"
+            value={draft.applicantCountry}
+            error={errors.applicantCountry}
+            onChange={(event) => update('applicantCountry', event.currentTarget.value)}
+          >
             <option value="">Select one</option>
-            {countries.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+            {countries.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
           </Select>
         </>
       );
     case 1:
       return (
         <>
-          <Select id="trademarkType" label="Trademark type" value={draft.trademarkType} error={errors.trademarkType} onChange={(event) => update('trademarkType', event.currentTarget.value)}>
+          <Select
+            id="trademarkType"
+            label="Trademark type"
+            value={draft.trademarkType}
+            error={errors.trademarkType}
+            onChange={(event) => update('trademarkType', event.currentTarget.value)}
+          >
             <option value="">Select one</option>
             <option value="WORD">Word mark</option>
             <option value="STYLIZED_WORD">Stylized word</option>
@@ -466,22 +521,64 @@ function fields(
             <option value="COMPOSITE">Composite mark</option>
             <option value="OTHER">Other</option>
           </Select>
-          <TextInput id="trademarkText" label="Trademark representation text" value={draft.trademarkText} error={errors.trademarkText} onChange={(event) => update('trademarkText', event.currentTarget.value)} />
+          <TextInput
+            id="trademarkText"
+            label="Trademark representation text"
+            value={draft.trademarkText}
+            error={errors.trademarkText}
+            onChange={(event) => update('trademarkText', event.currentTarget.value)}
+          />
         </>
       );
     case 2:
       return (
-        <Select id="targetJurisdictions" multiple label="Target jurisdictions (select one or more)" value={draft.targetJurisdictions} error={errors.targetJurisdictions} onChange={(event) => update('targetJurisdictions', Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
-          {countries.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+        <Select
+          id="targetJurisdictions"
+          multiple
+          label="Target jurisdictions (select one or more)"
+          value={draft.targetJurisdictions}
+          error={errors.targetJurisdictions}
+          onChange={(event) =>
+            update(
+              'targetJurisdictions',
+              Array.from(event.currentTarget.selectedOptions, (option) => option.value)
+            )
+          }
+        >
+          {countries.map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
         </Select>
       );
     case 3:
-      return <TextArea id="goodsServices" label="Goods / services source text" value={draft.goodsServices} error={errors.goodsServices} onChange={(event) => update('goodsServices', event.currentTarget.value)} />;
+      return (
+        <TextArea
+          id="goodsServices"
+          label="Goods / services source text"
+          value={draft.goodsServices}
+          error={errors.goodsServices}
+          onChange={(event) => update('goodsServices', event.currentTarget.value)}
+        />
+      );
     case 4:
       return (
         <>
-          <TextArea id="businessContext" label="Business context" value={draft.businessContext} error={errors.businessContext} onChange={(event) => update('businessContext', event.currentTarget.value)} />
-          <TextArea id="filingGoal" label="Filing goal" value={draft.filingGoal} error={errors.filingGoal} onChange={(event) => update('filingGoal', event.currentTarget.value)} />
+          <TextArea
+            id="businessContext"
+            label="Business context"
+            value={draft.businessContext}
+            error={errors.businessContext}
+            onChange={(event) => update('businessContext', event.currentTarget.value)}
+          />
+          <TextArea
+            id="filingGoal"
+            label="Filing goal"
+            value={draft.filingGoal}
+            error={errors.filingGoal}
+            onChange={(event) => update('filingGoal', event.currentTarget.value)}
+          />
         </>
       );
     default:
@@ -513,41 +610,68 @@ function Review({ draft, edit }: { draft: ProductionIntakeDraft; edit: (step: nu
     <div>
       {groups.map(([label, value], index) => (
         <section className="markreg-review" key={label}>
-          <div><strong>{label}</strong><p>{value}</p></div>
-          <Button variant="secondary" onClick={() => edit(index)}>Edit {label}</Button>
+          <div>
+            <strong>{label}</strong>
+            <p>{value}</p>
+          </div>
+          <Button variant="secondary" onClick={() => edit(index)}>
+            Edit {label}
+          </Button>
         </section>
       ))}
     </div>
   );
 }
 
-function ProductionIntakeReceipt({ intake, onStartNew }: { intake: ProductionIntakeV1; onStartNew: () => void }) {
+function ProductionIntakeReceipt({
+  intake,
+  onStartNew
+}: {
+  intake: ProductionIntakeV1;
+  onStartNew: () => void;
+}) {
   return (
     <main className="markreg-page" aria-label="Production Intake receipt">
-      <PageHeader title="Production Intake received" description="This page is rendered from the durable owner record read back through the authenticated Gateway." />
+      <PageHeader
+        title="Production Intake received"
+        description="This page is rendered from the durable owner record read back through the authenticated Gateway."
+      />
       <Alert tone="warning" title="Receipt only — not a Recommendation">
-        `RECEIVED` or `RECOMMENDATION_READY` is Intake lifecycle truth only. This screen does not display or create a Recommendation, selection, Quote, confirmation, Order, Matter, Payment, Filing, professional approval, legal conclusion, or Official Truth.
+        `RECEIVED` or `RECOMMENDATION_READY` is Intake lifecycle truth only. This screen does not
+        display or create a Recommendation, selection, Quote, confirmation, Order, Matter, Payment,
+        Filing, professional approval, legal conclusion, or Official Truth.
       </Alert>
       <Card>
         <h2>Durable Intake</h2>
-        <KeyValueList items={[
-          { key: 'Intake ID', value: intake.intakeId },
-          { key: 'Version', value: intake.version },
-          { key: 'Status', value: intake.status },
-          { key: 'Source class', value: intake.sourceClass },
-          { key: 'Applicant', value: `${intake.input.applicant.name} · ${intake.input.applicant.type} · ${intake.input.applicant.country}` },
-          { key: 'Trademark', value: `${intake.input.trademark.representationText} · ${intake.input.trademark.type}` },
-          { key: 'Target jurisdictions', value: intake.input.targetJurisdictions.join(', ') },
-          { key: 'Goods / services', value: intake.input.goodsServices.sourceText },
-          { key: 'Business context', value: intake.input.businessContext },
-          { key: 'Filing goal', value: intake.input.filingGoal },
-          { key: 'Updated', value: intake.updatedAt }
-        ]} />
+        <KeyValueList
+          items={[
+            { key: 'Intake ID', value: intake.intakeId },
+            { key: 'Version', value: intake.version },
+            { key: 'Status', value: intake.status },
+            { key: 'Source class', value: intake.sourceClass },
+            {
+              key: 'Applicant',
+              value: `${intake.input.applicant.name} · ${intake.input.applicant.type} · ${intake.input.applicant.country}`
+            },
+            {
+              key: 'Trademark',
+              value: `${intake.input.trademark.representationText} · ${intake.input.trademark.type}`
+            },
+            { key: 'Target jurisdictions', value: intake.input.targetJurisdictions.join(', ') },
+            { key: 'Goods / services', value: intake.input.goodsServices.sourceText },
+            { key: 'Business context', value: intake.input.businessContext },
+            { key: 'Filing goal', value: intake.input.filingGoal },
+            { key: 'Updated', value: intake.updatedAt }
+          ]}
+        />
       </Card>
       <Alert tone="info" title="Authority consequences remain false">
-        Customer-supplied Intake data is not verified official truth. No protected action or downstream commercial/filing state is implied by this receipt.
+        Customer-supplied Intake data is not verified official truth. No protected action or
+        downstream commercial/filing state is implied by this receipt.
       </Alert>
-      <Button variant="secondary" onClick={onStartNew}>Start another Production Intake</Button>
+      <Button variant="secondary" onClick={onStartNew}>
+        Start another Production Intake
+      </Button>
     </main>
   );
 }
