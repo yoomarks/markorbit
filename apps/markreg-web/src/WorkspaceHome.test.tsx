@@ -257,14 +257,14 @@ describe('MarkReg durable Workspace Home', () => {
       <MarkregWorkspaceHome
         client={orderClient(() => Promise.resolve(orderPage([])))}
         matterClient={matterClient(() => Promise.resolve(matterPage([matter])))}
-        renderPlanning={() => <div>Fixture planning consultation</div>}
       />
     );
 
     expect(await screen.findByRole('heading', { name: 'No service Orders yet' })).toBeTruthy();
     expect(await screen.findByText(matter.formalMatterId)).toBeTruthy();
+    expect(screen.queryByText(/fixture-only consultation/i)).toBeNull();
     await user.click(screen.getAllByRole('button', { name: 'Plan a new filing' })[0]!);
-    expect(await screen.findByText('Fixture planning consultation')).toBeTruthy();
+    expect(await screen.findByText(/Customer-supplied Intake only/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to Workspace' })).toBeTruthy();
   });
 
