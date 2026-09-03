@@ -82,7 +82,7 @@ function responsibility(
   result: Awaited<ReturnType<ProviderDiscoveryResponsibilitySource['assessCurrent']>> | Error
 ): ProviderDiscoveryResponsibilitySource {
   return {
-    assessCurrent: vi.fn((_providerId, _providerWorkspaceId, _checkedAt) =>
+    assessCurrent: vi.fn(() =>
       result instanceof Error ? Promise.reject(result) : Promise.resolve(result)
     )
   };
