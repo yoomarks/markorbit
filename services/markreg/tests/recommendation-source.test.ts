@@ -211,14 +211,13 @@ describe('MarkReg production Recommendation source boundary', () => {
   });
 
   it('sends only the exact producer reference under trusted MarkReg Workspace headers', async () => {
-    const fetcher = vi.fn(
-      (_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-        Promise.resolve(
-          new Response(JSON.stringify(productionRead()), {
-            status: 200,
-            headers: { 'content-type': 'application/json' }
-          })
-        )
+    const fetcher = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(productionRead()), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      )
     );
     const reader = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal/',
@@ -238,16 +237,15 @@ describe('MarkReg production Recommendation source boundary', () => {
     expect(headers['x-markorbit-workspace-id']).toBe(principal.workspaceId);
     expect(headers['x-markorbit-caller-product']).toBe('MARKREG');
     expect(headers['x-correlation-id']).toBe('correlation_source_read');
-    expect(JSON.parse(String(init?.body))).toEqual(productionReference());
+    if (typeof init?.body !== 'string') throw new Error('expected JSON request body');
+    expect(JSON.parse(init.body)).toEqual(productionReference());
   });
 
   it('fails closed for network, HTTP and malformed JSON producer failures', async () => {
     const network = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-        Promise.reject(new Error('offline'))
-      )
+      vi.fn<typeof fetch>(() => Promise.reject(new Error('offline')))
     );
     await expect(network.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'UNAVAILABLE',
@@ -258,9 +256,7 @@ describe('MarkReg production Recommendation source boundary', () => {
     const denied = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-        Promise.resolve(new Response('{}', { status: 403 }))
-      )
+      vi.fn<typeof fetch>(() => Promise.resolve(new Response('{}', { status: 403 })))
     );
     await expect(denied.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'UNAVAILABLE',
@@ -271,9 +267,7 @@ describe('MarkReg production Recommendation source boundary', () => {
     const malformed = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn((_input: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-        Promise.resolve(new Response('not-json', { status: 200 }))
-      )
+      vi.fn<typeof fetch>(() => Promise.resolve(new Response('not-json', { status: 200 })))
     );
     await expect(malformed.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'INVALID_PRODUCER_RESPONSE',
