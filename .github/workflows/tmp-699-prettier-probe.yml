@@ -1,0 +1,36 @@
+name: tmp-699-prettier-probe
+
+on:
+  pull_request:
+    paths:
+      - 'apps/markreg-web/src/ProductionIntakePlanning.tsx'
+      - 'apps/markreg-web/src/ProductionIntakePlanning.test.tsx'
+      - 'apps/markreg-web/src/api/production-intake.test.ts'
+      - '.github/workflows/tmp-699-prettier-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prettier-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier patch
+        run: |
+          pnpm exec prettier --write \
+            apps/markreg-web/src/ProductionIntakePlanning.tsx \
+            apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts
+          git --no-pager diff -- \
+            apps/markreg-web/src/ProductionIntakePlanning.tsx \
+            apps/markreg-web/src/ProductionIntakePlanning.test.tsx \
+            apps/markreg-web/src/api/production-intake.test.ts
