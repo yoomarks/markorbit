@@ -72,6 +72,16 @@ const browserOrderJourneySpecific = (path) =>
 const browserProductLoopSpecific = (path) =>
   productLoopSpecific(path) || path.includes('trademark-asset') || path.includes('prepared-action');
 
+const markregWebProductionRuntimeSpecific = (path) => {
+  if (!starts(path, 'apps/markreg-web/src/')) return false;
+  if (!/\.(?:[cm]?[jt]sx?)$/.test(path)) return false;
+  if (/\.(?:test|spec|stories)\.[cm]?[jt]sx?$/.test(path)) return false;
+  if (starts(path, 'apps/markreg-web/src/api/')) return true;
+  return /(?:Production|Intake|Workspace|Authority|Filing|Matter|Order|Checkout|Recommendation|Lifecycle|Execution|Evidence|Durable)/.test(
+    basename(path)
+  );
+};
+
 const docsOnlyPath = (path) =>
   starts(path, 'docs/') ||
   path === 'README.md' ||
@@ -146,6 +156,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'packages/config/')
   );
   const securityAuthority = files.some(securityAuthoritySpecific);
+  const productionRuntime = files.some(markregWebProductionRuntimeSpecific);
   const highRiskRoot =
     workspaceTopology || dependencyTopology || compilerConfiguration || ciGovernance || unknownPath;
 
@@ -180,14 +191,16 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       ownedMigration(path, 'capability') ||
       /^apps\/gateway\/(src|tests)\/capability(?:-|\.|\/)/.test(path)
   );
-  let markreg = files.some(
-    (path) =>
-      starts(path, 'services/markreg/') ||
-      ownedMigration(path, 'markreg') ||
-      /^apps\/gateway\/(src|tests)\/(order|markreg|matter|commercial|checkout)(?:-|\.|\/)/.test(
-        path
-      )
-  );
+  let markreg =
+    productionRuntime ||
+    files.some(
+      (path) =>
+        starts(path, 'services/markreg/') ||
+        ownedMigration(path, 'markreg') ||
+        /^apps\/gateway\/(src|tests)\/(order|markreg|matter|commercial|checkout)(?:-|\.|\/)/.test(
+          path
+        )
+    );
   let execution = files.some(
     (path) =>
       starts(path, 'services/execution/') ||
@@ -285,7 +298,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   const fullTypecheck = workspaceTopology || compilerConfiguration || dependencyTopology;
   const l1Fast = !docsOnly;
   const l2Merge = integration || browser || hardGate;
-  const l3Full = hardGate || highRiskRoot;
+  const l3Full = hardGate || highRiskRoot || productionRuntime;
 
   return {
     core,
@@ -309,6 +322,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     browser_product_loop: browserProductLoop,
     product_loop: productLoop,
     mgsn_durability: mgsnDurability,
+    production_runtime: productionRuntime,
     hard_gate: hardGate,
     l1_fast: l1Fast,
     l2_merge: l2Merge,
@@ -318,11 +332,29 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   };
 }
 
+export function changedFilesBetween(base, head, options = {}) {
+  const cwd = options.cwd;
+  const mergeBase = options.mergeBase ?? false;
+  const diffBase = mergeBase
+    ? execFileSync('git', ['merge-base', base, head], { cwd, encoding: 'utf8' }).trim()
+    : base;
+  if (!diffBase) throw new Error(`Unable to resolve diff base for ${base}..${head}.`);
+  const stdout = execFileSync('git', ['diff', '--name-only', diffBase, head], {
+    cwd,
+    encoding: 'utf8'
+  });
+  return {
+    diffBase,
+    files: stdout.split(/\r?\n/).filter(Boolean)
+  };
+}
+
 function parseArgs(argv) {
-  const values = { full: false };
+  const values = { full: false, mergeBase: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--full') values.full = true;
+    else if (arg === '--merge-base') values.mergeBase = true;
     else if (arg === '--base') values.base = argv[++index];
     else if (arg === '--head') values.head = argv[++index];
     else throw new Error(`Unknown argument: ${arg}`);
@@ -359,6 +391,7 @@ function fullScope() {
     browser_product_loop: true,
     product_loop: true,
     mgsn_durability: true,
+    production_runtime: true,
     hard_gate: true,
     l1_fast: true,
     l2_merge: true,
@@ -379,13 +412,18 @@ function main() {
 
   if (!args.base || !args.head)
     throw new Error('--base and --head are required unless --full is used.');
-  const stdout = execFileSync('git', ['diff', '--name-only', args.base, args.head], {
-    encoding: 'utf8'
+  const { diffBase, files } = changedFilesBetween(args.base, args.head, {
+    mergeBase: args.mergeBase
   });
-  const files = stdout.split(/\r?\n/).filter(Boolean);
   const scope = classifyChangedFiles(files);
   writeOutputs(scope);
-  console.log(JSON.stringify({ base: args.base, head: args.head, files, scope }, null, 2));
+  console.log(
+    JSON.stringify(
+      { requestedBase: args.base, diffBase, head: args.head, mergeBase: args.mergeBase, files, scope },
+      null,
+      2
+    )
+  );
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main();
