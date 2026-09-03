@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TrademarkAssetAiGuidePreparedResult } from '@markorbit/contracts/trademark-asset-ai-guide';
 import type { TrademarkAssetCommerceProfile } from '@markorbit/contracts/trademark-asset-commerce';
 import type { TrademarkAssetView } from '@markorbit/contracts/trademark-asset-composition';
 import type {
+  TrademarkAssetManagementDisposition,
   TrademarkAssetManagementRecommendation,
   TrademarkAssetManagementSignal
 } from '@markorbit/contracts/trademark-asset-management';
 import type { TrademarkAssetMarketplaceOverlay } from '@markorbit/contracts/trademark-asset-marketplace-reference';
 import type { TrademarkAssetAttentionSignal } from '@markorbit/contracts/trademark-asset-workspace';
 import { Button } from '@markorbit/ui';
-import type {
-  PrepareTrademarkAssetAiGuideRequest,
-  SaveTrademarkAssetCommerceProfileInput,
-  TrademarkAssetRefreshSummary
+import {
+  TrademarkAssetHttpError,
+  type BrowserTrademarkAssetManagementDispositionKind,
+  type CurrentTrademarkAssetManagementDispositionProjection,
+  type PrepareTrademarkAssetAiGuideRequest,
+  type RecordTrademarkAssetManagementDispositionInput,
+  type SaveTrademarkAssetCommerceProfileInput,
+  type TrademarkAssetRefreshSummary
 } from '../../api/trademark-assets.js';
 import { TrademarkAssetAiGuide } from './TrademarkAssetAiGuide.js';
 import { TrademarkAssetCommerceProfileSection } from './TrademarkAssetCommerceProfile.js';
@@ -24,6 +29,14 @@ export interface TrademarkAssetWorkspaceProps {
   latestRefresh?: Readonly<TrademarkAssetRefreshSummary>;
   managementSignals?: readonly Readonly<TrademarkAssetManagementSignal>[];
   recommendations?: readonly Readonly<TrademarkAssetManagementRecommendation>[];
+  managementDispositions?: Readonly<CurrentTrademarkAssetManagementDispositionProjection>;
+  managementDispositionReadUnavailable?: boolean;
+  onRecordManagementDisposition?: (
+    input: Readonly<RecordTrademarkAssetManagementDispositionInput>,
+    idempotencyKey: string
+  ) => Promise<TrademarkAssetManagementDisposition>;
+  onReloadManagementDispositions?: () => Promise<CurrentTrademarkAssetManagementDispositionProjection>;
+  onReloadAsset?: () => Promise<void>;
   commerceProfile?: Readonly<TrademarkAssetCommerceProfile>;
   onSaveCommerceProfile?: (
     input: Readonly<SaveTrademarkAssetCommerceProfileInput>
@@ -36,7 +49,16 @@ export interface TrademarkAssetWorkspaceProps {
   ) => Promise<TrademarkAssetAiGuidePreparedResult>;
 }
 
-type PendingDisposition = 'WATCH' | 'DEFER' | 'DISMISS';
+type MutationPhase = 'submitting' | 'reload-required' | 'stale' | 'unavailable';
+interface PendingMutation {
+  signalId: string;
+  signalVersion: number;
+  recommendationId?: string;
+  recommendationVersion?: number;
+  kind: BrowserTrademarkAssetManagementDispositionKind;
+  idempotencyKey: string;
+  phase: MutationPhase;
+}
 
 const textValue = (value: string | number | boolean | readonly string[]) =>
   Array.isArray(value) ? value.join(', ') : String(value);
@@ -53,12 +75,32 @@ function destinationForRecommendation(
   return '#today';
 }
 
+function dispositionLabel(kind: TrademarkAssetManagementDisposition['kind']): string {
+  switch (kind) {
+    case 'WATCHED':
+      return 'Watched';
+    case 'DEFERRED':
+      return 'Deferred';
+    case 'DISMISSED':
+      return 'Dismissed';
+    case 'CONTINUED':
+      return 'Continued';
+    case 'RESOLVED_BY_WORKFLOW_REFERENCE':
+      return 'Resolved by owner workflow';
+  }
+}
+
 export function TrademarkAssetWorkspace({
   view,
   attention = [],
   latestRefresh,
   managementSignals = [],
   recommendations = [],
+  managementDispositions,
+  managementDispositionReadUnavailable = false,
+  onRecordManagementDisposition,
+  onReloadManagementDispositions,
+  onReloadAsset,
   commerceProfile,
   onSaveCommerceProfile,
   onReloadCommerceProfile,
@@ -74,10 +116,7 @@ export function TrademarkAssetWorkspace({
       relationship.kind === 'MANAGED' ||
       relationship.kind === 'REPRESENTED'
   );
-  const [pendingDisposition, setPendingDisposition] = useState<{
-    recommendationId: string;
-    disposition: PendingDisposition;
-  }>();
+  const [pendingMutation, setPendingMutation] = useState<PendingMutation>();
   const [confirmingRecommendationId, setConfirmingRecommendationId] = useState<string>();
 
   const recommendationForSignal = (signal: Readonly<TrademarkAssetManagementSignal>) =>
@@ -87,6 +126,124 @@ export function TrademarkAssetWorkspace({
           reference.id === signal.managementSignalId && reference.version === signal.version
       )
     );
+
+  const dispositionForSignal = (signal: Readonly<TrademarkAssetManagementSignal>) =>
+    managementDispositions?.items.find(
+      (item) =>
+        item.signal.id === signal.managementSignalId && item.signal.version === signal.version
+    )?.disposition ?? null;
+
+  useEffect(() => {
+    if (!pendingMutation) return;
+    const stillCurrent = managementSignals.some(
+      (signal) =>
+        signal.managementSignalId === pendingMutation.signalId &&
+        signal.version === pendingMutation.signalVersion
+    );
+    if (!stillCurrent) {
+      setPendingMutation(undefined);
+      setConfirmingRecommendationId(undefined);
+    }
+  }, [managementSignals, pendingMutation]);
+
+  const captureDisposition = async (
+    signal: Readonly<TrademarkAssetManagementSignal>,
+    recommendation: Readonly<TrademarkAssetManagementRecommendation> | undefined,
+    kind: BrowserTrademarkAssetManagementDispositionKind
+  ) => {
+    if (!onRecordManagementDisposition || !onReloadManagementDispositions || pendingMutation) return;
+    const idempotencyKey = `trademark-disposition-${view.trademarkAssetId}-${signal.managementSignalId}-${signal.version}-${kind}-${crypto.randomUUID()}`;
+    const context: PendingMutation = {
+      signalId: signal.managementSignalId,
+      signalVersion: signal.version,
+      ...(recommendation
+        ? {
+            recommendationId: recommendation.recommendationId,
+            recommendationVersion: recommendation.version
+          }
+        : {}),
+      kind,
+      idempotencyKey,
+      phase: 'submitting'
+    };
+    setPendingMutation(context);
+    try {
+      await onRecordManagementDisposition(
+        {
+          expectedTrademarkAssetVersion: view.anchor.version,
+          managementSignal: { id: signal.managementSignalId, version: signal.version },
+          ...(recommendation
+            ? {
+                recommendation: {
+                  id: recommendation.recommendationId,
+                  version: recommendation.version
+                }
+              }
+            : {}),
+          kind
+        },
+        idempotencyKey
+      );
+      try {
+        const projection = await onReloadManagementDispositions();
+        const confirmed = projection.items.find(
+          (item) =>
+            item.signal.id === signal.managementSignalId && item.signal.version === signal.version
+        )?.disposition;
+        if (!confirmed) {
+          setPendingMutation({ ...context, phase: 'reload-required' });
+          return;
+        }
+        setPendingMutation(undefined);
+        setConfirmingRecommendationId(undefined);
+        if (kind === 'CONTINUED' && recommendation) {
+          window.location.hash = destinationForRecommendation(recommendation);
+        }
+      } catch {
+        setPendingMutation({ ...context, phase: 'reload-required' });
+      }
+    } catch (error) {
+      if (error instanceof TrademarkAssetHttpError && error.status === 409) {
+        setPendingMutation({ ...context, phase: 'stale' });
+        try {
+          await onReloadAsset?.();
+        } catch {
+          // Keep the stale lock visible; a second logical POST must not be created.
+        }
+        return;
+      }
+      setPendingMutation({ ...context, phase: 'unavailable' });
+    }
+  };
+
+  const retryDurableReload = async () => {
+    if (!pendingMutation || !onReloadManagementDispositions) return;
+    try {
+      const projection = await onReloadManagementDispositions();
+      const confirmed = projection.items.find(
+        (item) =>
+          item.signal.id === pendingMutation.signalId &&
+          item.signal.version === pendingMutation.signalVersion
+      )?.disposition;
+      if (confirmed) {
+        const recommendation = recommendations.find(
+          (candidate) =>
+            candidate.recommendationId === pendingMutation.recommendationId &&
+            candidate.version === pendingMutation.recommendationVersion
+        );
+        const continued = pendingMutation.kind === 'CONTINUED';
+        setPendingMutation(undefined);
+        setConfirmingRecommendationId(undefined);
+        if (continued && recommendation) {
+          window.location.hash = destinationForRecommendation(recommendation);
+        }
+      } else {
+        setPendingMutation({ ...pendingMutation, phase: 'reload-required' });
+      }
+    } catch {
+      setPendingMutation({ ...pendingMutation, phase: 'reload-required' });
+    }
+  };
 
   return (
     <main className="trademark-asset-workspace" data-testid="trademark-asset-workspace">
@@ -118,18 +275,32 @@ export function TrademarkAssetWorkspace({
           </div>
           <span>Observed fact ≠ Product signal ≠ recommendation ≠ governed work</span>
         </div>
+        {managementDispositionReadUnavailable ? (
+          <p role="status">
+            Durable management disposition truth is unavailable. The loaded Trademark workspace is
+            preserved; no local fallback is being used.
+          </p>
+        ) : null}
         {managementSignals.length ? (
           <div className="trademark-asset-workspace__guide-grid">
             {managementSignals.map((signal) => {
               const recommendation = recommendationForSignal(signal);
-              const pending =
-                recommendation &&
-                pendingDisposition?.recommendationId === recommendation.recommendationId
-                  ? pendingDisposition.disposition
+              const disposition = dispositionForSignal(signal);
+              const resolvedByOwner = disposition?.kind === 'RESOLVED_BY_WORKFLOW_REFERENCE';
+              const mutationForSignal =
+                pendingMutation?.signalId === signal.managementSignalId &&
+                pendingMutation.signalVersion === signal.version
+                  ? pendingMutation
                   : undefined;
               const confirming = recommendation?.recommendationId === confirmingRecommendationId;
+              const controlsDisabled =
+                Boolean(mutationForSignal) ||
+                resolvedByOwner ||
+                managementDispositionReadUnavailable ||
+                !onRecordManagementDisposition ||
+                !onReloadManagementDispositions;
               return (
-                <article key={signal.managementSignalId}>
+                <article key={`${signal.managementSignalId}@${signal.version}`}>
                   <p className="trademark-asset-workspace__eyebrow">Product signal</p>
                   <h3>
                     {signal.severity} · {signal.dimension}
@@ -139,6 +310,17 @@ export function TrademarkAssetWorkspace({
                     Freshness: {signal.freshness} · {signal.evidence.length} evidence reference
                     {signal.evidence.length === 1 ? '' : 's'} · no legal-deadline certification
                   </small>
+                  {disposition ? (
+                    <p role="status">
+                      Durable disposition: <strong>{dispositionLabel(disposition.kind)}</strong>
+                      {disposition.note ? ` · ${disposition.note}` : ''}
+                      {resolvedByOwner
+                        ? ' · owner-governed read truth; browser changes are disabled.'
+                        : ' · private Product management truth; source truth is unchanged.'}
+                    </p>
+                  ) : !managementDispositionReadUnavailable ? (
+                    <p role="status">No durable disposition for this exact current Signal version.</p>
+                  ) : null}
                   {recommendation ? (
                     <div className="trademark-asset-workspace__recommendation">
                       <p className="trademark-asset-workspace__eyebrow">
@@ -151,34 +333,34 @@ export function TrademarkAssetWorkspace({
                         unauthorized
                       </small>
                       <div className="trademark-asset-portfolio__actions">
-                        {(['WATCH', 'DEFER', 'DISMISS'] as const).map((disposition) => (
+                        {(
+                          [
+                            ['WATCHED', 'Watch'],
+                            ['DEFERRED', 'Defer'],
+                            ['DISMISSED', 'Dismiss']
+                          ] as const
+                        ).map(([kind, label]) => (
                           <Button
-                            key={disposition}
+                            key={kind}
                             variant="secondary"
-                            onClick={() =>
-                              setPendingDisposition({
-                                recommendationId: recommendation.recommendationId,
-                                disposition
-                              })
-                            }
+                            disabled={controlsDisabled}
+                            onClick={() => void captureDisposition(signal, recommendation, kind)}
                           >
-                            {disposition === 'WATCH'
-                              ? 'Watch'
-                              : disposition === 'DEFER'
-                                ? 'Defer'
-                                : 'Dismiss'}
+                            {label}
                           </Button>
                         ))}
                         {confirming ? (
                           <Button
-                            onClick={() => {
-                              window.location.hash = destinationForRecommendation(recommendation);
-                            }}
+                            disabled={controlsDisabled}
+                            onClick={() =>
+                              void captureDisposition(signal, recommendation, 'CONTINUED')
+                            }
                           >
                             Confirm & continue
                           </Button>
                         ) : (
                           <Button
+                            disabled={controlsDisabled}
                             onClick={() =>
                               setConfirmingRecommendationId(recommendation.recommendationId)
                             }
@@ -187,16 +369,36 @@ export function TrademarkAssetWorkspace({
                           </Button>
                         )}
                       </div>
-                      {pending ? (
+                      {confirming && !mutationForSignal ? (
                         <p role="status">
-                          {pending} selected for this private Product recommendation. Durable watch
-                          / disposition history is added in M11 WP07; no source truth changed.
+                          Confirming records Product continuation before opening the governed surface.
+                          It does not authorize a filing or other protected action.
                         </p>
                       ) : null}
-                      {confirming ? (
+                      {mutationForSignal?.phase === 'submitting' ? (
+                        <p role="status">Saving private Product disposition…</p>
+                      ) : null}
+                      {mutationForSignal?.phase === 'reload-required' ? (
+                        <div role="status">
+                          <p>
+                            The write may have succeeded, but durable owner truth is not confirmed.
+                            This action remains locked and will not be posted again.
+                          </p>
+                          <Button variant="secondary" onClick={() => void retryDurableReload()}>
+                            Reload durable truth
+                          </Button>
+                        </div>
+                      ) : null}
+                      {mutationForSignal?.phase === 'stale' ? (
                         <p role="status">
-                          Confirming only opens the existing governed surface. It does not authorize
-                          a filing or other protected action.
+                          The Asset or Signal changed. Current owner truth is being reloaded; choose an
+                          action again only against the new exact Signal version.
+                        </p>
+                      ) : null}
+                      {mutationForSignal?.phase === 'unavailable' ? (
+                        <p role="status">
+                          The disposition service is unavailable. No local success was created and this
+                          logical action remains locked.
                         </p>
                       ) : null}
                     </div>
