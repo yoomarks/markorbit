@@ -1,0 +1,43 @@
+name: tmp-683-merge-base-fixer
+
+on:
+  push:
+    branches: [integration-ci-683-merge-base-regression]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply deterministic #683 patch
+        run: node scripts/tmp-683-merge-base-fix.mjs
+      - name: Format patched CI files
+        run: >-
+          pnpm exec prettier --write
+          .github/CI_VALIDATION_POLICY.md
+          .github/workflows/ci.yml
+          scripts/ci-detect-scope.mjs
+          scripts/ci-detect-scope.test.mjs
+      - name: Validate scope regression tests
+        run: node --test scripts/ci-detect-scope.test.mjs
+      - name: Commit patched tree
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/CI_VALIDATION_POLICY.md .github/workflows/ci.yml scripts/ci-detect-scope.mjs scripts/ci-detect-scope.test.mjs
+          git commit -m '[INTEGRATION-P0][CI] Fix PR merge-base scope regression'
+          git push
