@@ -15,7 +15,7 @@
     "test:managed-ai-claim:postgres": "vitest run tests/managed-ai-execution-claim-postgres.test.ts",
     "test:managed-ai-exact-output:postgres": "vitest run tests/managed-ai-exact-output-postgres.test.ts",
     "test:implementation-profile-registry:postgres": "vitest run tests/implementation-profile-registry-postgres.test.ts",
-    "test:governed-runtime-replay:postgres": "vitest run tests/capability-runtime-replay-postgres.test.ts tests/production-source-evidence-read-postgres.test.ts",
+    "test:governed-runtime-replay:postgres": "vitest run tests/capability-runtime-replay-postgres.test.ts && vitest run tests/production-source-evidence-read-postgres.test.ts",
     "test:managed-communication:postgres": "vitest run tests/managed-communication-foundation-postgres.test.ts && vitest run tests/managed-communication-bootstrap-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
