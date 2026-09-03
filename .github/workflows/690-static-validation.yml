@@ -7,6 +7,9 @@ on:
     paths:
       - .github/workflows/690-static-validation.yml
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -20,6 +23,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Format new tests
+        run: >-
+          pnpm exec prettier --write
+          services/core/tests/official-fee-reference-http.test.ts
+          services/capability-engine/tests/official-fee-reference-http-reader.test.ts
+          services/capability-engine/tests/uspto-official-fee-production-bootstrap.test.ts
       - run: pnpm format:check
       - run: pnpm --filter @markorbit/core-service lint
       - run: pnpm --filter @markorbit/core-service typecheck
@@ -34,3 +43,11 @@ jobs:
           tests/uspto-official-fee-production-bootstrap.test.ts
           tests/uspto-official-fee-reference-currentness.test.ts
           tests/governed-runtime-bootstrap.test.ts
+      - name: Commit validated formatting and remove workflow
+        run: |
+          rm .github/workflows/690-static-validation.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "[INTEGRATION][CORE-P0] Format and validate Official Fee Reference integration"
+          git push origin HEAD:integration/690-official-fee-reference-read
