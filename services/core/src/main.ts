@@ -30,6 +30,7 @@ import {
   MethodOutcomeReportServiceV1,
   PostgresMethodOutcomeReportReaderV1
 } from './method-outcome-report.js';
+import { PostgresOfficialFeeReferenceStore } from './official-fee-reference-store-postgres.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -73,6 +74,7 @@ const runtime = createRuntime({
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
   methodImprovementAdmissions,
+  officialFeeReferences: new PostgresOfficialFeeReferenceStore(database),
   internalServiceSecret: secret
 });
 

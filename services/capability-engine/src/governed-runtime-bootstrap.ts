@@ -1,7 +1,8 @@
 import { KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY } from '@markorbit/ai';
 import type {
   CapabilityRequestV2,
-  ImplementationBinding
+  ImplementationBinding,
+  ImplementationProfile
 } from '@markorbit/contracts/capability-runtime';
 import {
   ManagedAiContractError,
@@ -15,6 +16,7 @@ import {
   type CapabilityContractValidator,
   type CapabilityImplementationExecutionResult,
   type CapabilityImplementationExecutor,
+  type ImplementationProfileSelector,
   type RuntimeCapabilityDefinitionResolver
 } from './capability-runtime.js';
 import {
@@ -23,23 +25,47 @@ import {
 } from './implementation-profile-registry-postgres.js';
 import type { ManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 import { createManagedAiExecutionRoutesV1 } from './managed-ai-http.js';
+import { createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1 } from './uspto-official-fee-production-promotion.js';
+import {
+  USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID,
+  USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE,
+  USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA,
+  USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA,
+  validateUsptoOfficialFeeResolverInputV1,
+  validateUsptoOfficialFeeResolverOutputV1,
+  type OfficialFeeReferenceReaderV1
+} from './uspto-official-fee-resolver-pilot.js';
 
 export const MANAGED_AI_CAPABILITY_INPUT_SCHEMA_ID = 'managed-ai-input.v1' as const;
 export const MANAGED_AI_CAPABILITY_OUTPUT_SCHEMA_ID = 'managed-ai-output.v1' as const;
 export const MANAGED_AI_CAPABILITY_SELECTION_POLICY_VERSION =
   'capability-managed-ai-selection.v1' as const;
+export const USPTO_OFFICIAL_FEE_CAPABILITY_SELECTION_POLICY_VERSION =
+  'capability-uspto-official-fee-selection.v1' as const;
 
 export interface GovernedProductionRuntimeBootstrapOptionsV1 {
   definitions: RuntimeCapabilityDefinitionResolver;
   implementationProfiles: DurableImplementationProfileRegistryV1;
   managedAiRuntime: ManagedAiRuntimeBindingsV1 | null;
+  officialFeeReferences?: Readonly<OfficialFeeReferenceReaderV1> | null;
   internalServiceSecret: string;
 }
 
-class ManagedAiCapabilityContractValidatorV1 implements CapabilityContractValidator {
-  constructor(private readonly side: 'INPUT' | 'OUTPUT') {}
+class ProductionCapabilityContractValidatorV1 implements CapabilityContractValidator {
+  constructor(
+    private readonly side: 'INPUT' | 'OUTPUT',
+    private readonly managedAiEnabled: boolean,
+    private readonly officialFeeEnabled: boolean
+  ) {}
 
   validate(schemaId: string, value: unknown): boolean {
+    if (this.officialFeeEnabled) {
+      if (this.side === 'INPUT' && schemaId === USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA)
+        return validateUsptoOfficialFeeResolverInputV1(value);
+      if (this.side === 'OUTPUT' && schemaId === USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA)
+        return validateUsptoOfficialFeeResolverOutputV1(value);
+    }
+    if (!this.managedAiEnabled) return false;
     try {
       if (this.side === 'INPUT') {
         if (schemaId !== MANAGED_AI_CAPABILITY_INPUT_SCHEMA_ID) return false;
@@ -137,36 +163,99 @@ class ManagedAiCapabilityImplementationExecutorV1 implements CapabilityImplement
     };
     if (outcome.status === 'COMPLETED') return result;
     if (outcome.status === 'REQUIRES_RECONCILIATION') return { ...result, requiresReview: true };
-
-    // FAILED/BLOCKED are valid provider-neutral Managed AI outcomes. Preserve the
-    // exact delivery/retry/error semantics as governed output while marking the
-    // outer Capability outcome FAILED rather than collapsing to IMPLEMENTATION_FAILED.
     return { ...result, failed: true };
   }
+}
+
+class ProductionCapabilityImplementationExecutorV1 implements CapabilityImplementationExecutor {
+  private readonly managedAi?: ManagedAiCapabilityImplementationExecutorV1;
+  private readonly officialFee?: CapabilityImplementationExecutor;
+
+  constructor(options: Readonly<GovernedProductionRuntimeBootstrapOptionsV1>) {
+    if (options.managedAiRuntime)
+      this.managedAi = new ManagedAiCapabilityImplementationExecutorV1(
+        options.managedAiRuntime,
+        options.internalServiceSecret
+      );
+    if (options.officialFeeReferences)
+      this.officialFee = createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1(
+        options.officialFeeReferences
+      );
+  }
+
+  execute(
+    request: Readonly<CapabilityRequestV2>,
+    binding: Readonly<ImplementationBinding>
+  ): Promise<CapabilityImplementationExecutionResult> {
+    if (
+      this.officialFee &&
+      binding.implementation.kind === 'DETERMINISTIC_SERVICE' &&
+      binding.implementation.implementationKey ===
+        USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey
+    )
+      return this.officialFee.execute(request, binding);
+    if (
+      this.managedAi &&
+      binding.implementation.kind === 'AI_ASSISTED_SERVICE' &&
+      binding.implementation.implementationKey === KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY
+    )
+      return this.managedAi.execute(request, binding);
+    return Promise.reject(
+      new Error(
+        'The selected Capability implementation is not registered in the production execution adapter set.'
+      )
+    );
+  }
+}
+
+function productionSelector(
+  options: Readonly<GovernedProductionRuntimeBootstrapOptionsV1>
+): ImplementationProfileSelector {
+  const managedAi = options.managedAiRuntime
+    ? new PostgresGovernedImplementationProfileSelectorV1(options.implementationProfiles, {
+        policyVersion: MANAGED_AI_CAPABILITY_SELECTION_POLICY_VERSION,
+        admittedImplementationKinds: ['AI_ASSISTED_SERVICE'],
+        preferredImplementationKeys: [KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY]
+      })
+    : undefined;
+  const officialFee = options.officialFeeReferences
+    ? new PostgresGovernedImplementationProfileSelectorV1(options.implementationProfiles, {
+        policyVersion: USPTO_OFFICIAL_FEE_CAPABILITY_SELECTION_POLICY_VERSION,
+        admittedImplementationKinds: ['DETERMINISTIC_SERVICE'],
+        preferredImplementationKeys: [
+          USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey
+        ]
+      })
+    : undefined;
+  return {
+    select: (request, definition) =>
+      definition.capabilityId === USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID
+        ? (officialFee?.select(request, definition) ?? Promise.resolve(undefined))
+        : (managedAi?.select(request, definition) ?? Promise.resolve(undefined))
+  };
 }
 
 export function createGovernedProductionRuntimeV1(
   options: Readonly<GovernedProductionRuntimeBootstrapOptionsV1>
 ): GovernedCapabilityRuntime | null {
-  if (!options.managedAiRuntime) return null;
-
-  const implementations = new PostgresGovernedImplementationProfileSelectorV1(
-    options.implementationProfiles,
-    {
-      policyVersion: MANAGED_AI_CAPABILITY_SELECTION_POLICY_VERSION,
-      admittedImplementationKinds: ['AI_ASSISTED_SERVICE'],
-      preferredImplementationKeys: [KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY]
-    }
-  );
+  if (!options.managedAiRuntime && !options.officialFeeReferences) return null;
+  const admittedImplementationKinds = new Set<ImplementationProfile['kind']>();
+  if (options.managedAiRuntime) admittedImplementationKinds.add('AI_ASSISTED_SERVICE');
+  if (options.officialFeeReferences) admittedImplementationKinds.add('DETERMINISTIC_SERVICE');
   return new GovernedCapabilityRuntime({
     definitions: options.definitions,
-    implementations,
-    inputContracts: new ManagedAiCapabilityContractValidatorV1('INPUT'),
-    outputContracts: new ManagedAiCapabilityContractValidatorV1('OUTPUT'),
-    executor: new ManagedAiCapabilityImplementationExecutorV1(
-      options.managedAiRuntime,
-      options.internalServiceSecret
+    implementations: productionSelector(options),
+    inputContracts: new ProductionCapabilityContractValidatorV1(
+      'INPUT',
+      Boolean(options.managedAiRuntime),
+      Boolean(options.officialFeeReferences)
     ),
-    admittedImplementationKinds: new Set(['AI_ASSISTED_SERVICE'])
+    outputContracts: new ProductionCapabilityContractValidatorV1(
+      'OUTPUT',
+      Boolean(options.managedAiRuntime),
+      Boolean(options.officialFeeReferences)
+    ),
+    executor: new ProductionCapabilityImplementationExecutorV1(options),
+    admittedImplementationKinds
   });
 }

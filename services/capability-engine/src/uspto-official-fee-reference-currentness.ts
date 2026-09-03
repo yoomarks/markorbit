@@ -157,9 +157,9 @@ function sameAcceptedReference(
 export class UsptoOfficialFeeReferenceCurrentnessAuthorityV1 implements CapabilityReferenceCurrentnessAuthority {
   constructor(private readonly options: Readonly<UsptoOfficialFeeReferenceCurrentnessOptionsV1>) {}
 
-  evaluate(
+  async evaluate(
     input: Readonly<CapabilitySourceAdmissionPolicyInput>
-  ): CapabilityReferenceCurrentnessResult {
+  ): Promise<CapabilityReferenceCurrentnessResult> {
     if (!exactApplicability(input)) {
       return unsupported(
         'USPTO official-fee reference currentness only applies to the exact accepted Resolver Capability and Implementation Profile binding.'
@@ -188,7 +188,7 @@ export class UsptoOfficialFeeReferenceCurrentnessAuthorityV1 implements Capabili
 
     let currentValue: unknown;
     try {
-      currentValue = this.options.references.resolveCurrent({
+      currentValue = await this.options.references.resolveCurrent({
         operation: USPTO_OFFICIAL_FEE_RESOLVER_OPERATION,
         jurisdiction: 'US',
         authority: 'USPTO',
