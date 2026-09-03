@@ -93,9 +93,14 @@ export class ProviderDiscoveryCurrentResponsibilityService {
     const result = await this.discovery.evaluate(...input);
     if (result.status !== 'CANDIDATES') return result;
 
+    let changed = false;
     const candidates: ProviderDiscoveryCandidateV1[] = [];
-    for (const candidate of result.candidates)
-      candidates.push(await this.enrichCandidate(candidate, result.evaluatedAt));
+    for (const candidate of result.candidates) {
+      const enrichedCandidate = await this.enrichCandidate(candidate, result.evaluatedAt);
+      if (enrichedCandidate !== candidate) changed = true;
+      candidates.push(enrichedCandidate);
+    }
+    if (!changed) return result;
 
     const candidateTuple = candidates as [
       ProviderDiscoveryCandidateV1,
