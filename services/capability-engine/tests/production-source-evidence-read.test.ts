@@ -48,7 +48,7 @@ function acceptedPackage() {
   return compiled.package;
 }
 
-function acceptedReference(amountMinor: number = 35000) {
+function acceptedReference() {
   const pkg = acceptedPackage();
   return {
     schemaVersion: 1,
@@ -57,7 +57,7 @@ function acceptedReference(amountMinor: number = 35000) {
     jurisdiction: 'US',
     authority: 'USPTO',
     currency: 'USD',
-    amountMinor,
+    amountMinor: 35000,
     unit: 'PER_CLASS',
     effectiveFrom: EFFECTIVE_FROM,
     status: 'CURRENT',
@@ -77,7 +77,7 @@ function command(idempotencyKey = 'uspto-production-source-read-1'): CapabilityR
     capabilityId: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID,
     capabilityVersion: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_VERSION,
     caller: {
-      workspaceId: 'workspace_uspto_production_source_read',
+      workspaceId: 'workspace_uspto_production-source-read',
       principalId: 'principal_uspto_production_source_read',
       callerProduct: 'MARKREG',
       permissionContextRef: 'permission_uspto_production_source_read'
@@ -133,7 +133,7 @@ function baseRuntime(reference = acceptedReference()) {
   });
 }
 
-function evidenceAuthority(reference = acceptedReference()) {
+function evidenceAuthority(reference: unknown = acceptedReference()) {
   return createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1({
     capabilities: {
       findCurrent: () => Promise.resolve(USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION)
@@ -150,7 +150,7 @@ function evidenceAuthority(reference = acceptedReference()) {
 
 function reader(
   store: CapabilityRuntimeReplayStoreV1,
-  reference = acceptedReference()
+  reference: unknown = acceptedReference()
 ): CapabilityProductionSourceEvidenceReadServiceV1 {
   return new CapabilityProductionSourceEvidenceReadServiceV1({
     replayStore: store,
@@ -218,15 +218,16 @@ describe('trusted production source evidence read V1', () => {
 
     await expect(
       reader(new InMemoryCapabilityRuntimeReplayStoreV1()).read(reference)
-    ).resolves.toMatchObject({
-      status: 'NOT_FOUND'
-    });
+    ).resolves.toMatchObject({ status: 'NOT_FOUND' });
     await expect(
       reader(populated).read({
         ...reference,
         requestFingerprintSha256: differentSha(reference.requestFingerprintSha256)
       })
-    ).resolves.toMatchObject({ status: 'CONFLICT', denial: { code: 'REPLAY_IDENTITY_CONFLICT' } });
+    ).resolves.toMatchObject({
+      status: 'CONFLICT',
+      denial: { code: 'REPLAY_IDENTITY_CONFLICT' }
+    });
     await expect(
       reader(populated).read({
         ...reference,
@@ -251,13 +252,16 @@ describe('trusted production source evidence read V1', () => {
     });
   });
 
-  it('re-evaluates current Reference truth and denies a historically successful but stale source', async () => {
+  it('re-evaluates current Reference truth and denies a historically successful superseded source', async () => {
     const store = new InMemoryCapabilityRuntimeReplayStoreV1();
     const execution = await persistProductionExecution(store);
     const reference = capabilityProductionSourceExecutionReferenceV1(execution);
-    const changedReference = acceptedReference(36000);
+    const successorReference = {
+      ...acceptedReference(),
+      referenceId: 'official-fee-ref_successor-current'
+    };
 
-    await expect(reader(store, changedReference).read(reference)).resolves.toMatchObject({
+    await expect(reader(store, successorReference).read(reference)).resolves.toMatchObject({
       status: 'DENIED',
       denial: { code: 'SOURCE_REFERENCE_NOT_CURRENT' }
     });
