@@ -178,7 +178,7 @@ describe('MarkReg production Recommendation source boundary', () => {
 
   it('rejects stale, malformed or authority-bearing producer payloads as invalid', () => {
     const stale = productionRead();
-    stale.source.sourceUse.currentness = 'STALE' as never;
+    stale.source.sourceUse.currentness = 'STALE';
     expect(projectRecommendationSourceReferenceV1(stale)).toMatchObject({
       status: 'INVALID_PRODUCER_RESPONSE'
     });
@@ -208,7 +208,7 @@ describe('MarkReg production Recommendation source boundary', () => {
     const reader = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal/',
       internalServiceSecret,
-      fetcher as typeof fetch
+      fetcher
     );
 
     const result = await reader.read(
@@ -234,7 +234,7 @@ describe('MarkReg production Recommendation source boundary', () => {
     const network = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(() => Promise.reject(new Error('offline'))) as typeof fetch
+      vi.fn(() => Promise.reject(new Error('offline')))
     );
     await expect(network.read(productionRead().reference, principal)).resolves.toMatchObject({
       status: 'UNAVAILABLE',
@@ -245,7 +245,7 @@ describe('MarkReg production Recommendation source boundary', () => {
     const denied = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(() => Promise.resolve(new Response('{}', { status: 403 }))) as typeof fetch
+      vi.fn(() => Promise.resolve(new Response('{}', { status: 403 })))
     );
     await expect(denied.read(productionRead().reference, principal)).resolves.toMatchObject({
       status: 'UNAVAILABLE',
@@ -256,7 +256,7 @@ describe('MarkReg production Recommendation source boundary', () => {
     const malformed = new HttpCapabilityRecommendationSourceReaderV1(
       'http://capability.internal',
       internalServiceSecret,
-      vi.fn(() => Promise.resolve(new Response('not-json', { status: 200 }))) as typeof fetch
+      vi.fn(() => Promise.resolve(new Response('not-json', { status: 200 })))
     );
     await expect(malformed.read(productionRead().reference, principal)).resolves.toMatchObject({
       status: 'INVALID_PRODUCER_RESPONSE',
