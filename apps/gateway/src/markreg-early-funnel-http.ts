@@ -7,6 +7,7 @@ import {
   parseQuoteCreateCommand,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
+import { parseCreateProductionIntakeCommandV1 } from '@markorbit/contracts/markreg-early-funnel';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import { randomUUID } from 'node:crypto';
 import {
@@ -33,6 +34,7 @@ const topLevelAuthorityFields = [
   'membershipId',
   'subjectUserId'
 ] as const;
+const productionIntakeAuthorityFields = ['actor', ...topLevelAuthorityFields] as const;
 const matterIntelligenceQueryFields = ['page', 'pageSize', 'reviewHistoryLimit'] as const;
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -69,6 +71,18 @@ function mapAuthentication(error: unknown): never {
 
 function rejectTopLevelAuthoritySpoof(body: Readonly<Record<string, unknown>>): void {
   const field = topLevelAuthorityFields.find((candidate) =>
+    Object.prototype.hasOwnProperty.call(body, candidate)
+  );
+  if (field)
+    throw new HttpError(
+      400,
+      'ACTOR_SPOOF_REJECTED',
+      `${field} is trusted authority context and must not be supplied by the browser.`
+    );
+}
+
+function rejectProductionIntakeAuthoritySpoof(body: Readonly<Record<string, unknown>>): void {
+  const field = productionIntakeAuthorityFields.find((candidate) =>
     Object.prototype.hasOwnProperty.call(body, candidate)
   );
   if (field)
@@ -214,6 +228,44 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const forwardProductionIntakeRead = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'MarkReg service authentication is unavailable.',
+        true
+      );
+    const intakeId = encodeURIComponent(request.params.intakeId ?? '');
+    try {
+      const response = await fetch(
+        `${options.markRegUrl}/internal/v1/production-intakes/${intakeId}`,
+        {
+          method: 'GET',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': options.internalServiceSecret,
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+            'x-markorbit-workspace-id': principal.workspaceId,
+            ...(request.headers['x-correlation-id']
+              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+              : {}),
+            ...(request.headers['x-request-id']
+              ? { 'x-request-id': request.headers['x-request-id'] }
+              : {})
+          }
+        }
+      );
+      return json(response.status, await response.json());
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
   const forwardFormalMatterRead = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -256,6 +308,49 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
+  const productionIntakeRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/production-intakes',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectProductionIntakeAuthoritySpoof(body);
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticate(request);
+      let command;
+      try {
+        command = parseCreateProductionIntakeCommandV1({
+          ...body,
+          idempotencyKey: key,
+          correlationId: correlation
+        });
+      } catch (error) {
+        throw new HttpError(
+          400,
+          'INVALID_PRODUCTION_INTAKE_REQUEST',
+          error instanceof Error ? error.message : 'Production Intake request is invalid.'
+        );
+      }
+      return forward(
+        request,
+        principal,
+        '/internal/v1/production-intakes',
+        command,
+        key,
+        correlation
+      );
+    }
+  };
+
+  const productionIntakeReadRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/production-intakes/:intakeId',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      return forwardProductionIntakeRead(request, principal);
     }
   };
 
@@ -379,6 +474,8 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
   };
 
   return [
+    productionIntakeRoute,
+    productionIntakeReadRoute,
     intakeRoute,
     quoteRoute,
     confirmationRoute,
