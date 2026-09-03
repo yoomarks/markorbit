@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
 
 import { capabilitySourceAdmissionNoAuthorityConsequences } from '../src/current-source-admission.js';

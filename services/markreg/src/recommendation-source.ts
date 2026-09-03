@@ -1,7 +1,4 @@
-import {
-  encodeInternalWorkspacePrincipal,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import {
   noRecommendationSourceAuthorityConsequences,
   type RecommendationSourceReferenceV1
@@ -142,9 +139,7 @@ function denialFromProducer(value: Record<string, unknown>): RecommendationSourc
     status: value.status,
     retryable: value.status === 'UNAVAILABLE' && value.retryable === true,
     code:
-      denial && typeof denial.code === 'string'
-        ? denial.code
-        : `CAPABILITY_SOURCE_${value.status}`,
+      denial && typeof denial.code === 'string' ? denial.code : `CAPABILITY_SOURCE_${value.status}`,
     reason:
       denial && typeof denial.reason === 'string'
         ? denial.reason
@@ -165,13 +160,16 @@ function methodProvenance(value: unknown): readonly string[] {
 }
 
 function referenceProvenance(value: unknown): readonly string[] {
-  if (!Array.isArray(value)) throw new TypeError('producer.source.referenceSources must be an array.');
+  if (!Array.isArray(value))
+    throw new TypeError('producer.source.referenceSources must be an array.');
   return value.map((item, index) => {
     const reference = record(item, `producer.source.referenceSources[${index}]`);
     const sourceId = exactText(reference.sourceId, `referenceSources[${index}].sourceId`);
     const sourceVersion =
       typeof reference.sourceVersion === 'number'
-        ? String(positiveInteger(reference.sourceVersion, `referenceSources[${index}].sourceVersion`))
+        ? String(
+            positiveInteger(reference.sourceVersion, `referenceSources[${index}].sourceVersion`)
+          )
         : exactText(reference.sourceVersion, `referenceSources[${index}].sourceVersion`);
     const sourceFingerprint =
       reference.sourceFingerprintSha256 === undefined
@@ -206,7 +204,9 @@ export function projectRecommendationSourceReferenceV1(
       exactText(historical.sessionReceiptId, 'producer.historical.sessionReceiptId') !==
         producerReference.sessionReceiptId
     ) {
-      throw new TypeError('Producer historical execution identity conflicts with its exact reference.');
+      throw new TypeError(
+        'Producer historical execution identity conflicts with its exact reference.'
+      );
     }
 
     const source = record(result.source, 'producer.source');
@@ -232,7 +232,10 @@ export function projectRecommendationSourceReferenceV1(
     if (implementation.status !== 'APPROVED') {
       throw new TypeError('Producer implementation binding must be APPROVED.');
     }
-    const capabilityId = exactText(capability.capabilityId, 'producer.source.current.capability.capabilityId');
+    const capabilityId = exactText(
+      capability.capabilityId,
+      'producer.source.current.capability.capabilityId'
+    );
     const capabilityVersion = exactText(
       capability.capabilityVersion,
       'producer.source.current.capability.capabilityVersion'

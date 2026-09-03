@@ -93,7 +93,9 @@ export function createCapabilityProductionSourceEvidenceRoutesV1(
           throw new HttpError(
             400,
             'INVALID_PRODUCTION_SOURCE_REFERENCE',
-            error instanceof Error ? error.message : 'Invalid production source execution reference.'
+            error instanceof Error
+              ? error.message
+              : 'Invalid production source execution reference.'
           );
         }
 

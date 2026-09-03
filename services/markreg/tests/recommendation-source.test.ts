@@ -65,8 +65,7 @@ function productionRead() {
           capabilityVersion: '2.0.0'
         },
         implementation: {
-          implementationProfileId:
-            'implementation-profile_uspto-official-fee-resolver-governed-v2',
+          implementationProfileId: 'implementation-profile_uspto-official-fee-resolver-governed-v2',
           version: 2,
           implementationKey: 'capability-engine:uspto-official-fee-resolver-governed-v2',
           status: 'APPROVED'
@@ -150,9 +149,9 @@ describe('MarkReg production Recommendation source boundary', () => {
         expect.stringContaining('official-fee-reference:ref@current')
       ])
     );
-    expect(Object.values(result.source.authorityConsequences).every((value) => value === false)).toBe(
-      true
-    );
+    expect(
+      Object.values(result.source.authorityConsequences).every((value) => value === false)
+    ).toBe(true);
   });
 
   it.each(['DENIED', 'NOT_FOUND', 'CONFLICT', 'UNAVAILABLE'] as const)(
@@ -212,7 +211,11 @@ describe('MarkReg production Recommendation source boundary', () => {
       fetcher as typeof fetch
     );
 
-    const result = await reader.read(productionRead().reference, principal, 'correlation_source_read');
+    const result = await reader.read(
+      productionRead().reference,
+      principal,
+      'correlation_source_read'
+    );
 
     expect(result.status).toBe('PRODUCTION_ADMISSIBLE');
     expect(fetcher).toHaveBeenCalledTimes(1);
