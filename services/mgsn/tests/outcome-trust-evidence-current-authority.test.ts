@@ -131,11 +131,13 @@ const responsibilityAssessment = {
   authorityConsequences: noProviderResponsibilityAuthorityConsequences
 } as const;
 
-function networkSource(overrides: {
-  currentParticipation?: NetworkParticipationVersionRecord | undefined;
-  currentPolicy?: NetworkVisibilityPolicyVersionRecord | undefined;
-  throwOnRead?: boolean;
-} = {}): TrustEvidenceNetworkAuthoritySource {
+function networkSource(
+  overrides: {
+    currentParticipation?: NetworkParticipationVersionRecord | undefined;
+    currentPolicy?: NetworkVisibilityPolicyVersionRecord | undefined;
+    throwOnRead?: boolean;
+  } = {}
+): TrustEvidenceNetworkAuthoritySource {
   const currentParticipation =
     'currentParticipation' in overrides ? overrides.currentParticipation : participation;
   const currentPolicy = 'currentPolicy' in overrides ? overrides.currentPolicy : policy;
@@ -182,17 +184,10 @@ function authority(
   providers: TrustEvidenceProviderSource = providerSource,
   responsibility: TrustEvidenceResponsibilitySource = responsibilitySource()
 ) {
-  return new MgsnTrustEvidenceCurrentAuthoritySource(
-    network,
-    returns,
-    providers,
-    responsibility
-  );
+  return new MgsnTrustEvidenceCurrentAuthoritySource(network, returns, providers, responsibility);
 }
 
-function providerClaimItem(
-  overrides: Partial<TrustEvidenceItemV1> = {}
-): TrustEvidenceItemV1 {
+function providerClaimItem(overrides: Partial<TrustEvidenceItemV1> = {}): TrustEvidenceItemV1 {
   const base = {
     schemaVersion: 1 as const,
     version: 1,
@@ -420,9 +415,15 @@ describe('MGSN #717 current Outcome & Trust Evidence authority', () => {
       profile: { ...responsibilityAssessment.profile, version: 3 }
     };
     await expect(
-      validation(authority(networkSource(), returnSource(), providerSource, responsibilitySource(changedAssessment)), [
-        item
-      ])
+      validation(
+        authority(
+          networkSource(),
+          returnSource(),
+          providerSource,
+          responsibilitySource(changedAssessment)
+        ),
+        [item]
+      )
     ).resolves.toMatchObject({
       decision: 'DENY',
       reason: 'EXECUTOR_ATTRIBUTION_NOT_ESTABLISHED'
