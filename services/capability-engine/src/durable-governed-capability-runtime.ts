@@ -5,16 +5,19 @@ import {
 } from '@markorbit/contracts/capability-runtime';
 import {
   GovernedCapabilityRuntimeError,
-  type CapabilityRuntimeExecution,
-  type GovernedCapabilityRuntime
+  type CapabilityRuntimeExecution
 } from './capability-runtime.js';
 import {
   CapabilityRuntimeReplayStoreError,
   type CapabilityRuntimeReplayStoreV1
 } from './capability-runtime-replay-store.js';
 
+export interface GovernedCapabilityRuntimeReplayTargetV1 {
+  invoke(value: unknown): Promise<CapabilityRuntimeExecution>;
+}
+
 export interface DurableGovernedCapabilityRuntimeOptionsV1 {
-  runtime: GovernedCapabilityRuntime;
+  runtime: Readonly<GovernedCapabilityRuntimeReplayTargetV1>;
   replayStore: CapabilityRuntimeReplayStoreV1;
   now?: () => string;
   ownerTokenFactory?: () => string;
@@ -57,7 +60,7 @@ function replay(execution: Readonly<CapabilityRuntimeExecution>): CapabilityRunt
   return { ...clone(execution), replayed: true };
 }
 
-export class DurableGovernedCapabilityRuntimeV1 {
+export class DurableGovernedCapabilityRuntimeV1 implements GovernedCapabilityRuntimeReplayTargetV1 {
   private readonly now: () => string;
   private readonly ownerTokenFactory: () => string;
   private readonly waitTimeoutMs: number;
