@@ -1,0 +1,66 @@
+name: tmp-641-mgsn-postgres-diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+      MGSN_PROVIDER_REGISTRY_POSTGRES_REQUIRED: '1'
+      MGSN_SERVICE_PACKAGE_POSTGRES_REQUIRED: '1'
+      MGSN_ALLOCATION_POSTGRES_REQUIRED: '1'
+      MGSN_PROVIDER_RETURN_POSTGRES_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create MGSN test database
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_mgsn_test;'
+      - name: Run discovered MGSN PostgreSQL suites with captured failure
+        shell: bash
+        run: |
+          cd services/mgsn
+          for test_file in tests/*postgres*.test.ts; do
+            echo "Running $test_file"
+            set +e
+            pnpm exec vitest run "$test_file" 2>&1 | tee "$RUNNER_TEMP/mgsn-current-suite.log"
+            status=${PIPESTATUS[0]}
+            set -e
+            if [ "$status" -ne 0 ]; then
+              {
+                echo "FAILING_SUITE=$test_file"
+                echo "---- VITEST OUTPUT ----"
+                cat "$RUNNER_TEMP/mgsn-current-suite.log"
+              } > "$RUNNER_TEMP/mgsn-postgres-failure.txt"
+              exit "$status"
+            fi
+          done
+      - name: Upload MGSN failure diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mgsn-postgres-failure
+          path: ${{ runner.temp }}/mgsn-postgres-failure.txt
+          if-no-files-found: error
