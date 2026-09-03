@@ -21,6 +21,7 @@ import {
   USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE
 } from './uspto-official-fee-resolver-pilot.js';
 
+// External governance source: the repository owner explicitly approved #659; this module only materializes that decision canonically.
 export const USPTO_OFFICIAL_FEE_GOVERNANCE_APPROVAL_V1 = Object.freeze({
   authority: 'BRAIN_GOVERNANCE' as const,
   approvedBy: 'yoomarks',
