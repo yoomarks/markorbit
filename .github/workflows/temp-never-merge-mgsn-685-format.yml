@@ -1,0 +1,49 @@
+name: TEMP NEVER MERGE MGSN Trusted Public Format
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/temp-never-merge-mgsn-685-format.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format and verify MGSN Trusted Public runtime
+        run: |
+          pnpm prettier --write services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
+          pnpm prettier --check services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
+          pnpm --filter @markorbit/mgsn-service lint
+          pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service test -- tests/trusted-public-exposure.test.ts
+          cp services/mgsn/src/trusted-public-exposure.ts /tmp/trusted-public-exposure.ts
+          cp services/mgsn/tests/trusted-public-exposure.test.ts /tmp/trusted-public-exposure.test.ts
+      - name: Push only formatted MGSN files to formal branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin mgsn-trusted-public-exposure-runtime
+          git checkout -B formal origin/mgsn-trusted-public-exposure-runtime
+          cp /tmp/trusted-public-exposure.ts services/mgsn/src/trusted-public-exposure.ts
+          cp /tmp/trusted-public-exposure.test.ts services/mgsn/tests/trusted-public-exposure.test.ts
+          git add services/mgsn/src/trusted-public-exposure.ts services/mgsn/tests/trusted-public-exposure.test.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git commit -m "[MGSN-P0] Format Trusted Public serve runtime"
+          git push origin HEAD:mgsn-trusted-public-exposure-runtime
