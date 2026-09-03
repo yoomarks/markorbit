@@ -12,7 +12,7 @@ import {
   TextInput
 } from '@markorbit/ui';
 import { useEffect, useState, type ReactNode } from 'react';
-import { MarkregApp } from './App.js';
+import { ProductionIntakePlanning } from './ProductionIntakePlanning.js';
 import { MarkregApiError } from './api/errors.js';
 import { createFormalMatterListClient, type FormalMatterListClient } from './api/formal-matter.js';
 import {
@@ -112,7 +112,7 @@ const defaultMatterClient = createFormalMatterListClient();
 export function MarkregWorkspaceHome({
   client = defaultOrderClient,
   matterClient = defaultMatterClient,
-  renderPlanning = () => <MarkregApp />
+  renderPlanning = () => <ProductionIntakePlanning />
 }: {
   client?: OrderClient;
   matterClient?: FormalMatterListClient;
@@ -303,7 +303,7 @@ export function MarkregWorkspaceHome({
     <main className="markreg-workspace-home" aria-label="MarkReg Workspace">
       <PageHeader
         title="Trademark Workspace"
-        description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing remains a fixture-only consultation until its production gates are complete."
+        description="Track durable Service Orders and Formal Matters as separate Workspace records. Planning a new filing records durable customer-supplied Production Intake before any Recommendation is available."
       />
       <Alert tone="warning" title="Authority boundary">
         Order ≠ Matter ≠ Payment ≠ Invoice ≠ Filing. A Formal Matter does not mean an external
@@ -361,8 +361,8 @@ export function MarkregWorkspaceHome({
                 <h3>No service Orders yet</h3>
                 <p>
                   This Workspace has no durable Orders. Formal Matters, if any, remain visible
-                  separately below. Planning a consultation does not create an Order, Payment,
-                  Matter, or Filing.
+                  separately below. Planning a new filing creates only durable Production Intake; it
+                  does not create a Recommendation, Order, Payment, Matter, or Filing.
                 </p>
                 <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
               </>

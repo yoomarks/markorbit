@@ -3,7 +3,6 @@ import '@markorbit/ui/styles.css';
 import './markreg.css';
 import { MarkregApp } from './App.js';
 import { MarkregAccountEntry } from './AccountEntry.js';
-import { ProductionIntakePlanning } from './ProductionIntakePlanning.js';
 import { GovernedRouteEntry } from './routing/GovernedRouteEntry.js';
 import { MarkregWorkspaceHome } from './WorkspaceHome.js';
 const root = document.querySelector('#root');
@@ -16,10 +15,6 @@ createRoot(root).render(
   ) : fixtureEntry ? (
     <MarkregApp />
   ) : (
-    <MarkregAccountEntry
-      renderProduct={() => (
-        <MarkregWorkspaceHome renderPlanning={() => <ProductionIntakePlanning />} />
-      )}
-    />
+    <MarkregAccountEntry renderProduct={() => <MarkregWorkspaceHome />} />
   )
 );
