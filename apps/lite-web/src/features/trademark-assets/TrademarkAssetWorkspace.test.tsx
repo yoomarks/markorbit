@@ -8,7 +8,10 @@ import type {
   TrademarkAssetManagementRecommendation,
   TrademarkAssetManagementSignal
 } from '@markorbit/contracts/trademark-asset-management';
-import type { CurrentTrademarkAssetManagementDispositionProjection } from '../../api/trademark-assets.js';
+import {
+  TrademarkAssetHttpError,
+  type CurrentTrademarkAssetManagementDispositionProjection
+} from '../../api/trademark-assets.js';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
@@ -109,23 +112,27 @@ const recommendation: TrademarkAssetManagementRecommendation = {
 
 function projection(
   disposition: CurrentTrademarkAssetManagementDispositionProjection['items'][number]['disposition'],
-  version = signal.version
+  version = signal.version,
+  assetVersion = 3
 ): CurrentTrademarkAssetManagementDispositionProjection {
   return {
     schemaVersion: 1,
     workspaceId,
-    asset: { id: view.trademarkAssetId, version: 3 },
+    asset: { id: view.trademarkAssetId, version: assetVersion },
     items: [{ signal: { id: signal.managementSignalId, version }, disposition }]
   };
 }
 
-function durableDisposition(kind: 'WATCHED' | 'RESOLVED_BY_WORKFLOW_REFERENCE') {
+function durableDisposition(
+  kind: 'WATCHED' | 'CONTINUED' | 'RESOLVED_BY_WORKFLOW_REFERENCE',
+  assetVersion = 3
+) {
   return {
     schemaVersion: 1,
     dispositionId: 'trademark-asset-management-disposition_current',
     workspaceId,
     version: 1,
-    asset: { id: view.trademarkAssetId, version: 3 },
+    asset: { id: view.trademarkAssetId, version: assetVersion },
     signal: { id: signal.managementSignalId, version: signal.version },
     recommendation: { id: recommendation.recommendationId, version: recommendation.version },
     kind,
@@ -137,7 +144,10 @@ function durableDisposition(kind: 'WATCHED' | 'RESOLVED_BY_WORKFLOW_REFERENCE') 
   } as const;
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.location.hash = '';
+});
 
 describe('TrademarkAssetWorkspace', () => {
   it('shows source ownership and the Lite authority boundary without execution controls', () => {
@@ -287,5 +297,78 @@ describe('TrademarkAssetWorkspace', () => {
     expect(reload).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/action remains locked/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Watch' })).toBeDisabled();
+  });
+
+  it('does not continue until owner truth confirms CONTINUED', async () => {
+    const record = vi.fn().mockResolvedValue(durableDisposition('CONTINUED'));
+    const reload = vi.fn().mockResolvedValue(projection(durableDisposition('WATCHED')));
+    const user = userEvent.setup();
+    render(
+      <TrademarkAssetWorkspace
+        view={view}
+        managementSignals={[signal]}
+        recommendations={[recommendation]}
+        managementDispositions={projection(null)}
+        onRecordManagementDisposition={record}
+        onReloadManagementDispositions={reload}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm & continue' }));
+
+    await waitFor(() => expect(record).toHaveBeenCalledTimes(1));
+    expect(record.mock.calls[0]?.[0]).toMatchObject({ kind: 'CONTINUED' });
+    expect(await screen.findByText(/action remains locked/i)).toBeInTheDocument();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('keeps the workspace visible on 409 and clears the old lock when Asset version changes', async () => {
+    const record = vi
+      .fn()
+      .mockRejectedValue(new TrademarkAssetHttpError(409, 'ASSET_VERSION_CONFLICT', 'Asset changed.'));
+    const reloadAsset = vi.fn().mockResolvedValue(undefined);
+    const reload = vi.fn().mockResolvedValue(projection(null));
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TrademarkAssetWorkspace
+        view={view}
+        managementSignals={[signal]}
+        recommendations={[recommendation]}
+        managementDispositions={projection(null)}
+        onRecordManagementDisposition={record}
+        onReloadManagementDispositions={reload}
+        onReloadAsset={reloadAsset}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Watch' }));
+
+    await waitFor(() => expect(reloadAsset).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('heading', { name: 'MARK ORBIT' })).toBeInTheDocument();
+    expect(screen.getByText(/Current owner truth is being reloaded/)).toBeInTheDocument();
+
+    const nextView: TrademarkAssetView = {
+      ...view,
+      anchorVersion: 4,
+      anchor: { ...view.anchor, version: 4 }
+    };
+    const nextSignal: TrademarkAssetManagementSignal = {
+      ...signal,
+      asset: { id: signal.asset.id, version: 4 }
+    };
+    rerender(
+      <TrademarkAssetWorkspace
+        view={nextView}
+        managementSignals={[nextSignal]}
+        recommendations={[recommendation]}
+        managementDispositions={projection(null, signal.version, 4)}
+        onRecordManagementDisposition={record}
+        onReloadManagementDispositions={reload}
+        onReloadAsset={reloadAsset}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Watch' })).toBeEnabled());
   });
 });
