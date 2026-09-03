@@ -69,6 +69,10 @@ jobs:
                   "    const secondCommand = create.mock.calls[1]![0];",
                   "    const secondCommand = create.mock.calls[1]![0] as CreateProductionIntakeCommandV1;"
               ),
+              (
+                  "      await screen.findByRole('heading', { name: 'Submission outcome is uncertain' })",
+                  "      await screen.findByRole('heading', { name: 'Submission outcome is uncertain', level: 1 })"
+              ),
           ]
           for old, new in replacements:
               count = text.count(old)
