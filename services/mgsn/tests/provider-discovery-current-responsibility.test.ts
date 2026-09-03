@@ -114,7 +114,9 @@ describe('MGSN P0 #707 Provider Discovery current responsibility composition', (
   });
 
   it('fails closed for responsibility source failure without removing the candidate or leaking details', async () => {
-    const result = await evaluate(responsibility(new Error('private responsibility failure: secret')));
+    const result = await evaluate(
+      responsibility(new Error('private responsibility failure: secret'))
+    );
     expect(result).toEqual(fixture());
     expect(JSON.stringify(result)).not.toContain('private responsibility failure');
   });
