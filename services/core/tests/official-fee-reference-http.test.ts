@@ -14,8 +14,7 @@ const asOf = '2026-09-03T03:45:00.000Z';
 
 const reference: Readonly<OfficialFeeReferenceV1> = {
   schemaVersion: 1,
-  referenceId:
-    'official-fee-ref_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  referenceId: 'official-fee-ref_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   operation: OFFICIAL_FEE_PILOT_OPERATION,
   jurisdiction: 'US',
   authority: 'USPTO',
@@ -33,10 +32,7 @@ const reference: Readonly<OfficialFeeReferenceV1> = {
   materializedAt: '2026-08-28T00:00:00.000Z'
 };
 
-function request(
-  body: unknown,
-  authorization: string | undefined = secret
-): JsonRequest {
+function request(body: unknown, authorization: string | undefined = secret): JsonRequest {
   return {
     method: 'POST',
     path: '/internal/v1/official-fee-references/current',

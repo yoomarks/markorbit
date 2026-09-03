@@ -77,7 +77,7 @@ export interface OfficialFeeReferenceReaderQueryV1 {
  * needed for this invocation and never becomes a second fee store.
  */
 export interface OfficialFeeReferenceReaderV1 {
-  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): unknown | Promise<unknown>;
+  resolveCurrent(query: Readonly<OfficialFeeReferenceReaderQueryV1>): unknown;
 }
 
 export interface UsptoOfficialFeeResolverReferenceV1 {

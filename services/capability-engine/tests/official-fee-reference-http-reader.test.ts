@@ -41,7 +41,8 @@ describe('Core Official Fee Reference HTTP reader', () => {
         'content-type': 'application/json',
         'x-markorbit-internal-authorization': secret
       });
-      expect(JSON.parse(String(init?.body))).toEqual(query);
+      expect(typeof init?.body).toBe('string');
+      expect(JSON.parse(init?.body as string)).toEqual(query);
       return Promise.resolve(
         new Response(JSON.stringify(payload), {
           status: 200,
@@ -49,11 +50,7 @@ describe('Core Official Fee Reference HTTP reader', () => {
         })
       );
     };
-    const reader = new HttpCoreOfficialFeeReferenceReaderV1(
-      'http://core.test/',
-      secret,
-      fetcher
-    );
+    const reader = new HttpCoreOfficialFeeReferenceReaderV1('http://core.test/', secret, fetcher);
 
     await expect(reader.resolveCurrent(query)).resolves.toEqual(payload);
     expect(observed).toHaveBeenCalledOnce();
@@ -73,11 +70,7 @@ describe('Core Official Fee Reference HTTP reader', () => {
             headers: { 'content-type': 'application/json' }
           })
         );
-      const reader = new HttpCoreOfficialFeeReferenceReaderV1(
-        'http://core.test',
-        secret,
-        fetcher
-      );
+      const reader = new HttpCoreOfficialFeeReferenceReaderV1('http://core.test', secret, fetcher);
 
       await expect(reader.resolveCurrent(query)).rejects.toMatchObject({
         code: expectedCode,
@@ -110,15 +103,11 @@ describe('Core Official Fee Reference HTTP reader', () => {
       observed(input, init);
       return Promise.reject(new Error('unexpected Core request'));
     };
-    const reader = new HttpCoreOfficialFeeReferenceReaderV1(
-      'http://core.test',
-      secret,
-      fetcher
-    );
+    const reader = new HttpCoreOfficialFeeReferenceReaderV1('http://core.test', secret, fetcher);
 
-    await expect(
-      reader.resolveCurrent({ ...query, asOf: 'not-an-instant' })
-    ).rejects.toMatchObject({ code: 'INVALID_QUERY' });
+    await expect(reader.resolveCurrent({ ...query, asOf: 'not-an-instant' })).rejects.toMatchObject(
+      { code: 'INVALID_QUERY' }
+    );
     expect(observed).not.toHaveBeenCalled();
   });
 });
