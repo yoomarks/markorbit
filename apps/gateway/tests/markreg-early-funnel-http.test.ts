@@ -335,12 +335,13 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
     ).toEqual([]);
   });
 
-  it('keeps exactly the three governed early-funnel mutation routes', () => {
+  it('keeps the historical mutation routes and adds durable Production Intake separately', () => {
     expect(
       routes()
         .filter((candidate) => candidate.method === 'POST')
         .map((candidate) => `${candidate.method} ${candidate.path}`)
     ).toEqual([
+      'POST /api/markreg/production-intakes',
       'POST /v1/markreg/intakes',
       'POST /v1/markreg/quotes',
       'POST /v1/markreg/quotes/:quoteId/confirm'
