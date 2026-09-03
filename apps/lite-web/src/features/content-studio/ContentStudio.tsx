@@ -7,7 +7,9 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader
+  PageHeader,
+  Select,
+  TextInput
 } from '@markorbit/ui';
 import type {
   ContentDraft,
@@ -46,6 +48,60 @@ export function contentWorkStage(
     SUPERSEDED: 'Draft superseded'
   };
   return labels[work.latestDraft.status];
+}
+
+export type ContentTriageFilter =
+  | 'ALL'
+  | 'NEEDS_ACTION'
+  | 'DRAFTING'
+  | 'READY_FOR_REVIEW'
+  | 'CHANGES_REQUIRED'
+  | 'PACKAGE_READY'
+  | 'PACKAGE_PRESENT';
+
+function exactCurrentPackage(work: Readonly<ContentStudioWorkSummary>) {
+  const draft = work.latestDraft;
+  const publishPackage = work.latestPublishPackage;
+  return Boolean(
+    draft &&
+      publishPackage &&
+      publishPackage.contentDraft.id === draft.contentDraftId &&
+      Number(publishPackage.contentDraft.version) === draft.version
+  );
+}
+
+export function contentWorkTriage(work: Readonly<ContentStudioWorkSummary>): ContentTriageFilter {
+  if (!work.latestDraft) return 'NEEDS_ACTION';
+  switch (work.latestDraft.status) {
+    case 'DRAFT':
+      return 'DRAFTING';
+    case 'READY_FOR_HUMAN_REVIEW':
+      return 'READY_FOR_REVIEW';
+    case 'CHANGES_REQUIRED':
+      return 'CHANGES_REQUIRED';
+    case 'REVIEWED_READY_FOR_PACKAGE':
+      return exactCurrentPackage(work) ? 'PACKAGE_PRESENT' : 'PACKAGE_READY';
+    default:
+      return 'ALL';
+  }
+}
+
+export function contentWorkNextFocus(work: Readonly<ContentStudioWorkSummary>): string {
+  if (!work.latestDraft) return 'Create the first Draft';
+  switch (work.latestDraft.status) {
+    case 'DRAFT':
+      return 'Continue drafting or mark ready for human review';
+    case 'READY_FOR_HUMAN_REVIEW':
+      return 'Human review required';
+    case 'CHANGES_REQUIRED':
+      return 'Revise the current Draft';
+    case 'REVIEWED_READY_FOR_PACKAGE':
+      return exactCurrentPackage(work) ? 'PublishPackage prepared' : 'Prepare PublishPackage';
+    case 'REJECTED':
+      return 'No preparation action available';
+    case 'SUPERSEDED':
+      return 'Read-only historical state';
+  }
 }
 
 function date(value: string) {
@@ -155,6 +211,19 @@ function WorkList({
   loadMore: () => void;
   loadingMore: boolean;
 }) {
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<ContentTriageFilter>('ALL');
+  const visible = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return [...value.items]
+      .filter((work) => {
+        if (filter !== 'ALL' && contentWorkTriage(work) !== filter) return false;
+        if (!normalizedQuery) return true;
+        return `${work.title} ${work.rationale}`.toLowerCase().includes(normalizedQuery);
+      })
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+  }, [filter, query, value.items]);
+
   return (
     <>
       <PageHeader
@@ -174,82 +243,131 @@ function WorkList({
           action={<a href="#today">Open Today</a>}
         />
       ) : (
-        <div className="content-studio__list" aria-live="polite">
-          {value.items.map((work) => (
-            <Card key={`${work.contentOpportunity.id}:${work.contentOpportunity.version}`}>
-              <div className="content-studio__row">
-                <div>
-                  <p className="content-studio__eyebrow">
-                    Content Opportunity · version {work.contentOpportunity.version}
-                  </p>
-                  <h2>{work.title}</h2>
-                </div>
-                <Badge>{contentWorkStage(work)}</Badge>
-              </div>
-              <p>{work.rationale}</p>
-              <dl className="content-studio__facts">
-                <div>
-                  <dt>Stable ID</dt>
-                  <dd>{work.contentOpportunity.id}</dd>
-                </div>
-                <div>
-                  <dt>Updated</dt>
-                  <dd>{date(work.updatedAt)}</dd>
-                </div>
-                <div>
-                  <dt>Latest exact Draft</dt>
-                  <dd>
-                    {work.latestDraft
-                      ? `${work.latestDraft.contentDraftId} · v${work.latestDraft.version} · ${work.latestDraft.status}`
-                      : 'Not created'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Latest Draft Review</dt>
-                  <dd>
-                    {work.latestDraftReview
-                      ? `${work.latestDraftReview.outcome} · ${work.latestDraftReview.contentReviewDecisionId} v${work.latestDraftReview.version}`
-                      : 'No exact Review Decision'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Latest Publish Package · work-level history</dt>
-                  <dd>
-                    {work.latestPublishPackage
-                      ? `${work.latestPublishPackage.publishPackageId} · v${work.latestPublishPackage.version} · ${work.latestPublishPackage.status} · ${date(work.latestPublishPackage.createdAt)}`
-                      : 'No Publish Package'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Latest Package Feedback · work-level history</dt>
-                  <dd>
-                    {work.latestPackageFeedback
-                      ? `User-reported · ${work.latestPackageFeedback.outcome} · ${date(work.latestPackageFeedback.recordedAt)}`
-                      : 'No user-reported feedback'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Durable Visual Briefs</dt>
-                  <dd>{work.visualBriefCount}</dd>
-                </div>
-                <div>
-                  <dt>Durable Visual Outputs</dt>
-                  <dd>{work.visualOutputCount}</dd>
-                </div>
-              </dl>
-              <details>
-                <summary>Sources and provenance</summary>
-                <SourceList sources={work.sources} />
-              </details>
-              <Button onClick={() => open(work.contentOpportunity.id)}>View lineage</Button>
-            </Card>
-          ))}
+        <>
+          <div className="content-studio__triage" role="search" aria-label="Content work triage">
+            <TextInput
+              label="Search loaded content work"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <Select
+              label="Current work state"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as ContentTriageFilter)}
+            >
+              <option value="ALL">All loaded work</option>
+              <option value="NEEDS_ACTION">Needs first Draft</option>
+              <option value="DRAFTING">Drafting</option>
+              <option value="READY_FOR_REVIEW">Ready for review</option>
+              <option value="CHANGES_REQUIRED">Changes required</option>
+              <option value="PACKAGE_READY">Package ready</option>
+              <option value="PACKAGE_PRESENT">Package present</option>
+            </Select>
+          </div>
+          <p className="content-studio__loaded-count" role="status">
+            Showing {visible.length} of {value.items.length} loaded work items.
+          </p>
+          {visible.length ? (
+            <div className="content-studio__list" aria-live="polite">
+              {visible.map((work) => (
+                <Card key={`${work.contentOpportunity.id}:${work.contentOpportunity.version}`}>
+                  <div className="content-studio__row">
+                    <div>
+                      <p className="content-studio__eyebrow">
+                        Content Opportunity · version {work.contentOpportunity.version}
+                      </p>
+                      <h2>{work.title}</h2>
+                    </div>
+                    <Badge>{contentWorkStage(work)}</Badge>
+                  </div>
+                  <p>{work.rationale}</p>
+                  <dl className="content-studio__facts content-studio__facts--scan">
+                    <div>
+                      <dt>Next focus</dt>
+                      <dd>{contentWorkNextFocus(work)}</dd>
+                    </div>
+                    <div>
+                      <dt>Updated</dt>
+                      <dd>{date(work.updatedAt)}</dd>
+                    </div>
+                  </dl>
+                  <details>
+                    <summary>Owner lineage and provenance</summary>
+                    <dl className="content-studio__facts">
+                      <div>
+                        <dt>Stable ID</dt>
+                        <dd>{work.contentOpportunity.id}</dd>
+                      </div>
+                      <div>
+                        <dt>Latest exact Draft</dt>
+                        <dd>
+                          {work.latestDraft
+                            ? `${work.latestDraft.contentDraftId} · v${work.latestDraft.version} · ${work.latestDraft.status}`
+                            : 'Not created'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Latest Draft Review</dt>
+                        <dd>
+                          {work.latestDraftReview
+                            ? `${work.latestDraftReview.outcome} · ${work.latestDraftReview.contentReviewDecisionId} v${work.latestDraftReview.version}`
+                            : 'No exact Review Decision'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Latest Publish Package · work-level history</dt>
+                        <dd>
+                          {work.latestPublishPackage
+                            ? `${work.latestPublishPackage.publishPackageId} · v${work.latestPublishPackage.version} · ${work.latestPublishPackage.status} · ${date(work.latestPublishPackage.createdAt)}`
+                            : 'No Publish Package'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Latest Package Feedback · work-level history</dt>
+                        <dd>
+                          {work.latestPackageFeedback
+                            ? `User-reported · ${work.latestPackageFeedback.outcome} · ${date(work.latestPackageFeedback.recordedAt)}`
+                            : 'No user-reported feedback'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Durable Visual Briefs</dt>
+                        <dd>{work.visualBriefCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Durable Visual Outputs</dt>
+                        <dd>{work.visualOutputCount}</dd>
+                      </div>
+                    </dl>
+                    <SourceList sources={work.sources} />
+                  </details>
+                  <Button onClick={() => open(work.contentOpportunity.id)}>Open current work</Button>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No loaded content work matches these filters"
+              description="Search and state filters only narrow owner work already loaded in this browser."
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setQuery('');
+                    setFilter('ALL');
+                  }}
+                >
+                  Clear filters
+                </Button>
+              }
+            />
+          )}
           {value.nextAfter ? (
             <Button variant="secondary" disabled={loadingMore} onClick={loadMore}>
               {loadingMore ? 'Loading more…' : 'Load more content work'}
             </Button>
           ) : null}
-        </div>
+        </>
       )}
     </>
   );
