@@ -47,8 +47,8 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
             <Badge>Hardening in progress</Badge>
           </div>
           <p>
-            Inspect bounded release evidence and prepared execution state. This surface does not mean
-            a filing was submitted, and its browser authority boundary is still being hardened.
+            Inspect bounded release evidence and prepared execution state. This surface does not
+            mean a filing was submitted, and its browser authority boundary is still being hardened.
           </p>
           <Button variant="secondary" onClick={() => open('work-execution-release')}>
             Open bounded release surface
