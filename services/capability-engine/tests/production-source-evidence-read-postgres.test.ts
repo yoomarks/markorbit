@@ -245,7 +245,14 @@ integration('trusted production source evidence PostgreSQL read', () => {
         }
       }
     });
-    expect(JSON.stringify(result)).not.toContain(command().idempotencyKey);
+    const persisted = await database
+      .getPool()
+      .query<{ execution_json: unknown }>(
+        'SELECT execution_json FROM capability_governed_runtime_replays'
+      );
+    const persistedExecution = JSON.stringify(persisted.rows[0]?.execution_json);
+    expect(persistedExecution).not.toContain(command().idempotencyKey);
+    expect(persistedExecution).toContain('__MARKORBIT_REPLAY_KEY_REDACTED__');
   });
 
   it('fails closed before admission when the persisted immutable execution is corrupted', async () => {
