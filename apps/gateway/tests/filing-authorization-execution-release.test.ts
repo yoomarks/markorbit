@@ -171,7 +171,8 @@ beforeEach(async () => {
   await execution.start();
   const gateway = createGateway({
     port: 0,
-    executionUrl: `http://127.0.0.1:${execution.listeningPort}`
+    executionUrl: `http://127.0.0.1:${execution.listeningPort}`,
+    milestoneTestRuntime: true
   });
   active.push(gateway);
   await gateway.start();

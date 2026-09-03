@@ -37,6 +37,7 @@ export * from './product-loop-http.js';
 export * from './data-engine-product-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
+export * from './filing-governance-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -59,6 +60,7 @@ import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
+import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -389,6 +391,20 @@ export function createRuntime(options: GatewayOptions = {}) {
   };
   const preparationLock = createGatewayPreparationLockHandler({
     markRegUrl,
+    ...(authenticationClient ? { authenticationClient } : {}),
+    ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+      ? {
+          internalServiceSecret: (options.internalServiceSecret ??
+            process.env.MO_INTERNAL_SERVICE_SECRET)!
+        }
+      : {}),
+    csrfSecret,
+    allowedOrigins,
+    fixtureTestRuntime: milestoneTestRuntime
+  });
+
+  const filingGovernance = createGatewayFilingGovernanceHandler({
+    executionUrl,
     ...(authenticationClient ? { authenticationClient } : {}),
     ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
       ? {
@@ -912,31 +928,7 @@ export function createRuntime(options: GatewayOptions = {}) {
         ).map(([method, path]): JsonRoute => ({
           method,
           path,
-          handle: async (request) => {
-            try {
-              const response = await fetch(
-                `${executionUrl}${request.path.replace('/api/execution', '/v1')}`,
-                {
-                  method: request.method,
-                  headers: {
-                    'content-type': 'application/json',
-                    ...(request.headers['idempotency-key']
-                      ? { 'idempotency-key': request.headers['idempotency-key'] }
-                      : {})
-                  },
-                  ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
-                }
-              );
-              return json(response.status, await response.json());
-            } catch {
-              throw new HttpError(
-                502,
-                'DOWNSTREAM_UNAVAILABLE',
-                'Execution filing governance service is unavailable.',
-                true
-              );
-            }
-          }
+          handle: (request) => filingGovernance(request)
         })),
         ...(
           [
