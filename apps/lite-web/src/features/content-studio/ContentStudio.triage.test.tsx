@@ -1,34 +1,12 @@
 // @vitest-environment jsdom
-import * as path from 'node:path';
-import { readFile } from 'node:fs/promises';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import * as prettier from 'prettier';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ContentStudio, contentWorkNextFocus, contentWorkTriage } from './ContentStudio.js';
 import { fixtureClient, fixtureWorkspaceId, listFixture, summaryFixture } from './fixtures.js';
 
 afterEach(cleanup);
-
-it('prints exact hosted Prettier output as base64', async () => {
-  const files = [
-    path.resolve('src/features/content-studio/ContentStudio.tsx'),
-    path.resolve('src/features/content-studio/ContentStudio.triage.test.tsx')
-  ];
-  const outputs: Array<[string, string]> = [];
-  for (const file of files) {
-    const input = await readFile(file, 'utf8');
-    const config = await prettier.resolveConfig(file);
-    const output = await prettier.format(input, {
-      ...(config ?? {}),
-      requirePragma: false,
-      filepath: file
-    });
-    outputs.push([file, Buffer.from(output, 'utf8').toString('base64')]);
-  }
-  throw new Error(`PRETTIER703_B64:${JSON.stringify(outputs)}`);
-});
 
 function work(
   version: number,
