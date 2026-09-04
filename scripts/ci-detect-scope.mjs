@@ -419,7 +419,14 @@ function main() {
   writeOutputs(scope);
   console.log(
     JSON.stringify(
-      { requestedBase: args.base, diffBase, head: args.head, mergeBase: args.mergeBase, files, scope },
+      {
+        requestedBase: args.base,
+        diffBase,
+        head: args.head,
+        mergeBase: args.mergeBase,
+        files,
+        scope
+      },
       null,
       2
     )
