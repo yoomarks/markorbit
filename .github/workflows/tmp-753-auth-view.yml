@@ -1,0 +1,41 @@
+name: tmp 753 auth view
+
+on:
+  push:
+    branches:
+      - tmp/753-markreg-durable-auth-view
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/753-markreg-durable-auth-view
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/tmp-753-auth-view-fix.mjs
+      - run: pnpm exec prettier --write apps/markreg-web/src/FilingAuthorization.tsx
+      - run: pnpm --filter @markorbit/contracts build
+      - run: pnpm --filter @markorbit/markreg-web typecheck
+      - run: pnpm --filter @markorbit/markreg-web lint
+      - run: pnpm --filter @markorbit/markreg-web test
+      - name: Commit exact output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/markreg-web/src/FilingAuthorization.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "tmp: apply durable Filing Authorization view"
+          git push origin HEAD:tmp/753-markreg-durable-auth-view
