@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { milestoneUrls } from '../../scripts/milestone-runtime.mjs';
+import { milestoneAuth, milestoneUrls } from '../../scripts/milestone-runtime.mjs';
 import {
   serializeMarkregRoute,
   type MarkregRoute
@@ -64,6 +64,19 @@ test.describe('Milestone 001 real runtime golden path', () => {
     const fill = async (label: string, value: string) => page.getByLabel(label).fill(value);
     await test.step('Consultation / Plan / Quote', async () => {
       await page.goto(`${milestoneUrls.markregWeb}/?scenario=${scenario}`);
+      const workspaceResponse = await page.request.get(`${milestoneUrls.gateway}/api/workspaces`);
+      expect(workspaceResponse.status()).toBe(200);
+      const { workspaces } = await workspaceResponse.json();
+      const entry = workspaces.find(
+        (value: { workspace: { workspaceId: string } }) =>
+          value.workspace.workspaceId === milestoneAuth.workspaceId
+      );
+      expect(entry).toBeDefined();
+      // Restore the authenticated account entry's selection for the bounded fixture entry.
+      // This is request context; Gateway and owners still derive and validate authority.
+      await page.evaluate((workspaceId: string) => {
+        sessionStorage.setItem('markorbit-workspace-id', workspaceId);
+      }, entry.workspace.workspaceId);
       await page.getByRole('button', { name: 'Start consultation' }).click();
       await page.getByLabel('Applicant type').selectOption({ label: 'Company' });
       await page
@@ -149,14 +162,43 @@ test.describe('Milestone 001 real runtime golden path', () => {
         { view: 'matter-draft', recordId: matterId, expectedVersion: matterVersion },
         'READY_FOR_PROFESSIONAL_REVIEW'
       );
-      await page.getByRole('button', { name: 'Send to Professional Review' }).click();
-      await page.getByRole('link', { name: 'Open exact Professional Review in Lite' }).click();
+      const formalMatterResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/markreg/formal-matters') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByRole('button', { name: 'Create Formal Matter', exact: true }).click();
+      const formalMatterResult = await formalMatterResponse;
+      expect(formalMatterResult.status()).toBe(200);
+      const { formalMatter } = await formalMatterResult.json();
+      expect(formalMatter.sourceMatterDraftId).toBe(matterId);
+      expect(String(formalMatter.sourceMatterDraftVersion)).toBe(matterVersion);
+      await expect(page.getByRole('heading', { name: 'Formal Matter receipt' })).toBeVisible();
+      await page.goto(`${milestoneUrls.liteWeb}/?workspaceId=${milestoneAuth.workspaceId}#matters`);
+      await page.locator(`button[data-matter-id="${formalMatter.formalMatterId}"]`).click();
+      const reviewResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/lite/professional-review-cases') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByRole('button', { name: 'Start or Resume Professional Review' }).click();
+      const reviewResult = await reviewResponse;
+      expect(reviewResult.status()).toBe(200);
+      expect((await reviewResult.json()).reviewCase).toMatchObject({
+        formalMatterId: formalMatter.formalMatterId,
+        sourceFormalMatterVersion: formalMatter.version,
+        sourceSnapshotSha256: formalMatter.snapshotSha256
+      });
     });
     await test.step('Professional Review', async () => {
       await expect(page.getByRole('button', { name: 'Claim review' })).toBeVisible();
       const reviewId = await id(page, /Professional Review Case (professional-review_[\w-]+)/);
       await expect(page.getByText(lineage.require('matterDraft').id)).toBeVisible();
-      await expect(page.getByText(String(lineage.require('matterDraft').version))).toBeVisible();
+      await expect(
+        page
+          .locator('dt', { hasText: /^Matter Draft version$/ })
+          .locator('xpath=following-sibling::dd[1]')
+      ).toHaveText(String(lineage.require('matterDraft').version));
       const initialReviewVersion = await id(page, /Review version\s+(\d+)/);
       const claimResponse = page.waitForResponse(
         (response) =>
@@ -214,57 +256,115 @@ test.describe('Milestone 001 real runtime golden path', () => {
       await page
         .getByRole('link', { name: 'Return to MarkReg Documents and Instructions' })
         .click();
+      await expect(
+        page.getByRole('heading', { name: 'Professional Review complete' })
+      ).toBeVisible();
       await page.getByRole('button', { name: 'Open Documents and Instructions' }).click();
+      await expect(page.getByRole('heading', { name: 'Documents and Instructions' })).toBeVisible();
     });
-    await test.step('Documents / Ledger / Lock', async () => {
-      await page.getByRole('button', { name: 'Create Document Package' }).click();
+    await test.step('Documents / Durable Preparation Lock', async () => {
+      const packageCreateResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/markreg/document-packages') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByRole('button', { name: 'Create durable Document Package' }).click();
+      const packageCreateResult = await packageCreateResponse;
+      expect(packageCreateResult.status()).toBe(200);
+      const initialPackage = (await packageCreateResult.json()) as {
+        documentPackageId: string;
+        version: number;
+        requirements: { requirementKey: string; displayName: string; blocking: boolean }[];
+      };
+      const packageId = initialPackage.documentPackageId;
+      let packageVersion = initialPackage.version;
+      const blockingRequirements = initialPackage.requirements.filter(
+        (requirement) => requirement.blocking
+      );
+      lineage.record('documentPackage', { id: packageId, version: packageVersion });
+      await expect(page.getByText(packageId)).toBeVisible();
       await expect(
-        page.getByRole('button', { name: 'Record fixture document metadata' })
-      ).toBeVisible();
-      const packageId = await id(page, /(document-package_[\w-]+) · version (\d+)/);
-      const packageVersion = await id(page, /document-package_[\w-]+ · version (\d+)/);
-      lineage.record('documentPackage', { id: packageId, version: Number(packageVersion) });
-      await page.getByRole('button', { name: 'Record fixture document metadata' }).click();
-      await page.getByRole('button', { name: 'Evaluate documents' }).click();
-      await expect(page.getByText(/UNKNOWN — blocking/).first()).toBeVisible();
-      await page.getByRole('button', { name: 'Complete required metadata and reevaluate' }).click();
-      await page.getByRole('button', { name: 'Review customer instructions' }).click();
-      await expect(
-        page.getByRole('group', { name: 'Confirm the exact preparation instructions' })
-      ).toBeVisible();
-      const ledgerId = await id(page, /(instruction-ledger_[\w-]+) · version (\d+)/);
-      const ledgerVersion = await id(page, /instruction-ledger_[\w-]+ · version (\d+)/);
-      lineage.record('instructionLedger', { id: ledgerId, version: Number(ledgerVersion) });
-      const instructionChecks = page
-        .getByRole('group', { name: 'Confirm the exact preparation instructions' })
-        .getByRole('checkbox');
-      for (let index = 0; index < 6; index++) await instructionChecks.nth(index).click();
-      await page.getByRole('button', { name: 'Confirm customer instructions' }).click();
-      await page.getByRole('button', { name: 'Lock package for preparation' }).click();
+        page.getByRole('button', { name: 'Create Document Package', exact: true })
+      ).toHaveCount(0);
+      expect(blockingRequirements.length).toBeGreaterThan(0);
+
+      for (const [index, requirement] of blockingRequirements.entries()) {
+        await page.getByLabel('Requirement').selectOption(requirement.requirementKey);
+        await page
+          .getByLabel('Evidence display name')
+          .fill(`${scenario}-evidence-${index + 1}.pdf`);
+        await page.getByLabel('SHA-256 checksum').fill((index + 1).toString(16).padStart(64, '0'));
+        const evidenceResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith(`/api/markreg/document-packages/${packageId}/documents`) &&
+            response.request().method() === 'POST'
+        );
+        await page.getByRole('button', { name: 'Record evidence metadata' }).click();
+        const evidenceResult = await evidenceResponse;
+        expect(evidenceResult.status()).toBe(200);
+        const evidencePackage = (await evidenceResult.json()) as { version: number };
+        packageVersion = evidencePackage.version;
+      }
+
+      const instructionResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/api/markreg/document-packages/${packageId}/instructions`) &&
+          response.request().method() === 'POST'
+      );
+      await page
+        .getByRole('button', { name: 'Authorize recorded documents for preparation only' })
+        .click();
+      const instructionResult = await instructionResponse;
+      expect(instructionResult.status()).toBe(200);
+      packageVersion = ((await instructionResult.json()) as { version: number }).version;
+
+      const readyResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/api/markreg/document-packages/${packageId}/mark-ready`) &&
+          response.request().method() === 'POST'
+      );
+      await page.getByRole('button', { name: 'Mark package ready for Preparation Lock' }).click();
+      const readyResult = await readyResponse;
+      expect(readyResult.status()).toBe(200);
+      const readyPackage = (await readyResult.json()) as {
+        version: number;
+        canonicalEvidenceHash?: string;
+        status: string;
+      };
+      packageVersion = readyPackage.version;
+      expect(readyPackage.status).toBe('READY_FOR_PREPARATION_LOCK');
+      expect(readyPackage.canonicalEvidenceHash).toMatch(/^[a-f0-9]{64}$/);
+      lineage.record('documentPackage', { id: packageId, version: packageVersion });
+
+      const lockCreateResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/markreg/preparation-locks') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByRole('button', { name: 'Lock exact package for preparation' }).click();
+      const lockCreateResult = await lockCreateResponse;
+      expect(lockCreateResult.status()).toBe(200);
+      const lock = (await lockCreateResult.json()) as {
+        preparationLockId: string;
+        version: number;
+        source: { documentPackageId: string; documentPackageVersion: number };
+      };
+      expect(lock.source.documentPackageId).toBe(packageId);
+      expect(lock.source.documentPackageVersion).toBe(packageVersion);
+      const lockId = lock.preparationLockId;
+      const lockVersion = String(lock.version);
+      lineage.record('preparationLock', { id: lockId, version: lockVersion });
       await expect(
         page.getByRole('heading', { name: 'Locked for preparation — not submitted' })
       ).toBeVisible();
-      const lockId = await id(page, /Preparation Lock ID\s+(preparation-lock_[\w-]+)/);
-      const lockedPackageVersion = await id(
-        page,
-        /Package\s+document-package_[\w-]+ · version (\d+)/
-      );
-      const lockedLedgerVersion = await id(
-        page,
-        /Instruction ledger\s+instruction-ledger_[\w-]+ · version (\d+)/
-      );
-      const lockVersion = `${lockedPackageVersion}:${lockedLedgerVersion}`;
-      lineage.record('documentPackage', { id: packageId, version: Number(lockedPackageVersion) });
-      lineage.record('instructionLedger', { id: ledgerId, version: Number(lockedLedgerVersion) });
-      lineage.record('preparationLock', { id: lockId, version: lockVersion });
       await checkpoint(
         page,
         scenario,
         'markreg',
         { view: 'preparation-lock', recordId: lockId, expectedVersion: lockVersion },
-        'READY'
+        'Durable Preparation Lock'
       );
-      await page.getByRole('button', { name: 'Open Filing Authorization' }).click();
+      await page.getByRole('button', { name: 'Review Filing Authorization' }).click();
     });
     await test.step('Filing Authorization', async () => {
       const authorizationChecks = page.getByRole('checkbox');
@@ -314,26 +414,30 @@ test.describe('Milestone 001 real runtime golden path', () => {
         .click();
     });
     await test.step('Execution Release / Task Draft', async () => {
+      await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Open release' }).click();
       await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();
       const releaseId = await id(page, /(execution-release_[\w-]+)/);
       lineage.record('executionRelease', { id: releaseId, version: 1 });
       await page.getByRole('button', { name: 'Evaluate release' }).click();
-      await page.getByRole('button', { name: 'Assign internal executor' }).click();
+      await expect(page.getByText('READY_FOR_RELEASE', { exact: true }).first()).toBeVisible();
+      await page.getByRole('button', { name: 'Assign to me' }).click();
       await fill(
         'Internal release rationale',
         'All exact governed evidence passed internal execution review.'
+      );
+      const releaseMutation = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/api/execution/execution-releases/${releaseId}/release`) &&
+          response.request().method() === 'POST'
       );
       await page.getByRole('button', { name: 'Release for execution' }).click();
       await expect(
         page.getByText('Released for execution — no external filing performed')
       ).toBeVisible();
-      const releaseResponse = await page.evaluate(
-        async ({ gateway, releaseId }) =>
-          (await fetch(`${gateway}/api/execution/execution-releases/${releaseId}`)).json(),
-        { gateway: milestoneUrls.gateway, releaseId }
-      );
-      const releasedVersion = String(releaseResponse.executionRelease.version);
+      const releaseResponse = await releaseMutation;
+      expect(releaseResponse.status()).toBe(200);
+      const releasedVersion = String((await releaseResponse.json()).releaseResult.release.version);
       lineage.record('executionRelease', { id: releaseId, version: releasedVersion });
       await checkpoint(
         page,

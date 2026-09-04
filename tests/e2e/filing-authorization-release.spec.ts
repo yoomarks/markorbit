@@ -149,6 +149,9 @@ let release = {
   updatedAt: at
 };
 async function install(page: Page) {
+  await page.route('**/api/auth/session', (r) =>
+    r.fulfill({ json: { csrfToken: 'csrf_fixture_token' } })
+  );
   await page.route('**/api/markreg/preparation-locks/**', (r) => r.fulfill({ json: lock }));
   await page.route('**/api/execution/filing-authorizations', (r) =>
     r.fulfill({ json: { filingAuthorization: authorization, consequences } })
@@ -263,7 +266,7 @@ test('Preparation Lock to authorized internal task draft remains non-executing @
   await expect(
     page.getByRole('listitem').filter({ hasText: 'COMMERCIAL_SCOPE_UNCHANGED' })
   ).toContainText('PASS');
-  await page.getByRole('button', { name: 'Assign internal executor' }).click();
+  await page.getByRole('button', { name: 'Assign to me' }).click();
   await expect(page.getByText('executor_fixture')).toBeVisible();
   await page.getByLabel('Internal release rationale').fill('All governed evidence passed.');
   await page.getByRole('button', { name: 'Release for execution' }).click();

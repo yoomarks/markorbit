@@ -32,7 +32,18 @@ export const milestoneUrls = Object.freeze({
   markregWeb: `http://127.0.0.1:${milestonePorts.markregWeb}`
 });
 
-export function milestoneConfiguration(ports = milestonePorts) {
+export function milestoneConfiguration(ports = milestonePorts, environment = process.env) {
+  const durableOwners = environment.MO_MILESTONE_DURABLE_OWNERS === '1';
+  const internalServiceSecret = environment.MO_INTERNAL_SERVICE_SECRET ?? '';
+  if (
+    durableOwners &&
+    (!environment.MARKREG_DATABASE_URL ||
+      !environment.EXECUTION_DATABASE_URL ||
+      Buffer.byteLength(internalServiceSecret) < 32)
+  )
+    throw new Error(
+      'Durable milestone owners require MARKREG_DATABASE_URL, EXECUTION_DATABASE_URL and a >=32-byte MO_INTERNAL_SERVICE_SECRET.'
+    );
   const urls = Object.freeze({
     gateway: `http://127.0.0.1:${ports.gateway}`,
     capability: `http://127.0.0.1:${ports.capability}`,
@@ -58,7 +69,14 @@ export function milestoneConfiguration(ports = milestonePorts) {
         PORT: String(ports.markreg),
         EXECUTION_URL: urls.execution,
         CAPABILITY_ENGINE_URL: urls.capability,
-        MO_MILESTONE_TEST_RUNTIME: '1'
+        MO_MILESTONE_TEST_RUNTIME: durableOwners ? '0' : '1',
+        ...(durableOwners
+          ? {
+              MO_MILESTONE_DURABLE_OWNERS: '1',
+              MARKREG_DATABASE_URL: environment.MARKREG_DATABASE_URL,
+              MO_INTERNAL_SERVICE_SECRET: internalServiceSecret
+            }
+          : {})
       }
     },
     {
@@ -69,7 +87,14 @@ export function milestoneConfiguration(ports = milestonePorts) {
       env: {
         PORT: String(ports.execution),
         MARKREG_URL: urls.markreg,
-        MO_MILESTONE_TEST_RUNTIME: '1'
+        MO_MILESTONE_TEST_RUNTIME: durableOwners ? '0' : '1',
+        ...(durableOwners
+          ? {
+              MO_MILESTONE_DURABLE_OWNERS: '1',
+              EXECUTION_DATABASE_URL: environment.EXECUTION_DATABASE_URL,
+              MO_INTERNAL_SERVICE_SECRET: internalServiceSecret
+            }
+          : {})
       }
     },
     {
@@ -83,7 +108,8 @@ export function milestoneConfiguration(ports = milestonePorts) {
         EXECUTION_URL: urls.execution,
         CORE_URL: milestoneAuth.coreUrl,
         WEB_ORIGINS: `${urls.markregWeb},${urls.liteWeb}`,
-        MO_MILESTONE_TEST_RUNTIME: '1'
+        MO_MILESTONE_TEST_RUNTIME: '1',
+        ...(durableOwners ? { MO_INTERNAL_SERVICE_SECRET: internalServiceSecret } : {})
       }
     },
     {

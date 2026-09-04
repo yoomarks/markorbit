@@ -13,6 +13,7 @@ import {
   encodeInternalWorkspacePrincipal,
   type ProfessionalReviewCase
 } from '@markorbit/contracts';
+import { json } from '@markorbit/service-kit';
 import {
   LifecycleProjectionService,
   PostgresLifecycleProjectionRepository
@@ -74,6 +75,7 @@ import { PostgresProductionIntakeService } from './production-intake.js';
 import { createProductionIntakeRoutes } from './production-intake-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+const durableMilestoneOwners = process.env.MO_MILESTONE_DURABLE_OWNERS === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
 let runtime: ReturnType<typeof createRuntime>;
 if (fixtureRuntime) {
@@ -103,6 +105,58 @@ if (fixtureRuntime) {
   const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
   if (!internalServiceSecret)
     throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable MarkReg runtime.');
+  const durableMilestoneSnapshotRoutes = durableMilestoneOwners
+    ? [
+        {
+          method: 'GET' as const,
+          path: '/__milestone/scenario-records',
+          handle: async () => {
+            const [draftResult, lockResult] = await Promise.all([
+              pool.query(
+                'SELECT matter_draft_id,customer_confirmation_id,preparation,status,version,updated_at FROM matter_drafts ORDER BY matter_draft_id'
+              ),
+              pool.query(
+                'SELECT lock_record FROM markreg_preparation_locks ORDER BY preparation_lock_id'
+              )
+            ]);
+            const matterDrafts = draftResult.rows.map((raw) => {
+              const row = raw as Record<string, unknown>;
+              return {
+                matterDraftId: String(row.matter_draft_id),
+                confirmationId: String(row.customer_confirmation_id),
+                preparation: row.preparation,
+                status: String(row.status),
+                version: Number(row.version),
+                updatedAt: new Date(row.updated_at as string).toISOString()
+              };
+            });
+            const preparationLocks = lockResult.rows.map((raw) => {
+              const row = raw as Record<string, unknown>;
+              const lock = row.lock_record as Record<string, unknown>;
+              const source = (lock.source ?? {}) as Record<string, unknown>;
+              const instructionLedgerVersion =
+                typeof source.instructionSetHash === 'string'
+                  ? source.instructionSetHash
+                  : typeof lock.version === 'string' || typeof lock.version === 'number'
+                    ? String(lock.version)
+                    : '1';
+              return {
+                ...lock,
+                documentPackageVersion: Number(source.documentPackageVersion),
+                instructionLedgerVersion,
+                snapshot: {
+                  documentPackage: {
+                    professionalReviewCaseId: String(source.professionalReviewCaseId)
+                  },
+                  sourceReviewDecisionVersion: Number(source.reviewVersion)
+                }
+              };
+            });
+            return json(200, { matterDrafts, preparationLocks });
+          }
+        }
+      ]
+    : [];
   const formalMatterRepository = new PostgresFormalMatterRepository(database, pool);
   const matterIntelligenceRepository = new PostgresMatterIntelligenceRepository(database, pool);
   const matterIntelligenceService = new MatterIntelligenceService(
@@ -255,6 +309,7 @@ if (fixtureRuntime) {
     });
   })();
   runtime = createRuntime({
+    milestoneTestRuntime: durableMilestoneOwners,
     customerConfirmationRepository: new PostgresCustomerConfirmationRepository(pool),
     matterDraftRepository: new PostgresMatterDraftRepository(pool),
     formalMatterRepository,
@@ -264,6 +319,7 @@ if (fixtureRuntime) {
     internalServiceSecret,
     executionUrl,
     extraRoutes: [
+      ...durableMilestoneSnapshotRoutes,
       ...productionIntakeRoutes,
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,

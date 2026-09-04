@@ -228,6 +228,45 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const forwardMatterDraft = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    command: Readonly<{
+      workspaceId: string;
+      confirmationId: string;
+      confirmationVersion: number;
+    }>
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'MarkReg service authentication is unavailable.',
+        true
+      );
+    const correlation = correlationId(request);
+    try {
+      const response = await fetch(`${options.markRegUrl}/v1/matter-drafts`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-correlation-id': correlation,
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': principal.workspaceId,
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {})
+        },
+        body: JSON.stringify(command)
+      });
+      return json(response.status, await response.json(), { 'x-correlation-id': correlation });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
   const forwardProductionIntakeRead = async (
     request: JsonRequest,
     principal: WorkspacePrincipal
@@ -468,6 +507,36 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const matterDraftRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/matter-drafts',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      const principal = await authenticate(request);
+      if (body.workspaceId !== undefined && body.workspaceId !== principal.workspaceId)
+        throw new HttpError(
+          400,
+          'ACTOR_SPOOF_REJECTED',
+          'workspaceId is trusted authority context and must match the authenticated Workspace.'
+        );
+      if (
+        typeof body.confirmationId !== 'string' ||
+        !body.confirmationId.trim() ||
+        !Number.isSafeInteger(body.confirmationVersion)
+      )
+        throw new HttpError(
+          400,
+          'INVALID_REQUEST',
+          'Confirmation and exact version are required to prepare a Matter Draft.'
+        );
+      return forwardMatterDraft(request, principal, {
+        workspaceId: principal.workspaceId,
+        confirmationId: body.confirmationId,
+        confirmationVersion: body.confirmationVersion as number
+      });
+    }
+  };
+
   const intakeRoute: JsonRoute = {
     method: 'POST',
     path: '/v1/markreg/intakes',
@@ -512,6 +581,7 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     quoteRoute,
     confirmationRoute,
     customerConfirmationRoute,
+    matterDraftRoute,
     matterIntelligenceRoute,
     formalMatterEvidenceRoute
   ];
