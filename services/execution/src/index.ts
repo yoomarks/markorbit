@@ -437,17 +437,104 @@ export function createRuntime(options: ExecutionOptions = {}) {
         },
         {
           method: 'PATCH',
+          path: '/v1/execution-releases/:executionReleaseId/self-assignment',
+          handle: (r) =>
+            filingCall(
+              r,
+              true,
+              async (service, principal) => {
+                if (!principal)
+                  throw new FilingGovernanceError(
+                    'INVALID_INTERNAL_PRINCIPAL',
+                    'A trusted Workspace Principal is required for self-assignment.',
+                    401
+                  );
+                const body = r.body as Record<string, unknown> | undefined;
+                if (!body || typeof body !== 'object' || Array.isArray(body))
+                  throw new FilingGovernanceError(
+                    'INVALID_SELF_ASSIGNMENT_COMMAND',
+                    'Self-assignment requires an exact expectedVersion.',
+                    400
+                  );
+                const forbiddenIdentityFields = [
+                  'internalExecutorId',
+                  'executorId',
+                  'actor',
+                  'actorId',
+                  'userId',
+                  'principal',
+                  'membership',
+                  'membershipId',
+                  'workspaceId',
+                  'authority',
+                  'permissions',
+                  'role'
+                ];
+                const suppliedIdentityFields = forbiddenIdentityFields.filter((key) => key in body);
+                if (suppliedIdentityFields.length)
+                  throw new FilingGovernanceError(
+                    'SELF_ASSIGNMENT_IDENTITY_NOT_ACCEPTED',
+                    'Executor and authority identity are derived from the trusted Workspace Principal.',
+                    400,
+                    { suppliedIdentityFields }
+                  );
+                if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1)
+                  throw new FilingGovernanceError(
+                    'EXPECTED_VERSION_REQUIRED',
+                    'Exact current Execution Release version is required for self-assignment.',
+                    422
+                  );
+                const id = r.params.executionReleaseId as ExecutionReleaseId;
+                const expectedVersion = Number(body.expectedVersion);
+                const current = await service.getRelease(id);
+                if (current.version !== expectedVersion)
+                  throw new FilingGovernanceError(
+                    'STALE_EXECUTION_RELEASE',
+                    'Execution Release changed; reload the exact latest version.',
+                    409,
+                    { expectedVersion, actualVersion: current.version }
+                  );
+                if (current.status === 'RELEASED_FOR_EXECUTION')
+                  throw new FilingGovernanceError(
+                    'EXECUTION_RELEASE_IMMUTABLE',
+                    'Released assignment is immutable.'
+                  );
+                if (!['DRAFT', 'BLOCKED', 'READY_FOR_RELEASE'].includes(current.status))
+                  throw new FilingGovernanceError(
+                    'EXECUTION_RELEASE_NOT_ASSIGNABLE',
+                    'Execution Release cannot be assigned in its current state.',
+                    409,
+                    { state: current.status }
+                  );
+                return service.assign(
+                  id,
+                  { internalExecutorId: principal.userId },
+                  expectedVersion
+                );
+              },
+              'executionRelease'
+            )
+        },
+        {
+          method: 'PATCH',
           path: '/v1/execution-releases/:executionReleaseId/assignment',
           handle: (r) =>
             filingCall(
               r,
               true,
-              (service) =>
-                service.assign(
+              (service, principal) => {
+                if (principal)
+                  throw new FilingGovernanceError(
+                    'GENERIC_EXECUTOR_ASSIGNMENT_DISABLED',
+                    'Production durable runtime only permits trusted-principal self-assignment.',
+                    404
+                  );
+                return service.assign(
                   r.params.executionReleaseId as ExecutionReleaseId,
                   { internalExecutorId: (r.body as any).internalExecutorId },
                   (r.body as any).expectedVersion
-                ),
+                );
+              },
               'executionRelease'
             )
         },
