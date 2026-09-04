@@ -9,12 +9,13 @@ permissions:
   contents: write
 
 jobs:
-  format:
+  repair:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: tmp-mgsn-715-prettier-20260904
+          ref: mgsn-selection-handoff-current-authority-715
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -23,27 +24,83 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Format exact MGSN files
+      - name: Repair focused test typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def exact_replace(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f"expected text not found in {path}: {old[:80]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          handoff = "services/mgsn/tests/controlled-handoff-current-authority.test.ts"
+          exact_replace(
+              handoff,
+              "import { noDownstreamProviderSelectionAuthorityConsequences } from '@markorbit/contracts/provider-selection';",
+              "import {\n  noDownstreamProviderSelectionAuthorityConsequences,\n  type ProviderSelectionCurrentValidationV1\n} from '@markorbit/contracts/provider-selection';",
+          )
+          exact_replace(
+              handoff,
+              "function selectionValidation(overrides: Record<string, unknown> = {}) {",
+              "function selectionValidation(\n  overrides: Partial<\n    Extract<\n      ProviderSelectionCurrentValidationV1,\n      { decision: 'CURRENTLY_USABLE_FOR_BOUNDED_REVIEW' }\n    >\n  > = {}\n): ProviderSelectionCurrentValidationV1 {",
+          )
+          exact_replace(
+              handoff,
+              "assessCurrent: vi.fn(() => Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: null }))",
+              "assessCurrent: vi.fn(() =>\n      Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN' as const, assessment: null })\n    )",
+          )
+
+          selection = "services/mgsn/tests/provider-selection-current-authority.test.ts"
+          exact_replace(
+              selection,
+              "import type {\n  NetworkParticipationId,\n  NetworkVisibilityPolicyVersionRecord\n} from '../src/network-participation.js';\nimport type { NetworkParticipationVersionRecord } from '../src/network-participation.js';",
+              "import type { NetworkParticipationId } from '@markorbit/contracts/network-participation';\nimport type {\n  NetworkParticipationVersionRecord,\n  NetworkVisibilityPolicyVersionRecord\n} from '../src/network-participation.js';",
+          )
+          exact_replace(
+              selection,
+              "        effectiveUntil: supply.effectivePeriod.effectiveUntil,",
+              "        ...(supply.effectivePeriod.effectiveUntil\n          ? { effectiveUntil: supply.effectivePeriod.effectiveUntil }\n          : {}),",
+          )
+
+          runtime = "services/mgsn/tests/runtime-dependencies-current-authority.test.ts"
+          exact_replace(
+              runtime,
+              "    const fetchMock = vi.fn(() =>\n      Promise.resolve(\n        response(200, {",
+              "    let requestInit: RequestInit | undefined;\n    const fetchMock = vi.fn((_input: Parameters<typeof fetch>[0], init?: RequestInit) => {\n      requestInit = init;\n      return Promise.resolve(\n        response(200, {",
+          )
+          exact_replace(
+              runtime,
+              "        })\n      )\n    );\n    vi.stubGlobal('fetch', fetchMock);",
+              "        })\n      );\n    });\n    vi.stubGlobal('fetch', fetchMock);",
+          )
+          exact_replace(
+              runtime,
+              "    const [, init] = fetchMock.mock.calls[0]!;\n    const headers = init?.headers as Record<string, string>;",
+              "    expect(fetchMock).toHaveBeenCalledTimes(1);\n    const headers = requestInit?.headers as Record<string, string>;",
+          )
+          exact_replace(
+              runtime,
+              "    expect(JSON.parse(String(init?.body))).toEqual({ workspaceId, userId, membershipId });",
+              "    expect(JSON.parse(String(requestInit?.body))).toEqual({ workspaceId, userId, membershipId });",
+          )
+          PY
+      - name: Canonical format
         run: |
           pnpm exec prettier --write \
-            services/mgsn/src/controlled-handoff-current-authority.ts \
-            services/mgsn/src/provider-selection-current-authority.ts \
-            services/mgsn/src/runtime-dependencies.ts \
             services/mgsn/tests/controlled-handoff-current-authority.test.ts \
             services/mgsn/tests/provider-selection-current-authority.test.ts \
             services/mgsn/tests/runtime-dependencies-current-authority.test.ts
-      - name: Commit canonical formatting
+      - name: Commit repair to formal branch
         run: |
-          if git diff --quiet; then
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/src/controlled-handoff-current-authority.ts \
-                  services/mgsn/src/provider-selection-current-authority.ts \
-                  services/mgsn/src/runtime-dependencies.ts \
-                  services/mgsn/tests/controlled-handoff-current-authority.test.ts \
+          git add services/mgsn/tests/controlled-handoff-current-authority.test.ts \
                   services/mgsn/tests/provider-selection-current-authority.test.ts \
                   services/mgsn/tests/runtime-dependencies-current-authority.test.ts
-          git commit -m "tmp: canonical prettier for MGSN 715"
-          git push origin HEAD:tmp-mgsn-715-prettier-20260904
+          git commit -m "test(mgsn): fix current-authority focused test typing"
+          git push origin HEAD:mgsn-selection-handoff-current-authority-715
+      - name: Focused typecheck after push
+        run: pnpm --filter @markorbit/mgsn-service typecheck
