@@ -113,10 +113,10 @@ integration('PostgreSQL Brain cognitive current read authority', () => {
     const stored = await registry.register(asset('a', 1, 'DRAFT'));
     await database
       .getPool()
-      .query('UPDATE brain_asset_versions SET asset_json=$1::jsonb WHERE brain_asset_version_id=$2', [
-        JSON.stringify({ schemaVersion: 1, corrupted: true }),
-        stored.brainAssetVersionId
-      ]);
+      .query(
+        'UPDATE brain_asset_versions SET asset_json=$1::jsonb WHERE brain_asset_version_id=$2',
+        [JSON.stringify({ schemaVersion: 1, corrupted: true }), stored.brainAssetVersionId]
+      );
 
     try {
       await reader.listCurrent();
