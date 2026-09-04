@@ -76,16 +76,20 @@ export function ExecutionReleaseView({
   state: initialState,
   initialFilingAuthorization
 }: {
-  workspaceId: string;
+  workspaceId?: string;
   client?: LiteExecutionClient;
   fixtureReleases?: ExecutionRelease[];
   state?: ReleaseViewState;
   long?: boolean;
   initialFilingAuthorization?: { id: string; version: number };
 }) {
+  const resolvedWorkspaceId = useMemo(
+    () => workspaceId ?? new URLSearchParams(window.location.search).get('workspaceId') ?? '',
+    [workspaceId]
+  );
   const executionClient = useMemo(
-    () => client ?? createLiteExecutionClient(workspaceId),
-    [client, workspaceId]
+    () => client ?? createLiteExecutionClient(resolvedWorkspaceId),
+    [client, resolvedWorkspaceId]
   );
   const [view, setView] = useState<ReleaseViewState>(initialState ?? 'RELEASE_QUEUE_LOADING');
   const [releases, setReleases] = useState<ExecutionRelease[]>(fixtureReleases ?? []);
@@ -105,6 +109,11 @@ export function ExecutionReleaseView({
   useEffect(() => {
     if (fixtureReleases) {
       setView(initialState ?? (fixtureReleases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY'));
+      return;
+    }
+    if (!resolvedWorkspaceId) {
+      setMessage('A valid Workspace context is required to load durable Execution Releases.');
+      setView('RECOVERABLE_ERROR');
       return;
     }
     let active = true;
@@ -139,7 +148,7 @@ export function ExecutionReleaseView({
     return () => {
       active = false;
     };
-  }, [executionClient, fixtureReleases, initialFilingAuthorization, initialState]);
+  }, [executionClient, fixtureReleases, initialFilingAuthorization, initialState, resolvedWorkspaceId]);
 
   const rows = useMemo(() => {
     const filtered = releases.filter(
@@ -292,7 +301,7 @@ export function ExecutionReleaseView({
           actions={<Badge>Authenticated Workspace</Badge>}
         />
         <Alert title="Current authenticated Workspace">
-          Durable Execution Release truth is loaded through Workspace {workspaceId}.
+          Durable Execution Release truth is loaded through Workspace {resolvedWorkspaceId}.
         </Alert>
         <Alert tone="warning" title="Release ≠ Execution">
           No application is submitted, sent, paid, accepted, or professionally appointed here.
@@ -386,7 +395,7 @@ export function ExecutionReleaseView({
       </Button>
       <PageHeader
         title="Execution Release"
-        description={`Work / Execution Release / Authenticated Workspace ${workspaceId}`}
+        description={`Work / Execution Release / Authenticated Workspace ${resolvedWorkspaceId}`}
         actions={<Badge>Durable owner truth</Badge>}
       />
       <Alert
@@ -415,7 +424,7 @@ export function ExecutionReleaseView({
         <Badge>{selected.status}</Badge>
         <KeyValueList
           items={[
-            { key: 'Workspace', value: workspaceId },
+            { key: 'Workspace', value: resolvedWorkspaceId },
             { key: 'Release version', value: String(selected.version) },
             {
               key: 'Filing Authorization',
