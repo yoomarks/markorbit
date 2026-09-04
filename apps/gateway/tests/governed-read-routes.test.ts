@@ -73,7 +73,7 @@ describe('governed direct-link read routes', () => {
       pricingRuleVersion: 'fixture-usd-v1',
       status: 'READY'
     } as never);
-    const markreg = createMarkReg({ port: 0, repository });
+    const markreg = createMarkReg({ milestoneTestRuntime: true, port: 0, repository });
     const markregUrl = await start(markreg);
     const gateway = createGateway({ port: 0, markRegUrl: markregUrl });
     const base = await start(gateway);
