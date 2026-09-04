@@ -254,7 +254,9 @@ describe('MarkReg governed direct entry', () => {
 
     expect(await screen.findByText('preparation-lock_exact')).toBeTruthy();
     expect(screen.getByText('LOCKED_FOR_PREPARATION')).toBeTruthy();
-    expect(screen.getByText('Exact durable identity loaded read-only; no filing authority was created.')).toBeTruthy();
+    expect(
+      screen.getByText('Exact durable identity loaded read-only; no filing authority was created.')
+    ).toBeTruthy();
     expect(getLock).toHaveBeenCalledWith('preparation-lock_exact');
     expect(validateCurrent).not.toHaveBeenCalled();
   });
