@@ -1,0 +1,51 @@
+name: tmp 758 fixture quarantine
+
+on:
+  push:
+    branches:
+      - tmp/758-fixture-quarantine-writer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/758-fixture-quarantine-writer
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply TASK 758 patch
+        run: node scripts/tmp-758-quarantine-fixture.mjs
+      - name: Prettier exact files
+        run: pnpm exec prettier --write services/markreg/src/index.ts services/markreg/tests/production-intake-runtime.test.ts
+      - name: Build workspace dependencies
+        run: pnpm -w build
+      - name: MarkReg typecheck
+        run: pnpm --filter @markorbit/markreg-service typecheck
+      - name: MarkReg lint
+        run: pnpm --filter @markorbit/markreg-service lint
+      - name: TASK 758 targeted test
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/production-intake-runtime.test.ts
+      - name: MarkReg full tests
+        run: pnpm --filter @markorbit/markreg-service test
+      - name: MarkReg build
+        run: pnpm --filter @markorbit/markreg-service build
+      - name: Commit writer output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/markreg/src/index.ts services/markreg/tests/production-intake-runtime.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "tmp: quarantine fixture early-funnel routes"
+          git push origin HEAD:tmp/758-fixture-quarantine-writer
