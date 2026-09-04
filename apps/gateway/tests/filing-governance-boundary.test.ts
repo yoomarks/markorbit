@@ -30,11 +30,13 @@ function client(): CoreAuthenticationClient {
   };
 }
 
-function handler(options: {
-  authenticationClient?: CoreAuthenticationClient;
-  internalServiceSecret?: string;
-  fixtureTestRuntime?: boolean;
-} = {}) {
+function handler(
+  options: {
+    authenticationClient?: CoreAuthenticationClient;
+    internalServiceSecret?: string;
+    fixtureTestRuntime?: boolean;
+  } = {}
+) {
   return createGatewayFilingGovernanceHandler({
     executionUrl: 'http://execution.test',
     authenticationClient: options.authenticationClient ?? client(),
@@ -99,7 +101,9 @@ describe('Filing Governance browser command boundary', () => {
       fixtureTestRuntime: true
     });
 
-    await expect(governed(request('GET', '/api/execution/execution-releases'))).rejects.toMatchObject({
+    await expect(
+      governed(request('GET', '/api/execution/execution-releases'))
+    ).rejects.toMatchObject({
       status: 503,
       code: 'DOWNSTREAM_UNAVAILABLE'
     });
@@ -117,7 +121,9 @@ describe('Filing Governance browser command boundary', () => {
       fixtureTestRuntime: true
     });
 
-    await expect(governed(request('GET', '/api/execution/execution-releases'))).rejects.toMatchObject({
+    await expect(
+      governed(request('GET', '/api/execution/execution-releases'))
+    ).rejects.toMatchObject({
       status: 503,
       code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
     });
@@ -140,7 +146,10 @@ describe('Filing Governance browser command boundary', () => {
             {
               preparationLockId: 'lock_701',
               preparationLockVersion: 'v1',
-              authorizedParty: { partyId: 'party_701', displayName: 'Alex Owner' },
+              authorizedParty: {
+                partyId: 'party_701',
+                displayName: 'Alex Owner'
+              },
               authorizationCapacity: 'OWNER',
               executionChannel: 'OFFICE_PORTAL',
               ...extra
@@ -208,7 +217,8 @@ describe('Filing Governance browser command boundary', () => {
 
     expect(result.status).toBe(200);
     const init = downstream.mock.calls[0]?.[1];
-    if (!init || typeof init.body !== 'string') throw new Error('Expected projected request body.');
+    if (!init || typeof init.body !== 'string')
+      throw new Error('Expected projected request body.');
     expect(JSON.parse(init.body)).toEqual({
       internalExecutorId: 'executor_701',
       expectedVersion: 4
