@@ -46,6 +46,7 @@ type FilingGovernanceRoutePolicy = Readonly<{
   mutationSecurity: boolean;
   idempotencyRequired: boolean;
   allowedBodyFields?: readonly string[];
+  stripBodyFields?: readonly string[];
   projectAuthorizedParty?: boolean;
 }>;
 
@@ -78,7 +79,8 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: true,
-    allowedBodyFields: ['acknowledgementCodes']
+    allowedBodyFields: ['acknowledgementCodes'],
+    stripBodyFields: ['acknowledgedBy']
   },
   {
     method: 'POST',
@@ -136,7 +138,8 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: true,
-    allowedBodyFields: ['rationale']
+    allowedBodyFields: ['rationale'],
+    stripBodyFields: ['decidedBy']
   },
   {
     method: 'POST',
@@ -222,7 +225,9 @@ function governedBody(
   request: JsonRequest,
   policy: FilingGovernanceRoutePolicy
 ): Record<string, unknown> {
-  const body = bodyRecord(request);
+  const body = { ...bodyRecord(request) };
+  for (const field of policy.stripBodyFields ?? []) delete body[field];
+
   const allowedFields = new Set(policy.allowedBodyFields ?? []);
   const unsupported = Object.keys(body).find((field) => !allowedFields.has(field));
   if (unsupported) rejectBrowserField(unsupported);
@@ -396,11 +401,7 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
         'IDEMPOTENCY_KEY_REQUIRED',
         'Idempotency-Key is required for this Filing Governance command.'
       );
-    const principal = await principalFor(
-      request,
-      policy.permission,
-      policy.mutationSecurity
-    );
+    const principal = await principalFor(request, policy.permission, policy.mutationSecurity);
     return forwardGoverned(request, principal, body);
   };
 }
