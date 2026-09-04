@@ -225,7 +225,7 @@ describe('governed Filing Governance Gateway boundary', () => {
     expect(JSON.parse(releaseInit.body)).toEqual({ rationale: 'Ready' });
   });
 
-  it('projects only the declared assignment command fields', async () => {
+  it('projects only expectedVersion to trusted-principal self-assignment', async () => {
     const downstream = vi.fn<
       (input: string | URL | Request, init?: RequestInit) => Promise<Response>
     >(() => response(200, { ok: true }));
@@ -233,18 +233,30 @@ describe('governed Filing Governance Gateway boundary', () => {
 
     const result = await handler()(
       request('PATCH', '/api/execution/execution-releases/release_701/assignment', {
-        internalExecutorId: 'executor_701',
         expectedVersion: 4
       })
     );
 
     expect(result.status).toBe(200);
-    const init = downstream.mock.calls[0]?.[1];
+    const [url, init] = downstream.mock.calls[0]!;
+    expect(url).toBe('http://execution.test/v1/execution-releases/release_701/self-assignment');
     if (!init || typeof init.body !== 'string') throw new Error('Expected projected request body.');
-    expect(JSON.parse(init.body)).toEqual({
-      internalExecutorId: 'executor_701',
-      expectedVersion: 4
-    });
+    expect(JSON.parse(init.body)).toEqual({ expectedVersion: 4 });
+  });
+
+  it('rejects browser-selected executor identity on production assignment', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+
+    await expect(
+      handler()(
+        request('PATCH', '/api/execution/execution-releases/release_701/assignment', {
+          internalExecutorId: 'executor_701',
+          expectedVersion: 4
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_EXECUTION_AUTHORITY' });
+    expect(downstream).not.toHaveBeenCalled();
   });
 
   it('uses execution:read for GET and preserves query/correlation without browser session forwarding', async () => {
@@ -279,7 +291,7 @@ describe('governed Filing Governance Gateway boundary', () => {
         request(
           'PATCH',
           '/api/execution/execution-releases/release_701/assignment',
-          { internalExecutorId: 'executor_701' },
+          { expectedVersion: 4 },
           { origin: 'https://evil.example' }
         )
       )
