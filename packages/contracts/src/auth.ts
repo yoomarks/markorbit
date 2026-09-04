@@ -45,6 +45,13 @@ export const COMMERCIAL_ADMIN_CAPABILITIES = [
   'commercial-admin:operate'
 ] as const;
 export type CommercialAdminCapability = (typeof COMMERCIAL_ADMIN_CAPABILITIES)[number];
+export const CONTROL_PLANE_CAPABILITIES = ['control-plane:cognitive:read'] as const;
+export type ControlPlaneCapability = (typeof CONTROL_PLANE_CAPABILITIES)[number];
+export const INTERNAL_OPERATOR_CAPABILITIES = [
+  ...COMMERCIAL_ADMIN_CAPABILITIES,
+  ...CONTROL_PLANE_CAPABILITIES
+] as const;
+export type InternalOperatorCapability = (typeof INTERNAL_OPERATOR_CAPABILITIES)[number];
 export interface CommercialAdminAccountView {
   userId: string;
   email: string;
@@ -61,7 +68,7 @@ export interface InternalOperatorPrincipal {
   kind: 'INTERNAL_OPERATOR';
   sessionId: string;
   userId: string;
-  capabilities: readonly CommercialAdminCapability[];
+  capabilities: readonly InternalOperatorCapability[];
   sessionExpiresAt: string;
 }
 export function commercialAdminCapabilitiesForAccount(
@@ -104,7 +111,7 @@ export function parseInternalOperatorPrincipal(
     !Array.isArray(principal.capabilities) ||
     principal.capabilities.some(
       (capability) =>
-        !(COMMERCIAL_ADMIN_CAPABILITIES as readonly string[]).includes(String(capability))
+        !(INTERNAL_OPERATOR_CAPABILITIES as readonly string[]).includes(String(capability))
     ) ||
     [principal.sessionId, principal.userId, principal.sessionExpiresAt].some(
       (item) => typeof item !== 'string' || item.length === 0
