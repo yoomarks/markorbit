@@ -40,12 +40,19 @@ const ready = {
   version: 5,
   checks: blocked.checks.map((check) => ({ ...check, status: 'PASS' })),
   status: 'READY_FOR_RELEASE'
-} as ExecutionRelease;
+} satisfies ExecutionRelease;
 const assigned = {
   ...ready,
   version: 6,
-  assignment: { internalExecutorId: 'authenticated-user-story695', assignedAt: at }
-} as ExecutionRelease;
+  assignment: { internalExecutorId: 'user_story695', assignedAt: at }
+} satisfies ExecutionRelease;
+const released = {
+  ...assigned,
+  version: 7,
+  status: 'RELEASED_FOR_EXECUTION'
+} satisfies ExecutionRelease;
+const stale = { ...ready, version: 7, status: 'STALE' } satisfies ExecutionRelease;
+const withdrawn = { ...blocked, version: 7, status: 'WITHDRAWN' } satisfies ExecutionRelease;
 
 export default {
   title: 'Products/Lite Execution Release',
@@ -66,19 +73,9 @@ export const Blocked: Story = { args: { fixtureReleases: [blocked] } };
 export const BlockingUnknown: Story = { args: { fixtureReleases: [blocked] } };
 export const Ready: Story = { args: { fixtureReleases: [ready] } };
 export const Assigned: Story = { args: { fixtureReleases: [assigned] } };
-export const ReleasedReceipt: Story = {
-  args: {
-    fixtureReleases: [
-      { ...assigned, version: 7, status: 'RELEASED_FOR_EXECUTION' } as ExecutionRelease
-    ]
-  }
-};
-export const Stale: Story = {
-  args: { fixtureReleases: [{ ...ready, version: 7, status: 'STALE' } as ExecutionRelease] }
-};
-export const Withdrawn: Story = {
-  args: { fixtureReleases: [{ ...blocked, version: 7, status: 'WITHDRAWN' } as ExecutionRelease] }
-};
+export const ReleasedReceipt: Story = { args: { fixtureReleases: [released] } };
+export const Stale: Story = { args: { fixtureReleases: [stale] } };
+export const Withdrawn: Story = { args: { fixtureReleases: [withdrawn] } };
 export const LongContent: Story = { args: { fixtureReleases: [blocked] } };
 export const RecoverableError: Story = {
   args: { state: 'RECOVERABLE_ERROR', fixtureReleases: [] }
