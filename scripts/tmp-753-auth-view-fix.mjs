@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+const path = 'apps/markreg-web/src/FilingAuthorization.tsx';
+let text = fs.readFileSync(path, 'utf8');
+const anchor = `      <PageHeader\n        title="Filing Authorization"\n        description="Review the exact immutable Preparation Snapshot before actively authorizing internal execution review."\n      />`;
+const replacement = `      <PageHeader\n        title="Filing Authorization"\n        description="Review the exact immutable Preparation source before actively authorizing internal execution review."\n      />`;
+if (!text.includes(anchor)) throw new Error('missing page header anchor');
+text = text.replace(anchor, replacement);
+const docs = `              value:\n                authorization.preparationSnapshot.documentPackage.documentItems\n                  .map((x) => x.documentReference.fileName)\n                  .join('; ') || 'No locked document files'`;
+const docsReplacement = `              value:\n                authorization.durablePreparationSource?.documentPackage.documentReferences.join('; ') ??\n                authorization.preparationSnapshot?.documentPackage.documentItems\n                  .map((x) => x.documentReference.fileName)\n                  .join('; ') ??\n                'No locked document files'`;
+if (!text.includes(docs)) throw new Error('missing locked documents anchor');
+text = text.replace(docs, docsReplacement);
+fs.writeFileSync(path, text);
