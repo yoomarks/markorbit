@@ -1,0 +1,53 @@
+name: Temporary Lite 695 Prettier
+
+on:
+  push:
+    branches:
+      - lite/695-authenticated-execution-release
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lite/695-authenticated-execution-release
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact Lite 695 files
+        run: |
+          pnpm exec prettier --write \
+            apps/lite-web/src/api/execution.ts \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.test.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.stories.tsx
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet -- \
+            apps/lite-web/src/api/execution.ts \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.test.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.stories.tsx; then
+            echo 'No formatting changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/lite-web/src/api/execution.ts \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.test.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.stories.tsx
+          git commit -m '[LITE-P0] Format authenticated Execution Release'
+          git push origin HEAD:lite/695-authenticated-execution-release
