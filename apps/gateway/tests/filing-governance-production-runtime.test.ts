@@ -72,6 +72,7 @@ async function startProductionRuntime(milestoneTestRuntime = true) {
 
 function authenticatedHeaders(mutation = false): Record<string, string> {
   return {
+    'content-type': 'application/json',
     cookie: 'mo_session=token-701-runtime',
     'x-markorbit-workspace-id': workspaceId,
     'x-correlation-id': 'correlation-701-runtime',
