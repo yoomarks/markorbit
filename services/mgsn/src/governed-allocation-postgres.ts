@@ -28,7 +28,8 @@ function asObject(value: unknown): Row {
 
 function iso(value: unknown): string {
   const parsed = new Date(value as string | number | Date);
-  if (Number.isNaN(parsed.valueOf())) throw new Error('Persisted governed Allocation timestamp is malformed.');
+  if (Number.isNaN(parsed.valueOf()))
+    throw new Error('Persisted governed Allocation timestamp is malformed.');
   return parsed.toISOString();
 }
 
@@ -39,7 +40,8 @@ function jsonVersion(value: unknown): number | string {
 }
 
 function legacyStableSerialize(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map((item) => legacyStableSerialize(item)).join(',')}]`;
+  if (Array.isArray(value))
+    return `[${value.map((item) => legacyStableSerialize(item)).join(',')}]`;
   if (value && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, item]) => item !== undefined)
@@ -98,7 +100,9 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
   }): Promise<GovernedAllocationReplay | undefined> {
     try {
       return await this.database.transact(async (client) => {
-        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [input.scopeKey]);
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          input.scopeKey
+        ]);
 
         const replay = await this.readReplay(client, input.scopeKey, input.idempotencyKey, true);
         if (replay) {
@@ -137,7 +141,11 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
         return undefined;
       });
     } catch (cause) {
-      if (cause instanceof GovernedAllocationError || cause instanceof AllocationProviderAcceptanceError) throw cause;
+      if (
+        cause instanceof GovernedAllocationError ||
+        cause instanceof AllocationProviderAcceptanceError
+      )
+        throw cause;
       const code = (cause as { code?: string }).code;
       if (code === '23505') {
         throw new GovernedAllocationError(
@@ -204,7 +212,9 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
       purpose: 'ALLOCATION_PREREQUISITE_REVIEW',
       evaluatedAt: iso(row.selection_validation_evaluated_at),
       validationPolicyVersion: String(row.selection_validation_policy_version),
-      checkedAuthorityReferences: Array.isArray(row.selection_validation_checked_authority_references)
+      checkedAuthorityReferences: Array.isArray(
+        row.selection_validation_checked_authority_references
+      )
         ? row.selection_validation_checked_authority_references
         : [],
       authorityConsequences: noDownstreamProviderSelectionAuthorityConsequences,
@@ -216,7 +226,9 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
 
     const directExecutor = {
       established: true as const,
-      providerId: String(row.direct_executor_provider_id) as AllocationAdmissionLineageRecord['providerId'],
+      providerId: String(
+        row.direct_executor_provider_id
+      ) as AllocationAdmissionLineageRecord['providerId'],
       providerWorkspaceId: String(row.direct_executor_provider_workspace_id),
       authorityReference: String(row.direct_executor_authority_reference),
       authorityVersion: jsonVersion(row.direct_executor_authority_version),
@@ -226,7 +238,9 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
 
     let handoff: AllocationAdmissionLineageRecord['handoff'];
     if (row.handoff_binding_state === 'EXACT_CONTROLLED_HANDOFF') {
-      const envelope = asObject(row.envelope_record) as unknown as NonNullable<AllocationAdmissionLineageRecord['handoff']>['envelope'];
+      const envelope = asObject(row.envelope_record) as unknown as NonNullable<
+        AllocationAdmissionLineageRecord['handoff']
+      >['envelope'];
       const validation = {
         schemaVersion: 1,
         envelope: {
@@ -247,7 +261,9 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
         },
         evaluatedAt: iso(row.handoff_validation_evaluated_at),
         validationPolicyVersion: String(row.handoff_validation_policy_version),
-        checkedAuthorityReferences: Array.isArray(row.handoff_validation_checked_authority_references)
+        checkedAuthorityReferences: Array.isArray(
+          row.handoff_validation_checked_authority_references
+        )
           ? row.handoff_validation_checked_authority_references
           : [],
         authorityConsequences: noDownstreamHandoffAuthorityConsequences,
@@ -266,7 +282,9 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
     }
 
     const lineage: AllocationAdmissionLineageRecord = {
-      allocationAdmissionLineageId: String(row.allocation_admission_lineage_id) as AllocationAdmissionLineageRecord['allocationAdmissionLineageId'],
+      allocationAdmissionLineageId: String(
+        row.allocation_admission_lineage_id
+      ) as AllocationAdmissionLineageRecord['allocationAdmissionLineageId'],
       version: 1,
       allocationId: String(row.allocation_id),
       allocationVersion: Number(row.allocation_version),
@@ -276,9 +294,13 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
       servicePackageFingerprintSha256: String(row.service_package_fingerprint_sha256),
       providerId: String(row.provider_id) as AllocationAdmissionLineageRecord['providerId'],
       providerWorkspaceId: String(row.provider_workspace_id),
-      providerSupplyCapabilityId: String(row.provider_supply_capability_id) as AllocationAdmissionLineageRecord['providerSupplyCapabilityId'],
+      providerSupplyCapabilityId: String(
+        row.provider_supply_capability_id
+      ) as AllocationAdmissionLineageRecord['providerSupplyCapabilityId'],
       providerSupplyCapabilityVersion: Number(row.provider_supply_capability_version),
-      providerSupplyCapabilityFingerprintSha256: String(row.provider_supply_capability_fingerprint_sha256),
+      providerSupplyCapabilityFingerprintSha256: String(
+        row.provider_supply_capability_fingerprint_sha256
+      ),
       providerSelectionId: String(row.provider_selection_id),
       selectionVersion: Number(row.selection_version),
       selectionScopeVersion: Number(row.selection_scope_version),
@@ -286,7 +308,8 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
       selectionValidation,
       selectionValidationFingerprintSha256: String(row.selection_validation_fingerprint_sha256),
       directExecutor,
-      handoffBindingState: row.handoff_binding_state as AllocationAdmissionLineageRecord['handoffBindingState'],
+      handoffBindingState:
+        row.handoff_binding_state as AllocationAdmissionLineageRecord['handoffBindingState'],
       ...(handoff ? { handoff } : {}),
       lineageFingerprintSha256: String(row.lineage_fingerprint_sha256),
       correlationId: String(row.correlation_id),

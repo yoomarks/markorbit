@@ -11,7 +11,10 @@ import type {
   ProviderSelectionV1,
   ProviderSelectionVersionReferenceV1
 } from '@markorbit/contracts/provider-selection';
-import type { ProviderId, ProviderSupplyCapabilityId } from '@markorbit/contracts/provider-execution';
+import type {
+  ProviderId,
+  ProviderSupplyCapabilityId
+} from '@markorbit/contracts/provider-execution';
 import type {
   AllocateProviderServiceCommand,
   AllocationRecord
@@ -107,7 +110,10 @@ export interface GovernedAllocationReplay {
 }
 
 export interface GovernedAllocationRepository {
-  findReplay(scopeKey: string, idempotencyKey: string): Promise<GovernedAllocationReplay | undefined>;
+  findReplay(
+    scopeKey: string,
+    idempotencyKey: string
+  ): Promise<GovernedAllocationReplay | undefined>;
   commit(input: {
     allocation: Readonly<AllocationRecord>;
     lineage: Readonly<AllocationAdmissionLineageRecord>;
@@ -188,7 +194,11 @@ function scopeKey(workspaceId: string, servicePackageId: string): string {
 function requireSha256(value: string, field: string): string {
   const normalized = value.trim().toLowerCase();
   if (!sha256Pattern.test(normalized)) {
-    throw new GovernedAllocationError('INVALID_INPUT', `${field} must be a SHA-256 fingerprint.`, 422);
+    throw new GovernedAllocationError(
+      'INVALID_INPUT',
+      `${field} must be a SHA-256 fingerprint.`,
+      422
+    );
   }
   return normalized;
 }
@@ -231,7 +241,11 @@ export class GovernedAllocationService {
     const idempotencyKey = command.idempotencyKey.trim();
     const actorId = command.actorId.trim();
     if (!workspaceId || !idempotencyKey || !actorId) {
-      throw new GovernedAllocationError('INVALID_INPUT', 'Workspace, actor and idempotency are required.', 422);
+      throw new GovernedAllocationError(
+        'INVALID_INPUT',
+        'Workspace, actor and idempotency are required.',
+        422
+      );
     }
     requireSha256(command.selectionScope.fingerprintSha256, 'selectionScope.fingerprintSha256');
 
@@ -254,7 +268,9 @@ export class GovernedAllocationService {
       return replay;
     }
 
-    const selected = await this.selections.findLatestSelection(command.selection.providerSelectionId);
+    const selected = await this.selections.findLatestSelection(
+      command.selection.providerSelectionId
+    );
     if (
       !selected ||
       selected.requesterWorkspaceId.toLowerCase() !== workspaceId ||
@@ -312,7 +328,8 @@ export class GovernedAllocationService {
       !directExecutor ||
       directExecutor.established !== true ||
       directExecutor.providerId !== selectedProvider.providerId ||
-      directExecutor.providerWorkspaceId.toLowerCase() !== selectedProvider.providerWorkspaceId.toLowerCase()
+      directExecutor.providerWorkspaceId.toLowerCase() !==
+        selectedProvider.providerWorkspaceId.toLowerCase()
     ) {
       throw new GovernedAllocationError(
         'DIRECT_EXECUTOR_NOT_CURRENT',
@@ -320,14 +337,18 @@ export class GovernedAllocationService {
         409
       );
     }
-    requireSha256(directExecutor.validationFingerprintSha256, 'directExecutor.validationFingerprintSha256');
+    requireSha256(
+      directExecutor.validationFingerprintSha256,
+      'directExecutor.validationFingerprintSha256'
+    );
 
     const handoff = await this.validateHandoff(command, selected, checkedAt);
     const allocation = await this.planner.plan(command);
     if (
       allocation.workspaceId.toLowerCase() !== workspaceId ||
       allocation.provider.providerId !== selectedProvider.providerId ||
-      allocation.provider.providerWorkspaceId.toLowerCase() !== selectedProvider.providerWorkspaceId.toLowerCase() ||
+      allocation.provider.providerWorkspaceId.toLowerCase() !==
+        selectedProvider.providerWorkspaceId.toLowerCase() ||
       allocation.providerSupplyCapability.id !== selectedSupply.id ||
       allocation.providerSupplyCapability.version !== selectedSupply.version ||
       allocation.providerSupplyCapabilityFingerprintSha256 !== selectedSupply.fingerprintSha256
@@ -355,7 +376,8 @@ export class GovernedAllocationService {
       providerWorkspaceId: allocation.provider.providerWorkspaceId,
       providerSupplyCapabilityId: allocation.providerSupplyCapability.id,
       providerSupplyCapabilityVersion: Number(allocation.providerSupplyCapability.version),
-      providerSupplyCapabilityFingerprintSha256: allocation.providerSupplyCapabilityFingerprintSha256,
+      providerSupplyCapabilityFingerprintSha256:
+        allocation.providerSupplyCapabilityFingerprintSha256,
       providerSelectionId: selected.providerSelectionId,
       selectionVersion: selected.version,
       selectionScopeVersion: selected.scopeVersion,

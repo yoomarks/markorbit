@@ -57,21 +57,15 @@ function service(
   lineage: ProviderWorkIncomingAuthorityRepository,
   validation?: Record<string, unknown>
 ) {
-  return new GovernedProviderWorkReadModelService(
-    baseRead() as never,
-    lineage,
-    {
-      validateCurrent: vi.fn().mockResolvedValue(validation)
-    } as never
-  );
+  return new GovernedProviderWorkReadModelService(baseRead() as never, lineage, {
+    validateCurrent: vi.fn().mockResolvedValue(validation)
+  } as never);
 }
 
 describe('GovernedProviderWorkReadModelService', () => {
   it('keeps legacy unlinked Allocation incoming authority UNKNOWN', async () => {
     const result = await service({
-      findAllocationLineage: vi
-        .fn()
-        .mockResolvedValue({ kind: 'LEGACY_UNLINKED' })
+      findAllocationLineage: vi.fn().mockResolvedValue({ kind: 'LEGACY_UNLINKED' })
     }).read(principal, baseItem.allocation.allocationId);
 
     expect(result.decision).toBe('AUTHORIZED');
@@ -93,90 +87,70 @@ describe('GovernedProviderWorkReadModelService', () => {
     if (result.decision === 'AUTHORIZED') {
       expect(result.item.incomingDataAuthority.state).toBe('KNOWN_ABSENT');
       expect(
-        result.item.sourceChecks.find(
-          (check) => check.sourceKind === 'INCOMING_DATA_AUTHORITY'
-        )?.state
+        result.item.sourceChecks.find((check) => check.sourceKind === 'INCOMING_DATA_AUTHORITY')
+          ?.state
       ).toBe('KNOWN_ABSENT');
     }
   });
 
-  it(
-    'freshly validates exact Handoff and exposes reference-only CURRENTLY_USABLE authority',
-    async () => {
-      const result = await service(
-        { findAllocationLineage: vi.fn().mockResolvedValue(exactLineage()) },
-        {
-          schemaVersion: 1,
-          decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION',
-          currentlyUsable: true,
-          currentExactDisclosurePermitted: true,
-          validationPolicyVersion: 'mgsn-controlled-handoff-validation-v1',
-          checkedAuthorityReferences: [],
-          validationIsNotBearerCapability: true,
-          validationDoesNotAuthorizeDownstreamAction: true
-        }
-      ).read(principal, baseItem.allocation.allocationId);
-
-      expect(result.decision).toBe('AUTHORIZED');
-      if (result.decision === 'AUTHORIZED') {
-        expect(result.item.incomingDataAuthority.state).toBe(
-          'CURRENTLY_USABLE'
-        );
-        expect(
-          'incomingFieldsVisible' in result.item.incomingDataAuthority
-        ).toBe(false);
-        expect(
-          result.item.incomingDataAuthority.embeddedPrivateFieldValues
-        ).toBe(false);
-      }
-    }
-  );
-
-  it(
-    'maps revoked exact Handoff to DENIED and authority outage to SOURCE_UNAVAILABLE',
-    async () => {
-      const lineage = {
-        findAllocationLineage: vi.fn().mockResolvedValue(exactLineage())
-      };
-      const denied = await service(lineage, {
+  it('freshly validates exact Handoff and exposes reference-only CURRENTLY_USABLE authority', async () => {
+    const result = await service(
+      { findAllocationLineage: vi.fn().mockResolvedValue(exactLineage()) },
+      {
         schemaVersion: 1,
-        decision: 'DENY',
-        currentlyUsable: false,
-        currentExactDisclosurePermitted: false,
-        denialReason: 'HANDOFF_REVOKED',
+        decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION',
+        currentlyUsable: true,
+        currentExactDisclosurePermitted: true,
         validationPolicyVersion: 'mgsn-controlled-handoff-validation-v1',
         checkedAuthorityReferences: [],
         validationIsNotBearerCapability: true,
         validationDoesNotAuthorizeDownstreamAction: true
-      }).read(principal, baseItem.allocation.allocationId);
-      expect(denied.decision).toBe('AUTHORIZED');
-      if (denied.decision === 'AUTHORIZED') {
-        expect(denied.item.incomingDataAuthority).toMatchObject({
-          state: 'DENIED',
-          denialReason: 'HANDOFF_REVOKED',
-          incomingFieldsVisible: false
-        });
       }
+    ).read(principal, baseItem.allocation.allocationId);
 
-      const unavailable = new GovernedProviderWorkReadModelService(
-        baseRead() as never,
-        lineage,
-        {
-          validateCurrent: vi.fn().mockRejectedValue(new Error('down'))
-        } as never
-      );
-      const outage = await unavailable.read(
-        principal,
-        baseItem.allocation.allocationId
-      );
-      expect(outage.decision).toBe('AUTHORIZED');
-      if (outage.decision === 'AUTHORIZED') {
-        expect(outage.item.incomingDataAuthority).toMatchObject({
-          state: 'SOURCE_UNAVAILABLE',
-          reason: 'DEPENDENCY_UNAVAILABLE',
-          incomingFieldsVisible: false
-        });
-      }
+    expect(result.decision).toBe('AUTHORIZED');
+    if (result.decision === 'AUTHORIZED') {
+      expect(result.item.incomingDataAuthority.state).toBe('CURRENTLY_USABLE');
+      expect('incomingFieldsVisible' in result.item.incomingDataAuthority).toBe(false);
+      expect(result.item.incomingDataAuthority.embeddedPrivateFieldValues).toBe(false);
     }
-  );
+  });
+
+  it('maps revoked exact Handoff to DENIED and authority outage to SOURCE_UNAVAILABLE', async () => {
+    const lineage = {
+      findAllocationLineage: vi.fn().mockResolvedValue(exactLineage())
+    };
+    const denied = await service(lineage, {
+      schemaVersion: 1,
+      decision: 'DENY',
+      currentlyUsable: false,
+      currentExactDisclosurePermitted: false,
+      denialReason: 'HANDOFF_REVOKED',
+      validationPolicyVersion: 'mgsn-controlled-handoff-validation-v1',
+      checkedAuthorityReferences: [],
+      validationIsNotBearerCapability: true,
+      validationDoesNotAuthorizeDownstreamAction: true
+    }).read(principal, baseItem.allocation.allocationId);
+    expect(denied.decision).toBe('AUTHORIZED');
+    if (denied.decision === 'AUTHORIZED') {
+      expect(denied.item.incomingDataAuthority).toMatchObject({
+        state: 'DENIED',
+        denialReason: 'HANDOFF_REVOKED',
+        incomingFieldsVisible: false
+      });
+    }
+
+    const unavailable = new GovernedProviderWorkReadModelService(baseRead() as never, lineage, {
+      validateCurrent: vi.fn().mockRejectedValue(new Error('down'))
+    } as never);
+    const outage = await unavailable.read(principal, baseItem.allocation.allocationId);
+    expect(outage.decision).toBe('AUTHORIZED');
+    if (outage.decision === 'AUTHORIZED') {
+      expect(outage.item.incomingDataAuthority).toMatchObject({
+        state: 'SOURCE_UNAVAILABLE',
+        reason: 'DEPENDENCY_UNAVAILABLE',
+        incomingFieldsVisible: false
+      });
+    }
+  });
 });

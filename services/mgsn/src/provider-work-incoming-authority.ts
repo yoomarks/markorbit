@@ -46,9 +46,7 @@ export interface ProviderWorkIncomingAuthorityRepository {
   ): Promise<ProviderWorkIncomingLineage>;
 }
 
-export class PostgresProviderWorkIncomingAuthorityRepository
-  implements ProviderWorkIncomingAuthorityRepository
-{
+export class PostgresProviderWorkIncomingAuthorityRepository implements ProviderWorkIncomingAuthorityRepository {
   constructor(private readonly query: QueryClient) {}
 
   async findAllocationLineage(allocationId: AllocationId, allocationVersion: number) {
@@ -181,7 +179,9 @@ export class GovernedProviderWorkReadModelService {
     query: Readonly<ProviderWorkListQuery> = {}
   ): Promise<ProviderWorkListResultV1> {
     const result = await this.base.list(principal, query);
-    const items = await Promise.all(result.items.map((item) => this.upgrade(item, result.checkedAt)));
+    const items = await Promise.all(
+      result.items.map((item) => this.upgrade(item, result.checkedAt))
+    );
     return { ...result, items };
   }
 
@@ -299,7 +299,13 @@ export class GovernedProviderWorkReadModelService {
           }
         );
       }
-      return this.denied(item, checkedAt, lineage, validation.denialReason, validationFingerprintSha256);
+      return this.denied(
+        item,
+        checkedAt,
+        lineage,
+        validation.denialReason,
+        validationFingerprintSha256
+      );
     } catch {
       return this.withAuthority(
         item,
@@ -378,7 +384,9 @@ export class GovernedProviderWorkReadModelService {
     sourceScope: object,
     source?: { reference: string; version: number | string; fingerprint: string }
   ): ProviderWorkItemSummaryV1 {
-    const checks = item.sourceChecks.filter((check) => check.sourceKind !== 'INCOMING_DATA_AUTHORITY');
+    const checks = item.sourceChecks.filter(
+      (check) => check.sourceKind !== 'INCOMING_DATA_AUTHORITY'
+    );
     checks.push(sourceCheck(item, checkedAt, sourceState, sourceScope, source));
     const fingerprints = projectionFingerprint(item, incomingDataAuthority, checks);
     return {

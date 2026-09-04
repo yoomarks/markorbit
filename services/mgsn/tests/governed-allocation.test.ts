@@ -112,43 +112,38 @@ describe('GovernedAllocationService', () => {
     expect(planner.plan).not.toHaveBeenCalled();
   });
 
-  it(
-    'commits NONE_EXPLICIT as explicit lineage only after positive Selection and direct-executor checks',
-    async () => {
-      const repo = repository();
-      const planned = allocation();
-      const service = new GovernedAllocationService(
-        { plan: vi.fn().mockResolvedValue(planned) },
-        repo,
-        { findLatestSelection: vi.fn().mockResolvedValue(selection) } as never,
-        {
-          validateCurrent: vi.fn().mockResolvedValue({
-            ...providerSelectionContractFixtureV1.validForBoundedReview,
-            purpose: 'ALLOCATION_PREREQUISITE_REVIEW'
-          })
-        } as never,
-        { findLatest: vi.fn() } as never,
-        { validateCurrent: vi.fn() } as never,
-        {
-          assessCurrent: vi.fn().mockResolvedValue({
-            established: true,
-            providerId,
-            providerWorkspaceId,
-            authorityReference: 'responsibility:716',
-            authorityVersion: 1,
-            checkedAt: '2026-09-04T14:40:00.000Z',
-            validationFingerprintSha256: 'a'.repeat(64)
-          })
-        },
-        () => '2026-09-04T14:40:00.000Z',
-        () => 'allocation-admission-lineage_governed-716'
-      );
+  it('commits NONE_EXPLICIT as explicit lineage only after positive Selection and direct-executor checks', async () => {
+    const repo = repository();
+    const planned = allocation();
+    const service = new GovernedAllocationService(
+      { plan: vi.fn().mockResolvedValue(planned) },
+      repo,
+      { findLatestSelection: vi.fn().mockResolvedValue(selection) } as never,
+      {
+        validateCurrent: vi.fn().mockResolvedValue({
+          ...providerSelectionContractFixtureV1.validForBoundedReview,
+          purpose: 'ALLOCATION_PREREQUISITE_REVIEW'
+        })
+      } as never,
+      { findLatest: vi.fn() } as never,
+      { validateCurrent: vi.fn() } as never,
+      {
+        assessCurrent: vi.fn().mockResolvedValue({
+          established: true,
+          providerId,
+          providerWorkspaceId,
+          authorityReference: 'responsibility:716',
+          authorityVersion: 1,
+          checkedAt: '2026-09-04T14:40:00.000Z',
+          validationFingerprintSha256: 'a'.repeat(64)
+        })
+      },
+      () => '2026-09-04T14:40:00.000Z',
+      () => 'allocation-admission-lineage_governed-716'
+    );
 
-      const result = await service.allocate(command());
-      expect(result.lineage.handoffBindingState).toBe(
-        'NO_CONTROLLED_HANDOFF_BY_DESIGN'
-      );
-      expect(result.lineage.handoff).toBeUndefined();
-    }
-  );
+    const result = await service.allocate(command());
+    expect(result.lineage.handoffBindingState).toBe('NO_CONTROLLED_HANDOFF_BY_DESIGN');
+    expect(result.lineage.handoff).toBeUndefined();
+  });
 });

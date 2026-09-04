@@ -85,7 +85,9 @@ export class ExactM4GovernedAllocationPlanner implements GovernedAllocationPlann
       'expectedEligibilityFingerprintSha256'
     );
 
-    const servicePackage = await this.servicePackageEligibility.findServicePackage(command.servicePackageId);
+    const servicePackage = await this.servicePackageEligibility.findServicePackage(
+      command.servicePackageId
+    );
     if (!servicePackage)
       throw new AllocationProviderAcceptanceError(
         'SERVICE_PACKAGE_NOT_FOUND',
@@ -123,14 +125,18 @@ export class ExactM4GovernedAllocationPlanner implements GovernedAllocationPlann
         409
       );
 
-    const executionVerification = await this.executionSource.verifyCurrentSource(servicePackage.source);
+    const executionVerification = await this.executionSource.verifyCurrentSource(
+      servicePackage.source
+    );
     if (executionVerification.status !== 'CURRENT')
       throw new AllocationProviderAcceptanceError(
         'STALE_SOURCE',
         executionVerification.reason ?? 'Execution source is no longer current.',
         409
       );
-    if (executionVerification.exactSourceFingerprintSha256 !== servicePackage.sourceFingerprintSha256)
+    if (
+      executionVerification.exactSourceFingerprintSha256 !== servicePackage.sourceFingerprintSha256
+    )
       throw new AllocationProviderAcceptanceError(
         'SOURCE_FINGERPRINT_MISMATCH',
         'Execution source fingerprint changed after Eligibility Evaluation.',
@@ -183,7 +189,8 @@ export class ExactM4GovernedAllocationPlanner implements GovernedAllocationPlann
     if (
       evaluation.provider.providerId !== command.providerId ||
       evaluation.providerSupplyCapability.id !== command.providerSupplyCapabilityId ||
-      evaluation.providerSupplyCapability.version !== command.expectedProviderSupplyCapabilityVersion
+      evaluation.providerSupplyCapability.version !==
+        command.expectedProviderSupplyCapabilityVersion
     )
       throw new AllocationProviderAcceptanceError(
         'PROVIDER_NOT_ELIGIBLE',
@@ -199,7 +206,11 @@ export class ExactM4GovernedAllocationPlanner implements GovernedAllocationPlann
 
     const provider = await this.providerRegistry.findProviderById(command.providerId);
     if (!provider)
-      throw new AllocationProviderAcceptanceError('PROVIDER_NOT_FOUND', 'Provider was not found.', 404);
+      throw new AllocationProviderAcceptanceError(
+        'PROVIDER_NOT_FOUND',
+        'Provider was not found.',
+        404
+      );
     const capability = await this.requireCurrentSupply(
       command.providerSupplyCapabilityId,
       command.expectedProviderSupplyCapabilityVersion,
@@ -317,7 +328,8 @@ export class ProviderResponsibilityGovernedAllocationSource implements GovernedA
       assessment.directExecutorEstablished !== true ||
       assessment.profileAuthorityState !== 'CURRENT' ||
       assessment.finalExecutionProviderId !== input.providerId ||
-      assessment.finalExecutionProviderWorkspaceId.toLowerCase() !== input.providerWorkspaceId.toLowerCase()
+      assessment.finalExecutionProviderWorkspaceId.toLowerCase() !==
+        input.providerWorkspaceId.toLowerCase()
     ) {
       return undefined;
     }
