@@ -124,8 +124,16 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
     ).toBe(401);
   });
   it('creates, reads and withdraws through real Core, Gateway and MarkReg listeners', async () => {
+    const session = await fetch(`${base}/api/auth/session`, { headers: { cookie } });
+    const csrf = ((await session.json()) as { csrfToken: string }).csrfToken;
+    const mutationHeaders = {
+      'content-type': 'application/json',
+      cookie,
+      origin: 'https://test.markorbit.local',
+      'x-markorbit-csrf-token': csrf,
+      'x-markorbit-workspace-id': workspaceId
+    };
     const body = {
-      workspaceId,
       quoteId,
       quoteVersion: 'quote-v1',
       planId: 'plan_http',
@@ -135,7 +143,7 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
     };
     const created = await fetch(`${base}/api/markreg/customer-confirmations`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: { ...mutationHeaders, 'idempotency-key': 'confirmation-http-create' },
       body: JSON.stringify(body)
     });
     expect(created.status).toBe(200);
@@ -153,15 +161,6 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
         status: 'CONFIRMED'
       }
     });
-    const session = await fetch(`${base}/api/auth/session`, { headers: { cookie } });
-    const csrf = ((await session.json()) as { csrfToken: string }).csrfToken;
-    const mutationHeaders = {
-      'content-type': 'application/json',
-      cookie,
-      origin: 'https://test.markorbit.local',
-      'x-markorbit-csrf-token': csrf,
-      'x-markorbit-workspace-id': workspaceId
-    };
     const createdDraft = await fetch(`${base}/api/markreg/matter-drafts`, {
       method: 'POST',
       headers: mutationHeaders,
@@ -249,7 +248,6 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
   it('rejects anonymous, missing source, stale source and duplicate creation', async () => {
     const path = `${base}/api/markreg/customer-confirmations`;
     const input = {
-      workspaceId,
       quoteId,
       quoteVersion: 'old',
       planId: 'plan_http',
@@ -261,16 +259,30 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
       (
         await fetch(path, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'confirmation-http-anonymous',
+            'x-markorbit-workspace-id': workspaceId
+          },
           body: JSON.stringify(input)
         })
       ).status
     ).toBe(401);
+    const session = await fetch(`${base}/api/auth/session`, { headers: { cookie } });
+    const csrf = ((await session.json()) as { csrfToken: string }).csrfToken;
+    const mutationHeaders = (key: string) => ({
+      'content-type': 'application/json',
+      cookie,
+      origin: 'https://test.markorbit.local',
+      'x-markorbit-csrf-token': csrf,
+      'x-markorbit-workspace-id': workspaceId,
+      'idempotency-key': key
+    });
     expect(
       (
         await fetch(path, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', cookie },
+          headers: mutationHeaders('confirmation-http-stale'),
           body: JSON.stringify(input)
         })
       ).status
@@ -279,7 +291,7 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
       (
         await fetch(path, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', cookie },
+          headers: mutationHeaders('confirmation-http-missing'),
           body: JSON.stringify({ ...input, quoteId: 'quote_missing', quoteVersion: 'v1' })
         })
       ).status
@@ -288,7 +300,7 @@ describe('authenticated durable Customer Confirmation HTTP boundary', () => {
       (
         await fetch(path, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', cookie },
+          headers: mutationHeaders('confirmation-http-duplicate'),
           body: JSON.stringify({ ...input, quoteVersion: 'quote-v1' })
         })
       ).status

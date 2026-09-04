@@ -44,6 +44,26 @@ const quoteBody = {
   actor: intakeBody.actor
 };
 const confirmationBody = { actor: intakeBody.actor };
+const customerConfirmationBody = {
+  quoteId: 'quote_386',
+  quoteVersion: 'quote-v1',
+  planId: 'plan_386',
+  planVersion: 'plan-v1',
+  customerId: 'customer_browser-data',
+  termsVersion: 'terms-v1',
+  acknowledgements: [
+    {
+      code: 'NO_FILING',
+      acknowledged: true,
+      acknowledgedAt: '2026-09-04T18:00:00.000Z'
+    }
+  ],
+  actor: {
+    ...intakeBody.actor,
+    purpose: 'Customer confirms exact Quote snapshot'
+  },
+  idempotencyKey: 'key-386'
+};
 
 function client(overrides: Partial<CoreAuthenticationClient> = {}): CoreAuthenticationClient {
   return {
@@ -190,6 +210,119 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
     expect(result.status).toBe(200);
   });
 
+  it('binds durable Customer Confirmation to the exact trusted Workspace', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://markreg.test/v1/customer-confirmations');
+      expect(init.method).toBe('POST');
+      const headers = init.headers as Record<string, string>;
+      expect(headers['x-markorbit-internal-authorization']).toBe(internalServiceSecret);
+      expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
+      expect(headers['idempotency-key']).toBe('key-386');
+      expect(headers['x-correlation-id']).toBe('correlation_386');
+      const command = JSON.parse(init.body as string) as Record<string, unknown> & {
+        workspaceId: string;
+        actor: Record<string, string>;
+      };
+      expect(command).toMatchObject({
+        workspaceId,
+        quoteId: 'quote_386',
+        quoteVersion: 'quote-v1',
+        planId: 'plan_386',
+        planVersion: 'plan-v1',
+        customerId: 'customer_browser-data',
+        termsVersion: 'terms-v1',
+        idempotencyKey: 'key-386'
+      });
+      expect(command.actor).toEqual({
+        actorId: `user_${userId}`,
+        workplaceId: `workspace_${workspaceId}`,
+        product: 'MARKREG_COM',
+        purpose: 'Customer confirms exact Quote snapshot'
+      });
+      expect(command.acknowledgements).toEqual(customerConfirmationBody.acknowledgements);
+      expect(JSON.stringify(command)).not.toContain('actor_browser-spoof');
+      expect(JSON.stringify(command)).not.toContain('workplace_browser-spoof');
+      const envelope = JSON.parse(
+        Buffer.from(headers['x-markorbit-principal']!, 'base64url').toString('utf8')
+      ) as { principal: WorkspacePrincipal };
+      expect(envelope.principal).toMatchObject({ userId, workspaceId });
+      expect(command.workspaceId).toBe(envelope.principal.workspaceId);
+      return response(200, {
+        confirmation: { confirmationId: 'confirmation_386', workspaceId }
+      });
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('/api/markreg/customer-confirmations').handle(
+      request('/api/markreg/customer-confirmations', customerConfirmationBody)
+    );
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      confirmation: { confirmationId: 'confirmation_386', workspaceId }
+    });
+    expect(result.headers).toEqual({ 'x-correlation-id': 'correlation_386' });
+  });
+
+  it('rejects browser Workspace authority on durable Customer Confirmation before downstream access', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+
+    await expect(
+      route('/api/markreg/customer-confirmations').handle(
+        request('/api/markreg/customer-confirmations', {
+          ...customerConfirmationBody,
+          workspaceId: otherWorkspaceId
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('requires trusted origin and CSRF for durable Customer Confirmation before downstream access', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const governed = route('/api/markreg/customer-confirmations');
+
+    await expect(
+      governed.handle(
+        request('/api/markreg/customer-confirmations', customerConfirmationBody, {
+          origin: 'https://evil.example'
+        })
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'UNTRUSTED_ORIGIN' });
+    await expect(
+      governed.handle(
+        request('/api/markreg/customer-confirmations', customerConfirmationBody, {
+          'x-markorbit-csrf-token': ''
+        })
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'INVALID_CSRF_TOKEN' });
+    await expect(
+      governed.handle(
+        request('/api/markreg/customer-confirmations', customerConfirmationBody, {
+          'x-markorbit-csrf-token': 'bad-token'
+        })
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'INVALID_CSRF_TOKEN' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('requires matter:create for durable Customer Confirmation before downstream access', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const denied = client({
+      resolveWorkspace: () => Promise.resolve({ ...principal, permissions: ['workspace:read'] })
+    });
+
+    await expect(
+      route('/api/markreg/customer-confirmations', denied).handle(
+        request('/api/markreg/customer-confirmations', customerConfirmationBody)
+      )
+    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
   it('requires an authenticated Core session before downstream access', async () => {
     const downstream = vi.fn();
     vi.stubGlobal('fetch', downstream);
@@ -313,6 +446,20 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
     expect(downstream).toHaveBeenCalledTimes(1);
   });
 
+  it('preserves durable Customer Confirmation owner status/body without fallback', async () => {
+    const body = { code: 'CUSTOMER_CONFIRMATION_SOURCE_VERSION_MISMATCH', marker: 'owner-truth' };
+    const downstream = vi.fn(() => response(409, body));
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('/api/markreg/customer-confirmations').handle(
+      request('/api/markreg/customer-confirmations', customerConfirmationBody)
+    );
+
+    expect(result.status).toBe(409);
+    expect(result.body).toEqual(body);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
   it('maps transport failure to explicit 503 without fallback', async () => {
     vi.stubGlobal(
       'fetch',
@@ -335,7 +482,7 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
     ).toEqual([]);
   });
 
-  it('keeps the historical mutation routes and adds durable Production Intake separately', () => {
+  it('keeps the historical mutation routes and adds governed durable entry points separately', () => {
     expect(
       routes()
         .filter((candidate) => candidate.method === 'POST')
@@ -344,7 +491,8 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
       'POST /api/markreg/production-intakes',
       'POST /v1/markreg/intakes',
       'POST /v1/markreg/quotes',
-      'POST /v1/markreg/quotes/:quoteId/confirm'
+      'POST /v1/markreg/quotes/:quoteId/confirm',
+      'POST /api/markreg/customer-confirmations'
     ]);
   });
 });
