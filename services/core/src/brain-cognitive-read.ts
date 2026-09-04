@@ -26,14 +26,15 @@ export class BrainCognitiveReadError extends Error {
 
 export interface BrainAssetCurrentReadAuthority {
   listCurrent():
-    | readonly Readonly<BrainAssetVersion>[]
-    | Promise<readonly Readonly<BrainAssetVersion>[]>;
+    readonly Readonly<BrainAssetVersion>[] | Promise<readonly Readonly<BrainAssetVersion>[]>;
 }
 
 export interface BrainGapReadAuthority {
   query(
     query?: Readonly<BrainGapRegistryQuery>
-  ): readonly Readonly<BrainGapRegistryRecord>[] | Promise<readonly Readonly<BrainGapRegistryRecord>[]>;
+  ):
+    | readonly Readonly<BrainGapRegistryRecord>[]
+    | Promise<readonly Readonly<BrainGapRegistryRecord>[]>;
 }
 
 export interface BrainAssetCognitiveReadItemV1 {
@@ -129,9 +130,7 @@ function projectGap(record: Readonly<BrainGapRegistryRecord>): BrainGapCognitive
     firstDetectedAt: record.firstDetectedAt,
     lastDetectedAt: record.lastDetectedAt,
     occurrenceCount: record.occurrenceCount,
-    ...(gap.relatedBrainBuildRunId
-      ? { relatedBrainBuildRunId: gap.relatedBrainBuildRunId }
-      : {}),
+    ...(gap.relatedBrainBuildRunId ? { relatedBrainBuildRunId: gap.relatedBrainBuildRunId } : {}),
     ...(gap.relatedBrainAssetVersionId
       ? { relatedBrainAssetVersionId: gap.relatedBrainAssetVersionId }
       : {}),
