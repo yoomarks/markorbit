@@ -72,6 +72,7 @@ async function startProductionRuntime(milestoneTestRuntime = true) {
 
 function authenticatedHeaders(mutation = false): Record<string, string> {
   return {
+    'content-type': 'application/json',
     cookie: 'mo_session=token-701-runtime',
     'x-markorbit-workspace-id': workspaceId,
     'x-correlation-id': 'correlation-701-runtime',
@@ -114,24 +115,30 @@ describe('production Filing Governance Gateway runtime', () => {
 
   it('enforces Origin and CSRF at the registered runtime route before Execution owner work', async () => {
     const base = await startProductionRuntime(false);
-    const withoutOrigin = await fetch(`${base}/api/execution/execution-releases/release_701/evaluate`, {
-      method: 'POST',
-      headers: {
-        ...authenticatedHeaders(true),
-        origin: ''
-      },
-      body: JSON.stringify({})
-    });
+    const withoutOrigin = await fetch(
+      `${base}/api/execution/execution-releases/release_701/evaluate`,
+      {
+        method: 'POST',
+        headers: {
+          ...authenticatedHeaders(true),
+          origin: ''
+        },
+        body: JSON.stringify({})
+      }
+    );
     expect(withoutOrigin.status).toBe(403);
 
-    const invalidCsrf = await fetch(`${base}/api/execution/execution-releases/release_701/evaluate`, {
-      method: 'POST',
-      headers: {
-        ...authenticatedHeaders(true),
-        'x-markorbit-csrf-token': 'invalid'
-      },
-      body: JSON.stringify({})
-    });
+    const invalidCsrf = await fetch(
+      `${base}/api/execution/execution-releases/release_701/evaluate`,
+      {
+        method: 'POST',
+        headers: {
+          ...authenticatedHeaders(true),
+          'x-markorbit-csrf-token': 'invalid'
+        },
+        body: JSON.stringify({})
+      }
+    );
     expect(invalidCsrf.status).toBe(403);
   });
 
@@ -180,10 +187,7 @@ describe('production Filing Governance Gateway runtime', () => {
     });
     await expect(
       governed(
-        directRequest(
-          'POST',
-          '/api/execution/execution-releases/release_701/release-preview'
-        )
+        directRequest('POST', '/api/execution/execution-releases/release_701/release-preview')
       )
     ).rejects.toMatchObject({ status: 404, code: 'FILING_GOVERNANCE_ROUTE_NOT_FOUND' });
   });
