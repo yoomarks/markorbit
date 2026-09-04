@@ -30,7 +30,7 @@ none_assertion = """
     );
     const currentRead = await providerWork.read(
       {
-        workspaceId: providerWorkspaceId,
+        workspaceId: seeded.provider.providerWorkspaceId,
         userId: 'provider-user_governed-716',
         membershipId: 'provider-membership_governed-716'
       },
@@ -61,7 +61,7 @@ legacy_assertion = """
     );
     const legacyRead = await providerWork.read(
       {
-        workspaceId: providerWorkspaceId,
+        workspaceId: seeded.provider.providerWorkspaceId,
         userId: 'provider-user_legacy-716',
         membershipId: 'provider-membership_legacy-716'
       },
