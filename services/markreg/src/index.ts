@@ -394,6 +394,14 @@ export function createRuntime(options: MarkRegOptions = {}) {
     options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
   const fixtureRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+  const requireFixtureEarlyFunnel = () => {
+    if (!fixtureRuntime)
+      throw new HttpError(
+        404,
+        'ROUTE_NOT_FOUND',
+        'Legacy fixture early-funnel route is unavailable outside milestone runtime.'
+      );
+  };
   const durablePrincipal = (request: { headers: Readonly<Record<string, string | undefined>> }) => {
     if (
       !internalServiceSecret ||
@@ -610,6 +618,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/intakes/:intakeId',
           handle: (request) => {
+            requireFixtureEarlyFunnel();
             const intake = repository.getIntake(request.params.intakeId!);
             if (!intake)
               throw new HttpError(404, 'INTAKE_NOT_FOUND', 'Consultation was not found.');
@@ -620,6 +629,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/recommendations/:recommendationId',
           handle: (request) => {
+            requireFixtureEarlyFunnel();
             const recommendation = repository.getRecommendation(request.params.recommendationId!);
             if (!recommendation)
               throw new HttpError(404, 'RECOMMENDATION_NOT_FOUND', 'Recommendation was not found.');
@@ -630,6 +640,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'GET',
           path: '/v1/quotes/:quoteId',
           handle: (request) => {
+            requireFixtureEarlyFunnel();
             const quote = repository.getQuote(request.params.quoteId!);
             if (!quote) throw new HttpError(404, 'QUOTE_NOT_FOUND', 'Quote was not found.');
             return json(200, { quote });
@@ -1534,6 +1545,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/quotes',
           async handle(request) {
+            requireFixtureEarlyFunnel();
             let command: QuoteCreateCommand;
             try {
               command = parseQuoteCreateCommand(request.body);
@@ -1618,6 +1630,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/quotes/:quoteId/confirm',
           handle(request) {
+            requireFixtureEarlyFunnel();
             let command;
             try {
               command = parseQuoteConfirmationCommand(request.body);
@@ -1682,6 +1695,7 @@ export function createRuntime(options: MarkRegOptions = {}) {
           method: 'POST',
           path: '/v1/intakes',
           async handle(request) {
+            requireFixtureEarlyFunnel();
             let command: IntakeCreateCommand;
             try {
               command = parseIntakeCreateCommand(request.body);
