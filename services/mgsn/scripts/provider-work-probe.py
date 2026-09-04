@@ -87,12 +87,14 @@ handoff_helpers = """
     );
 
   async function seedExactHandoff() {
-    const authorize = structuredClone(handoffFixture.authorizeCommand);
-    authorize.validFrom = '2026-09-04T14:00:00.000Z';
-    authorize.validUntil = '2026-09-05T15:00:00.000Z';
-    authorize.idempotencyKey = 'controlled-handoff:governed-716';
-    authorize.commandFingerprintSha256 = 'b'.repeat(64);
-    authorize.correlationId = 'correlation_controlled-handoff_governed-716';
+    const authorize: Parameters<ControlledPrivacyHandoffService['authorizeOrReplace']>[1] = {
+      ...structuredClone(handoffFixture.authorizeCommand),
+      validFrom: '2026-09-04T14:00:00.000Z',
+      validUntil: '2026-09-05T15:00:00.000Z',
+      idempotencyKey: 'controlled-handoff:governed-716',
+      commandFingerprintSha256: 'b'.repeat(64),
+      correlationId: 'correlation_controlled-handoff_governed-716'
+    };
     return handoffService().authorizeOrReplace(handoffPrincipal, authorize);
   }
 """
@@ -302,14 +304,16 @@ exact_test = """
     });
     expect('incomingFieldsVisible' in currentRead.item.incomingDataAuthority).toBe(false);
 
-    const revoke = structuredClone(handoffFixture.revokeCommand);
-    revoke.target = {
-      controlledHandoffId: authorizedHandoff.envelope.controlledHandoffId,
-      version: authorizedHandoff.envelope.version
+    const revoke: Parameters<ControlledPrivacyHandoffService['revoke']>[1] = {
+      ...structuredClone(handoffFixture.revokeCommand),
+      target: {
+        controlledHandoffId: authorizedHandoff.envelope.controlledHandoffId,
+        version: authorizedHandoff.envelope.version
+      },
+      idempotencyKey: 'controlled-handoff:governed-716:revoke',
+      commandFingerprintSha256: 'e'.repeat(64),
+      correlationId: 'correlation_controlled-handoff_governed-716-revoke'
     };
-    revoke.idempotencyKey = 'controlled-handoff:governed-716:revoke';
-    revoke.commandFingerprintSha256 = 'e'.repeat(64);
-    revoke.correlationId = 'correlation_controlled-handoff_governed-716-revoke';
     await handoffService().revoke(handoffPrincipal, revoke);
 
     const deniedRead = await providerWork.read(principal, first.allocation.allocationId);
