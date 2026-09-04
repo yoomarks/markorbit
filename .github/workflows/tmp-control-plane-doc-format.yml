@@ -1,0 +1,28 @@
+name: tmp-control-plane-doc-format
+on:
+  push:
+    branches: ['tmp/control-plane-doc-format']
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format Control Plane current-state doc
+        run: |
+          pnpm exec prettier --write docs/architecture/MO_CONTROL_PLANE_CURRENT_STATE.md
+          pnpm exec prettier --check docs/architecture/MO_CONTROL_PLANE_CURRENT_STATE.md
+      - name: Commit formatted doc
+        run: |
+          git config user.name yoomarks
+          git config user.email yoomarks@users.noreply.github.com
+          git add docs/architecture/MO_CONTROL_PLANE_CURRENT_STATE.md
+          git diff --cached --quiet && exit 0
+          git commit -m "style(control-plane): format current-state document"
+          git push
