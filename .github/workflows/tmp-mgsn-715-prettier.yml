@@ -24,66 +24,27 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Repair focused lint
+      - name: Align durable Handoff current-authority expectation
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          def exact_replace(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text()
-              if old not in text:
-                  raise SystemExit(f"expected text not found in {path}: {old[:120]!r}")
-              file.write_text(text.replace(old, new, 1))
-
-          selection = "services/mgsn/tests/provider-selection-current-authority.test.ts"
-          exact_replace(
-              selection,
-              "  const core: CoreCurrentWorkspaceAuthoritySource = {\n    validateCurrent: vi.fn(() =>\n      Promise.resolve(\n        options.core ?? {",
-              "  const validateCurrent = vi.fn(() =>\n    Promise.resolve(\n      options.core ?? {",
-          )
-          exact_replace(
-              selection,
-              "        }\n      )\n    )\n  };\n  const network: SelectionNetworkAuthoritySource = {",
-              "      }\n    )\n  );\n  const core: CoreCurrentWorkspaceAuthoritySource = { validateCurrent };\n  const network: SelectionNetworkAuthoritySource = {",
-          )
-          exact_replace(
-              selection,
-              "  return {\n    core,\n    source: new MgsnProviderSelectionCurrentAuthoritySource(",
-              "  return {\n    validateCurrent,\n    source: new MgsnProviderSelectionCurrentAuthoritySource(",
-          )
-          exact_replace(
-              selection,
-              "    const { source, core } = harness();",
-              "    const { source, validateCurrent } = harness();",
-          )
-          exact_replace(
-              selection,
-              "    expect(core.validateCurrent).not.toHaveBeenCalled();",
-              "    expect(validateCurrent).not.toHaveBeenCalled();",
-          )
-
-          runtime = "services/mgsn/tests/runtime-dependencies-current-authority.test.ts"
-          exact_replace(
-              runtime,
-              "    expect(JSON.parse(String(requestInit?.body))).toEqual({ workspaceId, userId, membershipId });",
-              "    expect(requestInit?.body).toBe(JSON.stringify({ workspaceId, userId, membershipId }));",
-          )
+          path = Path('services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts')
+          text = path.read_text()
+          old = "expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'AUTHORITY_UNAVAILABLE' });"
+          new = "expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'SELECTION_NOT_CURRENT' });"
+          if old not in text:
+              raise SystemExit('expected durable Handoff assertion not found')
+          path.write_text(text.replace(old, new, 1))
           PY
-      - name: Canonical format
+      - name: Canonical format and static proof
         run: |
-          pnpm exec prettier --write \
-            services/mgsn/tests/provider-selection-current-authority.test.ts \
-            services/mgsn/tests/runtime-dependencies-current-authority.test.ts
-      - name: Prove typecheck and lint
-        run: |
+          pnpm exec prettier --check services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
       - name: Commit repair to formal branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/tests/provider-selection-current-authority.test.ts \
-                  services/mgsn/tests/runtime-dependencies-current-authority.test.ts
-          git commit -m "test(mgsn): fix current-authority focused lint"
+          git add services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts
+          git commit -m "test(mgsn): align durable Handoff current-authority denial"
           git push origin HEAD:mgsn-selection-handoff-current-authority-715
