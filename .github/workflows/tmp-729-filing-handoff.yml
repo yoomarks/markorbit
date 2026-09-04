@@ -42,7 +42,7 @@ jobs:
       - name: MarkReg Web lint
         run: pnpm --filter @markorbit/markreg-web lint
       - name: MarkReg Web targeted test
-        run: pnpm exec vitest run apps/markreg-web/src/DurableDocumentsPreparationWorkspace.test.tsx
+        run: pnpm --filter @markorbit/markreg-web exec vitest run src/DurableDocumentsPreparationWorkspace.test.tsx
       - name: MarkReg Web full tests
         run: pnpm --filter @markorbit/markreg-web test
       - name: MarkReg Web build
