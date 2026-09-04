@@ -105,7 +105,7 @@ function loadRecord(
       return Promise.reject(new Error('Formal Matter reader unavailable.'));
     return client.getFormalMatter(route.recordId);
   }
-  if (route.view === 'preparation-lock') return preparationClient.validateCurrent(route.recordId);
+  if (route.view === 'preparation-lock') return preparationClient.get(route.recordId);
   if (!client.getGovernedRecord)
     return Promise.reject(new Error('Governed record reader unavailable.'));
   return client.getGovernedRecord(route.view, route.recordId);
@@ -156,9 +156,9 @@ function readFailure(error: unknown): Extract<State, { kind: 'ERROR' }> {
 function DurablePreparationRecord({ lock }: { lock: DurablePreparationLockView }) {
   return (
     <>
-      <Alert tone="info" title="Current durable Preparation Lock">
+      <Alert tone="info" title="Durable Preparation Lock">
         Preparation Lock ≠ Filing Authorization. Filing Authorization ≠ Filing Submission. This
-        currentness check creates no payment, provider contact, external filing, or Official Truth.
+        exact-record read creates no payment, provider contact, external filing, or Official Truth.
       </Alert>
       <Card>
         <h2>Preparation state</h2>
@@ -336,7 +336,7 @@ function GenericGovernedRouteEntry({
         )}
         <DurablePreparationRecord lock={loaded.record as unknown as DurablePreparationLockView} />
         <p>
-          <Button onClick={() => location.reload()}>Reload and revalidate current lock</Button>{' '}
+          <Button onClick={() => location.reload()}>Reload exact durable lock</Button>{' '}
           <a href="/">Back to MarkReg workspace</a>
         </p>
       </main>
