@@ -1,0 +1,75 @@
+name: Temporary Integration 761 Fixture Runtime Patch
+
+on:
+  push:
+    branches:
+      - integration/761-markreg-milestone-fixture-tests
+    paths:
+      - .github/workflows/tmp-integration-761-fixture-runtime.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/761-markreg-milestone-fixture-tests
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact fixture-runtime patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          vertical = Path('apps/gateway/tests/vertical-slice.test.ts')
+          text = vertical.read_text()
+          pattern = re.compile(r'(?m)^(\s*)createMarkReg\(\{\n')
+          matches = list(pattern.finditer(text))
+          if len(matches) != 4:
+              raise SystemExit(f'expected exactly 4 vertical-slice createMarkReg blocks, found {len(matches)}')
+          text = pattern.sub(
+              lambda m: f"{m.group(1)}createMarkReg({{\n{m.group(1)}  milestoneTestRuntime: true,\n",
+              text,
+          )
+          vertical.write_text(text)
+
+          governed = Path('apps/gateway/tests/governed-read-routes.test.ts')
+          text = governed.read_text()
+          needle = 'const markreg = createMarkReg({ port: 0, repository });'
+          if text.count(needle) != 1:
+              raise SystemExit(f'expected exactly 1 governed-read createMarkReg target, found {text.count(needle)}')
+          text = text.replace(
+              needle,
+              'const markreg = createMarkReg({ port: 0, repository, milestoneTestRuntime: true });',
+          )
+          governed.write_text(text)
+          PY
+          pnpm exec prettier --write \
+            apps/gateway/tests/vertical-slice.test.ts \
+            apps/gateway/tests/governed-read-routes.test.ts
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-integration-761-fixture-runtime.yml
+          git add apps/gateway/tests/vertical-slice.test.ts apps/gateway/tests/governed-read-routes.test.ts
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Expected #761 patch produced no diff" >&2
+            exit 1
+          fi
+          git commit -m "test(gateway): mark legacy MarkReg fixtures explicit"
+          git push origin HEAD:integration/761-markreg-milestone-fixture-tests
