@@ -82,7 +82,7 @@ integration('PostgreSQL Brain cognitive current read authority', () => {
       .query(
         'DROP TABLE IF EXISTS brain_build_admissions,brain_asset_versions CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
-    await migrate(database.getPool(), coreMigrations());
+    await migrate(database.getPool(), 'core_brain_cognitive_read', await coreMigrations());
     registry = new PostgresBrainAssetRegistry(database);
     reader = new PostgresBrainAssetCurrentReadAuthority(database);
   });
