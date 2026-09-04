@@ -205,7 +205,9 @@ describe('Filing Governance browser command boundary', () => {
   });
 
   it('projects only the declared assignment command fields', async () => {
-    const downstream = vi.fn(() => ownerResponse(200, { ok: true }));
+    const downstream = vi.fn<
+      (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+    >(() => ownerResponse(200, { ok: true }));
     vi.stubGlobal('fetch', downstream);
 
     const result = await handler()(
