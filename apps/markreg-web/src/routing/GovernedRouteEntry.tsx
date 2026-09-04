@@ -1,4 +1,4 @@
-import type { FormalMatter } from '@markorbit/contracts';
+import type { FormalMatter, ProfessionalReviewCase } from '@markorbit/contracts';
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
@@ -10,6 +10,7 @@ import { MarkregApiError } from '../api/errors.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
 import { CustomerConfirmationOrderEntry } from '../CustomerConfirmationOrderEntry.js';
+import { DurableDocumentsPreparationWorkspace } from '../DurableDocumentsPreparationWorkspace.js';
 import { FormalMatterWorkspace } from '../FormalMatterWorkspace.js';
 import { OrderJourney } from '../OrderJourney.js';
 import { parseMarkregRoute, type MarkregRoute, type MarkregRouteResult } from './markreg-route.js';
@@ -298,6 +299,28 @@ function GenericGovernedRouteEntry({
         readOnly={readOnly}
       />
     );
+
+  if (parsed.route.view === 'documents') {
+    if (state.kind === 'VERSION_MISMATCH')
+      return (
+        <main aria-labelledby="governed-route-heading">
+          <h1 id="governed-route-heading" ref={heading} tabIndex={-1}>
+            Documents and Instructions
+          </h1>
+          <Alert tone="warning" title="Professional Review version mismatch">
+            Expected decision {parsed.route.expectedVersion}; actual {loaded.actualVersion}. Durable
+            Document Package creation is disabled until the exact current review link is reopened.
+          </Alert>
+          <a href="/">Back to MarkReg workspace</a>
+        </main>
+      );
+    return (
+      <DurableDocumentsPreparationWorkspace
+        review={loaded.record as unknown as ProfessionalReviewCase}
+        preparationClient={preparationClient}
+      />
+    );
+  }
 
   if (parsed.route.view === 'preparation-lock')
     return (
