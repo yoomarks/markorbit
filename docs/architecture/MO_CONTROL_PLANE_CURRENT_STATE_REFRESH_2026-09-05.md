@@ -1,9 +1,9 @@
 # MO Control Plane Current-State Refresh — 2026-09-05
 
-Issue: #770  
-Parent Epic: #735  
-Historical baseline audit: #736 / `MO_CONTROL_PLANE_CURRENT_STATE.md`  
-Verified baseline: `main@0750f0cac0898392c9ff4bb14694b4f3c407b9d5`
+- Issue: #770
+- Parent Epic: #735
+- Historical baseline audit: #736 / `MO_CONTROL_PLANE_CURRENT_STATE.md`
+- Verified baseline: `main@0750f0cac0898392c9ff4bb14694b4f3c407b9d5`
 
 ## Purpose
 
@@ -26,15 +26,47 @@ All permanent architecture rules from #735/#736 remain in force:
 
 ## 1. Superseded baseline rows
 
-| Area | #736 baseline | Current truth at this refresh | Action |
-| --- | --- | --- | --- |
-| `CommercialAdminWorkspace` | `IMPLEMENTED_NOT_MOUNTED` | **Mounted and product-visible.** Current `OperationsApp` imports and renders `CommercialAdminWorkspace`, and SideNavigation contains `Commercial`. Historical implementation landed in commit `32904d77ae490ba63a616a2c223d3eabd30dab3b` / PR #109. | Do not create another Commercial mounting task. |
-| Operations overview placeholders | `STATIC_PLACEHOLDER` / `REMOVE_PLACEHOLDER` | **Already removed.** Current `App.tsx` explicitly states that aggregate platform health is not authoritatively connected and does not infer healthy/degraded state or synthetic counts. | Do not recreate fake health/count cleanup work. |
-| Commercial read plane | `READY_NOT_MOUNTED` | **READY_MOUNTED.** Existing owner-routed commercial reads are consumed by the mounted Commercial workspace. | Preserve existing commercial authority boundary. |
-| Brain Asset / BrainGap Control Center read | `NEW_BOUNDED_READ_CONTRACT_REQUIRED` | **OWNER_READ_READY.** Core bounded Brain/BrainGap cognitive read merged via #744 / PR #745. Browser/Gateway consumption is still pending. | Consume only through bounded Gateway forwarding after operator authority is valid. |
-| Runtime Capability inventory | `NEW_BOUNDED_READ_CONTRACT_REQUIRED` | **OWNER_READ_READY.** Capability Engine bounded Runtime Capability read merged via #755 / PR #764. | Gateway/browser consumption pending. |
-| Implementation Profile inventory | `NEW_BOUNDED_READ_CONTRACT_REQUIRED` | **OWNER_READ_READY.** Capability Engine bounded Implementation Profile read merged via #755 / PR #764. | Gateway/browser consumption pending. |
-| Cognitive operator vocabulary | Not yet frozen | **CONTRACT_READY.** `control-plane:cognitive:read` is accepted in canonical `INTERNAL_OPERATOR` capability vocabulary via #742 / PR #743. | Vocabulary exists, but real grant issuance is still missing. |
+### `CommercialAdminWorkspace`
+
+- #736 baseline: `IMPLEMENTED_NOT_MOUNTED`.
+- Current truth: **Mounted and product-visible.** Current `OperationsApp` imports and renders `CommercialAdminWorkspace`, and SideNavigation contains `Commercial`. Historical implementation landed in commit `32904d77ae490ba63a616a2c223d3eabd30dab3b` / PR #109.
+- Action: Do not create another Commercial mounting task.
+
+### Operations overview placeholders
+
+- #736 baseline: `STATIC_PLACEHOLDER` / `REMOVE_PLACEHOLDER`.
+- Current truth: **Already removed.** Current `App.tsx` explicitly states that aggregate platform health is not authoritatively connected and does not infer healthy/degraded state or synthetic counts.
+- Action: Do not recreate fake health/count cleanup work.
+
+### Commercial read plane
+
+- #736 baseline: `READY_NOT_MOUNTED`.
+- Current truth: **READY_MOUNTED.** Existing owner-routed commercial reads are consumed by the mounted Commercial workspace.
+- Action: Preserve the existing commercial authority boundary.
+
+### Brain Asset / BrainGap Control Center read
+
+- #736 baseline: `NEW_BOUNDED_READ_CONTRACT_REQUIRED`.
+- Current truth: **OWNER_READ_READY.** Core bounded Brain/BrainGap cognitive read merged via #744 / PR #745. Browser/Gateway consumption is still pending.
+- Action: Consume only through bounded Gateway forwarding after operator authority is valid.
+
+### Runtime Capability inventory
+
+- #736 baseline: `NEW_BOUNDED_READ_CONTRACT_REQUIRED`.
+- Current truth: **OWNER_READ_READY.** Capability Engine bounded Runtime Capability read merged via #755 / PR #764.
+- Action: Gateway/browser consumption is pending.
+
+### Implementation Profile inventory
+
+- #736 baseline: `NEW_BOUNDED_READ_CONTRACT_REQUIRED`.
+- Current truth: **OWNER_READ_READY.** Capability Engine bounded Implementation Profile read merged via #755 / PR #764.
+- Action: Gateway/browser consumption is pending.
+
+### Cognitive operator vocabulary
+
+- #736 baseline: not yet frozen.
+- Current truth: **CONTRACT_READY.** `control-plane:cognitive:read` is accepted in canonical `INTERNAL_OPERATOR` capability vocabulary via #742 / PR #743.
+- Action: Vocabulary exists, but real grant issuance is still missing.
 
 ---
 
