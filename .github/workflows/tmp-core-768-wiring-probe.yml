@@ -1,0 +1,104 @@
+name: TMP Core 768 Wiring Probe
+
+on:
+  pull_request:
+    paths:
+      - 'services/core/**'
+      - '.github/workflows/tmp-core-768-wiring-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wiring-probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Apply exact Core runtime wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          index = Path('services/core/src/index.ts')
+          text = index.read_text()
+          text = replace_once(
+              text,
+              "import { uuidV7 } from './auth.js';\nimport { createBrainCognitiveReadRoutesV1 } from './brain-cognitive-read-http.js';",
+              "import { uuidV7 } from './auth.js';\nimport { createBrainCognitiveReadRoutesV1 } from './brain-cognitive-read-http.js';\nimport { createInternalOperatorPrincipalRoutesV1 } from './internal-operator-principal-http.js';\nimport type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';",
+              'index imports'
+          )
+          text = replace_once(
+              text,
+              "  brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;\n  methodOutcomeEvidenceAdmissions?:",
+              "  brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;\n  internalOperatorPrincipalResolver?: Pick<InternalOperatorPrincipalResolverV1, 'resolve'>;\n  methodOutcomeEvidenceAdmissions?:",
+              'runtime option'
+          )
+          text = replace_once(
+              text,
+              "  if (options.brainCognitiveRead && !secret)\n    throw new Error('internalServiceSecret is required for Brain cognitive reads.');\n  if (options.methodOutcomeEvidenceAdmissions && !secret)",
+              "  if (options.brainCognitiveRead && !secret)\n    throw new Error('internalServiceSecret is required for Brain cognitive reads.');\n  if (options.internalOperatorPrincipalResolver && !secret)\n    throw new Error('internalServiceSecret is required for Internal Operator resolution.');\n  if (options.methodOutcomeEvidenceAdmissions && !secret)",
+              'secret requirement'
+          )
+          text = replace_once(
+              text,
+              "  const brainCognitiveReadRoutes =\n    options.brainCognitiveRead && secret\n      ? createBrainCognitiveReadRoutesV1({\n          service: options.brainCognitiveRead,\n          internalServiceSecret: secret\n        })\n      : [];\n  const methodOutcomeEvidenceRoutes =",
+              "  const brainCognitiveReadRoutes =\n    options.brainCognitiveRead && secret\n      ? createBrainCognitiveReadRoutesV1({\n          service: options.brainCognitiveRead,\n          internalServiceSecret: secret\n        })\n      : [];\n  const internalOperatorPrincipalRoutes =\n    options.internalOperatorPrincipalResolver && secret\n      ? createInternalOperatorPrincipalRoutesV1({\n          resolver: options.internalOperatorPrincipalResolver,\n          internalServiceSecret: secret\n        })\n      : [];\n  const methodOutcomeEvidenceRoutes =",
+              'route construction'
+          )
+          text = replace_once(
+              text,
+              "  routes.push(\n    ...currentWorkspaceAuthorityRoutes,\n    ...brainCognitiveReadRoutes,",
+              "  routes.push(\n    ...currentWorkspaceAuthorityRoutes,\n    ...internalOperatorPrincipalRoutes,\n    ...brainCognitiveReadRoutes,",
+              'route registration'
+          )
+          text = replace_once(
+              text,
+              "export * from './brain-cognitive-read-postgres.js';\nexport * from './current-workspace-authority.js';",
+              "export * from './brain-cognitive-read-postgres.js';\nexport * from './internal-operator-principal.js';\nexport * from './internal-operator-principal-http.js';\nexport * from './current-workspace-authority.js';",
+              'exports'
+          )
+          index.write_text(text)
+
+          main = Path('services/core/src/main.ts')
+          text = main.read_text()
+          text = replace_once(
+              text,
+              "import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';\nimport { createRuntime } from './index.js';",
+              "import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';\nimport { createRuntime } from './index.js';\nimport {\n  createEnvironmentCognitiveReadGrantSourceV1,\n  InternalOperatorPrincipalResolverV1\n} from './internal-operator-principal.js';",
+              'main imports'
+          )
+          text = replace_once(
+              text,
+              "const accountAccess = new AccountAccessService(\n  new PostgresAccountAccessStore(database),\n  authentication\n);\nconst accountOnboarding =",
+              "const accountAccess = new AccountAccessService(\n  new PostgresAccountAccessStore(database),\n  authentication\n);\nconst internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV1({\n  authentication,\n  accountAccess,\n  cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1()\n});\nconst accountOnboarding =",
+              'main resolver construction'
+          )
+          text = replace_once(
+              text,
+              "  brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),\n  methodOutcomeEvidenceAdmissions,",
+              "  brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),\n  internalOperatorPrincipalResolver,\n  methodOutcomeEvidenceAdmissions,",
+              'main runtime option'
+          )
+          main.write_text(text)
+          PY
+      - name: Format, validate diff and push generated wiring
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.28.1 --activate
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write services/core/src/index.ts services/core/src/main.ts
+          git diff -- services/core/src/index.ts services/core/src/main.ts
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/core/src/index.ts services/core/src/main.ts
+          git commit -m 'tmp: apply Core 768 runtime wiring'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
