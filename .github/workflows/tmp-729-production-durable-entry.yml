@@ -27,7 +27,7 @@ jobs:
       - name: Apply TASK 729 patch
         run: node scripts/tmp-729-durable-production-entry.mjs
       - name: Prettier exact files
-        run: pnpm exec prettier --write apps/markreg-web/src/App.tsx apps/markreg-web/src/App.completed-review.test.tsx
+        run: pnpm exec prettier --write apps/markreg-web/src/App.tsx apps/markreg-web/tests/App.test.tsx
       - name: Build workspace dependencies
         run: pnpm -w build
       - name: MarkReg Web typecheck
@@ -35,7 +35,7 @@ jobs:
       - name: MarkReg Web lint
         run: pnpm --filter @markorbit/markreg-web lint
       - name: Targeted completed-review entry regression
-        run: pnpm --filter @markorbit/markreg-web exec vitest run src/App.completed-review.test.tsx
+        run: pnpm --filter @markorbit/markreg-web exec vitest run tests/App.test.tsx
       - name: MarkReg Web full tests
         run: pnpm --filter @markorbit/markreg-web test
       - name: MarkReg Web build
@@ -44,6 +44,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/markreg-web/src/App.tsx apps/markreg-web/src/App.completed-review.test.tsx
+          git add apps/markreg-web/src/App.tsx apps/markreg-web/tests/App.test.tsx
           git commit -m "tmp: wire completed review to durable preparation consumer"
           git push
