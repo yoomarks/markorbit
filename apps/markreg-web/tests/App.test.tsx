@@ -79,78 +79,73 @@ const response = (command: IntakeCreateCommand): IntakeRecommendationResponse =>
 });
 
 describe('guided intake', () => {
-  it(
-    'enters the durable Documents and Preparation consumer from a completed Professional Review',
-    async () => {
-      const at = '2026-07-29T12:00:00.000Z';
-      const review = {
+  it('enters the durable Documents and Preparation consumer from a completed Professional Review', async () => {
+    const at = '2026-07-29T12:00:00.000Z';
+    const review = {
+      schemaVersion: 1,
+      reviewCaseId: 'professional-review_app',
+      source: {
         schemaVersion: 1,
-        reviewCaseId: 'professional-review_app',
-        source: {
-          schemaVersion: 1,
-          matterDraftId: 'matter-draft_app',
-          matterDraftVersion: 'matter-v7',
-          confirmationId: 'confirmation_app',
-          customerId: 'customer_app',
-          status: 'READY_FOR_PROFESSIONAL_REVIEW',
-          preparation: {
-            classes: [9],
-            documentReferences: [],
-            goodsServices: 'Long governed software scope',
-            targetJurisdiction: 'US',
-            trademark: 'ORBIT'
-          },
-          readiness: { evaluatedAt: at, checks: [], readyForProfessionalReview: true },
-          readinessTimestamp: at
+        matterDraftId: 'matter-draft_app',
+        matterDraftVersion: 'matter-v7',
+        confirmationId: 'confirmation_app',
+        customerId: 'customer_app',
+        status: 'READY_FOR_PROFESSIONAL_REVIEW',
+        preparation: {
+          classes: [9],
+          documentReferences: [],
+          goodsServices: 'Long governed software scope',
+          targetJurisdiction: 'US',
+          trademark: 'ORBIT'
         },
-        status: 'REVIEWED_READY_FOR_NEXT_STEP',
-        priority: 'NORMAL',
-        requestedBy: 'customer_app',
-        createdAt: at,
-        updatedAt: at,
-        assignment: { status: 'CLAIMED', professionalAppointed: false },
-        checklist: [],
-        evidence: [],
-        decision: {
-          code: 'MARK_READY_FOR_NEXT_STEP',
-          reviewerId: 'reviewer_app',
-          decidedAt: 'decision-v3',
-          rationale: 'Ready',
-          checklistSnapshot: [],
-          evidenceReferences: [],
-          sourceMatterDraftVersion: 'matter-v7',
-          consequences: {
-            orderCreated: false,
-            paymentCreated: false,
-            formalMatterCreated: false,
-            providerAppointed: false,
-            filingCreated: false,
-            customerMessageSent: false
-          }
+        readiness: { evaluatedAt: at, checks: [], readyForProfessionalReview: true },
+        readinessTimestamp: at
+      },
+      status: 'REVIEWED_READY_FOR_NEXT_STEP',
+      priority: 'NORMAL',
+      requestedBy: 'customer_app',
+      createdAt: at,
+      updatedAt: at,
+      assignment: { status: 'CLAIMED', professionalAppointed: false },
+      checklist: [],
+      evidence: [],
+      decision: {
+        code: 'MARK_READY_FOR_NEXT_STEP',
+        reviewerId: 'reviewer_app',
+        decidedAt: 'decision-v3',
+        rationale: 'Ready',
+        checklistSnapshot: [],
+        evidenceReferences: [],
+        sourceMatterDraftVersion: 'matter-v7',
+        consequences: {
+          orderCreated: false,
+          paymentCreated: false,
+          formalMatterCreated: false,
+          providerAppointed: false,
+          filingCreated: false,
+          customerMessageSent: false
         }
-      } satisfies ProfessionalReviewCase;
-      const client = {
-        createIntake: vi.fn(),
-        getProfessionalReview: vi.fn().mockResolvedValue({ reviewCase: review })
-      } satisfies MarkregClient;
+      }
+    } satisfies ProfessionalReviewCase;
+    const client = {
+      createIntake: vi.fn(),
+      getProfessionalReview: vi.fn().mockResolvedValue({ reviewCase: review })
+    } satisfies MarkregClient;
 
-      window.history.replaceState({}, '', '/?professionalReviewCaseId=professional-review_app');
-      const user = userEvent.setup();
-      render(<MarkregApp client={client} />);
+    window.history.replaceState({}, '', '/?professionalReviewCaseId=professional-review_app');
+    const user = userEvent.setup();
+    render(<MarkregApp client={client} />);
 
-      expect(await screen.findByText('decision-v3')).toBeVisible();
-      await user.click(screen.getByRole('button', { name: 'Open Documents and Instructions' }));
-      expect(
-        await screen.findByRole('heading', { name: 'Documents and Instructions' })
-      ).toBeVisible();
-      expect(
-        screen.getByRole('button', { name: 'Create durable Document Package' })
-      ).toBeVisible();
-      expect(
-        screen.queryByRole('button', { name: 'Create Document Package' })
-      ).not.toBeInTheDocument();
-    }
-  );
+    expect(await screen.findByText('decision-v3')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Open Documents and Instructions' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Documents and Instructions' })
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Create durable Document Package' })).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Create Document Package' })
+    ).not.toBeInTheDocument();
+  });
 
   it('validates required fields and preserves answers when moving back', async () => {
     const user = userEvent.setup();
