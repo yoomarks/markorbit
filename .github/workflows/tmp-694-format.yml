@@ -1,0 +1,34 @@
+name: tmp-694-format
+on:
+  push:
+    branches: ['tmp/694-format-current']
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact #694 files
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/execution-self-assignment-gateway.test.ts \
+            apps/gateway/tests/filing-governance-http.test.ts
+          pnpm exec prettier --check \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/execution-self-assignment-gateway.test.ts \
+            apps/gateway/tests/filing-governance-http.test.ts
+      - name: Commit formatted files
+        run: |
+          git config user.name yoomarks
+          git config user.email yoomarks@users.noreply.github.com
+          git add apps/gateway/src/filing-governance-http.ts apps/gateway/tests/execution-self-assignment-gateway.test.ts apps/gateway/tests/filing-governance-http.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: format #694 gateway files"
+          git push
