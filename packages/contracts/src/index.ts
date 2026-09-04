@@ -877,13 +877,39 @@ export const noAuthorizationAuthorityConsequences: AuthorizationAuthorityConsequ
     trademarkOfficeContacted: false
   });
 export type ExecutionTaskAuthorityConsequences = AuthorizationAuthorityConsequences;
+export interface DurableFilingPreparationSource {
+  kind: 'DURABLE';
+  preparationLockVersion: number;
+  preparationLockFingerprint: string;
+  documentPackage: Readonly<{
+    documentPackageId: DocumentPackageId;
+    documentPackageVersion: number;
+    canonicalEvidenceHash: string;
+    documentReferences: ReadonlyArray<string>;
+    instructionReferences: ReadonlyArray<string>;
+  }>;
+  formalMatter: Readonly<{
+    formalMatterId: FormalMatterId;
+    formalMatterVersion: number;
+    formalMatterHash: string;
+  }>;
+  professionalReview: Readonly<{
+    professionalReviewCaseId: ProfessionalReviewCaseId;
+    professionalReviewVersion: number;
+    completedDecisionId: string;
+    completedDecisionHash: string;
+  }>;
+}
 export interface FilingAuthorization {
   schemaVersion: 1;
   version: number;
   filingAuthorizationId: FilingAuthorizationId;
   preparationLockId: PreparationLockId;
   preparationLockVersion: string;
-  preparationSnapshot: Readonly<PreparationSnapshot>;
+  /** Present only for the explicit legacy fixture preparation path. */
+  preparationSnapshot?: Readonly<PreparationSnapshot>;
+  /** Production durable Preparation lineage; never synthesized from a legacy snapshot. */
+  durablePreparationSource?: Readonly<DurableFilingPreparationSource>;
   professionalReviewCaseId: ProfessionalReviewCaseId;
   professionalReviewVersion: string;
   customerId: MarkOrbitId;

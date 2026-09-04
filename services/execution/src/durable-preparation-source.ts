@@ -53,8 +53,7 @@ const canonicalJson = (value: unknown): string => {
   return JSON.stringify(value) ?? 'null';
 };
 
-const sha256 = (value: unknown) =>
-  createHash('sha256').update(canonicalJson(value)).digest('hex');
+const sha256 = (value: unknown) => createHash('sha256').update(canonicalJson(value)).digest('hex');
 const validHash = (value: unknown): value is string =>
   typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value);
 const row = (value: unknown, name: string): Row => {
@@ -128,7 +127,10 @@ function parseLock(value: unknown): DurablePreparationLockWire {
     workspaceId: text(candidate.workspaceId, 'workspaceId'),
     version: integer(candidate.version, 'Preparation Lock version'),
     source: {
-      documentPackageId: text(source.documentPackageId, 'documentPackageId') as `document-package_${string}`,
+      documentPackageId: text(
+        source.documentPackageId,
+        'documentPackageId'
+      ) as `document-package_${string}`,
       documentPackageVersion: integer(source.documentPackageVersion, 'documentPackageVersion'),
       canonicalEvidenceHash: exactHash(source.canonicalEvidenceHash, 'canonicalEvidenceHash'),
       formalMatterId: text(source.formalMatterId, 'formalMatterId') as `formal-matter_${string}`,
@@ -152,11 +154,13 @@ function parseLock(value: unknown): DurablePreparationLockWire {
     !lock.source.documentPackageId.startsWith('document-package_') ||
     !lock.source.formalMatterId.startsWith('formal-matter_') ||
     !lock.source.professionalReviewCaseId.startsWith('professional-review_') ||
-    lock.source.instructionEntries.length !== lock.source.instructionEntryCount
+    lock.source.instructionEntries.length !== lock.source.instructionEntryCount ||
+    sha256(lock.source.instructionEntries) !== lock.source.instructionSetHash ||
+    sha256({ schemaVersion: 1, source: lock.source }) !== lock.lockPayloadHash
   )
     throw new FilingGovernanceError(
       'SOURCE_CONTRACT_MISMATCH',
-      'Preparation Lock durable identity or instruction provenance is malformed.',
+      'Preparation Lock durable identity or fingerprint provenance is malformed.',
       502
     );
   return lock;
@@ -192,7 +196,8 @@ function validatePackage(value: unknown): DurableDocumentPackageView {
 
 function validateFormalMatter(value: unknown): FormalMatter {
   const envelope = row(value, 'Formal Matter response');
-  const candidate = 'formalMatter' in envelope ? row(envelope.formalMatter, 'Formal Matter') : envelope;
+  const candidate =
+    'formalMatter' in envelope ? row(envelope.formalMatter, 'Formal Matter') : envelope;
   text(candidate.formalMatterId, 'formalMatterId');
   text(candidate.workspaceId, 'workspaceId');
   integer(candidate.version, 'Formal Matter version');
@@ -227,14 +232,16 @@ export function createHttpDurablePreparationSource(options: {
   baseUrl: string;
   principal: WorkspacePrincipal;
   secret: string;
-  reviewSource: (id: `professional-review_${string}`) => Promise<ProfessionalReviewCase | undefined>;
+  reviewSource: (
+    id: `professional-review_${string}`
+  ) => Promise<ProfessionalReviewCase | undefined>;
 }): PreparationLockSource {
   const headers = {
     'x-markorbit-internal-authorization': options.secret,
     'x-markorbit-principal': encodeInternalWorkspacePrincipal(options.principal),
     'x-markorbit-workspace-id': options.principal.workspaceId
   };
-  const getJson = async (path: string, allowNotFound = false): Promise<unknown | undefined> => {
+  const getJson = async (path: string, allowNotFound = false): Promise<unknown> => {
     let response: Response;
     try {
       response = await fetch(`${options.baseUrl}${path}`, { headers });
@@ -258,10 +265,7 @@ export function createHttpDurablePreparationSource(options: {
   };
   return {
     async getPreparationLock(id) {
-      const rawLock = await getJson(
-        `/v1/preparation-locks/${encodeURIComponent(id)}`,
-        true
-      );
+      const rawLock = await getJson(`/v1/preparation-locks/${encodeURIComponent(id)}`, true);
       if (rawLock === undefined) return undefined;
       const lock = parseLock(rawLock);
       if (lock.preparationLockId !== id || lock.workspaceId !== options.principal.workspaceId)
@@ -285,13 +289,30 @@ export function createHttpDurablePreparationSource(options: {
       )
         mismatch('Preparation Lock and exact Document Package lineage no longer match.');
 
-      const packageInstructions = pkg.instructionEntries.map((entry) => row(entry, 'instruction entry'));
-      const currentInstructionIds = new Set(
-        packageInstructions.map((entry) => text(entry.instructionEntryId, 'instructionEntryId'))
+      const packageInstructions = pkg.instructionEntries.map((entry) =>
+        row(entry, 'instruction entry')
       );
-      for (const pinned of lock.source.instructionEntries)
-        if (!currentInstructionIds.has(pinned.instructionEntryId))
+      const currentInstructions = new Map(
+        packageInstructions.map((entry) => [
+          text(entry.instructionEntryId, 'instructionEntryId'),
+          {
+            sequence: integer(entry.sequence, 'instruction sequence'),
+            canonicalFingerprint: exactHash(
+              entry.canonicalFingerprint,
+              'instruction canonical fingerprint'
+            )
+          }
+        ])
+      );
+      for (const pinned of lock.source.instructionEntries) {
+        const current = currentInstructions.get(pinned.instructionEntryId);
+        if (
+          !current ||
+          current.sequence !== pinned.sequence ||
+          current.canonicalFingerprint !== pinned.canonicalFingerprint
+        )
           mismatch('Preparation Lock instruction lineage no longer matches the Document Package.');
+      }
 
       const formalMatter = validateFormalMatter(
         await getJson(`/v1/formal-matters/${encodeURIComponent(lock.source.formalMatterId)}`)

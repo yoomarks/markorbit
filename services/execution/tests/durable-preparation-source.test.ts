@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ProfessionalReviewCase, WorkspacePrincipal } from '@markorbit/contracts';
 import {
   FilingGovernanceService,
-  InMemoryFilingGovernanceRepository
+  InMemoryFilingGovernanceRepository,
+  type FilingAuthorizationRepository,
+  type ExecutionReleaseRepository,
+  type FilingExecutionTaskDraftRepository
 } from '../src/filing-authorization.js';
 import { createHttpDurablePreparationSource } from '../src/durable-preparation-source.js';
 import { createHash } from 'node:crypto';
@@ -27,12 +30,7 @@ const principal: WorkspacePrincipal = {
   workspaceId,
   membershipId: 'membership_731',
   role: 'MATTER_MANAGER',
-  permissions: [
-    'workspace:read',
-    'execution:read',
-    'execution:manage',
-    'document-package:read'
-  ],
+  permissions: ['workspace:read', 'execution:read', 'execution:manage', 'document-package:read'],
   sessionExpiresAt: '2026-09-05T13:00:00.000Z'
 };
 const decision = {
@@ -206,7 +204,12 @@ const review: ProfessionalReviewCase = {
   requestedBy: 'user_731',
   createdAt: at,
   updatedAt: at,
-  assignment: { status: 'CLAIMED', claimedBy: 'user_reviewer', claimedAt: at, professionalAppointed: false },
+  assignment: {
+    status: 'CLAIMED',
+    claimedBy: 'user_reviewer',
+    claimedAt: at,
+    professionalAppointed: false
+  },
   checklist: [],
   evidence: [],
   decision,
@@ -215,16 +218,24 @@ const review: ProfessionalReviewCase = {
 };
 
 function json(value: unknown, status = 200) {
-  return Promise.resolve(new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } }));
+  return Promise.resolve(
+    new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
+  );
 }
-function source(overrides?: { lock?: unknown; package?: unknown; formalMatter?: unknown; review?: ProfessionalReviewCase | undefined }) {
+function source(overrides?: {
+  lock?: unknown;
+  package?: unknown;
+  formalMatter?: unknown;
+  review?: ProfessionalReviewCase | undefined;
+}) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: string | URL | Request) => {
-      const url = String(input);
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       if (url.includes('/v1/preparation-locks/')) return json(overrides?.lock ?? lock);
       if (url.includes('/v1/document-packages/')) return json(overrides?.package ?? pkg);
-      if (url.includes('/v1/formal-matters/')) return json({ formalMatter: overrides?.formalMatter ?? formalMatter });
+      if (url.includes('/v1/formal-matters/'))
+        return json({ formalMatter: overrides?.formalMatter ?? formalMatter });
       throw new Error(`Unexpected URL ${url}`);
     })
   );
@@ -232,7 +243,8 @@ function source(overrides?: { lock?: unknown; package?: unknown; formalMatter?: 
     baseUrl: 'http://markreg.test',
     principal,
     secret: 'x'.repeat(32),
-    reviewSource: async () => (overrides && 'review' in overrides ? overrides.review : review)
+    reviewSource: () =>
+      Promise.resolve(overrides && 'review' in overrides ? overrides.review : review)
   });
 }
 
@@ -274,7 +286,13 @@ describe('durable Preparation source adapter', () => {
   it('creates Filing Authorization from durable owner scope without legacy placeholders and pins the lock fingerprint', async () => {
     const durable = source();
     const repository = new InMemoryFilingGovernanceRepository();
-    const service = new FilingGovernanceService(repository, repository, repository, durable, () => at);
+    const service = new FilingGovernanceService(
+      repository as unknown as FilingAuthorizationRepository,
+      repository as unknown as ExecutionReleaseRepository,
+      repository as unknown as FilingExecutionTaskDraftRepository,
+      durable,
+      () => at
+    );
     const authorization = await service.createAuthorization({
       preparationLockId: 'preparation-lock_731',
       preparationLockVersion: '1',
@@ -312,7 +330,13 @@ describe('durable Preparation source adapter', () => {
       }
     };
     const repository = new InMemoryFilingGovernanceRepository();
-    const service = new FilingGovernanceService(repository, repository, repository, durable, () => at);
+    const service = new FilingGovernanceService(
+      repository as unknown as FilingAuthorizationRepository,
+      repository as unknown as ExecutionReleaseRepository,
+      repository as unknown as FilingExecutionTaskDraftRepository,
+      durable,
+      () => at
+    );
     const created = await service.createAuthorization({
       preparationLockId: 'preparation-lock_731',
       preparationLockVersion: '1',
