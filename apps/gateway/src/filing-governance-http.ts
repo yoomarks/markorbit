@@ -236,7 +236,10 @@ function governedBody(
   for (const field of allowedFields) {
     if (Object.prototype.hasOwnProperty.call(body, field)) projected[field] = body[field];
   }
-  if (policy.projectAuthorizedParty && Object.prototype.hasOwnProperty.call(projected, 'authorizedParty'))
+  if (
+    policy.projectAuthorizedParty &&
+    Object.prototype.hasOwnProperty.call(projected, 'authorizedParty')
+  )
     projected.authorizedParty = projectAuthorizedParty(projected.authorizedParty);
   return projected;
 }
