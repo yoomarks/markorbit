@@ -1,6 +1,7 @@
 import type { ManagedDatabase } from '@markorbit/persistence';
 import { AllocationProviderAcceptanceService } from './allocation-provider-acceptance.js';
 import { PostgresAllocationProviderAcceptanceRepository } from './allocation-provider-acceptance-postgres.js';
+import { MgsnControlledHandoffCurrentAuthoritySource } from './controlled-handoff-current-authority.js';
 import {
   ControlledPrivacyHandoffService,
   type ControlledHandoffCurrentAuthoritySource
@@ -24,6 +25,7 @@ import { ProviderResponsibilityService } from './provider-responsibility.js';
 import { PostgresProviderResponsibilityRepository } from './provider-responsibility-postgres.js';
 import { ProviderReturnService } from './provider-return.js';
 import { PostgresProviderReturnRepository } from './provider-return-postgres.js';
+import { MgsnProviderSelectionCurrentAuthoritySource } from './provider-selection-current-authority.js';
 import {
   ProviderSelectionService,
   type ProviderSelectionCurrentAuthoritySource
@@ -32,6 +34,7 @@ import { PostgresProviderSelectionRepository } from './provider-selection-postgr
 import { ProviderWorkReadModelService } from './provider-work-read-model.js';
 import { PostgresProviderWorkReadRepository } from './provider-work-read-model-postgres.js';
 import {
+  HttpCoreCurrentWorkspaceAuthoritySource,
   HttpCoreWorkspaceIdentitySource,
   HttpExecutionSourceAdmissionSource,
   HttpProviderReturnEvidenceHandoffTarget
@@ -42,46 +45,6 @@ import {
   TrustedPublicExposureService,
   type TrustedPublicCurrentAuthoritySource
 } from './trusted-public-exposure.js';
-
-// Durable Selection history is never a substitute for current requester/provider authority.
-const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySource = {
-  evaluateCurrentAuthority() {
-    return Promise.resolve({
-      authorityAvailable: false,
-      requesterAuthorityCurrent: false,
-      actorAuthorityCurrent: false,
-      candidateCurrent: false,
-      participationActive: false,
-      visibilityAuthorized: false,
-      trustedRelationshipRequired: false,
-      trustedRelationshipCurrent: false,
-      providerOperational: false,
-      supplyCurrent: false,
-      directExecutorEstablished: false,
-      sourceVersionsMatch: false,
-      checkedAuthorityReferences: []
-    });
-  }
-};
-
-// Persisted AUTHORIZED history never substitutes for current disclosure permission.
-const unavailableControlledHandoffAuthority: ControlledHandoffCurrentAuthoritySource = {
-  evaluateCurrentAuthority() {
-    return Promise.resolve({
-      authorityAvailable: false,
-      selectionCurrent: false,
-      selectionScopeMatch: false,
-      sourceVersionsMatch: false,
-      sourceAccessCurrent: false,
-      participationActive: false,
-      visibilityAuthorized: false,
-      directExecutorEstablished: false,
-      hiddenIntermediaryDetected: false,
-      evidenceArtifactAccessAuthorized: false,
-      checkedAuthorityReferences: []
-    });
-  }
-};
 
 // Shared public eligibility/projection metadata never establishes current public serving authority.
 const unavailableTrustedPublicAuthority: TrustedPublicCurrentAuthoritySource = {
@@ -164,6 +127,10 @@ export function createDurableMgsnServices(
     options.coreUrl,
     options.internalServiceSecret
   );
+  const coreCurrentWorkspaceAuthority = new HttpCoreCurrentWorkspaceAuthoritySource(
+    options.coreUrl,
+    options.internalServiceSecret
+  );
   const executionSource = new HttpExecutionSourceAdmissionSource(
     options.executionUrl,
     options.internalServiceSecret
@@ -175,6 +142,26 @@ export function createDurableMgsnServices(
   const providerResponsibility = new ProviderResponsibilityService(
     providerResponsibilityRepository,
     providerRepository
+  );
+  const providerSelectionCurrentAuthority = new MgsnProviderSelectionCurrentAuthoritySource(
+    coreCurrentWorkspaceAuthority,
+    networkParticipationRepository,
+    providerRepository,
+    providerResponsibility
+  );
+  const providerSelection = new ProviderSelectionService(
+    providerSelectionRepository,
+    options.providerSelectionCurrentAuthoritySource ?? providerSelectionCurrentAuthority
+  );
+  const controlledHandoffCurrentAuthority = new MgsnControlledHandoffCurrentAuthoritySource(
+    providerSelection,
+    networkParticipationRepository,
+    providerRepository,
+    providerResponsibility
+  );
+  const controlledHandoff = new ControlledPrivacyHandoffService(
+    controlledHandoffRepository,
+    options.controlledHandoffCurrentAuthoritySource ?? controlledHandoffCurrentAuthority
   );
   const trustEvidenceCurrentAuthority = new MgsnTrustEvidenceCurrentAuthoritySource(
     networkParticipationRepository,
@@ -216,14 +203,8 @@ export function createDurableMgsnServices(
       providerResponsibility
     ),
     providerResponsibility,
-    providerSelection: new ProviderSelectionService(
-      providerSelectionRepository,
-      options.providerSelectionCurrentAuthoritySource ?? unavailableProviderSelectionAuthority
-    ),
-    controlledHandoff: new ControlledPrivacyHandoffService(
-      controlledHandoffRepository,
-      options.controlledHandoffCurrentAuthoritySource ?? unavailableControlledHandoffAuthority
-    ),
+    providerSelection,
+    controlledHandoff,
     outcomeTrustEvidence: new OutcomeTrustEvidenceService(
       outcomeTrustEvidenceRepository,
       options.trustEvidenceCurrentAuthoritySource ?? trustEvidenceCurrentAuthority
