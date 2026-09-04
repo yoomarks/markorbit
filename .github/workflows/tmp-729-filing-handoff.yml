@@ -26,7 +26,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Apply TASK 729 patch
-        run: node scripts/tmp-729-filing-handoff.mjs
+        run: |
+          node scripts/tmp-729-filing-handoff.mjs
+          node scripts/tmp-729-exact-optional-fix.mjs
       - name: Prettier exact files
         run: >-
           pnpm exec prettier --write
