@@ -1,7 +1,11 @@
+import { createHash } from 'node:crypto';
 import type { QueryClient } from '@markorbit/persistence';
 import { noDownstreamHandoffAuthorityConsequences } from '@markorbit/contracts/controlled-privacy-handoff';
 import { noDownstreamProviderSelectionAuthorityConsequences } from '@markorbit/contracts/provider-selection';
-import type { AllocationRecord } from './allocation-provider-acceptance.js';
+import {
+  AllocationProviderAcceptanceError,
+  type AllocationRecord
+} from './allocation-provider-acceptance.js';
 import {
   GovernedAllocationError,
   type AllocationAdmissionLineageRecord,
@@ -34,6 +38,42 @@ function jsonVersion(value: unknown): number | string {
   throw new Error('Persisted governed Allocation authority version is malformed.');
 }
 
+function legacyStableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => legacyStableSerialize(item)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${legacyStableSerialize(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function legacyAllocationRequestFingerprint(record: Readonly<AllocationRecord>): string {
+  return createHash('sha256')
+    .update(
+      legacyStableSerialize({
+        command: 'ALLOCATE_PROVIDER',
+        workspaceId: record.workspaceId.toLowerCase(),
+        servicePackageId: record.servicePackage.id,
+        expectedServicePackageVersion: record.servicePackage.version,
+        expectedPackageFingerprint: record.servicePackageFingerprintSha256,
+        eligibilityEvaluationId: record.eligibilityEvaluation.id,
+        expectedEligibilityEvaluationVersion: record.eligibilityEvaluation.version,
+        expectedEligibilityFingerprint: record.eligibilityFingerprintSha256,
+        providerId: record.provider.providerId,
+        providerSupplyCapabilityId: record.providerSupplyCapability.id,
+        expectedProviderSupplyCapabilityVersion: record.providerSupplyCapability.version,
+        rationale: record.rationale,
+        actorId: record.allocatedBy,
+        correlationId: record.correlationId
+      })
+    )
+    .digest('hex');
+}
+
 export class PostgresGovernedAllocationRepository implements GovernedAllocationRepository {
   constructor(
     private readonly database: GovernedAllocationTransactionHost,
@@ -43,8 +83,8 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
   async findReplay(scopeKey: string, idempotencyKey: string) {
     try {
       return await this.readReplay(this.query, scopeKey, idempotencyKey);
-    } catch (cause) {
-      throw this.unavailable(cause);
+    } catch {
+      throw this.unavailable();
     }
   }
 
@@ -81,8 +121,8 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
           [input.allocation.servicePackage.id]
         );
         if (active.rowCount) {
-          throw new GovernedAllocationError(
-            'SELECTION_MISMATCH',
+          throw new AllocationProviderAcceptanceError(
+            'ACTIVE_ALLOCATION_EXISTS',
             'An active Allocation already exists for this Service Package.',
             409
           );
@@ -97,7 +137,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
         return undefined;
       });
     } catch (cause) {
-      if (cause instanceof GovernedAllocationError) throw cause;
+      if (cause instanceof GovernedAllocationError || cause instanceof AllocationProviderAcceptanceError) throw cause;
       const code = (cause as { code?: string }).code;
       if (code === '23505') {
         throw new GovernedAllocationError(
@@ -113,7 +153,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
           409
         );
       }
-      throw this.unavailable(cause);
+      throw this.unavailable();
     }
   }
 
@@ -313,7 +353,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
       [
         legacyScope,
         input.idempotencyKey,
-        input.requestFingerprintSha256,
+        legacyAllocationRequestFingerprint(input.allocation),
         input.allocation.allocationId,
         input.allocation.version,
         JSON.stringify(input.allocation),
@@ -491,7 +531,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
     );
   }
 
-  private unavailable(_cause: unknown) {
+  private unavailable() {
     return new GovernedAllocationError(
       'AUTHORITY_UNAVAILABLE',
       'Governed Allocation persistence is unavailable.',
