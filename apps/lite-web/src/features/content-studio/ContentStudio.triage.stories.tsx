@@ -108,7 +108,7 @@ export const NoCurrentAction: Story = {
       listFixture([item(7, 'Rejected historical Draft', 'READY_FOR_HUMAN_REVIEW', 'REJECTED')])
     )
   },
-  play: async ({ canvasElement }) => {
+  play: ({ canvasElement }) => {
     const select = canvasElement.querySelector('select');
     if (select) {
       select.value = 'NO_CURRENT_ACTION';
