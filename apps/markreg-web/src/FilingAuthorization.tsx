@@ -170,7 +170,7 @@ export function FilingAuthorizationView({
     <main className="markreg-page" aria-labelledby="filing-authorization-title">
       <PageHeader
         title="Filing Authorization"
-        description="Review the exact immutable Preparation Snapshot before actively authorizing internal execution review."
+        description="Review the exact immutable Preparation source before actively authorizing internal execution review."
       />
       <Alert
         tone="warning"
@@ -205,9 +205,13 @@ export function FilingAuthorizationView({
             {
               key: 'Locked documents',
               value:
-                authorization.preparationSnapshot.documentPackage.documentItems
+                authorization.durablePreparationSource?.documentPackage.documentReferences.join(
+                  '; '
+                ) ??
+                authorization.preparationSnapshot?.documentPackage.documentItems
                   .map((x) => x.documentReference.fileName)
-                  .join('; ') || 'No locked document files'
+                  .join('; ') ??
+                'No locked document files'
             },
             { key: 'Representative requirement', value: authorization.representativeRequirement },
             { key: 'Terms', value: authorization.termsVersion }
