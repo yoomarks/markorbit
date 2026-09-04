@@ -85,8 +85,7 @@ const handoffPrincipal: ControlledHandoffPrincipal = {
   handoffAuthorityReference: handoffAuthority.handoffAuthorityReference,
   handoffAuthorityVersion: handoffAuthority.handoffAuthorityVersion,
   authenticatedAt: handoffAuthority.authenticatedAt,
-  affirmativeHumanActionEvidenceReference:
-    handoffAuthority.affirmativeHumanActionEvidenceReference
+  affirmativeHumanActionEvidenceReference: handoffAuthority.affirmativeHumanActionEvidenceReference
 };
 
 function legacyStableSerializeForTest(value: unknown): string {
@@ -189,7 +188,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
       fixture.createCommand.trustedHumanAuthority.workspaceMembershipReference,
     selectionAuthorityReference:
       fixture.createCommand.trustedHumanAuthority.selectionAuthorityReference,
-    selectionAuthorityVersion: fixture.createCommand.trustedHumanAuthority.selectionAuthorityVersion,
+    selectionAuthorityVersion:
+      fixture.createCommand.trustedHumanAuthority.selectionAuthorityVersion,
     authenticatedAt: fixture.createCommand.trustedHumanAuthority.authenticatedAt,
     affirmativeHumanActionEvidenceReference:
       fixture.createCommand.trustedHumanAuthority.affirmativeHumanActionEvidenceReference
@@ -544,10 +544,11 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
         .then((value) => Number((value.rows[0] as { count: number }).count))
     ).toBe(0);
 
-    const legacyReplay = await database.getPool().query(
-      'SELECT request_fingerprint FROM mgsn_allocation_commands WHERE target_id=$1',
-      [result.allocation.allocationId]
-    );
+    const legacyReplay = await database
+      .getPool()
+      .query('SELECT request_fingerprint FROM mgsn_allocation_commands WHERE target_id=$1', [
+        result.allocation.allocationId
+      ]);
     const legacyFingerprint = String(
       (legacyReplay.rows[0] as { request_fingerprint: string }).request_fingerprint
     );
@@ -560,7 +561,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
           expectedServicePackageVersion: governedCommand.expectedServicePackageVersion,
           expectedPackageFingerprint: governedCommand.expectedServicePackageFingerprintSha256,
           eligibilityEvaluationId: governedCommand.eligibilityEvaluationId,
-          expectedEligibilityEvaluationVersion: governedCommand.expectedEligibilityEvaluationVersion,
+          expectedEligibilityEvaluationVersion:
+            governedCommand.expectedEligibilityEvaluationVersion,
           expectedEligibilityFingerprint: governedCommand.expectedEligibilityFingerprintSha256,
           providerId: governedCommand.providerId,
           providerSupplyCapabilityId: governedCommand.providerSupplyCapabilityId,
@@ -603,10 +605,40 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
 
   it('replays the exact committed Allocation and lineage after repository recreation', async () => {
     const seeded = await seedProviderSelectionAndEligiblePackage();
-    const first = await governedService().allocate(command(seeded));
-    const replay = await governedService().allocate(command(seeded));
+    const governedCommand = command(seeded);
+    const first = await governedService().allocate(governedCommand);
+    const replay = await governedService().allocate(governedCommand);
 
     expect(replay).toEqual(first);
+
+    const changedSelectionLineage = structuredClone(governedCommand);
+    changedSelectionLineage.selection = {
+      ...changedSelectionLineage.selection,
+      version: changedSelectionLineage.selection.version + 1
+    };
+    await expect(governedService().allocate(changedSelectionLineage)).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+      status: 409
+    });
+    expect(await allocationCounts()).toEqual({
+      allocations: 1,
+      legacy_replays: 1,
+      legacy_audits: 1,
+      lineages: 1,
+      governed_replays: 1,
+      lineage_audits: 1
+    });
+  });
+
+  it('deterministically replays one commit for concurrent copies of the same governed command', async () => {
+    const seeded = await seedProviderSelectionAndEligiblePackage();
+    const governedCommand = command(seeded);
+    const [left, right] = await Promise.all([
+      governedService().allocate(governedCommand),
+      governedService().allocate(governedCommand)
+    ]);
+
+    expect(right).toEqual(left);
     expect(await allocationCounts()).toEqual({
       allocations: 1,
       legacy_replays: 1,
@@ -660,8 +692,9 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
 
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
-    expect((results.find((result) => result.status === 'rejected') as PromiseRejectedResult).reason)
-      .toMatchObject({ code: 'ACTIVE_ALLOCATION_EXISTS' });
+    expect(
+      (results.find((result) => result.status === 'rejected') as PromiseRejectedResult).reason
+    ).toMatchObject({ code: 'ACTIVE_ALLOCATION_EXISTS' });
     expect(await allocationCounts()).toEqual({
       allocations: 1,
       legacy_replays: 1,
@@ -697,7 +730,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
     expect(replay).toEqual(first);
 
     const changedLineage = structuredClone(exact);
-    if (changedLineage.handoffBinding.mode !== 'EXACT') throw new Error('Exact Handoff fixture required.');
+    if (changedLineage.handoffBinding.mode !== 'EXACT')
+      throw new Error('Exact Handoff fixture required.');
     changedLineage.handoffBinding = {
       ...changedLineage.handoffBinding,
       sourceSetFingerprintSha256: '0'.repeat(64)
@@ -723,7 +757,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
     };
     const currentRead = await providerWork.read(principal, first.allocation.allocationId);
     expect(currentRead.decision).toBe('AUTHORIZED');
-    if (currentRead.decision !== 'AUTHORIZED') throw new Error('Exact Provider Work must be readable.');
+    if (currentRead.decision !== 'AUTHORIZED')
+      throw new Error('Exact Provider Work must be readable.');
     expect(currentRead.item.incomingDataAuthority).toMatchObject({
       state: 'CURRENTLY_USABLE',
       handoff: {
@@ -749,7 +784,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
 
     const deniedRead = await providerWork.read(principal, first.allocation.allocationId);
     expect(deniedRead.decision).toBe('AUTHORIZED');
-    if (deniedRead.decision !== 'AUTHORIZED') throw new Error('Denied Provider Work must remain readable.');
+    if (deniedRead.decision !== 'AUTHORIZED')
+      throw new Error('Denied Provider Work must remain readable.');
     expect(deniedRead.item.incomingDataAuthority).toMatchObject({
       state: 'DENIED',
       incomingFieldsVisible: false,
@@ -809,7 +845,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
       'allocation_legacy-716'
     );
     expect(legacyRead.decision).toBe('AUTHORIZED');
-    if (legacyRead.decision !== 'AUTHORIZED') throw new Error('Legacy Provider Work must be readable.');
+    if (legacyRead.decision !== 'AUTHORIZED')
+      throw new Error('Legacy Provider Work must be readable.');
     expect(legacyRead.item.incomingDataAuthority).toMatchObject({
       state: 'UNKNOWN',
       incomingFieldsVisible: false,

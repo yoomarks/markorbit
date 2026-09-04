@@ -179,4 +179,29 @@ describe('GovernedAllocationService exact Handoff admission', () => {
       }
     );
   });
+
+  it.each(['HANDOFF_REVOKED', 'HANDOFF_EXPIRED', 'SOURCE_ACCESS_NOT_CURRENT'] as const)(
+    'fails closed before M4 planning when exact Handoff validation returns %s',
+    async (denialReason) => {
+      const planner = { plan: vi.fn() };
+      const runtime = service({
+        planner,
+        handoffService: {
+          validateCurrent: vi.fn().mockResolvedValue({
+            ...controlledHandoffContractFixtureV1.validForExactConsumption,
+            decision: 'DENY',
+            currentlyUsable: false,
+            currentExactDisclosurePermitted: false,
+            denialReason
+          })
+        }
+      });
+
+      await expect(runtime.instance.allocate(command())).rejects.toMatchObject({
+        code: 'HANDOFF_NOT_CURRENT',
+        status: 409
+      });
+      expect(planner.plan).not.toHaveBeenCalled();
+    }
+  );
 });

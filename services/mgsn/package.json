@@ -10,8 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "start": "node dist/main.js",
-    "postinstall": "prettier --write src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation-postgres.test.ts tests/governed-allocation.test.ts tests/provider-work-incoming-authority.test.ts && python -c 'import base64,gzip,subprocess; files=[\"src/governed-allocation-postgres.ts\",\"src/governed-allocation-runtime.ts\",\"src/governed-allocation.ts\",\"src/provider-work-incoming-authority.ts\",\"tests/governed-allocation-postgres.test.ts\",\"tests/governed-allocation.test.ts\",\"tests/provider-work-incoming-authority.test.ts\"]; patch=subprocess.check_output([\"git\",\"diff\",\"--no-ext-diff\",\"--unified=3\",\"--\",*[\"services/mgsn/\"+f for f in files]],cwd=\"../..\"); print(\"@@PATCHGZB64:\"+base64.b64encode(gzip.compress(patch)).decode())'"
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
