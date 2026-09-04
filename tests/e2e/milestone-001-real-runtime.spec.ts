@@ -245,7 +245,17 @@ test.describe('Milestone 001 real runtime golden path', () => {
         page.getByRole('heading', { name: 'Locked for preparation — not submitted' })
       ).toBeVisible();
       const lockId = await id(page, /Preparation Lock ID\s+(preparation-lock_[\w-]+)/);
-      const lockVersion = `${lineage.require('documentPackage').version}:${lineage.require('instructionLedger').version}`;
+      const lockedPackageVersion = await id(
+        page,
+        /Package\s+document-package_[\w-]+ · version (\d+)/
+      );
+      const lockedLedgerVersion = await id(
+        page,
+        /Instruction ledger\s+instruction-ledger_[\w-]+ · version (\d+)/
+      );
+      const lockVersion = `${lockedPackageVersion}:${lockedLedgerVersion}`;
+      lineage.record('documentPackage', { id: packageId, version: Number(lockedPackageVersion) });
+      lineage.record('instructionLedger', { id: ledgerId, version: Number(lockedLedgerVersion) });
       lineage.record('preparationLock', { id: lockId, version: lockVersion });
       await checkpoint(
         page,
