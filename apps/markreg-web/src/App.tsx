@@ -26,7 +26,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MarkregApiError } from './api/errors.js';
 import { createMarkregClient, type MarkregClient } from './api/markreg.js';
 import { ConfirmationMatterFlow } from './ConfirmationMatterFlow.js';
-import { ConnectedDocumentsInstructionsWorkspace } from './DocumentsInstructionsWorkspace.js';
+import { DurableDocumentsPreparationWorkspace } from './DurableDocumentsPreparationWorkspace.js';
 import { FilingAuthorizationView } from './FilingAuthorization.js';
 
 export interface IntakeDraft {
@@ -192,7 +192,9 @@ export function MarkregApp({ client = defaultMarkregClient }: { client?: Markreg
     );
   if (completedReview?.status === 'REVIEWED_READY_FOR_NEXT_STEP') {
     if (preparationOpen)
-      return <ConnectedDocumentsInstructionsWorkspace client={client} review={completedReview} />;
+      return (
+        <DurableDocumentsPreparationWorkspace review={completedReview} filingClient={client} />
+      );
     return (
       <main className="markreg-page">
         <FixtureBanner />
