@@ -4,6 +4,7 @@ import type {
   BrainAssetVersionId
 } from '@markorbit/contracts/brain';
 import type {
+  BrainGapDispositionSource,
   BrainGapRegistryQuery,
   BrainGapRegistryRecord,
   BrainGapStatus
@@ -70,11 +71,7 @@ export interface BrainGapCognitiveReadItemV1 {
   latestDisposition?: Readonly<{
     status: BrainGapStatus;
     occurredAt: string;
-    source: BrainGapRegistryRecord['latestDisposition'] extends infer T
-      ? T extends { source: infer S }
-        ? S
-        : never
-      : never;
+    source: BrainGapDispositionSource;
   }>;
 }
 
