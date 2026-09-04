@@ -261,6 +261,36 @@ describe('MarkReg governed direct entry', () => {
     expect(validateCurrent).not.toHaveBeenCalled();
   });
 
+  it('preserves the legacy governed package:ledger Preparation Lock version token on GET recovery', async () => {
+    const getLock = vi.fn().mockResolvedValue({
+      preparationLockId: 'preparation-lock_exact',
+      documentPackageId: 'document-package_exact',
+      documentPackageVersion: 1,
+      instructionLedgerId: 'instruction-ledger_exact',
+      instructionLedgerVersion: 3,
+      nextPermittedAction: 'GOVERNED_FILING_AUTHORITY_REVIEW'
+    });
+    const validateCurrent = vi.fn();
+    const preparationClient: DurablePreparationClient = {
+      create: vi.fn(),
+      get: getLock,
+      validateCurrent
+    };
+    render(
+      <GovernedRouteEntry
+        search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=1%3A3"
+        client={{ createIntake: vi.fn() }}
+        preparationClient={preparationClient}
+      />
+    );
+
+    expect(await screen.findByText('preparation-lock_exact')).toBeTruthy();
+    expect(screen.getByText('1:3', { exact: true })).toBeTruthy();
+    expect(screen.queryByText('Version mismatch')).toBeNull();
+    expect(getLock).toHaveBeenCalledWith('preparation-lock_exact');
+    expect(validateCurrent).not.toHaveBeenCalled();
+  });
+
   it('fails closed when the exact durable Preparation Lock GET is rejected', async () => {
     const conflict = new MarkregApiError(
       'conflict',

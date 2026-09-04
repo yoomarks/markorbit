@@ -52,7 +52,12 @@ const version = (record: Record<string, unknown>, view: string) => {
     return scalar(
       (record.decision as Record<string, unknown> | undefined)?.decidedAt ?? record.updatedAt
     );
-  if (view === 'preparation-lock') return scalar(record.version, '1');
+  if (view === 'preparation-lock') {
+    const packageVersion = scalar(record.documentPackageVersion);
+    const ledgerVersion = scalar(record.instructionLedgerVersion);
+    if (packageVersion && ledgerVersion) return `${packageVersion}:${ledgerVersion}`;
+    return scalar(record.version, '1');
+  }
   return scalar(
     record.version ?? record.pricingRuleVersion ?? record.schemaVersion ?? record.updatedAt,
     '1'
