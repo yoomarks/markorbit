@@ -34,7 +34,9 @@ const authorityFields = new Set([
   'role',
   'permissions',
   'principal',
-  'requestedBy'
+  'requestedBy',
+  'acknowledgedBy',
+  'decidedBy'
 ]);
 
 type FilingGovernanceRoutePolicy = Readonly<{
@@ -43,7 +45,8 @@ type FilingGovernanceRoutePolicy = Readonly<{
   permission: Permission;
   mutationSecurity: boolean;
   idempotencyRequired: boolean;
-  stripAuthorityFields?: readonly string[];
+  allowedBodyFields?: readonly string[];
+  projectAuthorizedParty?: boolean;
 }>;
 
 const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
@@ -52,7 +55,15 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     pattern: /^\/api\/execution\/filing-authorizations$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: true
+    idempotencyRequired: true,
+    allowedBodyFields: [
+      'preparationLockId',
+      'preparationLockVersion',
+      'authorizedParty',
+      'authorizationCapacity',
+      'executionChannel'
+    ],
+    projectAuthorizedParty: true
   },
   {
     method: 'GET',
@@ -67,21 +78,27 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: true,
-    stripAuthorityFields: ['acknowledgedBy']
+    allowedBodyFields: ['acknowledgementCodes']
   },
   {
     method: 'POST',
     pattern: /^\/api\/execution\/filing-authorizations\/[^/]+\/withdraw$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: false
+    idempotencyRequired: false,
+    allowedBodyFields: []
   },
   {
     method: 'POST',
     pattern: /^\/api\/execution\/execution-releases$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: true
+    idempotencyRequired: true,
+    allowedBodyFields: [
+      'filingAuthorizationId',
+      'filingAuthorizationVersion',
+      'requestedExecutionChannel'
+    ]
   },
   {
     method: 'GET',
@@ -102,14 +119,16 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     pattern: /^\/api\/execution\/execution-releases\/[^/]+\/evaluate$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: false
+    idempotencyRequired: false,
+    allowedBodyFields: []
   },
   {
     method: 'PATCH',
     pattern: /^\/api\/execution\/execution-releases\/[^/]+\/assignment$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: false
+    idempotencyRequired: false,
+    allowedBodyFields: ['internalExecutorId', 'expectedVersion']
   },
   {
     method: 'POST',
@@ -117,14 +136,15 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: true,
-    stripAuthorityFields: ['decidedBy']
+    allowedBodyFields: ['rationale']
   },
   {
     method: 'POST',
     pattern: /^\/api\/execution\/execution-releases\/[^/]+\/withdraw$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: false
+    idempotencyRequired: false,
+    allowedBodyFields: []
   },
   {
     method: 'GET',
@@ -138,7 +158,8 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     pattern: /^\/api\/execution\/filing-task-drafts\/[^/]+\/validate-current$/,
     permission: 'execution:manage',
     mutationSecurity: true,
-    idempotencyRequired: false
+    idempotencyRequired: false,
+    allowedBodyFields: []
   },
   {
     method: 'GET',
@@ -169,20 +190,50 @@ function bodyRecord(request: JsonRequest): Record<string, unknown> {
   return body as Record<string, unknown>;
 }
 
+function rejectBrowserField(field: string, context = 'execution command'): never {
+  if (authorityFields.has(field))
+    throw new HttpError(
+      400,
+      'INVALID_EXECUTION_AUTHORITY',
+      `${field} cannot be supplied as browser execution authority.`
+    );
+  throw new HttpError(
+    400,
+    'INVALID_EXECUTION_REQUEST',
+    `${field} is not accepted by the browser ${context}.`
+  );
+}
+
+function projectAuthorizedParty(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const party = value as Record<string, unknown>;
+  const allowedFields = new Set(['partyId', 'displayName']);
+  const unsupported = Object.keys(party).find((field) => !allowedFields.has(field));
+  if (unsupported) rejectBrowserField(unsupported, 'authorizedParty contract');
+
+  const projected: Record<string, unknown> = {};
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(party, field)) projected[field] = party[field];
+  }
+  return projected;
+}
+
 function governedBody(
   request: JsonRequest,
   policy: FilingGovernanceRoutePolicy
 ): Record<string, unknown> {
-  const body = { ...bodyRecord(request) };
-  const spoof = Object.keys(body).find((field) => authorityFields.has(field));
-  if (spoof)
-    throw new HttpError(
-      400,
-      'INVALID_EXECUTION_AUTHORITY',
-      `${spoof} cannot be supplied as browser execution authority.`
-    );
-  for (const field of policy.stripAuthorityFields ?? []) delete body[field];
-  return body;
+  const body = bodyRecord(request);
+  const allowedFields = new Set(policy.allowedBodyFields ?? []);
+  const unsupported = Object.keys(body).find((field) => !allowedFields.has(field));
+  if (unsupported) rejectBrowserField(unsupported);
+
+  const projected: Record<string, unknown> = {};
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) projected[field] = body[field];
+  }
+  if (policy.projectAuthorizedParty && Object.prototype.hasOwnProperty.call(projected, 'authorizedParty'))
+    projected.authorizedParty = projectAuthorizedParty(projected.authorizedParty);
+  return projected;
 }
 
 function mapAuthentication(error: unknown): never {
