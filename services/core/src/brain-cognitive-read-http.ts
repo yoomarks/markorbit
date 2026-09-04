@@ -1,4 +1,7 @@
-import { AuthenticationError, parseInternalOperatorPrincipal } from '@markorbit/contracts';
+import {
+  AuthenticationError,
+  parseInternalOperatorPrincipal
+} from '@markorbit/contracts';
 import {
   HttpError,
   json,
@@ -33,7 +36,8 @@ function authorize(request: JsonRequest, internalServiceSecret: string): void {
   try {
     principal = parseInternalOperatorPrincipal(request.headers['x-markorbit-principal']);
   } catch (error) {
-    if (error instanceof AuthenticationError) throw new HttpError(401, error.code, error.message);
+    if (error instanceof AuthenticationError)
+      throw new HttpError(401, error.code, error.message);
     throw error;
   }
 
