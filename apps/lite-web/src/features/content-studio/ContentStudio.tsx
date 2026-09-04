@@ -7,7 +7,9 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  PageHeader
+  PageHeader,
+  Select,
+  TextInput
 } from '@markorbit/ui';
 import type {
   ContentDraft,
@@ -25,6 +27,11 @@ import {
   type ContentStudioWorkList,
   type ContentStudioWorkSummary
 } from '../../api/content-studio.js';
+import {
+  deriveContentWorkTriage,
+  matchesContentTriageFilter,
+  type ContentTriageFilter
+} from './content-triage.js';
 import './content-studio.css';
 
 export interface ContentStudioProps {
@@ -52,6 +59,10 @@ function date(value: string) {
   return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(
     new Date(value)
   );
+}
+
+function openButtonId(contentOpportunityId: string) {
+  return `content-studio-open-${contentOpportunityId}`;
 }
 
 function newIdempotencyKey(action: string) {
@@ -148,13 +159,40 @@ function WorkList({
   value,
   open,
   loadMore,
-  loadingMore
+  loadingMore,
+  query,
+  filter,
+  setQuery,
+  setFilter
 }: {
   value: ContentStudioWorkList;
   open: (id: string) => void;
   loadMore: () => void;
   loadingMore: boolean;
+  query: string;
+  filter: ContentTriageFilter;
+  setQuery: (query: string) => void;
+  setFilter: (filter: ContentTriageFilter) => void;
 }) {
+  const visible = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return value.items
+      .map((work) => ({ work, triage: deriveContentWorkTriage(work) }))
+      .filter(({ work, triage }) => {
+        if (!matchesContentTriageFilter(triage, filter)) return false;
+        if (!normalizedQuery) return true;
+        return `${work.title} ${work.rationale}`.toLowerCase().includes(normalizedQuery);
+      })
+      .sort(
+        (left, right) => Date.parse(right.triage.activityAt) - Date.parse(left.triage.activityAt)
+      );
+  }, [filter, query, value.items]);
+
+  const clearFilters = () => {
+    setQuery('');
+    setFilter('NEEDS_ATTENTION');
+  };
+
   return (
     <>
       <PageHeader
@@ -163,8 +201,8 @@ function WorkList({
         actions={<Badge>Governed preparation</Badge>}
       />
       <p className="content-studio__intro">
-        Today discovers and coordinates daily work. Content Studio keeps the durable Content
-        Opportunity lineage.
+        Start with work that needs attention now. Search and filters only narrow durable owner work
+        already loaded in this browser.
       </p>
       {value.partial ? <PartialWarning /> : null}
       {value.items.length === 0 ? (
@@ -174,82 +212,143 @@ function WorkList({
           action={<a href="#today">Open Today</a>}
         />
       ) : (
-        <div className="content-studio__list" aria-live="polite">
-          {value.items.map((work) => (
-            <Card key={`${work.contentOpportunity.id}:${work.contentOpportunity.version}`}>
-              <div className="content-studio__row">
-                <div>
-                  <p className="content-studio__eyebrow">
-                    Content Opportunity · version {work.contentOpportunity.version}
-                  </p>
-                  <h2>{work.title}</h2>
+        <>
+          <div className="content-studio__triage" role="search" aria-label="Content work triage">
+            <TextInput
+              label="Search loaded content work"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <Select
+              label="Work view"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as ContentTriageFilter)}
+            >
+              <option value="NEEDS_ATTENTION">Needs attention</option>
+              <option value="NEEDS_FIRST_DRAFT">Needs first Draft</option>
+              <option value="READY_FOR_REVIEW">Ready for human review</option>
+              <option value="CHANGES_REQUIRED">Changes required</option>
+              <option value="READY_FOR_PACKAGE">Ready to prepare package</option>
+              <option value="DRAFTING">Drafting</option>
+              <option value="PACKAGE_PREPARED">Package prepared</option>
+              <option value="NO_CURRENT_ACTION">No current action</option>
+              <option value="ALL">All loaded work</option>
+            </Select>
+          </div>
+          <p className="content-studio__loaded-count" role="status" aria-live="polite">
+            Showing {visible.length} of {value.items.length} loaded work items.
+          </p>
+          {visible.length ? (
+            <div className="content-studio__list">
+              {visible.map(({ work, triage }) => (
+                <Card key={`${work.contentOpportunity.id}:${work.contentOpportunity.version}`}>
+                  <div className="content-studio__row">
+                    <div>
+                      <p className="content-studio__eyebrow">
+                        Content Opportunity · version {work.contentOpportunity.version}
+                      </p>
+                      <h2>{work.title}</h2>
+                    </div>
+                    <Badge>{triage.label}</Badge>
+                  </div>
+                  <p className="content-studio__rationale">{work.rationale}</p>
+                  <dl className="content-studio__facts content-studio__facts--scan">
+                    <div>
+                      <dt>Next focus</dt>
+                      <dd>{triage.nextFocus}</dd>
+                    </div>
+                    <div>
+                      <dt>Last activity</dt>
+                      <dd>{date(triage.activityAt)}</dd>
+                    </div>
+                  </dl>
+                  <details>
+                    <summary>Owner lineage and provenance</summary>
+                    <dl className="content-studio__facts">
+                      <div>
+                        <dt>Stable ID</dt>
+                        <dd>{work.contentOpportunity.id}</dd>
+                      </div>
+                      <div>
+                        <dt>Latest exact Draft</dt>
+                        <dd>
+                          {work.latestDraft
+                            ? `${work.latestDraft.contentDraftId} · v${work.latestDraft.version} · ${work.latestDraft.status}`
+                            : 'Not created'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Latest Draft Review</dt>
+                        <dd>
+                          {work.latestDraftReview
+                            ? `${work.latestDraftReview.outcome} · ${work.latestDraftReview.contentReviewDecisionId} v${work.latestDraftReview.version}`
+                            : 'No exact Review Decision'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Latest Publish Package · work-level history</dt>
+                        <dd>
+                          {work.latestPublishPackage
+                            ? `${work.latestPublishPackage.publishPackageId} · v${work.latestPublishPackage.version} · ${work.latestPublishPackage.status} · ${date(work.latestPublishPackage.createdAt)}`
+                            : 'No Publish Package'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Latest Package Feedback · work-level history</dt>
+                        <dd>
+                          {work.latestPackageFeedback
+                            ? `User-reported · ${work.latestPackageFeedback.outcome} · ${date(work.latestPackageFeedback.recordedAt)}`
+                            : 'No user-reported feedback'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Durable Visual Briefs</dt>
+                        <dd>{work.visualBriefCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Durable Visual Outputs</dt>
+                        <dd>{work.visualOutputCount}</dd>
+                      </div>
+                    </dl>
+                    <SourceList sources={work.sources} />
+                  </details>
+                  <Button
+                    id={openButtonId(work.contentOpportunity.id)}
+                    onClick={() => open(work.contentOpportunity.id)}
+                  >
+                    Open current work
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No loaded content work matches this view"
+              description={
+                value.nextAfter
+                  ? 'No match is present in the currently loaded owner work. More owner work is available and has not been searched yet.'
+                  : 'Search and work-view filters only narrow owner work already loaded in this browser.'
+              }
+              action={
+                <div className="content-studio__triage-actions">
+                  <Button variant="secondary" onClick={clearFilters}>
+                    Reset to needs attention
+                  </Button>
+                  {value.nextAfter ? (
+                    <Button variant="secondary" disabled={loadingMore} onClick={loadMore}>
+                      {loadingMore ? 'Loading more…' : 'Load more content work'}
+                    </Button>
+                  ) : null}
                 </div>
-                <Badge>{contentWorkStage(work)}</Badge>
-              </div>
-              <p>{work.rationale}</p>
-              <dl className="content-studio__facts">
-                <div>
-                  <dt>Stable ID</dt>
-                  <dd>{work.contentOpportunity.id}</dd>
-                </div>
-                <div>
-                  <dt>Updated</dt>
-                  <dd>{date(work.updatedAt)}</dd>
-                </div>
-                <div>
-                  <dt>Latest exact Draft</dt>
-                  <dd>
-                    {work.latestDraft
-                      ? `${work.latestDraft.contentDraftId} · v${work.latestDraft.version} · ${work.latestDraft.status}`
-                      : 'Not created'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Latest Draft Review</dt>
-                  <dd>
-                    {work.latestDraftReview
-                      ? `${work.latestDraftReview.outcome} · ${work.latestDraftReview.contentReviewDecisionId} v${work.latestDraftReview.version}`
-                      : 'No exact Review Decision'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Latest Publish Package · work-level history</dt>
-                  <dd>
-                    {work.latestPublishPackage
-                      ? `${work.latestPublishPackage.publishPackageId} · v${work.latestPublishPackage.version} · ${work.latestPublishPackage.status} · ${date(work.latestPublishPackage.createdAt)}`
-                      : 'No Publish Package'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Latest Package Feedback · work-level history</dt>
-                  <dd>
-                    {work.latestPackageFeedback
-                      ? `User-reported · ${work.latestPackageFeedback.outcome} · ${date(work.latestPackageFeedback.recordedAt)}`
-                      : 'No user-reported feedback'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Durable Visual Briefs</dt>
-                  <dd>{work.visualBriefCount}</dd>
-                </div>
-                <div>
-                  <dt>Durable Visual Outputs</dt>
-                  <dd>{work.visualOutputCount}</dd>
-                </div>
-              </dl>
-              <details>
-                <summary>Sources and provenance</summary>
-                <SourceList sources={work.sources} />
-              </details>
-              <Button onClick={() => open(work.contentOpportunity.id)}>View lineage</Button>
-            </Card>
-          ))}
-          {value.nextAfter ? (
+              }
+            />
+          )}
+          {visible.length > 0 && value.nextAfter ? (
             <Button variant="secondary" disabled={loadingMore} onClick={loadMore}>
               {loadingMore ? 'Loading more…' : 'Load more content work'}
             </Button>
           ) : null}
-        </div>
+        </>
       )}
     </>
   );
@@ -946,6 +1045,10 @@ export function ContentStudio({
   const [list, setList] = useState<ContentStudioWorkList>();
   const [detail, setDetail] = useState<ContentStudioWorkDetail>();
   const [selected, setSelected] = useState(initialContentOpportunityId);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<ContentTriageFilter>('NEEDS_ATTENTION');
+  const [focusWorkId, setFocusWorkId] = useState<string>();
+  const [listStale, setListStale] = useState(false);
   const [error, setError] = useState<ContentStudioHttpError>();
   const [loadingMore, setLoadingMore] = useState(false);
   const [feedbackBusyPackage, setFeedbackBusyPackage] = useState('');
@@ -959,7 +1062,6 @@ export function ContentStudio({
     error: ContentStudioHttpError;
   }>();
   const [retryVersion, setRetryVersion] = useState(0);
-  const origin = useRef<HTMLButtonElement | null>(null);
   const preparationKeys = useRef(new Map<string, string>());
 
   const runPreparation = (
@@ -981,6 +1083,7 @@ export function ContentStudio({
       })
       .then((next) => {
         setDetail(next);
+        setListStale(true);
         preparationKeys.current.delete(signature);
       })
       .catch((cause) => {
@@ -1004,10 +1107,12 @@ export function ContentStudio({
 
   const loadList = () => {
     setError(undefined);
-    setList(undefined);
     client
       .list()
-      .then(setList)
+      .then((next) => {
+        setList(next);
+        setListStale(false);
+      })
       .catch((cause) =>
         setError(
           cause instanceof ContentStudioHttpError
@@ -1021,8 +1126,8 @@ export function ContentStudio({
       );
   };
   useEffect(() => {
-    if (!selected) loadList();
-  }, [client, selected]);
+    if (!selected && !list) loadList();
+  }, [client, list, selected]);
   useEffect(() => {
     if (!selected) {
       setDetail(undefined);
@@ -1046,6 +1151,15 @@ export function ContentStudio({
         )
       );
   }, [client, selected, retryVersion]);
+  useEffect(() => {
+    if (selected || !focusWorkId || !list) return;
+    const timer = setTimeout(() => {
+      const target = document.getElementById(openButtonId(focusWorkId));
+      if (target instanceof HTMLElement) target.focus();
+      setFocusWorkId(undefined);
+    });
+    return () => clearTimeout(timer);
+  }, [focusWorkId, list, selected]);
 
   if (error)
     return (
@@ -1107,7 +1221,10 @@ export function ContentStudio({
           client
             .recordUseFeedback(publishPackage, outcome)
             .then(() => client.find(detail.opportunity.contentOpportunityId))
-            .then(setDetail)
+            .then((next) => {
+              setDetail(next);
+              setListStale(true);
+            })
             .catch((cause) =>
               setFeedbackError({
                 packageKey,
@@ -1125,8 +1242,8 @@ export function ContentStudio({
         }}
         back={() => {
           setMutationError(undefined);
+          if (listStale) setList(undefined);
           setSelected(undefined);
-          setTimeout(() => origin.current?.focus());
         }}
       />
     ) : (
@@ -1136,9 +1253,13 @@ export function ContentStudio({
   return (
     <WorkList
       value={list}
+      query={query}
+      filter={filter}
+      setQuery={setQuery}
+      setFilter={setFilter}
       loadingMore={loadingMore}
       open={(id) => {
-        origin.current = document.activeElement as HTMLButtonElement;
+        setFocusWorkId(id);
         setSelected(id);
       }}
       loadMore={() => {

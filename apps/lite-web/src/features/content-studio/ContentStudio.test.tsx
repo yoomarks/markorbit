@@ -77,7 +77,9 @@ describe('Content Studio workspace', () => {
       />
     );
 
-    expect(await screen.findByText('Draft in progress')).toBeVisible();
+    await userEvent.selectOptions(await screen.findByLabelText('Work view'), 'ALL');
+    expect(await screen.findByText('Drafting', { selector: '.mo-badge' })).toBeVisible();
+    await userEvent.click(screen.getByText('Owner lineage and provenance'));
     expect(screen.getByText(`${draft.contentDraftId} · v2 · DRAFT`)).toBeVisible();
     expect(screen.getByText('No exact Review Decision')).toBeVisible();
     expect(screen.getByText(new RegExp(oldPackage.publishPackageId))).toBeVisible();
@@ -103,6 +105,8 @@ describe('Content Studio workspace', () => {
     render(<ContentStudio workspaceId={fixtureWorkspaceId} client={fixtureClient()} />);
     expect(screen.getByText('Loading Content Studio')).toBeVisible();
     expect(await screen.findByRole('heading', { name: 'Content Studio' })).toBeVisible();
+    await userEvent.selectOptions(screen.getByLabelText('Work view'), 'ALL');
+    await userEvent.click(screen.getByText('Owner lineage and provenance'));
     expect(screen.getByText('content-opportunity_413')).toBeVisible();
     expect(
       screen.getByText(/Historical visual\/media lineage is not fully discoverable/)
@@ -561,6 +565,7 @@ describe('Content Studio workspace', () => {
         client={{ ...fixtureClient(), list, find: vi.fn(), recordUseFeedback: vi.fn() }}
       />
     );
+    await userEvent.selectOptions(await screen.findByLabelText('Work view'), 'ALL');
     await screen.findByText(first.title);
     await userEvent.click(screen.getByRole('button', { name: 'Load more content work' }));
     expect(await screen.findByText('Second work')).toBeVisible();

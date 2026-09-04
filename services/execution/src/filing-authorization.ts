@@ -665,6 +665,13 @@ export class FilingGovernanceService {
         'EXECUTION_RELEASE_IMMUTABLE',
         'Released assignment is immutable.'
       );
+    if (!activeRelease(value))
+      throw new FilingGovernanceError(
+        'EXECUTION_RELEASE_NOT_ASSIGNABLE',
+        'Execution Release cannot be assigned in its current state.',
+        409,
+        { state: value.status }
+      );
     const next = {
       ...value,
       assignment: { ...clone(assignment), assignedAt: this.now() },
