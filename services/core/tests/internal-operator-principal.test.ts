@@ -15,9 +15,7 @@ const session = {
   sessionExpiresAt: '2026-09-05T12:00:00.000Z'
 };
 
-function account(
-  overrides: Partial<CommercialAdminAccountView> = {}
-): CommercialAdminAccountView {
+function account(overrides: Partial<CommercialAdminAccountView> = {}): CommercialAdminAccountView {
   return {
     userId,
     email: 'operator@example.com',

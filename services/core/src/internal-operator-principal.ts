@@ -1,7 +1,4 @@
-import {
-  AuthenticationError,
-  type InternalOperatorPrincipal
-} from '@markorbit/contracts';
+import { AuthenticationError, type InternalOperatorPrincipal } from '@markorbit/contracts';
 import type { AccountAccessService } from './account-access.js';
 import type { AuthenticationService } from './auth.js';
 

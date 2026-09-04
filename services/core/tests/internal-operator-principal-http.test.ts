@@ -21,9 +21,7 @@ function request(
     path: '/internal/control-plane/operator-principals/resolve',
     params: {},
     query: {},
-    headers: includeAuthorization
-      ? { 'x-markorbit-internal-authorization': secret }
-      : {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
     body
   };
 }
@@ -42,7 +40,10 @@ describe('cognitive Internal Operator resolver HTTP boundary', () => {
   it('returns only the owner-resolved canonical principal', async () => {
     const { resolve, route: resolverRoute } = route();
 
-    await expect(resolverRoute.handle(request())).resolves.toEqual({ status: 200, body: principal });
+    await expect(resolverRoute.handle(request())).resolves.toEqual({
+      status: 200,
+      body: principal
+    });
     expect(resolve).toHaveBeenCalledWith('raw-session-token');
   });
 
@@ -58,7 +59,10 @@ describe('cognitive Internal Operator resolver HTTP boundary', () => {
 
   it.each([
     ['missing token', {}],
-    ['browser capability injection', { token: 'raw-session-token', capabilities: ['control-plane:cognitive:read'] }],
+    [
+      'browser capability injection',
+      { token: 'raw-session-token', capabilities: ['control-plane:cognitive:read'] }
+    ],
     ['browser principal injection', { token: 'raw-session-token', principal: principal }],
     ['non-object body', 'raw-session-token']
   ])('rejects %s without allowing authority manufacture', async (_label, body) => {
