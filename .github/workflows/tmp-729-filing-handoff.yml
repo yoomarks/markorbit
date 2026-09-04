@@ -1,0 +1,55 @@
+name: tmp 729 filing handoff
+
+on:
+  push:
+    branches:
+      - tmp/729-filing-handoff-writer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-format-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/729-filing-handoff-writer
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply TASK 729 patch
+        run: node scripts/tmp-729-filing-handoff.mjs
+      - name: Prettier exact files
+        run: >-
+          pnpm exec prettier --write
+          apps/markreg-web/src/FilingAuthorization.tsx
+          apps/markreg-web/src/DurableDocumentsPreparationWorkspace.tsx
+          apps/markreg-web/src/DurableDocumentsPreparationWorkspace.test.tsx
+      - name: Build workspace dependencies
+        run: pnpm -w build
+      - name: MarkReg Web typecheck
+        run: pnpm --filter @markorbit/markreg-web typecheck
+      - name: MarkReg Web lint
+        run: pnpm --filter @markorbit/markreg-web lint
+      - name: MarkReg Web targeted test
+        run: pnpm exec vitest run apps/markreg-web/src/DurableDocumentsPreparationWorkspace.test.tsx
+      - name: MarkReg Web full tests
+        run: pnpm --filter @markorbit/markreg-web test
+      - name: MarkReg Web build
+        run: pnpm --filter @markorbit/markreg-web build
+      - name: Commit writer output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/markreg-web/src/FilingAuthorization.tsx apps/markreg-web/src/DurableDocumentsPreparationWorkspace.tsx apps/markreg-web/src/DurableDocumentsPreparationWorkspace.test.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "tmp: apply durable Filing Authorization handoff"
+          git push origin HEAD:tmp/729-filing-handoff-writer
