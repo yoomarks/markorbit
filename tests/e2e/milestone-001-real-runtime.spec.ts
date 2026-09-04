@@ -120,7 +120,9 @@ test.describe('Milestone 001 real runtime golden path', () => {
       const confirmationId = await id(page, /Confirmation ID\s+(confirmation_[\w-]+)/);
       lineage.recordIdentity('customerConfirmation', confirmationId);
       await page.getByRole('button', { name: 'Prepare Matter Draft' }).click();
-      await expect(page.getByText('BLOCKED', { exact: true }).first()).toBeVisible();
+      await expect(
+        page.getByText('APPLICANT_IDENTITY_PRESENT', { exact: true }).first()
+      ).toBeVisible();
       const matterId = await id(page, /Matter Draft ID\s+(matter-draft_[\w-]+)/);
       await fill(
         'Applicant / Owner',
