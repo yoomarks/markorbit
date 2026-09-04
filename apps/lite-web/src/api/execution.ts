@@ -1,12 +1,21 @@
 import type {
   AuthorizationAuthorityConsequences,
   ExecutionRelease,
-  ExecutionReleaseAssignment,
   FilingAuthorizationId,
   FilingExecutionChannel,
-  FilingExecutionTaskDraft,
-  MarkOrbitId
+  FilingExecutionTaskDraft
 } from '@markorbit/contracts';
+
+export class ExecutionHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ExecutionHttpError';
+  }
+}
 
 export interface ExecutionMutationResponse<T> {
   consequences: AuthorizationAuthorityConsequences;
@@ -14,6 +23,7 @@ export interface ExecutionMutationResponse<T> {
   filingExecutionTaskDraft?: T;
   releaseResult?: T;
 }
+
 export interface LiteExecutionClient {
   createRelease(command: {
     filingAuthorizationId: FilingAuthorizationId;
@@ -38,14 +48,14 @@ export interface LiteExecutionClient {
   }>;
   updateAssignment(
     id: string,
-    assignment: ExecutionReleaseAssignment
+    command: Readonly<{ expectedVersion: number }>
   ): Promise<{
     executionRelease: ExecutionRelease;
     consequences: AuthorizationAuthorityConsequences;
   }>;
   release(
     id: string,
-    command: { decidedBy: MarkOrbitId; rationale: string; idempotencyKey: string }
+    command: Readonly<{ rationale: string; idempotencyKey: string }>
   ): Promise<{
     releaseResult: { release: ExecutionRelease; taskDraft: FilingExecutionTaskDraft };
     consequences: AuthorizationAuthorityConsequences;
@@ -63,75 +73,157 @@ export interface LiteExecutionClient {
     consequences: AuthorizationAuthorityConsequences;
   }>;
 }
+
+type ExecutionMethod = 'GET' | 'POST' | 'PATCH';
+type ErrorPayload = {
+  code?: string;
+  message?: string;
+  error?: { code?: string; message?: string };
+};
+
+function executionError(
+  status: number,
+  value: ErrorPayload,
+  fallbackCode: string,
+  fallbackMessage: string
+) {
+  return new ExecutionHttpError(
+    status || 503,
+    value.code ?? value.error?.code ?? fallbackCode,
+    value.message ?? value.error?.message ?? fallbackMessage
+  );
+}
+
+async function csrfToken(baseUrl: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
+  } catch (cause) {
+    throw new ExecutionHttpError(
+      503,
+      'DOWNSTREAM_UNAVAILABLE',
+      cause instanceof Error ? cause.message : 'Authentication service is unavailable.'
+    );
+  }
+  const value = (await response.json().catch(() => ({}))) as ErrorPayload & { csrfToken?: string };
+  if (!response.ok || !value.csrfToken)
+    throw executionError(
+      response.status,
+      value,
+      'AUTHENTICATION_REQUIRED',
+      'An authenticated session is required.'
+    );
+  return value.csrfToken;
+}
+
 async function request<T>(
   baseUrl: string,
+  workspaceId: string,
   path: string,
-  method: 'GET' | 'POST' | 'PATCH' = 'GET',
+  method: ExecutionMethod = 'GET',
   body?: unknown,
-  key?: string
+  idempotencyKey?: string
 ): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers: { 'content-type': 'application/json', ...(key ? { 'idempotency-key': key } : {}) },
-    ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
-  });
-  const value = (await response.json()) as T | { error?: { message?: string } };
+  const csrf = method === 'GET' ? '' : await csrfToken(baseUrl);
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method,
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+        'x-markorbit-workspace-id': workspaceId,
+        ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
+        ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {})
+      },
+      ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
+    });
+  } catch (cause) {
+    throw new ExecutionHttpError(
+      503,
+      'DOWNSTREAM_UNAVAILABLE',
+      cause instanceof Error ? cause.message : 'Execution governance is temporarily unavailable.'
+    );
+  }
+  const value = (await response.json().catch(() => ({}))) as T & ErrorPayload;
   if (!response.ok)
-    throw new Error(
-      'error' in (value as object)
-        ? ((value as { error?: { message?: string } }).error?.message ??
-            'Execution request failed.')
-        : 'Execution request failed.'
+    throw executionError(
+      response.status,
+      value,
+      'EXECUTION_REQUEST_FAILED',
+      'Execution governance request failed.'
     );
   return value as T;
 }
+
 export function createLiteExecutionClient(
+  workspaceId: string,
   baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000'
 ): LiteExecutionClient {
   return {
-    createRelease: (c) => {
-      const { idempotencyKey, ...body } = c;
-      return request(baseUrl, '/api/execution/execution-releases', 'POST', body, idempotencyKey);
+    createRelease: (command) => {
+      const { idempotencyKey, ...body } = command;
+      return request(
+        baseUrl,
+        workspaceId,
+        '/api/execution/execution-releases',
+        'POST',
+        body,
+        idempotencyKey
+      );
     },
-    listReleases: () => request(baseUrl, '/api/execution/execution-releases'),
+    listReleases: () => request(baseUrl, workspaceId, '/api/execution/execution-releases'),
     getRelease: (id) =>
-      request(baseUrl, `/api/execution/execution-releases/${encodeURIComponent(id)}`),
+      request(
+        baseUrl,
+        workspaceId,
+        `/api/execution/execution-releases/${encodeURIComponent(id)}`
+      ),
     evaluateRelease: (id) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/evaluate`,
         'POST',
         {}
       ),
-    updateAssignment: (id, a) =>
+    updateAssignment: (id, command) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/assignment`,
         'PATCH',
-        a
+        { expectedVersion: command.expectedVersion }
       ),
-    release: (id, c) => {
-      const { idempotencyKey, ...body } = c;
+    release: (id, command) => {
+      const { idempotencyKey, rationale } = command;
       return request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/release`,
         'POST',
-        body,
+        { rationale },
         idempotencyKey
       );
     },
     withdrawRelease: (id) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/withdraw`,
         'POST',
         {}
       ),
     getTaskDraft: (id) =>
-      request(baseUrl, `/api/execution/filing-task-drafts/${encodeURIComponent(id)}`),
+      request(
+        baseUrl,
+        workspaceId,
+        `/api/execution/filing-task-drafts/${encodeURIComponent(id)}`
+      ),
     getTaskDraftForRelease: (id) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/filing-task-draft`
       )
   };
