@@ -219,8 +219,7 @@ describe('Filing Governance browser command boundary', () => {
 
     expect(result.status).toBe(200);
     const init = downstream.mock.calls[0]?.[1];
-    if (!init || typeof init.body !== 'string')
-      throw new Error('Expected projected request body.');
+    if (!init || typeof init.body !== 'string') throw new Error('Expected projected request body.');
     expect(JSON.parse(init.body)).toEqual({
       internalExecutorId: 'executor_701',
       expectedVersion: 4
@@ -233,7 +232,10 @@ describe('Filing Governance browser command boundary', () => {
       message: 'The Preparation Lock is no longer current.',
       details: { expectedVersion: 8, actualVersion: 9 }
     };
-    vi.stubGlobal('fetch', vi.fn(() => ownerResponse(422, owner)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => ownerResponse(422, owner))
+    );
 
     const result = await handler()(
       request('POST', '/api/execution/filing-task-drafts/task_701/validate-current', {})
