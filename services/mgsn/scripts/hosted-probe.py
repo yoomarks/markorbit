@@ -14,6 +14,17 @@ s = replace(s, "import type { MarkOrbitId } from '@markorbit/contracts';\n", '')
 s = replace(s, 'correlationId: command.correlationId as MarkOrbitId', 'correlationId: command.correlationId')
 s = replace(
     s,
+    "      handoff: Readonly<ControlledHandoffVersionReferenceV1>;\n    }>;;",
+    "      handoff: Readonly<ControlledHandoffVersionReferenceV1>;\n"
+    "      envelopeFingerprintSha256: string;\n"
+    "      purposeFingerprintSha256: string;\n"
+    "      projectionFingerprintSha256: string;\n"
+    "      sourceSetFingerprintSha256: string;\n"
+    "    }>;;",
+)
+# The actual source has a single semicolon; retain a fallback replacement for clean checkouts.
+s = replace(
+    s,
     "      handoff: Readonly<ControlledHandoffVersionReferenceV1>;\n    }>;",
     "      handoff: Readonly<ControlledHandoffVersionReferenceV1>;\n"
     "      envelopeFingerprintSha256: string;\n"
@@ -112,17 +123,34 @@ p.write_text(s)
 
 p = Path('src/governed-allocation-postgres.ts')
 s = p.read_text()
-s = replace(s, "import type { QueryClient } from '@markorbit/persistence';", "import { createHash } from 'node:crypto';\nimport type { QueryClient } from '@markorbit/persistence';")
+s = replace(
+    s,
+    "import type { QueryClient } from '@markorbit/persistence';",
+    "import { createHash } from 'node:crypto';\nimport type { QueryClient } from '@markorbit/persistence';",
+)
 s = replace(
     s,
     "import type { AllocationRecord } from './allocation-provider-acceptance.js';",
     "import {\n  AllocationProviderAcceptanceError,\n  type AllocationRecord\n} from './allocation-provider-acceptance.js';",
 )
 legacy_helper = """
+function legacyStableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => legacyStableSerialize(item)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${legacyStableSerialize(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function legacyAllocationRequestFingerprint(record: Readonly<AllocationRecord>): string {
   return createHash('sha256')
     .update(
-      JSON.stringify({
+      legacyStableSerialize({
         command: 'ALLOCATE_PROVIDER',
         workspaceId: record.workspaceId.toLowerCase(),
         servicePackageId: record.servicePackage.id,
@@ -144,7 +172,11 @@ function legacyAllocationRequestFingerprint(record: Readonly<AllocationRecord>):
 
 """
 if 'function legacyAllocationRequestFingerprint' not in s:
-    s = s.replace('export class PostgresGovernedAllocationRepository', legacy_helper + 'export class PostgresGovernedAllocationRepository', 1)
+    s = s.replace(
+        'export class PostgresGovernedAllocationRepository',
+        legacy_helper + 'export class PostgresGovernedAllocationRepository',
+        1,
+    )
 s = replace(
     s,
     "throw new GovernedAllocationError(\n            'SELECTION_MISMATCH',\n            'An active Allocation already exists for this Service Package.',\n            409\n          );",
@@ -200,6 +232,26 @@ s = replace(
     '    expect(result.lineage).toMatchObject({',
     1,
 )
+test_fingerprint_helper = """
+function legacyStableSerializeForTest(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => legacyStableSerializeForTest(item)).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${legacyStableSerializeForTest(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+"""
+if 'function legacyStableSerializeForTest' not in s:
+    marker = "suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {"
+    s = s.replace(marker, test_fingerprint_helper + marker, 1)
 replay_assertion = """
     const legacyReplay = await database.getPool().query(
       'SELECT request_fingerprint FROM mgsn_allocation_commands WHERE target_id=$1',
@@ -210,7 +262,7 @@ replay_assertion = """
     );
     const expectedLegacyFingerprint = createHash('sha256')
       .update(
-        JSON.stringify({
+        legacyStableSerializeForTest({
           command: 'ALLOCATE_PROVIDER',
           workspaceId: governedCommand.workspaceId.toLowerCase(),
           servicePackageId: governedCommand.servicePackageId,
