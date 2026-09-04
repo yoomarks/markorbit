@@ -149,6 +149,9 @@ let release = {
   updatedAt: at
 };
 async function install(page: Page) {
+  await page.route('**/api/auth/session', (r) =>
+    r.fulfill({ json: { csrfToken: 'csrf_fixture' } })
+  );
   await page.route('**/api/markreg/preparation-locks/**', (r) => r.fulfill({ json: lock }));
   await page.route('**/api/execution/filing-authorizations', (r) =>
     r.fulfill({ json: { filingAuthorization: authorization, consequences } })
@@ -201,6 +204,34 @@ async function install(page: Page) {
       }
     });
   });
+  await page.route('**/api/execution/execution-releases/*/filing-task-draft', (r) =>
+    r.fulfill({
+      json: {
+        filingExecutionTaskDraft: {
+          schemaVersion: 1,
+          filingExecutionTaskDraftId: 'filing-task-draft_e2e012',
+          executionReleaseId: release.executionReleaseId,
+          filingAuthorizationId: authorization.filingAuthorizationId,
+          preparationLockId: lock.preparationLockId,
+          executionSnapshot: scope,
+          jurisdiction: 'GB',
+          applicant: 'MarkOrbit Labs Ltd',
+          trademark: 'MARKORBIT',
+          classes: scope.classes,
+          goodsServices: scope.goodsServices,
+          filingBasis: 'INTENT_TO_USE',
+          documentReferences: [],
+          instructionReferences: [],
+          representativeRequirement: 'NOT_REQUIRED',
+          executionChannel: 'OFFICE_PORTAL',
+          internalAssigneeReference: 'executor_fixture',
+          status: 'PREPARED',
+          createdAt: at
+        },
+        consequences
+      }
+    })
+  );
   await page.route('**/api/execution/execution-releases/*/assignment', (r) => {
     release = {
       ...release,
@@ -263,7 +294,7 @@ test('Preparation Lock to authorized internal task draft remains non-executing @
   await expect(
     page.getByRole('listitem').filter({ hasText: 'COMMERCIAL_SCOPE_UNCHANGED' })
   ).toContainText('PASS');
-  await page.getByRole('button', { name: 'Assign internal executor' }).click();
+  await page.getByRole('button', { name: 'Assign to me' }).click();
   await expect(page.getByText('executor_fixture')).toBeVisible();
   await page.getByLabel('Internal release rationale').fill('All governed evidence passed.');
   await page.getByRole('button', { name: 'Release for execution' }).click();
