@@ -1,0 +1,98 @@
+name: Temporary Lite 695 E2E Contract Patch
+
+on:
+  push:
+    branches:
+      - lite/695-authenticated-execution-release
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lite/695-authenticated-execution-release
+          fetch-depth: 0
+      - name: Align fixture E2E with authenticated Execution contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/e2e/filing-authorization-release.spec.ts')
+          text = path.read_text()
+
+          marker = "async function install(page: Page) {\n"
+          insert = """async function install(page: Page) {
+            await page.route('**/api/auth/session', (r) =>
+              r.fulfill({ json: { csrfToken: 'csrf_fixture' } })
+            );
+          """
+          if marker not in text:
+              raise SystemExit('install marker not found')
+          text = text.replace(marker, insert, 1)
+
+          task_route_marker = """  await page.route('**/api/execution/execution-releases/*/assignment', (r) => {
+          """
+          task_route = """  await page.route('**/api/execution/execution-releases/*/filing-task-draft', (r) =>
+            r.fulfill({
+              json: {
+                filingExecutionTaskDraft: {
+                  schemaVersion: 1,
+                  filingExecutionTaskDraftId: 'filing-task-draft_e2e012',
+                  executionReleaseId: release.executionReleaseId,
+                  filingAuthorizationId: authorization.filingAuthorizationId,
+                  preparationLockId: lock.preparationLockId,
+                  executionSnapshot: scope,
+                  jurisdiction: 'GB',
+                  applicant: 'MarkOrbit Labs Ltd',
+                  trademark: 'MARKORBIT',
+                  classes: scope.classes,
+                  goodsServices: scope.goodsServices,
+                  filingBasis: 'INTENT_TO_USE',
+                  documentReferences: [],
+                  instructionReferences: [],
+                  representativeRequirement: 'NOT_REQUIRED',
+                  executionChannel: 'OFFICE_PORTAL',
+                  internalAssigneeReference: 'executor_fixture',
+                  status: 'PREPARED',
+                  createdAt: at
+                },
+                consequences
+              }
+            })
+          );
+          """ + task_route_marker
+          if task_route_marker not in text:
+              raise SystemExit('assignment marker not found')
+          text = text.replace(task_route_marker, task_route, 1)
+
+          old = "page.getByRole('button', { name: 'Assign internal executor' })"
+          new = "page.getByRole('button', { name: 'Assign to me' })"
+          if old not in text:
+              raise SystemExit('old assignment button assertion not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - name: Format patched E2E
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.28.1 --activate
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write tests/e2e/filing-authorization-release.spec.ts apps/lite-web/src/main.tsx
+      - name: Commit fixture acceptance update
+        run: |
+          if git diff --quiet -- tests/e2e/filing-authorization-release.spec.ts apps/lite-web/src/main.tsx; then
+            echo 'No patch changes produced.'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/e2e/filing-authorization-release.spec.ts apps/lite-web/src/main.tsx
+          git commit -m '[LITE-P0] Align Execution Release browser acceptance'
+          git push origin HEAD:lite/695-authenticated-execution-release
