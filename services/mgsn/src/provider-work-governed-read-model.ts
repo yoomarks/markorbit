@@ -13,12 +13,14 @@ import type {
   ProviderWorkIncomingAuthoritySource,
   ProviderWorkIncomingLineage
 } from './provider-work-incoming-authority.js';
+import type { ProviderRegistryRepository } from './provider-registry.js';
 import {
+  ProviderWorkReadModelService,
   providerWorkFingerprint,
   type ProviderWorkListQuery,
   type ProviderWorkListResultV1,
   type ProviderWorkPrincipal,
-  type ProviderWorkReadModelService
+  type ProviderWorkReadRepository
 } from './provider-work-read-model.js';
 
 function withoutCheckedAt(value: object): Readonly<Record<string, unknown>> {
@@ -86,29 +88,33 @@ function unavailable(checkedAt: string): ProviderWorkIncomingAuthorityEvaluation
   };
 }
 
-export class GovernedProviderWorkReadModelService {
+export class GovernedProviderWorkReadModelService extends ProviderWorkReadModelService {
   constructor(
-    private readonly base: ProviderWorkReadModelService,
+    repository: ProviderWorkReadRepository,
+    providerRegistry: ProviderRegistryRepository,
     private readonly governedAllocationRepository: GovernedAllocationRepository,
-    private readonly incomingAuthority: ProviderWorkIncomingAuthoritySource
-  ) {}
+    private readonly incomingAuthority: ProviderWorkIncomingAuthoritySource,
+    now: () => string = () => new Date().toISOString()
+  ) {
+    super(repository, providerRegistry, now);
+  }
 
-  async list(
+  override async list(
     principal: Readonly<ProviderWorkPrincipal>,
     query: Readonly<ProviderWorkListQuery> = {}
   ): Promise<ProviderWorkListResultV1> {
-    const result = await this.base.list(principal, query);
+    const result = await super.list(principal, query);
     return {
       ...result,
       items: await Promise.all(result.items.map((item) => this.enrich(item, result.checkedAt)))
     };
   }
 
-  async read(
+  override async read(
     principal: Readonly<ProviderWorkPrincipal>,
     allocationId: Parameters<ProviderWorkReadModelService['read']>[1]
   ): Promise<ProviderWorkItemReadResultV1> {
-    const result = await this.base.read(principal, allocationId);
+    const result = await super.read(principal, allocationId);
     if (result.decision !== 'AUTHORIZED') return result;
     return {
       ...result,
