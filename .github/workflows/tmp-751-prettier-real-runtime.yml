@@ -1,0 +1,38 @@
+name: tmp-751-prettier-real-runtime
+
+on:
+  push:
+    branches:
+      - lite/695-authenticated-execution-release
+    paths:
+      - .github/workflows/tmp-751-prettier-real-runtime.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lite/695-authenticated-execution-release
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier to real-runtime harness
+        run: pnpm exec prettier --write tests/e2e/milestone-001-real-runtime.spec.ts
+      - name: Commit canonical formatting
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/e2e/milestone-001-real-runtime.spec.ts
+          git diff --cached --check
+          git commit -m "style(e2e): format real-runtime release flow"
+          git push origin HEAD:lite/695-authenticated-execution-release
