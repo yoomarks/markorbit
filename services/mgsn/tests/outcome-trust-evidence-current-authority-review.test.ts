@@ -155,7 +155,9 @@ function networkSource(
   };
 }
 
-function returnSource(current: ProviderReturnRecord | undefined): TrustEvidenceProviderReturnSource {
+function returnSource(
+  current: ProviderReturnRecord | undefined
+): TrustEvidenceProviderReturnSource {
   return { findProviderReturn: () => Promise.resolve(current) };
 }
 
@@ -179,9 +181,7 @@ function authority(
   network: TrustEvidenceNetworkAuthoritySource = networkSource(),
   returns: TrustEvidenceProviderReturnSource = returnSource(providerReturn),
   providers: TrustEvidenceProviderSource = providerSource,
-  responsibility: TrustEvidenceResponsibilitySource = responsibilitySource(
-    responsibilityAssessment
-  )
+  responsibility: TrustEvidenceResponsibilitySource = responsibilitySource(responsibilityAssessment)
 ) {
   return new MgsnTrustEvidenceCurrentAuthoritySource(network, returns, providers, responsibility);
 }
