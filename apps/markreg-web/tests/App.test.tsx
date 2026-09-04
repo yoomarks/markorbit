@@ -23,18 +23,28 @@ async function completeIntake() {
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Start consultation' }));
   await user.selectOptions(screen.getByLabelText('Applicant type'), 'Company');
-  await user.type(screen.getByLabelText('Applicant name'), 'Northstar Ltd');
+  fireEvent.change(screen.getByLabelText('Applicant name'), {
+    target: { value: 'Northstar Ltd' }
+  });
   await user.selectOptions(screen.getByLabelText('Applicant country'), 'GB');
   await user.click(screen.getByRole('button', { name: 'Continue' }));
   await user.selectOptions(screen.getByLabelText('Trademark type'), 'Word mark');
-  await user.type(screen.getByLabelText('Trademark text'), 'Northstar');
+  fireEvent.change(screen.getByLabelText('Trademark text'), {
+    target: { value: 'Northstar' }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
   await user.selectOptions(screen.getByLabelText(/Target countries/), ['US', 'EU']);
   await user.click(screen.getByRole('button', { name: 'Continue' }));
-  await user.type(screen.getByLabelText('Goods / services summary'), 'Software services');
+  fireEvent.change(screen.getByLabelText('Goods / services summary'), {
+    target: { value: 'Software services' }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
-  await user.type(screen.getByLabelText('Business context'), 'Launching internationally');
-  await user.type(screen.getByLabelText('Filing goal'), 'Plan market coverage');
+  fireEvent.change(screen.getByLabelText('Business context'), {
+    target: { value: 'Launching internationally' }
+  });
+  fireEvent.change(screen.getByLabelText('Filing goal'), {
+    target: { value: 'Plan market coverage' }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
   return user;
 }
@@ -397,7 +407,9 @@ describe('guided intake', () => {
     expect(commands[1]!.correlationId).toBe(commands[0]!.correlationId);
     await user.click(screen.getByRole('button', { name: 'Review information' }));
     await user.click(screen.getByRole('button', { name: 'Edit Trademark' }));
-    await user.type(screen.getByLabelText('Trademark text'), ' Updated');
+    fireEvent.change(screen.getByLabelText('Trademark text'), {
+      target: { value: 'Northstar Updated' }
+    });
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));

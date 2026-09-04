@@ -3,7 +3,7 @@ import type {
   CreateProductionIntakeCommandV1,
   ProductionIntakeV1
 } from '@markorbit/contracts/markreg-early-funnel';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkregApiError } from './api/errors.js';
@@ -63,22 +63,36 @@ function client(overrides: Partial<ProductionIntakeClient> = {}): ProductionInta
 
 async function completeDraft(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByLabelText('Applicant type'), 'ORGANIZATION');
-  await user.type(screen.getByLabelText('Applicant name'), draft.applicantName);
-  await user.type(screen.getByLabelText('Applicant country or region'), draft.applicantCountry);
+  fireEvent.change(screen.getByLabelText('Applicant name'), {
+    target: { value: draft.applicantName }
+  });
+  fireEvent.change(screen.getByLabelText('Applicant country or region'), {
+    target: { value: draft.applicantCountry }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 
   await user.selectOptions(screen.getByLabelText('Trademark type'), 'WORD');
-  await user.type(screen.getByLabelText('Trademark representation text'), draft.trademarkText);
+  fireEvent.change(screen.getByLabelText('Trademark representation text'), {
+    target: { value: draft.trademarkText }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-  await user.type(screen.getByLabelText('Target jurisdictions'), draft.targetJurisdictions);
+  fireEvent.change(screen.getByLabelText('Target jurisdictions'), {
+    target: { value: draft.targetJurisdictions }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-  await user.type(screen.getByLabelText('Goods / services source text'), draft.goodsServices);
+  fireEvent.change(screen.getByLabelText('Goods / services source text'), {
+    target: { value: draft.goodsServices }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-  await user.type(screen.getByLabelText('Business context'), draft.businessContext);
-  await user.type(screen.getByLabelText('Filing goal'), draft.filingGoal);
+  fireEvent.change(screen.getByLabelText('Business context'), {
+    target: { value: draft.businessContext }
+  });
+  fireEvent.change(screen.getByLabelText('Filing goal'), {
+    target: { value: draft.filingGoal }
+  });
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 }
 

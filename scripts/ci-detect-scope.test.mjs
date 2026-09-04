@@ -1,6 +1,50 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { classifyChangedFiles } from './ci-detect-scope.mjs';
+import { changedFilesBetween, classifyChangedFiles } from './ci-detect-scope.mjs';
+
+function execGit(cwd, args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+}
+
+function writeRepoFile(repo, path, content) {
+  const target = join(repo, path);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, content);
+}
+
+function createDivergedHistory(testContext, featureFiles) {
+  const repo = mkdtempSync(join(tmpdir(), 'markorbit-ci-scope-'));
+  testContext.after(() => rmSync(repo, { recursive: true, force: true }));
+  execGit(repo, ['init', '-b', 'main']);
+  execGit(repo, ['config', 'user.name', 'MarkOrbit CI']);
+  execGit(repo, ['config', 'user.email', 'ci@markorbit.example']);
+  execGit(repo, ['config', 'core.autocrlf', 'false']);
+  writeRepoFile(repo, 'apps/lite-web/src/base.tsx', 'export const base = true;\n');
+  execGit(repo, ['add', '.']);
+  execGit(repo, ['commit', '-m', 'base']);
+  const branchPoint = execGit(repo, ['rev-parse', 'HEAD']);
+
+  execGit(repo, ['checkout', '-b', 'feature']);
+  for (const [path, content] of Object.entries(featureFiles)) writeRepoFile(repo, path, content);
+  execGit(repo, ['add', '.']);
+  execGit(repo, ['commit', '-m', 'feature']);
+  const featureHead = execGit(repo, ['rev-parse', 'HEAD']);
+
+  execGit(repo, ['checkout', 'main']);
+  writeRepoFile(
+    repo,
+    'packages/contracts/src/main-only-authority.ts',
+    'export const mainOnlyAuthority = true;\n'
+  );
+  execGit(repo, ['add', '.']);
+  execGit(repo, ['commit', '-m', 'advance main with shared authority change']);
+  const advancedMain = execGit(repo, ['rev-parse', 'HEAD']);
+  return { repo, branchPoint, featureHead, advancedMain };
+}
 
 test('payment-only changes stay in the payment hard-gate lane', () => {
   const scope = classifyChangedFiles(
@@ -85,6 +129,7 @@ test('ordinary MarkReg web changes select browser L2 without database or Product
   assert.equal(scope.web, true);
   assert.equal(scope.browser, true);
   assert.equal(scope.browser_generic, true);
+  assert.equal(scope.production_runtime, false);
   assert.equal(scope.postgres, false);
   assert.equal(scope.integration, false);
   assert.equal(scope.product_loop, false);
@@ -92,6 +137,35 @@ test('ordinary MarkReg web changes select browser L2 without database or Product
   assert.equal(scope.l1_fast, true);
   assert.equal(scope.l2_merge, true);
   assert.equal(scope.l3_full, false);
+});
+
+test('MarkReg durable API and production entry changes require owner persistence plus L3 proof', () => {
+  for (const path of [
+    'apps/markreg-web/src/api/production-intake.ts',
+    'apps/markreg-web/src/ProductionIntakePlanning.tsx',
+    'apps/markreg-web/src/WorkspaceHome.tsx'
+  ]) {
+    const scope = classifyChangedFiles([path], { paymentAvailable: false });
+    assert.equal(scope.production_runtime, true, path);
+    assert.equal(scope.markreg, true, path);
+    assert.equal(scope.postgres, true, path);
+    assert.equal(scope.l3_full, true, path);
+    assert.equal(scope.hard_gate, false, path);
+    assert.equal(scope.product_loop, false, path);
+  }
+});
+
+test('MarkReg presentation-only artifacts stay lightweight', () => {
+  for (const path of [
+    'apps/markreg-web/src/ProductionIntakePlanning.test.tsx',
+    'apps/markreg-web/src/ProductionIntakePlanning.stories.tsx',
+    'apps/markreg-web/src/production-intake.css'
+  ]) {
+    const scope = classifyChangedFiles([path], { paymentAvailable: false });
+    assert.equal(scope.production_runtime, false, path);
+    assert.equal(scope.postgres, false, path);
+    assert.equal(scope.l3_full, false, path);
+  }
 });
 
 test('generic Gateway route stays out of PostgreSQL and Product Loop lanes', () => {
@@ -216,4 +290,54 @@ test('documentation-only changes do not request product runtime gates', () => {
   assert.equal(scope.l3_full, false);
   assert.equal(scope.postgres, false);
   assert.equal(scope.browser, false);
+});
+
+test('PR merge-base scope ignores unrelated high-risk drift added to main after branch cut', (t) => {
+  const scenario = createDivergedHistory(t, {
+    'apps/lite-web/src/features/content-studio/Editor.tsx': 'export const editor = true;\n'
+  });
+  const diff = changedFilesBetween(scenario.advancedMain, scenario.featureHead, {
+    cwd: scenario.repo,
+    mergeBase: true
+  });
+  assert.equal(diff.diffBase, scenario.branchPoint);
+  assert.deepEqual(diff.files, ['apps/lite-web/src/features/content-studio/Editor.tsx']);
+  const scope = classifyChangedFiles(diff.files, { paymentAvailable: false });
+  assert.equal(scope.web, true);
+  assert.equal(scope.browser, true);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.shared, false);
+  assert.equal(scope.hard_gate, false);
+  assert.equal(scope.l3_full, false);
+});
+
+test('PR merge-base scope still fails closed for a real shared high-risk feature change', (t) => {
+  const scenario = createDivergedHistory(t, {
+    'apps/lite-web/src/features/content-studio/Editor.tsx': 'export const editor = true;\n',
+    'packages/contracts/src/feature-authority.ts': 'export const featureAuthority = true;\n'
+  });
+  const diff = changedFilesBetween(scenario.advancedMain, scenario.featureHead, {
+    cwd: scenario.repo,
+    mergeBase: true
+  });
+  assert.deepEqual(diff.files, [
+    'apps/lite-web/src/features/content-studio/Editor.tsx',
+    'packages/contracts/src/feature-authority.ts'
+  ]);
+  const scope = classifyChangedFiles(diff.files, { paymentAvailable: false });
+  assert.equal(scope.shared, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
+});
+
+test('push ranges preserve exact before-to-head semantics instead of PR merge-base semantics', (t) => {
+  const scenario = createDivergedHistory(t, {
+    'apps/lite-web/src/features/content-studio/Editor.tsx': 'export const editor = true;\n'
+  });
+  const diff = changedFilesBetween(scenario.branchPoint, scenario.advancedMain, {
+    cwd: scenario.repo,
+    mergeBase: false
+  });
+  assert.equal(diff.diffBase, scenario.branchPoint);
+  assert.deepEqual(diff.files, ['packages/contracts/src/main-only-authority.ts']);
 });
