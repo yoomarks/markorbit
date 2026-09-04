@@ -9,6 +9,7 @@ import {
   PostgresSessionRepository,
   validateInternalServiceSecret
 } from './auth.js';
+import { createPostgresBrainCognitiveReadServiceV1 } from './brain-cognitive-read-postgres.js';
 import {
   PostgresMembershipRepository,
   PostgresUserRepository,
@@ -79,6 +80,7 @@ const runtime = createRuntime({
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
+  brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
   methodImprovementAdmissions,
