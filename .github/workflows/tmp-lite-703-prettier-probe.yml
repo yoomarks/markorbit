@@ -7,7 +7,7 @@ on:
       - '.github/workflows/tmp-lite-703-prettier-probe.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   prettier-probe:
@@ -25,7 +25,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Emit canonical Prettier diff
+      - name: Format and commit canonical output
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           FILES=(
@@ -34,7 +36,13 @@ jobs:
             apps/lite-web/src/features/content-studio/ContentStudio.tsx
           )
           pnpm exec prettier --write "${FILES[@]}"
-          echo '--- BEGIN CANONICAL PRETTIER DIFF ---'
-          git --no-pager diff --no-ext-diff --unified=200 -- "${FILES[@]}"
-          echo '--- END CANONICAL PRETTIER DIFF ---'
-          git diff --quiet -- "${FILES[@]}"
+          git diff --check -- "${FILES[@]}"
+          if git diff --quiet -- "${FILES[@]}"; then
+            echo 'Already canonical.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "${FILES[@]}"
+          git commit -m 'style(lite): apply canonical Prettier to #703'
+          git push origin "HEAD:refs/heads/${HEAD_BRANCH}"
