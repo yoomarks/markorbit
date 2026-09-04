@@ -132,6 +132,7 @@ describe('durable Documents → Preparation workspace', () => {
       />
     );
 
+    expect(screen.getByText('2026-09-04T08:00:00.000Z', { exact: true })).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Create durable Document Package' }));
     expect(createFromCompletedReview).toHaveBeenCalledWith(
       review,
