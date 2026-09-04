@@ -1,0 +1,33 @@
+name: tmp-control-plane-current-state-prettier
+on:
+  push:
+    branches:
+      - tmp/control-plane-current-state-prettier
+permissions:
+  contents: write
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/control-plane-current-state-prettier
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format current-state document
+        run: pnpm exec prettier --write docs/architecture/MO_CONTROL_PLANE_CURRENT_STATE.md
+      - name: Commit exact Prettier output
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/architecture/MO_CONTROL_PLANE_CURRENT_STATE.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'style(control-plane): format current-state document'
+          git push origin HEAD:tmp/control-plane-current-state-prettier
