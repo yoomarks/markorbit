@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { MarkOrbitId } from '@markorbit/contracts';
 import type {
   ControlledHandoffConsumptionAttemptV1,
   ControlledHandoffCurrentValidationV1,
@@ -19,7 +18,7 @@ import type {
 } from './allocation-provider-acceptance.js';
 import type {
   ControlledHandoffRepository,
-  ControlledHandoffService
+  ControlledPrivacyHandoffService
 } from './controlled-privacy-handoff.js';
 import type {
   ProviderSelectionRepository,
@@ -31,6 +30,10 @@ export type GovernedAllocationHandoffBinding =
   | Readonly<{
       mode: 'EXACT';
       handoff: Readonly<ControlledHandoffVersionReferenceV1>;
+      envelopeFingerprintSha256: string;
+      purposeFingerprintSha256: string;
+      projectionFingerprintSha256: string;
+      sourceSetFingerprintSha256: string;
     }>;
 
 export interface GovernedAllocationCommand extends AllocateProviderServiceCommand {
@@ -216,7 +219,7 @@ export class GovernedAllocationService {
     private readonly selections: ProviderSelectionRepository,
     private readonly selectionService: ProviderSelectionService,
     private readonly handoffs: ControlledHandoffRepository,
-    private readonly handoffService: ControlledHandoffService,
+    private readonly handoffService: ControlledPrivacyHandoffService,
     private readonly directExecutor: GovernedAllocationDirectExecutorSource,
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly nextLineageId: () => `allocation-admission-lineage_${string}` = () =>
@@ -336,7 +339,11 @@ export class GovernedAllocationService {
       );
     }
 
-    const selectionValidationFingerprintSha256 = fingerprint(selectionValidation);
+    const admissionSelectionValidation: ProviderSelectionCurrentValidationV1 = {
+      ...selectionValidation,
+      publicReason: 'Historical admission validation was positive at governed Allocation commit.'
+    };
+    const selectionValidationFingerprintSha256 = fingerprint(admissionSelectionValidation);
     const lineageBase = {
       allocationId: allocation.allocationId,
       allocationVersion: allocation.version,
@@ -353,7 +360,7 @@ export class GovernedAllocationService {
       selectionVersion: selected.version,
       selectionScopeVersion: selected.scopeVersion,
       selectionScopeFingerprintSha256: selected.scope.fingerprintSha256,
-      selectionValidation,
+      selectionValidation: admissionSelectionValidation,
       selectionValidationFingerprintSha256,
       directExecutor,
       handoffBindingState:
@@ -390,9 +397,29 @@ export class GovernedAllocationService {
     if (command.handoffBinding.mode === 'NONE_EXPLICIT') return undefined;
 
     const reference = command.handoffBinding.handoff;
+    const envelopeFingerprintSha256 = requireSha256(
+      command.handoffBinding.envelopeFingerprintSha256,
+      'handoffBinding.envelopeFingerprintSha256'
+    );
+    const purposeFingerprintSha256 = requireSha256(
+      command.handoffBinding.purposeFingerprintSha256,
+      'handoffBinding.purposeFingerprintSha256'
+    );
+    const projectionFingerprintSha256 = requireSha256(
+      command.handoffBinding.projectionFingerprintSha256,
+      'handoffBinding.projectionFingerprintSha256'
+    );
+    const sourceSetFingerprintSha256 = requireSha256(
+      command.handoffBinding.sourceSetFingerprintSha256,
+      'handoffBinding.sourceSetFingerprintSha256'
+    );
     const envelope = await this.handoffs.findLatest(reference.controlledHandoffId);
     if (
       !envelope ||
+      envelope.envelopeFingerprintSha256 !== envelopeFingerprintSha256 ||
+      envelope.purpose.purposeFingerprintSha256 !== purposeFingerprintSha256 ||
+      envelope.authorizedProjection.projectionFingerprintSha256 !== projectionFingerprintSha256 ||
+      envelope.authorizedProjection.sourceSetFingerprintSha256 !== sourceSetFingerprintSha256 ||
       envelope.version !== reference.version ||
       envelope.status !== 'AUTHORIZED' ||
       envelope.originatingWorkspaceId.toLowerCase() !== command.workspaceId.toLowerCase() ||
@@ -413,12 +440,12 @@ export class GovernedAllocationService {
       originatingWorkspaceId: command.workspaceId,
       recipientProviderId: command.providerId,
       recipientProviderWorkspaceId: envelope.recipient.providerWorkspaceId,
-      purposeFingerprintSha256: envelope.purpose.purposeFingerprintSha256,
-      projectionFingerprintSha256: envelope.authorizedProjection.projectionFingerprintSha256,
-      sourceSetFingerprintSha256: envelope.authorizedProjection.sourceSetFingerprintSha256,
+      purposeFingerprintSha256,
+      projectionFingerprintSha256,
+      sourceSetFingerprintSha256,
       artifactRetrievalRequested: false,
       attemptedAt,
-      correlationId: command.correlationId as MarkOrbitId
+      correlationId: command.correlationId
     };
     const validation = await this.handoffService.validateCurrent(
       { workspaceId: command.workspaceId },
@@ -437,10 +464,15 @@ export class GovernedAllocationService {
         validation.denialReason === 'AUTHORITY_UNAVAILABLE' ? 503 : 409
       );
     }
+    const admissionValidation: ControlledHandoffCurrentValidationV1 = {
+      ...validation,
+      attempt: { ...validation.attempt, attemptedAt: validation.evaluatedAt },
+      publicReason: 'Historical admission validation was positive at governed Allocation commit.'
+    };
     return {
       envelope,
-      validation,
-      validationFingerprintSha256: fingerprint(validation)
+      validation: admissionValidation,
+      validationFingerprintSha256: fingerprint(admissionValidation)
     };
   }
 }
