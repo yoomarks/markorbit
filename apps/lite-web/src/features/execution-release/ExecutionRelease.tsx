@@ -399,7 +399,7 @@ export function ExecutionReleaseView({
 
   return (
     <section aria-labelledby="release-title">
-      <Button variant="secondary" onClick={back}>
+      <Button variant="secondary" disabled={view === 'RELEASING'} onClick={back}>
         ← Back to release queue
       </Button>
       <PageHeader
@@ -475,6 +475,7 @@ export function ExecutionReleaseView({
           <Button
             disabled={
               selected.status === 'RELEASED_FOR_EXECUTION' ||
+              view === 'RELEASING' ||
               view === 'RELEASE_STALE' ||
               view === 'RELEASE_WITHDRAWN'
             }
@@ -486,6 +487,7 @@ export function ExecutionReleaseView({
             variant="secondary"
             disabled={
               selected.status === 'RELEASED_FOR_EXECUTION' ||
+              view === 'RELEASING' ||
               view === 'RELEASE_STALE' ||
               view === 'RELEASE_WITHDRAWN'
             }
@@ -498,6 +500,7 @@ export function ExecutionReleaseView({
               selected.status !== 'READY_FOR_RELEASE' ||
               !selected.assignment.internalExecutorId ||
               !rationale.trim() ||
+              view === 'RELEASING' ||
               view === 'RELEASE_STALE'
             }
             onClick={() => void release()}
