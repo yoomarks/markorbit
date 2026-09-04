@@ -5,8 +5,7 @@ import { milestoneAuth, milestonePorts } from './scripts/milestone-runtime.mjs';
 const inCI = Boolean(process.env['CI']);
 const internalServiceSecret =
   process.env['MO_INTERNAL_SERVICE_SECRET'] ?? 'milestone-real-runtime-internal-secret-32-bytes';
-const csrfSecret =
-  process.env['MO_CSRF_SECRET'] ?? 'milestone-real-runtime-csrf-secret-32-bytes';
+const csrfSecret = process.env['MO_CSRF_SECRET'] ?? 'milestone-real-runtime-csrf-secret-32-bytes';
 const authenticatedUse = {
   extraHTTPHeaders: {
     'x-markorbit-workspace-id': milestoneAuth.workspaceId,
