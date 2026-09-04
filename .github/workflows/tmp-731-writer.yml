@@ -1,0 +1,55 @@
+name: tmp 731 writer
+
+on:
+  push:
+    branches:
+      - tmp/731-durable-source-writer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-format-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/731-durable-source-writer
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply TASK 731 patch
+        run: node scripts/tmp-731-patch.mjs
+      - name: Prettier exact files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/src/index.ts
+          services/execution/src/index.ts
+          services/execution/src/filing-authorization.ts
+          services/execution/src/durable-preparation-source.ts
+          services/execution/tests/durable-preparation-source.test.ts
+      - name: Execution typecheck
+        run: pnpm --filter @markorbit/execution-service typecheck
+      - name: Execution lint
+        run: pnpm --filter @markorbit/execution-service lint
+      - name: Targeted Execution tests
+        run: >-
+          pnpm exec vitest run
+          services/execution/tests/durable-preparation-source.test.ts
+          services/execution/tests/filing-authorization.test.ts
+          services/execution/tests/filing-authorization-auth.test.ts
+      - name: Commit writer output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/index.ts services/execution/src/index.ts services/execution/src/filing-authorization.ts services/execution/src/durable-preparation-source.ts services/execution/tests/durable-preparation-source.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "tmp: apply durable preparation source patch"
+          git push origin HEAD:tmp/731-durable-source-writer
