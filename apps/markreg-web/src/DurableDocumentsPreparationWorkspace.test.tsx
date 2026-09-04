@@ -95,17 +95,21 @@ afterEach(cleanup);
 
 describe('durable Documents → Preparation workspace', () => {
   it('creates and reads back the durable package, then locks exact owner version/hash', async () => {
+    const createFromCompletedReview = vi.fn().mockResolvedValue(readyPackage);
+    const getPackage = vi.fn().mockResolvedValue(readyPackage);
+    const createPreparationLock = vi.fn().mockResolvedValue(currentLock);
+    const validateCurrent = vi.fn().mockResolvedValue(currentLock);
     const packageClient: DurableDocumentPackageClient = {
-      createFromCompletedReview: vi.fn().mockResolvedValue(readyPackage),
-      get: vi.fn().mockResolvedValue(readyPackage),
+      createFromCompletedReview,
+      get: getPackage,
       upsertEvidence: vi.fn(),
       appendInstruction: vi.fn(),
       markReady: vi.fn()
     };
     const preparationClient: DurablePreparationClient = {
-      create: vi.fn().mockResolvedValue(currentLock),
+      create: createPreparationLock,
       get: vi.fn(),
-      validateCurrent: vi.fn().mockResolvedValue(currentLock)
+      validateCurrent
     };
 
     render(
@@ -117,17 +121,17 @@ describe('durable Documents → Preparation workspace', () => {
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'Create durable Document Package' }));
-    expect(packageClient.createFromCompletedReview).toHaveBeenCalledWith(
+    expect(createFromCompletedReview).toHaveBeenCalledWith(
       review,
       'document-package-professional-review_exact-4'
     );
-    expect(packageClient.get).toHaveBeenCalledWith('document-package_exact');
+    expect(getPackage).toHaveBeenCalledWith('document-package_exact');
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Lock exact package for preparation' })
     );
-    await waitFor(() => expect(preparationClient.validateCurrent).toHaveBeenCalled());
-    expect(preparationClient.create).toHaveBeenCalledWith({
+    await waitFor(() => expect(validateCurrent).toHaveBeenCalled());
+    expect(createPreparationLock).toHaveBeenCalledWith({
       documentPackageId: 'document-package_exact',
       expectedDocumentPackageVersion: 5,
       expectedCanonicalEvidenceHash: 'a'.repeat(64),
