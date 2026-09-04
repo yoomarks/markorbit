@@ -94,12 +94,14 @@ function directExecutor() {
   };
 }
 
-function runtime(input: {
-  latestSelection?: unknown;
-  selectionValidation?: unknown;
-  direct?: unknown;
-  replay?: unknown;
-} = {}) {
+function runtime(
+  input: {
+    latestSelection?: unknown;
+    selectionValidation?: unknown;
+    direct?: unknown;
+    replay?: unknown;
+  } = {}
+) {
   const planner = { plan: vi.fn().mockResolvedValue(allocation()) };
   const selectionValidator = vi.fn().mockResolvedValue(
     input.selectionValidation ?? positiveSelectionValidation()
@@ -154,7 +156,9 @@ describe('GovernedAllocationService admission fail-closed guards', () => {
       purpose: 'ALLOCATION_PREREQUISITE_REVIEW' as const,
       denialReason: 'AUTHORITY_UNAVAILABLE' as const
     };
-    const { planner, selectionValidator, service } = runtime({ selectionValidation: unavailable });
+    const { planner, selectionValidator, service } = runtime({
+      selectionValidation: unavailable
+    });
     await expect(service.allocate(command())).rejects.toMatchObject({
       code: 'SELECTION_NOT_CURRENT',
       status: 503
@@ -180,15 +184,18 @@ describe('GovernedAllocationService admission fail-closed guards', () => {
       }
     ],
     ['Supply version', { expectedProviderSupplyCapabilityVersion: supply.version + 1 }]
-  ] as const)('rejects exact Selection %s mismatch before M4 planning', async (_label, patch) => {
-    const mismatched = { ...command(), ...patch } as GovernedAllocationCommand;
-    const { planner, service } = runtime();
-    await expect(service.allocate(mismatched)).rejects.toMatchObject({
-      code: 'SELECTION_MISMATCH',
-      status: 409
-    });
-    expect(planner.plan).not.toHaveBeenCalled();
-  });
+  ] as const)(
+    'rejects exact Selection %s mismatch before M4 planning',
+    async (_label, patch) => {
+      const mismatched = { ...command(), ...patch } as GovernedAllocationCommand;
+      const { planner, service } = runtime();
+      await expect(service.allocate(mismatched)).rejects.toMatchObject({
+        code: 'SELECTION_MISMATCH',
+        status: 409
+      });
+      expect(planner.plan).not.toHaveBeenCalled();
+    }
+  );
 
   it('rejects missing current Direct Executor authority before M4 planning', async () => {
     const { planner, service } = runtime({ direct: null });
