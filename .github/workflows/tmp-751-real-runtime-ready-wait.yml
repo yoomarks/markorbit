@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: lite/695-authenticated-execution-release
-      - name: Add durable ready-state waits to real-runtime golden path
+      - name: Add durable ready-state wait to real-runtime golden path
         shell: bash
         run: |
           python - <<'PY'
@@ -27,8 +27,8 @@ jobs:
           old = "      await page.getByRole('button', { name: 'Evaluate release' }).click();\n      await page.getByRole('button', { name: 'Assign to me' }).click();"
           new = "      await page.getByRole('button', { name: 'Evaluate release' }).click();\n      await expect(\n        page.getByText('READY_FOR_RELEASE', { exact: true }).first()\n      ).toBeVisible();\n      await page.getByRole('button', { name: 'Assign to me' }).click();"
           count = text.count(old)
-          if count != 2:
-              raise SystemExit(f'expected exactly two evaluate/assign sequences, found {count}')
+          if count != 1:
+              raise SystemExit(f'expected exactly one shared evaluate/assign sequence, found {count}')
           path.write_text(text.replace(old, new))
           PY
       - name: Commit harness stabilization
