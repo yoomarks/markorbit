@@ -1,0 +1,42 @@
+name: tmp-751-real-runtime-ready-wait
+
+on:
+  push:
+    branches:
+      - lite/695-authenticated-execution-release
+    paths:
+      - .github/workflows/tmp-751-real-runtime-ready-wait.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lite/695-authenticated-execution-release
+      - name: Add durable ready-state waits to real-runtime golden path
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/e2e/milestone-001-real-runtime.spec.ts')
+          text = path.read_text()
+          old = "      await page.getByRole('button', { name: 'Evaluate release' }).click();\n      await page.getByRole('button', { name: 'Assign to me' }).click();"
+          new = "      await page.getByRole('button', { name: 'Evaluate release' }).click();\n      await expect(\n        page.getByText('READY_FOR_RELEASE', { exact: true }).first()\n      ).toBeVisible();\n      await page.getByRole('button', { name: 'Assign to me' }).click();"
+          count = text.count(old)
+          if count != 2:
+              raise SystemExit(f'expected exactly two evaluate/assign sequences, found {count}')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit harness stabilization
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/e2e/milestone-001-real-runtime.spec.ts
+          git diff --cached --check
+          git commit -m "test(e2e): wait for durable ready release state"
+          git push origin HEAD:lite/695-authenticated-execution-release
