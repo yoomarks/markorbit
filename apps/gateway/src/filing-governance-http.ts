@@ -320,10 +320,7 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
   const downstreamUrl = (request: JsonRequest, governed: boolean) => {
     const search = new URLSearchParams({ ...request.query }).toString();
     let path = request.path.replace('/api/execution', '/v1');
-    if (
-      governed &&
-      /^\/api\/execution\/execution-releases\/[^/]+\/assignment$/.test(request.path)
-    )
+    if (governed && /^\/api\/execution\/execution-releases\/[^/]+\/assignment$/.test(request.path))
       path = path.replace(/\/assignment$/, '/self-assignment');
     return `${options.executionUrl}${path}${search ? `?${search}` : ''}`;
   };

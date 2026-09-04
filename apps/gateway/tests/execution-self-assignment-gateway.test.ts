@@ -92,7 +92,7 @@ describe('Execution Release trusted self-assignment Gateway bridge', () => {
     expect(parseInternalWorkspacePrincipal(headers['x-markorbit-principal'])).toEqual(principal);
   });
 
-  it.each(['internalExecutorId', 'executorId', 'actorId', 'userId', 'principal', 'membershipId']) (
+  it.each(['internalExecutorId', 'executorId', 'actorId', 'userId', 'principal', 'membershipId'])(
     'rejects browser-supplied assignment authority field %s before Execution is reached',
     async (field) => {
       const downstream = vi.fn();
