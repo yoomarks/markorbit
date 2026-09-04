@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "extends": "GATEWAY_ROUTE_INVENTORY.json",
+  "issue": 701,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/execution/filing-authorizations",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/execution/filing-authorizations/:filingAuthorizationId",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/filing-authorizations/:filingAuthorizationId/confirm",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/filing-authorizations/:filingAuthorizationId/withdraw",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/execution-releases",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/execution/execution-releases",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/execution/execution-releases/:executionReleaseId",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/execution-releases/:executionReleaseId/evaluate",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/execution/execution-releases/:executionReleaseId/assignment",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/execution-releases/:executionReleaseId/release",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/execution-releases/:executionReleaseId/withdraw",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/execution/filing-task-drafts/:filingExecutionTaskDraftId",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/execution/filing-task-drafts/:filingExecutionTaskDraftId/validate-current",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_REQUIRED_VALIDATION_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/execution/execution-releases/:executionReleaseId/filing-task-draft",
+      "owner": "execution",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/filing-governance-production-runtime.test.ts"
+    }
+  ]
+}
