@@ -1,5 +1,10 @@
 import { AuthenticationError, parseInternalOperatorPrincipal } from '@markorbit/contracts';
-import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  HttpError,
+  json,
+  type JsonRequest,
+  type JsonRoute
+} from '@markorbit/service-kit';
 import { validateInternalServiceSecret } from './auth.js';
 import {
   BrainCognitiveReadError,
@@ -42,12 +47,7 @@ function authorize(request: JsonRequest, internalServiceSecret: string): void {
 
 function translate(error: unknown): never {
   if (!(error instanceof BrainCognitiveReadError)) throw error;
-  throw new HttpError(
-    503,
-    'COGNITIVE_READ_SOURCE_UNAVAILABLE',
-    error.message,
-    true
-  );
+  throw new HttpError(503, 'COGNITIVE_READ_SOURCE_UNAVAILABLE', error.message, true);
 }
 
 export function createBrainCognitiveReadRoutesV1(
