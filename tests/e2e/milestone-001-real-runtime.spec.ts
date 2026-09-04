@@ -314,12 +314,11 @@ test.describe('Milestone 001 real runtime golden path', () => {
         .click();
     });
     await test.step('Execution Release / Task Draft', async () => {
-      await page.getByRole('button', { name: 'Open release' }).click();
       await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();
       const releaseId = await id(page, /(execution-release_[\w-]+)/);
       lineage.record('executionRelease', { id: releaseId, version: 1 });
       await page.getByRole('button', { name: 'Evaluate release' }).click();
-      await page.getByRole('button', { name: 'Assign internal executor' }).click();
+      await page.getByRole('button', { name: 'Assign to me' }).click();
       await fill(
         'Internal release rationale',
         'All exact governed evidence passed internal execution review.'
