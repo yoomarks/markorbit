@@ -1,0 +1,37 @@
+name: tmp-format-765-app-test
+
+on:
+  push:
+    branches:
+      - markreg/729-wire-durable-preparation-entry
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: markreg/729-wire-durable-preparation-entry
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/markreg-web/tests/App.test.tsx
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet -- apps/markreg-web/tests/App.test.tsx; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/markreg-web/tests/App.test.tsx
+          git commit -m "[MARKREG-P0] Apply canonical App regression formatting"
+          git push origin HEAD:markreg/729-wire-durable-preparation-entry
