@@ -8,7 +8,12 @@ const root = document.querySelector('#root');
 if (!root) throw new Error('Root element missing');
 const parameters = new URLSearchParams(window.location.search);
 const fixtureEntry = import.meta.env.VITE_MARKORBIT_FIXTURE_ENTRY === '1';
-if (fixtureEntry && !parameters.has('workspaceId')) {
+const governedView = parameters.get('view');
+const fixtureNeedsWorkspace =
+  fixtureEntry &&
+  !parameters.has('workspaceId') &&
+  (!governedView || governedView === 'execution-release' || governedView === 'filing-task-draft');
+if (fixtureNeedsWorkspace) {
   parameters.set('workspaceId', 'workspace_fixture');
   window.history.replaceState(
     null,
