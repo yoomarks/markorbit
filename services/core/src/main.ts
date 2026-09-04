@@ -14,6 +14,7 @@ import {
   PostgresUserRepository,
   PostgresWorkspaceRepository
 } from './identity.js';
+import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
 import { createRuntime } from './index.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
@@ -40,11 +41,17 @@ await database.start();
 const query = database.getPool();
 const users = new PostgresUserRepository(query);
 const workspaces = new PostgresWorkspaceRepository(query);
+const memberships = new PostgresMembershipRepository(query);
 const authentication = new AuthenticationService({
   sessions: new PostgresSessionRepository(query),
   users,
   workspaces,
-  memberships: new PostgresMembershipRepository(query)
+  memberships
+});
+const currentWorkspaceAuthority = new CurrentWorkspaceAuthorityService({
+  users,
+  workspaces,
+  memberships
 });
 const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),
@@ -68,6 +75,7 @@ const runtime = createRuntime({
   accountAccess,
   accountOnboarding,
   workspaces,
+  currentWorkspaceAuthority,
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
