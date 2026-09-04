@@ -3,12 +3,11 @@ import type { ImplementationProfile } from '@markorbit/contracts/capability-runt
 import { describe, expect, it, vi } from 'vitest';
 import {
   CapabilityCognitiveReadError,
-  CapabilityCognitiveReadServiceV1
+  CapabilityCognitiveReadServiceV1,
+  type CurrentSourceAdmissionPolicyReadV1
 } from '../src/capability-cognitive-read.js';
 
-function capability(
-  overrides: Partial<RuntimeCapabilityDefinition> = {}
-): RuntimeCapabilityDefinition {
+function capability(overrides: Partial<RuntimeCapabilityDefinition> = {}): RuntimeCapabilityDefinition {
   return {
     schemaVersion: 1,
     runtimeCapabilityDefinitionId: 'runtime-capability_managed-ai',
@@ -59,13 +58,35 @@ function profile(overrides: Partial<ImplementationProfile> = {}): Implementation
 
 function service(
   capabilities: readonly RuntimeCapabilityDefinition[] = [capability()],
-  profiles: readonly ImplementationProfile[] = [profile()]
+  profiles: readonly ImplementationProfile[] = [profile()],
+  sourceAdmissionPolicies?: Readonly<CurrentSourceAdmissionPolicyReadV1>
 ) {
   return new CapabilityCognitiveReadServiceV1(
     { listCurrent: vi.fn(() => Promise.resolve(capabilities)) },
     { listCurrent: vi.fn(() => Promise.resolve(profiles)) },
-    () => '2026-09-04T16:00:00.000Z'
+    () => '2026-09-04T16:00:00.000Z',
+    sourceAdmissionPolicies
   );
+}
+
+function policy(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schemaVersion: 1,
+    policyId: 'source-admission-policy.test.v1',
+    policyVersion: 1,
+    maturityClass: 'PILOT',
+    capabilityId: 'test-capability',
+    capabilityVersion: '1.0.0',
+    implementationProfileId: 'implementation-profile_test',
+    implementationProfileVersion: 1,
+    implementationKey: 'test:implementation:v1',
+    inputSchemaId: 'test-input.v1',
+    outputSchemaId: 'test-output.v1',
+    allowedCallerProducts: ['MARKREG'],
+    maximumRiskClass: 'MODERATE',
+    reason: 'This test source remains a bounded pilot.',
+    ...overrides
+  };
 }
 
 describe('bounded Capability cognitive read projection', () => {
@@ -93,15 +114,19 @@ describe('bounded Capability cognitive read projection', () => {
       'alpha',
       'zeta'
     ]);
-    expect(projection.implementationProfiles.map((item) => item.implementationProfileId)).toEqual([
-      'implementation-profile_alpha',
-      'implementation-profile_zeta'
-    ]);
+    expect(
+      projection.implementationProfiles.map((item) => item.implementationProfileId)
+    ).toEqual(['implementation-profile_alpha', 'implementation-profile_zeta']);
     expect(projection.summary).toEqual({
       runtimeCapabilityCount: 2,
       implementationProfileCount: 2,
       approvedImplementationProfileCount: 1,
-      retiredImplementationProfileCount: 1
+      retiredImplementationProfileCount: 1,
+      sourceAdmissionPolicyCount: 4,
+      productionAdmissibleSourcePolicyCount: 1,
+      pilotSourcePolicyCount: 3,
+      fixtureTestSourcePolicyCount: 0,
+      unsupportedSourcePolicyCount: 0
     });
     expect(projection.runtimeCapabilities[0]).not.toHaveProperty('description');
     expect(projection.implementationProfiles[0]).not.toHaveProperty('inputSchemaId');
@@ -112,19 +137,68 @@ describe('bounded Capability cognitive read projection', () => {
       authority: 'RUNTIME_CAPABILITY_AND_IMPLEMENTATION_PROFILE_REGISTRIES',
       availability: 'AVAILABLE'
     });
+    expect(projection.sourceAdmissionPolicySource).toEqual({
+      domain: 'CAPABILITY_ENGINE',
+      authority: 'SOURCE_ADMISSION_POLICY_CATALOG',
+      availability: 'AVAILABLE'
+    });
   });
 
-  it('distinguishes a valid empty owner read from unavailable owner truth', async () => {
-    await expect(service([], []).read()).resolves.toMatchObject({
+  it(
+    'projects current source maturity without turning currentness requirements into currentness success',
+    async () => {
+      const projection = await service().read();
+      expect(projection.sourceAdmissionPolicies.map((item) => item.policyId)).toEqual([
+        'source-admission-policy.cn-duration-analytical.v1',
+        'source-admission-policy.cn-duration-band-classification.v1',
+        'source-admission-policy.cn-preliminary-publication-discovery.v1',
+        'source-admission-policy.uspto-official-fee-resolver.v2'
+      ]);
+      expect(
+        projection.sourceAdmissionPolicies.filter((item) => item.maturityClass === 'PILOT')
+      ).toHaveLength(3);
+
+      const production = projection.sourceAdmissionPolicies.find(
+        (item) => item.policyId === 'source-admission-policy.uspto-official-fee-resolver.v2'
+      );
+      expect(production).toMatchObject({
+        maturityClass: 'PRODUCTION_ADMISSIBLE',
+        currentnessRequirements: {
+          method: 'REQUIRED',
+          reference: 'REQUIRED'
+        }
+      });
+      expect(production).not.toHaveProperty('currentness');
+      expect(production).not.toHaveProperty('currentnessStatus');
+      expect(production).not.toHaveProperty('admissionDecision');
+
+      const pilot = projection.sourceAdmissionPolicies.find(
+        (item) => item.policyId === 'source-admission-policy.cn-duration-analytical.v1'
+      );
+      expect(pilot).toMatchObject({
+        maturityClass: 'PILOT'
+      });
+      expect(pilot).toHaveProperty('reason');
+    }
+  );
+
+  it('distinguishes valid empty owner reads from unavailable owner truth', async () => {
+    await expect(service([], [], { list: () => [] }).read()).resolves.toMatchObject({
       runtimeCapabilities: [],
       implementationProfiles: [],
+      sourceAdmissionPolicies: [],
       summary: {
         runtimeCapabilityCount: 0,
-        implementationProfileCount: 0
+        implementationProfileCount: 0,
+        sourceAdmissionPolicyCount: 0,
+        productionAdmissibleSourcePolicyCount: 0,
+        pilotSourcePolicyCount: 0,
+        fixtureTestSourcePolicyCount: 0,
+        unsupportedSourcePolicyCount: 0
       }
     });
 
-    const unavailable = new CapabilityCognitiveReadServiceV1(
+    const unavailableRegistry = new CapabilityCognitiveReadServiceV1(
       {
         listCurrent: vi.fn(() => Promise.reject(new Error('database unavailable')))
       },
@@ -132,7 +206,16 @@ describe('bounded Capability cognitive read projection', () => {
         listCurrent: vi.fn(() => Promise.resolve([]))
       }
     );
-    await expect(unavailable.read()).rejects.toBeInstanceOf(CapabilityCognitiveReadError);
+    await expect(unavailableRegistry.read()).rejects.toBeInstanceOf(CapabilityCognitiveReadError);
+
+    const unavailablePolicySource = service([], [], {
+      list: () => {
+        throw new Error('policy source unavailable');
+      }
+    });
+    await expect(unavailablePolicySource.read()).rejects.toBeInstanceOf(
+      CapabilityCognitiveReadError
+    );
   });
 
   it('fails closed when persisted Runtime Capability owner truth is malformed', async () => {
@@ -143,6 +226,18 @@ describe('bounded Capability cognitive read projection', () => {
       name: 'CapabilityCognitiveReadError'
     });
   });
+
+  it(
+    'fails closed on malformed source policy truth instead of projecting partial maturity',
+    async () => {
+      const malformedPolicySource: CurrentSourceAdmissionPolicyReadV1 = {
+        list: () => [policy({ currentness: 'CURRENT' })]
+      };
+      await expect(service([], [], malformedPolicySource).read()).rejects.toMatchObject({
+        name: 'CapabilityCognitiveReadError'
+      });
+    }
+  );
 
   it('retains only bounded Implementation Profile governance metadata', async () => {
     const projection = await service().read();
