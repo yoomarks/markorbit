@@ -436,6 +436,38 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const customerConfirmationRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/customer-confirmations',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectTopLevelAuthoritySpoof(body);
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticate(request);
+      const command = {
+        workspaceId: principal.workspaceId,
+        quoteId: body.quoteId,
+        quoteVersion: body.quoteVersion,
+        planId: body.planId,
+        planVersion: body.planVersion,
+        customerId: body.customerId,
+        termsVersion: body.termsVersion,
+        acknowledgements: body.acknowledgements,
+        actor: trustedActor(principal, body),
+        idempotencyKey: key
+      };
+      return forward(
+        request,
+        principal,
+        '/v1/customer-confirmations',
+        command,
+        key,
+        correlation
+      );
+    }
+  };
+
   const intakeRoute: JsonRoute = {
     method: 'POST',
     path: '/v1/markreg/intakes',
@@ -479,6 +511,7 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     intakeRoute,
     quoteRoute,
     confirmationRoute,
+    customerConfirmationRoute,
     matterIntelligenceRoute,
     formalMatterEvidenceRoute
   ];
