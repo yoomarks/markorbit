@@ -116,9 +116,7 @@ describe('durable Documents → Preparation workspace', () => {
       />
     );
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Create durable Document Package' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Create durable Document Package' }));
     expect(packageClient.createFromCompletedReview).toHaveBeenCalledWith(
       review,
       'document-package-professional-review_exact-4'
