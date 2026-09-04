@@ -115,7 +115,9 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   if (options.officialFeeReferences && !secret)
     throw new Error('internalServiceSecret is required for Official Fee Reference reads.');
   if (options.currentWorkspaceAuthority && !secret)
-    throw new Error('internalServiceSecret is required for current Workspace authority validation.');
+    throw new Error(
+      'internalServiceSecret is required for current Workspace authority validation.'
+    );
   const onboardingRoutes =
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({

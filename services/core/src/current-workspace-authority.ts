@@ -144,11 +144,7 @@ export class CurrentWorkspaceAuthorityService {
         409
       );
 
-    if (
-      user.status !== 'ACTIVE' ||
-      workspace.status !== 'ACTIVE' ||
-      membership.status !== 'ACTIVE'
-    )
+    if (user.status !== 'ACTIVE' || workspace.status !== 'ACTIVE' || membership.status !== 'ACTIVE')
       throw new CurrentWorkspaceAuthorityError(
         'CURRENT_AUTHORITY_DENIED',
         'Workspace authority is no longer current.',

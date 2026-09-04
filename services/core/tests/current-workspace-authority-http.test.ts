@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { JsonRequest } from '@markorbit/service-kit';
-import {
-  createCurrentWorkspaceAuthorityRoutes
-} from '../src/current-workspace-authority-http.js';
+import { createCurrentWorkspaceAuthorityRoutes } from '../src/current-workspace-authority-http.js';
 import {
   CurrentWorkspaceAuthorityError,
   type CurrentWorkspaceAuthorityRequest,
@@ -44,10 +42,7 @@ const result: CurrentWorkspaceAuthorityResult = {
   requiredPermission: 'review:perform'
 };
 
-function request(
-  body: unknown = command,
-  authorization: string | undefined = secret
-): JsonRequest {
+function request(body: unknown = command, authorization: string | undefined = secret): JsonRequest {
   return {
     method: 'POST',
     path: '/internal/auth/workspace-authority/validate-current',
@@ -61,7 +56,8 @@ function request(
 function route(
   validate: (
     input: Readonly<CurrentWorkspaceAuthorityRequest>
-  ) => Promise<Readonly<CurrentWorkspaceAuthorityResult>> | Readonly<CurrentWorkspaceAuthorityResult>
+  ) =>
+    Promise<Readonly<CurrentWorkspaceAuthorityResult>> | Readonly<CurrentWorkspaceAuthorityResult>
 ) {
   return createCurrentWorkspaceAuthorityRoutes({
     internalServiceSecret: secret,
@@ -81,11 +77,12 @@ describe('current Workspace authority HTTP boundary', () => {
 
   it('rejects an invalid internal caller before consulting current authority sources', async () => {
     const validate = vi.fn(() => result);
-    await expect(route(validate).handle(request(command, 'wrong-secret-value-xxxxxxxxxxxxx')))
-      .rejects.toMatchObject({
-        status: 401,
-        code: 'INTERNAL_SERVICE_UNAUTHORIZED'
-      });
+    await expect(
+      route(validate).handle(request(command, 'wrong-secret-value-xxxxxxxxxxxxx'))
+    ).rejects.toMatchObject({
+      status: 401,
+      code: 'INTERNAL_SERVICE_UNAUTHORIZED'
+    });
     expect(validate).not.toHaveBeenCalled();
   });
 
@@ -123,16 +120,19 @@ describe('current Workspace authority HTTP boundary', () => {
     ['CURRENT_AUTHORITY_DENIED', 409, false],
     ['CURRENT_AUTHORITY_PERMISSION_DENIED', 403, false],
     ['CURRENT_AUTHORITY_SOURCE_UNAVAILABLE', 503, true]
-  ] as const)('preserves %s as an explicit fail-closed HTTP result', async (code, status, retryable) => {
-    const validate = vi.fn(() => {
-      throw new CurrentWorkspaceAuthorityError(code, `forced ${code}`, status, retryable);
-    });
+  ] as const)(
+    'preserves %s as an explicit fail-closed HTTP result',
+    async (code, status, retryable) => {
+      const validate = vi.fn(() => {
+        throw new CurrentWorkspaceAuthorityError(code, `forced ${code}`, status, retryable);
+      });
 
-    await expect(route(validate).handle(request())).rejects.toMatchObject({
-      status,
-      code,
-      retryable
-    });
-    expect(validate).toHaveBeenCalledOnce();
-  });
+      await expect(route(validate).handle(request())).rejects.toMatchObject({
+        status,
+        code,
+        retryable
+      });
+      expect(validate).toHaveBeenCalledOnce();
+    }
+  );
 });

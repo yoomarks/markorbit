@@ -24,7 +24,11 @@ const allowedKeys = new Set([
 
 function requestBody(request: JsonRequest): CurrentWorkspaceAuthorityRequest {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
-    throw new HttpError(400, 'INVALID_CURRENT_AUTHORITY_REQUEST', 'Request body must be an object.');
+    throw new HttpError(
+      400,
+      'INVALID_CURRENT_AUTHORITY_REQUEST',
+      'Request body must be an object.'
+    );
   const value = request.body as Record<string, unknown>;
   if (Object.keys(value).some((key) => !allowedKeys.has(key)))
     throw new HttpError(
@@ -83,7 +87,12 @@ function requestBody(request: JsonRequest): CurrentWorkspaceAuthorityRequest {
 }
 
 function authenticated(request: JsonRequest, configured: string) {
-  if (!validateInternalServiceSecret(configured, request.headers['x-markorbit-internal-authorization']))
+  if (
+    !validateInternalServiceSecret(
+      configured,
+      request.headers['x-markorbit-internal-authorization']
+    )
+  )
     throw new HttpError(
       401,
       'INTERNAL_SERVICE_UNAUTHORIZED',
