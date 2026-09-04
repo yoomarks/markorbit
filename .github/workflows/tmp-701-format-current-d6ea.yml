@@ -1,0 +1,40 @@
+name: tmp-701-format-current-d6ea
+
+on:
+  push:
+    branches:
+      - 'tmp/701-format-current-d6ea'
+
+permissions:
+  contents: write
+
+jobs:
+  format-current:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/701-format-current-d6ea
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Write exact repository formatting
+        run: pnpm exec prettier --write apps/gateway/tests/filing-governance-http.test.ts
+      - name: Verify exact repository formatting
+        run: pnpm exec prettier --check apps/gateway/tests/filing-governance-http.test.ts
+      - name: Commit exact formatted output
+        run: |
+          if git diff --quiet -- apps/gateway/tests/filing-governance-http.test.ts; then
+            echo 'already formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/gateway/tests/filing-governance-http.test.ts
+          git commit -m 'style(gateway): format current Filing Governance test'
+          git push origin HEAD:tmp/701-format-current-d6ea
