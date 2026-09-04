@@ -1,0 +1,90 @@
+name: Temporary Lite 695 Final UI Guard Patch
+
+on:
+  push:
+    branches:
+      - lite/695-authenticated-execution-release
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lite/695-authenticated-execution-release
+          fetch-depth: 0
+      - name: Patch Workspace propagation and releasing guards
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app = Path('apps/lite-web/src/App.tsx')
+          text = app.read_text()
+          old = """          <ExecutionReleaseView
+            {...(initialFilingAuthorization ? { initialFilingAuthorization } : {})}
+          />
+          """
+          new = """          <ExecutionReleaseView
+            workspaceId={activeWorkspaceId}
+            {...(initialFilingAuthorization ? { initialFilingAuthorization } : {})}
+          />
+          """
+          if old not in text:
+              raise SystemExit('ExecutionReleaseView mount marker not found')
+          app.write_text(text.replace(old, new, 1))
+
+          view = Path('apps/lite-web/src/features/execution-release/ExecutionRelease.tsx')
+          text = view.read_text()
+
+          old_back = """      <Button variant=\"secondary\" onClick={back}>
+          """
+          new_back = """      <Button variant=\"secondary\" disabled={view === 'RELEASING'} onClick={back}>
+          """
+          if old_back not in text:
+              raise SystemExit('back button marker not found')
+          text = text.replace(old_back, new_back, 1)
+
+          old_guard = """              selected.status === 'RELEASED_FOR_EXECUTION' ||
+              view === 'RELEASE_STALE' ||
+          """
+          new_guard = """              selected.status === 'RELEASED_FOR_EXECUTION' ||
+              view === 'RELEASING' ||
+              view === 'RELEASE_STALE' ||
+          """
+          if text.count(old_guard) != 2:
+              raise SystemExit(f'expected 2 evaluate/assign guard markers, found {text.count(old_guard)}')
+          text = text.replace(old_guard, new_guard, 2)
+
+          old_release = """              !selected.assignment.internalExecutorId ||
+              !rationale.trim() ||
+              view === 'RELEASE_STALE'
+          """
+          new_release = """              !selected.assignment.internalExecutorId ||
+              !rationale.trim() ||
+              view === 'RELEASING' ||
+              view === 'RELEASE_STALE'
+          """
+          if old_release not in text:
+              raise SystemExit('release guard marker not found')
+          view.write_text(text.replace(old_release, new_release, 1))
+          PY
+      - name: Canonical format
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.28.1 --activate
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write \
+            apps/lite-web/src/App.tsx \
+            apps/lite-web/src/features/execution-release/ExecutionRelease.tsx
+      - name: Commit final guard
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/lite-web/src/App.tsx apps/lite-web/src/features/execution-release/ExecutionRelease.tsx
+          git commit -m '[LITE-P0] Preserve Workspace and release in-flight guard'
+          git push origin HEAD:lite/695-authenticated-execution-release
