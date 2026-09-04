@@ -27,8 +27,7 @@ const promotedExecutionFilingGovernanceKeys = new Set(executionFilingGovernance.
 const inventory = [
   ...baseline.filter(
     (row) =>
-      !promotedEarlyFunnelKeys.has(key(row)) &&
-      !promotedExecutionFilingGovernanceKeys.has(key(row))
+      !promotedEarlyFunnelKeys.has(key(row)) && !promotedExecutionFilingGovernanceKeys.has(key(row))
   ),
   ...m8Wp03,
   ...m8Wp04,
