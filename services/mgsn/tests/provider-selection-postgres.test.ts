@@ -423,7 +423,7 @@ suite('MGSN P0 #598 durable Human Provider Selection', () => {
     expect(unavailable).toMatchObject({
       decision: 'DENY',
       currentlyUsable: false,
-      denialReason: 'AUTHORITY_UNAVAILABLE'
+      denialReason: 'REQUESTER_AUTHORITY_NOT_CURRENT'
     });
   });
 
