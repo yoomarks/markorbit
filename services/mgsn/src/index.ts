@@ -24,9 +24,13 @@ export * from './provider-discovery-postgres.js';
 export * from './provider-discovery-current-responsibility.js';
 export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
+// Durable Selection is currently usable only after exact Core + MGSN owner authority revalidation.
+export * from './provider-selection-current-authority.js';
 export * from './controlled-privacy-handoff.js';
 // Durable Handoff persistence records governed disclosure authority only; it grants no Provider engagement, Allocation, Acceptance, Filing, Payment, or Official Truth authority.
 export * from './controlled-privacy-handoff-postgres.js';
+// Current Handoff usability reuses current Selection and revalidates only exact owner sources; unsupported external source access stays fail-closed.
+export * from './controlled-handoff-current-authority.js';
 // Trust Evidence remains contextual advisory history; persistence creates no score, rank, winner, routing, artifact, Filing, Payment, or Official Truth authority.
 export * from './outcome-trust-evidence.js';
 // Durable Trust Evidence storage never establishes current exposure authority; serving must revalidate current authority at runtime.
