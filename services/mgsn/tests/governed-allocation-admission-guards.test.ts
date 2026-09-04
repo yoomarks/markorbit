@@ -103,9 +103,9 @@ function runtime(
   } = {}
 ) {
   const planner = { plan: vi.fn().mockResolvedValue(allocation()) };
-  const selectionValidator = vi.fn().mockResolvedValue(
-    input.selectionValidation ?? positiveSelectionValidation()
-  );
+  const selectionValidator = vi
+    .fn()
+    .mockResolvedValue(input.selectionValidation ?? positiveSelectionValidation());
   const service = new GovernedAllocationService(
     planner,
     repository(input.replay),
@@ -184,18 +184,15 @@ describe('GovernedAllocationService admission fail-closed guards', () => {
       }
     ],
     ['Supply version', { expectedProviderSupplyCapabilityVersion: supply.version + 1 }]
-  ] as const)(
-    'rejects exact Selection %s mismatch before M4 planning',
-    async (_label, patch) => {
-      const mismatched = { ...command(), ...patch } as GovernedAllocationCommand;
-      const { planner, service } = runtime();
-      await expect(service.allocate(mismatched)).rejects.toMatchObject({
-        code: 'SELECTION_MISMATCH',
-        status: 409
-      });
-      expect(planner.plan).not.toHaveBeenCalled();
-    }
-  );
+  ] as const)('rejects exact Selection %s mismatch before M4 planning', async (_label, patch) => {
+    const mismatched = { ...command(), ...patch } as GovernedAllocationCommand;
+    const { planner, service } = runtime();
+    await expect(service.allocate(mismatched)).rejects.toMatchObject({
+      code: 'SELECTION_MISMATCH',
+      status: 409
+    });
+    expect(planner.plan).not.toHaveBeenCalled();
+  });
 
   it('rejects missing current Direct Executor authority before M4 planning', async () => {
     const { planner, service } = runtime({ direct: null });
