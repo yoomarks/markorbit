@@ -75,7 +75,7 @@ describe('current Workspace authority HTTP boundary', () => {
   });
 
   it('rejects an invalid internal caller before consulting current authority sources', async () => {
-    const validate = vi.fn(async () => result);
+    const validate = vi.fn(() => Promise.resolve(result));
     await expect(
       route(validate).handle(request(command, 'wrong-secret-value-xxxxxxxxxxxxx'))
     ).rejects.toMatchObject({
@@ -86,7 +86,7 @@ describe('current Workspace authority HTTP boundary', () => {
   });
 
   it('rejects bearer/session material and other caller-expanded fields', async () => {
-    const validate = vi.fn(async () => result);
+    const validate = vi.fn(() => Promise.resolve(result));
     await expect(
       route(validate).handle(request({ ...command, token: 'historical-browser-token' }))
     ).rejects.toMatchObject({
@@ -103,7 +103,7 @@ describe('current Workspace authority HTTP boundary', () => {
   });
 
   it('rejects unknown permissions instead of accepting caller-defined authority classes', async () => {
-    const validate = vi.fn(async () => result);
+    const validate = vi.fn(() => Promise.resolve(result));
     await expect(
       route(validate).handle(request({ ...command, requiredPermission: 'provider:appoint' }))
     ).rejects.toMatchObject({
@@ -122,9 +122,9 @@ describe('current Workspace authority HTTP boundary', () => {
   ] as const)(
     'preserves %s as an explicit fail-closed HTTP result',
     async (code, status, retryable) => {
-      const validate = vi.fn(async () => {
-        throw new CurrentWorkspaceAuthorityError(code, `forced ${code}`, status, retryable);
-      });
+      const validate = vi.fn(() =>
+        Promise.reject(new CurrentWorkspaceAuthorityError(code, `forced ${code}`, status, retryable))
+      );
 
       await expect(route(validate).handle(request())).rejects.toMatchObject({
         status,
