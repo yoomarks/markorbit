@@ -3,7 +3,10 @@ import {
   controlledHandoffContractFixtureV1,
   type AuthorizeOrReplaceControlledHandoffCommandV1
 } from '@markorbit/contracts/controlled-privacy-handoff';
-import { noDownstreamProviderSelectionAuthorityConsequences } from '@markorbit/contracts/provider-selection';
+import {
+  noDownstreamProviderSelectionAuthorityConsequences,
+  type ProviderSelectionCurrentValidationV1
+} from '@markorbit/contracts/provider-selection';
 import type { ProviderRegistryRecord } from '../src/provider-registry.js';
 import { providerDiscoveryFingerprint } from '../src/provider-discovery.js';
 import {
@@ -42,7 +45,14 @@ function providerFingerprint(): string {
   });
 }
 
-function selectionValidation(overrides: Record<string, unknown> = {}) {
+function selectionValidation(
+  overrides: Partial<
+    Extract<
+      ProviderSelectionCurrentValidationV1,
+      { decision: 'CURRENTLY_USABLE_FOR_BOUNDED_REVIEW' }
+    >
+  > = {}
+): ProviderSelectionCurrentValidationV1 {
   const lineage = fixture.authorizeCommand.sourceLineage.selectionLineage;
   return {
     schemaVersion: 1 as const,
@@ -134,7 +144,9 @@ function harness(validation = selectionValidation()) {
     findSupplyCapability: vi.fn(() => Promise.resolve(undefined))
   };
   const responsibility: HandoffResponsibilityAuthoritySource = {
-    assessCurrent: vi.fn(() => Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: null }))
+    assessCurrent: vi.fn(() =>
+      Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN' as const, assessment: null })
+    )
   };
   return {
     selection,

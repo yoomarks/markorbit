@@ -9,11 +9,11 @@ import type {
   ProviderSelectionSourceLineageV1,
   ProviderSelectionTrustedHumanAuthorityV1
 } from '@markorbit/contracts/provider-selection';
+import type { NetworkParticipationId } from '@markorbit/contracts/network-participation';
 import type {
-  NetworkParticipationId,
+  NetworkParticipationVersionRecord,
   NetworkVisibilityPolicyVersionRecord
 } from '../src/network-participation.js';
-import type { NetworkParticipationVersionRecord } from '../src/network-participation.js';
 import {
   PROVIDER_DISCOVERY_EVALUATION_POLICY_VERSION,
   providerDiscoveryFingerprint
@@ -270,7 +270,9 @@ function sourceLineage(
         version: supply.version,
         fingerprintSha256: supplyFingerprint,
         effectiveFrom: supply.effectivePeriod.effectiveFrom,
-        effectiveUntil: supply.effectivePeriod.effectiveUntil,
+        ...(supply.effectivePeriod.effectiveUntil
+          ? { effectiveUntil: supply.effectivePeriod.effectiveUntil }
+          : {}),
         checkedAt: at,
         authorityState: 'CURRENT'
       },

@@ -18,8 +18,10 @@ afterEach(() => {
 
 describe('MGSN Core current Workspace authority HTTP adapter', () => {
   it('sends only bounded non-bearer identity references and accepts an exact positive response', async () => {
-    const fetchMock = vi.fn(() =>
-      Promise.resolve(
+    let requestInit: RequestInit | undefined;
+    const fetchMock = vi.fn((_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      requestInit = init;
+      return Promise.resolve(
         response(200, {
           schemaVersion: 1,
           authorityAvailable: true,
@@ -39,8 +41,8 @@ describe('MGSN Core current Workspace authority HTTP adapter', () => {
           },
           requiredPermission: null
         })
-      )
-    );
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
     const source = new HttpCoreCurrentWorkspaceAuthoritySource(
       'http://core.internal',
@@ -56,11 +58,11 @@ describe('MGSN Core current Workspace authority HTTP adapter', () => {
         `core-membership:${membershipId}:v4`
       ]
     });
-    const [, init] = fetchMock.mock.calls[0]!;
-    const headers = init?.headers as Record<string, string>;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const headers = requestInit?.headers as Record<string, string>;
     expect(headers['x-markorbit-internal-authorization']).toBe('internal-secret');
     expect(headers.authorization).toBeUndefined();
-    expect(JSON.parse(String(init?.body))).toEqual({ workspaceId, userId, membershipId });
+    expect(JSON.parse(String(requestInit?.body))).toEqual({ workspaceId, userId, membershipId });
   });
 
   it('maps known Core denials to current=false without leaking account state', async () => {
