@@ -6,6 +6,7 @@ import {
   outcomeTrustEvidenceFixtureProviderIdV1,
   trustEvidenceItemFingerprintV1,
   trustEvidenceVisibilityProjectionFingerprintV1,
+  type OutcomeEvidenceReferenceV1,
   type TrustEvidenceItemV1,
   type TrustEvidenceVisibilityProjectionV1
 } from '@markorbit/contracts/outcome-trust-evidence';
@@ -36,7 +37,7 @@ const providerReturnId = 'provider-return_fixture-trust-717-review' as const;
 const policyAuthorizationReference = 'visibility:trust-717-review';
 const hash = (digit: string) => digit.repeat(64);
 
-const participation = {
+const participation: NetworkParticipationVersionRecord = {
   schemaVersion: 1,
   networkParticipationId: participationId,
   workspaceId,
@@ -49,9 +50,9 @@ const participation = {
   correlationId: 'correlation_trust_717_review',
   occurredAt: now,
   createdAt: now
-} as NetworkParticipationVersionRecord;
+};
 
-const policy = {
+const policy: NetworkVisibilityPolicyVersionRecord = {
   schemaVersion: 1,
   networkParticipationId: participationId,
   participationVersion: 1,
@@ -73,7 +74,7 @@ const policy = {
   correlationId: 'correlation_trust_717_review',
   updatedAt: now,
   createdAt: now
-} as NetworkVisibilityPolicyVersionRecord;
+};
 
 const provider = {
   schemaVersion: 1,
@@ -154,9 +155,7 @@ function networkSource(
   };
 }
 
-function returnSource(
-  current: ProviderReturnRecord | undefined = providerReturn
-): TrustEvidenceProviderReturnSource {
+function returnSource(current: ProviderReturnRecord | undefined): TrustEvidenceProviderReturnSource {
   return { findProviderReturn: () => Promise.resolve(current) };
 }
 
@@ -165,7 +164,7 @@ const providerSource: TrustEvidenceProviderSource = {
 };
 
 function responsibilitySource(
-  assessment: ResponsibilityAssessment = responsibilityAssessment
+  assessment: ResponsibilityAssessment
 ): TrustEvidenceResponsibilitySource {
   return {
     assessCurrent: () =>
@@ -178,9 +177,11 @@ function responsibilitySource(
 
 function authority(
   network: TrustEvidenceNetworkAuthoritySource = networkSource(),
-  returns: TrustEvidenceProviderReturnSource = returnSource(),
+  returns: TrustEvidenceProviderReturnSource = returnSource(providerReturn),
   providers: TrustEvidenceProviderSource = providerSource,
-  responsibility: TrustEvidenceResponsibilitySource = responsibilitySource()
+  responsibility: TrustEvidenceResponsibilitySource = responsibilitySource(
+    responsibilityAssessment
+  )
 ) {
   return new MgsnTrustEvidenceCurrentAuthoritySource(network, returns, providers, responsibility);
 }
@@ -240,21 +241,22 @@ function providerClaimItem(overrides: Partial<TrustEvidenceItemV1> = {}): TrustE
 }
 
 function establishedExecutorItem(): TrustEvidenceItemV1 {
-  const context = {
-    ...outcomeTrustEvidenceFixtureContextV1,
-    contextFingerprintSha256: hash('9'),
-    executorAttribution: {
-      state: 'ESTABLISHED' as const,
-      assessmentState: responsibilityAssessment.state,
-      assessmentReference: 'provider-responsibility-assessment:trust-717-review',
-      assessmentFingerprintSha256: responsibilityAssessment.assessmentFingerprintSha256,
-      profile: responsibilityAssessment.profile,
-      finalExecutionProviderId: providerId,
-      checkedAt: now,
-      currentAuthorityRevalidationRequiredBeforeUse: true as const
+  return providerClaimItem({
+    context: {
+      ...outcomeTrustEvidenceFixtureContextV1,
+      contextFingerprintSha256: hash('9'),
+      executorAttribution: {
+        state: 'ESTABLISHED',
+        assessmentState: responsibilityAssessment.state,
+        assessmentReference: 'provider-responsibility-assessment:trust-717-review',
+        assessmentFingerprintSha256: responsibilityAssessment.assessmentFingerprintSha256,
+        profile: responsibilityAssessment.profile,
+        finalExecutionProviderId: providerId,
+        checkedAt: now,
+        currentAuthorityRevalidationRequiredBeforeUse: true
+      }
     }
-  };
-  return providerClaimItem({ context });
+  });
 }
 
 function projection(
@@ -351,18 +353,14 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'PARTICIPATION_NOT_ACTIVE' });
   });
 
-  it('denies missing or revoked current Participation before source/executor checks', async () => {
+  it('denies missing or revoked current Participation before source checks', async () => {
     await expect(
       validation(authority(networkSource({ currentParticipation: undefined }), throwingReturns), [
         providerClaimItem()
       ])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'PARTICIPATION_NOT_ACTIVE' });
 
-    const revoked = {
-      ...participation,
-      version: 2,
-      state: 'REVOKED' as NetworkParticipationVersionRecord['state']
-    };
+    const revoked = { ...participation, version: 2, state: 'REVOKED' as const };
     await expect(
       validation(authority(networkSource({ currentParticipation: revoked }), throwingReturns), [
         providerClaimItem()
@@ -381,10 +379,19 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
       ])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'VISIBILITY_NOT_AUTHORIZED' });
 
-    const privatePolicy = {
-      ...policy,
-      scope: 'PRIVATE' as NetworkVisibilityPolicyVersionRecord['scope'],
-      grants: []
+    const privatePolicy: NetworkVisibilityPolicyVersionRecord = {
+      schemaVersion: 1,
+      networkParticipationId: policy.networkParticipationId,
+      participationVersion: policy.participationVersion,
+      version: policy.version,
+      scope: 'PRIVATE',
+      grants: [],
+      authorizationReference: policy.authorizationReference,
+      reason: policy.reason,
+      actorId: policy.actorId,
+      correlationId: policy.correlationId,
+      updatedAt: policy.updatedAt,
+      createdAt: policy.createdAt
     };
     await expect(
       validation(authority(networkSource({ currentPolicy: privatePolicy }), throwingReturns), [
@@ -393,7 +400,7 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'VISIBILITY_NOT_AUTHORIZED' });
   });
 
-  it('denies missing, wrong-Provider, fingerprint-mismatched and embedded-reference Provider Claims', async () => {
+  it('denies missing, wrong-Provider and fingerprint-mismatched Provider Returns', async () => {
     await expect(
       validation(authority(networkSource(), returnSource(undefined)), [providerClaimItem()])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'SOURCE_NOT_CURRENT' });
@@ -413,13 +420,28 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     await expect(
       validation(authority(networkSource(), returnSource(wrongFingerprint)), [providerClaimItem()])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'SOURCE_NOT_CURRENT' });
+  });
 
-    const embeddedReference = providerClaimItem({
-      evidenceReferences: ['unsupported-owner-evidence:717-review']
-    });
-    await expect(validation(authority(), [embeddedReference])).resolves.toMatchObject({
+  it('keeps embedded evidence references fail-closed without granting artifact authority', async () => {
+    const evidenceReference: OutcomeEvidenceReferenceV1 = {
+      evidenceReference: 'unsupported-owner-evidence:717-review',
+      sourceOwner: 'EXECUTION',
+      sourceType: 'EXECUTION_EVIDENCE',
+      sourceId: 'execution-evidence_717_review',
+      sourceVersion: 1,
+      sourceFingerprintSha256: hash('3'),
+      recordedAt: now,
+      authorityState: 'CURRENT',
+      checkedAt: now,
+      artifactAccessAuthorized: false,
+      currentArtifactAuthorizationRequired: true
+    };
+    await expect(
+      validation(authority(), [providerClaimItem({ evidenceReferences: [evidenceReference] })])
+    ).resolves.toMatchObject({
       decision: 'DENY',
-      reason: 'SOURCE_NOT_CURRENT'
+      reason: 'SOURCE_NOT_CURRENT',
+      artifactAccessAuthorized: false
     });
   });
 
@@ -427,14 +449,19 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     const item = establishedExecutorItem();
     const inactiveProvider = {
       ...provider,
-      operationalStatus: 'SUSPENDED' as ProviderRegistryRecord['operationalStatus']
-    };
+      operationalStatus: 'SUSPENDED'
+    } as ProviderRegistryRecord;
     const inactiveProviderSource: TrustEvidenceProviderSource = {
       findProviderById: () => Promise.resolve(inactiveProvider)
     };
     await expect(
       validation(
-        authority(networkSource(), returnSource(), inactiveProviderSource, responsibilitySource()),
+        authority(
+          networkSource(),
+          returnSource(providerReturn),
+          inactiveProviderSource,
+          responsibilitySource(responsibilityAssessment)
+        ),
         [item]
       )
     ).resolves.toMatchObject({
@@ -443,10 +470,13 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     });
 
     const noAssessment: TrustEvidenceResponsibilitySource = {
-      assessCurrent: () => Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: undefined })
+      assessCurrent: () => Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: null })
     };
     await expect(
-      validation(authority(networkSource(), returnSource(), providerSource, noAssessment), [item])
+      validation(
+        authority(networkSource(), returnSource(providerReturn), providerSource, noAssessment),
+        [item]
+      )
     ).resolves.toMatchObject({
       decision: 'DENY',
       reason: 'EXECUTOR_ATTRIBUTION_NOT_ESTABLISHED'
@@ -456,7 +486,10 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
       assessCurrent: () => Promise.reject(new Error('responsibility unavailable'))
     };
     await expect(
-      validation(authority(networkSource(), returnSource(), providerSource, unavailable), [item])
+      validation(
+        authority(networkSource(), returnSource(providerReturn), providerSource, unavailable),
+        [item]
+      )
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'AUTHORITY_UNAVAILABLE' });
   });
 
@@ -475,7 +508,7 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     });
   });
 
-  it('memoizes an exact Provider Return source only within one current-authority evaluation', async () => {
+  it('memoizes an exact Provider Return only within one current-authority evaluation', async () => {
     const item = providerClaimItem();
     let reads = 0;
     const countingReturns: TrustEvidenceProviderReturnSource = {
