@@ -119,6 +119,7 @@ function trustedHeaders(value = principal()) {
 }
 
 const repositories = new Map<string, InMemoryFilingGovernanceRepository>();
+const repositoryActors: Array<{ workspaceId: string; actorId: string }> = [];
 let runtime: ServiceRuntime;
 let base = '';
 
@@ -140,10 +141,12 @@ async function call(
 
 beforeEach(async () => {
   repositories.clear();
+  repositoryActors.length = 0;
   runtime = createRuntime({
     port: 0,
     internalServiceSecret: secret,
-    filingRepositoryFactory: (id) => {
+    filingRepositoryFactory: (id, actorId) => {
+      repositoryActors.push({ workspaceId: id, actorId });
       const existing = repositories.get(id);
       if (existing) return existing;
       const created = new InMemoryFilingGovernanceRepository();
@@ -263,15 +266,20 @@ describe('authenticated durable filing governance HTTP boundary', () => {
     );
     const releaseBody = (await releaseCreated.json()) as any;
     const releaseId = releaseBody.executionRelease.executionReleaseId as string;
-    expect(
-      (await call(`/v1/execution-releases/${releaseId}/evaluate`, 'POST', {}, headers)).status
-    ).toBe(200);
+    const evaluatedResponse = await call(
+      `/v1/execution-releases/${releaseId}/evaluate`,
+      'POST',
+      {},
+      headers
+    );
+    expect(evaluatedResponse.status).toBe(200);
+    const evaluated = (await evaluatedResponse.json()) as any;
     expect(
       (
         await call(
-          `/v1/execution-releases/${releaseId}/assignment`,
+          `/v1/execution-releases/${releaseId}/self-assignment`,
           'PATCH',
-          { internalExecutorId: 'user_internal_executor' },
+          { expectedVersion: evaluated.executionRelease.version },
           headers
         )
       ).status
@@ -295,5 +303,171 @@ describe('authenticated durable filing governance HTTP boundary', () => {
         providerAssignedExternally: false
       })
     );
+  });
+
+  it('derives Execution Release self-assignment from the trusted Principal and fails closed on spoofing, stale version, Workspace, permission, and released state', async () => {
+    const creatorHeaders = trustedHeaders(principal('user_release_creator'));
+    const createdResponse = await call(
+      '/v1/filing-authorizations',
+      'POST',
+      {
+        preparationLockId: lock.preparationLockId,
+        preparationLockVersion: sourceVersion,
+        authorizedParty: { partyId: 'customer_wp02_http', displayName: 'Owner' },
+        authorizationCapacity: 'OWNER',
+        executionChannel: 'OFFICE_PORTAL'
+      },
+      { ...creatorHeaders, 'idempotency-key': 'self-assign-create' }
+    );
+    expect(createdResponse.status).toBe(200);
+    const created = (await createdResponse.json()) as any;
+    const authorizationId = created.filingAuthorization.filingAuthorizationId as string;
+
+    const confirmedResponse = await call(
+      `/v1/filing-authorizations/${authorizationId}/confirm`,
+      'POST',
+      { acknowledgementCodes: codes },
+      { ...creatorHeaders, 'idempotency-key': 'self-assign-confirm' }
+    );
+    expect(confirmedResponse.status).toBe(200);
+    const confirmed = (await confirmedResponse.json()) as any;
+
+    const releaseCreated = await call(
+      '/v1/execution-releases',
+      'POST',
+      {
+        filingAuthorizationId: authorizationId,
+        filingAuthorizationVersion: confirmed.filingAuthorization.version,
+        requestedExecutionChannel: 'OFFICE_PORTAL'
+      },
+      { ...creatorHeaders, 'idempotency-key': 'self-assign-release-create' }
+    );
+    expect(releaseCreated.status).toBe(200);
+    const releaseCreatedBody = (await releaseCreated.json()) as any;
+    const releaseId = releaseCreatedBody.executionRelease.executionReleaseId as string;
+
+    const evaluatedResponse = await call(
+      `/v1/execution-releases/${releaseId}/evaluate`,
+      'POST',
+      {},
+      creatorHeaders
+    );
+    expect(evaluatedResponse.status).toBe(200);
+    const evaluated = (await evaluatedResponse.json()) as any;
+    const expectedVersion = evaluated.executionRelease.version as number;
+
+    const genericAssignment = await call(
+      `/v1/execution-releases/${releaseId}/assignment`,
+      'PATCH',
+      { internalExecutorId: 'user_spoofed_executor', expectedVersion },
+      creatorHeaders
+    );
+    expect(genericAssignment.status).toBe(404);
+
+    const spoofedIdentity = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { internalExecutorId: 'user_spoofed_executor', expectedVersion },
+      creatorHeaders
+    );
+    expect(spoofedIdentity.status).toBe(400);
+
+    const afterSpoofResponse = await call(
+      `/v1/execution-releases/${releaseId}`,
+      'GET',
+      undefined,
+      creatorHeaders
+    );
+    expect(afterSpoofResponse.status).toBe(200);
+    const afterSpoof = (await afterSpoofResponse.json()) as any;
+    expect(afterSpoof.executionRelease.assignment.internalExecutorId).toBeUndefined();
+
+    const missingPrincipal = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { expectedVersion },
+      {
+        'x-markorbit-internal-authorization': secret,
+        'x-markorbit-workspace-id': workspaceId
+      }
+    );
+    expect(missingPrincipal.status).toBe(401);
+
+    const wrongWorkspace = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { expectedVersion },
+      { ...creatorHeaders, 'x-markorbit-workspace-id': otherWorkspaceId }
+    );
+    expect(wrongWorkspace.status).toBe(404);
+
+    const limited = principal('user_read_only', ['workspace:read', 'execution:read']);
+    const missingManage = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { expectedVersion },
+      trustedHeaders(limited)
+    );
+    expect(missingManage.status).toBe(403);
+
+    const executorHeaders = trustedHeaders(principal('user_self_executor'));
+    const assignedResponse = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { expectedVersion },
+      executorHeaders
+    );
+    expect(assignedResponse.status).toBe(200);
+    const assigned = (await assignedResponse.json()) as any;
+    expect(assigned.executionRelease.assignment.internalExecutorId).toBe('user_self_executor');
+    expect(repositoryActors).toContainEqual({
+      workspaceId,
+      actorId: 'user_self_executor'
+    });
+    expect(assigned.consequences).toEqual(
+      expect.objectContaining({
+        filingSubmitted: false,
+        paymentCreated: false,
+        officialApplicationCreated: false,
+        providerAssignedExternally: false
+      })
+    );
+
+    const staleRetry = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { expectedVersion },
+      executorHeaders
+    );
+    expect(staleRetry.status).toBe(409);
+
+    const releasedResponse = await call(
+      `/v1/execution-releases/${releaseId}/release`,
+      'POST',
+      { rationale: 'Release after authenticated internal self-assignment.' },
+      { ...executorHeaders, 'idempotency-key': 'self-assign-release-decision' }
+    );
+    expect(releasedResponse.status).toBe(200);
+    const released = (await releasedResponse.json()) as any;
+    expect(released.releaseResult.release.status).toBe('RELEASED_FOR_EXECUTION');
+    expect(released.releaseResult.release.assignment.internalExecutorId).toBe('user_self_executor');
+
+    const mutateReleased = await call(
+      `/v1/execution-releases/${releaseId}/self-assignment`,
+      'PATCH',
+      { expectedVersion: released.releaseResult.release.version },
+      trustedHeaders(principal('user_other_executor'))
+    );
+    expect(mutateReleased.status).toBe(409);
+
+    const immutableResponse = await call(
+      `/v1/execution-releases/${releaseId}`,
+      'GET',
+      undefined,
+      executorHeaders
+    );
+    expect(immutableResponse.status).toBe(200);
+    const immutable = (await immutableResponse.json()) as any;
+    expect(immutable.executionRelease.assignment.internalExecutorId).toBe('user_self_executor');
   });
 });
