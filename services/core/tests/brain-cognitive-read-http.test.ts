@@ -18,7 +18,21 @@ const projection = {
   },
   brainAssets: [],
   brainGaps: [],
-  summary: { brainAssetCount: 0, brainGapCount: 0, openBrainGapCount: 0 }
+  methodImprovements: [],
+  brainBuildRuns: {
+    availability: 'NOT_DURABLY_RECORDED' as const,
+    inventory: null,
+    reasonCode: 'NO_DURABLE_BUILD_RUN_REGISTRY' as const
+  },
+  summary: {
+    brainAssetCount: 0,
+    brainGapCount: 0,
+    openBrainGapCount: 0,
+    methodImprovementAdmissionCount: 0,
+    performanceGapAdmissionCount: 0,
+    coverageGapAdmissionCount: 0,
+    brainBuildRunInventoryAvailable: false as const
+  }
 };
 
 function operator(
