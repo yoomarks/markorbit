@@ -29,57 +29,6 @@ const mobile390 = {
     viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
   }
 };
-const baseSummary = summaryFixture();
-const triageItems = [
-  summaryFixture({
-    contentOpportunity: { ...baseSummary.contentOpportunity, version: 1 },
-    title: 'Create the first Draft',
-    updatedAt: '2026-09-01T09:00:00.000Z',
-    latestDraft: null,
-    latestDraftReview: null,
-    latestPublishPackage: null,
-    latestPackageFeedback: null
-  }),
-  summaryFixture({
-    contentOpportunity: { ...baseSummary.contentOpportunity, version: 2 },
-    title: 'Drafting evidence-first explainer',
-    updatedAt: '2026-09-02T09:00:00.000Z',
-    latestDraft: { ...baseSummary.latestDraft!, status: 'DRAFT' },
-    latestDraftReview: null,
-    latestPublishPackage: null,
-    latestPackageFeedback: null
-  }),
-  summaryFixture({
-    contentOpportunity: { ...baseSummary.contentOpportunity, version: 3 },
-    title: 'Needs human review',
-    updatedAt: '2026-09-03T09:00:00.000Z',
-    latestDraft: { ...baseSummary.latestDraft!, status: 'READY_FOR_HUMAN_REVIEW' },
-    latestDraftReview: null,
-    latestPublishPackage: null,
-    latestPackageFeedback: null
-  }),
-  summaryFixture({
-    contentOpportunity: { ...baseSummary.contentOpportunity, version: 4 },
-    title: 'Changes requested by reviewer',
-    updatedAt: '2026-09-04T09:00:00.000Z',
-    latestDraft: { ...baseSummary.latestDraft!, status: 'CHANGES_REQUIRED' },
-    latestDraftReview: { ...baseSummary.latestDraftReview!, outcome: 'CHANGES_REQUIRED' },
-    latestPublishPackage: null,
-    latestPackageFeedback: null
-  }),
-  summaryFixture({
-    contentOpportunity: { ...baseSummary.contentOpportunity, version: 5 },
-    title: 'Ready to prepare package',
-    updatedAt: '2026-09-05T09:00:00.000Z',
-    latestPublishPackage: null,
-    latestPackageFeedback: null
-  }),
-  summaryFixture({
-    contentOpportunity: { ...baseSummary.contentOpportunity, version: 6 },
-    title: 'Package already prepared',
-    updatedAt: '2026-09-06T09:00:00.000Z'
-  })
-];
 export const CompleteEmpty: Story = {
   args: {
     ...args,
@@ -146,24 +95,6 @@ export const PartialEmptyUnknownMobile390: Story = {
 export const PartialMixedMobile390: Story = { ...PartialMixed, parameters: mobile390 };
 export const MultipleOutputMobile390: Story = { ...MultipleOutput, parameters: mobile390 };
 export const SuccessList: Story = { args };
-export const MixedTriage: Story = {
-  args: { ...args, client: fixtureClient(listFixture(triageItems)) }
-};
-export const FilteredTriage: Story = {
-  ...MixedTriage,
-  play: async ({ canvasElement }) => {
-    const select = canvasElement.querySelector('select');
-    if (select) {
-      select.value = 'READY_FOR_REVIEW';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-};
-export const MixedTriageMobile390: Story = {
-  ...MixedTriage,
-  parameters: mobile390
-};
 export const EmptyWorkspace: Story = { args: { ...args, client: fixtureClient(listFixture([])) } };
 export const SuccessDetail: Story = {
   args: { ...args, initialContentOpportunityId: 'content-opportunity_413' }
