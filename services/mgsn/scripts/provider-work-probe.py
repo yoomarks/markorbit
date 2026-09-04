@@ -83,7 +83,7 @@ handoff_helpers = """
       handoffRepository(),
       { evaluateCurrentAuthority: () => Promise.resolve(structuredClone(handoffSnapshot)) },
       () => at,
-      () => 'controlled-handoff_governed-716' as never
+      () => 'controlled-handoff_governed-716'
     );
 
   async function seedExactHandoff() {
