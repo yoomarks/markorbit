@@ -1,0 +1,56 @@
+name: tmp-701-review-current
+
+on:
+  push:
+    branches:
+      - 'tmp/701-review-current'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/701-review-current
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Write exact repository formatting
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-boundary.test.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts
+      - name: Validate current Filing Governance boundary
+        run: |
+          pnpm --filter @markorbit/contracts build
+          pnpm --filter @markorbit/events build
+          pnpm --filter @markorbit/service-kit build
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway test
+      - name: Commit verified formatting to temporary branch
+        run: |
+          if git diff --quiet -- \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-boundary.test.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts; then
+            echo 'already verified and formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-boundary.test.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts
+          git commit -m 'style: temporary #701 exact current-head formatting'
+          git push origin HEAD:tmp/701-review-current
