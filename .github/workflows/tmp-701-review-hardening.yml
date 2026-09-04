@@ -1,0 +1,84 @@
+name: tmp-701-review-hardening
+
+on:
+  push:
+    branches:
+      - 'tmp/701-review-hardening'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/701-review-hardening
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply review compatibility hardening
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'apps/gateway/src/filing-governance-http.ts';
+          let text = fs.readFileSync(path, 'utf8');
+          if (!text.includes('ignoredBodyFields?: readonly string[];')) {
+            text = text.replace(
+              "  allowedBodyFields?: readonly string[];\n  projectAuthorizedParty?: boolean;",
+              "  allowedBodyFields?: readonly string[];\n  ignoredBodyFields?: readonly string[];\n  projectAuthorizedParty?: boolean;"
+            );
+            text = text.replace(
+              "    idempotencyRequired: true,\n    allowedBodyFields: ['acknowledgementCodes']\n  },",
+              "    idempotencyRequired: true,\n    allowedBodyFields: ['acknowledgementCodes'],\n    ignoredBodyFields: ['acknowledgedBy']\n  },"
+            );
+            text = text.replace(
+              "    idempotencyRequired: true,\n    allowedBodyFields: ['rationale']\n  },",
+              "    idempotencyRequired: true,\n    allowedBodyFields: ['rationale'],\n    ignoredBodyFields: ['decidedBy']\n  },"
+            );
+            text = text.replace(
+              "  const allowedFields = new Set(policy.allowedBodyFields ?? []);\n  const unsupported = Object.keys(body).find((field) => !allowedFields.has(field));",
+              "  const allowedFields = new Set(policy.allowedBodyFields ?? []);\n  const ignoredFields = new Set(policy.ignoredBodyFields ?? []);\n  const unsupported = Object.keys(body).find(\n    (field) => !allowedFields.has(field) && !ignoredFields.has(field)\n  );"
+            );
+            if (!text.includes("ignoredBodyFields: ['acknowledgedBy']") ||
+                !text.includes("ignoredBodyFields: ['decidedBy']") ||
+                !text.includes('const ignoredFields = new Set(policy.ignoredBodyFields ?? []);')) {
+              throw new Error('temporary #701 compatibility patch did not apply completely');
+            }
+            fs.writeFileSync(path, text);
+          }
+          NODE
+      - name: Write exact repository formatting
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts
+      - name: Validate Gateway authority boundary
+        run: |
+          pnpm --filter @markorbit/contracts build
+          pnpm --filter @markorbit/events build
+          pnpm --filter @markorbit/service-kit build
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway test
+      - name: Commit verified output to temporary branch
+        run: |
+          if git diff --quiet -- \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts; then
+            echo 'already verified and formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts
+          git commit -m 'fix: temporary #701 review hardening output'
+          git push origin HEAD:tmp/701-review-hardening
