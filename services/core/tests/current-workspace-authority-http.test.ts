@@ -123,7 +123,9 @@ describe('current Workspace authority HTTP boundary', () => {
     'preserves %s as an explicit fail-closed HTTP result',
     async (code, status, retryable) => {
       const validate = vi.fn(() =>
-        Promise.reject(new CurrentWorkspaceAuthorityError(code, `forced ${code}`, status, retryable))
+        Promise.reject(
+          new CurrentWorkspaceAuthorityError(code, `forced ${code}`, status, retryable)
+        )
       );
 
       await expect(route(validate).handle(request())).rejects.toMatchObject({
