@@ -33,9 +33,7 @@ export interface BrainAssetCurrentReadAuthority {
 export interface BrainGapReadAuthority {
   query(
     query?: Readonly<BrainGapRegistryQuery>
-  ):
-    | readonly Readonly<BrainGapRegistryRecord>[]
-    | Promise<readonly Readonly<BrainGapRegistryRecord>[]>;
+  ): readonly Readonly<BrainGapRegistryRecord>[] | Promise<readonly Readonly<BrainGapRegistryRecord>[]>;
 }
 
 export interface BrainAssetCognitiveReadItemV1 {
