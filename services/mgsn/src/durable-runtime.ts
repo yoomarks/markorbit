@@ -9,6 +9,7 @@ import { PostgresControlledHandoffRepository } from './controlled-privacy-handof
 import type { MgsnHttpServices } from './http.js';
 import { NetworkParticipationService } from './network-participation.js';
 import { PostgresNetworkParticipationRepository } from './network-participation-postgres.js';
+import { MgsnTrustEvidenceCurrentAuthoritySource } from './outcome-trust-evidence-current-authority.js';
 import {
   OutcomeTrustEvidenceService,
   type TrustEvidenceCurrentAuthoritySource
@@ -78,22 +79,6 @@ const unavailableControlledHandoffAuthority: ControlledHandoffCurrentAuthoritySo
       hiddenIntermediaryDetected: false,
       evidenceArtifactAccessAuthorized: false,
       checkedAuthorityReferences: []
-    });
-  }
-};
-
-// Persisted Trust Evidence is contextual history only; current serving authority is always re-evaluated.
-const unavailableTrustEvidenceAuthority: TrustEvidenceCurrentAuthoritySource = {
-  evaluateCurrentAuthority() {
-    return Promise.resolve({
-      authorityAvailable: false,
-      participationActive: false,
-      visibilityAuthorized: false,
-      relationshipAuthorityCurrent: false,
-      sourceAuthoritiesCurrent: false,
-      contextMatches: false,
-      executorAttributionCurrent: false,
-      authorityReferences: []
     });
   }
 };
@@ -191,6 +176,12 @@ export function createDurableMgsnServices(
     providerResponsibilityRepository,
     providerRepository
   );
+  const trustEvidenceCurrentAuthority = new MgsnTrustEvidenceCurrentAuthoritySource(
+    networkParticipationRepository,
+    providerReturnRepository,
+    providerRepository,
+    providerResponsibility
+  );
 
   return {
     providerRegistry: new ProviderRegistryService(providerRepository, coreWorkspaces),
@@ -235,7 +226,7 @@ export function createDurableMgsnServices(
     ),
     outcomeTrustEvidence: new OutcomeTrustEvidenceService(
       outcomeTrustEvidenceRepository,
-      options.trustEvidenceCurrentAuthoritySource ?? unavailableTrustEvidenceAuthority
+      options.trustEvidenceCurrentAuthoritySource ?? trustEvidenceCurrentAuthority
     ),
     trustedPublicExposure: new TrustedPublicExposureService(
       options.trustedPublicCurrentAuthoritySource ?? unavailableTrustedPublicAuthority

@@ -31,6 +31,8 @@ export * from './controlled-privacy-handoff-postgres.js';
 export * from './outcome-trust-evidence.js';
 // Durable Trust Evidence storage never establishes current exposure authority; serving must revalidate current authority at runtime.
 export * from './outcome-trust-evidence-postgres.js';
+// Current Trust exposure is revalidated only from exact MGSN-owned authority; unsupported external or relationship authority stays fail-closed.
+export * from './outcome-trust-evidence-current-authority.js';
 // Trusted Public eligibility/projection metadata is historical authorization input only; every positive serve requires fresh current-authority revalidation.
 // A stored public projection is not PUBLICLY_EXPOSED until the serve-time service returns an AUTHORIZED current decision.
 export * from './trusted-public-exposure.js';
