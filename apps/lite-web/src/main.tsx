@@ -7,15 +7,24 @@ import { GovernedWorkRouteEntry } from './routing/GovernedWorkRouteEntry.js';
 const root = document.querySelector('#root');
 if (!root) throw new Error('Root element missing');
 const parameters = new URLSearchParams(window.location.search);
+const fixtureEntry = import.meta.env.VITE_MARKORBIT_FIXTURE_ENTRY === '1';
+if (fixtureEntry && !parameters.has('workspaceId')) {
+  parameters.set('workspaceId', 'workspace_fixture');
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}?${parameters.toString()}${window.location.hash}`
+  );
+}
 const professionalReviewCaseId = parameters.get('professionalReviewCaseId') ?? undefined;
 const filingAuthorizationId = parameters.get('filingAuthorizationId');
 const filingAuthorizationVersion = Number(parameters.get('filingAuthorizationVersion'));
 const documentPackageId = parameters.get('documentPackageId') ?? undefined;
 const documentPackageReviewCaseId = parameters.get('documentPackageReviewCaseId') ?? undefined;
 const workspaceId = parameters.get('workspaceId') ?? '';
-const fixtureEntry = import.meta.env.VITE_MARKORBIT_FIXTURE_ENTRY === '1';
 const product = () => (
   <LiteApp
+    workspaceId={workspaceId}
     {...(professionalReviewCaseId ? { initialReviewCaseId: professionalReviewCaseId } : {})}
     {...(filingAuthorizationId && filingAuthorizationVersion
       ? {
