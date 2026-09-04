@@ -124,9 +124,7 @@ describe('current Workspace authority verifier', () => {
     const f = await fixture();
     const service = new CurrentWorkspaceAuthorityService({
       users: {
-        findById: async () => {
-          throw new Error('database unavailable');
-        }
+        findById: () => Promise.reject(new Error('database unavailable'))
       },
       workspaces: f.workspaces,
       memberships: f.memberships
