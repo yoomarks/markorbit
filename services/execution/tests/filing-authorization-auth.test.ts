@@ -364,13 +364,37 @@ describe('authenticated durable filing governance HTTP boundary', () => {
     );
     expect(genericAssignment.status).toBe(404);
 
-    const spoofedIdentity = await call(
+    const spoofedIdentityFields = [
+      'internalExecutorId',
+      'executorId',
+      'actor',
+      'actorId',
+      'userId',
+      'principal',
+      'membership',
+      'membershipId',
+      'workspaceId',
+      'permissions',
+      'role',
+      'authority'
+    ];
+    for (const field of spoofedIdentityFields) {
+      const spoofedIdentity = await call(
+        `/v1/execution-releases/${releaseId}/self-assignment`,
+        'PATCH',
+        { [field]: field === 'workspaceId' ? workspaceId : 'browser-supplied', expectedVersion },
+        creatorHeaders
+      );
+      expect(spoofedIdentity.status, field).toBe(400);
+    }
+
+    const missingExpectedVersion = await call(
       `/v1/execution-releases/${releaseId}/self-assignment`,
       'PATCH',
-      { internalExecutorId: 'user_spoofed_executor', expectedVersion },
+      {},
       creatorHeaders
     );
-    expect(spoofedIdentity.status).toBe(400);
+    expect(missingExpectedVersion.status).toBe(422);
 
     const afterSpoofResponse = await call(
       `/v1/execution-releases/${releaseId}`,

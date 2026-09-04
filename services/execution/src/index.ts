@@ -7,6 +7,7 @@ import {
   type EventEnvelope,
   type ExecutionCreateCommand,
   type ExecutionRecord,
+  type MarkOrbitId,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import { InMemoryEventPublisher, type EventPublisher } from '@markorbit/events';
@@ -442,7 +443,7 @@ export function createRuntime(options: ExecutionOptions = {}) {
             filingCall(
               r,
               true,
-              async (service, principal) => {
+              (service, principal) => {
                 if (!principal)
                   throw new FilingGovernanceError(
                     'INVALID_INTERNAL_PRINCIPAL',
@@ -486,29 +487,9 @@ export function createRuntime(options: ExecutionOptions = {}) {
                   );
                 const id = r.params.executionReleaseId as ExecutionReleaseId;
                 const expectedVersion = Number(body.expectedVersion);
-                const current = await service.getRelease(id);
-                if (current.version !== expectedVersion)
-                  throw new FilingGovernanceError(
-                    'STALE_EXECUTION_RELEASE',
-                    'Execution Release changed; reload the exact latest version.',
-                    409,
-                    { expectedVersion, actualVersion: current.version }
-                  );
-                if (current.status === 'RELEASED_FOR_EXECUTION')
-                  throw new FilingGovernanceError(
-                    'EXECUTION_RELEASE_IMMUTABLE',
-                    'Released assignment is immutable.'
-                  );
-                if (!['DRAFT', 'BLOCKED', 'READY_FOR_RELEASE'].includes(current.status))
-                  throw new FilingGovernanceError(
-                    'EXECUTION_RELEASE_NOT_ASSIGNABLE',
-                    'Execution Release cannot be assigned in its current state.',
-                    409,
-                    { state: current.status }
-                  );
                 return service.assign(
                   id,
-                  { internalExecutorId: principal.userId },
+                  { internalExecutorId: principal.userId as MarkOrbitId },
                   expectedVersion
                 );
               },
@@ -522,8 +503,8 @@ export function createRuntime(options: ExecutionOptions = {}) {
             filingCall(
               r,
               true,
-              (service, principal) => {
-                if (principal)
+              (service) => {
+                if (options.filingRepositoryFactory)
                   throw new FilingGovernanceError(
                     'GENERIC_EXECUTOR_ASSIGNMENT_DISABLED',
                     'Production durable runtime only permits trusted-principal self-assignment.',
