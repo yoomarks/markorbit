@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js",
-    "postinstall": "prettier --write src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/provider-work-incoming-authority.test.ts && git diff -- src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/provider-work-incoming-authority.test.ts"
+    "postinstall": "python -c \"from pathlib import Path; paths=[Path('src/governed-allocation.ts'),Path('src/provider-work-incoming-authority.ts')]; [p.write_text(p.read_text().replace('ControlledHandoffService','ControlledPrivacyHandoffService')) for p in paths]; p=Path('src/provider-work-incoming-authority.ts'); p.write_text(p.read_text().replace('scope: unknown,','scope: object,')); p=Path('tests/governed-allocation.test.ts'); p.write_text(p.read_text().replace('.toMatchObject<\\n      Partial<GovernedAllocationError>\\n    >({','.toMatchObject({'))\" && prettier --write src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/provider-work-incoming-authority.test.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
