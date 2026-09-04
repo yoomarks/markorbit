@@ -6,8 +6,9 @@ for (const path of [
 ]) {
   let source = fs.readFileSync(path, 'utf8');
   const before = source;
-  source = source.replace(/createMarkReg\(\{\n(\s*)(?!milestoneTestRuntime: true,)/g, (_match, indent) =>
-    `createMarkReg({\n${indent}milestoneTestRuntime: true,\n${indent}`
+  source = source.replaceAll(
+    'createMarkReg({',
+    'createMarkReg({ milestoneTestRuntime: true,'
   );
   if (source === before) throw new Error(`no createMarkReg fixture runtime anchor changed in ${path}`);
   fs.writeFileSync(path, source);
