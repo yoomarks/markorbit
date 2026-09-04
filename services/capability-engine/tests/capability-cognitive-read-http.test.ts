@@ -15,13 +15,24 @@ const projection = {
     authority: 'RUNTIME_CAPABILITY_AND_IMPLEMENTATION_PROFILE_REGISTRIES' as const,
     availability: 'AVAILABLE' as const
   },
+  sourceAdmissionPolicySource: {
+    domain: 'CAPABILITY_ENGINE' as const,
+    authority: 'SOURCE_ADMISSION_POLICY_CATALOG' as const,
+    availability: 'AVAILABLE' as const
+  },
   runtimeCapabilities: [],
   implementationProfiles: [],
+  sourceAdmissionPolicies: [],
   summary: {
     runtimeCapabilityCount: 0,
     implementationProfileCount: 0,
     approvedImplementationProfileCount: 0,
-    retiredImplementationProfileCount: 0
+    retiredImplementationProfileCount: 0,
+    sourceAdmissionPolicyCount: 0,
+    productionAdmissibleSourcePolicyCount: 0,
+    pilotSourcePolicyCount: 0,
+    fixtureTestSourcePolicyCount: 0,
+    unsupportedSourcePolicyCount: 0
   }
 };
 

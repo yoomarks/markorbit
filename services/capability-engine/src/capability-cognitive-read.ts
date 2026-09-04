@@ -1,7 +1,14 @@
 import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capability-learning';
 import type { ImplementationProfile } from '@markorbit/contracts/capability-runtime';
+import {
+  capabilitySourceMaturityClasses,
+  currentCapabilitySourceAdmissionPolicyCatalogV1
+} from './source-admission-policy-catalog.js';
 
 const SHA256 = /^[0-9a-f]{64}$/;
+const RISK_CLASSES = new Set(['LOW', 'MODERATE', 'HIGH', 'PROTECTED']);
+const CURRENTNESS_REQUIREMENTS = new Set(['REQUIRED', 'NOT_REQUIRED']);
+const SOURCE_MATURITY_CLASSES = new Set<string>(capabilitySourceMaturityClasses);
 
 export class CapabilityCognitiveReadError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -18,12 +25,52 @@ export interface CurrentImplementationProfileReadV1 {
   listCurrent(capabilityId?: string): Promise<readonly Readonly<ImplementationProfile>[]>;
 }
 
+export interface CurrentSourceAdmissionPolicyReadV1 {
+  list(): readonly unknown[];
+}
+
+type SourceAdmissionPolicyProjectionBaseV1 = Readonly<{
+  policyId: string;
+  policyVersion: number;
+  capabilityId: string;
+  capabilityVersion: string;
+  implementationProfileId: string;
+  implementationProfileVersion: number;
+  implementationKey: string;
+  inputSchemaId: string;
+  outputSchemaId: string;
+  allowedCallerProducts: readonly string[];
+  maximumRiskClass: ImplementationProfile['maximumRiskClass'];
+}>;
+
+export type SourceAdmissionPolicyProjectionV1 =
+  | Readonly<
+      SourceAdmissionPolicyProjectionBaseV1 & {
+        maturityClass: 'PRODUCTION_ADMISSIBLE';
+        currentnessRequirements: Readonly<{
+          method: 'REQUIRED' | 'NOT_REQUIRED';
+          reference: 'REQUIRED' | 'NOT_REQUIRED';
+        }>;
+      }
+    >
+  | Readonly<
+      SourceAdmissionPolicyProjectionBaseV1 & {
+        maturityClass: 'PILOT' | 'FIXTURE_TEST' | 'UNSUPPORTED';
+        reason: string;
+      }
+    >;
+
 export interface CapabilityCognitiveReadProjectionV1 {
   schemaVersion: 1;
   generatedAt: string;
   source: Readonly<{
     domain: 'CAPABILITY_ENGINE';
     authority: 'RUNTIME_CAPABILITY_AND_IMPLEMENTATION_PROFILE_REGISTRIES';
+    availability: 'AVAILABLE';
+  }>;
+  sourceAdmissionPolicySource: Readonly<{
+    domain: 'CAPABILITY_ENGINE';
+    authority: 'SOURCE_ADMISSION_POLICY_CATALOG';
     availability: 'AVAILABLE';
   }>;
   runtimeCapabilities: readonly Readonly<{
@@ -61,11 +108,17 @@ export interface CapabilityCognitiveReadProjectionV1 {
     approvalPolicyVersion: string;
     createdAt: string;
   }>[];
+  sourceAdmissionPolicies: readonly SourceAdmissionPolicyProjectionV1[];
   summary: Readonly<{
     runtimeCapabilityCount: number;
     implementationProfileCount: number;
     approvedImplementationProfileCount: number;
     retiredImplementationProfileCount: number;
+    sourceAdmissionPolicyCount: number;
+    productionAdmissibleSourcePolicyCount: number;
+    pilotSourcePolicyCount: number;
+    fixtureTestSourcePolicyCount: number;
+    unsupportedSourcePolicyCount: number;
   }>;
 }
 
@@ -75,10 +128,20 @@ function record(value: unknown, field: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function text(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !value.trim())
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string
+): void {
+  const supported = new Set(allowed);
+  if (Object.keys(value).some((key) => !supported.has(key)))
     throw new CapabilityCognitiveReadError(`${field} is malformed.`);
-  return value;
+}
+
+function text(value: unknown, field: string, maximum = 500): string {
+  if (typeof value !== 'string' || !value.trim() || value.trim().length > maximum)
+    throw new CapabilityCognitiveReadError(`${field} is malformed.`);
+  return value.trim();
 }
 
 function optionalText(value: unknown, field: string): string | undefined {
@@ -97,6 +160,27 @@ function canonicalTimestamp(value: unknown, field: string): string {
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== timestamp)
     throw new CapabilityCognitiveReadError(`${field} is malformed.`);
   return timestamp;
+}
+
+function stringList(value: unknown, field: string): readonly string[] {
+  if (!Array.isArray(value) || value.length === 0)
+    throw new CapabilityCognitiveReadError(`${field} is malformed.`);
+  const items = value.map((item, index) => text(item, `${field}[${index}]`, 120));
+  if (new Set(items).size !== items.length)
+    throw new CapabilityCognitiveReadError(`${field} is malformed.`);
+  return Object.freeze([...items].sort((left, right) => left.localeCompare(right)));
+}
+
+function riskClass(value: unknown, field: string): ImplementationProfile['maximumRiskClass'] {
+  if (typeof value !== 'string' || !RISK_CLASSES.has(value))
+    throw new CapabilityCognitiveReadError(`${field} is malformed.`);
+  return value as ImplementationProfile['maximumRiskClass'];
+}
+
+function currentnessRequirement(value: unknown, field: string): 'REQUIRED' | 'NOT_REQUIRED' {
+  if (typeof value !== 'string' || !CURRENTNESS_REQUIREMENTS.has(value))
+    throw new CapabilityCognitiveReadError(`${field} is malformed.`);
+  return value as 'REQUIRED' | 'NOT_REQUIRED';
 }
 
 function projectRuntimeCapability(value: Readonly<RuntimeCapabilityDefinition>) {
@@ -189,11 +273,91 @@ function projectImplementationProfile(value: Readonly<ImplementationProfile>) {
   });
 }
 
+const COMMON_POLICY_KEYS = [
+  'schemaVersion',
+  'policyId',
+  'policyVersion',
+  'maturityClass',
+  'capabilityId',
+  'capabilityVersion',
+  'implementationProfileId',
+  'implementationProfileVersion',
+  'implementationKey',
+  'inputSchemaId',
+  'outputSchemaId',
+  'allowedCallerProducts',
+  'maximumRiskClass'
+] as const;
+
+function projectSourceAdmissionPolicy(value: unknown): SourceAdmissionPolicyProjectionV1 {
+  const policy = record(value, 'sourceAdmissionPolicy');
+  if (policy.schemaVersion !== 1)
+    throw new CapabilityCognitiveReadError('sourceAdmissionPolicy.schemaVersion is malformed.');
+  if (
+    typeof policy.maturityClass !== 'string' ||
+    !SOURCE_MATURITY_CLASSES.has(policy.maturityClass)
+  )
+    throw new CapabilityCognitiveReadError('sourceAdmissionPolicy.maturityClass is malformed.');
+
+  const common = {
+    policyId: text(policy.policyId, 'sourceAdmissionPolicy.policyId'),
+    policyVersion: positiveInteger(policy.policyVersion, 'sourceAdmissionPolicy.policyVersion'),
+    capabilityId: text(policy.capabilityId, 'sourceAdmissionPolicy.capabilityId'),
+    capabilityVersion: text(policy.capabilityVersion, 'sourceAdmissionPolicy.capabilityVersion'),
+    implementationProfileId: text(
+      policy.implementationProfileId,
+      'sourceAdmissionPolicy.implementationProfileId'
+    ),
+    implementationProfileVersion: positiveInteger(
+      policy.implementationProfileVersion,
+      'sourceAdmissionPolicy.implementationProfileVersion'
+    ),
+    implementationKey: text(policy.implementationKey, 'sourceAdmissionPolicy.implementationKey'),
+    inputSchemaId: text(policy.inputSchemaId, 'sourceAdmissionPolicy.inputSchemaId'),
+    outputSchemaId: text(policy.outputSchemaId, 'sourceAdmissionPolicy.outputSchemaId'),
+    allowedCallerProducts: stringList(
+      policy.allowedCallerProducts,
+      'sourceAdmissionPolicy.allowedCallerProducts'
+    ),
+    maximumRiskClass: riskClass(policy.maximumRiskClass, 'sourceAdmissionPolicy.maximumRiskClass')
+  } as const;
+
+  if (policy.maturityClass === 'PRODUCTION_ADMISSIBLE') {
+    exactKeys(
+      policy,
+      [...COMMON_POLICY_KEYS, 'methodCurrentness', 'referenceCurrentness'],
+      'sourceAdmissionPolicy'
+    );
+    return Object.freeze({
+      ...common,
+      maturityClass: 'PRODUCTION_ADMISSIBLE',
+      currentnessRequirements: Object.freeze({
+        method: currentnessRequirement(
+          policy.methodCurrentness,
+          'sourceAdmissionPolicy.methodCurrentness'
+        ),
+        reference: currentnessRequirement(
+          policy.referenceCurrentness,
+          'sourceAdmissionPolicy.referenceCurrentness'
+        )
+      })
+    });
+  }
+
+  exactKeys(policy, [...COMMON_POLICY_KEYS, 'reason'], 'sourceAdmissionPolicy');
+  return Object.freeze({
+    ...common,
+    maturityClass: policy.maturityClass as 'PILOT' | 'FIXTURE_TEST' | 'UNSUPPORTED',
+    reason: text(policy.reason, 'sourceAdmissionPolicy.reason', 1000)
+  });
+}
+
 export class CapabilityCognitiveReadServiceV1 {
   constructor(
     private readonly runtimeCapabilities: Readonly<CurrentRuntimeCapabilityCatalogReadV1>,
     private readonly implementationProfiles: Readonly<CurrentImplementationProfileReadV1>,
-    private readonly now: () => string = () => new Date().toISOString()
+    private readonly now: () => string = () => new Date().toISOString(),
+    private readonly sourceAdmissionPolicies: Readonly<CurrentSourceAdmissionPolicyReadV1> = currentCapabilitySourceAdmissionPolicyCatalogV1
   ) {}
 
   async read(): Promise<CapabilityCognitiveReadProjectionV1> {
@@ -216,6 +380,14 @@ export class CapabilityCognitiveReadServiceV1 {
             ? left.version - right.version
             : left.implementationProfileId.localeCompare(right.implementationProfileId)
         );
+      const sourceAdmissionPolicies = this.sourceAdmissionPolicies
+        .list()
+        .map((policy) => projectSourceAdmissionPolicy(policy))
+        .sort((left, right) =>
+          left.policyId === right.policyId
+            ? left.policyVersion - right.policyVersion
+            : left.policyId.localeCompare(right.policyId)
+        );
       const generatedAt = canonicalTimestamp(this.now(), 'generatedAt');
       return Object.freeze({
         schemaVersion: 1,
@@ -225,8 +397,14 @@ export class CapabilityCognitiveReadServiceV1 {
           authority: 'RUNTIME_CAPABILITY_AND_IMPLEMENTATION_PROFILE_REGISTRIES',
           availability: 'AVAILABLE'
         }),
+        sourceAdmissionPolicySource: Object.freeze({
+          domain: 'CAPABILITY_ENGINE',
+          authority: 'SOURCE_ADMISSION_POLICY_CATALOG',
+          availability: 'AVAILABLE'
+        }),
         runtimeCapabilities: Object.freeze(runtimeCapabilities),
         implementationProfiles: Object.freeze(implementationProfiles),
+        sourceAdmissionPolicies: Object.freeze(sourceAdmissionPolicies),
         summary: Object.freeze({
           runtimeCapabilityCount: runtimeCapabilities.length,
           implementationProfileCount: implementationProfiles.length,
@@ -235,6 +413,19 @@ export class CapabilityCognitiveReadServiceV1 {
           ).length,
           retiredImplementationProfileCount: implementationProfiles.filter(
             (profile) => profile.status === 'RETIRED'
+          ).length,
+          sourceAdmissionPolicyCount: sourceAdmissionPolicies.length,
+          productionAdmissibleSourcePolicyCount: sourceAdmissionPolicies.filter(
+            (policy) => policy.maturityClass === 'PRODUCTION_ADMISSIBLE'
+          ).length,
+          pilotSourcePolicyCount: sourceAdmissionPolicies.filter(
+            (policy) => policy.maturityClass === 'PILOT'
+          ).length,
+          fixtureTestSourcePolicyCount: sourceAdmissionPolicies.filter(
+            (policy) => policy.maturityClass === 'FIXTURE_TEST'
+          ).length,
+          unsupportedSourcePolicyCount: sourceAdmissionPolicies.filter(
+            (policy) => policy.maturityClass === 'UNSUPPORTED'
           ).length
         })
       });
