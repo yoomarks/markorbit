@@ -23,6 +23,7 @@ import { createTrademarkServiceExecutionRoutes } from './trademark-service-execu
 import { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+const durableMilestoneOwners = process.env.MO_MILESTONE_DURABLE_OWNERS === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
 let runtime: ReturnType<typeof createRuntime>;
 if (fixtureRuntime) {
@@ -89,6 +90,7 @@ if (fixtureRuntime) {
   });
 
   runtime = createRuntime({
+    milestoneTestRuntime: durableMilestoneOwners,
     reviewRepositoryFactory: (workspaceId) =>
       new PostgresProfessionalReviewRepository(database, pool, workspaceId),
     filingRepositoryFactory: (workspaceId, actorId, correlationId) =>

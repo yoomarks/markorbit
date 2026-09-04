@@ -120,6 +120,41 @@ test('custom port map derives independent six-runtime URLs', async () => {
   assert.equal(liteWeb?.env?.VITE_MARKORBIT_FIXTURE_ENTRY, '1');
   await allAvailable(configuration.definitions);
 });
+test('durable owner mode fails closed without databases and a strong internal secret', () => {
+  assert.throws(
+    () =>
+      milestoneConfiguration(milestonePorts, {
+        MO_MILESTONE_DURABLE_OWNERS: '1',
+        MARKREG_DATABASE_URL: 'postgresql://markreg.example.test/runtime',
+        EXECUTION_DATABASE_URL: 'postgresql://execution.example.test/runtime',
+        MO_INTERNAL_SERVICE_SECRET: 'short'
+      }),
+    /Durable milestone owners require/
+  );
+});
+test('durable owner mode selects PostgreSQL bootstraps while retaining bounded milestone harness routes', () => {
+  const secret = 'milestone-real-runtime-secret-00000001';
+  const configuration = milestoneConfiguration(milestonePorts, {
+    MO_MILESTONE_DURABLE_OWNERS: '1',
+    MARKREG_DATABASE_URL: 'postgresql://markreg.example.test/runtime',
+    EXECUTION_DATABASE_URL: 'postgresql://execution.example.test/runtime',
+    MO_INTERNAL_SERVICE_SECRET: secret
+  });
+  const markreg = configuration.definitions.find(({ name }) => name === 'markreg');
+  const execution = configuration.definitions.find(({ name }) => name === 'execution');
+  const gateway = configuration.definitions.find(({ name }) => name === 'gateway');
+  assert.equal(markreg?.env?.MO_MILESTONE_TEST_RUNTIME, '0');
+  assert.equal(markreg?.env?.MO_MILESTONE_DURABLE_OWNERS, '1');
+  assert.equal(markreg?.env?.MARKREG_DATABASE_URL, 'postgresql://markreg.example.test/runtime');
+  assert.equal(execution?.env?.MO_MILESTONE_TEST_RUNTIME, '0');
+  assert.equal(execution?.env?.MO_MILESTONE_DURABLE_OWNERS, '1');
+  assert.equal(
+    execution?.env?.EXECUTION_DATABASE_URL,
+    'postgresql://execution.example.test/runtime'
+  );
+  assert.equal(gateway?.env?.MO_MILESTONE_TEST_RUNTIME, '1');
+  assert.equal(gateway?.env?.MO_INTERNAL_SERVICE_SECRET, secret);
+});
 test('starts six real runtimes and releases every default port', { timeout: 60000 }, async () => {
   const runtime = await startMilestoneRuntime({ timeoutMs: 30000 });
   assert.equal(runtime.children.length, 6);

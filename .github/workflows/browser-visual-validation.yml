@@ -28,6 +28,23 @@ jobs:
     name: Milestone Real Runtime Validation
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: markorbit_milestone_real_runtime_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d markorbit_milestone_real_runtime_test"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      MO_MILESTONE_DURABLE_OWNERS: '1'
+      MO_INTERNAL_SERVICE_SECRET: milestone-real-runtime-internal-secret-00000001
+      MO_CSRF_SECRET: milestone-real-runtime-csrf-secret-0000000001
+      MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_milestone_real_runtime_test
+      EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_milestone_real_runtime_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,6 +57,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build milestone runtime dependency closure
         run: pnpm -w build
+      - name: Bootstrap durable milestone owner migrations
+        run: node scripts/bootstrap-milestone-durable-runtime.mjs
       - run: pnpm test:runtime
       - run: pnpm test:story-matrix
       - name: Build Storybook contract dependency

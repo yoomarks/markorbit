@@ -253,10 +253,13 @@ export async function installMatterGatewayFixture(page: Page) {
 }
 
 export async function installPreparationGatewayFixture(page: Page) {
-  const at = '2026-07-29T12:00:00.000Z';
+  const at = '2026-09-04T08:00:00.000Z';
+  const workspaceId = '11111111-1111-4111-8111-111111111111';
   const review = {
     schemaVersion: 1,
     reviewCaseId: 'professional-review_e2e011',
+    version: 11,
+    completedAt: at,
     source: {
       schemaVersion: 1,
       matterDraftId: 'matter-draft_e2e011',
@@ -307,225 +310,236 @@ export async function installPreparationGatewayFixture(page: Page) {
   };
   const requirements = [
     {
-      code: 'APPLICANT_IDENTITY_EVIDENCE',
-      name: 'Applicant identity evidence',
-      reason: 'Illustrative non-production rule; not authoritative legal advice.',
-      source: 'FIXTURE',
-      blocking: true,
-      fixtureOnly: true
-    },
-    {
-      code: 'MARK_REPRESENTATION_FILE',
-      name: 'Mark representation file',
-      reason: 'Illustrative non-production rule; not authoritative legal advice.',
-      source: 'FIXTURE',
-      blocking: true,
-      fixtureOnly: true
+      requirementKey: 'APPLICANT_IDENTITY_EVIDENCE',
+      displayName: 'Applicant identity evidence',
+      blocking: true
     }
   ];
-  let items: any[] = [],
-    evaluated = false,
-    complete = false;
+  let version = 1;
+  let status: 'DRAFT' | 'READY_FOR_PREPARATION_LOCK' = 'DRAFT';
+  let documentItems: any[] = [];
+  let instructionEntries: any[] = [];
+  let canonicalEvidenceHash: string | undefined;
+  let completedDecisionHash = '2'.repeat(64);
+  let currentLock: any;
+
   const pkg = () => ({
     schemaVersion: 1,
     documentPackageId: 'document-package_e2e011',
-    version: 1 + items.length + Number(evaluated) + Number(complete),
+    workspaceId,
+    formalMatterId: 'formal-matter_e2e011',
+    sourceFormalMatterVersion: 1,
+    sourceFormalMatterHash: '1'.repeat(64),
     professionalReviewCaseId: review.reviewCaseId,
-    professionalReviewDecisionVersion: 'decision-v11',
-    matterDraftId: review.source.matterDraftId,
-    matterDraftVersion: 'matter-v11',
-    customerConfirmationId: review.source.confirmationId,
-    customerId: review.source.customerId,
-    jurisdiction: 'US',
-    trademarkReference: 'NORTHSTAR ORBIT',
+    sourceReviewVersion: review.version,
+    sourceCompletedDecisionId: review.decision.decidedAt,
+    sourceCompletedDecisionHash: completedDecisionHash,
+    status,
+    version,
     requirements,
-    documentItems: items,
-    validationChecks: !evaluated
-      ? []
-      : requirements.map((r, index) => ({
-          code: 'LANGUAGE_IDENTIFIED',
-          status: complete ? 'PASS' : 'UNKNOWN',
-          blocking: true,
-          explanation: complete ? 'Language recorded.' : 'Language metadata is unknown.',
-          evidenceReference: items[index]?.documentItemId,
-          checkedAt: at,
-          source: 'FIXTURE'
-        })),
-    missingRequirements: items.length ? [] : requirements.map((x) => x.code),
-    status: complete ? 'READY_FOR_CUSTOMER_CONFIRMATION' : 'NEEDS_DOCUMENTS',
+    draft: review.source.preparation,
+    documentItems,
+    instructionEntries,
+    createdBy: 'user_e2e011',
+    updatedBy: 'user_e2e011',
     createdAt: at,
-    updatedAt: at
+    updatedAt: at,
+    ...(status === 'READY_FOR_PREPARATION_LOCK'
+      ? { readyAt: at, readyBy: 'user_e2e011', canonicalEvidenceHash }
+      : {})
   });
-  let ledger: any;
-  await page.route('**/api/lite/professional-review-cases/professional-review_e2e011', (r) =>
-    r.fulfill({
+
+  const conflict = async (route: any, message: string) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 'VERSION_CONFLICT', message })
+    });
+
+  await page.route('**/api/lite/professional-review-cases/professional-review_e2e011', (route) =>
+    route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ reviewCase: review })
     })
   );
-  await page.route('**/api/markreg/document-packages', async (r) =>
-    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(pkg()) })
+
+  await page.route('**/api/markreg/document-packages', async (route) => {
+    const input = route.request().postDataJSON() as any;
+    if (
+      input.professionalReviewCaseId !== review.reviewCaseId ||
+      input.expectedReviewVersion !== review.version ||
+      input.expectedCompletedDecisionId !== review.decision.decidedAt ||
+      typeof input.expectedCompletedDecisionHash !== 'string' ||
+      !/^[a-f0-9]{64}$/i.test(input.expectedCompletedDecisionHash)
+    )
+      return conflict(route, 'Completed Professional Review identity/version mismatch.');
+    completedDecisionHash = input.expectedCompletedDecisionHash;
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify(pkg())
+    });
+  });
+
+  await page.route('**/api/markreg/document-packages/document-package_e2e011', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(pkg()) })
   );
-  await page.route('**/api/markreg/document-packages/document-package_e2e011', (r) =>
-    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(pkg()) })
-  );
+
   await page.route(
     '**/api/markreg/document-packages/document-package_e2e011/documents',
-    async (r) => {
-      const input = r.request().postDataJSON() as any;
-      const item = {
-        documentItemId: `document-item_${items.length + 1}`,
-        documentPackageId: 'document-package_e2e011',
-        documentType: input.documentType,
-        requirementCode: input.requirementCode,
-        version: 1,
-        status: 'PROVIDED',
-        documentReference: input.documentReference,
-        suppliedBy: input.suppliedBy,
-        suppliedAt: at,
-        validationChecks: [],
-        createdAt: at,
-        updatedAt: at
-      };
-      items.push(item);
-      await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(item) });
-    }
-  );
-  await page.route(
-    '**/api/markreg/document-packages/document-package_e2e011/documents/*',
-    async (r) => {
-      const id = r.request().url().split('/').pop();
-      items = items.map((x) =>
-        x.documentItemId === id
-          ? {
-              ...x,
-              documentReference: {
-                ...x.documentReference,
-                ...(r.request().postDataJSON() as any).documentReference
-              }
-            }
-          : x
-      );
-      complete = true;
-      await r.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(items.find((x) => x.documentItemId === id))
-      });
-    }
-  );
-  await page.route(
-    '**/api/markreg/document-packages/document-package_e2e011/evaluate',
-    async (r) => {
-      evaluated = true;
-      await r.fulfill({
+    async (route) => {
+      const input = route.request().postDataJSON() as any;
+      if (input.expectedVersion !== version)
+        return conflict(route, 'Document Package version mismatch while recording evidence.');
+      const evidence = input.evidence ?? {};
+      if (
+        evidence.requirementKey !== requirements[0].requirementKey ||
+        evidence.verificationStatus !== 'RECORDED' ||
+        typeof evidence.checksum !== 'string' ||
+        !/^[a-f0-9]{64}$/i.test(evidence.checksum)
+      )
+        return conflict(route, 'Evidence metadata does not satisfy the durable contract.');
+      documentItems = [
+        {
+          ...evidence,
+          documentItemId: 'document-item_e2e011',
+          recordedAt: at,
+          recordedBy: 'user_e2e011'
+        }
+      ];
+      version += 1;
+      await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(pkg())
       });
     }
   );
-  await page.route('**/api/markreg/instruction-ledgers', async (r) => {
-    ledger = {
+
+  await page.route(
+    '**/api/markreg/document-packages/document-package_e2e011/instructions',
+    async (route) => {
+      const input = route.request().postDataJSON() as any;
+      if (input.expectedVersion !== version)
+        return conflict(route, 'Document Package version mismatch while recording instruction.');
+      if (
+        input.instruction?.instructionType !== 'DOCUMENT_USE_AUTHORIZATION' ||
+        input.instruction?.structuredPayload?.authorized !== true
+      )
+        return conflict(route, 'Preparation-only durable instruction is required.');
+      instructionEntries = [
+        {
+          instructionEntryId: 'instruction-entry_e2e011',
+          sequence: 1,
+          instructionType: 'DOCUMENT_USE_AUTHORIZATION',
+          structuredPayload: input.instruction.structuredPayload,
+          canonicalFingerprint: '3'.repeat(64),
+          createdAt: at,
+          createdBy: 'user_e2e011'
+        }
+      ];
+      version += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(pkg())
+      });
+    }
+  );
+
+  await page.route(
+    '**/api/markreg/document-packages/document-package_e2e011/mark-ready',
+    async (route) => {
+      const input = route.request().postDataJSON() as any;
+      if (input.expectedVersion !== version)
+        return conflict(route, 'Document Package version mismatch while marking ready.');
+      if (documentItems.length !== 1 || instructionEntries.length !== 1)
+        return conflict(route, 'Durable evidence and preparation instruction are required.');
+      status = 'READY_FOR_PREPARATION_LOCK';
+      version += 1;
+      canonicalEvidenceHash = 'a'.repeat(64);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(pkg())
+      });
+    }
+  );
+
+  await page.route('**/api/markreg/preparation-locks', async (route) => {
+    const input = route.request().postDataJSON() as any;
+    if (
+      status !== 'READY_FOR_PREPARATION_LOCK' ||
+      input.documentPackageId !== 'document-package_e2e011' ||
+      input.expectedDocumentPackageVersion !== version ||
+      input.expectedCanonicalEvidenceHash !== canonicalEvidenceHash
+    )
+      return conflict(route, 'Preparation Lock source version/hash mismatch.');
+    currentLock = {
       schemaVersion: 1,
-      instructionLedgerId: 'instruction-ledger_e2e011',
+      preparationLockId: 'preparation-lock_e2e011',
+      workspaceId,
       version: 1,
-      documentPackageId: 'document-package_e2e011',
-      documentPackageVersion: pkg().version,
-      customerId: review.source.customerId,
-      matterDraftId: review.source.matterDraftId,
-      matterDraftVersion: 'matter-v11',
-      professionalReviewCaseId: review.reviewCaseId,
-      professionalReviewDecisionVersion: 'decision-v11',
-      entries: [],
-      acknowledgements: [],
-      status: 'DRAFT',
-      currentEffectiveInstructionSet: {},
-      createdAt: at,
-      updatedAt: at
-    };
-    await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ledger) });
-  });
-  await page.route(
-    '**/api/markreg/instruction-ledgers/instruction-ledger_e2e011/entries',
-    async (r) => {
-      const entry = {
-        instructionEntryId: 'instruction-entry_e2e011',
-        type: 'DOCUMENT_USE_AUTHORIZATION',
-        structuredValue: { authorized: true },
-        status: 'PROPOSED',
-        createdAt: at,
-        evidence: []
-      };
-      ledger.entries = [entry];
-      await r.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(entry)
-      });
-    }
-  );
-  await page.route(
-    '**/api/markreg/instruction-ledgers/instruction-ledger_e2e011/entries/instruction-entry_e2e011/confirm',
-    async (r) => {
-      ledger.entries[0] = { ...ledger.entries[0], status: 'CONFIRMED', confirmedAt: at };
-      await r.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(ledger)
-      });
-    }
-  );
-  await page.route(
-    '**/api/markreg/instruction-ledgers/instruction-ledger_e2e011/confirm',
-    async (r) => {
-      ledger = {
-        ...ledger,
-        status: 'CONFIRMED',
-        acknowledgements: (r.request().postDataJSON() as any).acknowledgements,
-        confirmedAt: at
-      };
-      await r.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ instructionLedger: ledger, consequences: {} })
-      });
-    }
-  );
-  await page.route('**/api/markreg/preparation-locks', async (r) => {
-    const consequences = {
-      orderCreated: false,
-      paymentCreated: false,
-      formalMatterCreated: false,
-      professionalAppointed: false,
-      filingCreated: false,
-      filingSubmitted: false,
-      customerMessageSent: false,
-      externalDocumentSent: false,
-      trademarkOfficeContacted: false
-    };
-    await r.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        schemaVersion: 1,
-        preparationLockId: 'preparation-lock_e2e011',
+      source: {
         documentPackageId: 'document-package_e2e011',
-        documentPackageVersion: pkg().version + 1,
-        instructionLedgerId: ledger.instructionLedgerId,
-        instructionLedgerVersion: ledger.version + 1,
-        lockedAt: at,
-        snapshot: {
-          documentPackage: { ...pkg(), status: 'LOCKED_FOR_PREPARATION' },
-          instructionLedger: { ...ledger, status: 'LOCKED_FOR_PREPARATION' },
-          sourceReviewDecisionVersion: 'decision-v11',
-          sourceMatterDraftVersion: 'matter-v11',
-          commercialScopeUnchanged: true
-        },
-        nextPermittedAction: 'GOVERNED_FILING_AUTHORITY_REVIEW',
-        consequences
-      })
+        documentPackageVersion: version,
+        canonicalEvidenceHash,
+        formalMatterId: 'formal-matter_e2e011',
+        formalMatterVersion: 1,
+        formalMatterHash: '1'.repeat(64),
+        professionalReviewCaseId: review.reviewCaseId,
+        reviewVersion: review.version,
+        completedDecisionId: review.decision.decidedAt,
+        completedDecisionHash,
+        instructionEntryCount: 1,
+        instructionEntries: [
+          {
+            instructionEntryId: 'instruction-entry_e2e011',
+            sequence: 1,
+            canonicalFingerprint: '3'.repeat(64)
+          }
+        ],
+        instructionSetHash: '4'.repeat(64)
+      },
+      lockPayloadHash: '5'.repeat(64),
+      createdBy: 'user_e2e011',
+      createdAt: at,
+      authority: {
+        filingAuthorizationCreated: false,
+        executionReleaseCreated: false,
+        externalFilingCreated: false,
+        paymentCreated: false,
+        providerContacted: false,
+        officialTruthCreated: false
+      }
+    };
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify(currentLock)
     });
   });
+
+  await page.route('**/api/markreg/preparation-locks/preparation-lock_e2e011', (route) =>
+    route.fulfill({
+      status: currentLock ? 200 : 404,
+      contentType: 'application/json',
+      body: JSON.stringify(currentLock ?? { code: 'NOT_FOUND' })
+    })
+  );
+  await page.route(
+    '**/api/markreg/preparation-locks/preparation-lock_e2e011/validate-current',
+    (route) =>
+      route.fulfill({
+        status: currentLock ? 200 : 404,
+        contentType: 'application/json',
+        body: JSON.stringify(currentLock ?? { code: 'NOT_FOUND' })
+      })
+  );
+
+  return {
+    getDocumentPackage: () => pkg(),
+    getPreparationLock: () => currentLock
+  };
 }

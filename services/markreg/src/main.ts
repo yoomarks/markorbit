@@ -74,6 +74,7 @@ import { PostgresProductionIntakeService } from './production-intake.js';
 import { createProductionIntakeRoutes } from './production-intake-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+const durableMilestoneOwners = process.env.MO_MILESTONE_DURABLE_OWNERS === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
 let runtime: ReturnType<typeof createRuntime>;
 if (fixtureRuntime) {
@@ -255,6 +256,7 @@ if (fixtureRuntime) {
     });
   })();
   runtime = createRuntime({
+    milestoneTestRuntime: durableMilestoneOwners,
     customerConfirmationRepository: new PostgresCustomerConfirmationRepository(pool),
     matterDraftRepository: new PostgresMatterDraftRepository(pool),
     formalMatterRepository,
