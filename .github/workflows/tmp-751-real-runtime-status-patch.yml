@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: lite/695-authenticated-execution-release
-      - name: Patch stale real-runtime pre-evaluation assertion
+      - name: Patch stale real-runtime pre-evaluation assertions
         shell: bash
         run: |
           python - <<'PY'
@@ -27,8 +27,8 @@ jobs:
           old = "      await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();"
           new = "      await expect(page.getByText('BLOCKED', { exact: true }).first()).toBeVisible();"
           count = text.count(old)
-          if count != 1:
-              raise SystemExit(f'expected exactly one stale UNKNOWN assertion, found {count}')
+          if count != 2:
+              raise SystemExit(f'expected exactly two stale UNKNOWN assertions, found {count}')
           path.write_text(text.replace(old, new))
           PY
       - name: Commit harness patch
