@@ -202,11 +202,12 @@ describe('MarkReg governed direct entry', () => {
     expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
   });
 
-  it('revalidates and renders exact durable Preparation Lock owner truth', async () => {
-    const validateCurrent = vi.fn().mockResolvedValue(durableLock);
+  it('reads and renders exact durable Preparation Lock owner truth without mutation', async () => {
+    const getLock = vi.fn().mockResolvedValue(durableLock);
+    const validateCurrent = vi.fn();
     const preparationClient: DurablePreparationClient = {
       create: vi.fn(),
-      get: vi.fn(),
+      get: getLock,
       validateCurrent
     };
     const getGovernedRecord = vi.fn();
@@ -219,25 +220,57 @@ describe('MarkReg governed direct entry', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Preparation Lock' })).toBeTruthy();
-    expect(screen.getByText('Current durable Preparation Lock')).toBeTruthy();
+    expect(screen.getByText('Durable Preparation Lock')).toBeTruthy();
     expect(screen.getByText(/document-package_exact/)).toBeTruthy();
     expect(screen.getByText('Governed Filing Authorization review only')).toBeTruthy();
     expect(screen.getByText(/Preparation Lock ≠ Filing Authorization/)).toBeTruthy();
-    expect(validateCurrent).toHaveBeenCalledWith('preparation-lock_exact');
+    expect(getLock).toHaveBeenCalledWith('preparation-lock_exact');
+    expect(validateCurrent).not.toHaveBeenCalled();
     expect(getGovernedRecord).not.toHaveBeenCalled();
   });
 
-  it('fails closed when durable Preparation Lock currentness is stale', async () => {
-    const stale = new MarkregApiError(
+  it('renders the exact Preparation Lock identity from a minimal GET recovery payload', async () => {
+    const getLock = vi.fn().mockResolvedValue({
+      preparationLock: {
+        preparationLockId: 'preparation-lock_exact',
+        status: 'LOCKED_FOR_PREPARATION',
+        schemaVersion: 1,
+        version: 1
+      }
+    });
+    const validateCurrent = vi.fn();
+    const preparationClient: DurablePreparationClient = {
+      create: vi.fn(),
+      get: getLock,
+      validateCurrent
+    };
+    render(
+      <GovernedRouteEntry
+        search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=1"
+        client={{ createIntake: vi.fn() }}
+        preparationClient={preparationClient}
+      />
+    );
+
+    expect(await screen.findByText('preparation-lock_exact')).toBeTruthy();
+    expect(screen.getByText('LOCKED_FOR_PREPARATION')).toBeTruthy();
+    expect(screen.getByText('Exact durable identity loaded read-only; no filing authority was created.')).toBeTruthy();
+    expect(getLock).toHaveBeenCalledWith('preparation-lock_exact');
+    expect(validateCurrent).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the exact durable Preparation Lock GET is rejected', async () => {
+    const conflict = new MarkregApiError(
       'conflict',
-      'Preparation Lock source no longer matches current durable READY package truth.',
+      'Preparation Lock exact record changed.',
       undefined,
       'STALE_PREPARATION_SOURCE'
     );
+    const validateCurrent = vi.fn();
     const preparationClient: DurablePreparationClient = {
       create: vi.fn(),
-      get: vi.fn(),
-      validateCurrent: vi.fn().mockRejectedValue(stale)
+      get: vi.fn().mockRejectedValue(conflict),
+      validateCurrent
     };
     render(
       <GovernedRouteEntry
@@ -251,8 +284,9 @@ describe('MarkReg governed direct entry', () => {
       name: 'The governed record changed and cannot be loaded from this exact link.'
     });
     expect(document.activeElement).toBe(heading);
-    expect(screen.queryByText('Current durable Preparation Lock')).toBeNull();
+    expect(screen.queryByText('Durable Preparation Lock')).toBeNull();
     expect(screen.queryByRole('button', { name: /Filing Authorization/ })).toBeNull();
+    expect(validateCurrent).not.toHaveBeenCalled();
   });
 
   it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
