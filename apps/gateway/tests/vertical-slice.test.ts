@@ -94,6 +94,7 @@ async function stack(
     );
   const markRegUrl = await start(
     createMarkReg({
+      milestoneTestRuntime: true,
       port: 0,
       capabilityEngineUrl: capabilityUrl,
       executionUrl,
@@ -228,6 +229,7 @@ describe('first intake-to-recommendation HTTP slice', () => {
     const repository = new InMemoryMarkRegRepository();
     const markRegUrl = await start(
       createMarkReg({
+        milestoneTestRuntime: true,
         port: 0,
         capabilityEngineUrl: 'http://127.0.0.1:1',
         executionUrl: 'http://127.0.0.1:1',
@@ -279,6 +281,7 @@ describe('first intake-to-recommendation HTTP slice', () => {
     await reservation.stop();
     const markRegUrl = await start(
       createMarkReg({
+        milestoneTestRuntime: true,
         port: 0,
         capabilityEngineUrl: capabilityUrl,
         executionUrl: reservedUrl,
@@ -323,6 +326,7 @@ describe('first intake-to-recommendation HTTP slice', () => {
     const publisher = new FailOncePublisher();
     const markRegUrl = await start(
       createMarkReg({
+        milestoneTestRuntime: true,
         port: 0,
         capabilityEngineUrl: capabilityUrl,
         executionUrl,
