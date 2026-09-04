@@ -20,6 +20,8 @@ import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
 import { createGmailManagedCommunicationSenderFromEnvironmentV1 } from './managed-communication-gmail-runtime.js';
 import { HttpCoreOfficialFeeReferenceReaderV1 } from './official-fee-reference-http-reader.js';
+import { CapabilityProductionSourceEvidenceReadServiceV1 } from './production-source-evidence-read.js';
+import { createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1 } from './uspto-official-fee-production-source-evidence.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -108,21 +110,32 @@ if (milestoneFixtureMode) {
     officialFeeReferences,
     internalServiceSecret
   });
+  const replayStore = new PostgresCapabilityRuntimeReplayStoreV1(database, pool);
   const durableGovernedCapabilityRuntime = rawGovernedCapabilityRuntime
     ? new DurableGovernedCapabilityRuntimeV1({
         runtime: rawGovernedCapabilityRuntime,
-        replayStore: new PostgresCapabilityRuntimeReplayStoreV1(database, pool)
+        replayStore
       })
     : null;
   const governedCapabilityRuntime =
     durableGovernedCapabilityRuntime && telemetrySink
       ? new ObservedGovernedCapabilityRuntimeV1(durableGovernedCapabilityRuntime, telemetrySink)
       : durableGovernedCapabilityRuntime;
+  const productionSourceEvidenceReader = new CapabilityProductionSourceEvidenceReadServiceV1({
+    replayStore,
+    evidence: createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1({
+      capabilities: registry,
+      implementations: implementationProfiles,
+      references: officialFeeReferences
+    })
+  });
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
     privateReflectionCandidates,
     reflectionDispositionProfiles,
+    productionSourceEvidenceReader,
+    productionSourceEvidenceReplayStore: replayStore,
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),

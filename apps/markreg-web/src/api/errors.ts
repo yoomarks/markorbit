@@ -7,7 +7,8 @@ export class MarkregApiError extends Error {
     public readonly kind: MarkregErrorKind,
     message: string,
     public readonly correlationId?: string,
-    public readonly code?: string
+    public readonly code?: string,
+    public readonly status?: number
   ) {
     super(message);
     this.name = 'MarkregApiError';
@@ -17,26 +18,37 @@ export class MarkregApiError extends Error {
 export function safeErrorMessage(status: number, error?: Partial<SafeError>): MarkregApiError {
   const reference = error?.correlationId;
   const code = error?.code;
+  if (status === 401)
+    return new MarkregApiError(
+      'blocking',
+      'Your authenticated session is required to continue.',
+      reference,
+      code,
+      status
+    );
   if (status === 403)
     return new MarkregApiError(
       'blocking',
       'You do not have permission to change this Matter Draft.',
       reference,
-      code
+      code,
+      status
     );
   if (status === 404)
     return new MarkregApiError(
       'blocking',
       'This Matter Draft was not found in the current Workspace.',
       reference,
-      code
+      code,
+      status
     );
   if (status === 503)
     return new MarkregApiError(
       'recoverable',
       'Matter preparation is temporarily unavailable. Your saved Draft is unchanged.',
       reference,
-      code
+      code,
+      status
     );
   if (status === 409)
     return new MarkregApiError(
@@ -45,7 +57,8 @@ export function safeErrorMessage(status: number, error?: Partial<SafeError>): Ma
         ? 'This Matter Draft changed in another session. Reload the saved version before editing again.'
         : 'This submission key was already used for different information. Review your details and submit again.',
       reference,
-      code
+      code,
+      status
     );
   if (status === 400 || status === 422)
     return new MarkregApiError(
@@ -54,19 +67,22 @@ export function safeErrorMessage(status: number, error?: Partial<SafeError>): Ma
         ? 'These details cannot be processed yet. Return to the intake and update them.'
         : 'Some submitted details are incomplete or invalid. Please review them.',
       reference,
-      code
+      code,
+      status
     );
   if (status === 502 || error?.retryable)
     return new MarkregApiError(
       'recoverable',
       'The recommendation service is temporarily unavailable. Your answers are safe; try again.',
       reference,
-      code
+      code,
+      status
     );
   return new MarkregApiError(
     'blocking',
     'We could not complete this request safely. Please start a new consultation or contact support.',
     reference,
-    code
+    code,
+    status
   );
 }
