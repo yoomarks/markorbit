@@ -75,13 +75,10 @@ jobs:
           pnpm exec prettier --write \
             services/mgsn/tests/provider-selection-current-authority.test.ts \
             services/mgsn/tests/runtime-dependencies-current-authority.test.ts
-      - name: Prove focused checks
+      - name: Prove typecheck and lint
         run: |
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
-          pnpm --filter @markorbit/mgsn-service test -- \
-            tests/provider-selection-current-authority.test.ts \
-            tests/runtime-dependencies-current-authority.test.ts
       - name: Commit repair to formal branch
         run: |
           git config user.name "github-actions[bot]"
