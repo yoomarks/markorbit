@@ -28,21 +28,7 @@ export interface ContentWorkTriage {
   needsAttention: boolean;
 }
 
-function exactCurrentPackage(work: Readonly<ContentStudioWorkSummary>) {
-  const draft = work.latestDraft;
-  const publishPackage = work.latestPublishPackage;
-  if (
-    !draft ||
-    !publishPackage ||
-    publishPackage.contentDraft.id !== draft.contentDraftId ||
-    Number(publishPackage.contentDraft.version) !== draft.version
-  ) {
-    return null;
-  }
-  return publishPackage;
-}
-
-function exactCurrentReviewAt(work: Readonly<ContentStudioWorkSummary>): string | undefined {
+function exactCurrentReview(work: Readonly<ContentStudioWorkSummary>) {
   const draft = work.latestDraft;
   const review = work.latestDraftReview;
   if (
@@ -51,9 +37,29 @@ function exactCurrentReviewAt(work: Readonly<ContentStudioWorkSummary>): string 
     review.contentDraft.id !== draft.contentDraftId ||
     Number(review.contentDraft.version) !== draft.version
   ) {
-    return undefined;
+    return null;
   }
-  return review.reviewedAt;
+  return review;
+}
+
+function exactCurrentPackage(
+  work: Readonly<ContentStudioWorkSummary>,
+  review: ReturnType<typeof exactCurrentReview>
+) {
+  const draft = work.latestDraft;
+  const publishPackage = work.latestPublishPackage;
+  if (
+    !draft ||
+    !review ||
+    !publishPackage ||
+    publishPackage.contentDraft.id !== draft.contentDraftId ||
+    Number(publishPackage.contentDraft.version) !== draft.version ||
+    publishPackage.reviewDecision.id !== review.contentReviewDecisionId ||
+    Number(publishPackage.reviewDecision.version) !== review.version
+  ) {
+    return null;
+  }
+  return publishPackage;
 }
 
 function exactCurrentPackageFeedbackAt(
@@ -73,11 +79,12 @@ function exactCurrentPackageFeedbackAt(
 }
 
 function latestActivityAt(work: Readonly<ContentStudioWorkSummary>): string {
-  const publishPackage = exactCurrentPackage(work);
+  const review = exactCurrentReview(work);
+  const publishPackage = exactCurrentPackage(work, review);
   const candidates = [
     work.updatedAt,
     work.latestDraft?.updatedAt,
-    exactCurrentReviewAt(work),
+    review?.reviewedAt,
     publishPackage?.createdAt,
     exactCurrentPackageFeedbackAt(work, publishPackage)
   ].filter((value): value is string => Boolean(value));
@@ -98,6 +105,44 @@ export function deriveContentWorkTriage(
       state: 'NEEDS_FIRST_DRAFT',
       label: 'Needs first Draft',
       nextFocus: 'Create the first Draft',
+      activityAt,
+      needsAttention: true
+    };
+  }
+
+  const review = exactCurrentReview(work);
+  if (review?.outcome === 'CHANGES_REQUIRED') {
+    return {
+      state: 'CHANGES_REQUIRED',
+      label: 'Changes required',
+      nextFocus: 'Revise the current Draft',
+      activityAt,
+      needsAttention: true
+    };
+  }
+  if (review?.outcome === 'REJECTED') {
+    return {
+      state: 'NO_CURRENT_ACTION',
+      label: 'Draft rejected',
+      nextFocus: 'No preparation action available',
+      activityAt,
+      needsAttention: false
+    };
+  }
+  if (review?.outcome === 'APPROVED_FOR_PUBLISH_PACKAGE') {
+    if (exactCurrentPackage(work, review)) {
+      return {
+        state: 'PACKAGE_PREPARED',
+        label: 'Package prepared',
+        nextFocus: 'PublishPackage prepared',
+        activityAt,
+        needsAttention: false
+      };
+    }
+    return {
+      state: 'READY_FOR_PACKAGE',
+      label: 'Ready to prepare package',
+      nextFocus: 'Prepare PublishPackage',
       activityAt,
       needsAttention: true
     };
@@ -129,21 +174,12 @@ export function deriveContentWorkTriage(
         needsAttention: true
       };
     case 'REVIEWED_READY_FOR_PACKAGE':
-      if (exactCurrentPackage(work)) {
-        return {
-          state: 'PACKAGE_PREPARED',
-          label: 'Package prepared',
-          nextFocus: 'PublishPackage prepared',
-          activityAt,
-          needsAttention: false
-        };
-      }
       return {
-        state: 'READY_FOR_PACKAGE',
-        label: 'Ready to prepare package',
-        nextFocus: 'Prepare PublishPackage',
+        state: 'NO_CURRENT_ACTION',
+        label: 'Review truth unavailable',
+        nextFocus: 'Open current work to inspect owner lineage',
         activityAt,
-        needsAttention: true
+        needsAttention: false
       };
     case 'REJECTED':
       return {
