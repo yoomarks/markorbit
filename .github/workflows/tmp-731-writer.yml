@@ -29,6 +29,7 @@ jobs:
         run: |
           node scripts/tmp-731-patch.mjs
           node scripts/tmp-731-test-type-fix.mjs
+          node scripts/tmp-731-lint-fix.mjs
       - name: Prettier exact files
         run: >-
           pnpm exec prettier --write
