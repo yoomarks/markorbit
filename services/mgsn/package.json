@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "postinstall": "prettier --write src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/provider-work-incoming-authority.test.ts && git diff -- src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/provider-work-incoming-authority.test.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
