@@ -36,7 +36,9 @@ const authorityFields = new Set([
   'principal',
   'requestedBy',
   'acknowledgedBy',
-  'decidedBy'
+  'decidedBy',
+  'internalExecutorId',
+  'executorId'
 ]);
 
 type FilingGovernanceRoutePolicy = Readonly<{
@@ -130,7 +132,7 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: false,
-    allowedBodyFields: ['internalExecutorId', 'expectedVersion']
+    allowedBodyFields: ['expectedVersion']
   },
   {
     method: 'POST',
@@ -315,15 +317,17 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
     }
   };
 
-  const downstreamUrl = (request: JsonRequest) => {
-    const search = new URLSearchParams(request.query).toString();
-    const path = request.path.replace('/api/execution', '/v1');
+  const downstreamUrl = (request: JsonRequest, governed: boolean) => {
+    const search = new URLSearchParams({ ...request.query }).toString();
+    let path = request.path.replace('/api/execution', '/v1');
+    if (governed && /^\/api\/execution\/execution-releases\/[^/]+\/assignment$/.test(request.path))
+      path = path.replace(/\/assignment$/, '/self-assignment');
     return `${options.executionUrl}${path}${search ? `?${search}` : ''}`;
   };
 
   const forwardFixture = async (request: JsonRequest) => {
     try {
-      const response = await fetch(downstreamUrl(request), {
+      const response = await fetch(downstreamUrl(request, false), {
         method: request.method,
         headers: {
           'content-type': 'application/json',
@@ -360,7 +364,7 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
         true
       );
     try {
-      const response = await fetch(downstreamUrl(request), {
+      const response = await fetch(downstreamUrl(request, true), {
         method: request.method,
         headers: {
           'content-type': 'application/json',
