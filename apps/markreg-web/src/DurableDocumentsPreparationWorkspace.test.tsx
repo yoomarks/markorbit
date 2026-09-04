@@ -192,7 +192,7 @@ describe('durable Documents → Preparation workspace', () => {
       />
     );
 
-    expect(await screen.findByText(/Applicant identity/)).toBeTruthy();
+    expect(await screen.findByRole('option', { name: 'Applicant identity' })).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Requirement'), { target: { value: 'IDENTITY' } });
     await userEvent.type(screen.getByLabelText('Evidence display name'), 'Passport evidence');
     await userEvent.type(screen.getByLabelText('SHA-256 checksum'), 'b'.repeat(64));
