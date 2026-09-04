@@ -10,10 +10,10 @@ import type {
 } from '@markorbit/contracts/provider-work-read-model';
 import type { AllocationId } from '@markorbit/contracts/provider-execution';
 import type { QueryClient } from '@markorbit/persistence';
-import type { ControlledHandoffService } from './controlled-privacy-handoff.js';
+import type { ControlledPrivacyHandoffService } from './controlled-privacy-handoff.js';
 import {
   ProviderWorkReadModelError,
-  ProviderWorkReadModelService,
+  type ProviderWorkReadModelService,
   providerWorkFingerprint,
   type ProviderWorkListQuery,
   type ProviderWorkListResultV1,
@@ -110,7 +110,7 @@ function sourceCheck(
   item: Readonly<ProviderWorkItemSummaryV1>,
   checkedAt: string,
   state: ProviderWorkSourceCheckV1['state'],
-  scope: unknown,
+  scope: object,
   source?: { reference: string; version: number | string; fingerprint: string }
 ): ProviderWorkSourceCheckV1 {
   return {
@@ -173,7 +173,7 @@ export class GovernedProviderWorkReadModelService {
   constructor(
     private readonly base: ProviderWorkReadModelService,
     private readonly lineage: ProviderWorkIncomingAuthorityRepository,
-    private readonly handoffs: ControlledHandoffService
+    private readonly handoffs: ControlledPrivacyHandoffService
   ) {}
 
   async list(
@@ -208,13 +208,19 @@ export class GovernedProviderWorkReadModelService {
         item.allocation.version
       );
     } catch {
-      return this.withAuthority(item, checkedAt, {
-        state: 'SOURCE_UNAVAILABLE',
+      return this.withAuthority(
+        item,
         checkedAt,
-        reason: 'PERSISTENCE_UNAVAILABLE',
-        incomingFieldsVisible: false,
-        embeddedPrivateFieldValues: false
-      }, 'UNAVAILABLE', { authoritySource: 'LINEAGE_UNAVAILABLE' });
+        {
+          state: 'SOURCE_UNAVAILABLE',
+          checkedAt,
+          reason: 'PERSISTENCE_UNAVAILABLE',
+          incomingFieldsVisible: false,
+          embeddedPrivateFieldValues: false
+        },
+        'UNAVAILABLE',
+        { authoritySource: 'LINEAGE_UNAVAILABLE' }
+      );
     }
 
     if (lineage.kind === 'LEGACY_UNLINKED') {
@@ -369,7 +375,7 @@ export class GovernedProviderWorkReadModelService {
     checkedAt: string,
     incomingDataAuthority: Readonly<ProviderWorkIncomingDataAuthorityV1>,
     sourceState: ProviderWorkSourceCheckV1['state'],
-    sourceScope: unknown,
+    sourceScope: object,
     source?: { reference: string; version: number | string; fingerprint: string }
   ): ProviderWorkItemSummaryV1 {
     const checks = item.sourceChecks.filter((check) => check.sourceKind !== 'INCOMING_DATA_AUTHORITY');
