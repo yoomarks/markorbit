@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProviderDirectExecutorAssessmentV1 } from '@markorbit/contracts/provider-responsibility';
 import { noProviderResponsibilityAuthorityConsequences } from '@markorbit/contracts/provider-responsibility';
-import type { ProviderId, ProviderSupplyCapabilityId } from '@markorbit/contracts/provider-execution';
+import type {
+  ProviderId,
+  ProviderSupplyCapabilityId
+} from '@markorbit/contracts/provider-execution';
 import type {
   ProviderSelectionSourceLineageV1,
   ProviderSelectionTrustedHumanAuthorityV1
@@ -309,20 +312,24 @@ function sourceLineage(
   return { ...base, ...overrides };
 }
 
-function harness(options: {
-  core?: Awaited<ReturnType<CoreCurrentWorkspaceAuthoritySource['validateCurrent']>>;
-  currentProvider?: ProviderRegistryRecord | undefined;
-  currentSupply?: ProviderSupplyCapabilityRecord | undefined;
-  currentParticipation?: NetworkParticipationVersionRecord | undefined;
-  policy?: NetworkVisibilityPolicyVersionRecord | undefined;
-  currentAssessment?: ProviderDirectExecutorAssessmentV1 | null;
-} = {}) {
-  const currentProvider = options.currentProvider === undefined ? provider : options.currentProvider;
+function harness(
+  options: {
+    core?: Awaited<ReturnType<CoreCurrentWorkspaceAuthoritySource['validateCurrent']>>;
+    currentProvider?: ProviderRegistryRecord | undefined;
+    currentSupply?: ProviderSupplyCapabilityRecord | undefined;
+    currentParticipation?: NetworkParticipationVersionRecord | undefined;
+    policy?: NetworkVisibilityPolicyVersionRecord | undefined;
+    currentAssessment?: ProviderDirectExecutorAssessmentV1 | null;
+  } = {}
+) {
+  const currentProvider =
+    options.currentProvider === undefined ? provider : options.currentProvider;
   const currentSupply = options.currentSupply === undefined ? supply : options.currentSupply;
   const currentParticipation =
     options.currentParticipation === undefined ? participation : options.currentParticipation;
   const currentPolicy = options.policy === undefined ? boundedPublicPolicy() : options.policy;
-  const currentAssessment = options.currentAssessment === undefined ? assessment() : options.currentAssessment;
+  const currentAssessment =
+    options.currentAssessment === undefined ? assessment() : options.currentAssessment;
   const core: CoreCurrentWorkspaceAuthoritySource = {
     validateCurrent: vi.fn(() =>
       Promise.resolve(
@@ -409,7 +416,9 @@ describe('MGSN current Human Selection authority', () => {
       workspaceMembershipReference: 'workspace-membership:historical-reference'
     });
 
-    await expect(source.evaluateCurrentAuthority(input(sourceLineage(), authority))).resolves.toMatchObject({
+    await expect(
+      source.evaluateCurrentAuthority(input(sourceLineage(), authority))
+    ).resolves.toMatchObject({
       authorityAvailable: true,
       requesterAuthorityCurrent: false,
       actorAuthorityCurrent: false
@@ -467,10 +476,12 @@ describe('MGSN current Human Selection authority', () => {
       }
     };
 
-    await expect(harness().source.evaluateCurrentAuthority(input(tampered))).resolves.toMatchObject({
-      candidateCurrent: false,
-      sourceVersionsMatch: true
-    });
+    await expect(harness().source.evaluateCurrentAuthority(input(tampered))).resolves.toMatchObject(
+      {
+        candidateCurrent: false,
+        sourceVersionsMatch: true
+      }
+    );
   });
 
   it('requires the exact current Responsibility profile and independent evidence', async () => {
@@ -540,7 +551,9 @@ describe('MGSN current Human Selection authority', () => {
       ]
     };
 
-    await expect(harness().source.evaluateCurrentAuthority(input(unsupported))).resolves.toMatchObject({
+    await expect(
+      harness().source.evaluateCurrentAuthority(input(unsupported))
+    ).resolves.toMatchObject({
       sourceVersionsMatch: false,
       candidateCurrent: false
     });

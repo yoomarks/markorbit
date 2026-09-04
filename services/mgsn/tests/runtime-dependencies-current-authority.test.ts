@@ -86,21 +86,30 @@ describe('MGSN Core current Workspace authority HTTP adapter', () => {
       'internal-secret'
     );
 
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response(401, {}))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(response(401, {})))
+    );
     await expect(source.validateCurrent({ workspaceId, userId, membershipId })).resolves.toEqual({
       authorityAvailable: false,
       current: false,
       authorityReferences: []
     });
 
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response(200, { schemaVersion: 1 }))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(response(200, { schemaVersion: 1 })))
+    );
     await expect(source.validateCurrent({ workspaceId, userId, membershipId })).resolves.toEqual({
       authorityAvailable: false,
       current: false,
       authorityReferences: []
     });
 
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('network unavailable'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('network unavailable')))
+    );
     await expect(source.validateCurrent({ workspaceId, userId, membershipId })).resolves.toEqual({
       authorityAvailable: false,
       current: false,

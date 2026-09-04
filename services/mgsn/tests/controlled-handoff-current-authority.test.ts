@@ -62,7 +62,9 @@ function selectionValidation(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function command(options: { externalProjection?: boolean } = {}): AuthorizeOrReplaceControlledHandoffCommandV1 {
+function command(
+  options: { externalProjection?: boolean } = {}
+): AuthorizeOrReplaceControlledHandoffCommandV1 {
   const base = structuredClone(fixture.authorizeCommand);
   const fingerprint = providerFingerprint();
   return {
@@ -132,9 +134,7 @@ function harness(validation = selectionValidation()) {
     findSupplyCapability: vi.fn(() => Promise.resolve(undefined))
   };
   const responsibility: HandoffResponsibilityAuthoritySource = {
-    assessCurrent: vi.fn(() =>
-      Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: null })
-    )
+    assessCurrent: vi.fn(() => Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: null }))
   };
   return {
     selection,
