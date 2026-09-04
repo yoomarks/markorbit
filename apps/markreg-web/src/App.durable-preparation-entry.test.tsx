@@ -21,11 +21,7 @@ const completedReview = {
 
 beforeEach(() => {
   sessionStorage.clear();
-  window.history.replaceState(
-    {},
-    '',
-    '/?professionalReviewCaseId=professional-review_exact'
-  );
+  window.history.replaceState({}, '', '/?professionalReviewCaseId=professional-review_exact');
 });
 
 afterEach(() => {
