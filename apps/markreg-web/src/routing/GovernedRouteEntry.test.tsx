@@ -28,7 +28,12 @@ const formalMatter = {
   sourceSnapshot: {
     schemaVersion: 1,
     customerConfirmation: { id: 'confirmation_exact', version: 1, status: 'CONFIRMED' },
-    quote: { id: 'quote_exact-source', version: 'quote-v1', currency: 'USD', totalMinor: 100 },
+    quote: {
+      id: 'quote_exact-source',
+      version: 'quote-v1',
+      currency: 'USD',
+      totalMinor: 100
+    },
     matterDraft: {
       id: 'matter-draft_exact-source',
       version: 2,
@@ -77,8 +82,16 @@ const durableLock = {
     completedDecisionHash: 'c'.repeat(64),
     instructionEntryCount: 2,
     instructionEntries: [
-      { instructionEntryId: 'instruction-entry_1', sequence: 1, canonicalFingerprint: 'd'.repeat(64) },
-      { instructionEntryId: 'instruction-entry_2', sequence: 2, canonicalFingerprint: 'e'.repeat(64) }
+      {
+        instructionEntryId: 'instruction-entry_1',
+        sequence: 1,
+        canonicalFingerprint: 'd'.repeat(64)
+      },
+      {
+        instructionEntryId: 'instruction-entry_2',
+        sequence: 2,
+        canonicalFingerprint: 'e'.repeat(64)
+      }
     ],
     instructionSetHash: 'f'.repeat(64)
   },
@@ -118,6 +131,7 @@ describe('MarkReg governed direct entry', () => {
     expect(screen.getByText('quote_exact')).toBeTruthy();
     expect(getGovernedRecord).toHaveBeenCalledWith('quote', 'quote_exact');
   });
+
   it('focuses recovery and retries the same identity after downstream failure', async () => {
     const getGovernedRecord = vi
       .fn()
@@ -136,10 +150,13 @@ describe('MarkReg governed direct entry', () => {
       name: 'The governed record service is unavailable.'
     });
     expect(document.activeElement).toBe(heading);
-    await userEvent.click(screen.getByRole('button', { name: 'Retry same identity and version' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Retry same identity and version' })
+    );
     await waitFor(() => expect(getGovernedRecord).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('matter-draft_exact')).toBeTruthy();
   });
+
   it('fails closed on permission denial instead of presenting a transient service retry', async () => {
     const denied = new MarkregApiError(
       'blocking',
@@ -156,11 +173,16 @@ describe('MarkReg governed direct entry', () => {
       />
     );
 
-    const heading = await screen.findByRole('heading', { name: 'Workspace permission required' });
+    const heading = await screen.findByRole('heading', {
+      name: 'Workspace permission required'
+    });
     expect(document.activeElement).toBe(heading);
     expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Retry same identity and version' })
+    ).toBeNull();
   });
+
   it('keeps not-found governed reads stable and non-retryable', async () => {
     const notFound = new MarkregApiError(
       'blocking',
@@ -181,8 +203,11 @@ describe('MarkReg governed direct entry', () => {
       name: 'The requested record was not found. No latest record was selected.'
     });
     expect(document.activeElement).toBe(heading);
-    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Retry same identity and version' })
+    ).toBeNull();
   });
+
   it('revalidates and renders exact durable Preparation Lock owner truth', async () => {
     const validateCurrent = vi.fn().mockResolvedValue(durableLock);
     const preparationClient: DurablePreparationClient = {
@@ -207,6 +232,7 @@ describe('MarkReg governed direct entry', () => {
     expect(validateCurrent).toHaveBeenCalledWith('preparation-lock_exact');
     expect(getGovernedRecord).not.toHaveBeenCalled();
   });
+
   it('fails closed when durable Preparation Lock currentness is stale', async () => {
     const stale = new MarkregApiError(
       'conflict',
@@ -234,6 +260,7 @@ describe('MarkReg governed direct entry', () => {
     expect(screen.queryByText('Current durable Preparation Lock')).toBeNull();
     expect(screen.queryByRole('button', { name: /Filing Authorization/ })).toBeNull();
   });
+
   it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
     const getFormalMatter = vi.fn().mockResolvedValue({ formalMatter });
     render(
