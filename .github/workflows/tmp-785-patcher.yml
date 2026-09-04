@@ -1,0 +1,122 @@
+name: tmp 785 patcher
+
+on:
+  push:
+    branches:
+      - tmp/785-durable-golden-writer
+
+permissions:
+  contents: write
+
+jobs:
+  writer:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/785-durable-golden-writer
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply durable Documents Lock real-runtime patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/e2e/milestone-001-real-runtime.spec.ts')
+          text = path.read_text()
+          start = "    await test.step('Documents / Ledger / Lock', async () => {"
+          end = "    await test.step('Filing Authorization', async () => {"
+          prefix, marker, rest = text.partition(start)
+          if not marker:
+              raise SystemExit('Documents/Lock step marker not found')
+          _, end_marker, suffix = rest.partition(end)
+          if not end_marker:
+              raise SystemExit('Filing Authorization step marker not found')
+          replacement = r'''    await test.step('Documents / Durable Package / Lock', async () => {
+            await page.getByRole('button', { name: 'Create durable Document Package' }).click();
+            await expect(page.getByRole('heading', { name: 'Current package' })).toBeVisible();
+            const packageCard = page.getByRole('heading', { name: 'Current package' }).locator('..');
+            const packageId = (await packageCard.locator('dd').nth(0).innerText()).trim();
+            expect(packageId).toMatch(/^document-package_[\w-]+$/);
+            await expect(packageCard.getByText('DRAFT', { exact: true })).toBeVisible();
+
+            const requirementSelect = page.getByLabel('Requirement');
+            const requirementOptions = requirementSelect.locator('option');
+            const requirementOptionCount = await requirementOptions.count();
+            expect(requirementOptionCount).toBeGreaterThan(1);
+            for (let index = 1; index < requirementOptionCount; index++) {
+              const label = (await requirementOptions.nth(index).innerText()).trim();
+              await requirementSelect.selectOption({ index });
+              await page.getByLabel('Evidence display name').fill(`${scenario} ${label}`);
+              await page.getByLabel('SHA-256 checksum').fill(index.toString(16).padStart(64, '0'));
+              await page
+                .getByLabel('External storage/reference (optional)')
+                .fill(`milestone://${scenario}/evidence/${index}`);
+              await page.getByRole('button', { name: 'Record evidence metadata' }).click();
+              await expect(
+                page.getByText(`${scenario} ${label} · RECORDED`, { exact: true })
+              ).toBeVisible();
+            }
+
+            await expect(page.getByText(/Blocking evidence missing:\s*0/)).toBeVisible();
+            const markReady = page.getByRole('button', {
+              name: 'Mark package ready for Preparation Lock'
+            });
+            await expect(markReady).toBeDisabled();
+            await page
+              .getByRole('button', { name: 'Authorize recorded documents for preparation only' })
+              .click();
+            await expect(markReady).toBeEnabled();
+            await markReady.click();
+            await expect(page.getByText('READY_FOR_PREPARATION_LOCK', { exact: true })).toBeVisible();
+
+            const readyPackageVersion = Number(
+              (await packageCard.locator('dd').nth(2).innerText()).trim()
+            );
+            expect(readyPackageVersion).toBeGreaterThan(1);
+            lineage.record('documentPackage', { id: packageId, version: readyPackageVersion });
+
+            await page.getByRole('button', { name: 'Lock exact package for preparation' }).click();
+            const lockHeading = page.getByRole('heading', {
+              name: 'Locked for preparation — not submitted'
+            });
+            await expect(lockHeading).toBeVisible();
+            const lockCard = lockHeading.locator('..');
+            const lockId = (await lockCard.locator('dd').nth(0).innerText()).trim();
+            const lockVersion = (await lockCard.locator('dd').nth(1).innerText()).trim();
+            const lockedPackage = (await lockCard.locator('dd').nth(2).innerText()).trim();
+            expect(lockId).toMatch(/^preparation-lock_[\w-]+$/);
+            expect(lockVersion).toMatch(/^\d+$/);
+            expect(lockedPackage).toBe(`${packageId} · version ${readyPackageVersion}`);
+            await expect(
+              page.getByText('Filing Authorization remains a separate authority step')
+            ).toBeVisible();
+            lineage.record('preparationLock', { id: lockId, version: lockVersion });
+            await checkpoint(
+              page,
+              scenario,
+              'markreg',
+              { view: 'preparation-lock', recordId: lockId, expectedVersion: lockVersion },
+              'READY'
+            );
+            await page.getByRole('button', { name: 'Review Filing Authorization' }).click();
+          });
+'''
+          path.write_text(prefix + replacement + end + suffix)
+          PY
+      - run: pnpm exec prettier --write tests/e2e/milestone-001-real-runtime.spec.ts
+      - run: git diff --check
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/e2e/milestone-001-real-runtime.spec.ts
+          git commit -m "[INTEGRATION-P0][E2E] Migrate milestone Documents/Lock to durable owner contract (#785)"
+          git push origin HEAD:tmp/785-durable-golden-writer
