@@ -3,7 +3,6 @@ import type { BrainAssetVersion } from '@markorbit/contracts/brain';
 import type { BrainGapRegistryRecord } from '@markorbit/contracts/brain-gap';
 import { BrainAssetRegistryError } from '../src/brain-asset-registry.js';
 import {
-  BrainCognitiveReadError,
   BrainCognitiveReadServiceV1,
   type BrainAssetCurrentReadAuthority,
   type BrainGapReadAuthority
@@ -196,7 +195,7 @@ describe('BrainCognitiveReadServiceV1', () => {
 
     await expect(
       new BrainCognitiveReadServiceV1(failingAssets, new Gaps([])).read()
-    ).rejects.toMatchObject<Partial<BrainCognitiveReadError>>({
+    ).rejects.toMatchObject({
       name: 'BrainCognitiveReadError',
       code: 'SOURCE_UNAVAILABLE'
     });
@@ -214,7 +213,7 @@ describe('BrainCognitiveReadServiceV1', () => {
 
     await expect(
       new BrainCognitiveReadServiceV1(new Assets([]), failingGaps).read()
-    ).rejects.toMatchObject<Partial<BrainCognitiveReadError>>({
+    ).rejects.toMatchObject({
       name: 'BrainCognitiveReadError',
       code: 'SOURCE_UNAVAILABLE'
     });
