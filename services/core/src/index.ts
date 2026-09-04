@@ -19,6 +19,8 @@ import { createCoreAccountOnboardingRoutes } from './account-onboarding-http.js'
 import type { AccountOnboardingService } from './account-onboarding.js';
 import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
+import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
+import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
 import {
   fingerprintReadyPackageContentExport,
   validateReadyPackageContentExport,
@@ -62,6 +64,7 @@ export interface CoreRuntimeOptions {
   accountAccess?: AccountAccessService;
   accountOnboarding?: AccountOnboardingService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
+  currentWorkspaceAuthority?: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
@@ -111,6 +114,10 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Method Improvement admission.');
   if (options.officialFeeReferences && !secret)
     throw new Error('internalServiceSecret is required for Official Fee Reference reads.');
+  if (options.currentWorkspaceAuthority && !secret)
+    throw new Error(
+      'internalServiceSecret is required for current Workspace authority validation.'
+    );
   const onboardingRoutes =
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({
@@ -143,6 +150,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.officialFeeReferences && secret
       ? createOfficialFeeReferenceRoutesV1({
           references: options.officialFeeReferences,
+          internalServiceSecret: secret
+        })
+      : [];
+  const currentWorkspaceAuthorityRoutes =
+    options.currentWorkspaceAuthority && secret
+      ? createCurrentWorkspaceAuthorityRoutes({
+          service: options.currentWorkspaceAuthority,
           internalServiceSecret: secret
         })
       : [];
@@ -641,6 +655,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
       ]
     : [];
   routes.push(
+    ...currentWorkspaceAuthorityRoutes,
     ...methodOutcomeEvidenceRoutes,
     ...methodOutcomeReportRoutes,
     ...methodImprovementRoutes,
@@ -653,6 +668,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
 }
 export * from './identity.js';
 export * from './auth.js';
+export * from './current-workspace-authority.js';
+export * from './current-workspace-authority-http.js';
 export * from './account-access.js';
 export * from './account-onboarding.js';
 export * from './knowledge-intake.js';
