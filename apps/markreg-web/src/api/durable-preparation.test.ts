@@ -82,6 +82,10 @@ describe('durable Preparation browser client', () => {
       {},
       {}
     );
-    expect(post).not.toHaveBeenCalledWith('/api/markreg/preparation-locks', expect.anything(), expect.anything());
+    expect(post).not.toHaveBeenCalledWith(
+      '/api/markreg/preparation-locks',
+      expect.anything(),
+      expect.anything()
+    );
   });
 });
