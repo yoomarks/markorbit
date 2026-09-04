@@ -318,6 +318,9 @@ test.describe('Milestone 001 real runtime golden path', () => {
       const releaseId = await id(page, /(execution-release_[\w-]+)/);
       lineage.record('executionRelease', { id: releaseId, version: 1 });
       await page.getByRole('button', { name: 'Evaluate release' }).click();
+      await expect(
+        page.getByText('READY_FOR_RELEASE', { exact: true }).first()
+      ).toBeVisible();
       await page.getByRole('button', { name: 'Assign to me' }).click();
       await fill(
         'Internal release rationale',
