@@ -113,7 +113,7 @@ function runtime(
       findLatestSelection: vi
         .fn()
         .mockResolvedValue(input.latestSelection === undefined ? selection : input.latestSelection)
-    } as never,
+    },
     { validateCurrent: selectionValidator } as never,
     { findLatest: vi.fn() } as never,
     { validateCurrent: vi.fn() } as never,
