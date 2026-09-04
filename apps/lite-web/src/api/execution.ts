@@ -153,7 +153,7 @@ async function request<T>(
       'EXECUTION_REQUEST_FAILED',
       'Execution governance request failed.'
     );
-  return value as T;
+  return value;
 }
 
 export function createLiteExecutionClient(
