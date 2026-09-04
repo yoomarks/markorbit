@@ -183,7 +183,9 @@ function WorkList({
         if (!normalizedQuery) return true;
         return `${work.title} ${work.rationale}`.toLowerCase().includes(normalizedQuery);
       })
-      .sort((left, right) => Date.parse(right.triage.activityAt) - Date.parse(left.triage.activityAt));
+      .sort(
+        (left, right) => Date.parse(right.triage.activityAt) - Date.parse(left.triage.activityAt)
+      );
   }, [filter, query, value.items]);
 
   const clearFilters = () => {

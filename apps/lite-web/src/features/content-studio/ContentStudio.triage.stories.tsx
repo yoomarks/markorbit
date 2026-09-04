@@ -9,9 +9,7 @@ export default {
 } satisfies Meta<typeof ContentStudio>;
 
 type Story = StoryObj<typeof ContentStudio>;
-type ReviewOutcome = NonNullable<
-  ReturnType<typeof summaryFixture>['latestDraftReview']
->['outcome'];
+type ReviewOutcome = NonNullable<ReturnType<typeof summaryFixture>['latestDraftReview']>['outcome'];
 const base = summaryFixture();
 const mobile390 = {
   viewport: {
@@ -75,18 +73,8 @@ const mixed = [
   item(1, 'Create the first Draft', null),
   item(2, 'Drafting evidence-first explainer', 'DRAFT'),
   item(3, 'Needs human review', 'READY_FOR_HUMAN_REVIEW'),
-  item(
-    4,
-    'Changes requested by reviewer',
-    'READY_FOR_HUMAN_REVIEW',
-    'CHANGES_REQUIRED'
-  ),
-  item(
-    5,
-    'Ready to prepare package',
-    'READY_FOR_HUMAN_REVIEW',
-    'APPROVED_FOR_PUBLISH_PACKAGE'
-  ),
+  item(4, 'Changes requested by reviewer', 'READY_FOR_HUMAN_REVIEW', 'CHANGES_REQUIRED'),
+  item(5, 'Ready to prepare package', 'READY_FOR_HUMAN_REVIEW', 'APPROVED_FOR_PUBLISH_PACKAGE'),
   item(
     6,
     'Package already prepared',
@@ -117,9 +105,7 @@ export const NoCurrentAction: Story = {
   args: {
     workspaceId: fixtureWorkspaceId,
     client: fixtureClient(
-      listFixture([
-        item(7, 'Rejected historical Draft', 'READY_FOR_HUMAN_REVIEW', 'REJECTED')
-      ])
+      listFixture([item(7, 'Rejected historical Draft', 'READY_FOR_HUMAN_REVIEW', 'REJECTED')])
     )
   },
   play: async ({ canvasElement }) => {

@@ -4,10 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ContentStudio } from './ContentStudio.js';
-import {
-  deriveContentWorkTriage,
-  matchesContentTriageFilter
-} from './content-triage.js';
+import { deriveContentWorkTriage, matchesContentTriageFilter } from './content-triage.js';
 import {
   detailFixture,
   fixtureClient,
@@ -18,9 +15,7 @@ import {
 
 afterEach(cleanup);
 
-type ReviewOutcome = NonNullable<
-  ReturnType<typeof summaryFixture>['latestDraftReview']
->['outcome'];
+type ReviewOutcome = NonNullable<ReturnType<typeof summaryFixture>['latestDraftReview']>['outcome'];
 
 function work(
   version: number,
@@ -109,7 +104,11 @@ describe('Content Studio action-first triage', () => {
       false
     );
 
-    const legacyReadyWithoutExactReview = work(7, 'Review truth missing', 'REVIEWED_READY_FOR_PACKAGE');
+    const legacyReadyWithoutExactReview = work(
+      7,
+      'Review truth missing',
+      'REVIEWED_READY_FOR_PACKAGE'
+    );
     expect(deriveContentWorkTriage(legacyReadyWithoutExactReview)).toMatchObject({
       state: 'NO_CURRENT_ACTION',
       label: 'Review truth unavailable',
