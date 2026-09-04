@@ -49,7 +49,9 @@ import {
   type FilingExecutionTaskDraftRepository,
   type FilingGovernanceAuditRepository
 } from './filing-authorization.js';
+import { createHttpDurablePreparationSource } from './durable-preparation-source.js';
 export * from './filing-authorization.js';
+export * from './durable-preparation-source.js';
 export * from './filing-authorization-postgres.js';
 export * from './provider-return-evidence.js';
 export * from './provider-return-evidence-postgres.js';
@@ -250,16 +252,21 @@ export function createRuntime(options: ExecutionOptions = {}) {
       await deny('PERMISSION_DENIED');
       throw new HttpError(403, 'PERMISSION_DENIED', `${permission} permission is required.`);
     }
+    const reviewRepository = options.reviewRepositoryFactory?.(principal.workspaceId);
+    const preparationSource =
+      options.preparationLockSource ??
+      createHttpDurablePreparationSource({
+        baseUrl: options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105',
+        principal,
+        secret,
+        reviewSource: (id) =>
+          reviewRepository ? reviewRepository.findById(id) : Promise.resolve(undefined)
+      });
     const service = new FilingGovernanceService(
       adapter as unknown as FilingAuthorizationRepository,
       adapter as unknown as ExecutionReleaseRepository,
       adapter as unknown as FilingExecutionTaskDraftRepository,
-      options.preparationLockSource ??
-        httpPreparationLockSource(
-          options.markRegUrl ?? process.env.MARKREG_URL ?? 'http://127.0.0.1:4105',
-          principal,
-          secret
-        ),
+      preparationSource,
       now
     );
     return { service, principal };

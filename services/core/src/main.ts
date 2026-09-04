@@ -9,6 +9,7 @@ import {
   PostgresSessionRepository,
   validateInternalServiceSecret
 } from './auth.js';
+import { createPostgresBrainCognitiveReadServiceV1 } from './brain-cognitive-read-postgres.js';
 import {
   PostgresMembershipRepository,
   PostgresUserRepository,
@@ -16,6 +17,10 @@ import {
 } from './identity.js';
 import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
 import { createRuntime } from './index.js';
+import {
+  createEnvironmentCognitiveReadGrantSourceV1,
+  InternalOperatorPrincipalResolverV1
+} from './internal-operator-principal.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
@@ -57,6 +62,11 @@ const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),
   authentication
 );
+const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV1({
+  authentication,
+  accountAccess,
+  cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1()
+});
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)
 );
@@ -79,6 +89,8 @@ const runtime = createRuntime({
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
+  brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),
+  internalOperatorPrincipalResolver,
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
   methodImprovementAdmissions,

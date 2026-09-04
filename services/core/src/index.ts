@@ -19,6 +19,10 @@ import { createCoreAccountOnboardingRoutes } from './account-onboarding-http.js'
 import type { AccountOnboardingService } from './account-onboarding.js';
 import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
+import { createBrainCognitiveReadRoutesV1 } from './brain-cognitive-read-http.js';
+import { createInternalOperatorPrincipalRoutesV1 } from './internal-operator-principal-http.js';
+import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';
+import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
 import {
@@ -68,6 +72,8 @@ export interface CoreRuntimeOptions {
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
+  brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;
+  internalOperatorPrincipalResolver?: Pick<InternalOperatorPrincipalResolverV1, 'resolve'>;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
@@ -106,6 +112,10 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   const secret = options.internalServiceSecret;
   if (options.accountOnboarding && !secret)
     throw new Error('internalServiceSecret is required for account onboarding routes.');
+  if (options.brainCognitiveRead && !secret)
+    throw new Error('internalServiceSecret is required for Brain cognitive reads.');
+  if (options.internalOperatorPrincipalResolver && !secret)
+    throw new Error('internalServiceSecret is required for Internal Operator resolution.');
   if (options.methodOutcomeEvidenceAdmissions && !secret)
     throw new Error('internalServiceSecret is required for Method Outcome Evidence admission.');
   if (options.methodOutcomeReports && !secret)
@@ -122,6 +132,20 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({
           onboarding: options.accountOnboarding,
+          internalServiceSecret: secret
+        })
+      : [];
+  const brainCognitiveReadRoutes =
+    options.brainCognitiveRead && secret
+      ? createBrainCognitiveReadRoutesV1({
+          service: options.brainCognitiveRead,
+          internalServiceSecret: secret
+        })
+      : [];
+  const internalOperatorPrincipalRoutes =
+    options.internalOperatorPrincipalResolver && secret
+      ? createInternalOperatorPrincipalRoutesV1({
+          resolver: options.internalOperatorPrincipalResolver,
           internalServiceSecret: secret
         })
       : [];
@@ -656,6 +680,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     : [];
   routes.push(
     ...currentWorkspaceAuthorityRoutes,
+    ...internalOperatorPrincipalRoutes,
+    ...brainCognitiveReadRoutes,
     ...methodOutcomeEvidenceRoutes,
     ...methodOutcomeReportRoutes,
     ...methodImprovementRoutes,
@@ -668,6 +694,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
 }
 export * from './identity.js';
 export * from './auth.js';
+export * from './brain-cognitive-read.js';
+export * from './brain-cognitive-read-http.js';
+export * from './brain-cognitive-read-postgres.js';
+export * from './internal-operator-principal.js';
+export * from './internal-operator-principal-http.js';
 export * from './current-workspace-authority.js';
 export * from './current-workspace-authority-http.js';
 export * from './account-access.js';
