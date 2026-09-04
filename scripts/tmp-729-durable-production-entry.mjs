@@ -23,68 +23,21 @@ if (completedBlock.includes('<ConnectedDocumentsInstructionsWorkspace'))
   throw new Error('legacy workspace still reachable from completed-review block');
 if (!completedBlock.includes('<DurableDocumentsPreparationWorkspace'))
   throw new Error('durable workspace not wired into completed-review block');
-
 fs.writeFileSync(appPath, app);
 
-const testPath = 'apps/markreg-web/src/App.completed-review.test.tsx';
-const test = `import type { ProfessionalReviewCase } from '@markorbit/contracts';
-import { cleanup, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MarkregClient } from './api/markreg.js';
-import { MarkregApp } from './App.js';
+const testPath = 'apps/markreg-web/tests/App.test.tsx';
+let test = fs.readFileSync(testPath, 'utf8');
+const legacyTypes = `  ProfessionalReviewCase,\n  DocumentPackage,\n  CustomerInstructionLedger,\n  PreparationLock`;
+if (!test.includes(legacyTypes)) throw new Error('legacy App test type import anchor missing');
+test = test.replace(legacyTypes, '  ProfessionalReviewCase');
 
-const completedReview = {
-  reviewCaseId: 'professional-review_exact',
-  status: 'REVIEWED_READY_FOR_NEXT_STEP',
-  version: 4,
-  completedAt: '2026-09-04T08:00:00.000Z',
-  source: {
-    customerId: 'customer_exact',
-    matterDraftVersion: 'matter-draft-v4'
-  },
-  decision: {
-    decision: 'READY_FOR_NEXT_STEP',
-    decidedAt: '2026-09-04T08:00:00.000Z'
-  }
-} as unknown as ProfessionalReviewCase;
-
-beforeEach(() => {
-  sessionStorage.clear();
-  window.history.replaceState({}, '', '/?professionalReviewCaseId=professional-review_exact');
-});
-
-afterEach(() => {
-  cleanup();
-  sessionStorage.clear();
-  window.history.replaceState({}, '', '/');
-});
-
-describe('completed Professional Review production entry', () => {
-  it('opens the durable Documents / Preparation consumer instead of the legacy fixture consumer', async () => {
-    const getProfessionalReview = vi.fn().mockResolvedValue({ reviewCase: completedReview });
-    const createDocumentPackage = vi.fn();
-    const client = {
-      getProfessionalReview,
-      createDocumentPackage
-    } as unknown as MarkregClient;
-
-    render(<MarkregApp client={client} />);
-
-    expect(await screen.findByText('Professional Review complete')).toBeTruthy();
-    expect(getProfessionalReview).toHaveBeenCalledWith('professional-review_exact');
-
-    await userEvent.click(screen.getByRole('button', { name: 'Open Documents and Instructions' }));
-
-    expect(
-      await screen.findByRole('button', { name: 'Create durable Document Package' })
-    ).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Create Document Package' })).toBeNull();
-    expect(createDocumentPackage).not.toHaveBeenCalled();
-    expect(screen.getByText(/pinned to that exact review version and decision fingerprint/i)).toBeTruthy();
-  });
-});
-`;
+const testStart = `  it('enters the Gateway-backed Documents and Instructions journey and reaches its lock receipt', async () => {`;
+const testEnd = `  it('validates required fields and preserves answers when moving back', async () => {`;
+const startIndex = test.indexOf(testStart);
+const endIndex = test.indexOf(testEnd, startIndex);
+if (startIndex < 0 || endIndex < 0) throw new Error('legacy App journey test anchors missing');
+const replacement = `  it('routes completed Professional Review into the durable Documents and Preparation consumer', async () => {\n    const at = '2026-07-29T12:00:00.000Z';\n    const review = {\n      schemaVersion: 1,\n      reviewCaseId: 'professional-review_app',\n      source: {\n        schemaVersion: 1,\n        matterDraftId: 'matter-draft_app',\n        matterDraftVersion: 'matter-v7',\n        confirmationId: 'confirmation_app',\n        customerId: 'customer_app',\n        status: 'READY_FOR_PROFESSIONAL_REVIEW',\n        preparation: {\n          classes: [9],\n          documentReferences: [],\n          goodsServices: 'Long governed software scope',\n          targetJurisdiction: 'US',\n          trademark: 'ORBIT'\n        },\n        readiness: { evaluatedAt: at, checks: [], readyForProfessionalReview: true },\n        readinessTimestamp: at\n      },\n      status: 'REVIEWED_READY_FOR_NEXT_STEP',\n      priority: 'NORMAL',\n      requestedBy: 'customer_app',\n      createdAt: at,\n      updatedAt: at,\n      assignment: { status: 'CLAIMED', professionalAppointed: false },\n      checklist: [],\n      evidence: [],\n      decision: {\n        code: 'MARK_READY_FOR_NEXT_STEP',\n        reviewerId: 'reviewer_app',\n        decidedAt: 'decision-v3',\n        rationale: 'Ready',\n        checklistSnapshot: [],\n        evidenceReferences: [],\n        sourceMatterDraftVersion: 'matter-v7',\n        consequences: {\n          orderCreated: false,\n          paymentCreated: false,\n          formalMatterCreated: false,\n          providerAppointed: false,\n          filingCreated: false,\n          customerMessageSent: false\n        }\n      }\n    } satisfies ProfessionalReviewCase;\n    const createDocumentPackage = vi.fn();\n    const createPreparationLock = vi.fn();\n    const client = {\n      createIntake: vi.fn(),\n      getProfessionalReview: vi.fn().mockResolvedValue({ reviewCase: review }),\n      createDocumentPackage,\n      createPreparationLock\n    } as unknown as MarkregClient;\n\n    window.history.replaceState({}, '', '/?professionalReviewCaseId=professional-review_app');\n    const user = userEvent.setup();\n    render(<MarkregApp client={client} />);\n\n    expect(await screen.findByText('decision-v3')).toBeVisible();\n    await user.click(screen.getByRole('button', { name: 'Open Documents and Instructions' }));\n\n    expect(\n      await screen.findByRole('button', { name: 'Create durable Document Package' })\n    ).toBeVisible();\n    expect(screen.queryByRole('button', { name: 'Create Document Package' })).not.toBeInTheDocument();\n    expect(screen.getByText(/pinned to that exact review version and decision fingerprint/i)).toBeVisible();\n    expect(createDocumentPackage).not.toHaveBeenCalled();\n    expect(createPreparationLock).not.toHaveBeenCalled();\n  });\n`;
+test = test.slice(0, startIndex) + replacement + test.slice(endIndex);
 fs.writeFileSync(testPath, test);
 
 console.log('TASK 729 production durable entry patch applied');
