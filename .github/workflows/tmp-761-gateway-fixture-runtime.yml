@@ -1,0 +1,51 @@
+name: tmp 761 gateway fixture runtime
+
+on:
+  push:
+    branches:
+      - tmp/761-gateway-fixture-runtime-writer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/761-gateway-fixture-runtime-writer
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply TASK 761 patch
+        run: node scripts/tmp-761-explicit-markreg-fixture.mjs
+      - name: Prettier exact files
+        run: pnpm exec prettier --write apps/gateway/tests/vertical-slice.test.ts apps/gateway/tests/governed-read-routes.test.ts
+      - name: Build workspace dependencies
+        run: pnpm -w build
+      - name: Gateway typecheck
+        run: pnpm --filter @markorbit/gateway typecheck
+      - name: Gateway lint
+        run: pnpm --filter @markorbit/gateway lint
+      - name: Targeted Gateway fixture tests
+        run: pnpm --filter @markorbit/gateway exec vitest run tests/vertical-slice.test.ts tests/governed-read-routes.test.ts
+      - name: Gateway full tests
+        run: pnpm --filter @markorbit/gateway test
+      - name: Gateway build
+        run: pnpm --filter @markorbit/gateway build
+      - name: Commit writer output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/gateway/tests/vertical-slice.test.ts apps/gateway/tests/governed-read-routes.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "tmp: make Gateway fixture tests explicit milestone runtime"
+          git push origin HEAD:tmp/761-gateway-fixture-runtime-writer
