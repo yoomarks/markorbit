@@ -59,6 +59,7 @@ export function DurableDocumentsPreparationWorkspace({
   const [displayName, setDisplayName] = useState('');
   const [checksum, setChecksum] = useState('');
   const [storageReference, setStorageReference] = useState('');
+  const exactReviewDecisionVersion = review.decision?.decidedAt;
 
   const blockingMissing = useMemo(
     () =>
@@ -224,6 +225,11 @@ export function DurableDocumentsPreparationWorkspace({
             Professional Review <strong>{review.reviewCaseId}</strong> is complete. Start a durable
             Document Package pinned to that exact review version and decision fingerprint.
           </p>
+          {exactReviewDecisionVersion && (
+            <p className="markreg-wrap">
+              Exact review decision: <strong>{exactReviewDecisionVersion}</strong>
+            </p>
+          )}
           <Button disabled={loading} onClick={() => void createPackage()}>
             Create durable Document Package
           </Button>
@@ -240,6 +246,11 @@ export function DurableDocumentsPreparationWorkspace({
           Evidence and instructions are persisted by MarkReg. Preparation Lock ≠ Filing
           Authorization ≠ Filing Submission.
         </p>
+        {exactReviewDecisionVersion && (
+          <p className="markreg-wrap">
+            Exact review decision: <strong>{exactReviewDecisionVersion}</strong>
+          </p>
+        )}
       </header>
       {error && (
         <Alert tone="danger" title="Preparation could not continue">
