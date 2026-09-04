@@ -165,15 +165,17 @@ describe('GovernedAllocationService exact Handoff admission', () => {
       {
         envelope: exact.handoffBinding.handoff,
         purpose: 'HANDOFF_CONSUMPTION',
-        attempt: expect.objectContaining({
+        attempt: {
           originatingWorkspaceId: workspaceId,
           recipientProviderId: providerId,
           recipientProviderWorkspaceId: providerWorkspaceId,
           purposeFingerprintSha256: exact.handoffBinding.purposeFingerprintSha256,
           projectionFingerprintSha256: exact.handoffBinding.projectionFingerprintSha256,
           sourceSetFingerprintSha256: exact.handoffBinding.sourceSetFingerprintSha256,
-          artifactRetrievalRequested: false
-        })
+          artifactRetrievalRequested: false,
+          attemptedAt: checkedAt,
+          correlationId: exact.correlationId
+        }
       }
     );
   });
