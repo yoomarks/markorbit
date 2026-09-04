@@ -69,7 +69,11 @@ const currentLock = {
     completedDecisionHash: readyPackage.sourceCompletedDecisionHash,
     instructionEntryCount: 1,
     instructionEntries: [
-      { instructionEntryId: 'instruction-entry_exact', sequence: 1, canonicalFingerprint: '3'.repeat(64) }
+      {
+        instructionEntryId: 'instruction-entry_exact',
+        sequence: 1,
+        canonicalFingerprint: '3'.repeat(64)
+      }
     ],
     instructionSetHash: '4'.repeat(64)
   },
@@ -112,14 +116,18 @@ describe('durable Documents → Preparation workspace', () => {
       />
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Create durable Document Package' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Create durable Document Package' })
+    );
     expect(packageClient.createFromCompletedReview).toHaveBeenCalledWith(
       review,
       'document-package-professional-review_exact-4'
     );
     expect(packageClient.get).toHaveBeenCalledWith('document-package_exact');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Lock exact package for preparation' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Lock exact package for preparation' })
+    );
     await waitFor(() => expect(preparationClient.validateCurrent).toHaveBeenCalled());
     expect(preparationClient.create).toHaveBeenCalledWith({
       documentPackageId: 'document-package_exact',
@@ -148,10 +156,11 @@ describe('durable Documents → Preparation workspace', () => {
         }
       ]
     } satisfies DurableDocumentPackageView;
+    const upsertEvidence = vi.fn().mockResolvedValue(updated);
     const packageClient: DurableDocumentPackageClient = {
       createFromCompletedReview: vi.fn(),
       get: vi.fn().mockResolvedValue(draftPackage),
-      upsertEvidence: vi.fn().mockResolvedValue(updated),
+      upsertEvidence,
       appendInstruction: vi.fn(),
       markReady: vi.fn()
     };
@@ -179,7 +188,7 @@ describe('durable Documents → Preparation workspace', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Record evidence metadata' }));
 
-    expect(packageClient.upsertEvidence).toHaveBeenCalledWith(
+    expect(upsertEvidence).toHaveBeenCalledWith(
       'document-package_exact',
       2,
       {
@@ -193,6 +202,6 @@ describe('durable Documents → Preparation workspace', () => {
       },
       'document-evidence-document-package_exact-2-IDENTITY'
     );
-    expect(JSON.stringify(packageClient.upsertEvidence.mock?.calls ?? '')).not.toContain('FIXTURE');
+    expect(JSON.stringify(upsertEvidence.mock.calls)).not.toContain('FIXTURE');
   });
 });
