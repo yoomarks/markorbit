@@ -2,6 +2,7 @@ import type { FormalMatter } from '@markorbit/contracts';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { DurablePreparationClient } from '../api/durable-preparation.js';
 import { MarkregApiError } from '../api/errors.js';
 import { GovernedRouteEntry } from './GovernedRouteEntry';
 
@@ -58,6 +59,48 @@ const formalMatter = {
   updatedAt: '2026-09-01T02:00:00.000Z'
 } as unknown as FormalMatter;
 
+const durableLock = {
+  schemaVersion: 1 as const,
+  preparationLockId: 'preparation-lock_exact' as const,
+  workspaceId: '11111111-1111-4111-8111-111111111111',
+  version: 1 as const,
+  source: {
+    documentPackageId: 'document-package_exact' as const,
+    documentPackageVersion: 7,
+    canonicalEvidenceHash: 'a'.repeat(64),
+    formalMatterId: 'formal-matter_exact' as const,
+    formalMatterVersion: 1,
+    formalMatterHash: 'b'.repeat(64),
+    professionalReviewCaseId: 'professional-review_exact' as const,
+    reviewVersion: 4,
+    completedDecisionId: 'decision_exact',
+    completedDecisionHash: 'c'.repeat(64),
+    instructionEntryCount: 2,
+    instructionEntries: [
+      { instructionEntryId: 'instruction-entry_1', sequence: 1, canonicalFingerprint: 'd'.repeat(64) },
+      { instructionEntryId: 'instruction-entry_2', sequence: 2, canonicalFingerprint: 'e'.repeat(64) }
+    ],
+    instructionSetHash: 'f'.repeat(64)
+  },
+  lockPayloadHash: '1'.repeat(64),
+  createdBy: 'user_exact',
+  createdAt: '2026-09-04T08:00:00.000Z',
+  authority: {
+    filingAuthorizationCreated: false as const,
+    executionReleaseCreated: false as const,
+    externalFilingCreated: false as const,
+    paymentCreated: false as const,
+    providerContacted: false as const,
+    officialTruthCreated: false as const
+  }
+};
+
+const unusedPreparationClient = (): DurablePreparationClient => ({
+  create: vi.fn(),
+  get: vi.fn(),
+  validateCurrent: vi.fn()
+});
+
 afterEach(cleanup);
 describe('MarkReg governed direct entry', () => {
   it('loads the exact record and reports version mismatch without mutation', async () => {
@@ -68,6 +111,7 @@ describe('MarkReg governed direct entry', () => {
       <GovernedRouteEntry
         search="?view=quote&quoteId=quote_exact&quoteVersion=v1"
         client={{ createIntake: vi.fn(), getGovernedRecord }}
+        preparationClient={unusedPreparationClient()}
       />
     );
     expect(await screen.findByText('Version mismatch')).toBeTruthy();
@@ -85,6 +129,7 @@ describe('MarkReg governed direct entry', () => {
       <GovernedRouteEntry
         search="?view=matter-draft&matterDraftId=matter-draft_exact&matterDraftVersion=1"
         client={{ createIntake: vi.fn(), getGovernedRecord }}
+        preparationClient={unusedPreparationClient()}
       />
     );
     const heading = await screen.findByRole('heading', {
@@ -107,6 +152,7 @@ describe('MarkReg governed direct entry', () => {
       <GovernedRouteEntry
         search="?view=quote&quoteId=quote_exact&quoteVersion=v1"
         client={{ createIntake: vi.fn(), getGovernedRecord }}
+        preparationClient={unusedPreparationClient()}
       />
     );
 
@@ -127,6 +173,7 @@ describe('MarkReg governed direct entry', () => {
       <GovernedRouteEntry
         search="?view=quote&quoteId=quote_missing&quoteVersion=v1"
         client={{ createIntake: vi.fn(), getGovernedRecord }}
+        preparationClient={unusedPreparationClient()}
       />
     );
 
@@ -136,38 +183,56 @@ describe('MarkReg governed direct entry', () => {
     expect(document.activeElement).toBe(heading);
     expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
   });
-  it('renders durable Preparation unavailability as a stable non-retryable boundary', async () => {
-    const unavailable = new MarkregApiError(
-      'recoverable',
-      'Matter preparation is temporarily unavailable. Your saved Draft is unchanged.',
-      undefined,
-      'DURABLE_PREPARATION_NOT_AVAILABLE'
-    );
-    const getGovernedRecord = vi.fn().mockRejectedValue(unavailable);
+  it('revalidates and renders exact durable Preparation Lock owner truth', async () => {
+    const validateCurrent = vi.fn().mockResolvedValue(durableLock);
+    const preparationClient: DurablePreparationClient = {
+      create: vi.fn(),
+      get: vi.fn(),
+      validateCurrent
+    };
+    const getGovernedRecord = vi.fn();
     render(
       <GovernedRouteEntry
-        search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=4%3A8"
+        search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=1"
         client={{ createIntake: vi.fn(), getGovernedRecord }}
+        preparationClient={preparationClient}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Preparation Lock' })).toBeTruthy();
+    expect(screen.getByText('Current durable Preparation Lock')).toBeTruthy();
+    expect(screen.getByText(/document-package_exact/)).toBeTruthy();
+    expect(screen.getByText('Governed Filing Authorization review only')).toBeTruthy();
+    expect(screen.getByText(/Preparation Lock ≠ Filing Authorization/)).toBeTruthy();
+    expect(validateCurrent).toHaveBeenCalledWith('preparation-lock_exact');
+    expect(getGovernedRecord).not.toHaveBeenCalled();
+  });
+  it('fails closed when durable Preparation Lock currentness is stale', async () => {
+    const stale = new MarkregApiError(
+      'conflict',
+      'Preparation Lock source no longer matches current durable READY package truth.',
+      undefined,
+      'STALE_PREPARATION_SOURCE'
+    );
+    const preparationClient: DurablePreparationClient = {
+      create: vi.fn(),
+      get: vi.fn(),
+      validateCurrent: vi.fn().mockRejectedValue(stale)
+    };
+    render(
+      <GovernedRouteEntry
+        search="?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=1"
+        client={{ createIntake: vi.fn() }}
+        preparationClient={preparationClient}
       />
     );
 
     const heading = await screen.findByRole('heading', {
-      name: 'Durable Preparation is not available yet'
+      name: 'The governed record changed and cannot be loaded from this exact link.'
     });
-    const durablePackages = screen.getByText(/Durable Document Packages are available/);
-    const noFallback = screen.getByText(/historical in-memory or fixture/);
-    const noFabrication = screen.getByText(/No Preparation Lock was fabricated/);
-    const retry = screen.queryByRole('button', {
-      name: 'Retry same identity and version'
-    });
-
     expect(document.activeElement).toBe(heading);
-    expect(durablePackages).toBeTruthy();
-    expect(noFallback).toBeTruthy();
-    expect(noFabrication).toBeTruthy();
-    expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
-    expect(retry).toBeNull();
-    expect(getGovernedRecord).toHaveBeenCalledWith('preparation-lock', 'preparation-lock_exact');
+    expect(screen.queryByText('Current durable Preparation Lock')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Filing Authorization/ })).toBeNull();
   });
   it('uses the Formal Matter client boundary and renders the dedicated customer workspace', async () => {
     const getFormalMatter = vi.fn().mockResolvedValue({ formalMatter });
@@ -175,6 +240,7 @@ describe('MarkReg governed direct entry', () => {
       <GovernedRouteEntry
         search="?view=formal-matter&formalMatterId=formal-matter_exact&formalMatterVersion=1"
         client={{ createIntake: vi.fn(), getFormalMatter }}
+        preparationClient={unusedPreparationClient()}
       />
     );
 
