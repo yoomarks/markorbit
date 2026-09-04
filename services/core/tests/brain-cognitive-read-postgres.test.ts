@@ -26,7 +26,7 @@ const config = () =>
   parseDatabaseConfig({
     NODE_ENV: 'test',
     DATABASE_URL: url,
-    DB_MIGRATION_NAMESPACE: 'core_brain_cognitive_read',
+    DB_MIGRATION_NAMESPACE: 'core_brain_registry',
     DB_APPLICATION_NAME: 'markorbit-core-cognitive-read-tests'
   });
 
@@ -77,12 +77,13 @@ integration('PostgreSQL Brain cognitive current read authority', () => {
   beforeAll(async () => {
     database = new ManagedDatabase(config());
     await database.start();
-    await database
+    const existing = await database
       .getPool()
-      .query(
-        'DROP TABLE IF EXISTS brain_build_admissions,brain_asset_versions CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+      .query<{ brain_asset_versions: string | null }>(
+        "SELECT to_regclass('public.brain_asset_versions')::text AS brain_asset_versions"
       );
-    await migrate(database.getPool(), 'core_brain_cognitive_read', await coreMigrations());
+    if (!existing.rows[0]?.brain_asset_versions)
+      await migrate(database.getPool(), 'core_brain_registry', await coreMigrations());
     registry = new PostgresBrainAssetRegistry(database);
     reader = new PostgresBrainAssetCurrentReadAuthority(database);
   });
