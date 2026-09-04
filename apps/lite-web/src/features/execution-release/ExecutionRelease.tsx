@@ -64,8 +64,7 @@ function viewForRelease(release: ExecutionRelease): ReleaseViewState {
 }
 
 function executionErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof ExecutionHttpError)
-    return `${error.status} ${error.code}: ${error.message}`;
+  if (error instanceof ExecutionHttpError) return `${error.status} ${error.code}: ${error.message}`;
   return error instanceof Error ? error.message : fallback;
 }
 
@@ -128,7 +127,9 @@ export function ExecutionReleaseView({
                 requestedExecutionChannel: 'OFFICE_PORTAL',
                 idempotencyKey: `execution-release:${initialFilingAuthorization.id}:${initialFilingAuthorization.version}`
               });
-              const durable = await executionClient.getRelease(created.executionRelease.executionReleaseId);
+              const durable = await executionClient.getRelease(
+                created.executionRelease.executionReleaseId
+              );
               return {
                 executionReleases: [durable.executionRelease],
                 consequences: durable.consequences
@@ -148,7 +149,13 @@ export function ExecutionReleaseView({
     return () => {
       active = false;
     };
-  }, [executionClient, fixtureReleases, initialFilingAuthorization, initialState, resolvedWorkspaceId]);
+  }, [
+    executionClient,
+    fixtureReleases,
+    initialFilingAuthorization,
+    initialState,
+    resolvedWorkspaceId
+  ]);
 
   const rows = useMemo(() => {
     const filtered = releases.filter(
@@ -229,9 +236,7 @@ export function ExecutionReleaseView({
     setMessage('');
     setView(releases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY');
     requestAnimationFrame(() =>
-      document
-        .querySelector<HTMLButtonElement>(`[data-release-id="${origin.current}"]`)
-        ?.focus()
+      document.querySelector<HTMLButtonElement>(`[data-release-id="${origin.current}"]`)?.focus()
     );
   };
 
@@ -309,7 +314,11 @@ export function ExecutionReleaseView({
         <Card>
           <h2 id="release-queue-title">Release queue filters</h2>
           <div className="lite-filters">
-            <Select label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <Select
+              label="Status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
               <option>ALL</option>
               <option>BLOCKED</option>
               <option>READY_FOR_RELEASE</option>

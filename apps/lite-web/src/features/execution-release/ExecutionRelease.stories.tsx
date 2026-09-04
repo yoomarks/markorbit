@@ -68,7 +68,9 @@ export const Ready: Story = { args: { fixtureReleases: [ready] } };
 export const Assigned: Story = { args: { fixtureReleases: [assigned] } };
 export const ReleasedReceipt: Story = {
   args: {
-    fixtureReleases: [{ ...assigned, version: 7, status: 'RELEASED_FOR_EXECUTION' } as ExecutionRelease]
+    fixtureReleases: [
+      { ...assigned, version: 7, status: 'RELEASED_FOR_EXECUTION' } as ExecutionRelease
+    ]
   }
 };
 export const Stale: Story = {

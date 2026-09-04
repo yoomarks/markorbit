@@ -174,11 +174,7 @@ export function createLiteExecutionClient(
     },
     listReleases: () => request(baseUrl, workspaceId, '/api/execution/execution-releases'),
     getRelease: (id) =>
-      request(
-        baseUrl,
-        workspaceId,
-        `/api/execution/execution-releases/${encodeURIComponent(id)}`
-      ),
+      request(baseUrl, workspaceId, `/api/execution/execution-releases/${encodeURIComponent(id)}`),
     evaluateRelease: (id) =>
       request(
         baseUrl,
@@ -215,11 +211,7 @@ export function createLiteExecutionClient(
         {}
       ),
     getTaskDraft: (id) =>
-      request(
-        baseUrl,
-        workspaceId,
-        `/api/execution/filing-task-drafts/${encodeURIComponent(id)}`
-      ),
+      request(baseUrl, workspaceId, `/api/execution/filing-task-drafts/${encodeURIComponent(id)}`),
     getTaskDraftForRelease: (id) =>
       request(
         baseUrl,

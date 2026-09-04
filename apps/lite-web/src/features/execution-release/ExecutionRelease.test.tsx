@@ -102,12 +102,12 @@ function client(options: { assignmentError?: ExecutionHttpError } = {}) {
   let current: ExecutionRelease = release;
 
   return {
-    listReleases: vi.fn().mockImplementation(() =>
-      Promise.resolve({ executionReleases: [release], consequences })
-    ),
-    getRelease: vi.fn().mockImplementation(() =>
-      Promise.resolve({ executionRelease: current, consequences })
-    ),
+    listReleases: vi
+      .fn()
+      .mockImplementation(() => Promise.resolve({ executionReleases: [release], consequences })),
+    getRelease: vi
+      .fn()
+      .mockImplementation(() => Promise.resolve({ executionRelease: current, consequences })),
     evaluateRelease: vi.fn().mockImplementation(() => {
       current = ready;
       return Promise.resolve({ executionRelease: ready, consequences });
@@ -127,9 +127,9 @@ function client(options: { assignmentError?: ExecutionHttpError } = {}) {
         consequences
       });
     }),
-    getTaskDraftForRelease: vi.fn().mockImplementation(() =>
-      Promise.resolve({ filingExecutionTaskDraft: task, consequences })
-    )
+    getTaskDraftForRelease: vi
+      .fn()
+      .mockImplementation(() => Promise.resolve({ filingExecutionTaskDraft: task, consequences }))
   } as unknown as LiteExecutionClient;
 }
 
@@ -201,7 +201,9 @@ describe('authenticated Workspace Execution Release', () => {
     await user.type(screen.getByLabelText('Internal release rationale'), 'All checks passed.');
     await user.click(screen.getByRole('button', { name: 'Release for execution' }));
 
-    expect(await screen.findByText('Released for execution — no external filing performed')).toBeVisible();
+    expect(
+      await screen.findByText('Released for execution — no external filing performed')
+    ).toBeVisible();
     expect(screen.getByText('Filing Execution Task Draft')).toBeVisible();
     expect(screen.getByText(task.filingExecutionTaskDraftId)).toBeVisible();
     expect(screen.getAllByText('false')).toHaveLength(13);
@@ -236,9 +238,11 @@ describe('authenticated Workspace Execution Release', () => {
 
   it('shows authenticated permission failure without falling back to fixture releases', async () => {
     const gateway = client();
-    gateway.listReleases = vi.fn().mockRejectedValue(
-      new ExecutionHttpError(403, 'PERMISSION_DENIED', 'execution:read permission is required.')
-    );
+    gateway.listReleases = vi
+      .fn()
+      .mockRejectedValue(
+        new ExecutionHttpError(403, 'PERMISSION_DENIED', 'execution:read permission is required.')
+      );
     render(<ExecutionReleaseView workspaceId={workspaceId} client={gateway} />);
 
     expect(await screen.findByText('Execution Release could not continue')).toBeVisible();
