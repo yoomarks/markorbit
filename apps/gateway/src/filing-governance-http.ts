@@ -37,12 +37,130 @@ const authorityFields = new Set([
   'requestedBy'
 ]);
 
-const idempotentMutation = (request: JsonRequest): boolean =>
-  request.method === 'POST' &&
-  (request.path === '/api/execution/filing-authorizations' ||
-    request.path.endsWith('/confirm') ||
-    request.path === '/api/execution/execution-releases' ||
-    request.path.endsWith('/release'));
+type FilingGovernanceRoutePolicy = Readonly<{
+  method: 'GET' | 'POST' | 'PATCH';
+  pattern: RegExp;
+  permission: Permission;
+  mutationSecurity: boolean;
+  idempotencyRequired: boolean;
+  stripAuthorityFields?: readonly string[];
+}>;
+
+const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-authorizations$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/filing-authorizations\/[^/]+$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-authorizations\/[^/]+\/confirm$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true,
+    stripAuthorityFields: ['acknowledgedBy']
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-authorizations\/[^/]+\/withdraw$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/execution-releases$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/evaluate$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false
+  },
+  {
+    method: 'PATCH',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/assignment$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/release$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true,
+    stripAuthorityFields: ['decidedBy']
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/withdraw$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/filing-task-drafts\/[^/]+$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-task-drafts\/[^/]+\/validate-current$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/filing-task-draft$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  }
+];
+
+function routePolicy(request: JsonRequest): FilingGovernanceRoutePolicy {
+  const policy = routePolicies.find(
+    (candidate) => candidate.method === request.method && candidate.pattern.test(request.path)
+  );
+  if (!policy)
+    throw new HttpError(
+      404,
+      'FILING_GOVERNANCE_ROUTE_NOT_FOUND',
+      'Filing Governance route is not available.'
+    );
+  return policy;
+}
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
   const body = request.body ?? {};
@@ -51,7 +169,10 @@ function bodyRecord(request: JsonRequest): Record<string, unknown> {
   return body as Record<string, unknown>;
 }
 
-function governedBody(request: JsonRequest): Record<string, unknown> {
+function governedBody(
+  request: JsonRequest,
+  policy: FilingGovernanceRoutePolicy
+): Record<string, unknown> {
   const body = { ...bodyRecord(request) };
   const spoof = Object.keys(body).find((field) => authorityFields.has(field));
   if (spoof)
@@ -60,8 +181,7 @@ function governedBody(request: JsonRequest): Record<string, unknown> {
       'INVALID_EXECUTION_AUTHORITY',
       `${spoof} cannot be supplied as browser execution authority.`
     );
-  if (request.path.endsWith('/confirm')) delete body.acknowledgedBy;
-  if (request.path.endsWith('/release')) delete body.decidedBy;
+  for (const field of policy.stripAuthorityFields ?? []) delete body[field];
   return body;
 }
 
@@ -87,7 +207,10 @@ function mapAuthentication(error: unknown): never {
 }
 
 export function createGatewayFilingGovernanceHandler(options: GatewayFilingGovernanceOptions) {
-  const fixtureMode = options.fixtureTestRuntime === true;
+  const fixtureMode =
+    options.fixtureTestRuntime === true &&
+    options.authenticationClient === undefined &&
+    options.internalServiceSecret === undefined;
 
   const correlation = (request: JsonRequest) => request.headers['x-correlation-id'];
   const token = (request: JsonRequest) => {
@@ -212,11 +335,11 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
   };
 
   return async (request: JsonRequest) => {
+    const policy = routePolicy(request);
     if (fixtureMode) return forwardFixture(request);
 
-    const mutation = request.method !== 'GET';
-    const body = mutation ? governedBody(request) : undefined;
-    if (idempotentMutation(request) && !request.headers['idempotency-key']?.trim())
+    const body = policy.mutationSecurity ? governedBody(request, policy) : undefined;
+    if (policy.idempotencyRequired && !request.headers['idempotency-key']?.trim())
       throw new HttpError(
         400,
         'IDEMPOTENCY_KEY_REQUIRED',
@@ -224,8 +347,8 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
       );
     const principal = await principalFor(
       request,
-      mutation ? 'execution:manage' : 'execution:read',
-      mutation
+      policy.permission,
+      policy.mutationSecurity
     );
     return forwardGoverned(request, principal, body);
   };
