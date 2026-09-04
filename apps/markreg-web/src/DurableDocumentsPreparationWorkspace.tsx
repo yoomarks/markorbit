@@ -11,6 +11,8 @@ import {
   type DurablePreparationLockView
 } from './api/durable-preparation.js';
 import { MarkregApiError } from './api/errors.js';
+import type { MarkregClient } from './api/markreg.js';
+import { FilingAuthorizationView } from './FilingAuthorization.js';
 
 const defaultPackageClient = createDurableDocumentPackageClient();
 const defaultPreparationClient = createDurablePreparationClient();
@@ -45,16 +47,19 @@ function errorCopy(error: unknown): string {
 export function DurableDocumentsPreparationWorkspace({
   review,
   packageClient = defaultPackageClient,
-  preparationClient = defaultPreparationClient
+  preparationClient = defaultPreparationClient,
+  filingClient
 }: {
   review: ProfessionalReviewCase;
   packageClient?: DurableDocumentPackageClient;
   preparationClient?: DurablePreparationClient;
+  filingClient?: MarkregClient;
 }) {
   const [pkg, setPackage] = useState<DurableDocumentPackageView>();
   const [lock, setLock] = useState<DurablePreparationLockView>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showFilingAuthorization, setShowFilingAuthorization] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [checksum, setChecksum] = useState('');
@@ -205,12 +210,28 @@ export function DurableDocumentsPreparationWorkspace({
       if (typeof sessionStorage !== 'undefined')
         sessionStorage.setItem(lockPointerKey(pkg.documentPackageId), created.preparationLockId);
       setLock(await preparationClient.validateCurrent(created.preparationLockId));
+      setShowFilingAuthorization(false);
     } catch (cause) {
       setError(errorCopy(cause));
     } finally {
       setLoading(false);
     }
   };
+
+  if (lock && showFilingAuthorization && review.source?.customerId)
+    return (
+      <FilingAuthorizationView
+        {...(filingClient ? { client: filingClient } : {})}
+        durablePreparationSource={{
+          preparationLockId: lock.preparationLockId,
+          preparationLockVersion: String(lock.version),
+          authorizedParty: {
+            partyId: review.source.customerId,
+            displayName: 'Applicant / owner'
+          }
+        }}
+      />
+    );
 
   if (loading && !pkg) return <LoadingState label="Loading durable Document Package" />;
 
@@ -399,11 +420,21 @@ export function DurableDocumentsPreparationWorkspace({
             <dt>Created</dt>
             <dd>{lock.createdAt}</dd>
           </dl>
-          <Alert tone="warning" title="Filing Authorization remains gated">
-            The current durable Preparation Lock is saved and revalidated. Filing Authorization is
-            intentionally unavailable here until Execution consumes this durable source contract
-            under #731. No legacy snapshot is manufactured in the browser.
+          <Alert tone="warning" title="Filing Authorization remains a separate authority step">
+            The current durable Preparation Lock has been revalidated. Opening Filing Authorization
+            passes only this exact lock identity/version into the governed Execution flow; it does
+            not authorize or submit a filing.
           </Alert>
+          {review.source?.customerId ? (
+            <Button disabled={loading} onClick={() => setShowFilingAuthorization(true)}>
+              Review Filing Authorization
+            </Button>
+          ) : (
+            <Alert tone="danger" title="Authorization source unavailable">
+              The completed Professional Review does not expose the exact customer identity required
+              to open Filing Authorization safely.
+            </Alert>
+          )}
         </Card>
       )}
     </main>
