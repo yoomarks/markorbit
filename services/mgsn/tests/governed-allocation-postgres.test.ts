@@ -1,5 +1,10 @@
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  controlledHandoffContractFixtureV1,
+  type ControlledHandoffEnvelopeV1
+} from '@markorbit/contracts/controlled-privacy-handoff';
 import { providerSelectionContractFixtureV1 } from '@markorbit/contracts/provider-selection';
 import type { ProviderExecutionSourceSnapshot } from '@markorbit/contracts/provider-execution';
 import { ManagedDatabase } from '@markorbit/persistence';
@@ -22,6 +27,18 @@ import {
   type ProviderSelectionPrincipal
 } from '../src/provider-selection.js';
 import { PostgresGovernedAllocationRepository } from '../src/governed-allocation-postgres.js';
+import { PostgresProviderWorkReadRepository } from '../src/provider-work-read-model-postgres.js';
+import { ProviderWorkReadModelService } from '../src/provider-work-read-model.js';
+import {
+  GovernedProviderWorkReadModelService,
+  PostgresProviderWorkIncomingAuthorityRepository
+} from '../src/provider-work-incoming-authority.js';
+import {
+  ControlledPrivacyHandoffService,
+  type ControlledHandoffCurrentAuthoritySnapshot,
+  type ControlledHandoffPrincipal
+} from '../src/controlled-privacy-handoff.js';
+import { PostgresControlledHandoffRepository } from '../src/controlled-privacy-handoff-postgres.js';
 import {
   GovernedAllocationService,
   type GovernedAllocationCommand
@@ -44,6 +61,48 @@ const operator = fixture.createCommand.trustedHumanAuthority.selectingActorId;
 const at = '2026-09-04T14:40:00.000Z';
 const executionFingerprint = '8'.repeat(64);
 const correlationId = 'correlation_governed_716' as const;
+const handoffFixture = controlledHandoffContractFixtureV1;
+const handoffSnapshot: ControlledHandoffCurrentAuthoritySnapshot = {
+  authorityAvailable: true,
+  selectionCurrent: true,
+  selectionScopeMatch: true,
+  sourceVersionsMatch: true,
+  sourceAccessCurrent: true,
+  participationActive: true,
+  visibilityAuthorized: true,
+  directExecutorEstablished: true,
+  hiddenIntermediaryDetected: false,
+  evidenceArtifactAccessAuthorized: false,
+  checkedAuthorityReferences: ['authority:governed-handoff-716']
+};
+const handoffAuthority = handoffFixture.authorizeCommand.trustedHumanAuthority;
+const handoffPrincipal: ControlledHandoffPrincipal = {
+  workspaceId: handoffAuthority.originatingWorkspaceId,
+  actorId: handoffAuthority.authorizingActorId,
+  actorKind: 'HUMAN_USER',
+  principalReference: handoffAuthority.principalReference,
+  workspaceMembershipReference: handoffAuthority.workspaceMembershipReference,
+  handoffAuthorityReference: handoffAuthority.handoffAuthorityReference,
+  handoffAuthorityVersion: handoffAuthority.handoffAuthorityVersion,
+  authenticatedAt: handoffAuthority.authenticatedAt,
+  affirmativeHumanActionEvidenceReference:
+    handoffAuthority.affirmativeHumanActionEvidenceReference
+};
+
+function legacyStableSerializeForTest(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => legacyStableSerializeForTest(item)).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${legacyStableSerializeForTest(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
 
 suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
   const namespace = 'mgsn_governed_allocation_716_test';
@@ -99,6 +158,28 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
       () => at,
       () => fixture.currentSelection.providerSelectionId
     );
+  const handoffRepository = () =>
+    new PostgresControlledHandoffRepository(database, database.getPool());
+  const handoffService = () =>
+    new ControlledPrivacyHandoffService(
+      handoffRepository(),
+      { evaluateCurrentAuthority: () => Promise.resolve(structuredClone(handoffSnapshot)) },
+      () => at,
+      () => 'controlled-handoff_governed-716'
+    );
+
+  async function seedExactHandoff() {
+    const authorize: Parameters<ControlledPrivacyHandoffService['authorizeOrReplace']>[1] = {
+      ...structuredClone(handoffFixture.authorizeCommand),
+      validFrom: '2026-09-04T14:00:00.000Z',
+      validUntil: '2026-09-05T15:00:00.000Z',
+      idempotencyKey: 'controlled-handoff:governed-716',
+      commandFingerprintSha256: 'b'.repeat(64),
+      correlationId: 'correlation_controlled-handoff_governed-716'
+    };
+    return handoffService().authorizeOrReplace(handoffPrincipal, authorize);
+  }
+
   const principal: ProviderSelectionPrincipal = {
     workspaceId: fixture.createCommand.trustedHumanAuthority.requesterWorkspaceId,
     actorId: fixture.createCommand.trustedHumanAuthority.selectingActorId,
@@ -284,6 +365,27 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
     };
   }
 
+  function exactCommand(
+    seeded: Awaited<ReturnType<typeof seedProviderSelectionAndEligiblePackage>>,
+    envelope: ControlledHandoffEnvelopeV1,
+    key = 'governed-allocation-exact-handoff-716'
+  ): GovernedAllocationCommand {
+    return {
+      ...command(seeded, key),
+      handoffBinding: {
+        mode: 'EXACT',
+        handoff: {
+          controlledHandoffId: envelope.controlledHandoffId,
+          version: envelope.version
+        },
+        envelopeFingerprintSha256: envelope.envelopeFingerprintSha256,
+        purposeFingerprintSha256: envelope.purpose.purposeFingerprintSha256,
+        projectionFingerprintSha256: envelope.authorizedProjection.projectionFingerprintSha256,
+        sourceSetFingerprintSha256: envelope.authorizedProjection.sourceSetFingerprintSha256
+      }
+    };
+  }
+
   const directExecutor = {
     assessCurrent: () =>
       Promise.resolve({
@@ -316,6 +418,28 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
       directExecutor,
       () => at,
       () => `allocation-admission-lineage_governed-716-${++lineageSequence}`
+    );
+  }
+
+  function exactGovernedService(repository = governedRepository()) {
+    const planner = new ExactM4GovernedAllocationPlanner(
+      allocationRepository(),
+      packageRepository(),
+      providerRepository(),
+      executionSource,
+      () => at,
+      () => `allocation_governed-exact-716-${++allocationSequence}`
+    );
+    return new GovernedAllocationService(
+      planner,
+      repository,
+      selectionRepository(),
+      selectionService(),
+      handoffRepository(),
+      handoffService(),
+      directExecutor,
+      () => at,
+      () => `allocation-admission-lineage_governed-exact-716-${++lineageSequence}`
     );
   }
 
@@ -360,6 +484,11 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
     await database.getPool().query(
       `TRUNCATE
         mgsn_allocation_admission_lineage_audit,
+        mgsn_controlled_handoff_owner_audit_events,
+        mgsn_controlled_handoff_command_replays,
+        mgsn_controlled_handoff_slot_state,
+        mgsn_controlled_handoff_versions,
+        mgsn_controlled_handoff_identities,
         mgsn_allocation_admission_lineage_replays,
         mgsn_allocation_admission_lineages,
         mgsn_allocation_audit,
@@ -391,7 +520,8 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
 
   it('commits NONE_EXPLICIT Allocation, legacy M4 truth and #712 lineage in one durable transaction', async () => {
     const seeded = await seedProviderSelectionAndEligiblePackage();
-    const result = await governedService().allocate(command(seeded));
+    const governedCommand = command(seeded);
+    const result = await governedService().allocate(governedCommand);
 
     expect(result.lineage).toMatchObject({
       allocationId: result.allocation.allocationId,
@@ -411,8 +541,64 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
       await database
         .getPool()
         .query('SELECT count(*)::int AS count FROM mgsn_provider_acceptances')
-        .then((value) => value.rows[0]!.count)
+        .then((value) => Number((value.rows[0] as { count: number }).count))
     ).toBe(0);
+
+    const legacyReplay = await database.getPool().query(
+      'SELECT request_fingerprint FROM mgsn_allocation_commands WHERE target_id=$1',
+      [result.allocation.allocationId]
+    );
+    const legacyFingerprint = String(
+      (legacyReplay.rows[0] as { request_fingerprint: string }).request_fingerprint
+    );
+    const expectedLegacyFingerprint = createHash('sha256')
+      .update(
+        legacyStableSerializeForTest({
+          command: 'ALLOCATE_PROVIDER',
+          workspaceId: governedCommand.workspaceId.toLowerCase(),
+          servicePackageId: governedCommand.servicePackageId,
+          expectedServicePackageVersion: governedCommand.expectedServicePackageVersion,
+          expectedPackageFingerprint: governedCommand.expectedServicePackageFingerprintSha256,
+          eligibilityEvaluationId: governedCommand.eligibilityEvaluationId,
+          expectedEligibilityEvaluationVersion: governedCommand.expectedEligibilityEvaluationVersion,
+          expectedEligibilityFingerprint: governedCommand.expectedEligibilityFingerprintSha256,
+          providerId: governedCommand.providerId,
+          providerSupplyCapabilityId: governedCommand.providerSupplyCapabilityId,
+          expectedProviderSupplyCapabilityVersion:
+            governedCommand.expectedProviderSupplyCapabilityVersion,
+          rationale: governedCommand.rationale,
+          actorId: governedCommand.actorId,
+          correlationId: governedCommand.correlationId
+        })
+      )
+      .digest('hex');
+    expect(legacyFingerprint).toBe(expectedLegacyFingerprint);
+    expect(legacyFingerprint).not.toBe(result.requestFingerprintSha256);
+
+    const providerWork = new GovernedProviderWorkReadModelService(
+      new ProviderWorkReadModelService(
+        new PostgresProviderWorkReadRepository(database.getPool()),
+        providerRepository(),
+        () => at
+      ),
+      new PostgresProviderWorkIncomingAuthorityRepository(database.getPool()),
+      { validateCurrent: vi.fn() } as never
+    );
+    const currentRead = await providerWork.read(
+      {
+        workspaceId: seeded.provider.providerWorkspaceId,
+        userId: 'provider-user_governed-716',
+        membershipId: 'provider-membership_governed-716'
+      },
+      result.allocation.allocationId
+    );
+    expect(currentRead.decision).toBe('AUTHORIZED');
+    if (currentRead.decision !== 'AUTHORIZED') throw new Error('Provider Work must be readable.');
+    expect(currentRead.item.incomingDataAuthority).toMatchObject({
+      state: 'KNOWN_ABSENT',
+      incomingFieldsVisible: false,
+      embeddedPrivateFieldValues: false
+    });
   });
 
   it('replays the exact committed Allocation and lineage after repository recreation', async () => {
@@ -441,7 +627,7 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
               if (text.includes('INSERT INTO mgsn_allocation_admission_lineage_replays')) {
                 return Promise.reject(new Error('injected late governed replay failure'));
               }
-              return client.query(text, values);
+              return values ? client.query(text, [...values]) : client.query(text);
             }
           })
         )
@@ -486,6 +672,91 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
     });
   });
 
+  it('persists, replays and freshly revalidates exact Handoff authority without projecting private values', async () => {
+    const seeded = await seedProviderSelectionAndEligiblePackage();
+    const authorizedHandoff = await seedExactHandoff();
+    const exact = exactCommand(seeded, authorizedHandoff.envelope);
+
+    const first = await exactGovernedService().allocate(exact);
+    expect(first.lineage.handoffBindingState).toBe('EXACT_CONTROLLED_HANDOFF');
+    expect(first.lineage.handoff).toMatchObject({
+      envelope: {
+        controlledHandoffId: authorizedHandoff.envelope.controlledHandoffId,
+        version: authorizedHandoff.envelope.version
+      },
+      validation: {
+        purpose: 'HANDOFF_CONSUMPTION',
+        decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION',
+        currentlyUsable: true,
+        currentExactDisclosurePermitted: true,
+        publicReason: 'Historical admission validation was positive at governed Allocation commit.'
+      }
+    });
+
+    const replay = await exactGovernedService().allocate(exact);
+    expect(replay).toEqual(first);
+
+    const changedLineage = structuredClone(exact);
+    if (changedLineage.handoffBinding.mode !== 'EXACT') throw new Error('Exact Handoff fixture required.');
+    changedLineage.handoffBinding = {
+      ...changedLineage.handoffBinding,
+      sourceSetFingerprintSha256: '0'.repeat(64)
+    };
+    await expect(exactGovernedService().allocate(changedLineage)).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+      status: 409
+    });
+
+    const providerWork = new GovernedProviderWorkReadModelService(
+      new ProviderWorkReadModelService(
+        new PostgresProviderWorkReadRepository(database.getPool()),
+        providerRepository(),
+        () => at
+      ),
+      new PostgresProviderWorkIncomingAuthorityRepository(database.getPool()),
+      handoffService()
+    );
+    const principal = {
+      workspaceId: seeded.provider.providerWorkspaceId,
+      userId: 'provider-user_exact-716',
+      membershipId: 'provider-membership_exact-716'
+    };
+    const currentRead = await providerWork.read(principal, first.allocation.allocationId);
+    expect(currentRead.decision).toBe('AUTHORIZED');
+    if (currentRead.decision !== 'AUTHORIZED') throw new Error('Exact Provider Work must be readable.');
+    expect(currentRead.item.incomingDataAuthority).toMatchObject({
+      state: 'CURRENTLY_USABLE',
+      handoff: {
+        controlledHandoffId: authorizedHandoff.envelope.controlledHandoffId,
+        version: authorizedHandoff.envelope.version
+      },
+      currentExactProjectionMayBeResolvedSeparately: true,
+      embeddedPrivateFieldValues: false
+    });
+    expect('incomingFieldsVisible' in currentRead.item.incomingDataAuthority).toBe(false);
+
+    const revoke: Parameters<ControlledPrivacyHandoffService['revoke']>[1] = {
+      ...structuredClone(handoffFixture.revokeCommand),
+      target: {
+        controlledHandoffId: authorizedHandoff.envelope.controlledHandoffId,
+        version: authorizedHandoff.envelope.version
+      },
+      idempotencyKey: 'controlled-handoff:governed-716:revoke',
+      commandFingerprintSha256: 'e'.repeat(64),
+      correlationId: 'correlation_controlled-handoff_governed-716-revoke'
+    };
+    await handoffService().revoke(handoffPrincipal, revoke);
+
+    const deniedRead = await providerWork.read(principal, first.allocation.allocationId);
+    expect(deniedRead.decision).toBe('AUTHORIZED');
+    if (deniedRead.decision !== 'AUTHORIZED') throw new Error('Denied Provider Work must remain readable.');
+    expect(deniedRead.item.incomingDataAuthority).toMatchObject({
+      state: 'DENIED',
+      incomingFieldsVisible: false,
+      embeddedPrivateFieldValues: false
+    });
+  });
+
   it('keeps the legacy M4 allocateProvider path valid without inferring #712 lineage', async () => {
     const seeded = await seedProviderSelectionAndEligiblePackage();
     const legacy = new AllocationProviderAcceptanceService(
@@ -518,6 +789,31 @@ suite('MGSN P0 #716 governed Allocation PostgreSQL durability', () => {
     const lineageCount = await database
       .getPool()
       .query('SELECT count(*)::int AS count FROM mgsn_allocation_admission_lineages');
-    expect(lineageCount.rows[0]!.count).toBe(0);
+    expect(Number((lineageCount.rows[0] as { count: number }).count)).toBe(0);
+
+    const providerWork = new GovernedProviderWorkReadModelService(
+      new ProviderWorkReadModelService(
+        new PostgresProviderWorkReadRepository(database.getPool()),
+        providerRepository(),
+        () => at
+      ),
+      new PostgresProviderWorkIncomingAuthorityRepository(database.getPool()),
+      { validateCurrent: vi.fn() } as never
+    );
+    const legacyRead = await providerWork.read(
+      {
+        workspaceId: seeded.provider.providerWorkspaceId,
+        userId: 'provider-user_legacy-716',
+        membershipId: 'provider-membership_legacy-716'
+      },
+      'allocation_legacy-716'
+    );
+    expect(legacyRead.decision).toBe('AUTHORIZED');
+    if (legacyRead.decision !== 'AUTHORIZED') throw new Error('Legacy Provider Work must be readable.');
+    expect(legacyRead.item.incomingDataAuthority).toMatchObject({
+      state: 'UNKNOWN',
+      incomingFieldsVisible: false,
+      embeddedPrivateFieldValues: false
+    });
   });
 });
