@@ -491,7 +491,7 @@ suite('MGSN P0 #625 durable Controlled Privacy Handoff', () => {
         attempt
       }
     );
-    expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'AUTHORITY_UNAVAILABLE' });
+    expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'SELECTION_NOT_CURRENT' });
   });
 
   it('enforces append-only guards and fails closed on deliberately corrupted normalized lineage', async () => {
