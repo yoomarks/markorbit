@@ -46,6 +46,7 @@ type FilingGovernanceRoutePolicy = Readonly<{
   mutationSecurity: boolean;
   idempotencyRequired: boolean;
   allowedBodyFields?: readonly string[];
+  ignoredBodyFields?: readonly string[];
   projectAuthorizedParty?: boolean;
 }>;
 
@@ -78,7 +79,8 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: true,
-    allowedBodyFields: ['acknowledgementCodes']
+    allowedBodyFields: ['acknowledgementCodes'],
+    ignoredBodyFields: ['acknowledgedBy']
   },
   {
     method: 'POST',
@@ -136,7 +138,8 @@ const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
     permission: 'execution:manage',
     mutationSecurity: true,
     idempotencyRequired: true,
-    allowedBodyFields: ['rationale']
+    allowedBodyFields: ['rationale'],
+    ignoredBodyFields: ['decidedBy']
   },
   {
     method: 'POST',
@@ -224,14 +227,20 @@ function governedBody(
 ): Record<string, unknown> {
   const body = bodyRecord(request);
   const allowedFields = new Set(policy.allowedBodyFields ?? []);
-  const unsupported = Object.keys(body).find((field) => !allowedFields.has(field));
+  const ignoredFields = new Set(policy.ignoredBodyFields ?? []);
+  const unsupported = Object.keys(body).find(
+    (field) => !allowedFields.has(field) && !ignoredFields.has(field)
+  );
   if (unsupported) rejectBrowserField(unsupported);
 
   const projected: Record<string, unknown> = {};
   for (const field of allowedFields) {
     if (Object.prototype.hasOwnProperty.call(body, field)) projected[field] = body[field];
   }
-  if (policy.projectAuthorizedParty && Object.prototype.hasOwnProperty.call(projected, 'authorizedParty'))
+  if (
+    policy.projectAuthorizedParty &&
+    Object.prototype.hasOwnProperty.call(projected, 'authorizedParty')
+  )
     projected.authorizedParty = projectAuthorizedParty(projected.authorizedParty);
   return projected;
 }
@@ -396,11 +405,7 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
         'IDEMPOTENCY_KEY_REQUIRED',
         'Idempotency-Key is required for this Filing Governance command.'
       );
-    const principal = await principalFor(
-      request,
-      policy.permission,
-      policy.mutationSecurity
-    );
+    const principal = await principalFor(request, policy.permission, policy.mutationSecurity);
     return forwardGoverned(request, principal, body);
   };
 }
