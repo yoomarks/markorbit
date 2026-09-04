@@ -3,6 +3,7 @@ import type {
   AuthorizationAuthorityConsequences,
   FilingAuthorization,
   FilingAuthorizationAcknowledgementCode,
+  MarkOrbitId,
   PreparationLock
 } from '@markorbit/contracts';
 import {
@@ -60,16 +61,25 @@ export const authorizationAcknowledgements: ReadonlyArray<{
     label: 'I understand that government-office acceptance is not guaranteed.'
   }
 ];
-const version = (lock: PreparationLock) =>
+const legacyVersion = (lock: PreparationLock) =>
   `${lock.documentPackageVersion}:${lock.instructionLedgerVersion}:${lock.lockedAt}`;
+
+export interface DurableFilingAuthorizationSource {
+  preparationLockId: string;
+  preparationLockVersion: string;
+  authorizedParty: { partyId: MarkOrbitId; displayName: string };
+}
+
 export function FilingAuthorizationView({
   client = createMarkregClient(),
   preparationLock,
+  durablePreparationSource,
   fixtureAuthorization,
   initialState
 }: {
   client?: MarkregClient;
   preparationLock?: PreparationLock;
+  durablePreparationSource?: DurableFilingAuthorizationSource;
   fixtureAuthorization?: FilingAuthorization;
   initialState?: FilingAuthorizationViewState;
   long?: boolean;
@@ -81,20 +91,34 @@ export function FilingAuthorizationView({
   const [consequences, setConsequences] = useState<AuthorizationAuthorityConsequences>();
   const [checked, setChecked] = useState<FilingAuthorizationAcknowledgementCode[]>([]);
   const [message, setMessage] = useState('');
+  const sourceLockId =
+    durablePreparationSource?.preparationLockId ?? preparationLock?.preparationLockId;
+  const sourceLockVersion =
+    durablePreparationSource?.preparationLockVersion ??
+    (preparationLock ? legacyVersion(preparationLock) : undefined);
+  const sourcePartyId =
+    durablePreparationSource?.authorizedParty.partyId ??
+    preparationLock?.snapshot.documentPackage.customerId;
+  const sourcePartyName =
+    durablePreparationSource?.authorizedParty.displayName ?? 'Authorized customer';
   useEffect(() => {
-    if (!preparationLock || fixtureAuthorization || !client.createFilingAuthorization) return;
+    if (
+      !sourceLockId ||
+      !sourceLockVersion ||
+      !sourcePartyId ||
+      fixtureAuthorization ||
+      !client.createFilingAuthorization
+    )
+      return;
     let active = true;
     void client
       .createFilingAuthorization({
-        preparationLockId: preparationLock.preparationLockId,
-        preparationLockVersion: version(preparationLock),
-        authorizedParty: {
-          partyId: preparationLock.snapshot.documentPackage.customerId,
-          displayName: 'Authorized customer'
-        },
+        preparationLockId: sourceLockId,
+        preparationLockVersion: sourceLockVersion,
+        authorizedParty: { partyId: sourcePartyId, displayName: sourcePartyName },
         authorizationCapacity: 'OWNER',
         executionChannel: 'OFFICE_PORTAL',
-        idempotencyKey: `authorization:${preparationLock.preparationLockId}:${version(preparationLock)}`
+        idempotencyKey: `authorization:${sourceLockId}:${sourceLockVersion}`
       })
       .then((r) => {
         if (active) {
@@ -114,7 +138,14 @@ export function FilingAuthorizationView({
     return () => {
       active = false;
     };
-  }, [client, fixtureAuthorization, preparationLock]);
+  }, [
+    client,
+    fixtureAuthorization,
+    sourceLockId,
+    sourceLockVersion,
+    sourcePartyId,
+    sourcePartyName
+  ]);
   const all = checked.length === authorizationAcknowledgements.length;
   const status = authorization?.status;
   useEffect(() => {
