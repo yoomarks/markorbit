@@ -150,9 +150,7 @@ describe('MarkReg governed direct entry', () => {
       name: 'The governed record service is unavailable.'
     });
     expect(document.activeElement).toBe(heading);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Retry same identity and version' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Retry same identity and version' }));
     await waitFor(() => expect(getGovernedRecord).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('matter-draft_exact')).toBeTruthy();
   });
@@ -178,9 +176,7 @@ describe('MarkReg governed direct entry', () => {
     });
     expect(document.activeElement).toBe(heading);
     expect(screen.queryByText('The governed record service is unavailable.')).toBeNull();
-    expect(
-      screen.queryByRole('button', { name: 'Retry same identity and version' })
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
   });
 
   it('keeps not-found governed reads stable and non-retryable', async () => {
@@ -203,9 +199,7 @@ describe('MarkReg governed direct entry', () => {
       name: 'The requested record was not found. No latest record was selected.'
     });
     expect(document.activeElement).toBe(heading);
-    expect(
-      screen.queryByRole('button', { name: 'Retry same identity and version' })
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Retry same identity and version' })).toBeNull();
   });
 
   it('revalidates and renders exact durable Preparation Lock owner truth', async () => {

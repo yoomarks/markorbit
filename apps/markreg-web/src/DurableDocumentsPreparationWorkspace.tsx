@@ -34,7 +34,8 @@ function itemDisplayName(item: Readonly<Record<string, unknown>>): string {
 
 function errorCopy(error: unknown): string {
   if (error instanceof MarkregApiError) {
-    if (error.kind === 'conflict') return 'The durable source changed. Reload the exact owner record.';
+    if (error.kind === 'conflict')
+      return 'The durable source changed. Reload the exact owner record.';
     if (error.kind === 'validation') return error.message;
     if (error.code?.includes('PERMISSION')) return 'Workspace permission is required.';
   }
@@ -320,10 +321,7 @@ export function DurableDocumentsPreparationWorkspace({
             />
             <Button
               disabled={
-                loading ||
-                !selectedRequirement ||
-                !displayName ||
-                !/^[a-f0-9]{64}$/i.test(checksum)
+                loading || !selectedRequirement || !displayName || !/^[a-f0-9]{64}$/i.test(checksum)
               }
               onClick={() => void recordEvidence()}
             >
