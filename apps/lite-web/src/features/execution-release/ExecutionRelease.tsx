@@ -17,7 +17,12 @@ import {
   Select,
   TextInput
 } from '@markorbit/ui';
-import { createLiteExecutionClient, type LiteExecutionClient } from '../../api/execution.js';
+import {
+  createLiteExecutionClient,
+  ExecutionHttpError,
+  type LiteExecutionClient
+} from '../../api/execution.js';
+
 export type ReleaseViewState =
   | 'RELEASE_QUEUE_LOADING'
   | 'RELEASE_QUEUE_EMPTY'
@@ -29,6 +34,7 @@ export type ReleaseViewState =
   | 'RELEASE_STALE'
   | 'RELEASE_WITHDRAWN'
   | 'RECOVERABLE_ERROR';
+
 const falseConsequences: AuthorizationAuthorityConsequences = {
   orderCreated: false,
   paymentCreated: false,
@@ -44,19 +50,43 @@ const falseConsequences: AuthorizationAuthorityConsequences = {
   externalDocumentSent: false,
   trademarkOfficeContacted: false
 };
-const defaultExecutionClient = createLiteExecutionClient();
+
+function viewForRelease(release: ExecutionRelease): ReleaseViewState {
+  return release.status === 'READY_FOR_RELEASE'
+    ? 'RELEASE_READY'
+    : release.status === 'RELEASED_FOR_EXECUTION'
+      ? 'RELEASED_FOR_EXECUTION'
+      : release.status === 'STALE'
+        ? 'RELEASE_STALE'
+        : release.status === 'WITHDRAWN'
+          ? 'RELEASE_WITHDRAWN'
+          : 'RELEASE_BLOCKED';
+}
+
+function executionErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ExecutionHttpError)
+    return `${error.status} ${error.code}: ${error.message}`;
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function ExecutionReleaseView({
-  client = defaultExecutionClient,
+  workspaceId,
+  client,
   fixtureReleases,
   state: initialState,
   initialFilingAuthorization
 }: {
+  workspaceId: string;
   client?: LiteExecutionClient;
   fixtureReleases?: ExecutionRelease[];
   state?: ReleaseViewState;
   long?: boolean;
   initialFilingAuthorization?: { id: string; version: number };
 }) {
+  const executionClient = useMemo(
+    () => client ?? createLiteExecutionClient(workspaceId),
+    [client, workspaceId]
+  );
   const [view, setView] = useState<ReleaseViewState>(initialState ?? 'RELEASE_QUEUE_LOADING');
   const [releases, setReleases] = useState<ExecutionRelease[]>(fixtureReleases ?? []);
   const [selected, setSelected] = useState<ExecutionRelease>();
@@ -71,157 +101,206 @@ export function ExecutionReleaseView({
   const [rationale, setRationale] = useState('');
   const [message, setMessage] = useState('');
   const origin = useRef<string>();
+
   useEffect(() => {
     if (fixtureReleases) {
-      setView(fixtureReleases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY');
+      setView(initialState ?? (fixtureReleases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY'));
       return;
     }
     let active = true;
-    void (
-      initialFilingAuthorization
-        ? client
-            .createRelease({
-              filingAuthorizationId:
-                initialFilingAuthorization.id as `filing-authorization_${string}`,
-              filingAuthorizationVersion: initialFilingAuthorization.version,
-              requestedExecutionChannel: 'OFFICE_PORTAL',
-              idempotencyKey: `execution-release:${initialFilingAuthorization.id}:${initialFilingAuthorization.version}`
-            })
-            .then((created) => ({
-              executionReleases: [created.executionRelease],
-              consequences: created.consequences
-            }))
-        : client.listReleases()
-    )
-      .then((r) => {
-        if (active) {
-          setReleases(r.executionReleases);
-          setConsequences(r.consequences);
-          setView(r.executionReleases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY');
-        }
-      })
-      .catch((e) => {
-        if (active) {
-          setMessage(e instanceof Error ? e.message : 'Release queue unavailable.');
-          setView('RECOVERABLE_ERROR');
-        }
-      });
+    void (async () => {
+      try {
+        const loaded = initialFilingAuthorization
+          ? await (async () => {
+              const created = await executionClient.createRelease({
+                filingAuthorizationId:
+                  initialFilingAuthorization.id as `filing-authorization_${string}`,
+                filingAuthorizationVersion: initialFilingAuthorization.version,
+                requestedExecutionChannel: 'OFFICE_PORTAL',
+                idempotencyKey: `execution-release:${initialFilingAuthorization.id}:${initialFilingAuthorization.version}`
+              });
+              const durable = await executionClient.getRelease(created.executionRelease.executionReleaseId);
+              return {
+                executionReleases: [durable.executionRelease],
+                consequences: durable.consequences
+              };
+            })()
+          : await executionClient.listReleases();
+        if (!active) return;
+        setReleases(loaded.executionReleases);
+        setConsequences(loaded.consequences);
+        setView(loaded.executionReleases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY');
+      } catch (error) {
+        if (!active) return;
+        setMessage(executionErrorMessage(error, 'Release queue unavailable.'));
+        setView('RECOVERABLE_ERROR');
+      }
+    })();
     return () => {
       active = false;
     };
-  }, [client, fixtureReleases, initialFilingAuthorization]);
+  }, [executionClient, fixtureReleases, initialFilingAuthorization, initialState]);
+
   const rows = useMemo(() => {
     const filtered = releases.filter(
-      (r) =>
-        (status === 'ALL' || r.status === status) &&
-        (jurisdiction === 'ALL' || r.jurisdiction === jurisdiction) &&
-        (channel === 'ALL' || r.requestedExecutionChannel === channel) &&
+      (release) =>
+        (status === 'ALL' || release.status === status) &&
+        (jurisdiction === 'ALL' || release.jurisdiction === jurisdiction) &&
+        (channel === 'ALL' || release.requestedExecutionChannel === channel) &&
         (assignment === 'ALL' ||
-          (assignment === 'ASSIGNED' && r.assignment.internalExecutorId) ||
-          (assignment === 'UNASSIGNED' && !r.assignment.internalExecutorId)) &&
-        (currency === 'ALL' || (currency === 'STALE' ? r.status === 'STALE' : r.status !== 'STALE'))
+          (assignment === 'ASSIGNED' && release.assignment.internalExecutorId) ||
+          (assignment === 'UNASSIGNED' && !release.assignment.internalExecutorId)) &&
+        (currency === 'ALL' ||
+          (currency === 'STALE' ? release.status === 'STALE' : release.status !== 'STALE'))
     );
     const source = releases.find((item) => item.executionReleaseId === origin.current);
     return source && !filtered.includes(source) ? [source, ...filtered] : filtered;
   }, [assignment, channel, currency, jurisdiction, releases, status]);
+
+  const applyDurableRelease = (release: ExecutionRelease) => {
+    setSelected(release);
+    setReleases((current) =>
+      current.map((item) =>
+        item.executionReleaseId === release.executionReleaseId ? release : item
+      )
+    );
+    setView(viewForRelease(release));
+  };
+
+  const reloadRelease = async (executionReleaseId: string) => {
+    const durable = await executionClient.getRelease(executionReleaseId);
+    setConsequences(durable.consequences);
+    applyDurableRelease(durable.executionRelease);
+    return durable.executionRelease;
+  };
+
+  const handleCommandFailure = async (error: unknown, executionReleaseId: string) => {
+    setMessage(executionErrorMessage(error, 'Execution Release command failed.'));
+    if (error instanceof ExecutionHttpError && error.status === 409) {
+      try {
+        const durable = await executionClient.getRelease(executionReleaseId);
+        setConsequences(durable.consequences);
+        setSelected(durable.executionRelease);
+        setReleases((current) =>
+          current.map((item) =>
+            item.executionReleaseId === durable.executionRelease.executionReleaseId
+              ? durable.executionRelease
+              : item
+          )
+        );
+      } catch {
+        // Keep the conflict visible even when the follow-up read is also unavailable.
+      }
+      setView('RELEASE_STALE');
+      return;
+    }
+    setView('RECOVERABLE_ERROR');
+  };
+
   const open = async (value: ExecutionRelease, button: HTMLButtonElement) => {
     origin.current = button.dataset['releaseId'];
+    setMessage('');
     setView('RELEASE_DETAIL_LOADING');
     try {
-      const r = fixtureReleases
+      const result = fixtureReleases
         ? { executionRelease: value, consequences: falseConsequences }
-        : await client.getRelease(value.executionReleaseId);
-      setSelected(r.executionRelease);
-      setConsequences(r.consequences);
-      setView(
-        r.executionRelease.status === 'READY_FOR_RELEASE'
-          ? 'RELEASE_READY'
-          : r.executionRelease.status === 'RELEASED_FOR_EXECUTION'
-            ? 'RELEASED_FOR_EXECUTION'
-            : r.executionRelease.status === 'STALE'
-              ? 'RELEASE_STALE'
-              : r.executionRelease.status === 'WITHDRAWN'
-                ? 'RELEASE_WITHDRAWN'
-                : 'RELEASE_BLOCKED'
-      );
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Release unavailable.');
+        : await executionClient.getRelease(value.executionReleaseId);
+      setSelected(result.executionRelease);
+      setConsequences(result.consequences);
+      setView(viewForRelease(result.executionRelease));
+    } catch (error) {
+      setMessage(executionErrorMessage(error, 'Release unavailable.'));
       setView('RECOVERABLE_ERROR');
     }
   };
-  const save = (r: ExecutionRelease) => {
-    setSelected(r);
-    setReleases((v) => v.map((x) => (x.executionReleaseId === r.executionReleaseId ? r : x)));
-    setView(
-      r.status === 'READY_FOR_RELEASE'
-        ? 'RELEASE_READY'
-        : r.status === 'RELEASED_FOR_EXECUTION'
-          ? 'RELEASED_FOR_EXECUTION'
-          : r.status === 'STALE'
-            ? 'RELEASE_STALE'
-            : r.status === 'WITHDRAWN'
-              ? 'RELEASE_WITHDRAWN'
-              : 'RELEASE_BLOCKED'
-    );
-  };
+
   const back = () => {
     setSelected(undefined);
     setTask(undefined);
+    setMessage('');
     setView(releases.length ? 'RELEASE_BLOCKED' : 'RELEASE_QUEUE_EMPTY');
     requestAnimationFrame(() =>
-      document.querySelector<HTMLButtonElement>(`[data-release-id="${origin.current}"]`)?.focus()
+      document
+        .querySelector<HTMLButtonElement>(`[data-release-id="${origin.current}"]`)
+        ?.focus()
     );
   };
+
   const evaluate = async () => {
     if (!selected) return;
-    const r = await client.evaluateRelease(selected.executionReleaseId);
-    setConsequences(r.consequences);
-    save(r.executionRelease);
-  };
-  const assign = async () => {
-    if (!selected) return;
-    const r = await client.updateAssignment(selected.executionReleaseId, {
-      internalExecutorId: 'executor_fixture'
-    });
-    setConsequences(r.consequences);
-    save(r.executionRelease);
-  };
-  const release = async () => {
-    if (!selected) return;
-    setView('RELEASING');
+    setMessage('');
     try {
-      const r = await client.release(selected.executionReleaseId, {
-        decidedBy: 'reviewer_fixture',
-        rationale,
-        idempotencyKey: `release:${selected.executionReleaseId}`
-      });
-      setConsequences(r.consequences);
-      setTask(r.releaseResult.taskDraft);
-      save(r.releaseResult.release);
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Release failed.');
-      setView('RECOVERABLE_ERROR');
+      await executionClient.evaluateRelease(selected.executionReleaseId);
+      await reloadRelease(selected.executionReleaseId);
+    } catch (error) {
+      await handleCommandFailure(error, selected.executionReleaseId);
     }
   };
+
+  const assign = async () => {
+    if (!selected) return;
+    setMessage('');
+    try {
+      await executionClient.updateAssignment(selected.executionReleaseId, {
+        expectedVersion: selected.version
+      });
+      await reloadRelease(selected.executionReleaseId);
+    } catch (error) {
+      await handleCommandFailure(error, selected.executionReleaseId);
+    }
+  };
+
+  const release = async () => {
+    if (!selected) return;
+    const executionReleaseId = selected.executionReleaseId;
+    setMessage('');
+    setView('RELEASING');
+    try {
+      await executionClient.release(executionReleaseId, {
+        rationale,
+        idempotencyKey: `release:${executionReleaseId}`
+      });
+      await reloadRelease(executionReleaseId);
+      try {
+        const durableTask = await executionClient.getTaskDraftForRelease(executionReleaseId);
+        setTask(durableTask.filingExecutionTaskDraft);
+        setConsequences(durableTask.consequences);
+      } catch (error) {
+        setMessage(
+          `Release is durable, but its task receipt could not be reloaded: ${executionErrorMessage(
+            error,
+            'Task receipt unavailable.'
+          )}`
+        );
+      }
+    } catch (error) {
+      await handleCommandFailure(error, executionReleaseId);
+    }
+  };
+
   if (view === 'RELEASE_QUEUE_LOADING' || view === 'RELEASE_DETAIL_LOADING')
-    return <LoadingState label="Loading Execution Release evidence" />;
+    return <LoadingState label="Loading authenticated Execution Release evidence" />;
   if (view === 'RECOVERABLE_ERROR')
     return <ErrorState title="Execution Release could not continue" description={message} />;
+
   if (!selected)
     return (
       <section aria-labelledby="release-queue-title">
         <PageHeader
           title="Execution Release"
-          description="Work / Execution Release · internal governed release review"
-          actions={<Badge>Governed evidence</Badge>}
+          description="Work / Execution Release · authenticated Workspace release governance"
+          actions={<Badge>Authenticated Workspace</Badge>}
         />
+        <Alert title="Current authenticated Workspace">
+          Durable Execution Release truth is loaded through Workspace {workspaceId}.
+        </Alert>
         <Alert tone="warning" title="Release ≠ Execution">
           No application is submitted, sent, paid, accepted, or professionally appointed here.
         </Alert>
         <Card>
           <h2 id="release-queue-title">Release queue filters</h2>
           <div className="lite-filters">
-            <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <Select label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
               <option>ALL</option>
               <option>BLOCKED</option>
               <option>READY_FOR_RELEASE</option>
@@ -229,7 +308,7 @@ export function ExecutionReleaseView({
             <Select
               label="Jurisdiction"
               value={jurisdiction}
-              onChange={(e) => setJurisdiction(e.target.value)}
+              onChange={(event) => setJurisdiction(event.target.value)}
             >
               <option>ALL</option>
               <option>GB</option>
@@ -238,7 +317,7 @@ export function ExecutionReleaseView({
             <Select
               label="Execution channel"
               value={channel}
-              onChange={(e) => setChannel(e.target.value)}
+              onChange={(event) => setChannel(event.target.value)}
             >
               <option>ALL</option>
               <option>OFFICE_PORTAL</option>
@@ -247,13 +326,17 @@ export function ExecutionReleaseView({
             <Select
               label="Assignment"
               value={assignment}
-              onChange={(e) => setAssignment(e.target.value)}
+              onChange={(event) => setAssignment(event.target.value)}
             >
               <option>ALL</option>
               <option>ASSIGNED</option>
               <option>UNASSIGNED</option>
             </Select>
-            <Select label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <Select
+              label="Currency"
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value)}
+            >
               <option>CURRENT</option>
               <option>STALE</option>
               <option>ALL</option>
@@ -267,22 +350,25 @@ export function ExecutionReleaseView({
           />
         ) : (
           <div className="lite-list">
-            {rows.map((r) => (
-              <Card key={r.executionReleaseId}>
-                <h2>{r.executionReleaseId}</h2>
+            {rows.map((release) => (
+              <Card key={release.executionReleaseId}>
+                <h2>{release.executionReleaseId}</h2>
                 <KeyValueList
                   items={[
-                    { key: 'Filing Authorization', value: r.filingAuthorizationId },
-                    { key: 'Customer', value: r.customerId },
-                    { key: 'Jurisdiction', value: r.jurisdiction },
-                    { key: 'Channel', value: r.requestedExecutionChannel },
-                    { key: 'Status', value: r.status },
-                    { key: 'Assignment', value: r.assignment.internalExecutorId ?? 'UNASSIGNED' }
+                    { key: 'Filing Authorization', value: release.filingAuthorizationId },
+                    { key: 'Customer', value: release.customerId },
+                    { key: 'Jurisdiction', value: release.jurisdiction },
+                    { key: 'Channel', value: release.requestedExecutionChannel },
+                    { key: 'Status', value: release.status },
+                    {
+                      key: 'Assignment',
+                      value: release.assignment.internalExecutorId ?? 'UNASSIGNED'
+                    }
                   ]}
                 />
                 <Button
-                  data-release-id={r.executionReleaseId}
-                  onClick={(e) => void open(r, e.currentTarget)}
+                  data-release-id={release.executionReleaseId}
+                  onClick={(event) => void open(release, event.currentTarget)}
                 >
                   Open release
                 </Button>
@@ -292,12 +378,17 @@ export function ExecutionReleaseView({
         )}
       </section>
     );
+
   return (
     <section aria-labelledby="release-title">
       <Button variant="secondary" onClick={back}>
         ← Back to release queue
       </Button>
-      <PageHeader title="Execution Release" description="Work / Execution Release / Detail" />
+      <PageHeader
+        title="Execution Release"
+        description={`Work / Execution Release / Authenticated Workspace ${workspaceId}`}
+        actions={<Badge>Durable owner truth</Badge>}
+      />
       <Alert
         tone="warning"
         title={
@@ -308,11 +399,24 @@ export function ExecutionReleaseView({
       >
         No external filing is performed by this release decision.
       </Alert>
+      {view === 'RELEASE_STALE' && (
+        <Alert tone="warning" title="Execution Release changed">
+          The previous command was rejected as stale. Current durable Workspace truth was reloaded;
+          review it before trying another protected action.
+        </Alert>
+      )}
+      {message && view !== 'RELEASE_STALE' && (
+        <Alert tone="warning" title="Durable receipt warning">
+          {message}
+        </Alert>
+      )}
       <Card>
         <h2 id="release-title">{selected.executionReleaseId}</h2>
         <Badge>{selected.status}</Badge>
         <KeyValueList
           items={[
+            { key: 'Workspace', value: workspaceId },
+            { key: 'Release version', value: String(selected.version) },
             {
               key: 'Filing Authorization',
               value: `${selected.filingAuthorizationId} · version ${selected.filingAuthorizationVersion}`
@@ -327,24 +431,27 @@ export function ExecutionReleaseView({
             },
             { key: 'Jurisdiction', value: selected.jurisdiction },
             { key: 'Execution channel', value: selected.requestedExecutionChannel },
-            { key: 'Assignment', value: selected.assignment.internalExecutorId ?? 'UNASSIGNED' }
+            {
+              key: 'Current internal assignee',
+              value: selected.assignment.internalExecutorId ?? 'UNASSIGNED'
+            }
           ]}
         />
       </Card>
       <Card>
         <h2>Evidence-based release checks</h2>
         <ul>
-          {selected.checks.map((c) => (
-            <li key={c.code}>
-              <strong>{c.code}:</strong> {c.status} — {c.explanation}
+          {selected.checks.map((check) => (
+            <li key={check.code}>
+              <strong>{check.code}:</strong> {check.status} — {check.explanation}
             </li>
           ))}
         </ul>
         <TextInput
           label="Internal release rationale"
           value={rationale}
-          onChange={(e) => setRationale(e.target.value)}
-          onInput={(e) => setRationale(e.currentTarget.value)}
+          onChange={(event) => setRationale(event.target.value)}
+          onInput={(event) => setRationale(event.currentTarget.value)}
         />
         <div className="release-actions">
           <Button
@@ -359,16 +466,21 @@ export function ExecutionReleaseView({
           </Button>
           <Button
             variant="secondary"
-            disabled={selected.status === 'RELEASED_FOR_EXECUTION'}
+            disabled={
+              selected.status === 'RELEASED_FOR_EXECUTION' ||
+              view === 'RELEASE_STALE' ||
+              view === 'RELEASE_WITHDRAWN'
+            }
             onClick={() => void assign()}
           >
-            Assign internal executor
+            Assign to me
           </Button>
           <Button
             disabled={
               selected.status !== 'READY_FOR_RELEASE' ||
               !selected.assignment.internalExecutorId ||
-              !rationale.trim()
+              !rationale.trim() ||
+              view === 'RELEASE_STALE'
             }
             onClick={() => void release()}
           >
