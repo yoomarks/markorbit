@@ -11,10 +11,16 @@ export * from './service-package-eligibility.js';
 export * from './service-package-eligibility-postgres.js';
 export * from './allocation-provider-acceptance.js';
 export * from './allocation-provider-acceptance-postgres.js';
+// Governed Allocation is a separate explicit-human-choice bridge. Selection/Handoff are prerequisites only and never become Allocation/Acceptance/contact authority.
+export * from './governed-allocation.js';
+export * from './governed-allocation-postgres.js';
 export * from './provider-return.js';
 export * from './provider-return-postgres.js';
 export * from './provider-work-read-model.js';
 export * from './provider-work-read-model-postgres.js';
+// Provider Work upgrades incoming-data authority only from exact governed lineage and fresh Handoff revalidation; no incoming private values are projected.
+export * from './provider-work-incoming-authority.js';
+export * from './provider-work-governed-read-model.js';
 export * from './network-participation.js';
 export * from './network-participation-postgres.js';
 export * from './provider-responsibility.js';
