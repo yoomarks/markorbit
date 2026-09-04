@@ -7,9 +7,9 @@ import {
   DataList,
   PageHeader,
   SideNavigation,
-  StatusBadge,
   TopBar
 } from '@markorbit/ui';
+import { CommercialAdminWorkspace } from './commercial-admin.js';
 import {
   admitReviewedSource,
   captureEvidenceReviewSource,
@@ -167,65 +167,66 @@ export function OperationsApp() {
 
   return (
     <AppShell
-      brand="Operations Console"
+      brand="MO Control Center"
       internalOnly
       navigation={
         <SideNavigation
           items={[
             { label: 'Overview', href: '#overview', active: true },
             { label: 'Evidence review', href: '#evidence-review' },
-            { label: 'Lifecycle review', href: '#lifecycle-review' },
-            { label: 'Reviews', href: '#reviews' },
-            { label: 'Events', href: '#events' }
+            { label: 'Lifecycle provenance', href: '#lifecycle-review' },
+            { label: 'Commercial', href: '#commercial-admin' }
           ]}
         />
       }
-      topBar={<TopBar context="Production operations · Governed internal view" />}
+      topBar={<TopBar context="Governed internal control plane · Distributed owner truth" />}
     >
-      <PageHeader
-        title="Operations overview"
-        description="Internal triage for service exceptions, governed review evidence and lifecycle provenance."
-      />
-      <div className="mo-grid" id="overview">
-        <Card>
-          <h2>Service health</h2>
-          <DataList
-            items={[
-              { label: 'Gateway', value: <StatusBadge status="success" /> },
-              { label: 'Execution', value: <StatusBadge status="warning" /> }
-            ]}
-          />
-        </Card>
-        <Card>
-          <h2>Failed operations</h2>
-          <DataList
-            items={[
-              { label: 'Retryable', value: '3' },
-              { label: 'Blocking', value: '1' }
-            ]}
-          />
-        </Card>
-        <Card>
-          <h2>Manual review</h2>
-          <DataList
-            items={[
-              { label: 'Awaiting reviewer', value: '7' },
-              { label: 'Overdue', value: '2' }
-            ]}
-          />
-        </Card>
-        <Card>
-          <h2>Event summary</h2>
-          <DataList
-            items={[
-              { label: 'Processed today', value: '1,248' },
-              { label: 'Pending', value: '12' }
-            ]}
-          />
-        </Card>
-      </div>
+      <section id="overview">
+        <PageHeader
+          title="Control center overview"
+          description="Internal operator entry point for governed operations and owner-routed inspection. Missing sources are never inferred as healthy or empty."
+        />
+        <Alert tone="info" title="Truthful read plane">
+          This overview reports only product/source connectivity that is established by current code.
+          It does not claim aggregate service health, failure counts or processing totals because no
+          authoritative Control Center source for those aggregates is currently connected.
+        </Alert>
+        <div className="mo-grid">
+          <Card>
+            <h2>Connected governed surfaces</h2>
+            <DataList
+              items={[
+                { label: 'Evidence review', value: 'Owner-backed · on demand' },
+                { label: 'Lifecycle provenance', value: 'Owner-backed · on demand' },
+                { label: 'Commercial inspection', value: 'Owner-routed · operator authenticated' }
+              ]}
+            />
+          </Card>
+          <Card>
+            <h2>Aggregate platform health</h2>
+            <p>
+              No authoritative aggregate health projection is connected. Gateway, Execution and
+              other services are therefore not shown as healthy, degraded or down here.
+            </p>
+          </Card>
+          <Card>
+            <h2>Cognitive platform</h2>
+            <p>
+              Brain and Capability owner inventories are not connected to the Control Center in this
+              slice. No asset readiness, currentness or Capability correctness is inferred.
+            </p>
+          </Card>
+          <Card>
+            <h2>Specialist administration</h2>
+            <p>
+              Knowledge and Data Engine retain their specialist admin products. Federation into this
+              Control Center requires an explicit owner-produced summary contract.
+            </p>
+          </Card>
+        </div>
+      </section>
 
-      <section id="evidence-review" aria-labelledby="evidence-review-heading">
+      <section id="evidence-review">
         <PageHeader
           title="Evidence review"
           description="Review exact PENDING_REVIEW evidence, record an explicit decision and, only when admitted, project bounded lifecycle state."
@@ -241,7 +242,7 @@ export function OperationsApp() {
             {reviewBusy === 'queue' ? 'Loading…' : 'Load reviewable evidence'}
           </Button>
           {queue.length === 0 ? (
-            <p>No reviewable evidence loaded.</p>
+            <p>No reviewable evidence loaded. Load the owner-backed queue to determine current state.</p>
           ) : (
             <ol>
               {queue.map((item) => (
@@ -355,9 +356,7 @@ export function OperationsApp() {
               />
             </div>
             <div>
-              <label htmlFor="evidence-references">
-                Admitted evidence references, one per line
-              </label>
+              <label htmlFor="evidence-references">Admitted evidence references, one per line</label>
               <textarea
                 id="evidence-references"
                 value={evidenceReferences}
@@ -444,10 +443,10 @@ export function OperationsApp() {
         )}
       </section>
 
-      <section id="lifecycle-review" aria-labelledby="lifecycle-review-heading">
+      <section id="lifecycle-review">
         <PageHeader
           title="Lifecycle provenance"
-          description="Inspect the exact reviewed-source chain, retry state and correction history for one Formal Matter. Requires review:perform."
+          description="Inspect the exact reviewed-source chain, retry state and correction history for one Formal Matter."
         />
         <Card>
           <label htmlFor="formal-matter-id">Formal Matter ID</label>
@@ -583,6 +582,8 @@ export function OperationsApp() {
           </>
         )}
       </section>
+
+      <CommercialAdminWorkspace />
     </AppShell>
   );
 }
