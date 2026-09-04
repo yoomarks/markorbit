@@ -216,46 +216,65 @@ test.describe('Milestone 001 real runtime golden path', () => {
         .click();
       await page.getByRole('button', { name: 'Open Documents and Instructions' }).click();
     });
-    await test.step('Documents / Ledger / Lock', async () => {
-      await page.getByRole('button', { name: 'Create Document Package' }).click();
-      await expect(
-        page.getByRole('button', { name: 'Record fixture document metadata' })
-      ).toBeVisible();
-      const packageId = await id(page, /(document-package_[\w-]+) · version (\d+)/);
-      const packageVersion = await id(page, /document-package_[\w-]+ · version (\d+)/);
-      lineage.record('documentPackage', { id: packageId, version: Number(packageVersion) });
-      await page.getByRole('button', { name: 'Record fixture document metadata' }).click();
-      await page.getByRole('button', { name: 'Evaluate documents' }).click();
-      await expect(page.getByText(/UNKNOWN — blocking/).first()).toBeVisible();
-      await page.getByRole('button', { name: 'Complete required metadata and reevaluate' }).click();
-      await page.getByRole('button', { name: 'Review customer instructions' }).click();
-      await expect(
-        page.getByRole('group', { name: 'Confirm the exact preparation instructions' })
-      ).toBeVisible();
-      const ledgerId = await id(page, /(instruction-ledger_[\w-]+) · version (\d+)/);
-      const ledgerVersion = await id(page, /instruction-ledger_[\w-]+ · version (\d+)/);
-      lineage.record('instructionLedger', { id: ledgerId, version: Number(ledgerVersion) });
-      const instructionChecks = page
-        .getByRole('group', { name: 'Confirm the exact preparation instructions' })
-        .getByRole('checkbox');
-      for (let index = 0; index < 6; index++) await instructionChecks.nth(index).click();
-      await page.getByRole('button', { name: 'Confirm customer instructions' }).click();
-      await page.getByRole('button', { name: 'Lock package for preparation' }).click();
-      await expect(
-        page.getByRole('heading', { name: 'Locked for preparation — not submitted' })
-      ).toBeVisible();
-      const lockId = await id(page, /Preparation Lock ID\s+(preparation-lock_[\w-]+)/);
-      const lockedPackageVersion = await id(
-        page,
-        /Package\s+document-package_[\w-]+ · version (\d+)/
+    await test.step('Documents / Durable Package / Lock', async () => {
+      await page.getByRole('button', { name: 'Create durable Document Package' }).click();
+      await expect(page.getByRole('heading', { name: 'Current package' })).toBeVisible();
+      const packageCard = page.getByRole('heading', { name: 'Current package' }).locator('..');
+      const packageId = (await packageCard.locator('dd').nth(0).innerText()).trim();
+      expect(packageId).toMatch(/^document-package_[\w-]+$/);
+      await expect(packageCard.getByText('DRAFT', { exact: true })).toBeVisible();
+
+      const requirementSelect = page.getByLabel('Requirement');
+      const requirementOptions = requirementSelect.locator('option');
+      const requirementOptionCount = await requirementOptions.count();
+      expect(requirementOptionCount).toBeGreaterThan(1);
+      for (let index = 1; index < requirementOptionCount; index++) {
+        const label = (await requirementOptions.nth(index).innerText()).trim();
+        await requirementSelect.selectOption({ index });
+        await page.getByLabel('Evidence display name').fill(`${scenario} ${label}`);
+        await page.getByLabel('SHA-256 checksum').fill(index.toString(16).padStart(64, '0'));
+        await page
+          .getByLabel('External storage/reference (optional)')
+          .fill(`milestone://${scenario}/evidence/${index}`);
+        await page.getByRole('button', { name: 'Record evidence metadata' }).click();
+        await expect(
+          page.getByText(`${scenario} ${label} · RECORDED`, { exact: true })
+        ).toBeVisible();
+      }
+
+      await expect(page.getByText(/Blocking evidence missing:\s*0/)).toBeVisible();
+      const markReady = page.getByRole('button', {
+        name: 'Mark package ready for Preparation Lock'
+      });
+      await expect(markReady).toBeDisabled();
+      await page
+        .getByRole('button', { name: 'Authorize recorded documents for preparation only' })
+        .click();
+      await expect(markReady).toBeEnabled();
+      await markReady.click();
+      await expect(page.getByText('READY_FOR_PREPARATION_LOCK', { exact: true })).toBeVisible();
+
+      const readyPackageVersion = Number(
+        (await packageCard.locator('dd').nth(2).innerText()).trim()
       );
-      const lockedLedgerVersion = await id(
-        page,
-        /Instruction ledger\s+instruction-ledger_[\w-]+ · version (\d+)/
-      );
-      const lockVersion = `${lockedPackageVersion}:${lockedLedgerVersion}`;
-      lineage.record('documentPackage', { id: packageId, version: Number(lockedPackageVersion) });
-      lineage.record('instructionLedger', { id: ledgerId, version: Number(lockedLedgerVersion) });
+      expect(readyPackageVersion).toBeGreaterThan(1);
+      lineage.record('documentPackage', { id: packageId, version: readyPackageVersion });
+
+      await page.getByRole('button', { name: 'Lock exact package for preparation' }).click();
+      const lockHeading = page.getByRole('heading', {
+        name: 'Locked for preparation — not submitted'
+      });
+      await expect(lockHeading).toBeVisible();
+      const lockCard = lockHeading.locator('..');
+      const lockId = (await lockCard.locator('dd').nth(0).innerText()).trim();
+      const lockVersion = (await lockCard.locator('dd').nth(1).innerText()).trim();
+      const lockedPackage = (await lockCard.locator('dd').nth(2).innerText()).trim();
+      expect(lockId).toMatch(/^preparation-lock_[\w-]+$/);
+      expect(lockVersion).toMatch(/^\d+$/);
+      expect(lockedPackage).toBe(`${packageId} · version ${readyPackageVersion}`);
+      await expect(
+        page.getByText('Filing Authorization remains a separate authority step')
+      ).toBeVisible();
       lineage.record('preparationLock', { id: lockId, version: lockVersion });
       await checkpoint(
         page,
@@ -264,7 +283,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
         { view: 'preparation-lock', recordId: lockId, expectedVersion: lockVersion },
         'READY'
       );
-      await page.getByRole('button', { name: 'Open Filing Authorization' }).click();
+      await page.getByRole('button', { name: 'Review Filing Authorization' }).click();
     });
     await test.step('Filing Authorization', async () => {
       const authorizationChecks = page.getByRole('checkbox');
