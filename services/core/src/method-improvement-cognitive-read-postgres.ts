@@ -69,7 +69,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function fingerprint(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
 function verifiedPerformance(
@@ -164,9 +166,7 @@ function admittedAt(value: Readonly<MethodImprovementAdmissionSnapshotV1>): stri
   return value.trigger.admittedAt;
 }
 
-export class PostgresMethodImprovementCognitiveReadSourceV1
-  implements MethodImprovementAdmissionReadAuthorityV1
-{
+export class PostgresMethodImprovementCognitiveReadSourceV1 implements MethodImprovementAdmissionReadAuthorityV1 {
   constructor(private readonly database: ManagedDatabase) {}
 
   async listAdmissions(): Promise<readonly Readonly<MethodImprovementAdmissionSnapshotV1>[]> {

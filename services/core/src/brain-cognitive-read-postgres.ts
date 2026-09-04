@@ -17,12 +17,15 @@ import { PostgresMethodImprovementCognitiveReadSourceV1 } from './method-improve
 
 type AssetRow = { asset_json: unknown };
 
-export interface CoreCognitiveReadProjectionV1
-  extends Omit<BrainCognitiveReadProjectionV1, 'summary'> {
+export interface CoreCognitiveReadProjectionV1 extends Omit<
+  BrainCognitiveReadProjectionV1,
+  'summary'
+> {
   methodImprovements: MethodImprovementCognitiveReadProjectionV1['methodImprovements'];
   brainBuildRuns: MethodImprovementCognitiveReadProjectionV1['brainBuildRuns'];
   summary: Readonly<
-    BrainCognitiveReadProjectionV1['summary'] & MethodImprovementCognitiveReadProjectionV1['summary']
+    BrainCognitiveReadProjectionV1['summary'] &
+      MethodImprovementCognitiveReadProjectionV1['summary']
   >;
 }
 

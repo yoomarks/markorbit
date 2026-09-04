@@ -9,13 +9,16 @@ on:
       - '.github/workflows/tmp-core-767-prettier-probe.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   prettier-probe:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -24,7 +27,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier 3.9.6 diff
+      - name: Format with exact Prettier 3.9.6 and push probe result
         run: |
           pnpm exec prettier --version
           pnpm exec prettier --write \
@@ -35,3 +38,14 @@ jobs:
             services/core/src/brain-cognitive-read-postgres.ts \
             services/core/src/method-improvement-cognitive-read-postgres.ts \
             services/core/tests/method-improvement-cognitive-read-postgres.test.ts
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            services/core/src/brain-cognitive-read-postgres.ts \
+            services/core/src/method-improvement-cognitive-read-postgres.ts \
+            services/core/tests/method-improvement-cognitive-read-postgres.test.ts
+          git commit -m 'tmp: apply exact Prettier for Core 767 probe'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}

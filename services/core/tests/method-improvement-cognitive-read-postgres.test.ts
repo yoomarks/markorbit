@@ -63,7 +63,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function fingerprint(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }
 
 function databaseConfig() {
@@ -477,11 +479,7 @@ integration('PostgreSQL Method Improvement cognitive read source', () => {
   });
 
   it('fails closed when persisted fingerprint metadata drifts from governed JSON', async () => {
-    await seedPerformance(
-      'drifted',
-      '2026-08-31T04:22:00.000Z',
-      'f'.repeat(64)
-    );
+    await seedPerformance('drifted', '2026-08-31T04:22:00.000Z', 'f'.repeat(64));
     const source = new PostgresMethodImprovementCognitiveReadSourceV1(database);
 
     await expect(source.listAdmissions()).rejects.toBeInstanceOf(
