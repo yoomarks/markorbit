@@ -99,22 +99,19 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
     items: ReadonlyArray<Readonly<TrustEvidenceItemV1>>
   ): Promise<Readonly<TrustEvidenceCurrentAuthoritySnapshot>> {
     const contextMatches = contextsMatch(projection, items);
-    const sourceResult = await this.evaluateSources(projection, items);
-    const executorResult = await this.evaluateExecutorAttribution(projection, items);
 
+    // Evaluation is deliberately staged in the same authority order used by the serving service.
+    // A known earlier denial must not be replaced by an unrelated later dependency outage.
     if (projection.historicalAuthorization.kind !== 'NETWORK_VISIBILITY') {
       return {
         authorityAvailable: true,
         participationActive: false,
         visibilityAuthorized: false,
         relationshipAuthorityCurrent: false,
-        sourceAuthoritiesCurrent: sourceResult.current,
+        sourceAuthoritiesCurrent: false,
         contextMatches,
-        executorAttributionCurrent: executorResult.current,
-        authorityReferences: uniqueReferences([
-          ...sourceResult.authorityReferences,
-          ...executorResult.authorityReferences
-        ])
+        executorAttributionCurrent: false,
+        authorityReferences: []
       };
     }
 
@@ -128,13 +125,10 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
         participationActive: false,
         visibilityAuthorized: false,
         relationshipAuthorityCurrent: false,
-        sourceAuthoritiesCurrent: sourceResult.current,
+        sourceAuthoritiesCurrent: false,
         contextMatches,
-        executorAttributionCurrent: executorResult.current,
-        authorityReferences: uniqueReferences([
-          ...sourceResult.authorityReferences,
-          ...executorResult.authorityReferences
-        ])
+        executorAttributionCurrent: false,
+        authorityReferences: []
       };
     }
 
@@ -149,11 +143,30 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
       currentParticipation.state === 'ACTIVE' &&
       currentParticipation.version === historical.participationVersion
     );
-    const currentPolicy = participationActive
-      ? await this.network.findCurrentVisibilityPolicy(historical.networkParticipationId)
-      : undefined;
+    const participationReferences = currentParticipation
+      ? [
+          `network-participation:${currentParticipation.networkParticipationId}:v${currentParticipation.version}`,
+          currentParticipation.authorizationReference
+        ]
+      : [];
+
+    if (!participationActive) {
+      return {
+        authorityAvailable: true,
+        participationActive: false,
+        visibilityAuthorized: false,
+        relationshipAuthorityCurrent: false,
+        sourceAuthoritiesCurrent: false,
+        contextMatches,
+        executorAttributionCurrent: false,
+        authorityReferences: uniqueReferences(participationReferences)
+      };
+    }
+
+    const currentPolicy = await this.network.findCurrentVisibilityPolicy(
+      historical.networkParticipationId
+    );
     const visibilityAuthorized = Boolean(
-      participationActive &&
       projection.audience.kind === 'BOUNDED_NETWORK' &&
       historical.networkPurpose === 'PROVIDER_DISCOVERY' &&
       currentPolicy?.networkParticipationId === historical.networkParticipationId &&
@@ -162,28 +175,58 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
       currentPolicy.authorizationReference === historical.visibilityAuthorizationReference &&
       hasBoundedNetworkGrant(currentPolicy)
     );
+    const visibilityReferences = currentPolicy
+      ? [
+          `network-visibility-policy:${currentPolicy.networkParticipationId}:v${currentPolicy.version}`,
+          currentPolicy.authorizationReference
+        ]
+      : [];
+    const networkReferences = uniqueReferences([
+      ...participationReferences,
+      ...visibilityReferences
+    ]);
 
+    if (!visibilityAuthorized) {
+      return {
+        authorityAvailable: true,
+        participationActive: true,
+        visibilityAuthorized: false,
+        relationshipAuthorityCurrent: false,
+        sourceAuthoritiesCurrent: false,
+        contextMatches,
+        executorAttributionCurrent: false,
+        authorityReferences: networkReferences
+      };
+    }
+
+    const sourceResult = await this.evaluateSources(projection, items);
+    if (!sourceResult.current) {
+      return {
+        authorityAvailable: true,
+        participationActive: true,
+        visibilityAuthorized: true,
+        relationshipAuthorityCurrent: false,
+        sourceAuthoritiesCurrent: false,
+        contextMatches,
+        executorAttributionCurrent: false,
+        authorityReferences: uniqueReferences([
+          ...networkReferences,
+          ...sourceResult.authorityReferences
+        ])
+      };
+    }
+
+    const executorResult = await this.evaluateExecutorAttribution(projection, items);
     return {
       authorityAvailable: true,
-      participationActive,
-      visibilityAuthorized,
+      participationActive: true,
+      visibilityAuthorized: true,
       relationshipAuthorityCurrent: false,
-      sourceAuthoritiesCurrent: sourceResult.current,
+      sourceAuthoritiesCurrent: true,
       contextMatches,
       executorAttributionCurrent: executorResult.current,
       authorityReferences: uniqueReferences([
-        ...(currentParticipation
-          ? [
-              `network-participation:${currentParticipation.networkParticipationId}:v${currentParticipation.version}`,
-              currentParticipation.authorizationReference
-            ]
-          : []),
-        ...(currentPolicy
-          ? [
-              `network-visibility-policy:${currentPolicy.networkParticipationId}:v${currentPolicy.version}`,
-              currentPolicy.authorizationReference
-            ]
-          : []),
+        ...networkReferences,
         ...sourceResult.authorityReferences,
         ...executorResult.authorityReferences
       ])
@@ -197,6 +240,10 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
     if (items.length === 0) return { current: true, authorityReferences: [] };
 
     const authorityReferences: string[] = [];
+    const currentReturns = new Map<
+      string,
+      Awaited<ReturnType<TrustEvidenceProviderReturnSource['findProviderReturn']>>
+    >();
     for (const item of items) {
       if (item.source.kind !== 'PROVIDER_CLAIM') return { current: false, authorityReferences };
 
@@ -205,7 +252,12 @@ export class MgsnTrustEvidenceCurrentAuthoritySource implements TrustEvidenceCur
       if (item.evidenceReferences.length > 0) return { current: false, authorityReferences };
 
       const source = item.source;
-      const current = await this.providerReturns.findProviderReturn(source.providerReturnId);
+      const cacheKey = `${source.providerReturnId}:v${source.providerReturnVersion}:${source.providerReturnFingerprintSha256}`;
+      let current = currentReturns.get(cacheKey);
+      if (!currentReturns.has(cacheKey)) {
+        current = await this.providerReturns.findProviderReturn(source.providerReturnId);
+        currentReturns.set(cacheKey, current);
+      }
       if (
         !current ||
         source.providerReturnStatus !== 'CURRENT' ||
