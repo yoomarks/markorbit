@@ -45,6 +45,13 @@ const acknowledgementLabels = {
 const codes = Object.keys(acknowledgementLabels) as ConfirmationAcknowledgement['code'][];
 const format = (minor: number, currency: string) =>
   new Intl.NumberFormat('en', { style: 'currency', currency }).format(minor / 100);
+
+export function requireConfirmationWorkspaceId(workspaceId: string | undefined): string {
+  const value = workspaceId?.trim();
+  if (!value) throw new Error('Authenticated Workspace is required to confirm the selected Quote.');
+  return value;
+}
+
 export interface FlowFixture {
   state: MatterViewState;
   confirmation?: CustomerConfirmation;
@@ -129,7 +136,7 @@ export function ConfirmationMatterFlow({
         acknowledgements: codes.map((code) => ({ code, acknowledged: true, acknowledgedAt: at })),
         actor: {
           actorId: 'actor_markreg',
-          workplaceId: 'workplace_markreg',
+          workplaceId: requireConfirmationWorkspaceId(workspaceId),
           product: 'MARKREG_COM',
           purpose: 'Customer confirms exact Quote snapshot'
         },
