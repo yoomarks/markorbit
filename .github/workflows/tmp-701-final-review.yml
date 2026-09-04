@@ -1,0 +1,64 @@
+name: tmp-701-final-review
+
+on:
+  push:
+    branches:
+      - 'tmp/701-final-review'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/701-final-review
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Write exact repository formatting
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-boundary.test.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts \
+            docs/architecture/GATEWAY_ROUTE_INVENTORY_EXECUTION_FILING_GOVERNANCE.json \
+            scripts/validate-gateway-inventory.mjs
+      - name: Validate Gateway authority boundary
+        run: |
+          pnpm --filter @markorbit/contracts build
+          pnpm --filter @markorbit/events build
+          pnpm --filter @markorbit/service-kit build
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway test
+      - name: Validate canonical Gateway inventory
+        run: node scripts/validate-gateway-inventory.mjs
+      - name: Commit exact verified output to temporary branch
+        run: |
+          if git diff --quiet -- \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-boundary.test.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts \
+            docs/architecture/GATEWAY_ROUTE_INVENTORY_EXECUTION_FILING_GOVERNANCE.json \
+            scripts/validate-gateway-inventory.mjs; then
+            echo 'already verified and formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/gateway/src/filing-governance-http.ts \
+            apps/gateway/tests/filing-governance-boundary.test.ts \
+            apps/gateway/tests/filing-governance-production-runtime.test.ts \
+            docs/architecture/GATEWAY_ROUTE_INVENTORY_EXECUTION_FILING_GOVERNANCE.json \
+            scripts/validate-gateway-inventory.mjs
+          git commit -m 'style: temporary #701 exact verified output'
+          git push origin HEAD:tmp/701-final-review
