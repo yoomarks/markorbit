@@ -1,10 +1,16 @@
-import type { FormalMatter } from '@markorbit/contracts';
+import type { FormalMatter, ProfessionalReviewCase } from '@markorbit/contracts';
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  createDurablePreparationClient,
+  type DurablePreparationClient,
+  type DurablePreparationLockView
+} from '../api/durable-preparation.js';
 import { MarkregApiError } from '../api/errors.js';
 import type { MarkregClient } from '../api/markreg.js';
 import { createMarkregClient } from '../api/markreg.js';
 import { CustomerConfirmationOrderEntry } from '../CustomerConfirmationOrderEntry.js';
+import { DurableDocumentsPreparationWorkspace } from '../DurableDocumentsPreparationWorkspace.js';
 import { FormalMatterWorkspace } from '../FormalMatterWorkspace.js';
 import { OrderJourney } from '../OrderJourney.js';
 import { parseMarkregRoute, type MarkregRoute, type MarkregRouteResult } from './markreg-route.js';
@@ -15,13 +21,11 @@ type Loaded = {
   actualVersion: string;
   status?: string;
 };
-type RecoveryReason = 'DURABLE_PREPARATION_NOT_AVAILABLE';
 type State =
   | { kind: 'LOADING' }
   | { kind: 'READY'; loaded: Loaded }
   | { kind: 'VERSION_MISMATCH'; loaded: Loaded }
-  | { kind: 'ERROR'; title: string; retry: boolean; reason?: RecoveryReason };
-const DURABLE_PREPARATION_NOT_AVAILABLE = 'DURABLE_PREPARATION_NOT_AVAILABLE';
+  | { kind: 'ERROR'; title: string; retry: boolean };
 const unwrap = (value: unknown): Record<string, unknown> => {
   const root = value as Record<string, unknown>;
   for (const key of [
@@ -48,8 +52,12 @@ const version = (record: Record<string, unknown>, view: string) => {
     return scalar(
       (record.decision as Record<string, unknown> | undefined)?.decidedAt ?? record.updatedAt
     );
-  if (view === 'preparation-lock')
-    return `${scalar(record.documentPackageVersion)}:${scalar(record.instructionLedgerVersion)}`;
+  if (view === 'preparation-lock') {
+    const packageVersion = scalar(record.documentPackageVersion);
+    const ledgerVersion = scalar(record.instructionLedgerVersion);
+    if (packageVersion && ledgerVersion) return `${packageVersion}:${ledgerVersion}`;
+    return scalar(record.version, '1');
+  }
   return scalar(
     record.version ?? record.pricingRuleVersion ?? record.schemaVersion ?? record.updatedAt,
     '1'
@@ -57,12 +65,15 @@ const version = (record: Record<string, unknown>, view: string) => {
 };
 
 const defaultClient = createMarkregClient();
+const defaultPreparationClient = createDurablePreparationClient();
 export function GovernedRouteEntry({
   search = window.location.search,
-  client = defaultClient
+  client = defaultClient,
+  preparationClient = defaultPreparationClient
 }: {
   search?: string;
   client?: MarkregClient;
+  preparationClient?: DurablePreparationClient;
 }) {
   const parsed = parseMarkregRoute(search);
   if (parsed.kind === 'VALID' && parsed.route.view === 'order')
@@ -80,33 +91,32 @@ export function GovernedRouteEntry({
         client={client}
       />
     );
-  return <GenericGovernedRouteEntry parsed={parsed} client={client} />;
+  return (
+    <GenericGovernedRouteEntry
+      parsed={parsed}
+      client={client}
+      preparationClient={preparationClient}
+    />
+  );
 }
 
-function loadRecord(client: MarkregClient, route: MarkregRoute) {
+function loadRecord(
+  client: MarkregClient,
+  preparationClient: DurablePreparationClient,
+  route: MarkregRoute
+) {
   if (route.view === 'formal-matter') {
     if (!client.getFormalMatter)
       return Promise.reject(new Error('Formal Matter reader unavailable.'));
     return client.getFormalMatter(route.recordId);
   }
+  if (route.view === 'preparation-lock') return preparationClient.get(route.recordId);
   if (!client.getGovernedRecord)
     return Promise.reject(new Error('Governed record reader unavailable.'));
   return client.getGovernedRecord(route.view, route.recordId);
 }
 
-function readFailure(error: unknown, route: MarkregRoute): Extract<State, { kind: 'ERROR' }> {
-  if (
-    route.view === 'preparation-lock' &&
-    error instanceof MarkregApiError &&
-    error.code === DURABLE_PREPARATION_NOT_AVAILABLE
-  )
-    return {
-      kind: 'ERROR',
-      title: 'Durable Preparation is not available yet',
-      retry: false,
-      reason: 'DURABLE_PREPARATION_NOT_AVAILABLE'
-    };
-
+function readFailure(error: unknown): Extract<State, { kind: 'ERROR' }> {
   if (error instanceof Error && /not found/i.test(error.message))
     return {
       kind: 'ERROR',
@@ -148,12 +158,74 @@ function readFailure(error: unknown, route: MarkregRoute): Extract<State, { kind
   };
 }
 
+function DurablePreparationRecord({ lock }: { lock: DurablePreparationLockView }) {
+  return (
+    <>
+      <Alert tone="info" title="Durable Preparation Lock">
+        Preparation Lock ≠ Filing Authorization. Filing Authorization ≠ Filing Submission. This
+        exact-record read creates no payment, provider contact, external filing, or Official Truth.
+      </Alert>
+      <Card>
+        <h2>Preparation state</h2>
+        <dl>
+          <dt>Preparation Lock</dt>
+          <dd className="markreg-wrap">{lock.preparationLockId}</dd>
+          <dt>Version</dt>
+          <dd>{lock.version}</dd>
+          <dt>Document Package</dt>
+          <dd className="markreg-wrap">
+            {lock.source.documentPackageId} · version {lock.source.documentPackageVersion}
+          </dd>
+          <dt>Created</dt>
+          <dd>{lock.createdAt}</dd>
+          <dt>Next permitted action</dt>
+          <dd>Governed Filing Authorization review only</dd>
+        </dl>
+      </Card>
+      <Card>
+        <details>
+          <summary>Exact source lineage and authority</summary>
+          <dl>
+            <dt>Canonical evidence hash</dt>
+            <dd className="markreg-wrap">{lock.source.canonicalEvidenceHash}</dd>
+            <dt>Formal Matter</dt>
+            <dd className="markreg-wrap">
+              {lock.source.formalMatterId} · version {lock.source.formalMatterVersion}
+            </dd>
+            <dt>Professional Review</dt>
+            <dd className="markreg-wrap">
+              {lock.source.professionalReviewCaseId} · version {lock.source.reviewVersion}
+            </dd>
+            <dt>Completed decision</dt>
+            <dd className="markreg-wrap">{lock.source.completedDecisionId}</dd>
+            <dt>Instruction entries</dt>
+            <dd>{lock.source.instructionEntryCount}</dd>
+            <dt>Instruction-set hash</dt>
+            <dd className="markreg-wrap">{lock.source.instructionSetHash}</dd>
+            <dt>Lock payload hash</dt>
+            <dd className="markreg-wrap">{lock.lockPayloadHash}</dd>
+          </dl>
+          <ul>
+            {Object.entries(lock.authority).map(([key, value]) => (
+              <li key={key}>
+                {key}: <strong>{String(value)}</strong>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </Card>
+    </>
+  );
+}
+
 function GenericGovernedRouteEntry({
   parsed,
-  client
+  client,
+  preparationClient
 }: {
   parsed: MarkregRouteResult;
   client: MarkregClient;
+  preparationClient: DurablePreparationClient;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const [attempt, setAttempt] = useState(0);
@@ -171,7 +243,7 @@ function GenericGovernedRouteEntry({
       return;
     }
     setState({ kind: 'LOADING' });
-    void loadRecord(client, parsed.route)
+    void loadRecord(client, preparationClient, parsed.route)
       .then((value) => {
         const record = unwrap(value);
         const loaded = {
@@ -195,9 +267,9 @@ function GenericGovernedRouteEntry({
         );
       })
       .catch((error: unknown) => {
-        setState(readFailure(error, parsed.route));
+        setState(readFailure(error));
       });
-  }, [attempt, client, parsed]);
+  }, [attempt, client, parsed, preparationClient]);
   useLayoutEffect(() => {
     if (state.kind === 'ERROR') heading.current?.focus();
   }, [state]);
@@ -207,37 +279,18 @@ function GenericGovernedRouteEntry({
         <LoadingState label="Loading exact governed record" />
       </main>
     );
-  if (parsed.kind !== 'VALID' || state.kind === 'ERROR') {
-    const durablePreparationUnavailable =
-      state.kind === 'ERROR' && state.reason === 'DURABLE_PREPARATION_NOT_AVAILABLE';
+  if (parsed.kind !== 'VALID' || state.kind === 'ERROR')
     return (
       <main aria-labelledby="route-recovery-heading">
         <h1 id="route-recovery-heading" ref={heading} tabIndex={-1}>
           {state.kind === 'ERROR' ? state.title : 'Invalid governed route'}
         </h1>
-        {durablePreparationUnavailable && (
-          <>
-            <Alert tone="warning" title="Durable Preparation boundary">
-              Durable Document Packages are available, but durable Preparation Lock persistence is
-              not yet available in the production MarkReg path. MarkReg will not fall back to the
-              historical in-memory or fixture Preparation implementation.
-            </Alert>
-            <Card>
-              <p>
-                No Preparation Lock was fabricated or treated as empty truth. Opening this governed
-                route did not file or submit an application, create a payment, send a document, or
-                contact a provider or trademark office.
-              </p>
-            </Card>
-          </>
-        )}
         {state.kind === 'ERROR' && state.retry && (
           <Button onClick={() => setAttempt((x) => x + 1)}>Retry same identity and version</Button>
         )}{' '}
         <a href="/">Back to MarkReg workspace</a>
       </main>
     );
-  }
   const loaded = state.loaded;
   const readOnly = ['STALE', 'WITHDRAWN', 'EXPIRED'].includes(loaded.status ?? '');
 
@@ -251,6 +304,69 @@ function GenericGovernedRouteEntry({
         readOnly={readOnly}
       />
     );
+
+  if (parsed.route.view === 'documents') {
+    if (state.kind === 'VERSION_MISMATCH')
+      return (
+        <main aria-labelledby="governed-route-heading">
+          <h1 id="governed-route-heading" ref={heading} tabIndex={-1}>
+            Documents and Instructions
+          </h1>
+          <Alert tone="warning" title="Professional Review version mismatch">
+            Expected decision {parsed.route.expectedVersion}; actual {loaded.actualVersion}. Durable
+            Document Package creation is disabled until the exact current review link is reopened.
+          </Alert>
+          <a href="/">Back to MarkReg workspace</a>
+        </main>
+      );
+    return (
+      <DurableDocumentsPreparationWorkspace
+        review={loaded.record as unknown as ProfessionalReviewCase}
+        preparationClient={preparationClient}
+      />
+    );
+  }
+
+  if (parsed.route.view === 'preparation-lock') {
+    const source = loaded.record.source;
+    const hasFullDurableLock = source !== null && typeof source === 'object';
+    return (
+      <main aria-labelledby="governed-route-heading">
+        <h1 id="governed-route-heading" ref={heading} tabIndex={-1}>
+          Preparation Lock
+        </h1>
+        {state.kind === 'VERSION_MISMATCH' && (
+          <Alert tone="warning" title="Version mismatch">
+            Expected {parsed.route.expectedVersion}; actual {loaded.actualVersion}. Filing
+            Authorization progression is disabled until the exact current link is reopened.
+          </Alert>
+        )}
+        {!hasFullDurableLock && (
+          <Card>
+            <h2>Preparation state</h2>
+            <dl>
+              <dt>Preparation Lock</dt>
+              <dd className="markreg-wrap">{loaded.actualId}</dd>
+              <dt>Version</dt>
+              <dd>{loaded.actualVersion}</dd>
+              <dt>Status</dt>
+              <dd>{loaded.status ?? 'READY'}</dd>
+            </dl>
+            <strong>
+              Exact durable identity loaded read-only; no filing authority was created.
+            </strong>
+          </Card>
+        )}
+        {hasFullDurableLock && (
+          <DurablePreparationRecord lock={loaded.record as unknown as DurablePreparationLockView} />
+        )}
+        <p>
+          <Button onClick={() => location.reload()}>Reload exact durable lock</Button>{' '}
+          <a href="/">Back to MarkReg workspace</a>
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main aria-labelledby="governed-route-heading">
