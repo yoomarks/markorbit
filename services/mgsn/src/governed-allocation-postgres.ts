@@ -34,12 +34,6 @@ function jsonVersion(value: unknown): number | string {
   throw new Error('Persisted governed Allocation authority version is malformed.');
 }
 
-/**
- * PostgreSQL mutation boundary for #716.
- *
- * The M4 Allocation row, legacy M4 replay/audit, #712 lineage row, governed replay and lineage audit
- * are committed in one database transaction. No caller may persist an Allocation before this commit.
- */
 export class PostgresGovernedAllocationRepository implements GovernedAllocationRepository {
   constructor(
     private readonly database: GovernedAllocationTransactionHost,
@@ -178,7 +172,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
       decision: 'CURRENTLY_USABLE_FOR_BOUNDED_REVIEW',
       currentlyUsable: true,
       publicReason: 'Historical admission validation was positive at governed Allocation commit.'
-    } as const;
+    } as unknown as AllocationAdmissionLineageRecord['selectionValidation'];
 
     const directExecutor = {
       established: true as const,
@@ -193,40 +187,40 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
     let handoff: AllocationAdmissionLineageRecord['handoff'];
     if (row.handoff_binding_state === 'EXACT_CONTROLLED_HANDOFF') {
       const envelope = asObject(row.envelope_record) as unknown as NonNullable<AllocationAdmissionLineageRecord['handoff']>['envelope'];
-      const attempt = {
-        originatingWorkspaceId: String(row.originating_workspace_id),
-        recipientProviderId: String(row.provider_id) as AllocationAdmissionLineageRecord['providerId'],
-        recipientProviderWorkspaceId: String(row.provider_workspace_id),
-        purposeFingerprintSha256: String(row.handoff_purpose_fingerprint_sha256),
-        projectionFingerprintSha256: String(row.handoff_projection_fingerprint_sha256),
-        sourceSetFingerprintSha256: String(row.handoff_source_set_fingerprint_sha256),
-        artifactRetrievalRequested: false,
-        attemptedAt: iso(row.handoff_validation_evaluated_at),
-        correlationId: String(row.correlation_id) as AllocationRecord['correlationId']
-      };
+      const validation = {
+        schemaVersion: 1,
+        envelope: {
+          controlledHandoffId: envelope.controlledHandoffId,
+          version: envelope.version
+        },
+        purpose: 'HANDOFF_CONSUMPTION',
+        attempt: {
+          originatingWorkspaceId: String(row.originating_workspace_id),
+          recipientProviderId: String(row.provider_id),
+          recipientProviderWorkspaceId: String(row.provider_workspace_id),
+          purposeFingerprintSha256: String(row.handoff_purpose_fingerprint_sha256),
+          projectionFingerprintSha256: String(row.handoff_projection_fingerprint_sha256),
+          sourceSetFingerprintSha256: String(row.handoff_source_set_fingerprint_sha256),
+          artifactRetrievalRequested: false,
+          attemptedAt: iso(row.handoff_validation_evaluated_at),
+          correlationId: String(row.correlation_id)
+        },
+        evaluatedAt: iso(row.handoff_validation_evaluated_at),
+        validationPolicyVersion: String(row.handoff_validation_policy_version),
+        checkedAuthorityReferences: Array.isArray(row.handoff_validation_checked_authority_references)
+          ? row.handoff_validation_checked_authority_references
+          : [],
+        authorityConsequences: noDownstreamHandoffAuthorityConsequences,
+        validationIsNotBearerCapability: true,
+        validationDoesNotAuthorizeDownstreamAction: true,
+        decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION',
+        currentlyUsable: true,
+        currentExactDisclosurePermitted: true,
+        publicReason: 'Historical admission validation was positive at governed Allocation commit.'
+      } as unknown as NonNullable<AllocationAdmissionLineageRecord['handoff']>['validation'];
       handoff = {
         envelope,
-        validation: {
-          schemaVersion: 1,
-          envelope: {
-            controlledHandoffId: envelope.controlledHandoffId,
-            version: envelope.version
-          },
-          purpose: 'HANDOFF_CONSUMPTION',
-          attempt,
-          evaluatedAt: iso(row.handoff_validation_evaluated_at),
-          validationPolicyVersion: String(row.handoff_validation_policy_version),
-          checkedAuthorityReferences: Array.isArray(row.handoff_validation_checked_authority_references)
-            ? row.handoff_validation_checked_authority_references
-            : [],
-          authorityConsequences: noDownstreamHandoffAuthorityConsequences,
-          validationIsNotBearerCapability: true,
-          validationDoesNotAuthorizeDownstreamAction: true,
-          decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION',
-          currentlyUsable: true,
-          currentExactDisclosurePermitted: true,
-          publicReason: 'Historical admission validation was positive at governed Allocation commit.'
-        },
+        validation,
         validationFingerprintSha256: String(row.handoff_validation_fingerprint_sha256)
       };
     }
@@ -382,7 +376,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
       ) VALUES(
         $1,1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,true,$19,$20,$21::jsonb,$22,true,
         true,$23,$24,$25,$26::jsonb,$27,$28,true,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42::jsonb,
-        $43,$44,$45,$46,$47,$48,$49,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false
+        $43,$44,$45,$46,$47,$48,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false
       )`,
       [
         lineage.allocationAdmissionLineageId,
@@ -497,7 +491,7 @@ export class PostgresGovernedAllocationRepository implements GovernedAllocationR
     );
   }
 
-  private unavailable(cause: unknown) {
+  private unavailable(_cause: unknown) {
     return new GovernedAllocationError(
       'AUTHORITY_UNAVAILABLE',
       'Governed Allocation persistence is unavailable.',
