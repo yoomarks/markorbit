@@ -64,7 +64,7 @@ function work(
         }
       : null;
   return summaryFixture({
-    contentOpportunity: { ...base.contentOpportunity, version },
+    contentOpportunity: { id: `content-opportunity_triage_${version}`, version },
     title,
     rationale: `${title} rationale`,
     updatedAt: `2026-08-${20 + version}T09:00:00.000Z`,
