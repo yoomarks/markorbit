@@ -1,0 +1,57 @@
+name: tmp-730-preparation-version-token
+on:
+  push:
+    branches:
+      - tmp/730-preparation-version-token
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/730-preparation-version-token
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Align legacy and durable Preparation Lock version identity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          route = Path('apps/markreg-web/src/routing/GovernedRouteEntry.tsx')
+          text = route.read_text()
+          old = """  if (view === 'preparation-lock') return scalar(record.version, '1');\n"""
+          new = """  if (view === 'preparation-lock') {\n    const packageVersion = scalar(record.documentPackageVersion);\n    const ledgerVersion = scalar(record.instructionLedgerVersion);\n    if (packageVersion && ledgerVersion) return `${packageVersion}:${ledgerVersion}`;\n    return scalar(record.version, '1');\n  }\n"""
+          if old not in text:
+              raise SystemExit('route version anchor not found')
+          route.write_text(text.replace(old, new, 1))
+
+          test = Path('apps/markreg-web/src/routing/GovernedRouteEntry.test.tsx')
+          text = test.read_text()
+          anchor = """  it('fails closed when the exact durable Preparation Lock GET is rejected', async () => {\n"""
+          case = """  it('preserves the legacy governed package:ledger Preparation Lock version token on GET recovery', async () => {\n    const getLock = vi.fn().mockResolvedValue({\n      preparationLockId: 'preparation-lock_exact',\n      documentPackageId: 'document-package_exact',\n      documentPackageVersion: 1,\n      instructionLedgerId: 'instruction-ledger_exact',\n      instructionLedgerVersion: 3,\n      nextPermittedAction: 'GOVERNED_FILING_AUTHORITY_REVIEW'\n    });\n    const validateCurrent = vi.fn();\n    const preparationClient: DurablePreparationClient = {\n      create: vi.fn(),\n      get: getLock,\n      validateCurrent\n    };\n    render(\n      <GovernedRouteEntry\n        search=\"?view=preparation-lock&preparationLockId=preparation-lock_exact&preparationLockVersion=1%3A3\"\n        client={{ createIntake: vi.fn() }}\n        preparationClient={preparationClient}\n      />\n    );\n\n    expect(await screen.findByText('preparation-lock_exact')).toBeTruthy();\n    expect(screen.getByText('1:3', { exact: true })).toBeTruthy();\n    expect(screen.queryByText('Version mismatch')).toBeNull();\n    expect(getLock).toHaveBeenCalledWith('preparation-lock_exact');\n    expect(validateCurrent).not.toHaveBeenCalled();\n  });\n\n"""
+          if anchor not in text:
+              raise SystemExit('test anchor not found')
+          test.write_text(text.replace(anchor, case + anchor, 1))
+          PY
+          pnpm exec prettier --write \
+            apps/markreg-web/src/routing/GovernedRouteEntry.tsx \
+            apps/markreg-web/src/routing/GovernedRouteEntry.test.tsx
+      - name: Commit exact result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            apps/markreg-web/src/routing/GovernedRouteEntry.tsx \
+            apps/markreg-web/src/routing/GovernedRouteEntry.test.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m '[MARKREG-P0] Preserve Preparation Lock governed version token'
+          git push origin HEAD:tmp/730-preparation-version-token
