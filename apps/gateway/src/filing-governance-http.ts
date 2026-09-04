@@ -1,6 +1,7 @@
 import {
   AuthenticationError,
   encodeInternalWorkspacePrincipal,
+  type Permission,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest } from '@markorbit/service-kit';
@@ -20,38 +21,227 @@ export interface GatewayFilingGovernanceOptions {
   fixtureTestRuntime?: boolean;
 }
 
-const browserAuthorityFields = new Set([
+const authorityFields = new Set([
   'workspaceId',
+  'workplaceId',
+  'actor',
+  'actorId',
   'userId',
   'membershipId',
+  'subjectUserId',
+  'sessionId',
+  'sessionExpiresAt',
   'role',
   'permissions',
   'principal',
-  'actor',
-  'actorId',
   'requestedBy',
   'acknowledgedBy',
   'decidedBy'
 ]);
 
-function safeBody(body: unknown): unknown {
-  if (body === undefined || body === null) return {};
-  if (typeof body !== 'object' || Array.isArray(body)) return body;
-  return Object.fromEntries(
-    Object.entries(body as Record<string, unknown>).filter(
-      ([field]) => !browserAuthorityFields.has(field)
-    )
+type FilingGovernanceRoutePolicy = Readonly<{
+  method: 'GET' | 'POST' | 'PATCH';
+  pattern: RegExp;
+  permission: Permission;
+  mutationSecurity: boolean;
+  idempotencyRequired: boolean;
+  allowedBodyFields?: readonly string[];
+  stripBodyFields?: readonly string[];
+  projectAuthorizedParty?: boolean;
+}>;
+
+const routePolicies: readonly FilingGovernanceRoutePolicy[] = [
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-authorizations$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true,
+    allowedBodyFields: [
+      'preparationLockId',
+      'preparationLockVersion',
+      'authorizedParty',
+      'authorizationCapacity',
+      'executionChannel'
+    ],
+    projectAuthorizedParty: true
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/filing-authorizations\/[^/]+$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-authorizations\/[^/]+\/confirm$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true,
+    allowedBodyFields: ['acknowledgementCodes'],
+    stripBodyFields: ['acknowledgedBy']
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-authorizations\/[^/]+\/withdraw$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false,
+    allowedBodyFields: []
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true,
+    allowedBodyFields: [
+      'filingAuthorizationId',
+      'filingAuthorizationVersion',
+      'requestedExecutionChannel'
+    ]
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/execution-releases$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/evaluate$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false,
+    allowedBodyFields: []
+  },
+  {
+    method: 'PATCH',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/assignment$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false,
+    allowedBodyFields: ['internalExecutorId', 'expectedVersion']
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/release$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: true,
+    allowedBodyFields: ['rationale'],
+    stripBodyFields: ['decidedBy']
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/withdraw$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false,
+    allowedBodyFields: []
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/filing-task-drafts\/[^/]+$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/execution\/filing-task-drafts\/[^/]+\/validate-current$/,
+    permission: 'execution:manage',
+    mutationSecurity: true,
+    idempotencyRequired: false,
+    allowedBodyFields: []
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/execution\/execution-releases\/[^/]+\/filing-task-draft$/,
+    permission: 'execution:read',
+    mutationSecurity: false,
+    idempotencyRequired: false
+  }
+];
+
+function routePolicy(request: JsonRequest): FilingGovernanceRoutePolicy {
+  const policy = routePolicies.find(
+    (candidate) => candidate.method === request.method && candidate.pattern.test(request.path)
+  );
+  if (!policy)
+    throw new HttpError(
+      404,
+      'FILING_GOVERNANCE_ROUTE_NOT_FOUND',
+      'Filing Governance route is not available.'
+    );
+  return policy;
+}
+
+function bodyRecord(request: JsonRequest): Record<string, unknown> {
+  const body = request.body ?? {};
+  if (typeof body !== 'object' || body === null || Array.isArray(body))
+    throw new HttpError(400, 'INVALID_EXECUTION_REQUEST', 'Request body must be an object.');
+  return body as Record<string, unknown>;
+}
+
+function rejectBrowserField(field: string, context = 'execution command'): never {
+  if (authorityFields.has(field))
+    throw new HttpError(
+      400,
+      'INVALID_EXECUTION_AUTHORITY',
+      `${field} cannot be supplied as browser execution authority.`
+    );
+  throw new HttpError(
+    400,
+    'INVALID_EXECUTION_REQUEST',
+    `${field} is not accepted by the browser ${context}.`
   );
 }
 
-function requiresIdempotency(request: JsonRequest): boolean {
-  if (request.method !== 'POST') return false;
-  return (
-    request.path === '/api/execution/filing-authorizations' ||
-    /\/filing-authorizations\/[^/]+\/confirm$/.test(request.path) ||
-    request.path === '/api/execution/execution-releases' ||
-    /\/execution-releases\/[^/]+\/release$/.test(request.path)
-  );
+function projectAuthorizedParty(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const party = value as Record<string, unknown>;
+  const allowedFields = new Set(['partyId', 'displayName']);
+  const unsupported = Object.keys(party).find((field) => !allowedFields.has(field));
+  if (unsupported) rejectBrowserField(unsupported, 'authorizedParty contract');
+
+  const projected: Record<string, unknown> = {};
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(party, field)) projected[field] = party[field];
+  }
+  return projected;
+}
+
+function governedBody(
+  request: JsonRequest,
+  policy: FilingGovernanceRoutePolicy
+): Record<string, unknown> {
+  const body = { ...bodyRecord(request) };
+  for (const field of policy.stripBodyFields ?? []) delete body[field];
+
+  const allowedFields = new Set(policy.allowedBodyFields ?? []);
+  const unsupported = Object.keys(body).find((field) => !allowedFields.has(field));
+  if (unsupported) rejectBrowserField(unsupported);
+
+  const projected: Record<string, unknown> = {};
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) projected[field] = body[field];
+  }
+  if (
+    policy.projectAuthorizedParty &&
+    Object.prototype.hasOwnProperty.call(projected, 'authorizedParty')
+  )
+    projected.authorizedParty = projectAuthorizedParty(projected.authorizedParty);
+  return projected;
 }
 
 function mapAuthentication(error: unknown): never {
@@ -82,7 +272,6 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
     options.internalServiceSecret === undefined;
 
   const correlation = (request: JsonRequest) => request.headers['x-correlation-id'];
-
   const token = (request: JsonRequest) => {
     const value = readSessionCookie(request.headers.cookie);
     if (!value) throw new HttpError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required.');
@@ -91,6 +280,7 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
 
   const principalFor = async (
     request: JsonRequest,
+    permission: Permission,
     mutation: boolean
   ): Promise<WorkspacePrincipal> => {
     if (!options.authenticationClient)
@@ -117,7 +307,6 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
           request.headers['x-markorbit-csrf-token']
         );
       }
-      const permission = mutation ? 'execution:manage' : 'execution:read';
       if (!principal.permissions.includes(permission))
         throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
       return principal;
@@ -126,22 +315,27 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
     }
   };
 
+  const downstreamUrl = (request: JsonRequest) => {
+    const search = new URLSearchParams(request.query).toString();
+    const path = request.path.replace('/api/execution', '/v1');
+    return `${options.executionUrl}${path}${search ? `?${search}` : ''}`;
+  };
+
   const forwardFixture = async (request: JsonRequest) => {
     try {
-      const query = new URLSearchParams({ ...request.query }).toString();
-      const response = await fetch(
-        `${options.executionUrl}${request.path.replace('/api/execution', '/v1')}${query ? `?${query}` : ''}`,
-        {
-          method: request.method,
-          headers: {
-            'content-type': 'application/json',
-            ...(request.headers['idempotency-key']
-              ? { 'idempotency-key': request.headers['idempotency-key'] }
-              : {})
-          },
-          ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
-        }
-      );
+      const response = await fetch(downstreamUrl(request), {
+        method: request.method,
+        headers: {
+          'content-type': 'application/json',
+          ...(request.headers['idempotency-key']
+            ? { 'idempotency-key': request.headers['idempotency-key'] }
+            : {}),
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {})
+        },
+        ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
+      });
       return json(response.status, await response.json());
     } catch {
       throw new HttpError(
@@ -153,15 +347,11 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
     }
   };
 
-  return async (request: JsonRequest) => {
-    if (fixtureMode) return forwardFixture(request);
-    if (requiresIdempotency(request) && !request.headers['idempotency-key']?.trim())
-      throw new HttpError(
-        400,
-        'IDEMPOTENCY_KEY_REQUIRED',
-        'Idempotency-Key is required for this Filing Governance command.'
-      );
-    const principal = await principalFor(request, request.method !== 'GET');
+  const forwardGoverned = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    body?: unknown
+  ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
         503,
@@ -170,29 +360,27 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
         true
       );
     try {
-      const query = new URLSearchParams({ ...request.query }).toString();
-      const response = await fetch(
-        `${options.executionUrl}${request.path.replace('/api/execution', '/v1')}${query ? `?${query}` : ''}`,
-        {
-          method: request.method,
-          headers: {
-            'content-type': 'application/json',
-            'x-markorbit-internal-authorization': options.internalServiceSecret,
-            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
-            'x-markorbit-workspace-id': principal.workspaceId,
-            ...(request.headers['x-correlation-id']
-              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
-              : {}),
-            ...(request.headers['x-request-id']
-              ? { 'x-request-id': request.headers['x-request-id'] }
-              : {}),
-            ...(request.headers['idempotency-key']
-              ? { 'idempotency-key': request.headers['idempotency-key'] }
-              : {})
-          },
-          ...(request.method === 'GET' ? {} : { body: JSON.stringify(safeBody(request.body)) })
-        }
-      );
+      const response = await fetch(downstreamUrl(request), {
+        method: request.method,
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': principal.workspaceId,
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {}),
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {}),
+          ...(request.headers['idempotency-key']
+            ? { 'idempotency-key': request.headers['idempotency-key'] }
+            : {})
+        },
+        ...(request.method === 'GET'
+          ? {}
+          : { body: JSON.stringify(body === undefined ? (request.body ?? {}) : body) })
+      });
       return json(response.status, await response.json());
     } catch (error) {
       if (error instanceof HttpError) throw error;
@@ -203,5 +391,20 @@ export function createGatewayFilingGovernanceHandler(options: GatewayFilingGover
         true
       );
     }
+  };
+
+  return async (request: JsonRequest) => {
+    const policy = routePolicy(request);
+    if (fixtureMode) return forwardFixture(request);
+
+    const body = policy.mutationSecurity ? governedBody(request, policy) : undefined;
+    if (policy.idempotencyRequired && !request.headers['idempotency-key']?.trim())
+      throw new HttpError(
+        400,
+        'IDEMPOTENCY_KEY_REQUIRED',
+        'Idempotency-Key is required for this Filing Governance command.'
+      );
+    const principal = await principalFor(request, policy.permission, policy.mutationSecurity);
+    return forwardGoverned(request, principal, body);
   };
 }
