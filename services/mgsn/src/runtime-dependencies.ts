@@ -7,6 +7,7 @@ import {
   type CoreWorkspaceIdentityReference,
   type CoreWorkspaceIdentitySource
 } from './provider-registry.js';
+import type { CoreCurrentWorkspaceAuthoritySource } from './provider-selection-current-authority.js';
 import {
   ProviderReturnError,
   type ProviderReturnEvidenceHandoffTarget
@@ -25,6 +26,89 @@ async function safeBody(response: Response): Promise<Record<string, unknown>> {
       : {};
   } catch {
     return {};
+  }
+}
+
+function positiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+/**
+ * Non-bearer Core identity-currentness adapter from #711.
+ *
+ * Known Core denials are collapsed to a privacy-safe current=false result. Transport, service-auth
+ * and malformed-success failures remain authorityAvailable=false. The adapter never accepts,
+ * persists or replays a browser session token.
+ */
+export class HttpCoreCurrentWorkspaceAuthoritySource
+  implements CoreCurrentWorkspaceAuthoritySource
+{
+  constructor(
+    private readonly coreUrl: string,
+    private readonly internalServiceSecret: string
+  ) {}
+
+  async validateCurrent(
+    input: Parameters<CoreCurrentWorkspaceAuthoritySource['validateCurrent']>[0]
+  ) {
+    let response: Response;
+    try {
+      response = await fetch(`${this.coreUrl}/internal/auth/workspace-authority/validate-current`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': this.internalServiceSecret
+        },
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          userId: input.userId,
+          membershipId: input.membershipId
+        })
+      });
+    } catch {
+      return { authorityAvailable: false, current: false, authorityReferences: [] } as const;
+    }
+
+    if ([400, 403, 404, 409].includes(response.status))
+      return { authorityAvailable: true, current: false, authorityReferences: [] } as const;
+    if (!response.ok)
+      return { authorityAvailable: false, current: false, authorityReferences: [] } as const;
+
+    const body = await safeBody(response);
+    const workspace = body.workspace as Record<string, unknown> | undefined;
+    const user = body.user as Record<string, unknown> | undefined;
+    const membership = body.membership as Record<string, unknown> | undefined;
+    const valid =
+      body.schemaVersion === 1 &&
+      body.authorityAvailable === true &&
+      body.workspaceCurrent === true &&
+      body.userCurrent === true &&
+      body.membershipCurrent === true &&
+      body.bindingMatches === true &&
+      body.permissionCurrent === null &&
+      body.requiredPermission === null &&
+      workspace?.workspaceId === input.workspaceId &&
+      positiveInteger(workspace.version) &&
+      user?.userId === input.userId &&
+      positiveInteger(user.version) &&
+      membership?.membershipId === input.membershipId &&
+      membership.workspaceId === input.workspaceId &&
+      membership.userId === input.userId &&
+      typeof membership.role === 'string' &&
+      Boolean(membership.role) &&
+      positiveInteger(membership.version);
+    if (!valid || !workspace || !user || !membership)
+      return { authorityAvailable: false, current: false, authorityReferences: [] } as const;
+
+    return {
+      authorityAvailable: true,
+      current: true,
+      authorityReferences: [
+        `core-workspace:${input.workspaceId}:v${String(workspace.version)}`,
+        `core-user:${input.userId}:v${String(user.version)}`,
+        `core-membership:${input.membershipId}:v${String(membership.version)}`
+      ]
+    } as const;
   }
 }
 
