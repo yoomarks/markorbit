@@ -100,6 +100,21 @@ describe('Production Intake runtime composition', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({})
     });
+    expect(legacy.status).toBe(404);
+    expect(await legacy.json()).toMatchObject({ code: 'ROUTE_NOT_FOUND' });
+  });
+
+  it('retains legacy fixture Intake only in explicit milestone runtime', async () => {
+    const runtime = createRuntime({ port: 0, milestoneTestRuntime: true });
+    active.push(runtime);
+    await runtime.start();
+    const base = `http://127.0.0.1:${runtime.listeningPort}`;
+
+    const legacy = await fetch(`${base}/v1/intakes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({})
+    });
     expect(legacy.status).toBe(400);
     expect(await legacy.json()).toMatchObject({ code: 'INVALID_REQUEST' });
   });
