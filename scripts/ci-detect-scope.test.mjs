@@ -22,6 +22,7 @@ function createDivergedHistory(testContext, featureFiles) {
   execGit(repo, ['init', '-b', 'main']);
   execGit(repo, ['config', 'user.name', 'MarkOrbit CI']);
   execGit(repo, ['config', 'user.email', 'ci@markorbit.example']);
+  execGit(repo, ['config', 'core.autocrlf', 'false']);
   writeRepoFile(repo, 'apps/lite-web/src/base.tsx', 'export const base = true;\n');
   execGit(repo, ['add', '.']);
   execGit(repo, ['commit', '-m', 'base']);
