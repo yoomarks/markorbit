@@ -70,6 +70,36 @@ s = replace(
     'sourceSetFingerprintSha256: envelope.authorizedProjection.sourceSetFingerprintSha256',
     'sourceSetFingerprintSha256',
 )
+s = replace(
+    s,
+    "    const selectionValidationFingerprintSha256 = fingerprint(selectionValidation);\n"
+    "    const lineageBase = {",
+    "    const admissionSelectionValidation: ProviderSelectionCurrentValidationV1 = {\n"
+    "      ...selectionValidation,\n"
+    "      publicReason: 'Historical admission validation was positive at governed Allocation commit.'\n"
+    "    };\n"
+    "    const selectionValidationFingerprintSha256 = fingerprint(admissionSelectionValidation);\n"
+    "    const lineageBase = {",
+)
+s = replace(
+    s,
+    "      selectionValidation,\n      selectionValidationFingerprintSha256,",
+    "      selectionValidation: admissionSelectionValidation,\n      selectionValidationFingerprintSha256,",
+)
+s = replace(
+    s,
+    "    return {\n      envelope,\n      validation,\n      validationFingerprintSha256: fingerprint(validation)\n    };",
+    "    const admissionValidation: ControlledHandoffCurrentValidationV1 = {\n"
+    "      ...validation,\n"
+    "      attempt: { ...validation.attempt, attemptedAt: validation.evaluatedAt },\n"
+    "      publicReason: 'Historical admission validation was positive at governed Allocation commit.'\n"
+    "    };\n"
+    "    return {\n"
+    "      envelope,\n"
+    "      validation: admissionValidation,\n"
+    "      validationFingerprintSha256: fingerprint(admissionValidation)\n"
+    "    };",
+)
 p.write_text(s)
 
 p = Path('src/provider-work-incoming-authority.ts')
