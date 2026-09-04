@@ -77,7 +77,7 @@ const task = {
   instructionReferences: [],
   representativeRequirement: 'NOT_REQUIRED',
   executionChannel: 'OFFICE_PORTAL',
-  internalAssigneeReference: 'authenticated-user-695',
+  internalAssigneeReference: 'user_695',
   status: 'PREPARED',
   createdAt: at
 } satisfies FilingExecutionTaskDraft;
@@ -88,17 +88,17 @@ function client(options: { assignmentError?: ExecutionHttpError } = {}) {
     version: 2,
     status: 'READY_FOR_RELEASE',
     checks: release.checks.map((check) => ({ ...check, status: 'PASS' }))
-  } as ExecutionRelease;
+  } satisfies ExecutionRelease;
   const assigned = {
     ...ready,
     version: 3,
-    assignment: { internalExecutorId: 'authenticated-user-695', assignedAt: at }
-  } as ExecutionRelease;
+    assignment: { internalExecutorId: 'user_695', assignedAt: at }
+  } satisfies ExecutionRelease;
   const released = {
     ...assigned,
     version: 4,
     status: 'RELEASED_FOR_EXECUTION'
-  } as ExecutionRelease;
+  } satisfies ExecutionRelease;
   let current: ExecutionRelease = release;
 
   return {
@@ -114,7 +114,7 @@ function client(options: { assignmentError?: ExecutionHttpError } = {}) {
     }),
     updateAssignment: vi.fn().mockImplementation(() => {
       if (options.assignmentError) {
-        current = { ...ready, version: 8 } as ExecutionRelease;
+        current = { ...ready, version: 8 };
         return Promise.reject(options.assignmentError);
       }
       current = assigned;
@@ -181,7 +181,7 @@ describe('authenticated Workspace Execution Release', () => {
       expectedVersion: 2
     });
     expect(gateway.getRelease).toHaveBeenCalledTimes(3);
-    expect(screen.getByText('authenticated-user-695')).toBeVisible();
+    expect(screen.getByText('user_695')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Release for execution' })).toBeDisabled();
 
     await user.type(
