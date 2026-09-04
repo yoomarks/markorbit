@@ -59,7 +59,10 @@ export function DurableDocumentsPreparationWorkspace({
   const [displayName, setDisplayName] = useState('');
   const [checksum, setChecksum] = useState('');
   const [storageReference, setStorageReference] = useState('');
-  const exactReviewDecisionVersion = review.decision?.decidedAt;
+  const reviewRecord = review as unknown as Record<string, unknown>;
+  const exactReviewDecisionVersion =
+    review.decision?.decidedAt ??
+    (typeof reviewRecord.updatedAt === 'string' ? reviewRecord.updatedAt : undefined);
 
   const blockingMissing = useMemo(
     () =>
