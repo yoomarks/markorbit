@@ -7,6 +7,11 @@ import {
   type ControlledHandoffCurrentAuthoritySource
 } from './controlled-privacy-handoff.js';
 import { PostgresControlledHandoffRepository } from './controlled-privacy-handoff-postgres.js';
+import {
+  GovernedAllocationService,
+  ValidationOnlyAllocationRepository
+} from './governed-allocation.js';
+import { PostgresGovernedAllocationRepository } from './governed-allocation-postgres.js';
 import type { MgsnHttpServices } from './http.js';
 import { NetworkParticipationService } from './network-participation.js';
 import { PostgresNetworkParticipationRepository } from './network-participation-postgres.js';
@@ -31,7 +36,8 @@ import {
   type ProviderSelectionCurrentAuthoritySource
 } from './provider-selection.js';
 import { PostgresProviderSelectionRepository } from './provider-selection-postgres.js';
-import { ProviderWorkReadModelService } from './provider-work-read-model.js';
+import { GovernedProviderWorkReadModelService } from './provider-work-governed-read-model.js';
+import { ControlledHandoffProviderWorkIncomingAuthoritySource } from './provider-work-incoming-authority.js';
 import { PostgresProviderWorkReadRepository } from './provider-work-read-model-postgres.js';
 import {
   HttpCoreCurrentWorkspaceAuthoritySource,
@@ -83,6 +89,7 @@ export type DurableMgsnServices = MgsnHttpServices & {
   providerResponsibility: ProviderResponsibilityService;
   providerSelection: ProviderSelectionService;
   controlledHandoff: ControlledPrivacyHandoffService;
+  governedAllocation: GovernedAllocationService;
   outcomeTrustEvidence: OutcomeTrustEvidenceService;
   trustedPublicExposure: TrustedPublicExposureService;
 };
@@ -97,6 +104,10 @@ export function createDurableMgsnServices(
     query
   );
   const allocationRepository = new PostgresAllocationProviderAcceptanceRepository(
+    options.database,
+    query
+  );
+  const governedAllocationRepository = new PostgresGovernedAllocationRepository(
     options.database,
     query
   );
@@ -169,6 +180,20 @@ export function createDurableMgsnServices(
     providerRepository,
     providerResponsibility
   );
+  const allocationValidator = new AllocationProviderAcceptanceService(
+    new ValidationOnlyAllocationRepository(allocationRepository),
+    servicePackageRepository,
+    providerRepository,
+    executionSource
+  );
+  const governedAllocation = new GovernedAllocationService(
+    governedAllocationRepository,
+    allocationValidator,
+    providerSelectionRepository,
+    providerSelection,
+    controlledHandoffRepository,
+    controlledHandoff
+  );
 
   return {
     providerRegistry: new ProviderRegistryService(providerRepository, coreWorkspaces),
@@ -190,9 +215,11 @@ export function createDurableMgsnServices(
       providerRepository,
       evidenceHandoff
     ),
-    providerWorkRead: new ProviderWorkReadModelService(
+    providerWorkRead: new GovernedProviderWorkReadModelService(
       providerWorkReadRepository,
-      providerRepository
+      providerRepository,
+      governedAllocationRepository,
+      new ControlledHandoffProviderWorkIncomingAuthoritySource(controlledHandoff)
     ),
     networkParticipation: new NetworkParticipationService(
       networkParticipationRepository,
@@ -205,6 +232,7 @@ export function createDurableMgsnServices(
     providerResponsibility,
     providerSelection,
     controlledHandoff,
+    governedAllocation,
     outcomeTrustEvidence: new OutcomeTrustEvidenceService(
       outcomeTrustEvidenceRepository,
       options.trustEvidenceCurrentAuthoritySource ?? trustEvidenceCurrentAuthority
