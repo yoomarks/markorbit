@@ -120,7 +120,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
       const confirmationId = await id(page, /Confirmation ID\s+(confirmation_[\w-]+)/);
       lineage.recordIdentity('customerConfirmation', confirmationId);
       await page.getByRole('button', { name: 'Prepare Matter Draft' }).click();
-      await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();
+      await expect(page.getByText('BLOCKED', { exact: true }).first()).toBeVisible();
       const matterId = await id(page, /Matter Draft ID\s+(matter-draft_[\w-]+)/);
       await fill(
         'Applicant / Owner',
@@ -314,7 +314,7 @@ test.describe('Milestone 001 real runtime golden path', () => {
         .click();
     });
     await test.step('Execution Release / Task Draft', async () => {
-      await expect(page.getByText(/UNKNOWN/).first()).toBeVisible();
+      await expect(page.getByText('BLOCKED', { exact: true }).first()).toBeVisible();
       const releaseId = await id(page, /(execution-release_[\w-]+)/);
       lineage.record('executionRelease', { id: releaseId, version: 1 });
       await page.getByRole('button', { name: 'Evaluate release' }).click();
