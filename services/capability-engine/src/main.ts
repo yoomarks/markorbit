@@ -1,8 +1,10 @@
 import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
 import {
+  CapabilityCognitiveReadServiceV1,
   createRuntime,
   HttpExecutionCapabilityObservationSourceAuthority,
   PostgresCapabilityObservationLedger,
+  PostgresCurrentRuntimeCapabilityCatalogV1,
   PostgresPrivateReflectionCandidateService,
   PostgresReflectionDispositionProfileService,
   PostgresRuntimeCapabilityRegistry
@@ -55,6 +57,10 @@ if (milestoneFixtureMode) {
   const pool = database.getPool();
   const registry = new PostgresRuntimeCapabilityRegistry(database, pool);
   const implementationProfiles = new PostgresImplementationProfileRegistryV1(database, pool);
+  const capabilityCognitiveRead = new CapabilityCognitiveReadServiceV1(
+    new PostgresCurrentRuntimeCapabilityCatalogV1(pool, registry),
+    implementationProfiles
+  );
   const sourceAuthority = new HttpExecutionCapabilityObservationSourceAuthority(
     executionUrl,
     internalServiceSecret
@@ -131,6 +137,7 @@ if (milestoneFixtureMode) {
   });
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
+    capabilityCognitiveRead,
     capabilityObservationLedger: observationLedger,
     privateReflectionCandidates,
     reflectionDispositionProfiles,

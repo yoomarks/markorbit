@@ -1,6 +1,8 @@
 import type { EventPublisher } from '@markorbit/events';
 import { createServiceRuntime } from '@markorbit/service-kit';
 import { createCapabilityCenterRoutes } from './capability-center-http.js';
+import { createCapabilityCognitiveReadRoutesV1 } from './capability-cognitive-read-http.js';
+import type { CapabilityCognitiveReadServiceV1 } from './capability-cognitive-read.js';
 import { createCapabilityObservationRoutes } from './capability-observation-http.js';
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
 import { createCapabilityRuntimeRoutesV2 } from './capability-runtime-http.js';
@@ -35,6 +37,8 @@ import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-reg
 export * from './capability-audit-telemetry.js';
 export * from './capability-catalog-integrity.js';
 export * from './capability-center-http.js';
+export * from './capability-cognitive-read-http.js';
+export * from './capability-cognitive-read.js';
 export * from './capability-coverage-gap-evidence.js';
 export * from './capability-demand-coverage.js';
 export * from './capability-observation-http.js';
@@ -99,6 +103,7 @@ export interface CapabilityEngineOptions {
   publisher?: EventPublisher;
   now?: () => string;
   runtimeCapabilityRegistry?: PostgresRuntimeCapabilityRegistry;
+  capabilityCognitiveRead?: Pick<CapabilityCognitiveReadServiceV1, 'read'>;
   capabilityObservationLedger?: PostgresCapabilityObservationLedger;
   privateReflectionCandidates?: PostgresPrivateReflectionCandidateService;
   reflectionDispositionProfiles?: PostgresReflectionDispositionProfileService;
@@ -133,6 +138,9 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
   }
   if (options.runtimeCapabilityRegistry && !options.internalServiceSecret) {
     throw new Error('runtimeCapabilityRegistry requires internalServiceSecret.');
+  }
+  if (options.capabilityCognitiveRead && !options.internalServiceSecret) {
+    throw new Error('capabilityCognitiveRead requires internalServiceSecret.');
   }
   if (options.capabilityObservationLedger && !options.internalServiceSecret) {
     throw new Error('capabilityObservationLedger requires internalServiceSecret.');
@@ -213,6 +221,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     options.runtimeCapabilityRegistry && options.internalServiceSecret
       ? createRuntimeCapabilityRoutes({
           registry: options.runtimeCapabilityRegistry,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
+  const capabilityCognitiveReadRoutes =
+    options.capabilityCognitiveRead && options.internalServiceSecret
+      ? createCapabilityCognitiveReadRoutesV1({
+          service: options.capabilityCognitiveRead,
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
@@ -297,6 +312,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
       routes: [
         ...capabilityRequestRoutes,
         ...runtimeCapabilityRoutes,
+        ...capabilityCognitiveReadRoutes,
         ...capabilityObservationRoutes,
         ...privateReflectionCandidateRoutes,
         ...reflectionDispositionProfileRoutes,
