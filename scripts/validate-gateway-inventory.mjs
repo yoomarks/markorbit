@@ -16,12 +16,24 @@ const m8Wp04 = JSON.parse(
 const markRegEarlyFunnel = JSON.parse(
   fs.readFileSync('docs/architecture/GATEWAY_ROUTE_INVENTORY_MARKREG_EARLY_FUNNEL.json', 'utf8')
 ).routes;
+const executionFilingGovernance = JSON.parse(
+  fs.readFileSync(
+    'docs/architecture/GATEWAY_ROUTE_INVENTORY_EXECUTION_FILING_GOVERNANCE.json',
+    'utf8'
+  )
+).routes;
 const promotedEarlyFunnelKeys = new Set(markRegEarlyFunnel.map(key));
+const promotedExecutionFilingGovernanceKeys = new Set(executionFilingGovernance.map(key));
 const inventory = [
-  ...baseline.filter((row) => !promotedEarlyFunnelKeys.has(key(row))),
+  ...baseline.filter(
+    (row) =>
+      !promotedEarlyFunnelKeys.has(key(row)) &&
+      !promotedExecutionFilingGovernanceKeys.has(key(row))
+  ),
   ...m8Wp03,
   ...m8Wp04,
-  ...markRegEarlyFunnel
+  ...markRegEarlyFunnel,
+  ...executionFilingGovernance
 ].sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
 
 assert.equal(
@@ -48,6 +60,7 @@ for (const row of inventory) {
   const authOwner = row.path.startsWith('/api/auth/') || row.path.endsWith('/context');
   const authenticated =
     authOwner ||
+    row.path.startsWith('/api/execution/') ||
     row.path.startsWith('/api/payments') ||
     row.path.startsWith('/api/markreg/checkouts') ||
     row.path.startsWith('/api/markreg/commercial/') ||
@@ -85,6 +98,31 @@ for (const row of inventory) {
         )
   );
 }
+
+const filingGovernanceIdempotentCommands = new Set([
+  'POST /api/execution/filing-authorizations',
+  'POST /api/execution/filing-authorizations/:filingAuthorizationId/confirm',
+  'POST /api/execution/execution-releases',
+  'POST /api/execution/execution-releases/:executionReleaseId/release'
+]);
+for (const row of executionFilingGovernance) {
+  assert.equal(row.owner, 'execution', `${key(row)} must remain Execution-owned`);
+  assert.equal(row.namespaceClass, 'PRIMARY_PRODUCT_API', `${key(row)} must be a primary API`);
+  assert.equal(row.authenticationMode, 'COOKIE_AUTHENTICATED', `${key(row)} must be authenticated`);
+  assert.equal(row.environmentScope, 'ALL_ENVIRONMENTS', `${key(row)} must be production-visible`);
+  assert.equal(
+    row.idempotencyRequirement,
+    row.method === 'GET'
+      ? 'NOT_APPLICABLE_READ_ONLY'
+      : filingGovernanceIdempotentCommands.has(key(row))
+        ? 'REQUIRED_FOR_MUTATION'
+        : row.path.endsWith('/validate-current')
+          ? 'NOT_REQUIRED_VALIDATION_MUTATION'
+          : 'NOT_REQUIRED_FOR_MUTATION',
+    `${key(row)} idempotency policy mismatch`
+  );
+}
+
 assert.equal(source.length, 95);
 assert.equal(inventory.length, 95);
 assert.equal(
@@ -98,5 +136,5 @@ assert.equal(
   89
 );
 console.log(
-  'Gateway inventory PASS: 95 runtime routes; authenticated Early Funnel, Production Intake, Matter Intelligence, Formal Matter Evidence, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
+  'Gateway inventory PASS: 95 runtime routes; authenticated Filing Governance, Early Funnel, Production Intake, Matter Intelligence, Formal Matter Evidence, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
 );
