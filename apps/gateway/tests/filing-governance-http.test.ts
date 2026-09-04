@@ -351,7 +351,10 @@ describe('governed Filing Governance Gateway boundary', () => {
 
   it.each([400, 403, 404, 409, 422, 503])('preserves owner status %i and body', async (status) => {
     const owner = { code: `OWNER_${status}`, details: { status } };
-    vi.stubGlobal('fetch', vi.fn(() => response(status, owner)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => response(status, owner))
+    );
     const result = await handler()(request('GET', '/api/execution/execution-releases/release_701'));
     expect(result.status).toBe(status);
     expect(result.body).toEqual(owner);
@@ -372,14 +375,18 @@ describe('governed Filing Governance Gateway boundary', () => {
     vi.stubGlobal('fetch', downstream);
 
     await expect(
-      handler(client(), { fixtureTestRuntime: true }, false)(
-        request('GET', '/api/execution/execution-releases')
-      )
+      handler(
+        client(),
+        { fixtureTestRuntime: true },
+        false
+      )(request('GET', '/api/execution/execution-releases'))
     ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE' });
     await expect(
-      handler(null, { fixtureTestRuntime: true }, true)(
-        request('GET', '/api/execution/execution-releases')
-      )
+      handler(
+        null,
+        { fixtureTestRuntime: true },
+        true
+      )(request('GET', '/api/execution/execution-releases'))
     ).rejects.toMatchObject({ status: 503, code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
     expect(downstream).not.toHaveBeenCalled();
   });
