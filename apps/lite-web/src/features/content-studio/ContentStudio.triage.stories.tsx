@@ -9,12 +9,16 @@ export default {
 } satisfies Meta<typeof ContentStudio>;
 
 type Story = StoryObj<typeof ContentStudio>;
-type ReviewOutcome = NonNullable<ReturnType<typeof summaryFixture>['latestDraftReview']>['outcome'];
+type ReviewOutcome = NonNullable<
+  ReturnType<typeof summaryFixture>['latestDraftReview']
+>['outcome'];
 const base = summaryFixture();
 const mobile390 = {
   viewport: {
     defaultViewport: 'mobile1',
-    viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
+    viewports: {
+      mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } }
+    }
   }
 };
 
@@ -71,7 +75,12 @@ const mixed = [
   item(1, 'Create the first Draft', null),
   item(2, 'Drafting evidence-first explainer', 'DRAFT'),
   item(3, 'Needs human review', 'READY_FOR_HUMAN_REVIEW'),
-  item(4, 'Changes requested by reviewer', 'READY_FOR_HUMAN_REVIEW', 'CHANGES_REQUIRED'),
+  item(
+    4,
+    'Changes requested by reviewer',
+    'READY_FOR_HUMAN_REVIEW',
+    'CHANGES_REQUIRED'
+  ),
   item(
     5,
     'Ready to prepare package',
