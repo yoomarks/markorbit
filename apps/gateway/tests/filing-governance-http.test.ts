@@ -87,39 +87,29 @@ function response(status: number, value: unknown): Promise<Response> {
   );
 }
 
+const filingAuthorizationBody = {
+  preparationLockId: 'preparation-lock_701',
+  preparationLockVersion: '7:9',
+  authorizedParty: { partyId: 'party_701', displayName: 'Customer' },
+  authorizationCapacity: 'APPLICANT',
+  executionChannel: 'INTERNAL'
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
 describe('governed Filing Governance Gateway boundary', () => {
-  it('forwards create with trusted Principal and strips browser authority claims', async () => {
+  it('forwards create with trusted Principal and only declared browser command fields', async () => {
     const downstream = vi.fn<
       (input: string | URL | Request, init?: RequestInit) => Promise<Response>
     >(() => response(200, { filingAuthorization: { status: 'PENDING_CONFIRMATION' } }));
     vi.stubGlobal('fetch', downstream);
-    const authorizedParty = { partyId: 'party_701', displayName: 'Customer' };
     const result = await handler()(
-      request(
-        'POST',
-        '/api/execution/filing-authorizations',
-        {
-          preparationLockId: 'preparation-lock_701',
-          preparationLockVersion: '7:9',
-          authorizedParty,
-          authorizationCapacity: 'APPLICANT',
-          executionChannel: 'INTERNAL',
-          workspaceId: 'workspace_spoof',
-          userId: 'user_spoof',
-          principal: { admin: true },
-          actor: { userId: 'actor_spoof' },
-          actorId: 'actor_spoof',
-          requestedBy: 'requester_spoof',
-          acknowledgedBy: 'ack_spoof',
-          decidedBy: 'decider_spoof'
-        },
-        { 'idempotency-key': 'filing-auth-key-701' }
-      )
+      request('POST', '/api/execution/filing-authorizations', filingAuthorizationBody, {
+        'idempotency-key': 'filing-auth-key-701'
+      })
     );
     expect(result.status).toBe(200);
     expect(downstream).toHaveBeenCalledTimes(1);
@@ -136,19 +126,125 @@ describe('governed Filing Governance Gateway boundary', () => {
     expect(parseInternalWorkspacePrincipal(headers['x-markorbit-principal'])).toEqual(principal);
     const forwardedBody = init.body;
     if (typeof forwardedBody !== 'string') throw new Error('Expected string body.');
-    const forwarded = JSON.parse(forwardedBody) as Record<string, unknown>;
-    expect(forwarded.authorizedParty).toEqual(authorizedParty);
-    for (const field of [
-      'workspaceId',
-      'userId',
-      'principal',
-      'actor',
-      'actorId',
-      'requestedBy',
-      'acknowledgedBy',
-      'decidedBy'
-    ])
-      expect(forwarded[field]).toBeUndefined();
+    expect(JSON.parse(forwardedBody)).toEqual(filingAuthorizationBody);
+  });
+
+  it.each([
+    [{ actor: { userId: 'actor_spoof' } }, 'INVALID_EXECUTION_AUTHORITY'],
+    [{ expiresAt: '2035-01-01T00:00:00.000Z' }, 'INVALID_EXECUTION_REQUEST'],
+    [{ futureOwnerField: 'must-not-pass' }, 'INVALID_EXECUTION_REQUEST']
+  ] as const)('rejects browser authority or unknown command field %#', async (extra, code) => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    await expect(
+      handler()(
+        request(
+          'POST',
+          '/api/execution/filing-authorizations',
+          { ...filingAuthorizationBody, ...extra },
+          { 'idempotency-key': 'filing-auth-key-701' }
+        )
+      )
+    ).rejects.toMatchObject({ status: 400, code });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('rejects nested authority and unknown fields inside authorizedParty', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+
+    await expect(
+      handler()(
+        request(
+          'POST',
+          '/api/execution/filing-authorizations',
+          {
+            ...filingAuthorizationBody,
+            authorizedParty: {
+              partyId: 'party_701',
+              displayName: 'Customer',
+              actorId: 'actor_spoof'
+            }
+          },
+          { 'idempotency-key': 'nested-authority-701' }
+        )
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_EXECUTION_AUTHORITY' });
+
+    await expect(
+      handler()(
+        request(
+          'POST',
+          '/api/execution/filing-authorizations',
+          {
+            ...filingAuthorizationBody,
+            authorizedParty: {
+              partyId: 'party_701',
+              displayName: 'Customer',
+              metadata: { source: 'browser' }
+            }
+          },
+          { 'idempotency-key': 'nested-unknown-701' }
+        )
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_EXECUTION_REQUEST' });
+
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('strips legacy actor display fields only on their declared commands', async () => {
+    const downstream = vi.fn<
+      (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+    >(() => response(200, { ok: true }));
+    vi.stubGlobal('fetch', downstream);
+
+    await handler()(
+      request(
+        'POST',
+        '/api/execution/filing-authorizations/auth_701/confirm',
+        { acknowledgementCodes: ['OWNER_CONFIRMED'], acknowledgedBy: 'browser_spoof' },
+        { 'idempotency-key': 'confirm-701' }
+      )
+    );
+    await handler()(
+      request(
+        'POST',
+        '/api/execution/execution-releases/release_701/release',
+        { rationale: 'Ready', decidedBy: 'browser_spoof' },
+        { 'idempotency-key': 'release-701' }
+      )
+    );
+
+    const confirmInit = downstream.mock.calls[0]?.[1];
+    const releaseInit = downstream.mock.calls[1]?.[1];
+    if (!confirmInit || typeof confirmInit.body !== 'string')
+      throw new Error('Expected confirm body.');
+    if (!releaseInit || typeof releaseInit.body !== 'string')
+      throw new Error('Expected release body.');
+    expect(JSON.parse(confirmInit.body)).toEqual({ acknowledgementCodes: ['OWNER_CONFIRMED'] });
+    expect(JSON.parse(releaseInit.body)).toEqual({ rationale: 'Ready' });
+  });
+
+  it('projects only the declared assignment command fields', async () => {
+    const downstream = vi.fn<
+      (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+    >(() => response(200, { ok: true }));
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await handler()(
+      request('PATCH', '/api/execution/execution-releases/release_701/assignment', {
+        internalExecutorId: 'executor_701',
+        expectedVersion: 4
+      })
+    );
+
+    expect(result.status).toBe(200);
+    const init = downstream.mock.calls[0]?.[1];
+    if (!init || typeof init.body !== 'string') throw new Error('Expected projected request body.');
+    expect(JSON.parse(init.body)).toEqual({
+      internalExecutorId: 'executor_701',
+      expectedVersion: 4
+    });
   });
 
   it('uses execution:read for GET and preserves query/correlation without browser session forwarding', async () => {
@@ -253,14 +349,12 @@ describe('governed Filing Governance Gateway boundary', () => {
     expect(downstream).not.toHaveBeenCalled();
   });
 
-  it.each([400, 403, 404, 409, 503])('preserves owner status %i and body', async (status) => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => response(status, { code: `OWNER_${status}` }))
-    );
+  it.each([400, 403, 404, 409, 422, 503])('preserves owner status %i and body', async (status) => {
+    const owner = { code: `OWNER_${status}`, details: { status } };
+    vi.stubGlobal('fetch', vi.fn(() => response(status, owner)));
     const result = await handler()(request('GET', '/api/execution/execution-releases/release_701'));
     expect(result.status).toBe(status);
-    expect(result.body).toEqual({ code: `OWNER_${status}` });
+    expect(result.body).toEqual(owner);
   });
 
   it('maps transport failure to explicit 503 without local success fallback', async () => {
@@ -271,6 +365,23 @@ describe('governed Filing Governance Gateway boundary', () => {
     await expect(
       handler()(request('GET', '/api/execution/execution-releases/release_701'))
     ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE' });
+  });
+
+  it('does not enable fixture bypass when only one production dependency is configured', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+
+    await expect(
+      handler(client(), { fixtureTestRuntime: true }, false)(
+        request('GET', '/api/execution/execution-releases')
+      )
+    ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE' });
+    await expect(
+      handler(null, { fixtureTestRuntime: true }, true)(
+        request('GET', '/api/execution/execution-releases')
+      )
+    ).rejects.toMatchObject({ status: 503, code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
+    expect(downstream).not.toHaveBeenCalled();
   });
 
   it('fails closed without production auth but preserves explicit milestone fixture compatibility', async () => {
