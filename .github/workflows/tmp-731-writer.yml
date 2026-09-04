@@ -42,8 +42,8 @@ jobs:
         run: pnpm --filter @markorbit/execution-service typecheck
       - name: Execution lint
         run: pnpm --filter @markorbit/execution-service lint
-      - name: Build contracts for Vitest
-        run: pnpm --filter @markorbit/contracts build
+      - name: Build workspace dependency closure
+        run: pnpm -w build
       - name: Targeted Execution tests
         run: >-
           pnpm exec vitest run
