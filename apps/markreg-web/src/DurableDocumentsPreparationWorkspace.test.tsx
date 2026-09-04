@@ -40,19 +40,27 @@ const readyPackage: DurableDocumentPackageView = {
   canonicalEvidenceHash: 'a'.repeat(64)
 };
 
-const {
-  canonicalEvidenceHash: _canonicalEvidenceHash,
-  readyAt: _readyAt,
-  readyBy: _readyBy,
-  ...packageBeforeReady
-} = readyPackage;
-
 const draftPackage: DurableDocumentPackageView = {
-  ...packageBeforeReady,
+  documentPackageId: readyPackage.documentPackageId,
+  workspaceId: readyPackage.workspaceId,
+  formalMatterId: readyPackage.formalMatterId,
+  sourceFormalMatterVersion: readyPackage.sourceFormalMatterVersion,
+  sourceFormalMatterHash: readyPackage.sourceFormalMatterHash,
+  professionalReviewCaseId: readyPackage.professionalReviewCaseId,
+  sourceReviewVersion: readyPackage.sourceReviewVersion,
+  sourceCompletedDecisionId: readyPackage.sourceCompletedDecisionId,
+  sourceCompletedDecisionHash: readyPackage.sourceCompletedDecisionHash,
   status: 'DRAFT',
   version: 2,
+  schemaVersion: 1,
   requirements: [{ requirementKey: 'IDENTITY', displayName: 'Applicant identity', blocking: true }],
-  instructionEntries: []
+  draft: {},
+  documentItems: [],
+  instructionEntries: [],
+  createdBy: readyPackage.createdBy,
+  updatedBy: readyPackage.updatedBy,
+  createdAt: readyPackage.createdAt,
+  updatedAt: readyPackage.updatedAt
 };
 
 const currentLock = {
