@@ -4,7 +4,10 @@ import type {
 } from '@markorbit/contracts/controlled-privacy-handoff';
 import type { DiscoveryCurrentSourceVersionV1 } from '@markorbit/contracts/provider-discovery';
 import type { NetworkParticipationId } from '@markorbit/contracts/network-participation';
-import type { ProviderId, ProviderSupplyCapabilityId } from '@markorbit/contracts/provider-execution';
+import type {
+  ProviderId,
+  ProviderSupplyCapabilityId
+} from '@markorbit/contracts/provider-execution';
 import type {
   ControlledHandoffCurrentAuthoritySnapshot,
   ControlledHandoffCurrentAuthoritySource
@@ -14,10 +17,7 @@ import { providerDiscoveryFingerprint } from './provider-discovery.js';
 import type { ProviderRegistryRepository } from './provider-registry.js';
 import { isSupplyOperationallyEligibleAt } from './provider-registry.js';
 import type { ProviderResponsibilityService } from './provider-responsibility.js';
-import {
-  ProviderSelectionError,
-  type ProviderSelectionService
-} from './provider-selection.js';
+import { ProviderSelectionError, type ProviderSelectionService } from './provider-selection.js';
 
 export type HandoffNetworkAuthoritySource = Pick<
   NetworkParticipationRepository,
@@ -107,7 +107,9 @@ function visibilityFingerprint(policy: {
 }
 
 function positiveResponsibility(
-  assessment: Awaited<ReturnType<HandoffResponsibilityAuthoritySource['assessCurrent']>>['assessment'],
+  assessment: Awaited<
+    ReturnType<HandoffResponsibilityAuthoritySource['assessCurrent']>
+  >['assessment'],
   providerId: ProviderId,
   providerWorkspaceId: string
 ): assessment is NonNullable<
@@ -136,9 +138,7 @@ function versionFingerprintMatches(
  * this owner can revalidate. External owner projection/source authority remains fail-closed until a
  * canonical verifier exists; historical CURRENT descriptors never become serving permission.
  */
-export class MgsnControlledHandoffCurrentAuthoritySource
-  implements ControlledHandoffCurrentAuthoritySource
-{
+export class MgsnControlledHandoffCurrentAuthoritySource implements ControlledHandoffCurrentAuthoritySource {
   constructor(
     private readonly selection: Pick<ProviderSelectionService, 'validateCurrent'>,
     private readonly network: HandoffNetworkAuthoritySource,
@@ -351,7 +351,9 @@ export class MgsnControlledHandoffCurrentAuthoritySource
           !versionFingerprintMatches(source, policy.version, visibilityFingerprint(policy))
         )
           return { current: false, references };
-        references.push(`mgsn-network-visibility:${policy.networkParticipationId}:v${policy.version}`);
+        references.push(
+          `mgsn-network-visibility:${policy.networkParticipationId}:v${policy.version}`
+        );
         continue;
       }
 

@@ -44,8 +44,7 @@ export type SelectionResponsibilityAuthoritySource = Pick<
   'assessCurrent'
 >;
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const unavailableSnapshot = Object.freeze({
   authorityAvailable: false,
@@ -169,7 +168,8 @@ function exactCandidateIdentity(input: {
   const { lineage } = input;
   if (
     lineage.discoveryRequest.purpose !== 'PROVIDER_DISCOVERY' ||
-    lineage.discoveryCandidate.evaluationPolicyVersion !== PROVIDER_DISCOVERY_EVALUATION_POLICY_VERSION ||
+    lineage.discoveryCandidate.evaluationPolicyVersion !==
+      PROVIDER_DISCOVERY_EVALUATION_POLICY_VERSION ||
     lineage.discoveryCandidate.generatedAt !== lineage.discoveryResult.evaluatedAt ||
     lineage.discoveryCandidate.generatedAt !== lineage.visibilityAuthorizationAtReview.evaluatedAt
   )
@@ -189,8 +189,10 @@ function exactCandidateIdentity(input: {
     evaluationPolicyVersion: PROVIDER_DISCOVERY_EVALUATION_POLICY_VERSION,
     evaluatedAt: lineage.discoveryCandidate.generatedAt
   });
-  return lineage.discoveryCandidate.providerDiscoveryCandidateId ===
-    `provider-discovery-candidate_${identityFingerprint}`;
+  return (
+    lineage.discoveryCandidate.providerDiscoveryCandidateId ===
+    `provider-discovery-candidate_${identityFingerprint}`
+  );
 }
 
 function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
@@ -207,9 +209,7 @@ function sameStringSet(left: readonly string[], right: readonly string[]): boole
  * Opaque historical principal references, missing Discovery request projection/audience data and
  * unsupported relationship/owner authority never become bearer capabilities or optimistic grants.
  */
-export class MgsnProviderSelectionCurrentAuthoritySource
-  implements ProviderSelectionCurrentAuthoritySource
-{
+export class MgsnProviderSelectionCurrentAuthoritySource implements ProviderSelectionCurrentAuthoritySource {
   constructor(
     private readonly coreAuthority: CoreCurrentWorkspaceAuthoritySource,
     private readonly network: SelectionNetworkAuthoritySource,
@@ -260,7 +260,8 @@ export class MgsnProviderSelectionCurrentAuthoritySource
     const provider = await this.providers.findProviderById(lineage.provider.providerId);
     const providerOperational = Boolean(
       provider &&
-      provider.providerWorkspaceId.toLowerCase() === lineage.provider.providerWorkspaceId.toLowerCase() &&
+      provider.providerWorkspaceId.toLowerCase() ===
+        lineage.provider.providerWorkspaceId.toLowerCase() &&
       provider.operationalStatus === 'ACTIVE'
     );
     const providerReferences = provider
@@ -281,7 +282,8 @@ export class MgsnProviderSelectionCurrentAuthoritySource
       supply &&
       supply.providerSupplyCapabilityId === lineage.providerSupplyCapability.id &&
       supply.provider.providerId === provider.providerId &&
-      supply.provider.providerWorkspaceId.toLowerCase() === provider.providerWorkspaceId.toLowerCase() &&
+      supply.provider.providerWorkspaceId.toLowerCase() ===
+        provider.providerWorkspaceId.toLowerCase() &&
       supply.version === lineage.providerSupplyCapability.version &&
       supply.sourceFingerprintSha256 === lineage.providerSupplyCapability.fingerprintSha256 &&
       supply.verificationState === 'VERIFIED_FOR_SUPPLY' &&
@@ -311,14 +313,20 @@ export class MgsnProviderSelectionCurrentAuthoritySource
       lineage.visibilityAuthorizationAtReview.networkParticipationId
     );
     const currentParticipation = historicalParticipation
-      ? await this.network.findCurrentParticipation(provider.providerWorkspaceId, provider.providerId)
+      ? await this.network.findCurrentParticipation(
+          provider.providerWorkspaceId,
+          provider.providerId
+        )
       : undefined;
     const participationActive = Boolean(
       historicalParticipation &&
       historicalParticipation.providerId === provider.providerId &&
-      historicalParticipation.workspaceId.toLowerCase() === provider.providerWorkspaceId.toLowerCase() &&
-      currentParticipation?.networkParticipationId === historicalParticipation.networkParticipationId &&
-      currentParticipation.version === lineage.visibilityAuthorizationAtReview.participationVersion &&
+      historicalParticipation.workspaceId.toLowerCase() ===
+        provider.providerWorkspaceId.toLowerCase() &&
+      currentParticipation?.networkParticipationId ===
+        historicalParticipation.networkParticipationId &&
+      currentParticipation.version ===
+        lineage.visibilityAuthorizationAtReview.participationVersion &&
       currentParticipation.state === 'ACTIVE'
     );
     const participationReferences = currentParticipation
@@ -343,7 +351,9 @@ export class MgsnProviderSelectionCurrentAuthoritySource
       };
     }
 
-    const policy = await this.network.findCurrentVisibilityPolicy(currentParticipation.networkParticipationId);
+    const policy = await this.network.findCurrentVisibilityPolicy(
+      currentParticipation.networkParticipationId
+    );
     const visibilityAuthorized = Boolean(
       policy &&
       policy.participationVersion === currentParticipation.version &&
@@ -383,13 +393,17 @@ export class MgsnProviderSelectionCurrentAuthoritySource
     const currentParticipationFingerprint = participationFingerprint(currentParticipation);
     const currentVisibilityFingerprint = visibilityFingerprint(policy);
     const sources = lineage.historicalSourceVersions;
-    let assessment: Awaited<ReturnType<SelectionResponsibilityAuthoritySource['assessCurrent']>>['assessment'] = null;
+    let assessment: Awaited<
+      ReturnType<SelectionResponsibilityAuthoritySource['assessCurrent']>
+    >['assessment'] = null;
     if (lineage.directExecutorDisclosureAtReview.state === 'INDEPENDENT_EVIDENCE_REFERENCED') {
-      assessment = (await this.responsibility.assessCurrent(
-        provider.providerId,
-        provider.providerWorkspaceId,
-        input.checkedAt
-      )).assessment;
+      assessment = (
+        await this.responsibility.assessCurrent(
+          provider.providerId,
+          provider.providerWorkspaceId,
+          input.checkedAt
+        )
+      ).assessment;
     }
     const responsibilityHistorical = exactSource(sources, 'PROVIDER_RESPONSIBILITY_PROFILE');
     const directExecutorEstablished = Boolean(
@@ -399,7 +413,8 @@ export class MgsnProviderSelectionCurrentAuthoritySource
         assessment.state === 'DIRECT_EXECUTOR_WITH_REQUIRED_SIGNER_ESTABLISHED') &&
       assessment.profileAuthorityState === 'CURRENT' &&
       assessment.finalExecutionProviderId === provider.providerId &&
-      assessment.finalExecutionProviderWorkspaceId.toLowerCase() === provider.providerWorkspaceId.toLowerCase() &&
+      assessment.finalExecutionProviderWorkspaceId.toLowerCase() ===
+        provider.providerWorkspaceId.toLowerCase() &&
       responsibilityHistorical &&
       sourceMatches(responsibilityHistorical, {
         sourceType: 'PROVIDER_RESPONSIBILITY_PROFILE',

@@ -40,9 +40,7 @@ function positiveInteger(value: unknown): value is number {
  * and malformed-success failures remain authorityAvailable=false. The adapter never accepts,
  * persists or replays a browser session token.
  */
-export class HttpCoreCurrentWorkspaceAuthoritySource
-  implements CoreCurrentWorkspaceAuthoritySource
-{
+export class HttpCoreCurrentWorkspaceAuthoritySource implements CoreCurrentWorkspaceAuthoritySource {
   constructor(
     private readonly coreUrl: string,
     private readonly internalServiceSecret: string
