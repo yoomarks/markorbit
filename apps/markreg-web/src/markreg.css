@@ -51,6 +51,29 @@
   margin: auto;
   padding: var(--mo-space-lg) var(--mo-space-lg) 0;
 }
+.markreg-matter-priority {
+  gap: var(--mo-space-sm);
+}
+.markreg-matter-priority > h2 {
+  margin-block-end: 0;
+}
+.markreg-matter-secondary {
+  margin-block-start: var(--mo-space-md);
+}
+.markreg-matter-record-details,
+.markreg-lifecycle-history {
+  min-width: 0;
+}
+.markreg-matter-record-details > summary,
+.markreg-lifecycle-history > summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding-block: var(--mo-space-sm);
+}
+.markreg-matter-record-details[open] > summary,
+.markreg-lifecycle-history[open] > summary {
+  margin-block-end: var(--mo-space-md);
+}
 
 .confirmation-matter-flow,
 .matter-draft-layout,
@@ -98,6 +121,7 @@
 }
 @media (max-width: 640px) {
   .markreg-workspace-home {
+    gap: var(--mo-space-md);
     padding: var(--mo-space-md);
   }
   .markreg-workspace-pagination {
@@ -105,6 +129,12 @@
   }
   .markreg-workspace-planning-nav {
     padding: var(--mo-space-md) var(--mo-space-md) 0;
+  }
+  .markreg-matter-priority {
+    gap: var(--mo-space-xs);
+  }
+  .markreg-matter-secondary {
+    margin-block-start: var(--mo-space-sm);
   }
   .preparation-workspace {
     padding: var(--mo-space-md);

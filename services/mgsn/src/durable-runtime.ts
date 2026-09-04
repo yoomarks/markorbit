@@ -14,6 +14,9 @@ import {
   type TrustEvidenceCurrentAuthoritySource
 } from './outcome-trust-evidence.js';
 import { PostgresOutcomeTrustEvidenceRepository } from './outcome-trust-evidence-postgres.js';
+import { ProviderDiscoveryCurrentResponsibilityService } from './provider-discovery-current-responsibility.js';
+import { PostgresProviderDiscoverySourceRepository } from './provider-discovery-postgres.js';
+import { ProviderDiscoveryService } from './provider-discovery.js';
 import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
 import { ProviderResponsibilityService } from './provider-responsibility.js';
@@ -34,6 +37,10 @@ import {
 } from './runtime-dependencies.js';
 import { ServicePackageEligibilityService } from './service-package-eligibility.js';
 import { PostgresServicePackageEligibilityRepository } from './service-package-eligibility-postgres.js';
+import {
+  TrustedPublicExposureService,
+  type TrustedPublicCurrentAuthoritySource
+} from './trusted-public-exposure.js';
 
 // Durable Selection history is never a substitute for current requester/provider authority.
 const unavailableProviderSelectionAuthority: ProviderSelectionCurrentAuthoritySource = {
@@ -91,6 +98,27 @@ const unavailableTrustEvidenceAuthority: TrustEvidenceCurrentAuthoritySource = {
   }
 };
 
+// Shared public eligibility/projection metadata never establishes current public serving authority.
+const unavailableTrustedPublicAuthority: TrustedPublicCurrentAuthoritySource = {
+  evaluateCurrentAuthority() {
+    return Promise.resolve({
+      authorityAvailable: false,
+      providerIdentityCurrent: false,
+      organizationIdentityCurrent: false,
+      participationCurrent: false,
+      visibilityCurrent: false,
+      purposeAuthorized: false,
+      audienceAuthorized: false,
+      sourceAuthoritiesCurrent: false,
+      sourceVersionsMatch: false,
+      sourceOwnerAuthorizationCurrent: false,
+      trustAuthorityCurrent: false,
+      directExecutorEstablished: false,
+      authorityReferences: []
+    });
+  }
+};
+
 export interface DurableMgsnServicesOptions {
   database: ManagedDatabase;
   coreUrl: string;
@@ -99,13 +127,16 @@ export interface DurableMgsnServicesOptions {
   providerSelectionCurrentAuthoritySource?: ProviderSelectionCurrentAuthoritySource;
   controlledHandoffCurrentAuthoritySource?: ControlledHandoffCurrentAuthoritySource;
   trustEvidenceCurrentAuthoritySource?: TrustEvidenceCurrentAuthoritySource;
+  trustedPublicCurrentAuthoritySource?: TrustedPublicCurrentAuthoritySource;
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
+  providerDiscovery: ProviderDiscoveryCurrentResponsibilityService;
   providerResponsibility: ProviderResponsibilityService;
   providerSelection: ProviderSelectionService;
   controlledHandoff: ControlledPrivacyHandoffService;
   outcomeTrustEvidence: OutcomeTrustEvidenceService;
+  trustedPublicExposure: TrustedPublicExposureService;
 };
 
 export function createDurableMgsnServices(
@@ -127,6 +158,7 @@ export function createDurableMgsnServices(
     options.database,
     query
   );
+  const providerDiscoveryRepository = new PostgresProviderDiscoverySourceRepository(query);
   const providerResponsibilityRepository = new PostgresProviderResponsibilityRepository(
     options.database,
     query
@@ -154,6 +186,10 @@ export function createDurableMgsnServices(
   const evidenceHandoff = new HttpProviderReturnEvidenceHandoffTarget(
     options.executionUrl,
     options.internalServiceSecret
+  );
+  const providerResponsibility = new ProviderResponsibilityService(
+    providerResponsibilityRepository,
+    providerRepository
   );
 
   return {
@@ -184,10 +220,11 @@ export function createDurableMgsnServices(
       networkParticipationRepository,
       providerRepository
     ),
-    providerResponsibility: new ProviderResponsibilityService(
-      providerResponsibilityRepository,
-      providerRepository
+    providerDiscovery: new ProviderDiscoveryCurrentResponsibilityService(
+      new ProviderDiscoveryService(providerDiscoveryRepository),
+      providerResponsibility
     ),
+    providerResponsibility,
     providerSelection: new ProviderSelectionService(
       providerSelectionRepository,
       options.providerSelectionCurrentAuthoritySource ?? unavailableProviderSelectionAuthority
@@ -199,6 +236,9 @@ export function createDurableMgsnServices(
     outcomeTrustEvidence: new OutcomeTrustEvidenceService(
       outcomeTrustEvidenceRepository,
       options.trustEvidenceCurrentAuthoritySource ?? unavailableTrustEvidenceAuthority
+    ),
+    trustedPublicExposure: new TrustedPublicExposureService(
+      options.trustedPublicCurrentAuthoritySource ?? unavailableTrustedPublicAuthority
     )
   };
 }

@@ -8,15 +8,20 @@ import {
   PostgresRuntimeCapabilityRegistry
 } from './index.js';
 import { ObservedManagedAiExecutionAuthorityV1 } from './capability-audit-telemetry.js';
+import { PostgresCapabilityRuntimeReplayStoreV1 } from './capability-runtime-replay-store.js';
 import {
   createCapabilityAuditTelemetrySinkFromEnvironmentV1,
   ObservedGovernedCapabilityRuntimeV1
 } from './capability-runtime-quality-telemetry.js';
+import { DurableGovernedCapabilityRuntimeV1 } from './durable-governed-capability-runtime.js';
 import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
 import { createGmailManagedCommunicationSenderFromEnvironmentV1 } from './managed-communication-gmail-runtime.js';
+import { HttpCoreOfficialFeeReferenceReaderV1 } from './official-fee-reference-http-reader.js';
+import { CapabilityProductionSourceEvidenceReadServiceV1 } from './production-source-evidence-read.js';
+import { createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1 } from './uspto-official-fee-production-source-evidence.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -36,6 +41,7 @@ if (milestoneFixtureMode) {
       'MO_INTERNAL_SERVICE_SECRET is required for the durable Capability Engine runtime.'
     );
   const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
+  const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
 
   database = new ManagedDatabase(
     parseDatabaseConfig({
@@ -51,6 +57,10 @@ if (milestoneFixtureMode) {
   const implementationProfiles = new PostgresImplementationProfileRegistryV1(database, pool);
   const sourceAuthority = new HttpExecutionCapabilityObservationSourceAuthority(
     executionUrl,
+    internalServiceSecret
+  );
+  const officialFeeReferences = new HttpCoreOfficialFeeReferenceReaderV1(
+    coreUrl,
     internalServiceSecret
   );
   const observationLedger = new PostgresCapabilityObservationLedger(
@@ -97,17 +107,35 @@ if (milestoneFixtureMode) {
     definitions: registry,
     implementationProfiles,
     managedAiRuntime,
+    officialFeeReferences,
     internalServiceSecret
   });
+  const replayStore = new PostgresCapabilityRuntimeReplayStoreV1(database, pool);
+  const durableGovernedCapabilityRuntime = rawGovernedCapabilityRuntime
+    ? new DurableGovernedCapabilityRuntimeV1({
+        runtime: rawGovernedCapabilityRuntime,
+        replayStore
+      })
+    : null;
   const governedCapabilityRuntime =
-    rawGovernedCapabilityRuntime && telemetrySink
-      ? new ObservedGovernedCapabilityRuntimeV1(rawGovernedCapabilityRuntime, telemetrySink)
-      : rawGovernedCapabilityRuntime;
+    durableGovernedCapabilityRuntime && telemetrySink
+      ? new ObservedGovernedCapabilityRuntimeV1(durableGovernedCapabilityRuntime, telemetrySink)
+      : durableGovernedCapabilityRuntime;
+  const productionSourceEvidenceReader = new CapabilityProductionSourceEvidenceReadServiceV1({
+    replayStore,
+    evidence: createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1({
+      capabilities: registry,
+      implementations: implementationProfiles,
+      references: officialFeeReferences
+    })
+  });
   runtime = createRuntime({
     runtimeCapabilityRegistry: registry,
     capabilityObservationLedger: observationLedger,
     privateReflectionCandidates,
     reflectionDispositionProfiles,
+    productionSourceEvidenceReader,
+    productionSourceEvidenceReplayStore: replayStore,
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),

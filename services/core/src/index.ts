@@ -45,6 +45,10 @@ import { createMethodOutcomeEvidenceRoutesV1 } from './method-outcome-evidence-h
 import type { MethodOutcomeEvidenceAdmissionServiceV1 } from './method-outcome-evidence.js';
 import { createMethodOutcomeReportRoutesV1 } from './method-outcome-report-http.js';
 import type { MethodOutcomeReportServiceV1 } from './method-outcome-report.js';
+import {
+  createOfficialFeeReferenceRoutesV1,
+  type OfficialFeeReferenceResolutionAuthorityV1
+} from './official-fee-reference-http.js';
 
 export const serviceManifest = Object.freeze({
   name: 'core',
@@ -64,6 +68,7 @@ export interface CoreRuntimeOptions {
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
+  officialFeeReferences?: Readonly<OfficialFeeReferenceResolutionAuthorityV1>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -104,6 +109,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Method Outcome reporting.');
   if (options.methodImprovementAdmissions && !secret)
     throw new Error('internalServiceSecret is required for Method Improvement admission.');
+  if (options.officialFeeReferences && !secret)
+    throw new Error('internalServiceSecret is required for Official Fee Reference reads.');
   const onboardingRoutes =
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({
@@ -129,6 +136,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.methodImprovementAdmissions && secret
       ? createMethodImprovementRoutesV1({
           service: options.methodImprovementAdmissions,
+          internalServiceSecret: secret
+        })
+      : [];
+  const officialFeeReferenceRoutes =
+    options.officialFeeReferences && secret
+      ? createOfficialFeeReferenceRoutesV1({
+          references: options.officialFeeReferences,
           internalServiceSecret: secret
         })
       : [];
@@ -629,7 +643,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   routes.push(
     ...methodOutcomeEvidenceRoutes,
     ...methodOutcomeReportRoutes,
-    ...methodImprovementRoutes
+    ...methodImprovementRoutes,
+    ...officialFeeReferenceRoutes
   );
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
@@ -650,3 +665,6 @@ export * from './method-outcome-report.js';
 export * from './method-outcome-evidence-http.js';
 export * from './method-improvement.js';
 export * from './method-improvement-http.js';
+export * from './official-fee-reference-http.js';
+export * from './official-fee-reference-store.js';
+export * from './official-fee-reference-store-postgres.js';

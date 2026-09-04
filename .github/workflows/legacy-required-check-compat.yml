@@ -1,0 +1,77 @@
+name: Legacy Required Check Compatibility
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: legacy-required-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - name: Await exact-head merge readiness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for attempt in $(seq 1 240); do
+            payload="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$REPOSITORY/commits/$HEAD_SHA/check-runs?per_page=100")"
+
+            latest="$(printf '%s' "$payload" | jq -r '
+              [.check_runs[] | select(.name == "Exact-head Merge Readiness")]
+              | sort_by(.id)
+              | if length == 0 then "" else (last | [.status, (.conclusion // "")] | @tsv) end
+            ')"
+
+            if [ -n "$latest" ]; then
+              IFS=$'\t' read -r status conclusion <<< "$latest"
+              if [ "$status" = "completed" ] && [ "$conclusion" = "success" ]; then
+                echo "Exact-head Merge Readiness succeeded for $HEAD_SHA."
+                exit 0
+              fi
+              if [ "$status" = "completed" ]; then
+                echo "::error title=Exact-head merge readiness failed::Exact-head Merge Readiness completed with conclusion=$conclusion"
+                exit 1
+              fi
+            fi
+
+            sleep 5
+          done
+
+          echo "::error title=Exact-head merge readiness missing::Timed out waiting for Exact-head Merge Readiness on $HEAD_SHA"
+          exit 1
+
+  persistence:
+    name: persistence
+    needs: validate
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preserve legacy required persistence context
+        env:
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+        run: test "$VALIDATE_RESULT" = "success"
+
+  professional_review_browser:
+    name: professional-review-browser
+    needs: validate
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preserve legacy required browser context
+        env:
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+        run: test "$VALIDATE_RESULT" = "success"

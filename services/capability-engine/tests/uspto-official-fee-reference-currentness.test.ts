@@ -163,7 +163,7 @@ describe('USPTO official-fee reference currentness authority V1', () => {
       now: () => CURRENT_CHECK_AT
     });
 
-    const result = authority.evaluate(policyInput(execution));
+    const result = await authority.evaluate(policyInput(execution));
 
     expect(resolveCurrent).toHaveBeenCalledOnce();
     expect(resolveCurrent).toHaveBeenCalledWith({
@@ -200,7 +200,7 @@ describe('USPTO official-fee reference currentness authority V1', () => {
       now: () => CURRENT_CHECK_AT
     });
 
-    expect(authority.evaluate(policyInput(execution))).toMatchObject({
+    expect(await authority.evaluate(policyInput(execution))).toMatchObject({
       status: 'NOT_CURRENT'
     });
   });
@@ -227,11 +227,11 @@ describe('USPTO official-fee reference currentness authority V1', () => {
       }
     };
 
-    expect(authority.evaluate(foreignCapability)).toMatchObject({
+    expect(await authority.evaluate(foreignCapability)).toMatchObject({
       status: 'UNSUPPORTED_APPLICABILITY'
     });
     expect(
-      authority.evaluate({
+      await authority.evaluate({
         ...policyInput(execution),
         execution: foreignOperationExecution
       })
@@ -256,7 +256,9 @@ describe('USPTO official-fee reference currentness authority V1', () => {
       now: () => CURRENT_CHECK_AT
     });
 
-    expect(authority.evaluate(policyInput(execution))).toMatchObject({ status: 'NOT_CURRENT' });
+    expect(await authority.evaluate(policyInput(execution))).toMatchObject({
+      status: 'NOT_CURRENT'
+    });
     expect(resolveCurrent).not.toHaveBeenCalled();
   });
 
@@ -271,7 +273,9 @@ describe('USPTO official-fee reference currentness authority V1', () => {
       now: () => CURRENT_CHECK_AT
     });
 
-    expect(authority.evaluate(policyInput(execution))).toMatchObject({ status: 'UNAVAILABLE' });
+    expect(await authority.evaluate(policyInput(execution))).toMatchObject({
+      status: 'UNAVAILABLE'
+    });
   });
 
   it('treats a tampered same-id current record as unavailable rather than current', async () => {
@@ -283,7 +287,9 @@ describe('USPTO official-fee reference currentness authority V1', () => {
       now: () => CURRENT_CHECK_AT
     });
 
-    expect(authority.evaluate(policyInput(execution))).toMatchObject({ status: 'UNAVAILABLE' });
+    expect(await authority.evaluate(policyInput(execution))).toMatchObject({
+      status: 'UNAVAILABLE'
+    });
   });
 
   it('integrates with #397 without changing the current PILOT maturity catalog', async () => {

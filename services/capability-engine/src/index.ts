@@ -5,6 +5,7 @@ import { createCapabilityObservationRoutes } from './capability-observation-http
 import type { PostgresCapabilityObservationLedger } from './capability-observation-ledger.js';
 import { createCapabilityRuntimeRoutesV2 } from './capability-runtime-http.js';
 import type { GovernedCapabilityRuntime } from './capability-runtime.js';
+import type { CapabilityRuntimeReplayStoreV1 } from './capability-runtime-replay-store.js';
 import type { ManagedAiExecutionClaimStoreV1 } from './managed-ai-execution-claim.js';
 import type { ManagedAiExactOutputStoreV1 } from './managed-ai-exact-output.js';
 import {
@@ -24,6 +25,8 @@ import {
 } from './milestone-capability-request-fixture.js';
 import { createPrivateReflectionCandidateRoutes } from './private-reflection-candidate-http.js';
 import type { PostgresPrivateReflectionCandidateService } from './private-reflection-candidate.js';
+import { createCapabilityProductionSourceEvidenceRoutesV1 } from './production-source-evidence-http.js';
+import type { CapabilityProductionSourceEvidenceReadServiceV1 } from './production-source-evidence-read.js';
 import { createReflectionDispositionProfileRoutes } from './reflection-disposition-profile-http.js';
 import type { PostgresReflectionDispositionProfileService } from './reflection-disposition-profile.js';
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
@@ -62,8 +65,12 @@ export * from './managed-communication-gmail.js';
 export * from './managed-communication-http.js';
 export * from './managed-communication-inbound.js';
 export * from './milestone-capability-request-fixture.js';
+export * from './official-fee-reference-http-reader.js';
 export * from './private-reflection-candidate-http.js';
 export * from './private-reflection-candidate.js';
+export * from './production-source-evidence-http.js';
+export * from './production-source-evidence-read.js';
+export * from './production-source-explainability.js';
 export * from './reflection-disposition-profile-http.js';
 export * from './reflection-disposition-profile.js';
 export * from './runtime-capability-catalog.js';
@@ -73,6 +80,7 @@ export * from './source-admission-policy-catalog.js';
 export * from './source-admission-policy-content-provenance.js';
 export * from './source-admission-policy-provenance.js';
 export * from './uspto-official-fee-method-currentness.js';
+export * from './uspto-official-fee-production-source-evidence.js';
 export * from './uspto-official-fee-reference-currentness.js';
 export * from './uspto-official-fee-resolver-pilot.js';
 export * from './uspto-official-fee-source-use.js';
@@ -104,6 +112,8 @@ export interface CapabilityEngineOptions {
     ManagedCommunicationExactEvidenceStoreV1,
     'resolveExactEvidence'
   >;
+  productionSourceEvidenceReader?: Pick<CapabilityProductionSourceEvidenceReadServiceV1, 'read'>;
+  productionSourceEvidenceReplayStore?: Pick<CapabilityRuntimeReplayStoreV1, 'inspect'>;
   internalServiceSecret?: string;
 }
 
@@ -141,6 +151,21 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
   }
   if (options.managedAiExactOutputStore && !options.managedAiExecutor) {
     throw new Error('managedAiExactOutputStore requires managedAiExecutor.');
+  }
+
+  const productionSourceEvidenceConfigured = Boolean(
+    options.productionSourceEvidenceReader || options.productionSourceEvidenceReplayStore
+  );
+  if (productionSourceEvidenceConfigured && !options.internalServiceSecret) {
+    throw new Error('Production source evidence read requires internalServiceSecret.');
+  }
+  if (
+    Boolean(options.productionSourceEvidenceReader) !==
+    Boolean(options.productionSourceEvidenceReplayStore)
+  ) {
+    throw new Error(
+      'productionSourceEvidenceReader and productionSourceEvidenceReplayStore must be configured together.'
+    );
   }
 
   const managedCommunicationConfigured = Boolean(
@@ -224,6 +249,16 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const productionSourceEvidenceRoutes =
+    options.productionSourceEvidenceReader &&
+    options.productionSourceEvidenceReplayStore &&
+    options.internalServiceSecret
+      ? createCapabilityProductionSourceEvidenceRoutesV1({
+          reader: options.productionSourceEvidenceReader,
+          replayStore: options.productionSourceEvidenceReplayStore,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedAiExecutionRoutes =
     options.managedAiExecutor && options.internalServiceSecret
       ? createManagedAiExecutionRoutesV1({
@@ -266,6 +301,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...privateReflectionCandidateRoutes,
         ...reflectionDispositionProfileRoutes,
         ...capabilityCenterRoutes,
+        ...productionSourceEvidenceRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]

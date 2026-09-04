@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
@@ -17,6 +20,8 @@ jobs:
     name: Detect changed scope
     runs-on: ubuntu-latest
     outputs:
+      diff_base: ${{ steps.diff.outputs.base }}
+      diff_head: ${{ steps.diff.outputs.head }}
       core: ${{ steps.scope.outputs.core }}
       lite: ${{ steps.scope.outputs.lite }}
       capability: ${{ steps.scope.outputs.capability }}
@@ -29,68 +34,145 @@ jobs:
       persistence: ${{ steps.scope.outputs.persistence }}
       shared: ${{ steps.scope.outputs.shared }}
       integration: ${{ steps.scope.outputs.integration }}
+      postgres: ${{ steps.scope.outputs.postgres }}
       browser: ${{ steps.scope.outputs.browser }}
+      browser_generic: ${{ steps.scope.outputs.browser_generic }}
+      browser_professional_review: ${{ steps.scope.outputs.browser_professional_review }}
+      browser_document_package: ${{ steps.scope.outputs.browser_document_package }}
+      browser_order_journey: ${{ steps.scope.outputs.browser_order_journey }}
+      browser_product_loop: ${{ steps.scope.outputs.browser_product_loop }}
+      product_loop: ${{ steps.scope.outputs.product_loop }}
+      mgsn_durability: ${{ steps.scope.outputs.mgsn_durability }}
+      production_runtime: ${{ steps.scope.outputs.production_runtime }}
+      hard_gate: ${{ steps.scope.outputs.hard_gate }}
+      l1_fast: ${{ steps.scope.outputs.l1_fast }}
+      l2_merge: ${{ steps.scope.outputs.l2_merge }}
+      l3_full: ${{ steps.scope.outputs.l3_full }}
       full_workspace: ${{ steps.scope.outputs.full_workspace }}
       full_typecheck: ${{ steps.scope.outputs.full_typecheck }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Resolve authoritative diff baseline
+        id: diff
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="$(git merge-base "$PR_BASE_SHA" "$PR_HEAD_SHA")"
+            HEAD="$PR_HEAD_SHA"
+            FULL=false
+          elif [ "${{ github.event_name }}" = "push" ] && [ -n "$PUSH_BASE_SHA" ] && ! echo "$PUSH_BASE_SHA" | grep -Eq '^0+$'; then
+            BASE="$PUSH_BASE_SHA"
+            HEAD="$PUSH_HEAD_SHA"
+            FULL=false
+          else
+            BASE=""
+            HEAD=""
+            FULL=true
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
       - name: Detect affected CI domains
         id: scope
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DIFF_BASE: ${{ steps.diff.outputs.base }}
+          DIFF_HEAD: ${{ steps.diff.outputs.head }}
+          FULL_SCOPE: ${{ steps.diff.outputs.full }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$FULL_SCOPE" = "true" ]; then
             node scripts/ci-detect-scope.mjs --full
           else
-            node scripts/ci-detect-scope.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
+            node scripts/ci-detect-scope.mjs --base "$DIFF_BASE" --head "$DIFF_HEAD"
           fi
 
-  validate:
-    name: validate
+  l1_fast:
+    name: L1 Fast PR Gate
     needs: detect
+    if: github.event_name == 'pull_request' && needs.detect.outputs.l1_fast == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - name: Validate CI scope detector
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate CI scope map
         run: node --test scripts/ci-detect-scope.test.mjs
-      - run: pnpm validate:workspace
-      - run: pnpm validate:persistence-boundaries
-      - run: pnpm test:gateway-inventory
-      - run: pnpm format:check
-      - name: Full workspace regression on main or workspace topology changes
-        if: github.event_name == 'push' || needs.detect.outputs.full_workspace == 'true'
-        run: pnpm lint && pnpm typecheck && pnpm test && pnpm build
-      - name: Affected workspace validation on PR
-        if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true'
+      - name: Format-check changed files only
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ needs.detect.outputs.diff_base }}
+          HEAD_SHA: ${{ needs.detect.outputs.diff_head }}
         run: |
-          pnpm exec turbo run build --filter="...[$BASE_SHA]"
-          pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]"
-      - name: Full typecheck for shared compiler configuration
-        if: github.event_name == 'pull_request' && needs.detect.outputs.full_workspace != 'true' && needs.detect.outputs.full_typecheck == 'true'
-        run: pnpm typecheck
-      - name: Story matrix for product UI or full-workspace changes
-        if: github.event_name == 'push' || needs.detect.outputs.web == 'true' || needs.detect.outputs.full_workspace == 'true'
+          git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$HEAD_SHA" \
+            | xargs -0 -r pnpm exec prettier --check --ignore-unknown
+      - name: Affected lint, typecheck and unit tests
+        env:
+          BASE_SHA: ${{ needs.detect.outputs.diff_base }}
+        run: pnpm exec turbo run lint typecheck test --filter="...[$BASE_SHA]"
+      - name: Shared and CI governance boundaries
+        if: needs.detect.outputs.hard_gate == 'true'
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries
+      - name: Gateway inventory boundary
+        if: needs.detect.outputs.gateway == 'true' || needs.detect.outputs.hard_gate == 'true'
+        run: pnpm test:gateway-inventory
+
+  l2_merge:
+    name: L2 Affected Merge Gate
+    needs: [detect, l1_fast]
+    if: >-
+      always() && github.event_name == 'pull_request' &&
+      needs.detect.outputs.l2_merge == 'true' &&
+      needs.l1_fast.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build affected dependency closure
+        env:
+          BASE_SHA: ${{ needs.detect.outputs.diff_base }}
+        run: pnpm exec turbo run build --filter="...[$BASE_SHA]"
+      - name: Gateway boundary tests
+        if: needs.detect.outputs.gateway == 'true'
+        run: pnpm test:gateway-inventory
+      - name: Shared persistence boundary contract
+        if: needs.detect.outputs.persistence == 'true' || needs.detect.outputs.shared == 'true'
+        run: pnpm validate:persistence-boundaries
+      - name: Product UI story matrix
+        if: needs.detect.outputs.web == 'true'
         run: pnpm test:story-matrix
 
   persistence:
-    name: persistence
-    needs: detect
+    name: L2 PostgreSQL Durability
+    needs: [detect, l1_fast]
+    if: >-
+      always() && needs.detect.outputs.postgres == 'true' &&
+      (github.event_name != 'pull_request' || needs.l1_fast.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -153,36 +235,28 @@ jobs:
       MO_CSRF_SECRET: task-019-ci-csrf-secret-32-bytes-minimum
       WEB_ORIGINS: https://test.markorbit.local
     steps:
-      - name: No integration scope
-        if: github.event_name == 'pull_request' && needs.detect.outputs.integration != 'true'
-        run: echo 'No integration-affecting changes; required persistence check passes as no-op.'
       - uses: actions/checkout@v4
-        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
-        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
-        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
         with: { node-version: 22, cache: pnpm }
-      - if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - name: Create affected suite databases
-        if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
         env:
           PGPASSWORD: markorbit-test-only
-          PERSISTENCE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.persistence == 'true' }}
-          CORE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.core == 'true' }}
-          LITE_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.lite == 'true' }}
-          CAPABILITY_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.capability == 'true' }}
-          MARKREG_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.markreg == 'true' }}
-          PAYMENT_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.payment == 'true' }}
-          EXECUTION_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.execution == 'true' }}
-          MGSN_SCOPE: ${{ github.event_name == 'push' || needs.detect.outputs.mgsn == 'true' }}
+          PERSISTENCE_SCOPE: ${{ needs.detect.outputs.persistence == 'true' }}
+          CORE_SCOPE: ${{ needs.detect.outputs.core == 'true' }}
+          LITE_SCOPE: ${{ needs.detect.outputs.lite == 'true' }}
+          CAPABILITY_SCOPE: ${{ needs.detect.outputs.capability == 'true' }}
+          MARKREG_SCOPE: ${{ needs.detect.outputs.markreg == 'true' }}
+          PAYMENT_SCOPE: ${{ needs.detect.outputs.payment == 'true' }}
+          EXECUTION_SCOPE: ${{ needs.detect.outputs.execution == 'true' }}
+          MGSN_SCOPE: ${{ needs.detect.outputs.mgsn == 'true' }}
         run: |
           create_db() { psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $1;"; }
-          if [ "$PERSISTENCE_SCOPE" = "true" ]; then
-            create_db markorbit_persistence_test
-          fi
+          if [ "$PERSISTENCE_SCOPE" = "true" ]; then create_db markorbit_persistence_test; fi
           if [ "$CORE_SCOPE" = "true" ]; then
             create_db markorbit_identity_test
             create_db markorbit_auth_test
@@ -203,24 +277,16 @@ jobs:
             create_db markorbit_capability_managed_ai_test
             create_db markorbit_capability_managed_ai_exact_output_test
           fi
-          if [ "$MARKREG_SCOPE" = "true" ]; then
-            create_db markorbit_markreg_test
-          fi
-          if [ "$PAYMENT_SCOPE" = "true" ]; then
-            create_db markorbit_payment_test
-          fi
-          if [ "$EXECUTION_SCOPE" = "true" ] || [ "$MARKREG_SCOPE" = "true" ]; then
-            create_db markorbit_execution_test
-          fi
-          if [ "$MGSN_SCOPE" = "true" ]; then
-            create_db markorbit_mgsn_test
-          fi
+          if [ "$MARKREG_SCOPE" = "true" ]; then create_db markorbit_markreg_test; fi
+          if [ "$PAYMENT_SCOPE" = "true" ]; then create_db markorbit_payment_test; fi
+          if [ "$EXECUTION_SCOPE" = "true" ] || [ "$MARKREG_SCOPE" = "true" ]; then create_db markorbit_execution_test; fi
+          if [ "$MGSN_SCOPE" = "true" ]; then create_db markorbit_mgsn_test; fi
           if [ "$EXECUTION_SCOPE" = "true" ] && [ "$MARKREG_SCOPE" = "true" ]; then
             create_db markorbit_wp05_execution_test
             create_db markorbit_wp05_markreg_test
           fi
       - name: Persistence foundation
-        if: github.event_name == 'push' || needs.detect.outputs.persistence == 'true'
+        if: needs.detect.outputs.persistence == 'true'
         run: |
           pnpm db:test:bootstrap
           pnpm db:migrate
@@ -228,7 +294,7 @@ jobs:
           pnpm db:migrate:verify
           pnpm test:persistence
       - name: Core integration
-        if: github.event_name == 'push' || needs.detect.outputs.core == 'true'
+        if: needs.detect.outputs.core == 'true'
         run: |
           pnpm test:identity:postgres
           pnpm test:auth:postgres
@@ -236,7 +302,9 @@ jobs:
           pnpm test:auth
           pnpm test:auth:http
       - name: Lite integration
-        if: github.event_name == 'push' || needs.detect.outputs.lite == 'true'
+        if: >-
+          needs.detect.outputs.lite == 'true' &&
+          (needs.detect.outputs.product_loop != 'true' || needs.detect.outputs.hard_gate == 'true')
         run: |
           pnpm exec turbo run build --filter=@markorbit/lite-service...
           pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
@@ -245,7 +313,7 @@ jobs:
           pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
           pnpm --filter @markorbit/lite-service exec vitest run tests/conversion-analytics-postgres.test.ts
       - name: Capability integration
-        if: github.event_name == 'push' || needs.detect.outputs.capability == 'true'
+        if: needs.detect.outputs.capability == 'true'
         run: |
           pnpm exec turbo run build --filter=@markorbit/capability-engine...
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_registry_test pnpm --filter @markorbit/capability-engine test:runtime-registry:postgres
@@ -255,7 +323,9 @@ jobs:
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_managed_ai_test pnpm --filter @markorbit/capability-engine test:managed-ai-claim:postgres
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_managed_ai_exact_output_test pnpm --filter @markorbit/capability-engine test:managed-ai-exact-output:postgres
       - name: MarkReg integration
-        if: github.event_name == 'push' || needs.detect.outputs.markreg == 'true'
+        if: >-
+          needs.detect.outputs.markreg == 'true' &&
+          (needs.detect.outputs.product_loop != 'true' || needs.detect.outputs.hard_gate == 'true')
         run: |
           pnpm test:customer-confirmation
           pnpm test:customer-confirmation:postgres
@@ -272,7 +342,7 @@ jobs:
           pnpm test:audit-idempotency:http
           pnpm test:audit-idempotency:restart
       - name: Execution integration
-        if: github.event_name == 'push' || needs.detect.outputs.execution == 'true'
+        if: needs.detect.outputs.execution == 'true'
         run: |
           pnpm test:professional-review:postgres
           pnpm test:professional-review:http
@@ -281,11 +351,11 @@ jobs:
           pnpm --filter @markorbit/execution-service exec vitest run tests/trademark-service-execution-sandbox-postgres.test.ts
           pnpm --filter @markorbit/execution-service exec vitest run tests/provider-return-evidence-postgres.test.ts
           pnpm test:evidence-review:postgres
-      - name: MGSN integration
-        if: github.event_name == 'push' || needs.detect.outputs.mgsn == 'true'
+      - name: MGSN integration — complete durability convention
+        if: needs.detect.outputs.mgsn == 'true'
         run: |
-          # Every MGSN PostgreSQL suite resets/migrates the same isolated database.
-          # Discover suites by convention, then isolate each one in its own Vitest process.
+          # Hard Gate: every MGSN PostgreSQL suite remains convention-discovered.
+          # Each suite gets its own Vitest process because suites reset/migrate the same isolated DB.
           pnpm exec turbo run build --filter=@markorbit/mgsn-service...
           cd services/mgsn
           for test_file in tests/*postgres*.test.ts; do
@@ -296,7 +366,7 @@ jobs:
             fi
           done
       - name: Payment integration
-        if: github.event_name == 'push' || needs.detect.outputs.payment == 'true'
+        if: needs.detect.outputs.payment == 'true'
         run: |
           if [ -f services/payment/package.json ]; then
             pnpm exec turbo run build --filter=@markorbit/payment-service...
@@ -308,16 +378,113 @@ jobs:
             echo 'Payment package is not present on this revision; skipping Payment lane.'
           fi
       - name: Cross-domain Execution to MarkReg handoff
-        if: github.event_name == 'push' || (needs.detect.outputs.execution == 'true' && needs.detect.outputs.markreg == 'true')
+        if: needs.detect.outputs.execution == 'true' && needs.detect.outputs.markreg == 'true'
         run: pnpm exec vitest run scripts/milestone5-reviewed-source-handoff.integration.test.ts
-      - if: github.event_name == 'push' || needs.detect.outputs.integration == 'true'
-        run: pnpm test:gateway-inventory
 
-  professional-review-browser:
-    name: professional-review-browser
-    needs: detect
+  product_loop:
+    name: L2 Product Loop Dependency Gate
+    needs: [detect, l1_fast]
+    if: >-
+      always() && needs.detect.outputs.product_loop == 'true' &&
+      (github.event_name != 'pull_request' || needs.l1_fast.result == 'success')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      LITE_CONTENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_content
+      LITE_CONTENT_POSTGRES_TEST_REQUIRED: '1'
+      LITE_DAILY_SIGNAL_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_daily_signal
+      LITE_DAILY_SIGNAL_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CONTENT_KIT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_content_kit
+      LITE_CONTENT_KIT_POSTGRES_TEST_REQUIRED: '1'
+      LITE_VISUAL_BRIDGE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_visual_bridge
+      LITE_VISUAL_BRIDGE_POSTGRES_TEST_REQUIRED: '1'
+      LITE_CANDIDATE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_candidate
+      LITE_CANDIDATE_POSTGRES_TEST_REQUIRED: '1'
+      LITE_TRADEMARK_ASSET_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_trademark_asset
+      LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED: '1'
+      LITE_FEEDBACK_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_feedback
+      LITE_FEEDBACK_POSTGRES_TEST_REQUIRED: '1'
+      LITE_TODAY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_prepared
+      LITE_TODAY_POSTGRES_TEST_REQUIRED: '1'
+      MARKREG_FORMAL_OPPORTUNITY_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_formal
+      MARKREG_FORMAL_OPPORTUNITY_POSTGRES_REQUIRED: '1'
+      LITE_PRODUCT_LOOP_CLOSURE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_closure_lite
+      MARKREG_PRODUCT_LOOP_CLOSURE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_closure_markreg
+      PRODUCT_LOOP_CLOSURE_RELIABILITY_REQUIRED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Create Product Loop owner databases once
+        env:
+          PGPASSWORD: markorbit-test-only
+        run: |
+          for db in \
+            markorbit_product_content \
+            markorbit_product_daily_signal \
+            markorbit_product_content_kit \
+            markorbit_product_visual_bridge \
+            markorbit_product_candidate \
+            markorbit_product_trademark_asset \
+            markorbit_product_feedback \
+            markorbit_product_prepared \
+            markorbit_product_preference \
+            markorbit_product_formal \
+            markorbit_product_closure_lite \
+            markorbit_product_closure_markreg; do
+            psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $db;"
+          done
+      - name: Build Product Loop dependency closure once
+        run: pnpm exec turbo run build --filter=@markorbit/lite-service... --filter=@markorbit/markreg-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Run Lite Product Loop PostgreSQL matrix
+        run: |
+          pnpm --filter @markorbit/lite-service exec vitest run tests/visual-bridge.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/content-preparation-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/daily-signal-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/daily-orbit-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/content-kit-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/visual-bridge-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/candidate-qualification-postgres.test.ts
+          pnpm --filter @markorbit/lite-service test:trademark-asset:postgres
+          pnpm --filter @markorbit/lite-service exec vitest run tests/product-loop-feedback-postgres.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/prepared-action-postgres.test.ts
+          LITE_TODAY_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_preference pnpm --filter @markorbit/lite-service exec vitest run tests/preference-feedback-postgres.test.ts
+      - name: Run Product Loop HTTP and derivation boundaries
+        run: |
+          pnpm exec vitest run scripts/product-loop-today-runtime.integration.test.ts
+          pnpm --filter @markorbit/lite-service exec vitest run tests/preference-http.test.ts tests/preference-target.test.ts tests/preference-visual-target.test.ts tests/daily-orbit.test.ts
+          pnpm --filter @markorbit/gateway exec vitest run tests/product-loop-http.test.ts tests/product-loop-daily-workspace-http.test.ts
+          pnpm --filter @markorbit/lite-web exec vitest run src/api/daily-workspace.test.ts
+      - name: Run Formal Opportunity handoff
+        run: pnpm --filter @markorbit/markreg-service exec vitest run tests/formal-opportunity-postgres.test.ts
+      - name: Run two-owner Product Loop closure
+        run: pnpm exec vitest run scripts/product-loop-closure-reliability.integration.test.ts
+
+  browser_runtime:
+    name: L2 Browser Runtime Gate
+    needs: [detect, l1_fast]
+    if: >-
+      always() && needs.detect.outputs.browser == 'true' &&
+      (needs.detect.outputs.browser_generic != 'true' || needs.detect.outputs.hard_gate == 'true') &&
+      (github.event_name != 'pull_request' || needs.l1_fast.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -335,31 +502,140 @@ jobs:
       MARKREG_DOCUMENT_PACKAGE_POSTGRES_REQUIRED: '1'
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_review_browser
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
+      LITE_PRODUCT_LOOP_CLOSURE_BROWSER_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_product_loop_browser
     steps:
-      - name: No browser scope
-        if: github.event_name == 'pull_request' && needs.detect.outputs.browser != 'true'
-        run: echo 'No browser-affecting changes; required browser check passes as no-op.'
       - uses: actions/checkout@v4
-        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
-        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4
-        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
         with: { node-version: 22, cache: pnpm }
-      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
-        run: pnpm install --frozen-lockfile
-      - name: Create Execution browser database
-        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+      - run: pnpm install --frozen-lockfile
+      - name: Create scoped browser databases
         env:
           PGPASSWORD: markorbit-test-only
-        run: psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_review_browser;'
-      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
-        run: pnpm exec playwright install --with-deps chromium
-      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+        run: |
+          psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_execution_review_browser;'
+          psql -h 127.0.0.1 -U markorbit_test -d markorbit_review_browser -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_product_loop_browser;'
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Professional Review browser
+        if: needs.detect.outputs.browser_professional_review == 'true' || needs.detect.outputs.hard_gate == 'true'
         run: pnpm test:professional-review:browser
-      - if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+      - name: Document Package browser
+        if: needs.detect.outputs.browser_document_package == 'true' || needs.detect.outputs.hard_gate == 'true'
         run: pnpm exec playwright test --config playwright.document-package-real-runtime.config.ts --project document-package-desktop --reporter=line
-      - name: Run durable Order journey real runtime
-        if: github.event_name == 'push' || needs.detect.outputs.browser == 'true'
+      - name: Durable Order journey browser
+        if: needs.detect.outputs.browser_order_journey == 'true' || needs.detect.outputs.hard_gate == 'true'
         run: pnpm test:order:journey:browser
+      - name: Product Loop browser prerequisites
+        if: needs.detect.outputs.browser_product_loop == 'true' || needs.detect.outputs.hard_gate == 'true'
+        run: |
+          node scripts/validate-product-loop-closure-no-interception.mjs
+          pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/lite-service... --filter=@markorbit/gateway... --filter=@markorbit/lite-web...
+      - name: Product Loop browser
+        if: needs.detect.outputs.browser_product_loop == 'true' || needs.detect.outputs.hard_gate == 'true'
+        run: pnpm exec playwright test -c playwright.product-loop-closure-real-runtime.config.ts
+      - name: Explicit browser fallback
+        if: >-
+          needs.detect.outputs.browser == 'true' &&
+          needs.detect.outputs.browser_professional_review != 'true' &&
+          needs.detect.outputs.browser_document_package != 'true' &&
+          needs.detect.outputs.browser_order_journey != 'true' &&
+          needs.detect.outputs.browser_product_loop != 'true' &&
+          needs.detect.outputs.browser_generic != 'true'
+        run: pnpm test:story-matrix
+
+  l3_full:
+    name: L3 Full Regression
+    needs: [detect, l1_fast]
+    if: >-
+      always() &&
+      (github.event_name != 'pull_request' ||
+       (needs.l1_fast.result == 'success' && needs.detect.outputs.l3_full == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Repository-wide formatting
+        run: pnpm format:check
+      - name: Shared ownership and persistence boundaries
+        run: pnpm validate:workspace && pnpm validate:persistence-boundaries && pnpm test:gateway-inventory
+      - name: Full repository lint
+        run: pnpm lint
+      - name: Full workspace typecheck
+        run: pnpm typecheck
+      - name: Full workspace tests
+        run: pnpm test
+      - name: Full workspace build
+        run: pnpm build
+      - name: Full story matrix
+        run: pnpm test:story-matrix
+
+  merge_readiness:
+    name: Exact-head Merge Readiness
+    needs: [detect, l1_fast, l2_merge, persistence, product_loop, browser_runtime, l3_full]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.readiness.outputs.ready }}
+      head_sha: ${{ steps.readiness.outputs.head_sha }}
+    steps:
+      - name: Aggregate exact-head required gates
+        id: readiness
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          L1_REQUIRED: ${{ needs.detect.outputs.l1_fast }}
+          L1_RESULT: ${{ needs.l1_fast.result }}
+          L2_REQUIRED: ${{ needs.detect.outputs.l2_merge }}
+          L2_RESULT: ${{ needs.l2_merge.result }}
+          POSTGRES_REQUIRED: ${{ needs.detect.outputs.postgres }}
+          POSTGRES_RESULT: ${{ needs.persistence.result }}
+          PRODUCT_LOOP_REQUIRED: ${{ needs.detect.outputs.product_loop }}
+          PRODUCT_LOOP_RESULT: ${{ needs.product_loop.result }}
+          BROWSER_REQUIRED: ${{ needs.detect.outputs.browser == 'true' && (needs.detect.outputs.browser_generic != 'true' || needs.detect.outputs.hard_gate == 'true') }}
+          BROWSER_RESULT: ${{ needs.browser_runtime.result }}
+          L3_REQUIRED: ${{ needs.detect.outputs.l3_full }}
+          L3_RESULT: ${{ needs.l3_full.result }}
+          HARD_GATE: ${{ needs.detect.outputs.hard_gate }}
+        run: |
+          failed=0
+          check_required() {
+            name="$1" required="$2" result="$3"
+            if [ "$required" = "true" ] && [ "$result" != "success" ]; then
+              echo "::error title=Merge readiness missing required gate::$name required=true result=$result"
+              failed=1
+            fi
+          }
+
+          check_required L1 "$L1_REQUIRED" "$L1_RESULT"
+          check_required L2 "$L2_REQUIRED" "$L2_RESULT"
+          check_required PostgreSQL "$POSTGRES_REQUIRED" "$POSTGRES_RESULT"
+          check_required ProductLoop "$PRODUCT_LOOP_REQUIRED" "$PRODUCT_LOOP_RESULT"
+          check_required Browser "$BROWSER_REQUIRED" "$BROWSER_RESULT"
+          check_required L3 "$L3_REQUIRED" "$L3_RESULT"
+
+          {
+            echo '## Exact-head merge readiness'
+            echo
+            echo '```json'
+            printf '{"head":"%s","hardGate":%s,"required":{"l1":%s,"l2":%s,"postgres":%s,"productLoop":%s,"browser":%s,"l3":%s},"results":{"l1":"%s","l2":"%s","postgres":"%s","productLoop":"%s","browser":"%s","l3":"%s"}}\n' \
+              "$HEAD_SHA" "$HARD_GATE" "$L1_REQUIRED" "$L2_REQUIRED" "$POSTGRES_REQUIRED" "$PRODUCT_LOOP_REQUIRED" "$BROWSER_REQUIRED" "$L3_REQUIRED" \
+              "$L1_RESULT" "$L2_RESULT" "$POSTGRES_RESULT" "$PRODUCT_LOOP_RESULT" "$BROWSER_RESULT" "$L3_RESULT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          if [ "$failed" -ne 0 ]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo 'ready=true' >> "$GITHUB_OUTPUT"

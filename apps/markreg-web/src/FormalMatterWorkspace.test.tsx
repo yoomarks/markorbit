@@ -62,11 +62,11 @@ const matter = {
 afterEach(cleanup);
 
 describe('FormalMatterWorkspace', () => {
-  it('turns durable Formal Matter truth into a customer workspace without fabricating authority', () => {
-    const renderLifecycle = vi.fn(() => <div>Lifecycle truth</div>);
+  it('prioritizes human-readable Matter identity and current work before technical provenance', () => {
+    const renderLifecycle = vi.fn(() => <div>Recommended action truth</div>);
     const renderEvidence = vi.fn(() => <div>Evidence Projection truth</div>);
     const renderIntelligence = vi.fn(() => <div>Matter Intelligence truth</div>);
-    render(
+    const { container } = render(
       <FormalMatterWorkspace
         matter={matter}
         expectedVersion="5"
@@ -78,21 +78,39 @@ describe('FormalMatterWorkspace', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Current matter' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.getByText('ORBIT')).toBeTruthy();
     expect(screen.getByText('Orbit Labs Inc.')).toBeTruthy();
     expect(screen.getByText('US')).toBeTruthy();
     expect(screen.getByText('9, 42')).toBeTruthy();
     expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
+    expect(screen.getByText('Recommended action truth')).toBeTruthy();
+    expect(screen.getByText('Evidence Projection truth')).toBeTruthy();
+    expect(screen.getByText('Matter Intelligence truth')).toBeTruthy();
+
+    const textContent = container.textContent ?? '';
+    expect(textContent.indexOf('Recommended action truth')).toBeLessThan(
+      textContent.indexOf('Record details and source lineage')
+    );
+    expect(textContent.indexOf('Evidence Projection truth')).toBeLessThan(
+      textContent.indexOf('Record details and source lineage')
+    );
+
+    const recordDetails = screen.getByText('Record details and source lineage').closest('details');
+    expect(recordDetails?.open).toBe(false);
     expect(screen.getByText(/confirmation_workspace-one · version 2/)).toBeTruthy();
     expect(screen.getByText(/matter-draft_workspace-one · version 3/)).toBeTruthy();
     expect(screen.getByText(/quote_workspace-one · version quote-v4/)).toBeTruthy();
-    const confirmationLink = screen.getByRole('link', { name: 'Open Customer Confirmation' });
+    const confirmationLink = screen.getByRole('link', {
+      name: 'Open Customer Confirmation',
+      hidden: true
+    });
     expect(confirmationLink.getAttribute('href')).toContain('confirmationVersion=2');
-    const quoteLink = screen.getByRole('link', { name: 'Open source Quote' });
+    const quoteLink = screen.getByRole('link', { name: 'Open source Quote', hidden: true });
     expect(quoteLink.getAttribute('href')).toContain('quoteVersion=quote-v4');
-    expect(screen.queryByRole('link', { name: /Matter Draft/ })).toBeNull();
-    expect(screen.getByText('Evidence Projection truth')).toBeTruthy();
-    expect(screen.getByText('Matter Intelligence truth')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Matter Draft/, hidden: true })).toBeNull();
+
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: false

@@ -1,8 +1,52 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { classifyChangedFiles } from './ci-detect-scope.mjs';
+import { changedFilesBetween, classifyChangedFiles } from './ci-detect-scope.mjs';
 
-test('payment-only changes stay in the payment lane', () => {
+function execGit(cwd, args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+}
+
+function writeRepoFile(repo, path, content) {
+  const target = join(repo, path);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, content);
+}
+
+function createDivergedHistory(testContext, featureFiles) {
+  const repo = mkdtempSync(join(tmpdir(), 'markorbit-ci-scope-'));
+  testContext.after(() => rmSync(repo, { recursive: true, force: true }));
+  execGit(repo, ['init', '-b', 'main']);
+  execGit(repo, ['config', 'user.name', 'MarkOrbit CI']);
+  execGit(repo, ['config', 'user.email', 'ci@markorbit.example']);
+  execGit(repo, ['config', 'core.autocrlf', 'false']);
+  writeRepoFile(repo, 'apps/lite-web/src/base.tsx', 'export const base = true;\n');
+  execGit(repo, ['add', '.']);
+  execGit(repo, ['commit', '-m', 'base']);
+  const branchPoint = execGit(repo, ['rev-parse', 'HEAD']);
+
+  execGit(repo, ['checkout', '-b', 'feature']);
+  for (const [path, content] of Object.entries(featureFiles)) writeRepoFile(repo, path, content);
+  execGit(repo, ['add', '.']);
+  execGit(repo, ['commit', '-m', 'feature']);
+  const featureHead = execGit(repo, ['rev-parse', 'HEAD']);
+
+  execGit(repo, ['checkout', 'main']);
+  writeRepoFile(
+    repo,
+    'packages/contracts/src/main-only-authority.ts',
+    'export const mainOnlyAuthority = true;\n'
+  );
+  execGit(repo, ['add', '.']);
+  execGit(repo, ['commit', '-m', 'advance main with shared authority change']);
+  const advancedMain = execGit(repo, ['rev-parse', 'HEAD']);
+  return { repo, branchPoint, featureHead, advancedMain };
+}
+
+test('payment-only changes stay in the payment hard-gate lane', () => {
   const scope = classifyChangedFiles(
     [
       'services/payment/src/payment-service.ts',
@@ -19,18 +63,12 @@ test('payment-only changes stay in the payment lane', () => {
   assert.equal(scope.payment, true);
   assert.equal(scope.gateway, true);
   assert.equal(scope.persistence, true);
-  assert.equal(scope.shared, false);
-  assert.equal(scope.core, false);
-  assert.equal(scope.lite, false);
-  assert.equal(scope.capability, false);
-  assert.equal(scope.markreg, false);
-  assert.equal(scope.execution, false);
-  assert.equal(scope.mgsn, false);
-  assert.equal(scope.browser, false);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
   assert.equal(scope.full_typecheck, true);
 });
 
-test('owned migration plus owner map remains owner-scoped', () => {
+test('owned migration plus owner map remains owner-scoped but hard-gated', () => {
   const scope = classifyChangedFiles([
     'infrastructure/persistence/migration-owners.json',
     'infrastructure/persistence/migrations/0050_markreg_commercial_checkout.sql'
@@ -38,6 +76,8 @@ test('owned migration plus owner map remains owner-scoped', () => {
   assert.equal(scope.shared, false);
   assert.equal(scope.markreg, true);
   assert.equal(scope.persistence, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
   assert.equal(scope.core, false);
   assert.equal(scope.execution, false);
 });
@@ -50,6 +90,7 @@ test('execution changes include the MarkReg dependency required by execution int
   assert.equal(scope.markreg, true);
   assert.equal(scope.shared, false);
   assert.equal(scope.integration, true);
+  assert.equal(scope.postgres, true);
 });
 
 test('owner map without an owned migration is conservatively shared', () => {
@@ -60,6 +101,8 @@ test('owner map without an owned migration is conservatively shared', () => {
   assert.equal(scope.core, true);
   assert.equal(scope.markreg, true);
   assert.equal(scope.payment, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
 });
 
 test('unknown migrations conservatively expand downstream coverage', () => {
@@ -75,13 +118,74 @@ test('unknown migrations conservatively expand downstream coverage', () => {
   assert.equal(scope.execution, true);
   assert.equal(scope.mgsn, true);
   assert.equal(scope.payment, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
 });
 
-test('web changes select browser validation without forcing database integration', () => {
-  const scope = classifyChangedFiles(['apps/markreg-web/src/App.tsx'], { paymentAvailable: false });
+test('ordinary MarkReg web changes select browser L2 without database or Product Loop amplification', () => {
+  const scope = classifyChangedFiles(['apps/markreg-web/src/App.tsx'], {
+    paymentAvailable: false
+  });
   assert.equal(scope.web, true);
   assert.equal(scope.browser, true);
+  assert.equal(scope.browser_generic, true);
+  assert.equal(scope.production_runtime, false);
+  assert.equal(scope.postgres, false);
   assert.equal(scope.integration, false);
+  assert.equal(scope.product_loop, false);
+  assert.equal(scope.hard_gate, false);
+  assert.equal(scope.l1_fast, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l3_full, false);
+});
+
+test('MarkReg durable API and production entry changes require owner persistence plus L3 proof', () => {
+  for (const path of [
+    'apps/markreg-web/src/api/production-intake.ts',
+    'apps/markreg-web/src/ProductionIntakePlanning.tsx',
+    'apps/markreg-web/src/WorkspaceHome.tsx'
+  ]) {
+    const scope = classifyChangedFiles([path], { paymentAvailable: false });
+    assert.equal(scope.production_runtime, true, path);
+    assert.equal(scope.markreg, true, path);
+    assert.equal(scope.postgres, true, path);
+    assert.equal(scope.l3_full, true, path);
+    assert.equal(scope.hard_gate, false, path);
+    assert.equal(scope.product_loop, false, path);
+  }
+});
+
+test('MarkReg presentation-only artifacts stay lightweight', () => {
+  for (const path of [
+    'apps/markreg-web/src/ProductionIntakePlanning.test.tsx',
+    'apps/markreg-web/src/ProductionIntakePlanning.stories.tsx',
+    'apps/markreg-web/src/production-intake.css'
+  ]) {
+    const scope = classifyChangedFiles([path], { paymentAvailable: false });
+    assert.equal(scope.production_runtime, false, path);
+    assert.equal(scope.postgres, false, path);
+    assert.equal(scope.l3_full, false, path);
+  }
+});
+
+test('generic Gateway route stays out of PostgreSQL and Product Loop lanes', () => {
+  const scope = classifyChangedFiles(['apps/gateway/src/health-http.ts']);
+  assert.equal(scope.gateway, true);
+  assert.equal(scope.integration, true);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.product_loop, false);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l3_full, false);
+});
+
+test('Gateway Product Loop route selects only its direct Lite dependency edge', () => {
+  const scope = classifyChangedFiles(['apps/gateway/src/product-loop-http.ts']);
+  assert.equal(scope.gateway, true);
+  assert.equal(scope.lite, true);
+  assert.equal(scope.product_loop, true);
+  assert.equal(scope.postgres, true);
+  assert.equal(scope.markreg, false);
+  assert.equal(scope.mgsn, false);
 });
 
 test('generic contracts expand to downstream domains without forcing browser E2E', () => {
@@ -97,6 +201,8 @@ test('generic contracts expand to downstream domains without forcing browser E2E
   assert.equal(scope.mgsn, true);
   assert.equal(scope.payment, true);
   assert.equal(scope.browser, false);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
 });
 
 test('payment contract manifest plus payment contract remains payment-specific', () => {
@@ -107,6 +213,37 @@ test('payment contract manifest plus payment contract remains payment-specific',
   assert.equal(scope.payment, true);
   assert.equal(scope.shared, false);
   assert.equal(scope.core, false);
+  assert.equal(scope.hard_gate, true);
+});
+
+test('MGSN persistence change preserves complete MGSN durability selection', () => {
+  const scope = classifyChangedFiles(['services/mgsn/src/provider-registry-postgres.ts']);
+  assert.equal(scope.mgsn, true);
+  assert.equal(scope.mgsn_durability, true);
+  assert.equal(scope.postgres, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l3_full, true);
+  assert.equal(scope.markreg, false);
+  assert.equal(scope.lite, false);
+});
+
+test('formal opportunity changes select Product Loop without treating all MarkReg as Product Loop', () => {
+  const formal = classifyChangedFiles(['services/markreg/src/formal-opportunity.ts']);
+  const unrelated = classifyChangedFiles(['services/markreg/src/commercial-checkout.ts']);
+  assert.equal(formal.markreg, true);
+  assert.equal(formal.product_loop, true);
+  assert.equal(unrelated.markreg, true);
+  assert.equal(unrelated.product_loop, false);
+});
+
+test('Product Loop browser paths do not select unrelated professional review suites', () => {
+  const scope = classifyChangedFiles(['apps/lite-web/src/daily-workspace/Today.tsx']);
+  assert.equal(scope.browser, true);
+  assert.equal(scope.browser_product_loop, true);
+  assert.equal(scope.browser_professional_review, false);
+  assert.equal(scope.browser_document_package, false);
+  assert.equal(scope.browser_order_journey, false);
 });
 
 test('workspace topology changes upgrade to full downstream validation', () => {
@@ -120,9 +257,10 @@ test('workspace topology changes upgrade to full downstream validation', () => {
   assert.equal(scope.execution, true);
   assert.equal(scope.mgsn, true);
   assert.equal(scope.payment, true);
+  assert.equal(scope.l3_full, true);
 });
 
-test('CI governance intentionally exercises cross-domain lanes', () => {
+test('CI governance intentionally exercises cross-domain lanes and L3', () => {
   const scope = classifyChangedFiles(['.github/workflows/ci.yml'], { paymentAvailable: false });
   assert.equal(scope.shared, true);
   assert.equal(scope.core, true);
@@ -132,4 +270,74 @@ test('CI governance intentionally exercises cross-domain lanes', () => {
   assert.equal(scope.execution, true);
   assert.equal(scope.mgsn, true);
   assert.equal(scope.payment, false);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
+});
+
+test('unknown paths fail closed into shared L3 coverage', () => {
+  const scope = classifyChangedFiles(['tooling-new/runner.ts'], { paymentAvailable: true });
+  assert.equal(scope.shared, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
+  assert.equal(scope.core, true);
+  assert.equal(scope.mgsn, true);
+});
+
+test('documentation-only changes do not request product runtime gates', () => {
+  const scope = classifyChangedFiles(['docs/ci-notes.md']);
+  assert.equal(scope.l1_fast, false);
+  assert.equal(scope.l2_merge, false);
+  assert.equal(scope.l3_full, false);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.browser, false);
+});
+
+test('PR merge-base scope ignores unrelated high-risk drift added to main after branch cut', (t) => {
+  const scenario = createDivergedHistory(t, {
+    'apps/lite-web/src/features/content-studio/Editor.tsx': 'export const editor = true;\n'
+  });
+  const diff = changedFilesBetween(scenario.advancedMain, scenario.featureHead, {
+    cwd: scenario.repo,
+    mergeBase: true
+  });
+  assert.equal(diff.diffBase, scenario.branchPoint);
+  assert.deepEqual(diff.files, ['apps/lite-web/src/features/content-studio/Editor.tsx']);
+  const scope = classifyChangedFiles(diff.files, { paymentAvailable: false });
+  assert.equal(scope.web, true);
+  assert.equal(scope.browser, true);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.shared, false);
+  assert.equal(scope.hard_gate, false);
+  assert.equal(scope.l3_full, false);
+});
+
+test('PR merge-base scope still fails closed for a real shared high-risk feature change', (t) => {
+  const scenario = createDivergedHistory(t, {
+    'apps/lite-web/src/features/content-studio/Editor.tsx': 'export const editor = true;\n',
+    'packages/contracts/src/feature-authority.ts': 'export const featureAuthority = true;\n'
+  });
+  const diff = changedFilesBetween(scenario.advancedMain, scenario.featureHead, {
+    cwd: scenario.repo,
+    mergeBase: true
+  });
+  assert.deepEqual(diff.files, [
+    'apps/lite-web/src/features/content-studio/Editor.tsx',
+    'packages/contracts/src/feature-authority.ts'
+  ]);
+  const scope = classifyChangedFiles(diff.files, { paymentAvailable: false });
+  assert.equal(scope.shared, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.l3_full, true);
+});
+
+test('push ranges preserve exact before-to-head semantics instead of PR merge-base semantics', (t) => {
+  const scenario = createDivergedHistory(t, {
+    'apps/lite-web/src/features/content-studio/Editor.tsx': 'export const editor = true;\n'
+  });
+  const diff = changedFilesBetween(scenario.branchPoint, scenario.advancedMain, {
+    cwd: scenario.repo,
+    mergeBase: false
+  });
+  assert.equal(diff.diffBase, scenario.branchPoint);
+  assert.deepEqual(diff.files, ['packages/contracts/src/main-only-authority.ts']);
 });

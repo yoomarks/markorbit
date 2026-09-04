@@ -17,6 +17,12 @@ export const ContentEntry: Story = {
 export const GuideEntry: Story = {
   args: { initialSurface: 'guide', workspaceId: 'workspace-story' }
 };
+export const WorkHub: Story = {
+  args: { initialSurface: 'work', workspaceId: 'workspace-story' }
+};
+export const WorkHubWithoutWorkspace: Story = {
+  args: { initialSurface: 'work' }
+};
 export const WorkspaceRequired: Story = { args: { initialSurface: 'today' } };
 export const CustomerList: Story = { args: { initialSurface: 'customers' } };
 export const CustomerDetail: Story = {
@@ -36,6 +42,10 @@ export const ContentMobile390: Story = {
 };
 export const GuideMobile390: Story = {
   ...GuideEntry,
+  parameters: mobile390
+};
+export const WorkHubMobile390: Story = {
+  ...WorkHub,
   parameters: mobile390
 };
 export const ReviewQueueLoading: Story = {

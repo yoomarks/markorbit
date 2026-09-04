@@ -32,25 +32,115 @@ const knownOwnedMigration = (path) =>
     ownedMigration(path, owner)
   );
 
+const productLoopSpecific = (path) => {
+  const name = migrationName(path);
+  return (
+    /^apps\/gateway\/(src|tests)\/product-loop(?:-|\.|\/)/.test(path) ||
+    /^services\/lite\/(src|tests)\/(?:.*(?:product-loop|content-preparation|candidate-qualification|prepared-action|daily-|preference|conversion-analytics|trademark-asset|visual-bridge|content-kit)).*/.test(
+      path
+    ) ||
+    /^services\/markreg\/(src|tests)\/formal-opportunity(?:-|\.|\/)/.test(path) ||
+    /^packages\/contracts\/(src|tests)\/(?:product-loop|daily-source|daily-workspace|trademark-asset-workspace)(?:\.|-|\/)/.test(
+      path
+    ) ||
+    /(?:lite_(?:content|candidate|product_loop|prepared|daily|trademark_asset|visual)|markreg_formal_opportunity)/.test(
+      name
+    ) ||
+    path.includes('product-loop') ||
+    path.includes('daily-workspace')
+  );
+};
+
+const securityAuthoritySpecific = (path) =>
+  /(?:^|\/)(?:auth|csrf|tenant|principal|authority|official-truth|filing|method-activation|provider-authority)(?:-|\.|\/)/.test(
+    path
+  ) ||
+  /^apps\/gateway\/(src|tests)\/(?:auth|session|identity|filing|payment|provider)(?:-|\.|\/)/.test(
+    path
+  ) ||
+  /^services\/capability-engine\//.test(path) ||
+  /^packages\/contracts\/(src|tests)\/(?:.*(?:authority|official-truth|filing|payment|provider|capability|activation)).*/.test(
+    path
+  );
+
+const browserProfessionalReviewSpecific = (path) =>
+  path.includes('professional-review') || path.includes('professional_review');
+const browserDocumentPackageSpecific = (path) =>
+  path.includes('document-package') || path.includes('document_package');
+const browserOrderJourneySpecific = (path) =>
+  path.includes('order-journey') || path.includes('OrderJourney') || path.includes('order_journey');
+const browserProductLoopSpecific = (path) =>
+  productLoopSpecific(path) || path.includes('trademark-asset') || path.includes('prepared-action');
+
+const markregWebProductionRuntimeSpecific = (path) => {
+  if (!starts(path, 'apps/markreg-web/src/')) return false;
+  if (!/\.(?:[cm]?[jt]sx?)$/.test(path)) return false;
+  if (/\.(?:test|spec|stories)\.[cm]?[jt]sx?$/.test(path)) return false;
+  if (starts(path, 'apps/markreg-web/src/api/')) return true;
+  return /(?:Production|Intake|Workspace|Authority|Filing|Matter|Order|Checkout|Recommendation|Lifecycle|Execution|Evidence|Durable)/.test(
+    basename(path)
+  );
+};
+
+const docsOnlyPath = (path) =>
+  starts(path, 'docs/') ||
+  path === 'README.md' ||
+  path === 'CONTRIBUTING.md' ||
+  path.endsWith('.md');
+
+const knownRootFile = (path) =>
+  [
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'turbo.json',
+    'tsconfig.base.json',
+    'eslint.config.mjs',
+    'prettier.config.mjs',
+    '.prettierrc',
+    '.prettierignore',
+    '.gitignore'
+  ].includes(path) || /^playwright(?:\.|-)/.test(path);
+
+const recognizedPath = (path) =>
+  docsOnlyPath(path) ||
+  knownRootFile(path) ||
+  ['.github/', 'apps/', 'services/', 'packages/', 'infrastructure/', 'scripts/', 'tests/'].some(
+    (prefix) => starts(path, prefix)
+  );
+
 export function classifyChangedFiles(rawFiles, options = {}) {
   const files = [...new Set(rawFiles.map(normalize).filter(Boolean))];
   const paymentSignal = files.some(paymentSpecific);
   const paymentAvailable = options.paymentAvailable ?? existsSync('services/payment/package.json');
+  const docsOnly = files.length > 0 && files.every(docsOnlyPath);
+
   const workspaceTopology = files.some(
     (path) => path === 'turbo.json' || path === 'pnpm-workspace.yaml' || path === 'package.json'
   );
-
+  const dependencyTopology = files.some((path) => path === 'pnpm-lock.yaml');
+  const compilerConfiguration = files.some((path) => path === 'tsconfig.base.json');
   const ciGovernance = files.some(
     (path) =>
-      path === '.github/workflows/ci.yml' ||
+      starts(path, '.github/workflows/') ||
+      starts(path, '.github/actions/') ||
       path === 'scripts/ci-detect-scope.mjs' ||
       path === 'scripts/ci-detect-scope.test.mjs'
   );
+  const unknownPath = files.some((path) => !recognizedPath(path));
+  const ambiguousScript = files.some(
+    (path) => starts(path, 'scripts/') && !productLoopSpecific(path) && !ciGovernance
+  );
+
   const genericContracts = files.some(
     (path) =>
       starts(path, 'packages/contracts/') &&
       !paymentSpecific(path) &&
       !(path === 'packages/contracts/package.json' && paymentSignal)
+  );
+  const sharedPackage = files.some(
+    (path) =>
+      starts(path, 'packages/') && !paymentSpecific(path) && !starts(path, 'packages/contracts/')
   );
   const migrationOwnerMap = files.includes('infrastructure/persistence/migration-owners.json');
   const hasKnownOwnedMigration = files.some(knownOwnedMigration);
@@ -65,14 +155,20 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'packages/events/') ||
       starts(path, 'packages/config/')
   );
+  const securityAuthority = files.some(securityAuthoritySpecific);
+  const productionRuntime = files.some(markregWebProductionRuntimeSpecific);
+  const highRiskRoot =
+    workspaceTopology || dependencyTopology || compilerConfiguration || ciGovernance || unknownPath;
+
   const shared =
-    workspaceTopology ||
-    ciGovernance ||
+    highRiskRoot ||
     genericContracts ||
+    sharedPackage ||
     ownerMapWithoutOwnedMigration ||
     unknownMigration ||
     persistenceSource ||
-    sharedRuntime;
+    sharedRuntime ||
+    ambiguousScript;
 
   let core = files.some(
     (path) =>
@@ -95,14 +191,16 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       ownedMigration(path, 'capability') ||
       /^apps\/gateway\/(src|tests)\/capability(?:-|\.|\/)/.test(path)
   );
-  let markreg = files.some(
-    (path) =>
-      starts(path, 'services/markreg/') ||
-      ownedMigration(path, 'markreg') ||
-      /^apps\/gateway\/(src|tests)\/(order|markreg|matter|commercial|checkout)(?:-|\.|\/)/.test(
-        path
-      )
-  );
+  let markreg =
+    productionRuntime ||
+    files.some(
+      (path) =>
+        starts(path, 'services/markreg/') ||
+        ownedMigration(path, 'markreg') ||
+        /^apps\/gateway\/(src|tests)\/(order|markreg|matter|commercial|checkout)(?:-|\.|\/)/.test(
+          path
+        )
+    );
   let execution = files.some(
     (path) =>
       starts(path, 'services/execution/') ||
@@ -127,15 +225,24 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'apps/operations-console/') ||
       starts(path, 'packages/ui/')
   );
-  const browser =
-    web ||
-    files.some(
-      (path) =>
-        path.startsWith('tests/e2e/') ||
-        /^playwright(?:\.|-)/.test(path) ||
-        path.includes('playwright') ||
-        path.includes('storybook')
-    );
+
+  let browserProfessionalReview = files.some(browserProfessionalReviewSpecific);
+  let browserDocumentPackage = files.some(browserDocumentPackageSpecific);
+  let browserOrderJourney = files.some(browserOrderJourneySpecific);
+  let browserProductLoop = files.some(browserProductLoopSpecific) && web;
+  let browserExplicit = files.some(
+    (path) =>
+      starts(path, 'tests/e2e/') ||
+      /^playwright(?:\.|-)/.test(path) ||
+      path.includes('playwright') ||
+      path.includes('storybook')
+  );
+  let browserGeneric =
+    web &&
+    !browserProfessionalReview &&
+    !browserDocumentPackage &&
+    !browserOrderJourney &&
+    !browserProductLoop;
 
   const persistence =
     persistenceSource ||
@@ -154,13 +261,44 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   }
 
   // Execution's authenticated Professional Review lane validates MarkReg-owned matter state.
-  // Keep that owner-domain dependency explicit so selective CI provisions the required database.
   if (execution) markreg = true;
   if (payment) gateway = true;
 
-  const fullTypecheck = workspaceTopology || files.some((path) => path === 'tsconfig.base.json');
-  const integration =
-    core || lite || capability || markreg || execution || mgsn || payment || persistence || gateway;
+  const productLoop =
+    files.some(productLoopSpecific) ||
+    (shared && files.some((path) => starts(path, 'packages/contracts/')));
+  const mgsnDurability = files.some(
+    (path) =>
+      ownedMigration(path, 'mgsn') ||
+      /^services\/mgsn\/(?:src|tests)\/.*(?:postgres|persistence|repository|durab)/.test(path)
+  );
+
+  const hardGate =
+    shared ||
+    persistence ||
+    securityAuthority ||
+    mgsnDurability ||
+    files.some((path) => starts(path, 'packages/contracts/'));
+
+  if (hardGate && web) {
+    browserExplicit = true;
+    browserGeneric = browserGeneric || web;
+  }
+
+  const browser =
+    browserExplicit ||
+    browserGeneric ||
+    browserProfessionalReview ||
+    browserDocumentPackage ||
+    browserOrderJourney ||
+    browserProductLoop;
+  const postgres =
+    core || lite || capability || markreg || execution || mgsn || payment || persistence;
+  const integration = postgres || gateway;
+  const fullTypecheck = workspaceTopology || compilerConfiguration || dependencyTopology;
+  const l1Fast = !docsOnly;
+  const l2Merge = integration || browser || hardGate;
+  const l3Full = hardGate || highRiskRoot || productionRuntime;
 
   return {
     core,
@@ -175,17 +313,48 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     persistence,
     shared,
     integration,
+    postgres,
     browser,
-    full_workspace: workspaceTopology,
+    browser_generic: browserGeneric,
+    browser_professional_review: browserProfessionalReview,
+    browser_document_package: browserDocumentPackage,
+    browser_order_journey: browserOrderJourney,
+    browser_product_loop: browserProductLoop,
+    product_loop: productLoop,
+    mgsn_durability: mgsnDurability,
+    production_runtime: productionRuntime,
+    hard_gate: hardGate,
+    l1_fast: l1Fast,
+    l2_merge: l2Merge,
+    l3_full: l3Full,
+    full_workspace: workspaceTopology || dependencyTopology || ciGovernance || unknownPath,
     full_typecheck: fullTypecheck
   };
 }
 
+export function changedFilesBetween(base, head, options = {}) {
+  const cwd = options.cwd;
+  const mergeBase = options.mergeBase ?? false;
+  const diffBase = mergeBase
+    ? execFileSync('git', ['merge-base', base, head], { cwd, encoding: 'utf8' }).trim()
+    : base;
+  if (!diffBase) throw new Error(`Unable to resolve diff base for ${base}..${head}.`);
+  const stdout = execFileSync('git', ['diff', '--name-only', diffBase, head], {
+    cwd,
+    encoding: 'utf8'
+  });
+  return {
+    diffBase,
+    files: stdout.split(/\r?\n/).filter(Boolean)
+  };
+}
+
 function parseArgs(argv) {
-  const values = { full: false };
+  const values = { full: false, mergeBase: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--full') values.full = true;
+    else if (arg === '--merge-base') values.mergeBase = true;
     else if (arg === '--base') values.base = argv[++index];
     else if (arg === '--head') values.head = argv[++index];
     else throw new Error(`Unknown argument: ${arg}`);
@@ -199,26 +368,43 @@ function writeOutputs(scope) {
   appendFileSync(process.env.GITHUB_OUTPUT, `${lines.join('\n')}\n`);
 }
 
+function fullScope() {
+  return {
+    core: true,
+    lite: true,
+    capability: true,
+    markreg: true,
+    execution: true,
+    mgsn: true,
+    payment: existsSync('services/payment/package.json'),
+    web: true,
+    gateway: true,
+    persistence: true,
+    shared: true,
+    integration: true,
+    postgres: true,
+    browser: true,
+    browser_generic: true,
+    browser_professional_review: true,
+    browser_document_package: true,
+    browser_order_journey: true,
+    browser_product_loop: true,
+    product_loop: true,
+    mgsn_durability: true,
+    production_runtime: true,
+    hard_gate: true,
+    l1_fast: true,
+    l2_merge: true,
+    l3_full: true,
+    full_workspace: true,
+    full_typecheck: true
+  };
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.full) {
-    const scope = {
-      core: true,
-      lite: true,
-      capability: true,
-      markreg: true,
-      execution: true,
-      mgsn: true,
-      payment: existsSync('services/payment/package.json'),
-      web: true,
-      gateway: true,
-      persistence: true,
-      shared: true,
-      integration: true,
-      browser: true,
-      full_workspace: true,
-      full_typecheck: true
-    };
+    const scope = fullScope();
     writeOutputs(scope);
     console.log(JSON.stringify({ mode: 'full', scope }, null, 2));
     return;
@@ -226,13 +412,25 @@ function main() {
 
   if (!args.base || !args.head)
     throw new Error('--base and --head are required unless --full is used.');
-  const stdout = execFileSync('git', ['diff', '--name-only', args.base, args.head], {
-    encoding: 'utf8'
+  const { diffBase, files } = changedFilesBetween(args.base, args.head, {
+    mergeBase: args.mergeBase
   });
-  const files = stdout.split(/\r?\n/).filter(Boolean);
   const scope = classifyChangedFiles(files);
   writeOutputs(scope);
-  console.log(JSON.stringify({ base: args.base, head: args.head, files, scope }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        requestedBase: args.base,
+        diffBase,
+        head: args.head,
+        mergeBase: args.mergeBase,
+        files,
+        scope
+      },
+      null,
+      2
+    )
+  );
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main();

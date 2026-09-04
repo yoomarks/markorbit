@@ -21,6 +21,7 @@ export * from './provider-responsibility.js';
 export * from './provider-responsibility-postgres.js';
 export * from './provider-discovery.js';
 export * from './provider-discovery-postgres.js';
+export * from './provider-discovery-current-responsibility.js';
 export * from './provider-selection.js';
 export * from './provider-selection-postgres.js';
 export * from './controlled-privacy-handoff.js';
@@ -30,6 +31,9 @@ export * from './controlled-privacy-handoff-postgres.js';
 export * from './outcome-trust-evidence.js';
 // Durable Trust Evidence storage never establishes current exposure authority; serving must revalidate current authority at runtime.
 export * from './outcome-trust-evidence-postgres.js';
+// Trusted Public eligibility/projection metadata is historical authorization input only; every positive serve requires fresh current-authority revalidation.
+// A stored public projection is not PUBLICLY_EXPOSED until the serve-time service returns an AUTHORIZED current decision.
+export * from './trusted-public-exposure.js';
 export * from './runtime-dependencies.js';
 export * from './durable-runtime.js';
 export * from './commercial-admin-read.js';

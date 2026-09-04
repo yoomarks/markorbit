@@ -5,16 +5,19 @@ import {
 } from '@markorbit/contracts/capability-runtime';
 import {
   GovernedCapabilityRuntimeError,
-  type CapabilityRuntimeExecution,
-  type GovernedCapabilityRuntime
+  type CapabilityRuntimeExecution
 } from './capability-runtime.js';
 import {
   CapabilityRuntimeReplayStoreError,
   type CapabilityRuntimeReplayStoreV1
 } from './capability-runtime-replay-store.js';
 
+export interface GovernedCapabilityRuntimeReplayTargetV1 {
+  invoke(value: unknown): Promise<CapabilityRuntimeExecution>;
+}
+
 export interface DurableGovernedCapabilityRuntimeOptionsV1 {
-  runtime: GovernedCapabilityRuntime;
+  runtime: Readonly<GovernedCapabilityRuntimeReplayTargetV1>;
   replayStore: CapabilityRuntimeReplayStoreV1;
   now?: () => string;
   ownerTokenFactory?: () => string;
@@ -38,7 +41,12 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-function requestFingerprint(command: CapabilityRequestV2Command): string {
+/**
+ * Canonical request identity used by the durable replay store. Trusted read boundaries
+ * must reuse this producer algorithm instead of reconstructing a second fingerprint rule.
+ */
+export function capabilityRuntimeRequestFingerprintSha256V1(value: unknown): string {
+  const command = parseCapabilityRequestV2Command(value);
   return createHash('sha256')
     .update(JSON.stringify(canonicalize(command)))
     .digest('hex');
@@ -52,7 +60,7 @@ function replay(execution: Readonly<CapabilityRuntimeExecution>): CapabilityRunt
   return { ...clone(execution), replayed: true };
 }
 
-export class DurableGovernedCapabilityRuntimeV1 {
+export class DurableGovernedCapabilityRuntimeV1 implements GovernedCapabilityRuntimeReplayTargetV1 {
   private readonly now: () => string;
   private readonly ownerTokenFactory: () => string;
   private readonly waitTimeoutMs: number;
@@ -72,7 +80,7 @@ export class DurableGovernedCapabilityRuntimeV1 {
 
   async invoke(value: unknown): Promise<CapabilityRuntimeExecution> {
     const command = parseCapabilityRequestV2Command(value);
-    const fingerprint = requestFingerprint(command);
+    const fingerprint = capabilityRuntimeRequestFingerprintSha256V1(command);
     const pending = this.inFlight.get(command.idempotencyKey);
     if (pending) {
       if (pending.fingerprint !== fingerprint) this.throwConflict();

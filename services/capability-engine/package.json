@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Capability registry, composition, context compilation and invocation boundary.",
+  "description": "Capability registry, governed runtime, durable replay and trusted producer evidence boundaries.",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/index.ts src/main.ts src/governed-runtime-bootstrap.ts src/production-source-explainability.ts src/uspto-official-fee-production-promotion.ts src/uspto-official-fee-production-readiness.ts src/uspto-official-fee-production-policy.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/governed-runtime-bootstrap.ts src/production-source-explainability.ts src/production-source-evidence-read.ts src/uspto-official-fee-production-promotion.ts src/uspto-official-fee-production-readiness.ts src/uspto-official-fee-production-policy.ts src/uspto-official-fee-production-source-evidence.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:runtime-registry:postgres": "vitest run tests/runtime-capability-registry-postgres.test.ts",
     "test:observation-ledger:postgres": "vitest run tests/capability-observation-ledger-postgres.test.ts",
@@ -15,7 +15,7 @@
     "test:managed-ai-claim:postgres": "vitest run tests/managed-ai-execution-claim-postgres.test.ts",
     "test:managed-ai-exact-output:postgres": "vitest run tests/managed-ai-exact-output-postgres.test.ts",
     "test:implementation-profile-registry:postgres": "vitest run tests/implementation-profile-registry-postgres.test.ts",
-    "test:governed-runtime-replay:postgres": "vitest run tests/capability-runtime-replay-postgres.test.ts",
+    "test:governed-runtime-replay:postgres": "vitest run tests/capability-runtime-replay-postgres.test.ts && vitest run tests/production-source-evidence-read-postgres.test.ts",
     "test:managed-communication:postgres": "vitest run tests/managed-communication-foundation-postgres.test.ts && vitest run tests/managed-communication-bootstrap-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -39,6 +39,10 @@
       "types": "./dist/production-source-explainability.d.ts",
       "import": "./dist/production-source-explainability.js"
     },
+    "./production-source-evidence-read": {
+      "types": "./dist/production-source-evidence-read.d.ts",
+      "import": "./dist/production-source-evidence-read.js"
+    },
     "./uspto-official-fee-production-promotion": {
       "types": "./dist/uspto-official-fee-production-promotion.d.ts",
       "import": "./dist/uspto-official-fee-production-promotion.js"
@@ -50,6 +54,10 @@
     "./uspto-official-fee-production-policy": {
       "types": "./dist/uspto-official-fee-production-policy.d.ts",
       "import": "./dist/uspto-official-fee-production-policy.js"
+    },
+    "./uspto-official-fee-production-source-evidence": {
+      "types": "./dist/uspto-official-fee-production-source-evidence.d.ts",
+      "import": "./dist/uspto-official-fee-production-source-evidence.js"
     }
   }
 }
