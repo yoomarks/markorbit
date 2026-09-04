@@ -198,7 +198,10 @@ export function OperationsApp() {
               items={[
                 { label: 'Evidence review', value: 'Owner-backed · on demand' },
                 { label: 'Lifecycle provenance', value: 'Owner-backed · on demand' },
-                { label: 'Commercial inspection', value: 'Owner-routed · operator authenticated' }
+                {
+                  label: 'Commercial inspection',
+                  value: 'Owner-routed · operator authenticated'
+                }
               ]}
             />
           </Card>
@@ -242,7 +245,9 @@ export function OperationsApp() {
             {reviewBusy === 'queue' ? 'Loading…' : 'Load reviewable evidence'}
           </Button>
           {queue.length === 0 ? (
-            <p>No reviewable evidence loaded. Load the owner-backed queue to determine current state.</p>
+            <p>
+              No reviewable evidence loaded. Load the owner-backed queue to determine current state.
+            </p>
           ) : (
             <ol>
               {queue.map((item) => (
@@ -356,7 +361,9 @@ export function OperationsApp() {
               />
             </div>
             <div>
-              <label htmlFor="evidence-references">Admitted evidence references, one per line</label>
+              <label htmlFor="evidence-references">
+                Admitted evidence references, one per line
+              </label>
               <textarea
                 id="evidence-references"
                 value={evidenceReferences}
