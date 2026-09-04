@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DurableDocumentPackageClient } from './api/durable-document-package.js';
 import type { DurablePreparationClient } from './api/durable-preparation.js';
+import type { MarkregClient } from './api/markreg.js';
 import { DurableDocumentsPreparationWorkspace } from './DurableDocumentsPreparationWorkspace.js';
 
 const review = {
@@ -11,6 +12,7 @@ const review = {
   status: 'REVIEWED_READY_FOR_NEXT_STEP',
   version: 4,
   completedAt: '2026-09-04T08:00:00.000Z',
+  source: { customerId: 'customer_exact' },
   decision: { decision: 'READY_FOR_NEXT_STEP', decidedAt: '2026-09-04T08:00:00.000Z' }
 } as unknown as ProfessionalReviewCase;
 
@@ -123,12 +125,15 @@ describe('durable Documents → Preparation workspace', () => {
       get: vi.fn(),
       validateCurrent
     };
+    const createFilingAuthorization = vi.fn(() => new Promise<never>(() => undefined));
+    const filingClient = { createFilingAuthorization } as unknown as MarkregClient;
 
     render(
       <DurableDocumentsPreparationWorkspace
         review={review}
         packageClient={packageClient}
         preparationClient={preparationClient}
+        filingClient={filingClient}
       />
     );
 
@@ -151,8 +156,20 @@ describe('durable Documents → Preparation workspace', () => {
       idempotencyKey: `preparation-lock-document-package_exact-5-${'a'.repeat(64)}`
     });
     expect(await screen.findByText('Locked for preparation — not submitted')).toBeTruthy();
-    expect(screen.getByText('Filing Authorization remains gated')).toBeTruthy();
-    expect(screen.getByText(/#731/)).toBeTruthy();
+    expect(screen.getByText('Filing Authorization remains a separate authority step')).toBeTruthy();
+    expect(createFilingAuthorization).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Review Filing Authorization' }));
+    await waitFor(() =>
+      expect(createFilingAuthorization).toHaveBeenCalledWith({
+        preparationLockId: 'preparation-lock_exact',
+        preparationLockVersion: '1',
+        authorizedParty: { partyId: 'customer_exact', displayName: 'Applicant / owner' },
+        authorizationCapacity: 'OWNER',
+        executionChannel: 'OFFICE_PORTAL',
+        idempotencyKey: 'authorization:preparation-lock_exact:1'
+      })
+    );
   });
 
   it('records real evidence metadata with exact CAS version and never fabricates fixture evidence', async () => {
