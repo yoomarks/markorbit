@@ -40,13 +40,17 @@ const readyPackage: DurableDocumentPackageView = {
   canonicalEvidenceHash: 'a'.repeat(64)
 };
 
+const {
+  canonicalEvidenceHash: _canonicalEvidenceHash,
+  readyAt: _readyAt,
+  readyBy: _readyBy,
+  ...packageBeforeReady
+} = readyPackage;
+
 const draftPackage: DurableDocumentPackageView = {
-  ...readyPackage,
+  ...packageBeforeReady,
   status: 'DRAFT',
   version: 2,
-  canonicalEvidenceHash: undefined,
-  readyAt: undefined,
-  readyBy: undefined,
   requirements: [{ requirementKey: 'IDENTITY', displayName: 'Applicant identity', blocking: true }],
   instructionEntries: []
 };
