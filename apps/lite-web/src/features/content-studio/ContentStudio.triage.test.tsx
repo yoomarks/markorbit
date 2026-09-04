@@ -157,7 +157,7 @@ describe('Content Studio action-first triage', () => {
 
     await userEvent.selectOptions(screen.getByLabelText('Work view'), 'ALL');
     expect(screen.getByText('Showing 6 of 6 loaded work items.')).toBeVisible();
-    expect(screen.getByText('Package prepared')).toBeVisible();
+    expect(screen.getByText('Package prepared', { selector: '.mo-badge' })).toBeVisible();
 
     await userEvent.type(screen.getByLabelText('Search loaded content work'), 'revise');
     expect(screen.getByText('Revise me')).toBeVisible();
@@ -203,7 +203,7 @@ describe('Content Studio action-first triage', () => {
 
     expect(await screen.findByText('No loaded content work matches this view')).toBeVisible();
     expect(
-      screen.getByText('More owner work is available and has not been searched yet.')
+      screen.getByText(/More owner work is available and has not been searched yet\./)
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Load more content work' })).toBeVisible();
   });
