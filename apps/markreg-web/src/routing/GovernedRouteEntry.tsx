@@ -322,7 +322,9 @@ function GenericGovernedRouteEntry({
     );
   }
 
-  if (parsed.route.view === 'preparation-lock')
+  if (parsed.route.view === 'preparation-lock') {
+    const source = loaded.record.source;
+    const hasFullDurableLock = source !== null && typeof source === 'object';
     return (
       <main aria-labelledby="governed-route-heading">
         <h1 id="governed-route-heading" ref={heading} tabIndex={-1}>
@@ -334,13 +336,30 @@ function GenericGovernedRouteEntry({
             Authorization progression is disabled until the exact current link is reopened.
           </Alert>
         )}
-        <DurablePreparationRecord lock={loaded.record as unknown as DurablePreparationLockView} />
+        {!hasFullDurableLock && (
+          <Card>
+            <h2>Preparation state</h2>
+            <dl>
+              <dt>Preparation Lock</dt>
+              <dd className="markreg-wrap">{loaded.actualId}</dd>
+              <dt>Version</dt>
+              <dd>{loaded.actualVersion}</dd>
+              <dt>Status</dt>
+              <dd>{loaded.status ?? 'READY'}</dd>
+            </dl>
+            <strong>Exact durable identity loaded read-only; no filing authority was created.</strong>
+          </Card>
+        )}
+        {hasFullDurableLock && (
+          <DurablePreparationRecord lock={loaded.record as unknown as DurablePreparationLockView} />
+        )}
         <p>
           <Button onClick={() => location.reload()}>Reload exact durable lock</Button>{' '}
           <a href="/">Back to MarkReg workspace</a>
         </p>
       </main>
     );
+  }
 
   return (
     <main aria-labelledby="governed-route-heading">
