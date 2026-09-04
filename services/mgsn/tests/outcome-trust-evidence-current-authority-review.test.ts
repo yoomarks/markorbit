@@ -353,10 +353,9 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
 
   it('denies missing or revoked current Participation before source/executor checks', async () => {
     await expect(
-      validation(
-        authority(networkSource({ currentParticipation: undefined }), throwingReturns),
-        [providerClaimItem()]
-      )
+      validation(authority(networkSource({ currentParticipation: undefined }), throwingReturns), [
+        providerClaimItem()
+      ])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'PARTICIPATION_NOT_ACTIVE' });
 
     const revoked = {
@@ -365,10 +364,9 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
       state: 'REVOKED' as NetworkParticipationVersionRecord['state']
     };
     await expect(
-      validation(
-        authority(networkSource({ currentParticipation: revoked }), throwingReturns),
-        [providerClaimItem()]
-      )
+      validation(authority(networkSource({ currentParticipation: revoked }), throwingReturns), [
+        providerClaimItem()
+      ])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'PARTICIPATION_NOT_ACTIVE' });
   });
 
@@ -378,10 +376,9 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
       authorizationReference: 'visibility:replacement-same-version-717-review'
     };
     await expect(
-      validation(
-        authority(networkSource({ currentPolicy: changedReference }), throwingReturns),
-        [providerClaimItem()]
-      )
+      validation(authority(networkSource({ currentPolicy: changedReference }), throwingReturns), [
+        providerClaimItem()
+      ])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'VISIBILITY_NOT_AUTHORIZED' });
 
     const privatePolicy = {
@@ -390,10 +387,9 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
       grants: []
     };
     await expect(
-      validation(
-        authority(networkSource({ currentPolicy: privatePolicy }), throwingReturns),
-        [providerClaimItem()]
-      )
+      validation(authority(networkSource({ currentPolicy: privatePolicy }), throwingReturns), [
+        providerClaimItem()
+      ])
     ).resolves.toMatchObject({ decision: 'DENY', reason: 'VISIBILITY_NOT_AUTHORIZED' });
   });
 
@@ -447,8 +443,7 @@ describe('MGSN #717 design/technical review current-authority matrix', () => {
     });
 
     const noAssessment: TrustEvidenceResponsibilitySource = {
-      assessCurrent: () =>
-        Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: undefined })
+      assessCurrent: () => Promise.resolve({ state: 'UNKNOWN_OR_UNPROVEN', assessment: undefined })
     };
     await expect(
       validation(authority(networkSource(), returnSource(), providerSource, noAssessment), [item])
