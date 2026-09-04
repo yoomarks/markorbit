@@ -16,6 +16,9 @@ jobs:
         with:
           ref: mgsn-selection-handoff-current-authority-715
           fetch-depth: 0
+      - name: Verify formal head
+        run: |
+          test "$(git rev-parse HEAD)" = "48ab411478d736cba20741b33dc5a76935f3c222"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -24,27 +27,27 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Align durable Handoff current-authority expectation
+      - name: Align durable Selection current-authority expectation
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts')
+          path = Path('services/mgsn/tests/provider-selection-postgres.test.ts')
           text = path.read_text()
-          old = "expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'AUTHORITY_UNAVAILABLE' });"
-          new = "expect(unavailable).toMatchObject({ decision: 'DENY', denialReason: 'SELECTION_NOT_CURRENT' });"
-          if old not in text:
-              raise SystemExit('expected durable Handoff assertion not found')
+          old = "denialReason: 'AUTHORITY_UNAVAILABLE'"
+          new = "denialReason: 'REQUESTER_AUTHORITY_NOT_CURRENT'"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one durable Selection assertion, found {text.count(old)}')
           path.write_text(text.replace(old, new, 1))
           PY
       - name: Canonical format and static proof
         run: |
-          pnpm exec prettier --check services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts
+          pnpm exec prettier --check services/mgsn/tests/provider-selection-postgres.test.ts
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service lint
       - name: Commit repair to formal branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/tests/controlled-privacy-handoff-postgres.test.ts
-          git commit -m "test(mgsn): align durable Handoff current-authority denial"
+          git add services/mgsn/tests/provider-selection-postgres.test.ts
+          git commit -m "test(mgsn): align durable Selection current-authority denial"
           git push origin HEAD:mgsn-selection-handoff-current-authority-715
