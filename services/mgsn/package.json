@@ -10,8 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "start": "node dist/main.js",
-    "postinstall": "python scripts/hosted-probe.py && python scripts/provider-work-probe.py && prettier --write src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/governed-allocation-handoff.test.ts tests/provider-work-incoming-authority.test.ts tests/governed-allocation-postgres.test.ts && git diff -- src/governed-allocation-postgres.ts src/governed-allocation-runtime.ts src/governed-allocation.ts src/provider-work-incoming-authority.ts tests/governed-allocation.test.ts tests/governed-allocation-handoff.test.ts tests/provider-work-incoming-authority.test.ts tests/governed-allocation-postgres.test.ts"
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
