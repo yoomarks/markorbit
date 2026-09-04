@@ -347,7 +347,9 @@ function GenericGovernedRouteEntry({
               <dt>Status</dt>
               <dd>{loaded.status ?? 'READY'}</dd>
             </dl>
-            <strong>Exact durable identity loaded read-only; no filing authority was created.</strong>
+            <strong>
+              Exact durable identity loaded read-only; no filing authority was created.
+            </strong>
           </Card>
         )}
         {hasFullDurableLock && (
