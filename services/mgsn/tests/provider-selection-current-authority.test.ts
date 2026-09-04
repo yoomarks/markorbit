@@ -332,21 +332,20 @@ function harness(
   const currentPolicy = options.policy === undefined ? boundedPublicPolicy() : options.policy;
   const currentAssessment =
     options.currentAssessment === undefined ? assessment() : options.currentAssessment;
-  const core: CoreCurrentWorkspaceAuthoritySource = {
-    validateCurrent: vi.fn(() =>
-      Promise.resolve(
-        options.core ?? {
-          authorityAvailable: true,
-          current: true,
-          authorityReferences: [
-            `core-workspace:${workspaceId}:v1`,
-            `core-user:${userId}:v1`,
-            `core-membership:${membershipId}:v1`
-          ]
-        }
-      )
+  const validateCurrent = vi.fn(() =>
+    Promise.resolve(
+      options.core ?? {
+        authorityAvailable: true,
+        current: true,
+        authorityReferences: [
+          `core-workspace:${workspaceId}:v1`,
+          `core-user:${userId}:v1`,
+          `core-membership:${membershipId}:v1`
+        ]
+      }
     )
-  };
+  );
+  const core: CoreCurrentWorkspaceAuthoritySource = { validateCurrent };
   const network: SelectionNetworkAuthoritySource = {
     findLatestParticipation: vi.fn(() => Promise.resolve(currentParticipation)),
     findCurrentParticipation: vi.fn(() => Promise.resolve(currentParticipation)),
@@ -365,7 +364,7 @@ function harness(
     )
   };
   return {
-    core,
+    validateCurrent,
     source: new MgsnProviderSelectionCurrentAuthoritySource(
       core,
       network,
@@ -413,7 +412,7 @@ describe('MGSN current Human Selection authority', () => {
   });
 
   it('never interprets an opaque historical membership reference as a Core membership id', async () => {
-    const { source, core } = harness();
+    const { source, validateCurrent } = harness();
     const authority = trustedAuthority({
       workspaceMembershipReference: 'workspace-membership:historical-reference'
     });
@@ -425,7 +424,7 @@ describe('MGSN current Human Selection authority', () => {
       requesterAuthorityCurrent: false,
       actorAuthorityCurrent: false
     });
-    expect(core.validateCurrent).not.toHaveBeenCalled();
+    expect(validateCurrent).not.toHaveBeenCalled();
   });
 
   it('fails closed when Core current authority is unavailable or denied', async () => {

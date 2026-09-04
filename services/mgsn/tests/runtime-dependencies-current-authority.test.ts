@@ -62,7 +62,7 @@ describe('MGSN Core current Workspace authority HTTP adapter', () => {
     const headers = requestInit?.headers as Record<string, string>;
     expect(headers['x-markorbit-internal-authorization']).toBe('internal-secret');
     expect(headers.authorization).toBeUndefined();
-    expect(JSON.parse(String(requestInit?.body))).toEqual({ workspaceId, userId, membershipId });
+    expect(requestInit?.body).toBe(JSON.stringify({ workspaceId, userId, membershipId }));
   });
 
   it('maps known Core denials to current=false without leaking account state', async () => {
