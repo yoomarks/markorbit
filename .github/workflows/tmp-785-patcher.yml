@@ -108,7 +108,7 @@ jobs:
             );
             await page.getByRole('button', { name: 'Review Filing Authorization' }).click();
           });
-'''
+          '''
           path.write_text(prefix + replacement + end + suffix)
           PY
       - run: pnpm exec prettier --write tests/e2e/milestone-001-real-runtime.spec.ts
