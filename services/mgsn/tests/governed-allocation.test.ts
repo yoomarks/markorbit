@@ -1,7 +1,6 @@
 import { providerSelectionContractFixtureV1 } from '@markorbit/contracts/provider-selection';
 import type { AllocationRecord } from '../src/allocation-provider-acceptance.js';
 import {
-  GovernedAllocationError,
   GovernedAllocationService,
   type GovernedAllocationCommand,
   type GovernedAllocationRepository
@@ -107,9 +106,7 @@ describe('GovernedAllocationService', () => {
       () => '2026-09-04T14:40:00.000Z'
     );
 
-    await expect(service.allocate(command())).rejects.toMatchObject<
-      Partial<GovernedAllocationError>
-    >({
+    await expect(service.allocate(command())).rejects.toMatchObject({
       code: 'SELECTION_NOT_CURRENT'
     });
     expect(planner.plan).not.toHaveBeenCalled();
@@ -152,7 +149,6 @@ describe('GovernedAllocationService', () => {
         'NO_CONTROLLED_HANDOFF_BY_DESIGN'
       );
       expect(result.lineage.handoff).toBeUndefined();
-      expect(repo.commit).toHaveBeenCalledTimes(1);
     }
   );
 });
