@@ -2,6 +2,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type {
   AuthorizationCapacity,
+  DurableDocumentPackageView,
+  FormalMatter,
   ExecutionRelease,
   ExecutionReleaseAssignment,
   ExecutionReleaseCheck,
@@ -15,7 +17,8 @@ import type {
   FilingExecutionTaskDraftId,
   MarkOrbitId,
   PreparationLock,
-  PreparationLockId
+  PreparationLockId,
+  ProfessionalReviewCase
 } from '@markorbit/contracts';
 import { noAuthorizationAuthorityConsequences } from '@markorbit/contracts';
 
@@ -35,8 +38,38 @@ const activeAuthorization = (v: FilingAuthorization) =>
   !['WITHDRAWN', 'STALE', 'EXPIRED'].includes(v.status);
 const activeRelease = (v: ExecutionRelease) =>
   !['WITHDRAWN', 'STALE', 'RELEASED_FOR_EXECUTION'].includes(v.status);
+export interface DurablePreparationSourceView {
+  sourceKind: 'DURABLE';
+  preparationLockId: PreparationLockId;
+  version: number;
+  lockPayloadHash: string;
+  source: Readonly<{
+    documentPackageId: `document-package_${string}`;
+    documentPackageVersion: number;
+    canonicalEvidenceHash: string;
+    formalMatterId: `formal-matter_${string}`;
+    formalMatterVersion: number;
+    formalMatterHash: string;
+    professionalReviewCaseId: `professional-review_${string}`;
+    reviewVersion: number;
+    completedDecisionId: string;
+    completedDecisionHash: string;
+    instructionEntryCount: number;
+    instructionEntries: readonly Readonly<{
+      instructionEntryId: string;
+      sequence: number;
+      canonicalFingerprint: string;
+    }>[];
+    instructionSetHash: string;
+  }>;
+  documentPackage: DurableDocumentPackageView;
+  formalMatter: FormalMatter;
+  professionalReview: ProfessionalReviewCase;
+  customerId: MarkOrbitId;
+}
+export type FilingPreparationSource = PreparationLock | DurablePreparationSourceView;
 export interface PreparationLockSource {
-  getPreparationLock(id: PreparationLockId): Promise<PreparationLock | undefined>;
+  getPreparationLock(id: PreparationLockId): Promise<FilingPreparationSource | undefined>;
 }
 export interface FilingAuthorizationRepository {
   create(value: FilingAuthorization, key: string, fingerprint: string): Promise<void>;
@@ -245,12 +278,30 @@ const checkCodes = [
 ] as const;
 const fingerprint = (value: unknown) =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const lockVersion = (lock: PreparationLock) =>
-  `${lock.documentPackageVersion}:${lock.instructionLedgerVersion}:${lock.lockedAt}`;
-function instruction(lock: PreparationLock, type: string): unknown {
+const isDurablePreparation = (
+  lock: FilingPreparationSource
+): lock is DurablePreparationSourceView => 'sourceKind' in lock && lock.sourceKind === 'DURABLE';
+const lockVersion = (lock: FilingPreparationSource) =>
+  isDurablePreparation(lock)
+    ? String(lock.version)
+    : `${lock.documentPackageVersion}:${lock.instructionLedgerVersion}:${lock.lockedAt}`;
+function legacyInstruction(lock: PreparationLock, type: string): unknown {
   return lock.snapshot.instructionLedger.entries.find(
     (v) => v.type === type && v.status === 'CONFIRMED'
   )?.structuredValue;
+}
+function durableInstruction(
+  lock: DurablePreparationSourceView,
+  type: string
+): Record<string, unknown> | undefined {
+  const values = lock.documentPackage.instructionEntries
+    .filter((entry) => entry.instructionType === type)
+    .sort((left, right) => Number(left.sequence ?? 0) - Number(right.sequence ?? 0));
+  const latest = values.at(-1);
+  const payload = latest?.structuredPayload;
+  return payload && typeof payload === 'object' && !Array.isArray(payload)
+    ? (payload as Record<string, unknown>)
+    : undefined;
 }
 const stringValue = (value: unknown, fallback: string) =>
   typeof value === 'string'
@@ -264,28 +315,81 @@ const arrayValue = (value: unknown, fallback: string[]) =>
     : value && typeof value === 'object'
       ? Object.values(value).flatMap((v) => (Array.isArray(v) ? v.map(String) : [String(v)]))
       : fallback;
+const requiredScopeText = (value: unknown, field: string) => {
+  if (typeof value !== 'string' || !value.trim())
+    throw new FilingGovernanceError(
+      'PREPARATION_SCOPE_INCOMPLETE',
+      `Durable Preparation is missing exact ${field}.`,
+      422,
+      { field }
+    );
+  return value.trim();
+};
 function authoritativeScope(
-  lock: PreparationLock,
+  lock: FilingPreparationSource,
   channel: FilingExecutionChannel,
   now: string,
   expiresAt?: string
 ): FilingAuthorizationScope {
-  const packageValue = lock.snapshot.documentPackage;
+  if (!isDurablePreparation(lock)) {
+    const packageValue = lock.snapshot.documentPackage;
+    return {
+      jurisdiction: packageValue.jurisdiction,
+      applicantOwnerReference: stringValue(
+        legacyInstruction(lock, 'APPLICANT_IDENTITY'),
+        'Locked applicant/owner'
+      ),
+      trademarkReference: packageValue.trademarkReference,
+      classes: arrayValue(legacyInstruction(lock, 'CLASS_SELECTION'), ['Locked class']),
+      goodsServices: arrayValue(legacyInstruction(lock, 'GOODS_SERVICES'), [
+        'Locked goods/services'
+      ]),
+      filingBasis: stringValue(legacyInstruction(lock, 'FILING_BASIS'), 'Locked filing basis'),
+      priorityClaim: legacyInstruction(lock, 'PRIORITY_CLAIM')
+        ? stringValue(legacyInstruction(lock, 'PRIORITY_CLAIM'), 'Recorded')
+        : undefined,
+      useLockedDocuments: true,
+      representativeUse: packageValue.requirements.some((v) => v.code === 'POWER_OF_ATTORNEY')
+        ? 'PERMITTED_WHERE_REQUIRED'
+        : 'NOT_REQUIRED',
+      permittedFilingChannel: channel,
+      permittedExecutionWindow: {
+        startsAt: now,
+        endsAt: expiresAt ?? new Date(Date.parse(now) + 30 * 86400000).toISOString()
+      }
+    };
+  }
+  const preparation = lock.formalMatter.sourceSnapshot.preparation;
+  if (!Array.isArray(preparation.classes) || preparation.classes.length === 0)
+    throw new FilingGovernanceError(
+      'PREPARATION_SCOPE_INCOMPLETE',
+      'Durable Preparation is missing exact classes.',
+      422,
+      { field: 'classes' }
+    );
+  if (typeof preparation.representativeRequired !== 'boolean')
+    throw new FilingGovernanceError(
+      'PREPARATION_SCOPE_INCOMPLETE',
+      'Durable Preparation is missing the representative requirement evaluation.',
+      422,
+      { field: 'representativeRequired' }
+    );
+  const documentUse = durableInstruction(lock, 'DOCUMENT_USE_AUTHORIZATION');
+  if (documentUse?.authorized !== true)
+    throw new FilingGovernanceError(
+      'PREPARATION_DOCUMENT_USE_NOT_AUTHORIZED',
+      'Durable Preparation does not contain exact locked-document use authorization.',
+      422
+    );
   return {
-    jurisdiction: packageValue.jurisdiction,
-    applicantOwnerReference: stringValue(
-      instruction(lock, 'APPLICANT_IDENTITY'),
-      'Locked applicant/owner'
-    ),
-    trademarkReference: packageValue.trademarkReference,
-    classes: arrayValue(instruction(lock, 'CLASS_SELECTION'), ['Locked class']),
-    goodsServices: arrayValue(instruction(lock, 'GOODS_SERVICES'), ['Locked goods/services']),
-    filingBasis: stringValue(instruction(lock, 'FILING_BASIS'), 'Locked filing basis'),
-    priorityClaim: instruction(lock, 'PRIORITY_CLAIM')
-      ? stringValue(instruction(lock, 'PRIORITY_CLAIM'), 'Recorded')
-      : undefined,
+    jurisdiction: requiredScopeText(preparation.targetJurisdiction, 'targetJurisdiction'),
+    applicantOwnerReference: requiredScopeText(preparation.applicantName, 'applicantName'),
+    trademarkReference: requiredScopeText(preparation.trademark, 'trademark'),
+    classes: preparation.classes.map(String),
+    goodsServices: [requiredScopeText(preparation.goodsServices, 'goodsServices')],
+    filingBasis: requiredScopeText(preparation.filingBasis, 'filingBasis'),
     useLockedDocuments: true,
-    representativeUse: packageValue.requirements.some((v) => v.code === 'POWER_OF_ATTORNEY')
+    representativeUse: preparation.representativeRequired
       ? 'PERMITTED_WHERE_REQUIRED'
       : 'NOT_REQUIRED',
     permittedFilingChannel: channel,
@@ -294,6 +398,80 @@ function authoritativeScope(
       endsAt: expiresAt ?? new Date(Date.parse(now) + 30 * 86400000).toISOString()
     }
   };
+}
+function durableDocumentReferences(lock: DurablePreparationSourceView): string[] {
+  return lock.documentPackage.documentItems.map((item) => {
+    for (const key of ['storageReference', 'originalFileName', 'displayName', 'documentItemId']) {
+      const value = item[key];
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+    throw new FilingGovernanceError(
+      'PREPARATION_SOURCE_INCOMPLETE',
+      'Durable Document Package item has no exact reference.',
+      422
+    );
+  });
+}
+function durablePreparationRecord(lock: DurablePreparationSourceView) {
+  return {
+    kind: 'DURABLE' as const,
+    preparationLockVersion: lock.version,
+    preparationLockFingerprint: lock.lockPayloadHash,
+    documentPackage: {
+      documentPackageId: lock.source.documentPackageId,
+      documentPackageVersion: lock.source.documentPackageVersion,
+      canonicalEvidenceHash: lock.source.canonicalEvidenceHash,
+      documentReferences: durableDocumentReferences(lock),
+      instructionReferences: lock.source.instructionEntries.map((entry) => entry.instructionEntryId)
+    },
+    formalMatter: {
+      formalMatterId: lock.source.formalMatterId,
+      formalMatterVersion: lock.source.formalMatterVersion,
+      formalMatterHash: lock.source.formalMatterHash
+    },
+    professionalReview: {
+      professionalReviewCaseId: lock.source.professionalReviewCaseId,
+      professionalReviewVersion: lock.source.reviewVersion,
+      completedDecisionId: lock.source.completedDecisionId,
+      completedDecisionHash: lock.source.completedDecisionHash
+    }
+  };
+}
+function sourceMatchesAuthorization(lock: FilingPreparationSource, value: FilingAuthorization) {
+  if (lockVersion(lock) !== value.preparationLockVersion) return false;
+  const durable = value.durablePreparationSource;
+  if (!durable) return !isDurablePreparation(lock);
+  return (
+    isDurablePreparation(lock) &&
+    lock.version === durable.preparationLockVersion &&
+    lock.lockPayloadHash === durable.preparationLockFingerprint
+  );
+}
+function authorizationDocumentReferences(value: FilingAuthorization): ReadonlyArray<string> {
+  if (value.durablePreparationSource)
+    return value.durablePreparationSource.documentPackage.documentReferences;
+  if (value.preparationSnapshot)
+    return value.preparationSnapshot.documentPackage.documentItems.map(
+      (item) => item.documentReference.fileName
+    );
+  throw new FilingGovernanceError(
+    'PREPARATION_SOURCE_INCOMPLETE',
+    'Filing Authorization has no pinned Preparation document source.',
+    409
+  );
+}
+function authorizationInstructionReferences(value: FilingAuthorization): ReadonlyArray<string> {
+  if (value.durablePreparationSource)
+    return value.durablePreparationSource.documentPackage.instructionReferences;
+  if (value.preparationSnapshot)
+    return value.preparationSnapshot.instructionLedger.entries.map(
+      (entry) => entry.instructionEntryId
+    );
+  throw new FilingGovernanceError(
+    'PREPARATION_SOURCE_INCOMPLETE',
+    'Filing Authorization has no pinned Preparation instruction source.',
+    409
+  );
 }
 export class FilingGovernanceService {
   constructor(
@@ -355,7 +533,14 @@ export class FilingGovernanceService {
         'SOURCE_VERSION_MISMATCH',
         'Exact Preparation Lock version is required.'
       );
-    if (
+    if (isDurablePreparation(lock)) {
+      if (lock.documentPackage.status !== 'READY_FOR_PREPARATION_LOCK')
+        throw new FilingGovernanceError(
+          'PREPARATION_LOCK_NOT_CURRENT',
+          'Pinned durable Document Package is not READY_FOR_PREPARATION_LOCK.',
+          422
+        );
+    } else if (
       lock.snapshot.documentPackage.status !== 'LOCKED_FOR_PREPARATION' ||
       lock.snapshot.instructionLedger.status !== 'LOCKED_FOR_PREPARATION'
     )
@@ -376,17 +561,23 @@ export class FilingGovernanceService {
       );
     const at = this.now();
     const scope = authoritativeScope(lock, command.executionChannel, at, command.expiresAt);
-    const pkg = lock.snapshot.documentPackage;
+    const legacyPackage = isDurablePreparation(lock) ? undefined : lock.snapshot.documentPackage;
     const value: FilingAuthorization = {
       schemaVersion: 1,
       version: 1,
       filingAuthorizationId: `filing-authorization_${randomUUID()}`,
       preparationLockId: lock.preparationLockId,
       preparationLockVersion: command.preparationLockVersion,
-      preparationSnapshot: clone(lock.snapshot),
-      professionalReviewCaseId: pkg.professionalReviewCaseId,
-      professionalReviewVersion: pkg.professionalReviewDecisionVersion,
-      customerId: pkg.customerId,
+      ...(isDurablePreparation(lock)
+        ? { durablePreparationSource: durablePreparationRecord(lock) }
+        : { preparationSnapshot: clone(lock.snapshot) }),
+      professionalReviewCaseId: isDurablePreparation(lock)
+        ? lock.source.professionalReviewCaseId
+        : legacyPackage!.professionalReviewCaseId,
+      professionalReviewVersion: isDurablePreparation(lock)
+        ? String(lock.source.reviewVersion)
+        : legacyPackage!.professionalReviewDecisionVersion,
+      customerId: isDurablePreparation(lock) ? lock.customerId : legacyPackage!.customerId,
       authorizedParty: clone(command.authorizedParty),
       authorizationCapacity: command.authorizationCapacity,
       jurisdiction: scope.jurisdiction,
@@ -400,7 +591,16 @@ export class FilingGovernanceService {
       termsVersion: 'filing-authorization-terms-v1',
       acknowledgements: [],
       evidence: [
-        { reference: lock.preparationLockId, source: 'MARKREG_PREPARATION_LOCK', recordedAt: at }
+        { reference: lock.preparationLockId, source: 'MARKREG_PREPARATION_LOCK', recordedAt: at },
+        ...(isDurablePreparation(lock)
+          ? [
+              {
+                reference: lock.lockPayloadHash,
+                source: 'MARKREG_PREPARATION_LOCK_SHA256',
+                recordedAt: at
+              }
+            ]
+          : [])
       ],
       status: 'PENDING_CONFIRMATION',
       ...(command.expiresAt ? { expiresAt: command.expiresAt } : {}),
@@ -426,7 +626,7 @@ export class FilingGovernanceService {
       return expired;
     }
     const current = await this.source.getPreparationLock(value.preparationLockId);
-    if (!current || lockVersion(current) !== value.preparationLockVersion) {
+    if (!current || !sourceMatchesAuthorization(current, value)) {
       const stale = {
         ...value,
         status: 'STALE' as const,
@@ -621,7 +821,7 @@ export class FilingGovernanceService {
     const lock = await this.source.getPreparationLock(value.preparationLockId);
     const current =
       !!lock &&
-      lockVersion(lock) === value.preparationLockVersion &&
+      sourceMatchesAuthorization(lock, auth) &&
       auth.status === 'AUTHORIZED' &&
       auth.version === value.filingAuthorizationVersion;
     const at = this.now();
@@ -805,12 +1005,8 @@ export class FilingGovernanceService {
       classes: auth.classes,
       goodsServices: auth.goodsServices,
       filingBasis: auth.filingBasis,
-      documentReferences: auth.preparationSnapshot.documentPackage.documentItems.map(
-        (v) => v.documentReference.fileName
-      ),
-      instructionReferences: auth.preparationSnapshot.instructionLedger.entries.map(
-        (v) => v.instructionEntryId
-      ),
+      documentReferences: authorizationDocumentReferences(auth),
+      instructionReferences: authorizationInstructionReferences(auth),
       representativeRequirement: auth.representativeRequirement,
       executionChannel: release.requestedExecutionChannel,
       internalAssigneeReference: release.assignment.internalExecutorId!,
