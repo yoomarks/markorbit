@@ -190,6 +190,18 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     return principal;
   };
 
+  const authenticateMatterRead = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
+    const principal = await resolveWorkspacePrincipal(request);
+    if (!principal.permissions.includes('matter:read'))
+      return mapAuthentication(
+        new AuthenticationError(
+          'PERMISSION_DENIED',
+          'matter:read permission is required for governed Examination reads.'
+        )
+      );
+    return principal;
+  };
+
   const forward = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -350,6 +362,44 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const forwardExaminationRead = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'MarkReg service authentication is unavailable.',
+        true
+      );
+    const formalMatterId = encodeURIComponent(request.params.formalMatterId ?? '');
+    try {
+      const response = await fetch(
+        `${options.markRegUrl}/internal/v1/formal-matters/${formalMatterId}/examination`,
+        {
+          method: 'GET',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': options.internalServiceSecret,
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+            'x-markorbit-workspace-id': principal.workspaceId,
+            ...(request.headers['x-correlation-id']
+              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+              : {}),
+            ...(request.headers['x-request-id']
+              ? { 'x-request-id': request.headers['x-request-id'] }
+              : {})
+          }
+        }
+      );
+      return json(response.status, await response.json());
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
   const productionIntakeRoute: JsonRoute = {
     method: 'POST',
     path: '/api/markreg/production-intakes',
@@ -408,6 +458,15 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     handle: async (request) => {
       const principal = await authenticateRead(request);
       return forwardFormalMatterRead(request, principal, 'evidence');
+    }
+  };
+
+  const formalMatterExaminationRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/formal-matters/:formalMatterId/examination',
+    handle: async (request) => {
+      const principal = await authenticateMatterRead(request);
+      return forwardExaminationRead(request, principal);
     }
   };
 
@@ -583,6 +642,7 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     customerConfirmationRoute,
     matterDraftRoute,
     matterIntelligenceRoute,
-    formalMatterEvidenceRoute
+    formalMatterEvidenceRoute,
+    formalMatterExaminationRoute
   ];
 }
