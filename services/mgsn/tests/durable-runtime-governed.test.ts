@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDurableMgsnServices } from '../src/durable-runtime.js';
 import { GovernedAllocationService } from '../src/governed-allocation.js';
-import { GovernedProviderWorkReadModelService } from '../src/provider-work-incoming-authority.js';
+import { GovernedProviderWorkHttpReadService } from '../src/provider-work-http-read-service.js';
 
 function inertQueryClient() {
   return {
@@ -10,7 +10,7 @@ function inertQueryClient() {
 }
 
 describe('MGSN Epic #358 governed durable runtime composition', () => {
-  it('wires governed Allocation and exact incoming Handoff authority into the durable runtime', () => {
+  it('wires governed Allocation and typed exact incoming Handoff authority into the durable runtime', () => {
     const query = inertQueryClient();
     const database = {
       getPool: () => query,
@@ -25,6 +25,6 @@ describe('MGSN Epic #358 governed durable runtime composition', () => {
     });
 
     expect(services.governedAllocation).toBeInstanceOf(GovernedAllocationService);
-    expect(services.providerWorkRead).toBeInstanceOf(GovernedProviderWorkReadModelService);
+    expect(services.providerWorkRead).toBeInstanceOf(GovernedProviderWorkHttpReadService);
   });
 });
