@@ -243,13 +243,19 @@ function candidateId(value: unknown): ProviderDiscoveryCandidateId {
 }
 
 export function providerDiscoveryTrustContextScopeFingerprintV1(
-  value: Omit<ProviderDiscoveryTrustContextIntentV1, 'schemaVersion' | 'contextScopeFingerprintSha256'>
+  value: Omit<
+    ProviderDiscoveryTrustContextIntentV1,
+    'schemaVersion' | 'contextScopeFingerprintSha256'
+  >
 ): string {
   return fingerprint(value);
 }
 
 export function providerDiscoveryTrustRequestFingerprintV1(
-  value: Omit<ProviderDiscoveryTrustRequestLinkV1, 'schemaVersion' | 'trustRequestFingerprintSha256'>
+  value: Omit<
+    ProviderDiscoveryTrustRequestLinkV1,
+    'schemaVersion' | 'trustRequestFingerprintSha256'
+  >
 ): string {
   return fingerprint(value);
 }
@@ -541,7 +547,10 @@ function parseDecisionSupport(
     ],
     'trustDecisionSupport'
   );
-  const projection = record(support.visibilityProjection, 'trustDecisionSupport.visibilityProjection');
+  const projection = record(
+    support.visibilityProjection,
+    'trustDecisionSupport.visibilityProjection'
+  );
   exactKeys(
     projection,
     ['trustEvidenceVisibilityProjectionId', 'projectionFingerprintSha256'],
@@ -557,7 +566,11 @@ function parseDecisionSupport(
       'trustDecisionSupport.visibilityProjection.projectionFingerprintSha256'
     )
   };
-  if (!visibilityProjection.trustEvidenceVisibilityProjectionId.startsWith('trust-evidence-projection_')) {
+  if (
+    !visibilityProjection.trustEvidenceVisibilityProjectionId.startsWith(
+      'trust-evidence-projection_'
+    )
+  ) {
     invalid('Trust visibility projection id is invalid.');
   }
   const explanation = record(support.explanation, 'trustDecisionSupport.explanation');

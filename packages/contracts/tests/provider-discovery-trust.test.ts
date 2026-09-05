@@ -159,9 +159,7 @@ describe('Provider Discovery Trust decision-support contract', () => {
     expect(parsedRequest.providerDiscoveryRequestId).toBe(
       discovery.request.providerDiscoveryRequestId
     );
-    expect(parsedRequest.requestFingerprintSha256).toBe(
-      discovery.request.requestFingerprintSha256
-    );
+    expect(parsedRequest.requestFingerprintSha256).toBe(discovery.request.requestFingerprintSha256);
   });
 
   it('rejects Trust context drift from the exact Discovery Need instead of guessing linkage', () => {
@@ -254,9 +252,9 @@ describe('Provider Discovery Trust decision-support contract', () => {
       ...availableSupport(),
       score: 94
     };
-    expect(() =>
-      parseProviderDiscoveryTrustComparisonV1(comparisonFor(ranked), discovery)
-    ).toThrow(/unsupported fields/);
+    expect(() => parseProviderDiscoveryTrustComparisonV1(comparisonFor(ranked), discovery)).toThrow(
+      /unsupported fields/
+    );
   });
 
   it('keeps existing non-Trust Provider Discovery fixtures backward compatible', () => {
