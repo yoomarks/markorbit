@@ -1,4 +1,4 @@
-name: Temporary MGSN 825 Branch Refresh
+name: Temporary MGSN 825 Transport Hardening
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  refresh-and-push:
+  harden-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,10 +17,544 @@ jobs:
           ref: mgsn-governed-network-http-825
           fetch-depth: 0
       - run: |
-          expected=322f5e7b64a72b4fed59b134db4d5972784da9be
+          expected=0e2b46e346805c981519e78e5217d157b767ab23
           test "$(git rev-parse HEAD)" = "$expected"
-          git fetch origin main
+          python3 - <<'PY'
+          from pathlib import Path
+
+          route_path = Path('services/mgsn/src/governed-network-http.ts')
+          text = route_path.read_text()
+          marker = """function rejectTopLevelAuthority(body: Body): void {\n"""
+          insert = r'''type TransportShape = Readonly<
+            Record<string, null | TransportShape | readonly [TransportShape]>
+          >;
+
+          function assertExactTransportShape(value: unknown, shape: TransportShape, field: string): void {
+            const object = objectOf(value, field);
+            const allowed = new Set(Object.keys(shape));
+            const unexpected = Object.keys(object).find((key) => !allowed.has(key));
+            if (unexpected)
+              throw new HttpError(
+                400,
+                'UNEXPECTED_GOVERNED_NETWORK_FIELD',
+                `${field}.${unexpected} is not permitted by the governed-network transport contract.`
+              );
+            for (const [key, nested] of Object.entries(shape)) {
+              const child = object[key];
+              if (nested === null || child === undefined) continue;
+              if (Array.isArray(nested)) {
+                if (!Array.isArray(child))
+                  throw new HttpError(
+                    400,
+                    'INVALID_GOVERNED_NETWORK_REQUEST',
+                    `${field}.${key} must be an array.`
+                  );
+                for (const [index, item] of child.entries())
+                  assertExactTransportShape(
+                    item,
+                    nested[0] as TransportShape,
+                    `${field}.${key}[${index}]`
+                  );
+                continue;
+              }
+              assertExactTransportShape(child, nested as TransportShape, `${field}.${key}`);
+            }
+          }
+
+          const versionReferenceTransportShape = {
+            providerSelectionId: null,
+            controlledHandoffId: null,
+            version: null,
+            scopeVersion: null
+          } satisfies TransportShape;
+
+          const selectionScopeTransportShape = {
+            owner: null,
+            reference: null,
+            version: null,
+            fingerprintSha256: null
+          } satisfies TransportShape;
+
+          const currentSourceVersionTransportShape = {
+            owner: null,
+            sourceType: null,
+            sourceId: null,
+            version: null,
+            fingerprintSha256: null,
+            effectiveFrom: null,
+            effectiveUntil: null,
+            checkedAt: null,
+            authorityState: null
+          } satisfies TransportShape;
+
+          const providerSelectionSourceLineageTransportShape = {
+            discoveryRequest: {
+              providerDiscoveryRequestId: null,
+              requesterWorkspaceId: null,
+              requestFingerprintSha256: null,
+              needReference: null,
+              needVersion: null,
+              needFingerprintSha256: null,
+              purpose: null,
+              contextReference: null
+            },
+            discoveryResult: {
+              resultFingerprintSha256: null,
+              evaluatedAt: null
+            },
+            discoveryCandidate: {
+              providerDiscoveryCandidateId: null,
+              candidateFingerprintSha256: null,
+              generatedAt: null,
+              evaluationPolicyVersion: null
+            },
+            provider: {
+              providerId: null,
+              providerWorkspaceId: null
+            },
+            providerSupplyCapability: {
+              id: null,
+              version: null,
+              fingerprintSha256: null
+            },
+            visibilityAuthorizationAtReview: {
+              networkParticipationId: null,
+              participationVersion: null,
+              visibilityPolicyVersion: null,
+              evaluatedAt: null,
+              currentAuthorityRevalidationRequiredBeforeServe: null
+            },
+            historicalSourceVersions: [currentSourceVersionTransportShape],
+            directExecutorDisclosureAtReview: {
+              state: null,
+              evidenceReferences: null
+            },
+            currentAuthorityRevalidationRequiredBeforeSelectionCommit: null,
+            currentAuthorityRevalidationRequiredBeforeDownstreamUse: null
+          } satisfies TransportShape;
+
+          const providerSelectionAcknowledgementTransportShape = {
+            affirmativeHumanAction: null,
+            acknowledgementCode: null,
+            acknowledgementTextVersion: null,
+            reviewedCandidateId: null,
+            reviewedCandidateFingerprintSha256: null,
+            reviewedScopeFingerprintSha256: null,
+            reviewedAt: null,
+            reasonCode: null,
+            rationale: null,
+            containsCustomerDocuments: null,
+            containsRawEvidenceArtifacts: null,
+            containsEndClientRelationshipInformation: null,
+            containsApplicantOwnerOfficialData: null,
+            containsCommercialMarginOrProfit: null
+          } satisfies TransportShape;
+
+          const providerSelectionCreateTransportShape = {
+            schemaVersion: null,
+            scope: selectionScopeTransportShape,
+            sourceLineage: providerSelectionSourceLineageTransportShape,
+            acknowledgement: providerSelectionAcknowledgementTransportShape,
+            expectedCurrent: {
+              kind: null,
+              expectedScopeVersion: null,
+              providerSelectionId: null,
+              version: null
+            },
+            idempotencyKey: null,
+            commandFingerprintSha256: null,
+            correlationId: null
+          } satisfies TransportShape;
+
+          const providerSelectionRevokeTransportShape = {
+            schemaVersion: null,
+            scope: selectionScopeTransportShape,
+            target: versionReferenceTransportShape,
+            reasonCode: null,
+            rationale: null,
+            idempotencyKey: null,
+            commandFingerprintSha256: null,
+            correlationId: null
+          } satisfies TransportShape;
+
+          const providerSelectionValidationTransportShape = {
+            scope: selectionScopeTransportShape,
+            purpose: null,
+            checkedAt: null
+          } satisfies TransportShape;
+
+          const controlledHandoffSelectionLineageTransportShape = {
+            selection: versionReferenceTransportShape,
+            selectionScope: selectionScopeTransportShape,
+            selectionFingerprintSha256: null,
+            selectedProvider: {
+              providerId: null,
+              providerWorkspaceId: null
+            },
+            currentSelectionValidation: {
+              purpose: null,
+              decision: null,
+              currentlyUsable: null,
+              evaluatedAt: null,
+              validationPolicyVersion: null,
+              checkedAuthorityReferences: null
+            }
+          } satisfies TransportShape;
+
+          const controlledHandoffDirectExecutorTransportShape = {
+            disclosureState: null,
+            directExecutorEstablished: null,
+            finalExecutionProviderId: null,
+            finalExecutionProviderWorkspaceId: null,
+            authorityReference: null,
+            authorityVersion: null,
+            evidenceReferences: null,
+            checkedAt: null,
+            hiddenIntermediaryAllowed: null,
+            onwardRecipientAuthorization: null,
+            legallyRequiredDistinctSigner: {
+              signerReference: null,
+              legalBasisReference: null,
+              transparentlyDisclosed: null,
+              receivesHandoffDataByDefault: null
+            }
+          } satisfies TransportShape;
+
+          const controlledHandoffSourceLineageTransportShape = {
+            selectionLineage: controlledHandoffSelectionLineageTransportShape,
+            currentSourceVersions: [currentSourceVersionTransportShape],
+            directExecutorAuthority: controlledHandoffDirectExecutorTransportShape,
+            currentAuthorityRevalidationRequiredBeforeAuthorize: null,
+            currentAuthorityRevalidationRequiredBeforeConsumption: null,
+            evidenceReferenceVisibilityDoesNotGrantArtifactRetrieval: null
+          } satisfies TransportShape;
+
+          const controlledHandoffProjectionTransportShape = {
+            schemaVersion: null,
+            items: [
+              {
+                dataClass: null,
+                fieldPath: null,
+                sourceOwner: null,
+                sourceReference: null,
+                sourceVersion: null,
+                sourceFingerprintSha256: null,
+                necessityReference: null,
+                requested: null,
+                authorizedBySourceOwner: null,
+                minimumNecessary: null,
+                fieldValueEmbeddedInEnvelope: null,
+                evidenceArtifactRetrievalAuthority: null
+              }
+            ],
+            projectionFingerprintSha256: null,
+            sourceSetFingerprintSha256: null,
+            wildcardAllowed: null,
+            wholeRecordAllowed: null,
+            implicitFieldExpansionAllowed: null,
+            fieldValuesEmbeddedInEnvelope: null,
+            requestedAuthorizedMinimumNecessaryIntersectionRequired: null,
+            forbiddenGenericDataClasses: null
+          } satisfies TransportShape;
+
+          const controlledHandoffPrivacyPreviewTransportShape = {
+            affirmativeHumanAction: null,
+            acknowledgementCode: null,
+            acknowledgementTextVersion: null,
+            originatingWorkspaceId: null,
+            recipientProviderId: null,
+            recipientProviderWorkspaceId: null,
+            selection: versionReferenceTransportShape,
+            purposeFingerprintSha256: null,
+            projectionFingerprintSha256: null,
+            sourceSetFingerprintSha256: null,
+            previewFingerprintSha256: null,
+            reviewedAt: null
+          } satisfies TransportShape;
+
+          const controlledHandoffAuthorizeTransportShape = {
+            schemaVersion: null,
+            recipient: {
+              providerId: null,
+              providerWorkspaceId: null,
+              role: null
+            },
+            purpose: {
+              code: null,
+              contextReference: null,
+              instructionReference: null,
+              purposeFingerprintSha256: null,
+              unrestrictedPurposeAllowed: null
+            },
+            authorizedProjection: controlledHandoffProjectionTransportShape,
+            sourceLineage: controlledHandoffSourceLineageTransportShape,
+            privacyPreviewAcknowledgement: controlledHandoffPrivacyPreviewTransportShape,
+            validFrom: null,
+            validUntil: null,
+            expectedCurrent: {
+              kind: null,
+              controlledHandoffId: null,
+              version: null
+            },
+            idempotencyKey: null,
+            commandFingerprintSha256: null,
+            correlationId: null
+          } satisfies TransportShape;
+
+          const controlledHandoffRevokeTransportShape = {
+            schemaVersion: null,
+            target: {
+              controlledHandoffId: null,
+              version: null
+            },
+            reasonCode: null,
+            rationale: null,
+            idempotencyKey: null,
+            commandFingerprintSha256: null,
+            correlationId: null
+          } satisfies TransportShape;
+
+          const controlledHandoffValidationTransportShape = {
+            envelope: {
+              version: null
+            },
+            purpose: null,
+            attempt: {
+              recipientProviderId: null,
+              recipientProviderWorkspaceId: null,
+              purposeFingerprintSha256: null,
+              projectionFingerprintSha256: null,
+              sourceSetFingerprintSha256: null,
+              artifactRetrievalRequested: null,
+              attemptedAt: null,
+              correlationId: null
+            }
+          } satisfies TransportShape;
+
+          const governedAllocationTransportShape = {
+            servicePackageId: null,
+            expectedServicePackageVersion: null,
+            expectedServicePackageFingerprintSha256: null,
+            eligibilityEvaluationId: null,
+            expectedEligibilityEvaluationVersion: null,
+            expectedEligibilityFingerprintSha256: null,
+            providerId: null,
+            providerSupplyCapabilityId: null,
+            expectedProviderSupplyCapabilityVersion: null,
+            rationale: null,
+            selection: {
+              providerSelectionId: null,
+              version: null,
+              scopeVersion: null
+            },
+            selectionScope: selectionScopeTransportShape,
+            handoffBinding: {
+              mode: null,
+              handoff: {
+                controlledHandoffId: null,
+                version: null
+              },
+              envelopeFingerprintSha256: null,
+              purposeFingerprintSha256: null,
+              projectionFingerprintSha256: null,
+              sourceSetFingerprintSha256: null
+            },
+            idempotencyKey: null,
+            correlationId: null
+          } satisfies TransportShape;
+
+          '''
+          if insert in text:
+              raise SystemExit('transport shape guard already inserted')
+          if marker not in text:
+              raise SystemExit('route insertion marker not found')
+          text = text.replace(marker, insert + marker, 1)
+
+          replacements = {
+              """        rejectTopLevelAuthority(body);\n        const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');\n        const sourceLineage = objectOf(body.sourceLineage, 'sourceLineage');\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, providerSelectionCreateTransportShape, 'body');\n        const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');\n        const sourceLineage = objectOf(body.sourceLineage, 'sourceLineage');\n""",
+              """        rejectTopLevelAuthority(body);\n        const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');\n        const target = objectOf(body.target, 'target');\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, providerSelectionRevokeTransportShape, 'body');\n        const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');\n        const target = objectOf(body.target, 'target');\n""",
+              """        rejectTopLevelAuthority(body);\n        const purpose = body.purpose as ProviderSelectionValidationPurpose;\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, providerSelectionValidationTransportShape, 'body');\n        const purpose = body.purpose as ProviderSelectionValidationPurpose;\n""",
+              """        rejectTopLevelAuthority(body);\n        const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');\n        const preview = objectOf(\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, controlledHandoffAuthorizeTransportShape, 'body');\n        const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');\n        const preview = objectOf(\n""",
+              """        rejectTopLevelAuthority(body);\n        const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');\n        const target = objectOf(body.target, 'target');\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, controlledHandoffRevokeTransportShape, 'body');\n        const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');\n        const target = objectOf(body.target, 'target');\n""",
+              """        rejectTopLevelAuthority(body);\n        const purpose = body.purpose as ControlledHandoffValidationPurpose;\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, controlledHandoffValidationTransportShape, 'body');\n        const purpose = body.purpose as ControlledHandoffValidationPurpose;\n""",
+              """        rejectTopLevelAuthority(body);\n        const result = await operation(() =>\n          services().governedAllocation.allocate({\n""": """        rejectTopLevelAuthority(body);\n        assertExactTransportShape(body, governedAllocationTransportShape, 'body');\n        const result = await operation(() =>\n          services().governedAllocation.allocate({\n"""
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'route replacement marker not found: {old[:80]!r}')
+              text = text.replace(old, new, 1)
+          route_path.write_text(text)
+
+          test_path = Path('services/mgsn/tests/governed-network-http.test.ts')
+          tests = test_path.read_text()
+          anchor = "\n});\n"
+          extra = r'''
+            it('fails closed without the internal service authorization secret', async () => {
+              const response = await fetch(`${base}/v1/governed-network/discovery/evaluate`, {
+                method: 'POST',
+                headers: {
+                  'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal()),
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({ schemaVersion: 1 })
+              });
+
+              expect(response.status).toBe(401);
+              expect((await response.json()).code).toBe('UNTRUSTED_INTERNAL_CALLER');
+              expect(captured).toBeUndefined();
+            });
+
+            it('fails closed when the internal Workspace Principal is malformed', async () => {
+              const response = await fetch(`${base}/v1/governed-network/discovery/evaluate`, {
+                method: 'POST',
+                headers: {
+                  'x-markorbit-internal-authorization': secret,
+                  'x-markorbit-principal': 'not-a-workspace-principal',
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({ schemaVersion: 1 })
+              });
+
+              expect(response.status).toBe(401);
+              expect((await response.json()).code).toBe('INVALID_INTERNAL_PRINCIPAL');
+              expect(captured).toBeUndefined();
+            });
+
+            it('rejects SYSTEM or AI labels in reviewed human-action ingress', async () => {
+              const encoded = Buffer.from(
+                JSON.stringify({ ...humanAction('PROVIDER_SELECTION'), actorKind: 'SYSTEM' }),
+                'utf8'
+              ).toString('base64url');
+              const response = await fetch(`${base}/v1/governed-network/selections`, {
+                method: 'POST',
+                headers: {
+                  ...headers({ idempotencyKey: 'selection-system-actor' }),
+                  [MGSN_GOVERNED_HUMAN_ACTION_HEADER]: encoded,
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({ sourceLineage: { discoveryRequest: {} } })
+              });
+
+              expect(response.status).toBe(403);
+              expect((await response.json()).code).toBe('INVALID_GOVERNED_HUMAN_ACTION');
+              expect(captured).toBeUndefined();
+            });
+
+            it('rejects reviewed human-action ingress bound to a different Workspace', async () => {
+              const encoded = Buffer.from(
+                JSON.stringify({
+                  ...humanAction('CONTROLLED_HANDOFF'),
+                  workspaceId: '018f0000-0000-7000-8000-000000009999'
+                }),
+                'utf8'
+              ).toString('base64url');
+              const response = await fetch(`${base}/v1/governed-network/handoffs`, {
+                method: 'POST',
+                headers: {
+                  ...headers({ idempotencyKey: 'handoff-wrong-workspace' }),
+                  [MGSN_GOVERNED_HUMAN_ACTION_HEADER]: encoded,
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({ privacyPreviewAcknowledgement: {} })
+              });
+
+              expect(response.status).toBe(403);
+              expect((await response.json()).code).toBe('INVALID_GOVERNED_HUMAN_ACTION');
+              expect(captured).toBeUndefined();
+            });
+
+            it('rejects extra field values inside a Controlled Handoff projection before owner persistence', async () => {
+              const response = await fetch(`${base}/v1/governed-network/handoffs`, {
+                method: 'POST',
+                headers: {
+                  ...headers({ kind: 'CONTROLLED_HANDOFF', idempotencyKey: 'handoff-extra-value' }),
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                  authorizedProjection: {
+                    items: [
+                      {
+                        dataClass: 'APPLICANT_OWNER_OFFICIAL_DATA',
+                        fieldPath: 'legalName',
+                        fieldValue: 'must-not-cross-the-transport'
+                      }
+                    ]
+                  },
+                  privacyPreviewAcknowledgement: {}
+                })
+              });
+
+              expect(response.status).toBe(400);
+              expect((await response.json()).code).toBe('UNEXPECTED_GOVERNED_NETWORK_FIELD');
+              expect(captured).toBeUndefined();
+            });
+
+            it('rejects extra private values from Handoff current-validation attempts', async () => {
+              const response = await fetch(
+                `${base}/v1/governed-network/handoffs/${handoffId}/validate-current`,
+                {
+                  method: 'POST',
+                  headers: { ...headers(), 'content-type': 'application/json' },
+                  body: JSON.stringify({
+                    envelope: { version: 1 },
+                    purpose: 'HANDOFF_CONSUMPTION',
+                    attempt: {
+                      artifactRetrievalRequested: false,
+                      privateFieldValue: 'must-not-be-reflected'
+                    }
+                  })
+                }
+              );
+
+              expect(response.status).toBe(400);
+              expect((await response.json()).code).toBe('UNEXPECTED_GOVERNED_NETWORK_FIELD');
+              expect(captured).toBeUndefined();
+            });
+
+            it('rejects arbitrary private payloads from Selection and governed Allocation commands', async () => {
+              const selectionResponse = await fetch(`${base}/v1/governed-network/selections`, {
+                method: 'POST',
+                headers: {
+                  ...headers({ kind: 'PROVIDER_SELECTION', idempotencyKey: 'selection-private-payload' }),
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                  sourceLineage: { discoveryRequest: {} },
+                  customerDocument: { raw: 'must-not-cross-the-transport' }
+                })
+              });
+              expect(selectionResponse.status).toBe(400);
+              expect((await selectionResponse.json()).code).toBe('UNEXPECTED_GOVERNED_NETWORK_FIELD');
+              expect(captured).toBeUndefined();
+
+              const allocationResponse = await fetch(`${base}/v1/governed-network/allocations`, {
+                method: 'POST',
+                headers: {
+                  ...headers({ idempotencyKey: 'allocation-private-payload' }),
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({ customerData: { raw: 'must-not-cross-the-transport' } })
+              });
+              expect(allocationResponse.status).toBe(400);
+              expect((await allocationResponse.json()).code).toBe(
+                'UNEXPECTED_GOVERNED_NETWORK_FIELD'
+              );
+              expect(captured).toBeUndefined();
+            });
+          '''
+          if "fails closed without the internal service authorization secret" in tests:
+              raise SystemExit('negative transport tests already inserted')
+          head, sep, tail = tests.rpartition(anchor)
+          if not sep:
+              raise SystemExit('test suite closing marker not found')
+          test_path.write_text(head + extra + anchor + tail)
+          PY
+      - run: npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
+      - run: |
+          git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rebase origin/main
-          git push --force-with-lease=refs/heads/mgsn-governed-network-http-825:$expected origin HEAD:mgsn-governed-network-http-825
+          git add services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(mgsn): enforce exact governed transport shapes"
+          git push origin HEAD:mgsn-governed-network-http-825
