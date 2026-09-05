@@ -66,8 +66,7 @@ export interface GovernedHumanActionReceiptStore {
   findById(receiptId: string): Promise<Readonly<GovernedHumanActionReceipt> | undefined>;
 }
 
-export interface MaterializeGovernedHumanActionReceiptRequest
-  extends GovernedHumanActionReceiptBinding {}
+export type MaterializeGovernedHumanActionReceiptRequest = GovernedHumanActionReceiptBinding;
 
 export interface ValidateGovernedHumanActionReceiptRequest
   extends GovernedHumanActionReceiptBinding {
