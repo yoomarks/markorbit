@@ -11,10 +11,7 @@ import {
 
 export interface GovernedHumanActionReceiptHttpOptions {
   internalServiceSecret: string;
-  service: Pick<
-    GovernedHumanActionReceiptService,
-    'materializeOrResolve' | 'validateCurrent'
-  >;
+  service: Pick<GovernedHumanActionReceiptService, 'materializeOrResolve' | 'validateCurrent'>;
 }
 
 const materializeKeys = new Set([
