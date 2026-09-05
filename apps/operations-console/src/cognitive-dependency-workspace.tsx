@@ -58,10 +58,9 @@ function OwnerUnavailable({ owner, result }: { owner: string; result: OwnerReadR
   const { error } = result;
   return (
     <Alert tone="warning" title={`${owner} dependency explanation unavailable`}>
-      {error.status === null ? error.code : `HTTP ${error.status} · ${error.code}`} · {error.message}
-      {' '}
-      This owner failure is independent; it is not converted into aggregate health or an empty
-      dependency set.
+      {error.status === null ? error.code : `HTTP ${error.status} · ${error.code}`} ·{' '}
+      {error.message} This owner failure is independent; it is not converted into aggregate health
+      or an empty dependency set.
     </Alert>
   );
 }
@@ -90,7 +89,9 @@ function CapabilityPaths({ result }: { result: OwnerReadResult }) {
   const paths = buildCapabilityDependencyPaths(result.value);
   return (
     <section aria-labelledby="capability-cognitive-dependencies-heading">
-      <h3 id="capability-cognitive-dependencies-heading">Capability Engine · runtime / source policy</h3>
+      <h3 id="capability-cognitive-dependencies-heading">
+        Capability Engine · runtime / source policy
+      </h3>
       <Alert tone="info" title="Integrity boundary">
         {CAPABILITY_INTEGRITY_BOUNDARY}
       </Alert>
@@ -117,9 +118,9 @@ export function CognitiveDependencyWorkspace({
         <h2 id="cognitive-dependency-heading">Why cognitive work is blocked or limited</h2>
         <p>
           Explanation paths organize only the two loaded owner projections. They do not create a new
-          owner, health score, readiness decision or mutation authority. Read top-to-bottom as current
-          state → reason → bounded impact → owner dependency; open evidence only when provenance is
-          needed.
+          owner, health score, readiness decision or mutation authority. Read top-to-bottom as
+          current state → reason → bounded impact → owner dependency; open evidence only when
+          provenance is needed.
         </p>
       </Card>
       <div className="mo-grid">

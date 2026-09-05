@@ -1,7 +1,8 @@
 type JsonObject = Record<string, unknown>;
 
 export type CognitiveDependencyOwner = 'CORE' | 'CAPABILITY_ENGINE';
-export type CognitiveDependencyKind = 'BLOCKER' | 'LIMITATION' | 'FINDING' | 'DEPENDENCY' | 'UNKNOWN';
+export type CognitiveDependencyKind =
+  'BLOCKER' | 'LIMITATION' | 'FINDING' | 'DEPENDENCY' | 'UNKNOWN';
 
 export interface CognitiveDependencyEvidence {
   label: string;
@@ -57,7 +58,10 @@ function evidenceList(
   return items.filter((item): item is CognitiveDependencyEvidence => item !== null);
 }
 
-function sorted(values: readonly JsonObject[], key: (value: JsonObject) => string): readonly JsonObject[] {
+function sorted(
+  values: readonly JsonObject[],
+  key: (value: JsonObject) => string
+): readonly JsonObject[] {
   return [...values].sort((left, right) => key(left).localeCompare(key(right)));
 }
 
@@ -153,7 +157,8 @@ function buildMethodImprovementPaths(value: JsonObject): readonly CognitiveDepen
         why: 'The console refuses to join incomplete or mismatched lineage.',
         affects:
           'No Research Mission, candidate, evaluation, shadow/pilot, governance or activation consequence is inferred from this record.',
-        dependency: 'Core owner truth must establish the trigger-to-mission binding before the path can be connected.',
+        dependency:
+          'Core owner truth must establish the trigger-to-mission binding before the path can be connected.',
         evidence: evidenceList([
           evidence('Trigger id', trigger.triggerId),
           evidence('Trigger fingerprint', trigger.triggerFingerprintSha256),
@@ -174,7 +179,10 @@ function buildMethodImprovementPaths(value: JsonObject): readonly CognitiveDepen
     return {
       id: `core-method:${triggerId}`,
       owner: 'CORE' as const,
-      kind: buildAvailability === 'NOT_DURABLY_RECORDED' ? ('LIMITATION' as const) : ('DEPENDENCY' as const),
+      kind:
+        buildAvailability === 'NOT_DURABLY_RECORDED'
+          ? ('LIMITATION' as const)
+          : ('DEPENDENCY' as const),
       title: `${text(trigger.triggerType)} admission → Research Mission`,
       currentState: `Core bound trigger ${triggerId} to Research Mission ${missionId} by exact trigger id and fingerprint.`,
       why: `The Method Improvement admission exists and was admitted at ${text(trigger.admittedAt)}.`,
@@ -234,7 +242,8 @@ function buildBrainBuildRunPath(value: JsonObject): readonly CognitiveDependency
         owner: 'CORE',
         kind: 'UNKNOWN',
         title: 'Brain Build Run dependency is not established',
-        currentState: 'No valid Brain Build Run availability field is present in the current Core projection.',
+        currentState:
+          'No valid Brain Build Run availability field is present in the current Core projection.',
         why: 'The console does not reinterpret missing owner state as an empty inventory.',
         affects: 'Build-run history, completion and readiness remain unknown.',
         dependency: 'Core owner truth must provide a bounded availability state.',
@@ -330,7 +339,8 @@ function catalogIntegrityPaths(value: JsonObject): readonly CognitiveDependencyP
       owner: 'CAPABILITY_ENGINE',
       kind: 'UNKNOWN',
       title: 'Capability catalog integrity dependency is not established',
-      currentState: 'No recognized catalogIntegrity owner status is present in the current projection.',
+      currentState:
+        'No recognized catalogIntegrity owner status is present in the current projection.',
       why: 'The console refuses to infer healthy or empty catalog state from missing/malformed owner truth.',
       affects: 'Catalog structural integrity remains unknown.',
       dependency: 'Capability Engine owner truth must provide a bounded catalogIntegrity status.',
@@ -411,13 +421,17 @@ function sourcePolicyBindingPaths(value: JsonObject): readonly CognitiveDependen
         'No recognized sourcePolicyBindingIntegrity owner status is present in the current projection.',
       why: 'The console refuses to infer healthy or empty binding state from missing/malformed owner truth.',
       affects: 'Source-policy binding integrity and current affected references remain unknown.',
-      dependency: 'Capability Engine owner truth must provide a bounded sourcePolicyBindingIntegrity status.',
+      dependency:
+        'Capability Engine owner truth must provide a bounded sourcePolicyBindingIntegrity status.',
       evidence: evidenceList([evidence('Raw owner status', integrity.status)])
     }
   ];
 }
 
-function exactProfilePolicies(profile: JsonObject, policies: readonly JsonObject[]): readonly JsonObject[] {
+function exactProfilePolicies(
+  profile: JsonObject,
+  policies: readonly JsonObject[]
+): readonly JsonObject[] {
   const profileId = optionalText(profile.implementationProfileId);
   const profileVersion = scalar(profile.version, '');
   const capabilityId = optionalText(profile.capabilityId);
@@ -432,7 +446,10 @@ function exactProfilePolicies(profile: JsonObject, policies: readonly JsonObject
   );
 }
 
-function exactProfileRuntimes(profile: JsonObject, runtimes: readonly JsonObject[]): readonly JsonObject[] {
+function exactProfileRuntimes(
+  profile: JsonObject,
+  runtimes: readonly JsonObject[]
+): readonly JsonObject[] {
   const capabilityId = optionalText(profile.capabilityId);
   const capabilityVersion = optionalText(profile.capabilityVersion);
   if (!capabilityId || !capabilityVersion) return [];
@@ -446,8 +463,9 @@ function exactProfileRuntimes(profile: JsonObject, runtimes: readonly JsonObject
 function structuralCapabilityPaths(value: JsonObject): readonly CognitiveDependencyPath[] {
   const runtimes = objects(value.runtimeCapabilities);
   const policies = objects(value.sourceAdmissionPolicies);
-  return sorted(objects(value.implementationProfiles), (profile) =>
-    `${text(profile.implementationProfileId, '')}:${scalar(profile.version, '')}`
+  return sorted(
+    objects(value.implementationProfiles),
+    (profile) => `${text(profile.implementationProfileId, '')}:${scalar(profile.version, '')}`
   ).map((profile) => {
     const profileId = text(profile.implementationProfileId);
     const profileVersion = scalar(profile.version);
@@ -468,8 +486,7 @@ function structuralCapabilityPaths(value: JsonObject): readonly CognitiveDepende
       kind: runtimeEstablished && policyEstablished ? 'DEPENDENCY' : 'UNKNOWN',
       title: 'Runtime Capability → Implementation Profile → source-admission policy',
       currentState,
-      why:
-        'This path uses only exact owner-supplied capability/profile identity fields and exact policy profile bindings; it does not join records by title, timing or similarity.',
+      why: 'This path uses only exact owner-supplied capability/profile identity fields and exact policy profile bindings; it does not join records by title, timing or similarity.',
       affects:
         'The path establishes structural registry binding only. APPROVED profile status is not source admission; PRODUCTION_ADMISSIBLE policy maturity is not Method/Reference currentness, Recommendation authority, legal correctness or product readiness.',
       dependency,
@@ -484,7 +501,10 @@ function structuralCapabilityPaths(value: JsonObject): readonly CognitiveDepende
           evidenceList([
             evidence(`Runtime ${index + 1} definition id`, runtime.runtimeCapabilityDefinitionId),
             evidence(`Runtime ${index + 1} version`, runtime.version),
-            evidence(`Runtime ${index + 1} canon fingerprint`, object(runtime.canonReference).sourceFingerprintSha256)
+            evidence(
+              `Runtime ${index + 1} canon fingerprint`,
+              object(runtime.canonReference).sourceFingerprintSha256
+            )
           ])
         ),
         ...matchingPolicies.flatMap((policy, index) =>

@@ -149,7 +149,9 @@ describe('Capability owner-truth dependency paths', () => {
       label: 'Finding fingerprint',
       value: findingFingerprint
     });
-    expect(path?.affects).toContain('No source-currentness, method-correctness or product-readiness');
+    expect(path?.affects).toContain(
+      'No source-currentness, method-correctness or product-readiness'
+    );
   });
 
   it('preserves source-policy finding policy fingerprint and exact current binding references', () => {
@@ -197,7 +199,10 @@ describe('Capability owner-truth dependency paths', () => {
     expect(path?.currentState).toContain('policy-alpha v4');
     expect(path?.affects).toContain('profile-alpha v3');
     expect(path?.affects).toContain('current profile profile-alpha v5');
-    expect(path?.evidence).toContainEqual({ label: 'Policy fingerprint', value: policyFingerprint });
+    expect(path?.evidence).toContainEqual({
+      label: 'Policy fingerprint',
+      value: policyFingerprint
+    });
     expect(path?.affects).toContain('No Method/Reference currentness');
   });
 
@@ -271,7 +276,9 @@ describe('Capability owner-truth dependency paths', () => {
   });
 
   it('states the permanent integrity boundary explicitly', () => {
-    expect(CAPABILITY_INTEGRITY_BOUNDARY).toContain('Healthy integrity does not establish source currentness');
+    expect(CAPABILITY_INTEGRITY_BOUNDARY).toContain(
+      'Healthy integrity does not establish source currentness'
+    );
     expect(CAPABILITY_INTEGRITY_BOUNDARY).toContain('method correctness');
     expect(CAPABILITY_INTEGRITY_BOUNDARY).toContain('product readiness');
     expect(CAPABILITY_INTEGRITY_BOUNDARY).toContain('Official Truth');
