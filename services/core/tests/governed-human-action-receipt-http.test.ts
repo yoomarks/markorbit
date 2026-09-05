@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { JsonRequest } from '@markorbit/service-kit';
-import { createGovernedHumanActionReceiptRoutes } from '../src/governed-human-action-receipt-http.js';
+import {
+  createGovernedHumanActionReceiptRoutes
+} from '../src/governed-human-action-receipt-http.js';
 import {
   GovernedHumanActionReceiptError,
   type GovernedHumanActionReceipt,
@@ -139,7 +141,9 @@ describe('governed human-action receipt internal HTTP boundary', () => {
   ] as const)('preserves %s as fail-closed HTTP state', async (code, status, retryable) => {
     const f = routes({
       materialize: () =>
-        Promise.reject(new GovernedHumanActionReceiptError(code, `forced ${code}`, status, retryable))
+        Promise.reject(
+          new GovernedHumanActionReceiptError(code, `forced ${code}`, status, retryable)
+        )
     });
     await expect(
       f.result[0]!.handle(request('/internal/auth/governed-human-actions/receipts', command))
