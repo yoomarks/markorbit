@@ -27,7 +27,7 @@ function record(
     changedAt?: string;
   } = {}
 ): WorkspaceActionSourceRecord {
-  const formalMatterId = `formal-matter_${suffix}`;
+  const formalMatterId: `formal-matter_${string}` = `formal-matter_${suffix}`;
   const changedAt = input.changedAt ?? '2026-09-05T10:00:00.000Z';
   const lifecycleState = input.lifecycleState ?? 'CUSTOMER_ACTION_NEEDED';
   const lifecycleId = `lifecycle-view_${suffix}`;

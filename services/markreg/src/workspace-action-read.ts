@@ -422,18 +422,15 @@ function asTimestamp(value: unknown): string {
 function mapRow(row: Row): WorkspaceActionSourceRecord {
   const snapshot = object(row.source_snapshot);
   const preparation = object(snapshot.preparation);
+  const trademark = optionalText(preparation.trademark);
+  const applicant = optionalText(preparation.applicantName);
+  const jurisdiction = optionalText(preparation.targetJurisdiction);
   const matter: MatterSource = {
     id: requiredText(row.formal_matter_id, 'formal_matter_id') as FormalMatterId,
     version: Number(row.formal_matter_version),
-    ...(optionalText(preparation.trademark)
-      ? { trademark: optionalText(preparation.trademark) }
-      : {}),
-    ...(optionalText(preparation.applicantName)
-      ? { applicant: optionalText(preparation.applicantName) }
-      : {}),
-    ...(optionalText(preparation.targetJurisdiction)
-      ? { jurisdiction: optionalText(preparation.targetJurisdiction) }
-      : {}),
+    ...(trademark ? { trademark } : {}),
+    ...(applicant ? { applicant } : {}),
+    ...(jurisdiction ? { jurisdiction } : {}),
     updatedAt: asTimestamp(row.matter_updated_at)
   };
 
@@ -492,6 +489,7 @@ function mapRow(row: Row): WorkspaceActionSourceRecord {
       }
     : undefined;
 
+  const actionTimingBasis = optionalText(row.action_timing_basis);
   const recommendedAction = row.recommended_action_id
     ? {
         id: requiredText(row.recommended_action_id, 'recommended_action_id'),
@@ -511,9 +509,7 @@ function mapRow(row: Row): WorkspaceActionSourceRecord {
         title: requiredText(row.action_title, 'action_title'),
         explanation: requiredText(row.action_explanation, 'action_explanation'),
         ...(row.action_due_at ? { dueAt: asTimestamp(row.action_due_at) } : {}),
-        ...(optionalText(row.action_timing_basis)
-          ? { timingBasis: optionalText(row.action_timing_basis) }
-          : {}),
+        ...(actionTimingBasis ? { timingBasis: actionTimingBasis } : {}),
         status: requiredText(row.action_status, 'action_status') as RecommendedActionStatus,
         executionAuthorized: row.action_execution_authorized === true,
         updatedAt: asTimestamp(row.action_updated_at)
