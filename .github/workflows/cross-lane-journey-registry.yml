@@ -1,0 +1,39 @@
+name: cross-lane-journey-registry
+
+on:
+  pull_request:
+    paths:
+      - 'docs/architecture/cross-lane-journey-registry.v1.json'
+      - 'scripts/validate-cross-lane-journey-registry.mjs'
+      - 'scripts/validate-cross-lane-journey-registry.test.mjs'
+      - '.github/workflows/cross-lane-journey-registry.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/architecture/cross-lane-journey-registry.v1.json'
+      - 'scripts/validate-cross-lane-journey-registry.mjs'
+      - 'scripts/validate-cross-lane-journey-registry.test.mjs'
+      - '.github/workflows/cross-lane-journey-registry.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-lane-journey-registry-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Cross-Lane Journey Registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate registry tests
+        run: node --test scripts/validate-cross-lane-journey-registry.test.mjs
+      - name: Generate registry review report
+        run: node scripts/validate-cross-lane-journey-registry.mjs --report
