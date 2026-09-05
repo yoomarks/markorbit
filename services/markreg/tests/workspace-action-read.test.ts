@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { FormalMatterId } from '@markorbit/contracts';
-import type { LifecycleProjectionState, RecommendedActionStatus } from '@markorbit/contracts/evidence-lifecycle';
+import type {
+  LifecycleProjectionState,
+  RecommendedActionStatus
+} from '@markorbit/contracts/evidence-lifecycle';
 import {
   WORKSPACE_ACTION_LIMIT,
   WorkspaceActionReadService,
@@ -116,7 +119,11 @@ describe('Workspace Action Projection V1', () => {
     ).toMatchObject({ attentionStatus: 'STALE', recommendedAction: null });
     expect(
       result.waitingOrInProgress
-        .filter((item) => ['formal-matter_ack', 'formal-matter_dismissed', 'formal-matter_suppressed'].includes(item.formalMatter.id))
+        .filter((item) =>
+          ['formal-matter_ack', 'formal-matter_dismissed', 'formal-matter_suppressed'].includes(
+            item.formalMatter.id
+          )
+        )
         .every((item) => item.attentionStatus === 'NONE')
     ).toBe(true);
   });
