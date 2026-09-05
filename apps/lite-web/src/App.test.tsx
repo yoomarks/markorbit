@@ -73,14 +73,11 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
     render(<LiteApp />);
     const user = userEvent.setup();
     const nav = screen.getByRole('navigation', { name: 'Primary' });
+    const labels = within(nav)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
 
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual([
-      'Today',
-      'Matters',
-      'Create',
-      'Portfolio',
-      'Work'
-    ]);
+    expect(labels).toEqual(['Today', 'Matters', 'Create', 'Portfolio', 'Work']);
 
     for (const [label, heading, hash] of [
       ['Today', 'Today workspace-1', '#today'],
@@ -138,7 +135,10 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
         '?workspaceId=workspace-1&todayRecommendationId=today_1&preparedActionId=prepared_1&contentPickId=pick_1&formalMatterId=matter_1&trademarkAssetId=asset_1&professionalReviewCaseId=review_1&professionalReviewCaseVersion=3';
       window.history.replaceState(null, '', `/${query}#${hash}`);
       render(<LiteApp />);
-      expect(screen.getByText(hash.startsWith('work-') ? 'Work · workspace-1' : 'Workspace · workspace-1')).toBeVisible();
+      const expectedContext = hash.startsWith('work-')
+        ? 'Work · workspace-1'
+        : 'Workspace · workspace-1';
+      expect(screen.getByText(expectedContext)).toBeVisible();
       expect(screen.getByText('Authenticated')).toBeVisible();
       expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('workspace-1');
@@ -148,20 +148,23 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
     }
   );
 
-  it('makes Work the discoverable home for specialist tools without promoting Customers to live truth', () => {
-    window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
-    render(<LiteApp />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
-    expect(screen.getByText('Mixed maturity')).toBeVisible();
-    expect(screen.getByText('Work · workspace-1')).toBeVisible();
-    expect(screen.getByText('Live governed')).toBeVisible();
-    expect(screen.getByText('Authenticated governed')).toBeVisible();
-    expect(screen.getByText('Live · human review')).toBeVisible();
-    expect(screen.getByText('Private')).toBeVisible();
-    expect(screen.getByText('Asset-scoped advisory')).toBeVisible();
-    expect(screen.getByText('Fixture preview')).toBeVisible();
-    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
-  });
+  it(
+    'makes Work the discoverable home for specialist tools without promoting Customers to live truth',
+    () => {
+      window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
+      render(<LiteApp />);
+      expect(screen.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
+      expect(screen.getByText('Mixed maturity')).toBeVisible();
+      expect(screen.getByText('Work · workspace-1')).toBeVisible();
+      expect(screen.getByText('Live governed')).toBeVisible();
+      expect(screen.getByText('Authenticated governed')).toBeVisible();
+      expect(screen.getByText('Live · human review')).toBeVisible();
+      expect(screen.getByText('Private')).toBeVisible();
+      expect(screen.getByText('Asset-scoped advisory')).toBeVisible();
+      expect(screen.getByText('Fixture preview')).toBeVisible();
+      expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
+    }
+  );
 
   it('keeps Customers fixture-labelled in every fixture state even with a Workspace', () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1');
@@ -207,7 +210,10 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
   it('keeps authenticated Work actions disabled when no Workspace is selected', () => {
     window.history.replaceState(null, '', '/#work');
     render(<LiteApp />);
-    expect(screen.getAllByRole('button', { name: 'Select a Workspace first' }).length).toBeGreaterThan(1);
+    const disabledWorkspaceActions = screen.getAllByRole('button', {
+      name: 'Select a Workspace first'
+    });
+    expect(disabledWorkspaceActions.length).toBeGreaterThan(1);
     expect(screen.getByText('Work · Workspace not selected')).toBeVisible();
     expect(screen.getByText('Mixed maturity')).toBeVisible();
   });
