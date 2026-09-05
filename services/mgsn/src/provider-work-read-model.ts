@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { MarkOrbitId } from '@markorbit/contracts';
 import type {
   ProviderWorkItemReadResultV1,
   ProviderWorkItemSummaryV1,
@@ -61,6 +62,7 @@ export interface ProviderWorkProjectionSource {
   allocationVersion: number;
   allocationStatus: AllocationStatus;
   allocationUpdatedAt: string;
+  allocationCorrelationId: MarkOrbitId;
   originatingWorkspaceId: string;
   allocationServicePackageId: ServicePackageId;
   allocationServicePackageVersion: number;
@@ -122,6 +124,7 @@ export class ProviderWorkReadModelError extends Error {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const sha256Pattern = /^[0-9a-f]{64}$/;
+const markOrbitIdPattern = /^[a-z][a-z0-9-]*_[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const allocationStatuses = new Set<AllocationStatus>(['ACTIVE', 'CANCELLED', 'SUPERSEDED']);
 const acceptanceDecisions = new Set<ProviderAcceptanceDecision>(['ACCEPTED', 'DECLINED']);
 const returnStatuses = new Set<ProviderReturnStatus>(['CURRENT', 'SUPERSEDED']);
@@ -169,6 +172,14 @@ function exactPositiveVersion(value: number | undefined, field: string): number 
 function exactSha256(value: string | undefined, field: string): string {
   requireSource(typeof value === 'string' && sha256Pattern.test(value), `${field} is invalid.`);
   return value;
+}
+
+function exactMarkOrbitId(value: string | undefined, field: string): MarkOrbitId {
+  requireSource(
+    typeof value === 'string' && markOrbitIdPattern.test(value),
+    `${field} is invalid.`
+  );
+  return value as MarkOrbitId;
 }
 
 function exactTimestamp(value: string | undefined, field: string): string {
@@ -383,6 +394,10 @@ export class ProviderWorkReadModelService {
     requireSource(allocationStatuses.has(source.allocationStatus), 'Allocation status is invalid.');
     const allocationVersion = exactPositiveVersion(source.allocationVersion, 'Allocation version');
     const allocationUpdatedAt = exactTimestamp(source.allocationUpdatedAt, 'Allocation updatedAt');
+    const correlationId = exactMarkOrbitId(
+      source.allocationCorrelationId,
+      'Allocation correlationId'
+    );
     const originatingWorkspaceId = normalizedWorkspaceId(
       source.originatingWorkspaceId,
       'originatingWorkspaceId'
@@ -408,6 +423,7 @@ export class ProviderWorkReadModelService {
       version: allocationVersion,
       status: source.allocationStatus,
       updatedAt: allocationUpdatedAt,
+      correlationId,
       providerId: source.providerId,
       providerWorkspaceId,
       originatingWorkspaceId,
@@ -560,6 +576,10 @@ export class ProviderWorkReadModelService {
         originatingWorkspaceId,
         professionalReference: `workspace:${originatingWorkspaceId}`
       },
+      actionLineage: {
+        correlationId,
+        actionAuthorityNotGrantedByProjection: true as const
+      },
       responseState: withoutCheckedAt(responseState),
       returnState: withoutCheckedAt(returnState),
       incomingDataAuthority: {
@@ -583,6 +603,7 @@ export class ProviderWorkReadModelService {
         professionalReference: `workspace:${originatingWorkspaceId}`,
         exposureClass: 'ORIGINATING_PROFESSIONAL_REFERENCE_ONLY'
       },
+      actionLineage: boundedProjection.actionLineage,
       responseState,
       returnState,
       incomingDataAuthority: {

@@ -24,6 +24,7 @@ const projectionColumns = `
   allocation.version AS allocation_version,
   allocation.status AS allocation_status,
   allocation.updated_at,
+  allocation.allocation_record ->> 'correlationId' AS allocation_correlation_id,
   allocation.workspace_id::text AS originating_workspace_id,
   allocation.service_package_id AS allocation_service_package_id,
   allocation.service_package_version AS allocation_service_package_version,
@@ -128,6 +129,9 @@ export class PostgresProviderWorkReadRepository implements ProviderWorkReadRepos
       allocationVersion: Number(row.allocation_version),
       allocationStatus: String(row.allocation_status) as AllocationStatus,
       allocationUpdatedAt: this.timestamp(row.updated_at),
+      allocationCorrelationId: String(
+        row.allocation_correlation_id
+      ) as ProviderWorkProjectionSource['allocationCorrelationId'],
       originatingWorkspaceId: String(row.originating_workspace_id),
       allocationServicePackageId: String(row.allocation_service_package_id) as ServicePackageId,
       allocationServicePackageVersion: Number(row.allocation_service_package_version),

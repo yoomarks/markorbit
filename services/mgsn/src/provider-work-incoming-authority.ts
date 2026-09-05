@@ -150,6 +150,7 @@ function projectionFingerprint(
       originatingWorkspaceId: item.origin.originatingWorkspaceId,
       professionalReference: item.origin.professionalReference
     },
+    actionLineage: item.actionLineage,
     responseState: withoutCheckedAt(item.responseState),
     returnState: withoutCheckedAt(item.returnState),
     incomingDataAuthority: withoutCheckedAt(incomingDataAuthority),
