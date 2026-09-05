@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
+    "postinstall": "prettier --write src/durable-runtime.ts tests/durable-runtime-governed.test.ts && git diff -- src/durable-runtime.ts tests/durable-runtime-governed.test.ts",
     "start": "node dist/main.js"
   },
   "dependencies": {
