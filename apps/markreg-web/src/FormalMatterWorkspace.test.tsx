@@ -64,6 +64,7 @@ afterEach(cleanup);
 describe('FormalMatterWorkspace', () => {
   it('prioritizes human-readable Matter identity and current work before technical provenance', () => {
     const renderLifecycle = vi.fn(() => <div>Recommended action truth</div>);
+    const renderExamination = vi.fn(() => <div>Examination Stage truth</div>);
     const renderEvidence = vi.fn(() => <div>Evidence Projection truth</div>);
     const renderIntelligence = vi.fn(() => <div>Matter Intelligence truth</div>);
     const { container } = render(
@@ -72,6 +73,7 @@ describe('FormalMatterWorkspace', () => {
         expectedVersion="5"
         actualVersion="5"
         renderLifecycle={renderLifecycle}
+        renderExamination={renderExamination}
         renderEvidence={renderEvidence}
         renderIntelligence={renderIntelligence}
       />
@@ -80,17 +82,22 @@ describe('FormalMatterWorkspace', () => {
     expect(screen.getByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Current matter' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Examination' })).toBeTruthy();
     expect(screen.getByText('ORBIT')).toBeTruthy();
     expect(screen.getByText('Orbit Labs Inc.')).toBeTruthy();
     expect(screen.getByText('US')).toBeTruthy();
     expect(screen.getByText('9, 42')).toBeTruthy();
     expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
     expect(screen.getByText('Recommended action truth')).toBeTruthy();
+    expect(screen.getByText('Examination Stage truth')).toBeTruthy();
     expect(screen.getByText('Evidence Projection truth')).toBeTruthy();
     expect(screen.getByText('Matter Intelligence truth')).toBeTruthy();
 
     const textContent = container.textContent ?? '';
     expect(textContent.indexOf('Recommended action truth')).toBeLessThan(
+      textContent.indexOf('Record details and source lineage')
+    );
+    expect(textContent.indexOf('Examination Stage truth')).toBeLessThan(
       textContent.indexOf('Record details and source lineage')
     );
     expect(textContent.indexOf('Evidence Projection truth')).toBeLessThan(
@@ -115,6 +122,9 @@ describe('FormalMatterWorkspace', () => {
       formalMatterId: 'formal-matter_workspace-one',
       disabled: false
     });
+    expect(renderExamination).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
+    });
     expect(renderEvidence).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one'
     });
@@ -123,10 +133,11 @@ describe('FormalMatterWorkspace', () => {
     });
   });
 
-  it('makes an exact-version mismatch visibly read only and disables lifecycle actions', () => {
+  it('keeps read-only Examination truth visible while version mismatch disables lifecycle actions', () => {
     const renderLifecycle = vi.fn(({ disabled }: { disabled: boolean }) => (
       <div>{disabled ? 'Lifecycle disabled' : 'Lifecycle enabled'}</div>
     ));
+    const renderExamination = vi.fn(() => <div>Read-only Examination</div>);
     const renderEvidence = vi.fn(() => <div>Read-only evidence</div>);
     const renderIntelligence = vi.fn(() => <div>Read-only intelligence</div>);
     render(
@@ -136,6 +147,7 @@ describe('FormalMatterWorkspace', () => {
         actualVersion="5"
         versionMismatch
         renderLifecycle={renderLifecycle}
+        renderExamination={renderExamination}
         renderEvidence={renderEvidence}
         renderIntelligence={renderIntelligence}
       />
@@ -144,11 +156,15 @@ describe('FormalMatterWorkspace', () => {
     expect(screen.getByText('Version mismatch')).toBeTruthy();
     expect(screen.getByText(/expected version 4/i)).toBeTruthy();
     expect(screen.getByText('Lifecycle disabled')).toBeTruthy();
+    expect(screen.getByText('Read-only Examination')).toBeTruthy();
     expect(screen.getByText('Read-only evidence')).toBeTruthy();
     expect(screen.getByText('Read-only intelligence')).toBeTruthy();
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: true
+    });
+    expect(renderExamination).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
     });
     expect(renderEvidence).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one'

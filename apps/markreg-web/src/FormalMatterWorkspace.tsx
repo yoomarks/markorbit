@@ -1,6 +1,7 @@
 import type { FormalMatter } from '@markorbit/contracts';
 import { Alert, Button, Card, KeyValueList, PageHeader } from '@markorbit/ui';
 import type { ReactNode } from 'react';
+import { ExaminationPanel } from './ExaminationPanel.js';
 import { FormalMatterEvidencePanel } from './FormalMatterEvidencePanel.js';
 import { LifecyclePanel } from './LifecyclePanel.js';
 import { MatterIntelligencePanel } from './MatterIntelligencePanel.js';
@@ -11,12 +12,18 @@ export type FormalMatterLifecycleRenderer = (input: {
   disabled: boolean;
 }) => ReactNode;
 
+export type FormalMatterExaminationRenderer = (input: { formalMatterId: string }) => ReactNode;
+
 export type FormalMatterEvidenceRenderer = (input: { formalMatterId: string }) => ReactNode;
 
 export type FormalMatterIntelligenceRenderer = (input: { formalMatterId: string }) => ReactNode;
 
 const defaultLifecycle: FormalMatterLifecycleRenderer = ({ formalMatterId, disabled }) => (
   <LifecyclePanel formalMatterId={formalMatterId} disabled={disabled} embedded />
+);
+
+const defaultExamination: FormalMatterExaminationRenderer = ({ formalMatterId }) => (
+  <ExaminationPanel formalMatterId={formalMatterId} />
 );
 
 const defaultEvidence: FormalMatterEvidenceRenderer = ({ formalMatterId }) => (
@@ -42,6 +49,7 @@ export function FormalMatterWorkspace({
   versionMismatch = false,
   readOnly = false,
   renderLifecycle = defaultLifecycle,
+  renderExamination = defaultExamination,
   renderEvidence = defaultEvidence,
   renderIntelligence = defaultIntelligence
 }: {
@@ -51,6 +59,7 @@ export function FormalMatterWorkspace({
   versionMismatch?: boolean;
   readOnly?: boolean;
   renderLifecycle?: FormalMatterLifecycleRenderer;
+  renderExamination?: FormalMatterExaminationRenderer;
   renderEvidence?: FormalMatterEvidenceRenderer;
   renderIntelligence?: FormalMatterIntelligenceRenderer;
 }) {
@@ -115,10 +124,11 @@ export function FormalMatterWorkspace({
         </Alert>
       )}
       <Alert tone="info" title="Governed product truth">
-        Matter ≠ Filing. Lifecycle Projection ≠ Official Status. Recommended Action ≠ authorization.
-        Matter Intelligence ≠ legal/professional conclusion. Evidence Projection ≠ Official Truth.
-        Viewing or acknowledging this workspace does not create a payment, invoice, professional
-        appointment, external submission, or official application.
+        Matter ≠ Filing. Lifecycle Projection ≠ Official Status. Examination Stage ≠ Official
+        Status. Recommended Action ≠ authorization. Matter Intelligence ≠ legal/professional
+        conclusion. Evidence Projection ≠ Official Truth. Viewing or acknowledging this workspace
+        does not create a payment, invoice, professional appointment, external submission, or
+        official application.
       </Alert>
 
       <section
@@ -140,6 +150,14 @@ export function FormalMatterWorkspace({
           formalMatterId: String(matter.formalMatterId),
           disabled: lifecycleDisabled
         })}
+      </section>
+
+      <section
+        className="markreg-workspace-list markreg-matter-priority"
+        aria-labelledby="matter-examination-heading"
+      >
+        <h2 id="matter-examination-heading">Examination</h2>
+        {renderExamination({ formalMatterId: String(matter.formalMatterId) })}
       </section>
 
       <section className="markreg-workspace-list" aria-labelledby="matter-scope-heading">
