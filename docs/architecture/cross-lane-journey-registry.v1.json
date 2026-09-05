@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "lastVerifiedMainSha": "a7d52029d2bd943b175db112ca5759d11da952ab",
+  "reportColumns": [
+    "Journey",
+    "Consumer",
+    "Gateway",
+    "Owner",
+    "Authority",
+    "Persistence",
+    "Proof",
+    "Maturity",
+    "Blocker"
+  ],
+  "journeys": [
+    {
+      "id": "J1_MARKREG_GOVERNED_PREPARATION",
+      "title": "MarkReg governed preparation journey",
+      "maturity": "LIVE",
+      "consumer": {
+        "status": "PRODUCT_CONSUMER_PRESENT",
+        "files": [
+          "apps/markreg-web/src/DurableDocumentsPreparationWorkspace.tsx",
+          "apps/markreg-web/src/FilingAuthorization.tsx"
+        ],
+        "routes": [
+          "/api/markreg/preparation-locks",
+          "/api/execution/filing-authorizations"
+        ]
+      },
+      "gateway": {
+        "files": [
+          "apps/gateway/src/preparation-lock-http.ts",
+          "apps/gateway/src/filing-governance-http.ts"
+        ],
+        "routes": [
+          "/api/markreg/preparation-locks",
+          "/api/execution/filing-authorizations"
+        ]
+      },
+      "owners": [
+        {
+          "owner": "MARKREG",
+          "files": [
+            "services/markreg/src/customer-confirmation.ts",
+            "services/markreg/src/document-package.ts",
+            "services/markreg/src/durable-preparation-lock.ts",
+            "services/markreg/src/main.ts"
+          ],
+          "routes": [
+            "/v1/preparation-locks"
+          ]
+        },
+        {
+          "owner": "EXECUTION",
+          "files": [
+            "services/execution/src/main.ts"
+          ],
+          "routes": [
+            "/v1/filing-authorizations"
+          ]
+        }
+      ],
+      "authority": {
+        "class": "WORKSPACE_PRINCIPAL_GOVERNED_MUTATION",
+        "notes": "Authenticated Workspace Principal with exact route permission, trusted Origin/CSRF on mutation, and idempotency where required. Preparation Lock is distinct from Filing Authorization and Filing Submission."
+      },
+      "persistence": {
+        "files": [
+          "services/markreg/src/document-package.ts",
+          "services/markreg/src/durable-preparation-lock.ts"
+        ],
+        "notes": "Document Package and Preparation Lock use durable MarkReg owner truth in the non-fixture runtime."
+      },
+      "proof": [
+        {
+          "file": "tests/e2e/document-package-real-runtime.spec.ts",
+          "kind": "REAL_RUNTIME_E2E",
+          "fixtureOnly": false
+        },
+        {
+          "file": "tests/e2e/filing-authorization-release.spec.ts",
+          "kind": "REAL_RUNTIME_E2E",
+          "fixtureOnly": false
+        },
+        {
+          "file": "apps/markreg-web/src/DurableDocumentsPreparationWorkspace.test.tsx",
+          "kind": "PRODUCT_TEST",
+          "fixtureOnly": false
+        }
+      ],
+      "blockers": [],
+      "forbiddenConsequences": [
+        "PREPARATION_LOCK_IS_FILING_AUTHORIZATION",
+        "FILING_AUTHORIZATION_IS_FILING_SUBMISSION",
+        "PREPARATION_CREATES_OFFICIAL_TRUTH"
+      ]
+    },
+    {
+      "id": "J2_MGSN_GOVERNED_PROVIDER",
+      "title": "MGSN governed Provider journey",
+      "maturity": "DURABLE_NO_PRODUCT_CONSUMER",
+      "consumer": {
+        "status": "NONE_ACCEPTED",
+        "files": [],
+        "routes": []
+      },
+      "gateway": {
+        "files": [
+          "apps/gateway/src/mgsn-http.ts"
+        ],
+        "routes": [
+          "/api/mgsn/governed-network/discovery/evaluate",
+          "/api/mgsn/governed-network/selections",
+          "/api/mgsn/governed-network/handoffs",
+          "/api/mgsn/governed-network/allocations"
+        ]
+      },
+      "owners": [
+        {
+          "owner": "CORE",
+          "files": [
+            "services/core/src/governed-human-action-receipt.ts",
+            "services/core/src/governed-human-action-receipt-http.ts"
+          ],
+          "routes": [
+            "/internal/auth/governed-human-actions/receipts",
+            "/internal/auth/governed-human-actions/receipts/validate-current"
+          ]
+        },
+        {
+          "owner": "MGSN",
+          "files": [
+            "services/mgsn/src/durable-runtime.ts",
+            "services/mgsn/src/controlled-privacy-handoff-postgres.ts",
+            "services/mgsn/src/governed-allocation-postgres.ts"
+          ],
+          "routes": [
+            "/v1/governed-network/allocations"
+          ]
+        }
+      ],
+      "authority": {
+        "class": "WORKSPACE_PRINCIPAL_EXPLICIT_HUMAN_ACTION_RECEIPT",
+        "notes": "Provider Selection and Controlled Handoff require distinct durable Core-owned HUMAN_USER action receipts. Candidate, Selection, Handoff and Allocation remain separate authorities."
+      },
+      "persistence": {
+        "files": [
+          "services/core/src/governed-human-action-receipt-postgres.ts",
+          "services/mgsn/src/controlled-privacy-handoff-postgres.ts",
+          "services/mgsn/src/governed-allocation-postgres.ts"
+        ],
+        "notes": "Human-action authority, Handoff and governed Allocation are durable; accepted Workplace/Lite product consumption is still pending."
+      },
+      "proof": [
+        {
+          "file": "services/core/tests/governed-human-action-receipt-postgres.test.ts",
+          "kind": "OWNER_DURABILITY",
+          "fixtureOnly": false
+        },
+        {
+          "file": "apps/gateway/tests/mgsn-governed-network-http.test.ts",
+          "kind": "INTEGRATION_TEST",
+          "fixtureOnly": false
+        }
+      ],
+      "blockers": [
+        {
+          "issue": 843,
+          "observedState": "OPEN",
+          "verifiedAtMainSha": "a7d52029d2bd943b175db112ca5759d11da952ab",
+          "reason": "The merged durable governed path has no accepted Workplace/Lite product consumer yet."
+        }
+      ],
+      "forbiddenConsequences": [
+        "CANDIDATE_IS_SELECTION",
+        "SELECTION_IS_HANDOFF",
+        "HANDOFF_IS_ALLOCATION",
+        "ALLOCATION_IS_APPOINTMENT",
+        "PROVIDER_CONTACT_AUTHORIZED",
+        "FILING_AUTHORIZED",
+        "PAYMENT_AUTHORIZED",
+        "OFFICIAL_TRUTH_CREATED"
+      ]
+    },
+    {
+      "id": "J3_COGNITIVE_CONTROL_PLANE_READ",
+      "title": "Cognitive Control Plane read journey",
+      "maturity": "LIVE",
+      "consumer": {
+        "status": "PRODUCT_CONSUMER_PRESENT",
+        "files": [
+          "apps/operations-console/src/cognitive-platform.tsx",
+          "apps/operations-console/src/capability-catalog-integrity.tsx"
+        ],
+        "routes": [
+          "/api/internal/control-plane/cognitive/brain",
+          "/api/internal/control-plane/cognitive/capabilities"
+        ]
+      },
+      "gateway": {
+        "files": [
+          "apps/gateway/src/index.ts",
+          "apps/gateway/src/capability-http.ts"
+        ],
+        "routes": [
+          "/api/internal/control-plane/cognitive/brain",
+          "/api/internal/control-plane/cognitive/capabilities"
+        ]
+      },
+      "owners": [
+        {
+          "owner": "CORE",
+          "files": [
+            "services/core/src/brain-cognitive-read-http.ts",
+            "services/core/src/brain-cognitive-read-postgres.ts"
+          ],
+          "routes": [
+            "/internal/control-plane/cognitive"
+          ]
+        },
+        {
+          "owner": "CAPABILITY_ENGINE",
+          "files": [
+            "services/capability-engine/src/capability-cognitive-read-http.ts",
+            "services/capability-engine/src/capability-cognitive-read.ts"
+          ],
+          "routes": [
+            "/internal/control-plane/cognitive/capabilities"
+          ]
+        }
+      ],
+      "authority": {
+        "class": "INTERNAL_OPERATOR_COGNITIVE_READ",
+        "notes": "Authenticated Internal Operator with explicit control-plane:cognitive:read. Cognitive read is neither commercial-admin nor Workspace authority and creates no mutation authority."
+      },
+      "persistence": {
+        "files": [
+          "services/core/src/brain-asset-registry-postgres.ts",
+          "services/core/src/brain-cognitive-read-postgres.ts"
+        ],
+        "notes": "Owner projections expose durable bounded truth where recorded; Brain Build Run inventory remains explicitly NOT_DURABLY_RECORDED where applicable."
+      },
+      "proof": [
+        {
+          "file": "apps/operations-console/src/cognitive-platform.test.ts",
+          "kind": "PRODUCT_TEST",
+          "fixtureOnly": false
+        },
+        {
+          "file": "apps/operations-console/src/capability-catalog-integrity.test.ts",
+          "kind": "PRODUCT_TEST",
+          "fixtureOnly": false
+        }
+      ],
+      "blockers": [],
+      "forbiddenConsequences": [
+        "READ_IS_MUTATION",
+        "RUNTIME_REACHABILITY_IS_CORRECTNESS",
+        "CAPABILITY_SUCCESS_IS_METHOD_CORRECTNESS",
+        "OWNER_UNAVAILABLE_IS_EMPTY_OR_HEALTHY",
+        "CONTROL_CENTER_IS_SUPER_ADMIN",
+        "OFFICIAL_TRUTH_CREATED"
+      ]
+    }
+  ]
+}
