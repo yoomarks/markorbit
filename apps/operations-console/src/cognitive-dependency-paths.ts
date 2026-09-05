@@ -418,20 +418,28 @@ function sourcePolicyBindingPaths(value: JsonObject): readonly CognitiveDependen
 }
 
 function exactProfilePolicies(profile: JsonObject, policies: readonly JsonObject[]): readonly JsonObject[] {
+  const profileId = optionalText(profile.implementationProfileId);
+  const profileVersion = scalar(profile.version, '');
+  const capabilityId = optionalText(profile.capabilityId);
+  const capabilityVersion = optionalText(profile.capabilityVersion);
+  if (!profileId || !profileVersion || !capabilityId || !capabilityVersion) return [];
   return policies.filter(
     (policy) =>
-      optionalText(policy.implementationProfileId) === optionalText(profile.implementationProfileId) &&
-      scalar(policy.implementationProfileVersion, '') === scalar(profile.version, '') &&
-      optionalText(policy.capabilityId) === optionalText(profile.capabilityId) &&
-      optionalText(policy.capabilityVersion) === optionalText(profile.capabilityVersion)
+      optionalText(policy.implementationProfileId) === profileId &&
+      scalar(policy.implementationProfileVersion, '') === profileVersion &&
+      optionalText(policy.capabilityId) === capabilityId &&
+      optionalText(policy.capabilityVersion) === capabilityVersion
   );
 }
 
 function exactProfileRuntimes(profile: JsonObject, runtimes: readonly JsonObject[]): readonly JsonObject[] {
+  const capabilityId = optionalText(profile.capabilityId);
+  const capabilityVersion = optionalText(profile.capabilityVersion);
+  if (!capabilityId || !capabilityVersion) return [];
   return runtimes.filter(
     (runtime) =>
-      optionalText(runtime.capabilityId) === optionalText(profile.capabilityId) &&
-      optionalText(runtime.capabilityVersion) === optionalText(profile.capabilityVersion)
+      optionalText(runtime.capabilityId) === capabilityId &&
+      optionalText(runtime.capabilityVersion) === capabilityVersion
   );
 }
 
