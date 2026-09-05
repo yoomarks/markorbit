@@ -10,6 +10,7 @@ import {
   TopBar
 } from '@markorbit/ui';
 import { CommercialAdminWorkspace } from './commercial-admin.js';
+import { CognitivePlatformWorkspace } from './cognitive-platform.js';
 import {
   admitReviewedSource,
   captureEvidenceReviewSource,
@@ -175,6 +176,7 @@ export function OperationsApp() {
             { label: 'Overview', href: '#overview', active: true },
             { label: 'Evidence review', href: '#evidence-review' },
             { label: 'Lifecycle provenance', href: '#lifecycle-review' },
+            { label: 'Cognitive Platform', href: '#cognitive-platform' },
             { label: 'Commercial', href: '#commercial-admin' }
           ]}
         />
@@ -202,6 +204,10 @@ export function OperationsApp() {
                 {
                   label: 'Commercial inspection',
                   value: 'Owner-routed · operator authenticated'
+                },
+                {
+                  label: 'Cognitive Platform',
+                  value: 'Owner-routed · cognitive read authority'
                 }
               ]}
             />
@@ -216,8 +222,9 @@ export function OperationsApp() {
           <Card>
             <h2>Cognitive platform</h2>
             <p>
-              Brain and Capability owner inventories are not connected to the Control Center in this
-              slice. No asset readiness, currentness or Capability correctness is inferred.
+              Core and Capability Engine cognitive inventories are connected through bounded Gateway
+              owner reads. No cross-owner health, asset readiness or Capability correctness is
+              inferred.
             </p>
           </Card>
           <Card>
@@ -590,6 +597,8 @@ export function OperationsApp() {
           </>
         )}
       </section>
+
+      <CognitivePlatformWorkspace />
 
       <CommercialAdminWorkspace />
     </AppShell>
