@@ -26,7 +26,7 @@ jobs:
       - name: Replay onto current main and apply typed parsers
         working-directory: target
         run: |
-          test "$(git rev-parse HEAD)" = "e0e5b5b5b9259b5b63773b5f0c353382f345f82c"
+          test "$(git rev-parse HEAD)" = "072e643389be05599d2a80926f4d47394fe52abf"
           git fetch origin main
           test "$(git rev-parse origin/main)" = "ab8252a3814e9bc9fa8f2ce87e0a5a7ee8128e2a"
           git rebase origin/main
