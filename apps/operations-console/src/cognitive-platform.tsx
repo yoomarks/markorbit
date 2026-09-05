@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
 import { CapabilityCatalogIntegrity } from './capability-catalog-integrity.js';
+import { CognitiveDependencyWorkspace } from './cognitive-dependency-workspace.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -394,22 +395,32 @@ export function CognitivePlatformWorkspace() {
       {!snapshot ? (
         <p>No cognitive owner snapshot loaded. Load owner truth to determine current state.</p>
       ) : (
-        <div className="mo-grid">
-          <div>
-            {snapshot.core.status === 'available' ? (
-              <CoreInventory value={snapshot.core.value} />
-            ) : (
-              <OwnerUnavailable owner="Core" error={snapshot.core.error} />
-            )}
+        <>
+          <CognitiveDependencyWorkspace snapshot={snapshot} />
+          <Card>
+            <h2>Owner inventory and audit detail</h2>
+            <p>
+              The inventory below remains the owner-detail view. Dependency explanations above do
+              not replace or reinterpret these records.
+            </p>
+          </Card>
+          <div className="mo-grid">
+            <div>
+              {snapshot.core.status === 'available' ? (
+                <CoreInventory value={snapshot.core.value} />
+              ) : (
+                <OwnerUnavailable owner="Core" error={snapshot.core.error} />
+              )}
+            </div>
+            <div>
+              {snapshot.capability.status === 'available' ? (
+                <CapabilityInventory value={snapshot.capability.value} />
+              ) : (
+                <OwnerUnavailable owner="Capability Engine" error={snapshot.capability.error} />
+              )}
+            </div>
           </div>
-          <div>
-            {snapshot.capability.status === 'available' ? (
-              <CapabilityInventory value={snapshot.capability.value} />
-            ) : (
-              <OwnerUnavailable owner="Capability Engine" error={snapshot.capability.error} />
-            )}
-          </div>
-        </div>
+        </>
       )}
     </section>
   );

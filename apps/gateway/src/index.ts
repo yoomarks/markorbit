@@ -25,6 +25,7 @@ import {
   type JsonRoute
 } from '@markorbit/service-kit';
 export * from './auth.js';
+export * from './governed-action.js';
 export * from './account-access-http.js';
 export * from './capability-http.js';
 export * from './order-http.js';
