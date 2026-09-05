@@ -36,9 +36,9 @@ function principal(
   return {
     kind: 'WORKSPACE',
     sessionId: 'session-governed-user',
-    userId: 'user_governed',
+    userId: '22222222-2222-4222-8222-222222222222',
     workspaceId,
-    membershipId: 'membership-governed',
+    membershipId: '33333333-3333-4333-8333-333333333333',
     role: 'WORKSPACE_ADMIN',
     permissions,
     ...(includeCreatedAt ? { sessionCreatedAt } : {}),
@@ -52,7 +52,7 @@ function receiptReplayKey(input: GovernedHumanActionReceiptMaterializationV1) {
     input.workspaceId,
     input.userId,
     input.membershipId,
-    input.idempotencyKeySha256
+    input.idempotencyKey
   ].join(':');
 }
 
@@ -89,11 +89,23 @@ function authenticationFor(value: WorkspacePrincipal): CoreAuthenticationClient 
           );
         return Promise.resolve(existing);
       }
-      const receiptId = `governed-human-action-receipt_${input.kind.toLowerCase()}_${input.idempotencyKeySha256.slice(0, 16)}`;
+      const receiptId =
+        input.kind === 'PROVIDER_SELECTION'
+          ? '44444444-4444-7444-8444-444444444444'
+          : '55555555-5555-7555-8555-555555555555';
       const receipt: GovernedHumanActionReceiptV1 = {
         ...input,
+        schemaVersion: 1,
         receiptId,
-        receiptReference: `core-governed-human-action-receipt:${receiptId}`,
+        receiptVersion: 1,
+        authorityReference: `core-governed-human-action-receipt:${receiptId}`,
+        authorityVersion: 1,
+        affirmativeHumanActionEvidenceReference: `core-governed-human-action-evidence:${receiptId}`,
+        source: 'CORE',
+        actorKind: 'HUMAN_USER',
+        workspaceVersion: 7,
+        userVersion: 5,
+        membershipVersion: 3,
         createdAt: '2026-09-05T08:00:01.000Z'
       };
       receipts.set(key, receipt);
@@ -198,7 +210,7 @@ describe('Workplace governed-network Gateway transport', () => {
     expect(response.status).toBe(200);
     expect(captured).toHaveLength(1);
     expect(captured[0]!.path).toBe('/v1/governed-network/discovery/evaluate');
-    expect(captured[0]!.headers['x-markorbit-principal']).toBeTypeOf('string');
+    expect(captured[0]!.headers['x-markorbit-workspace-principal']).toBeTypeOf('string');
     expect(captured[0]!.headers[GOVERNED_HUMAN_ACTION_HEADER_NAME]).toBeUndefined();
     expect(receipts).toHaveLength(0);
   });
@@ -223,15 +235,18 @@ describe('Workplace governed-network Gateway transport', () => {
       kind: 'PROVIDER_SELECTION',
       actorKind: 'HUMAN_USER',
       workspaceId,
-      userId: 'user_governed',
-      membershipId: 'membership-governed',
+      userId: '22222222-2222-4222-8222-222222222222',
+      membershipId: '33333333-3333-4333-8333-333333333333',
       authorityVersion: 1,
       authenticatedAt: sessionCreatedAt,
       payloadIdentityAuthoritative: false
     });
     expect(String(envelope.principalReference)).not.toContain('session-governed-user');
+    expect(String(envelope.authorityReference)).toMatch(
+      /^core-governed-human-action-receipt:/u
+    );
     expect(String(envelope.affirmativeHumanActionEvidenceReference)).toMatch(
-      /^core-governed-human-action-receipt:governed-human-action-receipt_/u
+      /^core-governed-human-action-evidence:/u
     );
     expect(String(envelope.affirmativeHumanActionEvidenceReference)).not.toContain(
       'gateway-human-action:'
@@ -291,7 +306,7 @@ describe('Workplace governed-network Gateway transport', () => {
       Promise.reject(
         new GovernedHumanActionReceiptClientError(
           503,
-          'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+          'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
           'receipt source unavailable'
         )
       );
@@ -302,7 +317,7 @@ describe('Workplace governed-network Gateway transport', () => {
       body: JSON.stringify({ action: 'selection' })
     });
     expect(response.status).toBe(503);
-    expect(await responseCode(response)).toBe('GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE');
+    expect(await responseCode(response)).toBe('GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE');
     expect(captured).toHaveLength(0);
   });
 
