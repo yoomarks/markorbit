@@ -1,0 +1,90 @@
+name: Temporary 818 Cognitive App Writer
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  write:
+    if: github.head_ref == 'tmp/818-cognitive-platform-app-writer'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Mount Cognitive Platform in Control Center
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/operations-console/src/App.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "import { CommercialAdminWorkspace } from './commercial-admin.js';\n",
+                  "import { CommercialAdminWorkspace } from './commercial-admin.js';\nimport { CognitivePlatformWorkspace } from './cognitive-platform.js';\n",
+              ),
+              (
+                  "            { label: 'Commercial', href: '#commercial-admin' }\n",
+                  "            { label: 'Cognitive Platform', href: '#cognitive-platform' },\n            { label: 'Commercial', href: '#commercial-admin' }\n",
+              ),
+              (
+                  "                {\n                  label: 'Commercial inspection',\n                  value: 'Owner-routed · operator authenticated'\n                }\n",
+                  "                {\n                  label: 'Commercial inspection',\n                  value: 'Owner-routed · operator authenticated'\n                },\n                {\n                  label: 'Cognitive Platform',\n                  value: 'Owner-routed · cognitive read authority'\n                }\n",
+              ),
+              (
+                  "              Brain and Capability owner inventories are not connected to the Control Center in this\n              slice. No asset readiness, currentness or Capability correctness is inferred.\n",
+                  "              Core and Capability Engine cognitive inventories are connected through bounded\n              Gateway owner reads. No cross-owner health, asset readiness or Capability correctness\n              is inferred.\n",
+              ),
+              (
+                  "      <CommercialAdminWorkspace />\n",
+                  "      <CognitivePlatformWorkspace />\n\n      <CommercialAdminWorkspace />\n",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count == 1:
+                  text = text.replace(old, new)
+              elif count == 0 and new in text:
+                  pass
+              else:
+                  raise SystemExit(f'expected exactly one App.tsx target, found {count}: {old[:80]!r}')
+
+          path.write_text(text)
+          PY
+      - name: Format owned files
+        run: |
+          pnpm exec prettier --write \
+            apps/operations-console/src/App.tsx \
+            apps/operations-console/src/cognitive-platform.tsx \
+            apps/operations-console/src/cognitive-platform.test.ts
+      - name: Validate Operations Console
+        run: |
+          pnpm --filter @markorbit/operations-console lint
+          pnpm --filter @markorbit/operations-console typecheck
+          pnpm --filter @markorbit/operations-console test
+      - name: Commit writer output
+        run: |
+          if git diff --quiet; then
+            echo 'No writer changes required.'
+            exit 0
+          fi
+          git config user.name 'yoomarks'
+          git config user.email 'lukeluccas6292643@gmail.com'
+          git add apps/operations-console/src/App.tsx apps/operations-console/src/cognitive-platform.tsx apps/operations-console/src/cognitive-platform.test.ts
+          git commit -m '[OPERATIONS-P0][CONTROL-PLANE] Mount Cognitive Platform inventory'
+          git push origin HEAD:${{ github.head_ref }}
