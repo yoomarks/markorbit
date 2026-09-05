@@ -11,7 +11,10 @@ import {
 
 export interface GovernedHumanActionReceiptHttpOptions {
   internalServiceSecret: string;
-  service: Pick<GovernedHumanActionReceiptService, 'materializeOrResolve' | 'validateCurrent'>;
+  service: Pick<
+    GovernedHumanActionReceiptService,
+    'materializeOrResolve' | 'validateCurrent'
+  >;
 }
 
 const materializeKeys = new Set([
@@ -113,9 +116,7 @@ function binding(
     idempotencyKey: value.idempotencyKey as string,
     authenticatedAt: value.authenticatedAt as string
   };
-  return includeReceiptId
-    ? { ...result, receiptId: value.receiptId as string }
-    : result;
+  return includeReceiptId ? { ...result, receiptId: value.receiptId as string } : result;
 }
 
 function mapError(error: unknown): never {
