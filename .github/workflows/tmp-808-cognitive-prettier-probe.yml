@@ -1,0 +1,30 @@
+name: Cognitive 808 Prettier Probe
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format target file
+        run: pnpm exec prettier --write apps/gateway/tests/cognitive-control-plane-http.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cognitive-808-prettier-output
+          path: apps/gateway/tests/cognitive-control-plane-http.test.ts
+          if-no-files-found: error
