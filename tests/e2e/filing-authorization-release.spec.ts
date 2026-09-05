@@ -204,6 +204,34 @@ async function install(page: Page) {
       }
     });
   });
+  await page.route('**/api/execution/execution-releases/*/filing-task-draft', (r) =>
+    r.fulfill({
+      json: {
+        filingExecutionTaskDraft: {
+          schemaVersion: 1,
+          filingExecutionTaskDraftId: 'filing-task-draft_e2e012',
+          executionReleaseId: release.executionReleaseId,
+          filingAuthorizationId: authorization.filingAuthorizationId,
+          preparationLockId: lock.preparationLockId,
+          executionSnapshot: scope,
+          jurisdiction: 'GB',
+          applicant: 'MarkOrbit Labs Ltd',
+          trademark: 'MARKORBIT',
+          classes: scope.classes,
+          goodsServices: scope.goodsServices,
+          filingBasis: 'INTENT_TO_USE',
+          documentReferences: [],
+          instructionReferences: [],
+          representativeRequirement: 'NOT_REQUIRED',
+          executionChannel: 'OFFICE_PORTAL',
+          internalAssigneeReference: 'executor_fixture',
+          status: 'PREPARED',
+          createdAt: at
+        },
+        consequences
+      }
+    })
+  );
   await page.route('**/api/execution/execution-releases/*/assignment', (r) => {
     release = {
       ...release,

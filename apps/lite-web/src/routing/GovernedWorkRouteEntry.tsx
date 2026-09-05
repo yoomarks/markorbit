@@ -10,16 +10,24 @@ type State =
   | { kind: 'READY' | 'VERSION_MISMATCH'; loaded: Loaded }
   | { kind: 'ERROR'; message: string; retry: boolean };
 const reviewClient = createProfessionalReviewClient();
-const executionClient = createLiteExecutionClient();
 const scalar = (value: unknown, fallback = '') =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
-async function load(view: string, id: string) {
+
+function workspaceIdFromSearch(search: string) {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  return params.get('workspaceId')?.trim() ?? '';
+}
+
+async function load(view: string, id: string, workspaceId: string) {
+  if (view !== 'professional-review' && !workspaceId) {
+    throw new Error('A valid Workspace context is required for Execution Work routes.');
+  }
   const response =
     view === 'professional-review'
       ? await reviewClient.get(id)
       : view === 'execution-release'
-        ? await executionClient.getRelease(id)
-        : await executionClient.getTaskDraft(id);
+        ? await createLiteExecutionClient(workspaceId).getRelease(id)
+        : await createLiteExecutionClient(workspaceId).getTaskDraft(id);
   const root = response as unknown as Record<string, unknown>;
   const record = (root.reviewCase ??
     root.executionRelease ??
@@ -45,6 +53,7 @@ async function load(view: string, id: string) {
 }
 export function GovernedWorkRouteEntry({ search = window.location.search }: { search?: string }) {
   const parsed = useMemo(() => parseLiteRoute(search), [search]);
+  const workspaceId = useMemo(() => workspaceIdFromSearch(search), [search]);
   const heading = useRef<HTMLHeadingElement>(null);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ kind: 'LOADING' });
@@ -61,7 +70,7 @@ export function GovernedWorkRouteEntry({ search = window.location.search }: { se
       return;
     }
     setState({ kind: 'LOADING' });
-    load(parsed.route.view, parsed.route.recordId)
+    load(parsed.route.view, parsed.route.recordId, workspaceId)
       .then((loaded) => {
         if (loaded.id !== parsed.route.recordId) {
           setState({
@@ -82,11 +91,13 @@ export function GovernedWorkRouteEntry({ search = window.location.search }: { se
           kind: 'ERROR',
           message: error.message.toLowerCase().includes('not found')
             ? 'The requested Work record was not found. No latest record was selected.'
-            : 'The Work service is unavailable.',
-          retry: true
+            : error.message.includes('Workspace context')
+              ? error.message
+              : 'The Work service is unavailable.',
+          retry: !error.message.includes('Workspace context')
         })
       );
-  }, [attempt, parsed]);
+  }, [attempt, parsed, workspaceId]);
   useEffect(() => {
     if (state.kind === 'ERROR' || state.kind === 'VERSION_MISMATCH') heading.current?.focus();
   }, [state]);

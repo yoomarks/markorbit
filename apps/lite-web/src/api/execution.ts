@@ -6,12 +6,24 @@ import type {
   FilingExecutionTaskDraft
 } from '@markorbit/contracts';
 
+export class ExecutionHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ExecutionHttpError';
+  }
+}
+
 export interface ExecutionMutationResponse<T> {
   consequences: AuthorizationAuthorityConsequences;
   executionRelease?: T;
   filingExecutionTaskDraft?: T;
   releaseResult?: T;
 }
+
 export interface LiteExecutionClient {
   createRelease(command: {
     filingAuthorizationId: FilingAuthorizationId;
@@ -36,14 +48,14 @@ export interface LiteExecutionClient {
   }>;
   updateAssignment(
     id: string,
-    command: { expectedVersion: number }
+    command: Readonly<{ expectedVersion: number }>
   ): Promise<{
     executionRelease: ExecutionRelease;
     consequences: AuthorizationAuthorityConsequences;
   }>;
   release(
     id: string,
-    command: { rationale: string; idempotencyKey: string }
+    command: Readonly<{ rationale: string; idempotencyKey: string }>
   ): Promise<{
     releaseResult: { release: ExecutionRelease; taskDraft: FilingExecutionTaskDraft };
     consequences: AuthorizationAuthorityConsequences;
@@ -61,50 +73,96 @@ export interface LiteExecutionClient {
     consequences: AuthorizationAuthorityConsequences;
   }>;
 }
+
+type ExecutionMethod = 'GET' | 'POST' | 'PATCH';
+type ErrorPayload = {
+  code?: string;
+  message?: string;
+  error?: { code?: string; message?: string };
+};
+
+function executionError(
+  status: number,
+  value: ErrorPayload,
+  fallbackCode: string,
+  fallbackMessage: string
+) {
+  return new ExecutionHttpError(
+    status || 503,
+    value.code ?? value.error?.code ?? fallbackCode,
+    value.message ?? value.error?.message ?? fallbackMessage
+  );
+}
+
+async function csrfToken(baseUrl: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
+  } catch (cause) {
+    throw new ExecutionHttpError(
+      503,
+      'DOWNSTREAM_UNAVAILABLE',
+      cause instanceof Error ? cause.message : 'Authentication service is unavailable.'
+    );
+  }
+  const value = (await response.json().catch(() => ({}))) as ErrorPayload & { csrfToken?: string };
+  if (!response.ok || !value.csrfToken)
+    throw executionError(
+      response.status,
+      value,
+      'AUTHENTICATION_REQUIRED',
+      'An authenticated session is required.'
+    );
+  return value.csrfToken;
+}
+
 async function request<T>(
   baseUrl: string,
   workspaceId: string,
   path: string,
-  method: 'GET' | 'POST' | 'PATCH' = 'GET',
+  method: ExecutionMethod = 'GET',
   body?: unknown,
-  key?: string
+  idempotencyKey?: string
 ): Promise<T> {
-  let csrf = '';
-  if (method !== 'GET') {
-    const session = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
-    const authentication = (await session.json()) as { csrfToken?: string; message?: string };
-    if (!session.ok || !authentication.csrfToken)
-      throw new Error(authentication.message ?? 'Authentication is required.');
-    csrf = authentication.csrfToken;
-  }
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-      'x-markorbit-workspace-id': workspaceId,
-      ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
-      ...(key ? { 'idempotency-key': key } : {})
-    },
-    ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
-  });
-  const value = (await response.json()) as T | { error?: { message?: string } };
-  if (!response.ok)
-    throw new Error(
-      'error' in (value as object)
-        ? ((value as { error?: { message?: string } }).error?.message ??
-            'Execution request failed.')
-        : 'Execution request failed.'
+  const csrf = method === 'GET' ? '' : await csrfToken(baseUrl);
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method,
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+        'x-markorbit-workspace-id': workspaceId,
+        ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
+        ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {})
+      },
+      ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
+    });
+  } catch (cause) {
+    throw new ExecutionHttpError(
+      503,
+      'DOWNSTREAM_UNAVAILABLE',
+      cause instanceof Error ? cause.message : 'Execution governance is temporarily unavailable.'
     );
-  return value as T;
+  }
+  const value = (await response.json().catch(() => ({}))) as T & ErrorPayload;
+  if (!response.ok)
+    throw executionError(
+      response.status,
+      value,
+      'EXECUTION_REQUEST_FAILED',
+      'Execution governance request failed.'
+    );
+  return value;
 }
+
 export function createLiteExecutionClient(
-  workspaceId = new URLSearchParams(window.location.search).get('workspaceId') ?? '',
+  workspaceId: string,
   baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000'
 ): LiteExecutionClient {
   return {
-    createRelease: (c) => {
-      const { idempotencyKey, ...body } = c;
+    createRelease: (command) => {
+      const { idempotencyKey, ...body } = command;
       return request(
         baseUrl,
         workspaceId,
@@ -131,16 +189,16 @@ export function createLiteExecutionClient(
         workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/assignment`,
         'PATCH',
-        command
+        { expectedVersion: command.expectedVersion }
       ),
-    release: (id, c) => {
-      const { idempotencyKey, ...body } = c;
+    release: (id, command) => {
+      const { idempotencyKey, rationale } = command;
       return request(
         baseUrl,
         workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/release`,
         'POST',
-        body,
+        { rationale },
         idempotencyKey
       );
     },

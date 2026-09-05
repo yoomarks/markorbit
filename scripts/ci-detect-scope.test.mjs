@@ -46,6 +46,18 @@ function createDivergedHistory(testContext, featureFiles) {
   return { repo, branchPoint, featureHead, advancedMain };
 }
 
+function assertRequiredMergeGatesHaveFastPrerequisite(files, options = {}) {
+  const scope = classifyChangedFiles(files, options);
+  if (scope.l2_merge || scope.postgres) {
+    assert.equal(
+      scope.l1_fast,
+      true,
+      `${files.join(', ')} requires L1 whenever L2 or PostgreSQL is required`
+    );
+  }
+  return scope;
+}
+
 test('payment-only changes stay in the payment hard-gate lane', () => {
   const scope = classifyChangedFiles(
     [
@@ -290,6 +302,80 @@ test('documentation-only changes do not request product runtime gates', () => {
   assert.equal(scope.l3_full, false);
   assert.equal(scope.postgres, false);
   assert.equal(scope.browser, false);
+});
+
+test('MarkReg docs-only paths schedule L1 when owner L2 and PostgreSQL remain required', () => {
+  for (const path of [
+    'services/markreg/README.md',
+    'services/markreg/docs/EXAMINATION-STAGE-V1.md'
+  ]) {
+    const scope = assertRequiredMergeGatesHaveFastPrerequisite([path], {
+      paymentAvailable: false
+    });
+    assert.equal(scope.markreg, true, path);
+    assert.equal(scope.integration, true, path);
+    assert.equal(scope.postgres, true, path);
+    assert.equal(scope.l2_merge, true, path);
+    assert.equal(scope.l1_fast, true, path);
+    assert.equal(scope.hard_gate, false, path);
+  }
+});
+
+test('MarkReg runtime and persistence-affecting runtime keep the L1/L2/PostgreSQL chain', () => {
+  for (const path of [
+    'services/markreg/src/lifecycle-surface-http.ts',
+    'services/markreg/src/lifecycle-projection.ts'
+  ]) {
+    const scope = assertRequiredMergeGatesHaveFastPrerequisite([path], {
+      paymentAvailable: false
+    });
+    assert.equal(scope.markreg, true, path);
+    assert.equal(scope.postgres, true, path);
+    assert.equal(scope.l2_merge, true, path);
+    assert.equal(scope.l1_fast, true, path);
+  }
+});
+
+test('mixed MarkReg docs and runtime changes cannot skip the fast prerequisite', () => {
+  const scope = assertRequiredMergeGatesHaveFastPrerequisite(
+    ['services/markreg/README.md', 'services/markreg/src/lifecycle-surface-http.ts'],
+    { paymentAvailable: false }
+  );
+  assert.equal(scope.markreg, true);
+  assert.equal(scope.postgres, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l1_fast, true);
+});
+
+test('shared and migration hard gates retain conservative prerequisite coverage', () => {
+  const scope = assertRequiredMergeGatesHaveFastPrerequisite(
+    [
+      'packages/contracts/src/workspace.ts',
+      'infrastructure/persistence/migrations/9999_shared_unknown.sql'
+    ],
+    { paymentAvailable: true }
+  );
+  assert.equal(scope.shared, true);
+  assert.equal(scope.persistence, true);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.postgres, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l1_fast, true);
+});
+
+test('scope map never structurally requires L2 or PostgreSQL behind a skipped L1 prerequisite', () => {
+  const scenarios = [
+    ['docs/ci-notes.md'],
+    ['services/markreg/README.md'],
+    ['services/markreg/docs/EXAMINATION-STAGE-V1.md'],
+    ['services/markreg/src/lifecycle-surface-http.ts'],
+    ['services/markreg/README.md', 'services/markreg/src/lifecycle-surface-http.ts'],
+    ['packages/contracts/src/workspace.ts'],
+    ['infrastructure/persistence/migrations/0050_markreg_commercial_checkout.sql']
+  ];
+  for (const files of scenarios) {
+    assertRequiredMergeGatesHaveFastPrerequisite(files, { paymentAvailable: true });
+  }
 });
 
 test('PR merge-base scope ignores unrelated high-risk drift added to main after branch cut', (t) => {
