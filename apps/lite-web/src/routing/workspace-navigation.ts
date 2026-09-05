@@ -47,6 +47,8 @@ export function updateLiteLocation(
   url.hash = liteHashForSurface(target.surface);
   window.history[options.replace ? 'replaceState' : 'pushState']({}, '', url);
   window.dispatchEvent(
-    options.event === 'hashchange' ? new HashChangeEvent('hashchange') : new PopStateEvent('popstate')
+    options.event === 'hashchange'
+      ? new HashChangeEvent('hashchange')
+      : new PopStateEvent('popstate')
   );
 }
