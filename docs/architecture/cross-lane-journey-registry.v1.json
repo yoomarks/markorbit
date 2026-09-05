@@ -23,20 +23,14 @@
           "apps/markreg-web/src/DurableDocumentsPreparationWorkspace.tsx",
           "apps/markreg-web/src/FilingAuthorization.tsx"
         ],
-        "routes": [
-          "/api/markreg/preparation-locks",
-          "/api/execution/filing-authorizations"
-        ]
+        "routes": ["/api/markreg/preparation-locks", "/api/execution/filing-authorizations"]
       },
       "gateway": {
         "files": [
           "apps/gateway/src/preparation-lock-http.ts",
           "apps/gateway/src/filing-governance-http.ts"
         ],
-        "routes": [
-          "/api/markreg/preparation-locks",
-          "/api/execution/filing-authorizations"
-        ]
+        "routes": ["/api/markreg/preparation-locks", "/api/execution/filing-authorizations"]
       },
       "owners": [
         {
@@ -47,18 +41,12 @@
             "services/markreg/src/durable-preparation-lock.ts",
             "services/markreg/src/main.ts"
           ],
-          "routes": [
-            "/v1/preparation-locks"
-          ]
+          "routes": ["/v1/preparation-locks"]
         },
         {
           "owner": "EXECUTION",
-          "files": [
-            "services/execution/src/main.ts"
-          ],
-          "routes": [
-            "/v1/filing-authorizations"
-          ]
+          "files": ["services/execution/src/main.ts"],
+          "routes": ["/v1/filing-authorizations"]
         }
       ],
       "authority": {
@@ -106,9 +94,7 @@
         "routes": []
       },
       "gateway": {
-        "files": [
-          "apps/gateway/src/mgsn-http.ts"
-        ],
+        "files": ["apps/gateway/src/mgsn-http.ts"],
         "routes": [
           "/api/mgsn/governed-network/discovery/evaluate",
           "/api/mgsn/governed-network/selections",
@@ -135,9 +121,7 @@
             "services/mgsn/src/controlled-privacy-handoff-postgres.ts",
             "services/mgsn/src/governed-allocation-postgres.ts"
           ],
-          "routes": [
-            "/v1/governed-network/allocations"
-          ]
+          "routes": ["/v1/governed-network/allocations"]
         }
       ],
       "authority": {
@@ -199,10 +183,7 @@
         ]
       },
       "gateway": {
-        "files": [
-          "apps/gateway/src/index.ts",
-          "apps/gateway/src/capability-http.ts"
-        ],
+        "files": ["apps/gateway/src/index.ts", "apps/gateway/src/capability-http.ts"],
         "routes": [
           "/api/internal/control-plane/cognitive/brain",
           "/api/internal/control-plane/cognitive/capabilities"
@@ -215,9 +196,7 @@
             "services/core/src/brain-cognitive-read-http.ts",
             "services/core/src/brain-cognitive-read-postgres.ts"
           ],
-          "routes": [
-            "/internal/control-plane/cognitive"
-          ]
+          "routes": ["/internal/control-plane/cognitive"]
         },
         {
           "owner": "CAPABILITY_ENGINE",
@@ -225,9 +204,7 @@
             "services/capability-engine/src/capability-cognitive-read-http.ts",
             "services/capability-engine/src/capability-cognitive-read.ts"
           ],
-          "routes": [
-            "/internal/control-plane/cognitive/capabilities"
-          ]
+          "routes": ["/internal/control-plane/cognitive/capabilities"]
         }
       ],
       "authority": {

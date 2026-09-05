@@ -122,7 +122,13 @@ function validateRoute(route, repoRoot, label, errors) {
     errors.push(`${label} no longer exists in app/service/test source: ${route}`);
 }
 
-function validateFilesAndRoutes(section, repoRoot, label, errors, { allowEmptyFiles = false } = {}) {
+function validateFilesAndRoutes(
+  section,
+  repoRoot,
+  label,
+  errors,
+  { allowEmptyFiles = false } = {}
+) {
   const object = record(section);
   if (!object) {
     errors.push(`${label} must be an object.`);
@@ -130,7 +136,9 @@ function validateFilesAndRoutes(section, repoRoot, label, errors, { allowEmptyFi
   }
   const files = array(object.files);
   if (!allowEmptyFiles) pushError(errors, files.length > 0, `${label}.files must not be empty.`);
-  files.forEach((path, index) => validateFilePath(path, repoRoot, `${label}.files[${index}]`, errors));
+  files.forEach((path, index) =>
+    validateFilePath(path, repoRoot, `${label}.files[${index}]`, errors)
+  );
   array(object.routes).forEach((route, index) =>
     validateRoute(route, repoRoot, `${label}.routes[${index}]`, errors)
   );
@@ -143,8 +151,16 @@ function validateProof(proof, repoRoot, label, errors) {
     return;
   }
   validateFilePath(object.file, repoRoot, `${label}.file`, errors);
-  pushError(errors, PROOF_KINDS.has(object.kind), `${label}.kind is unsupported: ${String(object.kind)}`);
-  pushError(errors, typeof object.fixtureOnly === 'boolean', `${label}.fixtureOnly must be boolean.`);
+  pushError(
+    errors,
+    PROOF_KINDS.has(object.kind),
+    `${label}.kind is unsupported: ${String(object.kind)}`
+  );
+  pushError(
+    errors,
+    typeof object.fixtureOnly === 'boolean',
+    `${label}.fixtureOnly must be boolean.`
+  );
 }
 
 function validateBlocker(blocker, rootSha, label, errors) {
@@ -198,8 +214,16 @@ function validateJourney(journey, repoRoot, rootSha, errors) {
       allowEmptyFiles: consumer.status === 'NONE_ACCEPTED'
     });
     if (consumer.status === 'NONE_ACCEPTED') {
-      pushError(errors, array(consumer.files).length === 0, `${label} has no accepted consumer but lists consumer files.`);
-      pushError(errors, array(consumer.routes).length === 0, `${label} has no accepted consumer but lists consumer routes.`);
+      pushError(
+        errors,
+        array(consumer.files).length === 0,
+        `${label} has no accepted consumer but lists consumer files.`
+      );
+      pushError(
+        errors,
+        array(consumer.routes).length === 0,
+        `${label} has no accepted consumer but lists consumer routes.`
+      );
     }
   }
 
@@ -215,15 +239,27 @@ function validateJourney(journey, repoRoot, rootSha, errors) {
       errors.push(`${label}.owners[${index}] must be an object.`);
       return;
     }
-    pushError(errors, nonEmptyString(ownerObject.owner), `${label}.owners[${index}].owner must be non-empty.`);
+    pushError(
+      errors,
+      nonEmptyString(ownerObject.owner),
+      `${label}.owners[${index}].owner must be non-empty.`
+    );
     validateFilesAndRoutes(ownerObject, repoRoot, `${label}.owners[${index}]`, errors);
   });
 
   const authority = record(object.authority);
   if (!authority) errors.push(`${label}.authority must be an object.`);
   else {
-    pushError(errors, nonEmptyString(authority.class), `${label}.authority.class must be non-empty.`);
-    pushError(errors, nonEmptyString(authority.notes), `${label}.authority.notes must be non-empty.`);
+    pushError(
+      errors,
+      nonEmptyString(authority.class),
+      `${label}.authority.class must be non-empty.`
+    );
+    pushError(
+      errors,
+      nonEmptyString(authority.notes),
+      `${label}.authority.notes must be non-empty.`
+    );
   }
 
   const persistence = record(object.persistence);
@@ -233,7 +269,11 @@ function validateJourney(journey, repoRoot, rootSha, errors) {
     persistenceFiles.forEach((path, index) =>
       validateFilePath(path, repoRoot, `${label}.persistence.files[${index}]`, errors)
     );
-    pushError(errors, nonEmptyString(persistence.notes), `${label}.persistence.notes must be non-empty.`);
+    pushError(
+      errors,
+      nonEmptyString(persistence.notes),
+      `${label}.persistence.notes must be non-empty.`
+    );
   }
 
   const proof = array(object.proof);
@@ -244,7 +284,9 @@ function validateJourney(journey, repoRoot, rootSha, errors) {
   );
 
   const blockers = array(object.blockers);
-  blockers.forEach((item, index) => validateBlocker(item, rootSha, `${label}.blockers[${index}]`, errors));
+  blockers.forEach((item, index) =>
+    validateBlocker(item, rootSha, `${label}.blockers[${index}]`, errors)
+  );
 
   if (object.maturity === 'LIVE') {
     pushError(
@@ -267,8 +309,16 @@ function validateJourney(journey, repoRoot, rootSha, errors) {
       consumer?.status === 'NONE_ACCEPTED',
       `${label} is DURABLE_NO_PRODUCT_CONSUMER but claims an accepted consumer.`
     );
-    pushError(errors, nonFixtureProof.length > 0, `${label} durable maturity has only fixture proof.`);
-    pushError(errors, blockers.length > 0, `${label} durable maturity must name the current product blocker.`);
+    pushError(
+      errors,
+      nonFixtureProof.length > 0,
+      `${label} durable maturity has only fixture proof.`
+    );
+    pushError(
+      errors,
+      blockers.length > 0,
+      `${label} durable maturity must name the current product blocker.`
+    );
   }
 
   if (object.maturity === 'OWNER_READY_NO_GATEWAY') {
@@ -279,12 +329,18 @@ function validateJourney(journey, repoRoot, rootSha, errors) {
     );
   }
 
-  if (object.maturity !== 'LIVE' && blockers.some((item) => record(item)?.observedState === 'CLOSED'))
-    errors.push(`${label} remains ${object.maturity} while a declared blocker is CLOSED; review maturity before merge.`);
+  if (
+    object.maturity !== 'LIVE' &&
+    blockers.some((item) => record(item)?.observedState === 'CLOSED')
+  )
+    errors.push(
+      `${label} remains ${object.maturity} while a declared blocker is CLOSED; review maturity before merge.`
+    );
 
   pushError(
     errors,
-    Array.isArray(object.forbiddenConsequences) && object.forbiddenConsequences.every(nonEmptyString),
+    Array.isArray(object.forbiddenConsequences) &&
+      object.forbiddenConsequences.every(nonEmptyString),
     `${label}.forbiddenConsequences must be an array of non-empty strings.`
   );
 }
@@ -307,7 +363,11 @@ export function validateRegistry(registry, { repoRoot = DEFAULT_REPO_ROOT } = {}
   );
 
   const journeys = array(root.journeys);
-  pushError(errors, journeys.length === 3, 'V1 registry must contain exactly three golden journeys.');
+  pushError(
+    errors,
+    journeys.length === 3,
+    'V1 registry must contain exactly three golden journeys.'
+  );
   const ids = journeys.map((journey) => record(journey)?.id).filter(Boolean);
   pushError(errors, new Set(ids).size === ids.length, 'Journey ids must be unique.');
   pushError(
@@ -316,7 +376,9 @@ export function validateRegistry(registry, { repoRoot = DEFAULT_REPO_ROOT } = {}
     `V1 journey ids must be exactly: ${REQUIRED_JOURNEY_IDS.join(', ')}.`
   );
 
-  journeys.forEach((journey) => validateJourney(journey, repoRoot, root.lastVerifiedMainSha, errors));
+  journeys.forEach((journey) =>
+    validateJourney(journey, repoRoot, root.lastVerifiedMainSha, errors)
+  );
   inspectForbiddenKeys(root, 'registry', errors);
   return errors;
 }
@@ -396,7 +458,11 @@ function main(argv) {
     return;
   }
   if (argv.includes('--report')) process.stdout.write(renderReport(registry));
-  else console.log(`Cross-Lane Journey Registry V${registry.schemaVersion} is valid (${registry.journeys.length} journeys).`);
+  else
+    console.log(
+      `Cross-Lane Journey Registry V${registry.schemaVersion} is valid (${registry.journeys.length} journeys).`
+    );
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main(process.argv.slice(2));
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]))
+  main(process.argv.slice(2));
