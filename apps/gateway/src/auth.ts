@@ -67,8 +67,7 @@ export interface GovernedHumanActionReceiptMaterializationV1 {
   authenticatedAt: string;
 }
 
-export interface GovernedHumanActionReceiptV1
-  extends GovernedHumanActionReceiptMaterializationV1 {
+export interface GovernedHumanActionReceiptV1 extends GovernedHumanActionReceiptMaterializationV1 {
   receiptId: string;
   receiptReference: string;
   createdAt: string;
@@ -77,9 +76,7 @@ export interface GovernedHumanActionReceiptV1
 export class GovernedHumanActionReceiptClientError extends Error {
   constructor(
     readonly status: 409 | 503,
-    readonly code:
-      | 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT'
-      | 'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+    readonly code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT' | 'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
     message: string
   ) {
     super(message);
@@ -220,19 +217,16 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
   ): Promise<GovernedHumanActionReceiptV1> {
     let response: Response;
     try {
-      response = await fetch(
-        `${this.baseUrl}/internal/v1/governed-human-action-receipts`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-markorbit-internal-authorization': this.serviceSecret,
-            ...(correlationId ? { 'x-correlation-id': correlationId } : {})
-          },
-          body: JSON.stringify(input),
-          signal: AbortSignal.timeout(this.timeoutMs)
-        }
-      );
+      response = await fetch(`${this.baseUrl}/internal/v1/governed-human-action-receipts`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': this.serviceSecret,
+          ...(correlationId ? { 'x-correlation-id': correlationId } : {})
+        },
+        body: JSON.stringify(input),
+        signal: AbortSignal.timeout(this.timeoutMs)
+      });
     } catch {
       throw new GovernedHumanActionReceiptClientError(
         503,
