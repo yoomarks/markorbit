@@ -521,6 +521,7 @@ export function LiteApp({
           />
         ) : surface === 'execution-release' ? (
           <ExecutionReleaseView
+            workspaceId={activeWorkspaceId}
             {...(initialFilingAuthorization ? { initialFilingAuthorization } : {})}
           />
         ) : surface === 'opportunities' ? (

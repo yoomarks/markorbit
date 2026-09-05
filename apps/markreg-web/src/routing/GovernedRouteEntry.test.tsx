@@ -203,7 +203,9 @@ describe('MarkReg governed direct entry', () => {
   });
 
   it('reads and renders exact durable Preparation Lock owner truth without mutation', async () => {
-    const getLock = vi.fn().mockResolvedValue(durableLock);
+    // PostgreSQL JSONB does not preserve the create response's object-key order.
+    const { workspaceId, ...lock } = durableLock;
+    const getLock = vi.fn().mockResolvedValue({ workspaceId, ...lock });
     const validateCurrent = vi.fn();
     const preparationClient: DurablePreparationClient = {
       create: vi.fn(),
@@ -227,6 +229,30 @@ describe('MarkReg governed direct entry', () => {
     expect(getLock).toHaveBeenCalledWith('preparation-lock_exact');
     expect(validateCurrent).not.toHaveBeenCalled();
     expect(getGovernedRecord).not.toHaveBeenCalled();
+  });
+
+  it('reads Filing Authorization identity independently of JSONB source-key order', async () => {
+    const getGovernedRecord = vi.fn().mockResolvedValue({
+      filingAuthorization: {
+        customerId: 'customer_exact',
+        preparationLockId: 'preparation-lock_exact',
+        filingAuthorizationId: 'filing-authorization_exact',
+        version: 2,
+        status: 'AUTHORIZED'
+      }
+    });
+    render(
+      <GovernedRouteEntry
+        search="?view=filing-authorization&filingAuthorizationId=filing-authorization_exact&filingAuthorizationVersion=2"
+        client={{ createIntake: vi.fn(), getGovernedRecord }}
+      />
+    );
+    expect(await screen.findByText('filing-authorization_exact')).toBeTruthy();
+    expect(screen.getByText('AUTHORIZED')).toBeTruthy();
+    expect(getGovernedRecord).toHaveBeenCalledWith(
+      'filing-authorization',
+      'filing-authorization_exact'
+    );
   });
 
   it('renders the exact Preparation Lock identity from a minimal GET recovery payload', async () => {

@@ -4,6 +4,7 @@ import {
   PostgresFilingGovernanceRepository,
   PostgresProfessionalReviewRepository
 } from './index.js';
+import { json } from '@markorbit/service-kit';
 import { createExecutionCapabilityObservationSourceRoutes } from './capability-observation-source-http.js';
 import { EvidenceReviewService } from './evidence-review.js';
 import { PostgresEvidenceReviewRepository } from './evidence-review-postgres.js';
@@ -23,6 +24,7 @@ import { createTrademarkServiceExecutionRoutes } from './trademark-service-execu
 import { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
+const durableMilestoneOwners = process.env.MO_MILESTONE_DURABLE_OWNERS === '1';
 let closeDatabase: () => Promise<void> = () => Promise.resolve();
 let runtime: ReturnType<typeof createRuntime>;
 if (fixtureRuntime) {
@@ -46,6 +48,75 @@ if (fixtureRuntime) {
   await database.start();
   const pool = database.getPool();
   closeDatabase = () => database.close();
+
+  const durableMilestoneSnapshotRoutes = durableMilestoneOwners
+    ? [
+        {
+          method: 'GET' as const,
+          path: '/__milestone/scenario-records',
+          handle: async () => {
+            const [reviewResult, authorizationResult, releaseResult, taskResult] =
+              await Promise.all([
+                pool.query(
+                  'SELECT review_case,version,status,completed_at,completed_by FROM professional_review_cases ORDER BY professional_review_case_id'
+                ),
+                pool.query(
+                  'SELECT authorization_record,version,status FROM filing_authorizations ORDER BY filing_authorization_id'
+                ),
+                pool.query(
+                  'SELECT release_record,version,status FROM execution_releases ORDER BY execution_release_id'
+                ),
+                pool.query(
+                  'SELECT task_record,status FROM filing_execution_task_drafts ORDER BY filing_execution_task_draft_id'
+                )
+              ]);
+            const professionalReviewCases = reviewResult.rows.map((raw) => {
+              const row = raw as Record<string, unknown>;
+              return {
+                ...(row.review_case as Record<string, unknown>),
+                version: Number(row.version),
+                status: String(row.status),
+                ...(row.completed_at
+                  ? {
+                      completedAt: new Date(row.completed_at as string).toISOString(),
+                      completedBy: String(row.completed_by)
+                    }
+                  : {})
+              };
+            });
+            const filingAuthorizations = authorizationResult.rows.map((raw) => {
+              const row = raw as Record<string, unknown>;
+              return {
+                ...(row.authorization_record as Record<string, unknown>),
+                version: Number(row.version),
+                status: String(row.status)
+              };
+            });
+            const executionReleases = releaseResult.rows.map((raw) => {
+              const row = raw as Record<string, unknown>;
+              return {
+                ...(row.release_record as Record<string, unknown>),
+                version: Number(row.version),
+                status: String(row.status)
+              };
+            });
+            const filingExecutionTaskDrafts = taskResult.rows.map((raw) => {
+              const row = raw as Record<string, unknown>;
+              return {
+                ...(row.task_record as Record<string, unknown>),
+                status: String(row.status)
+              };
+            });
+            return json(200, {
+              professionalReviewCases,
+              filingAuthorizations,
+              executionReleases,
+              filingExecutionTaskDrafts
+            });
+          }
+        }
+      ]
+    : [];
 
   const evidenceReceiptRepository = new PostgresProviderReturnEvidenceRepository(database, pool);
   const evidenceReviewRepository = new PostgresEvidenceReviewRepository(database, pool);
@@ -89,11 +160,13 @@ if (fixtureRuntime) {
   });
 
   runtime = createRuntime({
+    milestoneTestRuntime: durableMilestoneOwners,
     reviewRepositoryFactory: (workspaceId) =>
       new PostgresProfessionalReviewRepository(database, pool, workspaceId),
     filingRepositoryFactory: (workspaceId, actorId, correlationId) =>
       new PostgresFilingGovernanceRepository(database, pool, workspaceId, actorId, correlationId),
     providerExecutionRoutes: [
+      ...durableMilestoneSnapshotRoutes,
       ...createDurableExecutionProviderRoutes({
         database,
         internalServiceSecret

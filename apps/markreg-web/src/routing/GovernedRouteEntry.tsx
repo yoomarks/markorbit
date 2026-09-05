@@ -248,7 +248,12 @@ function GenericGovernedRouteEntry({
         const record = unwrap(value);
         const loaded = {
           record,
-          actualId: identity(record),
+          actualId:
+            parsed.route.view === 'preparation-lock'
+              ? scalar(record.preparationLockId)
+              : parsed.route.view === 'filing-authorization'
+                ? scalar(record.filingAuthorizationId)
+                : identity(record),
           actualVersion: version(record, parsed.route.view),
           status: typeof record.status === 'string' ? record.status : 'READY'
         };

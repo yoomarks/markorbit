@@ -1,11 +1,9 @@
 import type {
   AuthorizationAuthorityConsequences,
   ExecutionRelease,
-  ExecutionReleaseAssignment,
   FilingAuthorizationId,
   FilingExecutionChannel,
-  FilingExecutionTaskDraft,
-  MarkOrbitId
+  FilingExecutionTaskDraft
 } from '@markorbit/contracts';
 
 export interface ExecutionMutationResponse<T> {
@@ -38,14 +36,14 @@ export interface LiteExecutionClient {
   }>;
   updateAssignment(
     id: string,
-    assignment: ExecutionReleaseAssignment
+    command: { expectedVersion: number }
   ): Promise<{
     executionRelease: ExecutionRelease;
     consequences: AuthorizationAuthorityConsequences;
   }>;
   release(
     id: string,
-    command: { decidedBy: MarkOrbitId; rationale: string; idempotencyKey: string }
+    command: { rationale: string; idempotencyKey: string }
   ): Promise<{
     releaseResult: { release: ExecutionRelease; taskDraft: FilingExecutionTaskDraft };
     consequences: AuthorizationAuthorityConsequences;
@@ -65,14 +63,29 @@ export interface LiteExecutionClient {
 }
 async function request<T>(
   baseUrl: string,
+  workspaceId: string,
   path: string,
   method: 'GET' | 'POST' | 'PATCH' = 'GET',
   body?: unknown,
   key?: string
 ): Promise<T> {
+  let csrf = '';
+  if (method !== 'GET') {
+    const session = await fetch(`${baseUrl}/api/auth/session`, { credentials: 'include' });
+    const authentication = (await session.json()) as { csrfToken?: string; message?: string };
+    if (!session.ok || !authentication.csrfToken)
+      throw new Error(authentication.message ?? 'Authentication is required.');
+    csrf = authentication.csrfToken;
+  }
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: { 'content-type': 'application/json', ...(key ? { 'idempotency-key': key } : {}) },
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+      'x-markorbit-workspace-id': workspaceId,
+      ...(csrf ? { 'x-markorbit-csrf-token': csrf } : {}),
+      ...(key ? { 'idempotency-key': key } : {})
+    },
     ...(method === 'GET' ? {} : { body: JSON.stringify(body ?? {}) })
   });
   const value = (await response.json()) as T | { error?: { message?: string } };
@@ -86,34 +99,45 @@ async function request<T>(
   return value as T;
 }
 export function createLiteExecutionClient(
+  workspaceId = new URLSearchParams(window.location.search).get('workspaceId') ?? '',
   baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:4000'
 ): LiteExecutionClient {
   return {
     createRelease: (c) => {
       const { idempotencyKey, ...body } = c;
-      return request(baseUrl, '/api/execution/execution-releases', 'POST', body, idempotencyKey);
+      return request(
+        baseUrl,
+        workspaceId,
+        '/api/execution/execution-releases',
+        'POST',
+        body,
+        idempotencyKey
+      );
     },
-    listReleases: () => request(baseUrl, '/api/execution/execution-releases'),
+    listReleases: () => request(baseUrl, workspaceId, '/api/execution/execution-releases'),
     getRelease: (id) =>
-      request(baseUrl, `/api/execution/execution-releases/${encodeURIComponent(id)}`),
+      request(baseUrl, workspaceId, `/api/execution/execution-releases/${encodeURIComponent(id)}`),
     evaluateRelease: (id) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/evaluate`,
         'POST',
         {}
       ),
-    updateAssignment: (id, a) =>
+    updateAssignment: (id, command) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/assignment`,
         'PATCH',
-        a
+        command
       ),
     release: (id, c) => {
       const { idempotencyKey, ...body } = c;
       return request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/release`,
         'POST',
         body,
@@ -123,15 +147,17 @@ export function createLiteExecutionClient(
     withdrawRelease: (id) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/withdraw`,
         'POST',
         {}
       ),
     getTaskDraft: (id) =>
-      request(baseUrl, `/api/execution/filing-task-drafts/${encodeURIComponent(id)}`),
+      request(baseUrl, workspaceId, `/api/execution/filing-task-drafts/${encodeURIComponent(id)}`),
     getTaskDraftForRelease: (id) =>
       request(
         baseUrl,
+        workspaceId,
         `/api/execution/execution-releases/${encodeURIComponent(id)}/filing-task-draft`
       )
   };

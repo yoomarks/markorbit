@@ -44,19 +44,26 @@ const falseConsequences: AuthorizationAuthorityConsequences = {
   externalDocumentSent: false,
   trademarkOfficeContacted: false
 };
-const defaultExecutionClient = createLiteExecutionClient();
 export function ExecutionReleaseView({
-  client = defaultExecutionClient,
+  client,
+  workspaceId,
   fixtureReleases,
   state: initialState,
   initialFilingAuthorization
 }: {
   client?: LiteExecutionClient;
+  workspaceId?: string;
   fixtureReleases?: ExecutionRelease[];
   state?: ReleaseViewState;
   long?: boolean;
   initialFilingAuthorization?: { id: string; version: number };
 }) {
+  const resolvedWorkspaceId =
+    workspaceId ?? new URLSearchParams(window.location.search).get('workspaceId') ?? '';
+  const executionClient = useMemo(
+    () => client ?? createLiteExecutionClient(resolvedWorkspaceId),
+    [client, resolvedWorkspaceId]
+  );
   const [view, setView] = useState<ReleaseViewState>(initialState ?? 'RELEASE_QUEUE_LOADING');
   const [releases, setReleases] = useState<ExecutionRelease[]>(fixtureReleases ?? []);
   const [selected, setSelected] = useState<ExecutionRelease>();
@@ -79,7 +86,7 @@ export function ExecutionReleaseView({
     let active = true;
     void (
       initialFilingAuthorization
-        ? client
+        ? executionClient
             .createRelease({
               filingAuthorizationId:
                 initialFilingAuthorization.id as `filing-authorization_${string}`,
@@ -91,7 +98,7 @@ export function ExecutionReleaseView({
               executionReleases: [created.executionRelease],
               consequences: created.consequences
             }))
-        : client.listReleases()
+        : executionClient.listReleases()
     )
       .then((r) => {
         if (active) {
@@ -109,7 +116,7 @@ export function ExecutionReleaseView({
     return () => {
       active = false;
     };
-  }, [client, fixtureReleases, initialFilingAuthorization]);
+  }, [executionClient, fixtureReleases, initialFilingAuthorization]);
   const rows = useMemo(() => {
     const filtered = releases.filter(
       (r) =>
@@ -130,7 +137,7 @@ export function ExecutionReleaseView({
     try {
       const r = fixtureReleases
         ? { executionRelease: value, consequences: falseConsequences }
-        : await client.getRelease(value.executionReleaseId);
+        : await executionClient.getRelease(value.executionReleaseId);
       setSelected(r.executionRelease);
       setConsequences(r.consequences);
       setView(
@@ -174,14 +181,14 @@ export function ExecutionReleaseView({
   };
   const evaluate = async () => {
     if (!selected) return;
-    const r = await client.evaluateRelease(selected.executionReleaseId);
+    const r = await executionClient.evaluateRelease(selected.executionReleaseId);
     setConsequences(r.consequences);
     save(r.executionRelease);
   };
   const assign = async () => {
     if (!selected) return;
-    const r = await client.updateAssignment(selected.executionReleaseId, {
-      internalExecutorId: 'executor_fixture'
+    const r = await executionClient.updateAssignment(selected.executionReleaseId, {
+      expectedVersion: selected.version
     });
     setConsequences(r.consequences);
     save(r.executionRelease);
@@ -190,8 +197,7 @@ export function ExecutionReleaseView({
     if (!selected) return;
     setView('RELEASING');
     try {
-      const r = await client.release(selected.executionReleaseId, {
-        decidedBy: 'reviewer_fixture',
+      const r = await executionClient.release(selected.executionReleaseId, {
         rationale,
         idempotencyKey: `release:${selected.executionReleaseId}`
       });
@@ -362,7 +368,7 @@ export function ExecutionReleaseView({
             disabled={selected.status === 'RELEASED_FOR_EXECUTION'}
             onClick={() => void assign()}
           >
-            Assign internal executor
+            Assign to me
           </Button>
           <Button
             disabled={

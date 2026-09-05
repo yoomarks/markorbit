@@ -492,7 +492,8 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
       'POST /v1/markreg/intakes',
       'POST /v1/markreg/quotes',
       'POST /v1/markreg/quotes/:quoteId/confirm',
-      'POST /api/markreg/customer-confirmations'
+      'POST /api/markreg/customer-confirmations',
+      'POST /api/markreg/matter-drafts'
     ]);
   });
 });

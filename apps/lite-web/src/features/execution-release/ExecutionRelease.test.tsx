@@ -128,8 +128,10 @@ describe('Gateway-backed Execution Release workspace', () => {
     await user.click(await screen.findByRole('button', { name: 'Open release' }));
     await user.click(screen.getByRole('button', { name: 'Evaluate release' }));
     expect(gateway.evaluateRelease).toHaveBeenCalledOnce();
-    await user.click(screen.getByRole('button', { name: 'Assign internal executor' }));
-    expect(gateway.updateAssignment).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'Assign to me' }));
+    expect(gateway.updateAssignment).toHaveBeenCalledWith(release.executionReleaseId, {
+      expectedVersion: 1
+    });
     expect(screen.getByRole('button', { name: 'Release for execution' })).toBeDisabled();
     await user.type(
       screen.getByLabelText('Internal release rationale'),
@@ -143,13 +145,16 @@ describe('Gateway-backed Execution Release workspace', () => {
     render(<ExecutionReleaseView client={gateway} />);
     await user.click(await screen.findByRole('button', { name: 'Open release' }));
     await user.click(screen.getByRole('button', { name: 'Evaluate release' }));
-    await user.click(screen.getByRole('button', { name: 'Assign internal executor' }));
+    await user.click(screen.getByRole('button', { name: 'Assign to me' }));
     await user.type(screen.getByLabelText('Internal release rationale'), 'All checks passed.');
     await user.click(screen.getByRole('button', { name: 'Release for execution' }));
     await screen.findByText('Released for execution — no external filing performed');
     expect(screen.getByText('Filing Execution Task Draft')).toBeVisible();
     expect(screen.getByText(task.filingExecutionTaskDraftId)).toBeVisible();
     expect(screen.getAllByText('false')).toHaveLength(13);
-    expect(gateway.release).toHaveBeenCalledOnce();
+    expect(gateway.release).toHaveBeenCalledWith(release.executionReleaseId, {
+      rationale: 'All checks passed.',
+      idempotencyKey: `release:${release.executionReleaseId}`
+    });
   });
 });
