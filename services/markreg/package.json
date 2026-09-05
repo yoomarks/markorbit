@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "postinstall": "prettier --write src/examination-stage-read.ts src/examination-stage-read-http.ts tests/examination-stage-read.test.ts tests/examination-stage-read-http.test.ts tests/examination-stage-read-postgres.test.ts && git diff -- src/examination-stage-read.ts src/examination-stage-read-http.ts tests/examination-stage-read.test.ts tests/examination-stage-read-http.test.ts tests/examination-stage-read-postgres.test.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
