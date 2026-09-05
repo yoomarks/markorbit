@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
+import { CapabilityCatalogIntegrity } from './capability-catalog-integrity.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -281,6 +282,8 @@ function CapabilityInventory({ value }: { value: JsonObject }) {
           ]}
         />
       </Card>
+
+      <CapabilityCatalogIntegrity value={value.catalogIntegrity} />
 
       <Card>
         <h3>Runtime Capabilities</h3>
