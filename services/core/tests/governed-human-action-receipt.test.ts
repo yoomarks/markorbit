@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- in-memory store implements the async persistence contract. */
 import { describe, expect, it, vi } from 'vitest';
 import {
   CurrentWorkspaceAuthorityError,
@@ -117,7 +118,9 @@ describe('governed human-action receipt authority', () => {
       membershipVersion: 3,
       createdAt: '2026-09-05T09:01:00.000Z'
     });
-    expect(receipt.authorityReference).toBe(`core-governed-human-action-receipt:${receipt.receiptId}`);
+    expect(receipt.authorityReference).toBe(
+      `core-governed-human-action-receipt:${receipt.receiptId}`
+    );
     expect(receipt.affirmativeHumanActionEvidenceReference).toBe(
       `core-governed-human-action-evidence:${receipt.receiptId}`
     );
@@ -161,8 +164,9 @@ describe('governed human-action receipt authority', () => {
   it('revalidates the exact stored authority versions before a receipt remains current', async () => {
     const store = new MemoryStore();
     const validate = vi.fn<
-      (request: Readonly<CurrentWorkspaceAuthorityRequest>) =>
-        Promise<Readonly<CurrentWorkspaceAuthorityResult>>
+      (
+        request: Readonly<CurrentWorkspaceAuthorityRequest>
+      ) => Promise<Readonly<CurrentWorkspaceAuthorityResult>>
     >();
     validate.mockResolvedValueOnce(authority).mockResolvedValueOnce(authority);
     const f = service({ store, validate });
