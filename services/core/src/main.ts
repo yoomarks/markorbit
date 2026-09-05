@@ -16,6 +16,8 @@ import {
   PostgresWorkspaceRepository
 } from './identity.js';
 import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
+import { PostgresGovernedHumanActionReceiptStore } from './governed-human-action-receipt-postgres.js';
+import { GovernedHumanActionReceiptService } from './governed-human-action-receipt.js';
 import { createRuntime } from './index.js';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
@@ -53,10 +55,18 @@ const authentication = new AuthenticationService({
   workspaces,
   memberships
 });
-const currentWorkspaceAuthority = new CurrentWorkspaceAuthorityService({
+const currentWorkspaceAuthorityService = new CurrentWorkspaceAuthorityService({
   users,
   workspaces,
   memberships
+});
+const governedHumanActionReceipts = new GovernedHumanActionReceiptService({
+  store: new PostgresGovernedHumanActionReceiptStore(database),
+  currentWorkspaceAuthority: currentWorkspaceAuthorityService
+});
+const currentWorkspaceAuthority = Object.assign(currentWorkspaceAuthorityService, {
+  materializeOrResolve: governedHumanActionReceipts.materializeOrResolve.bind(governedHumanActionReceipts),
+  validateCurrent: governedHumanActionReceipts.validateCurrent.bind(governedHumanActionReceipts)
 });
 const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),
