@@ -85,8 +85,10 @@ export interface ExaminationStageHistoryEntry {
   officialStatusVerified: false;
 }
 
-export interface ExaminationStageCurrentEntry
-  extends Omit<ExaminationStageHistoryEntry, 'sourceCurrentness'> {
+export interface ExaminationStageCurrentEntry extends Omit<
+  ExaminationStageHistoryEntry,
+  'sourceCurrentness'
+> {
   lifecycleView: {
     id: string;
     version: number;
@@ -180,9 +182,7 @@ function ensureCurrentIntegrity(
       true
     );
 
-  const currentEvent = events.find(
-    (event) => event.lifecycleEventId === view.currentEvent.id
-  );
+  const currentEvent = events.find((event) => event.lifecycleEventId === view.currentEvent.id);
   if (!currentEvent)
     throw new ExaminationStageReadError(
       'EXAMINATION_TRUTH_UNAVAILABLE',
@@ -233,9 +233,7 @@ function ensureCurrentIntegrity(
   return currentEvent;
 }
 
-function sourceOf(
-  event: Readonly<LifecycleEventProjection>
-): ExaminationStageSourceProjection {
+function sourceOf(event: Readonly<LifecycleEventProjection>): ExaminationStageSourceProjection {
   return {
     reviewedSourceAdmission: {
       id: event.source.reviewedSourceAdmission.id,
@@ -369,8 +367,7 @@ export class ExaminationStageReadService {
     const currentQualifies = currentEvent ? ensureEventPolicy(currentEvent) : false;
     const history = qualifying
       .filter(
-        (event) =>
-          !currentQualifies || event.lifecycleEventId !== currentEvent?.lifecycleEventId
+        (event) => !currentQualifies || event.lifecycleEventId !== currentEvent?.lifecycleEventId
       )
       .slice(-EXAMINATION_HISTORY_LIMIT)
       .map(historicalEntry);
