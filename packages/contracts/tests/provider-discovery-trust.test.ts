@@ -3,9 +3,7 @@ import {
   noProviderDiscoveryAuthorityConsequences,
   providerDiscoveryContractFixtureV1
 } from '../src/provider-discovery.js';
-import {
-  noTrustEvidenceAuthorityConsequences
-} from '../src/outcome-trust-evidence.js';
+import { noTrustEvidenceAuthorityConsequences } from '../src/outcome-trust-evidence.js';
 import {
   parseProviderDiscoveryTrustComparisonV1,
   parseProviderDiscoveryTrustContextIntentV1,
@@ -35,13 +33,15 @@ function trustContext(overrides: Record<string, unknown> = {}) {
   return {
     schemaVersion: 1,
     ...base,
-    contextScopeFingerprintSha256: providerDiscoveryTrustContextScopeFingerprintV1(base as {
-      contextReference: string;
-      jurisdiction: string;
-      serviceType: string;
-      taskType: string;
-      collaborationScope: string;
-    })
+    contextScopeFingerprintSha256: providerDiscoveryTrustContextScopeFingerprintV1(
+      base as {
+        contextReference: string;
+        jurisdiction: string;
+        serviceType: string;
+        taskType: string;
+        collaborationScope: string;
+      }
+    )
   };
 }
 
@@ -156,8 +156,12 @@ describe('Provider Discovery Trust decision-support contract', () => {
       trustRequest(),
       discovery.request
     );
-    expect(parsedRequest.providerDiscoveryRequestId).toBe(discovery.request.providerDiscoveryRequestId);
-    expect(parsedRequest.requestFingerprintSha256).toBe(discovery.request.requestFingerprintSha256);
+    expect(parsedRequest.providerDiscoveryRequestId).toBe(
+      discovery.request.providerDiscoveryRequestId
+    );
+    expect(parsedRequest.requestFingerprintSha256).toBe(
+      discovery.request.requestFingerprintSha256
+    );
   });
 
   it('rejects Trust context drift from the exact Discovery Need instead of guessing linkage', () => {
@@ -183,9 +187,12 @@ describe('Provider Discovery Trust decision-support contract', () => {
       winnerCreated: false,
       qualityJudgmentCreated: false
     });
-    expect(parsed.candidates[0]?.state === 'TRUST_EVIDENCE_AVAILABLE' && parsed.candidates[0].explanation.result).toBe(
-      'EVIDENCE_AVAILABLE'
-    );
+    const support = parsed.candidates[0];
+    expect(support?.state).toBe('TRUST_EVIDENCE_AVAILABLE');
+    if (support?.state !== 'TRUST_EVIDENCE_AVAILABLE') {
+      throw new Error('fixture must be available');
+    }
+    expect(support.explanation.result).toBe('EVIDENCE_AVAILABLE');
     expect(parsed.authorityConsequences).toEqual(noProviderDiscoveryAuthorityConsequences);
   });
 
@@ -196,7 +203,9 @@ describe('Provider Discovery Trust decision-support contract', () => {
     );
     const support = parsed.candidates[0];
     expect(support?.state).toBe('TRUST_EVIDENCE_AVAILABLE');
-    if (support?.state !== 'TRUST_EVIDENCE_AVAILABLE') throw new Error('fixture must be available');
+    if (support?.state !== 'TRUST_EVIDENCE_AVAILABLE') {
+      throw new Error('fixture must be available');
+    }
     expect(support.evidenceSummaries[0]).toMatchObject({
       sourceClass: 'PROVIDER_CLAIM',
       limitationCodes: ['CLAIM_NOT_VERIFIED_OUTCOME'],
@@ -204,7 +213,7 @@ describe('Provider Discovery Trust decision-support contract', () => {
     });
   });
 
-  it('represents unavailable Trust evidence as unknown/unavailable, never a negative quality judgment', () => {
+  it('represents unavailable Trust evidence as unknown, never a negative quality judgment', () => {
     const unavailable = {
       schemaVersion: 1,
       providerDiscoveryCandidateId: candidate.providerDiscoveryCandidateId,
@@ -238,6 +247,16 @@ describe('Provider Discovery Trust decision-support contract', () => {
     expect(() =>
       parseProviderDiscoveryTrustComparisonV1(comparisonFor(wrongProvider), discovery)
     ).toThrow(/exact candidate Provider/);
+  });
+
+  it('rejects score/rank/winner fields instead of silently accepting ranking semantics', () => {
+    const ranked = {
+      ...availableSupport(),
+      score: 94
+    };
+    expect(() =>
+      parseProviderDiscoveryTrustComparisonV1(comparisonFor(ranked), discovery)
+    ).toThrow(/unsupported fields/);
   });
 
   it('keeps existing non-Trust Provider Discovery fixtures backward compatible', () => {
