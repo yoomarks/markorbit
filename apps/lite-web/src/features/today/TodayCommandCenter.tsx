@@ -49,8 +49,8 @@ export function TodayCommandCenter({
   orbit,
   explicitSelection
 }: {
-  today?: Readonly<TodayProductLoopSnapshot>;
-  orbit?: Readonly<DailyOrbitSnapshot>;
+  today: Readonly<TodayProductLoopSnapshot> | undefined;
+  orbit: Readonly<DailyOrbitSnapshot> | undefined;
   explicitSelection: Readonly<TodaySelection>;
 }) {
   const attention = needsAttentionCount(today);
