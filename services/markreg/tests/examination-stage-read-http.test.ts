@@ -9,7 +9,10 @@ import type {
   CurrentLifecycleView,
   LifecycleEventProjection
 } from '@markorbit/contracts/evidence-lifecycle';
-import { createServiceRuntime, type ServiceRuntime } from '@markorbit/service-kit';
+import {
+  createServiceRuntime,
+  type ServiceRuntime
+} from '@markorbit/service-kit';
 import type { FormalMatterRepository } from '../src/formal-matter.js';
 import type { LifecycleProjectionService } from '../src/lifecycle-projection.js';
 import type { RecommendedActionService } from '../src/recommended-action.js';
@@ -26,7 +29,10 @@ afterEach(async () => {
   await Promise.all(active.splice(0).map((runtime) => runtime.stop()));
 });
 
-function principal(permissions: WorkspacePrincipal['permissions'], workspace = workspaceId) {
+function principal(
+  permissions: WorkspacePrincipal['permissions'],
+  workspace = workspaceId
+) {
   return {
     kind: 'WORKSPACE',
     sessionId: 'session_examination',
@@ -46,9 +52,15 @@ const currentEvent: LifecycleEventProjection = {
   formalMatter: { id: formalMatterId, version: 1 },
   version: 3,
   source: {
-    reviewedSourceAdmission: { id: 'reviewed-source-admission_examination-http', version: 2 },
+    reviewedSourceAdmission: {
+      id: 'reviewed-source-admission_examination-http',
+      version: 2
+    },
     admissionFingerprintSha256: sha('a'),
-    evidenceReviewDecision: { id: 'evidence-review-decision_examination-http', version: 2 },
+    evidenceReviewDecision: {
+      id: 'evidence-review-decision_examination-http',
+      version: 2
+    },
     evidenceReceipt: { id: 'evidence-receipt_examination-http', version: 4 },
     providerReturn: { id: 'provider-return_examination-http', version: 5 },
     formalMatter: { id: formalMatterId, version: 1 }
@@ -88,11 +100,13 @@ function headers(value: WorkspacePrincipal, suppliedSecret = secret) {
   };
 }
 
-async function stack(input: {
-  lifecycleFailure?: boolean;
-  noMatter?: boolean;
-  noLifecycle?: boolean;
-} = {}) {
+async function stack(
+  input: {
+    lifecycleFailure?: boolean;
+    noMatter?: boolean;
+    noLifecycle?: boolean;
+  } = {}
+) {
   const formalMatters = {
     findById: (requestedWorkspace: string, id: string) =>
       Promise.resolve(
@@ -105,11 +119,15 @@ async function stack(input: {
     getCurrentView: () =>
       input.lifecycleFailure
         ? Promise.reject(new Error('lifecycle offline'))
-        : Promise.resolve(input.noLifecycle ? undefined : structuredClone(currentView)),
+        : Promise.resolve(
+            input.noLifecycle ? undefined : structuredClone(currentView)
+          ),
     listEvents: () =>
       input.lifecycleFailure
         ? Promise.reject(new Error('lifecycle offline'))
-        : Promise.resolve(input.noLifecycle ? [] : [structuredClone(currentEvent)])
+        : Promise.resolve(
+            input.noLifecycle ? [] : [structuredClone(currentEvent)]
+          )
   } as unknown as LifecycleProjectionService;
   const recommendations = {} as RecommendedActionService;
   const runtime = createServiceRuntime(
@@ -132,54 +150,57 @@ const endpoint = (base: string) =>
   `${base}/internal/v1/formal-matters/${formalMatterId}/examination`;
 
 describe('Examination Stage V1 internal owner route', () => {
-  it('returns exact governed Examination projection through the production lifecycle surface wiring', async () => {
-    const base = await stack();
-    const response = await fetch(endpoint(base), {
-      headers: headers(principal(['matter:read']))
-    });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      examination: {
-        schemaVersion: 1,
-        workspaceId,
-        formalMatter: { id: formalMatterId, version: 1 },
-        status: 'ESTABLISHED',
-        current: {
-          eventCode: 'EXAMINATION_CUSTOMER_ACTION_NEEDED',
-          lifecycleView: {
-            id: currentView.lifecycleViewId,
-            version: currentView.version,
-            fingerprintSha256: currentView.lifecycleViewFingerprintSha256
-          },
-          lifecycleEvent: {
-            id: currentEvent.lifecycleEventId,
-            version: currentEvent.version,
-            fingerprintSha256: currentEvent.lifecycleEventFingerprintSha256
-          },
-          source: {
-            reviewedSourceAdmission: {
-              id: currentEvent.source.reviewedSourceAdmission.id,
-              version: 2,
-              fingerprintSha256: sha('a')
+  it(
+    'returns exact governed Examination projection through the production lifecycle surface wiring',
+    async () => {
+      const base = await stack();
+      const response = await fetch(endpoint(base), {
+        headers: headers(principal(['matter:read']))
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        examination: {
+          schemaVersion: 1,
+          workspaceId,
+          formalMatter: { id: formalMatterId, version: 1 },
+          status: 'ESTABLISHED',
+          current: {
+            eventCode: 'EXAMINATION_CUSTOMER_ACTION_NEEDED',
+            lifecycleView: {
+              id: currentView.lifecycleViewId,
+              version: currentView.version,
+              fingerprintSha256: currentView.lifecycleViewFingerprintSha256
             },
-            providerReturn: currentEvent.source.providerReturn
+            lifecycleEvent: {
+              id: currentEvent.lifecycleEventId,
+              version: currentEvent.version,
+              fingerprintSha256: currentEvent.lifecycleEventFingerprintSha256
+            },
+            source: {
+              reviewedSourceAdmission: {
+                id: currentEvent.source.reviewedSourceAdmission.id,
+                version: 2,
+                fingerprintSha256: sha('a')
+              },
+              providerReturn: currentEvent.source.providerReturn
+            },
+            sourceCurrentness: 'CURRENT',
+            officialStatusVerified: false
           },
-          sourceCurrentness: 'CURRENT',
-          officialStatusVerified: false
-        },
-        deadline: null,
-        deadlineStatus: 'UNAVAILABLE',
-        officialStatusVerified: false,
-        authorityConsequences: {
-          filingAuthorized: false,
-          filingSubmitted: false,
-          paymentCreated: false,
-          providerContacted: false,
-          officialTruthCreated: false
+          deadline: null,
+          deadlineStatus: 'UNAVAILABLE',
+          officialStatusVerified: false,
+          authorityConsequences: {
+            filingAuthorized: false,
+            filingSubmitted: false,
+            paymentCreated: false,
+            providerContacted: false,
+            officialTruthCreated: false
+          }
         }
-      }
-    });
-  });
+      });
+    }
+  );
 
   it('keeps successful known absence as HTTP 200 NOT_ESTABLISHED', async () => {
     const base = await stack({ noLifecycle: true });
@@ -192,57 +213,78 @@ describe('Examination Stage V1 internal owner route', () => {
     });
   });
 
-  it('requires trusted internal authorization and encoded Workspace Principal', async () => {
-    const base = await stack();
-    const wrongSecret = await fetch(endpoint(base), {
-      headers: headers(principal(['matter:read']), 'wrong-secret-that-is-still-long-enough-000')
-    });
-    expect(wrongSecret.status).toBe(401);
-    expect(await wrongSecret.json()).toMatchObject({ code: 'UNTRUSTED_INTERNAL_CALLER' });
+  it(
+    'requires trusted internal authorization and encoded Workspace Principal',
+    async () => {
+      const base = await stack();
+      const wrongSecret = await fetch(endpoint(base), {
+        headers: headers(
+          principal(['matter:read']),
+          'wrong-secret-that-is-still-long-enough-000'
+        )
+      });
+      expect(wrongSecret.status).toBe(401);
+      expect(await wrongSecret.json()).toMatchObject({
+        code: 'UNTRUSTED_INTERNAL_CALLER'
+      });
 
-    const missingPrincipal = await fetch(endpoint(base), {
-      headers: {
-        'x-markorbit-internal-authorization': secret,
-        'x-markorbit-workspace-id': workspaceId
-      }
-    });
-    expect(missingPrincipal.status).toBe(401);
-    expect(await missingPrincipal.json()).toMatchObject({ code: 'INVALID_INTERNAL_PRINCIPAL' });
-  });
+      const missingPrincipal = await fetch(endpoint(base), {
+        headers: {
+          'x-markorbit-internal-authorization': secret,
+          'x-markorbit-workspace-id': workspaceId
+        }
+      });
+      expect(missingPrincipal.status).toBe(401);
+      expect(await missingPrincipal.json()).toMatchObject({
+        code: 'INVALID_INTERNAL_PRINCIPAL'
+      });
+    }
+  );
 
-  it('fails privacy-safe on authoritative Workspace mismatch and requires matter:read', async () => {
-    const base = await stack();
-    const workspaceMismatchHeaders = headers(principal(['matter:read']));
-    workspaceMismatchHeaders['x-markorbit-workspace-id'] = otherWorkspaceId;
-    const mismatch = await fetch(endpoint(base), { headers: workspaceMismatchHeaders });
-    expect(mismatch.status).toBe(404);
-    expect(await mismatch.json()).toMatchObject({ code: 'WORKSPACE_MISMATCH' });
+  it(
+    'fails privacy-safe on authoritative Workspace mismatch and requires matter:read',
+    async () => {
+      const base = await stack();
+      const workspaceMismatchHeaders = headers(principal(['matter:read']));
+      workspaceMismatchHeaders['x-markorbit-workspace-id'] = otherWorkspaceId;
+      const mismatch = await fetch(endpoint(base), {
+        headers: workspaceMismatchHeaders
+      });
+      expect(mismatch.status).toBe(404);
+      expect(await mismatch.json()).toMatchObject({ code: 'WORKSPACE_MISMATCH' });
 
-    const denied = await fetch(endpoint(base), {
-      headers: headers(principal(['review:read']))
-    });
-    expect(denied.status).toBe(403);
-    expect(await denied.json()).toMatchObject({ code: 'PERMISSION_DENIED' });
-  });
+      const denied = await fetch(endpoint(base), {
+        headers: headers(principal(['review:read']))
+      });
+      expect(denied.status).toBe(403);
+      expect(await denied.json()).toMatchObject({ code: 'PERMISSION_DENIED' });
+    }
+  );
 
-  it('returns privacy-safe 404 for missing or cross-Workspace Formal Matter', async () => {
-    const base = await stack({ noMatter: true });
-    const response = await fetch(endpoint(base), {
-      headers: headers(principal(['matter:read']))
-    });
-    expect(response.status).toBe(404);
-    expect(await response.json()).toMatchObject({ code: 'FORMAL_MATTER_NOT_FOUND' });
-  });
+  it(
+    'returns privacy-safe 404 for missing or cross-Workspace Formal Matter',
+    async () => {
+      const base = await stack({ noMatter: true });
+      const response = await fetch(endpoint(base), {
+        headers: headers(principal(['matter:read']))
+      });
+      expect(response.status).toBe(404);
+      expect(await response.json()).toMatchObject({ code: 'FORMAL_MATTER_NOT_FOUND' });
+    }
+  );
 
-  it('returns retryable 503 when lifecycle persistence is unavailable instead of fabricating absence', async () => {
-    const base = await stack({ lifecycleFailure: true });
-    const response = await fetch(endpoint(base), {
-      headers: headers(principal(['matter:read']))
-    });
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({
-      code: 'EXAMINATION_TRUTH_UNAVAILABLE',
-      retryable: true
-    });
-  });
+  it(
+    'returns retryable 503 when lifecycle persistence is unavailable instead of fabricating absence',
+    async () => {
+      const base = await stack({ lifecycleFailure: true });
+      const response = await fetch(endpoint(base), {
+        headers: headers(principal(['matter:read']))
+      });
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        code: 'EXAMINATION_TRUTH_UNAVAILABLE',
+        retryable: true
+      });
+    }
+  );
 });
