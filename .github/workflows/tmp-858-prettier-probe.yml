@@ -1,46 +1,13 @@
-name: tmp-858-prettier-probe
+name: retired-tmp-858-prettier-probe
 
 on:
-  pull_request:
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  format:
-    name: Exact Prettier 3.9.6 output
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: tmp/858-prettier-exact
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Format exact files
-        run: pnpm exec prettier --write docs/architecture/cross-lane-journey-registry.v1.json scripts/validate-cross-lane-journey-registry.mjs scripts/validate-cross-lane-journey-registry.test.mjs
-      - name: Commit exact formatted bytes to probe branch
-        shell: bash
-        run: |
-          if git diff --quiet -- \
-            docs/architecture/cross-lane-journey-registry.v1.json \
-            scripts/validate-cross-lane-journey-registry.mjs \
-            scripts/validate-cross-lane-journey-registry.test.mjs
-          then
-            echo "Prettier output already committed."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            docs/architecture/cross-lane-journey-registry.v1.json \
-            scripts/validate-cross-lane-journey-registry.mjs \
-            scripts/validate-cross-lane-journey-registry.test.mjs
-          git commit -m "[VOID] Apply exact Prettier 3.9.6 output"
-          git push origin HEAD:tmp/858-prettier-exact
+      - run: echo "Retired temporary formatting probe. Never merge this branch."
