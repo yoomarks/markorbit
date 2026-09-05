@@ -369,7 +369,7 @@ export function CognitivePlatformWorkspace() {
   return (
     <section id="cognitive-platform" aria-labelledby="cognitive-platform-heading">
       <PageHeader
-        title="Cognitive Platform"
+        title="Cognitive owner inventory"
         description="Read-only owner truth for Brain, BrainGap, Method Improvement, Brain Build availability, Runtime Capabilities, Implementation Profiles and source-admission policy state."
       />
       <Alert tone="info" title="Read plane only">
