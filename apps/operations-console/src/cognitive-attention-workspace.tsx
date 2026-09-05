@@ -94,7 +94,7 @@ export function CognitiveAttentionWorkspace({
         COGNITIVE_ATTENTION_GROUP_ORDER.map((group) => {
           const groupItems = items.filter((item) => item.group === group);
           if (groupItems.length === 0) return null;
-          const headingId = `cognitive-attention-${group.toLowerCase().replaceAll('_', '-')}`;
+          const headingId = `cognitive-attention-${group.toLowerCase().replace(/_/g, '-')}`;
           return (
             <section key={group} aria-labelledby={headingId}>
               <h3 id={headingId}>{COGNITIVE_ATTENTION_GROUP_LABELS[group]}</h3>
