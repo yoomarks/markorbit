@@ -1,0 +1,29 @@
+name: Temporary 825 route patch
+
+on:
+  push:
+    branches:
+      - mgsn-governed-network-http-825
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn-governed-network-http-825
+          fetch-depth: 0
+      - name: Apply parser route patch
+        run: node scripts/tmp-825-route-patch.mjs
+      - name: Remove temporary patch machinery
+        run: rm scripts/tmp-825-route-patch.mjs .github/workflows/tmp-825-route-patch.yml
+      - name: Commit patched route
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/mgsn/src/governed-network-http.ts services/mgsn/src/governed-network-http-transport.ts scripts/tmp-825-route-patch.mjs .github/workflows/tmp-825-route-patch.yml
+          git commit -m "fix(mgsn): parse governed network transport before owner calls"
+          git push origin HEAD:mgsn-governed-network-http-825
