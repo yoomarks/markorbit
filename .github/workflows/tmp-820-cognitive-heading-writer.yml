@@ -1,0 +1,55 @@
+name: Temporary 820 Cognitive Heading Writer
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  write:
+    if: github.head_ref == 'tmp/820-cognitive-heading-writer'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Disambiguate Cognitive owner workspace heading
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/operations-console/src/cognitive-platform.tsx')
+          text = path.read_text()
+          old = '        title="Cognitive Platform"\n'
+          new = '        title="Cognitive owner inventory"\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one heading target, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Format and validate Operations Console
+        run: |
+          pnpm exec prettier --write apps/operations-console/src/cognitive-platform.tsx
+          pnpm --filter @markorbit/operations-console lint
+          pnpm --filter @markorbit/operations-console typecheck
+          pnpm --filter @markorbit/operations-console test
+      - name: Commit writer output
+        run: |
+          if git diff --quiet; then
+            echo 'No writer changes required.'
+            exit 0
+          fi
+          git config user.name 'yoomarks'
+          git config user.email 'lukeluccas6292643@gmail.com'
+          git add apps/operations-console/src/cognitive-platform.tsx
+          git commit -m '[OPERATIONS-P0][CONTROL-PLANE] Disambiguate cognitive owner heading'
+          git push origin HEAD:${{ github.head_ref }}
