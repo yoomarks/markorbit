@@ -1,42 +1,13 @@
-name: Temporary MGSN 825 Transport Shape Type Fix
+name: Temporary MGSN 825 Parser Fix Staging
 
 on:
-  push:
-    branches:
-      - tmp-mgsn-825-prettier-write
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  patch-and-push:
+  staged:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: mgsn-governed-network-http-825
-          fetch-depth: 0
-      - name: Replace recursive type alias with recursive interface
-        run: |
-          test "$(git rev-parse HEAD)" = "6fab64b3b60984b5d7185506bb4ddcb9dcdd4d7e"
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('services/mgsn/src/governed-network-http.ts')
-          text = path.read_text()
-          old = "type TransportShape = Readonly<Record<string, null | TransportShape | readonly [TransportShape]>>;"
-          new = """interface TransportShape {
-            readonly [key: string]: null | TransportShape | readonly [TransportShape];
-          }"""
-          if text.count(old) != 1:
-              raise SystemExit('expected one recursive TransportShape alias')
-          path.write_text(text.replace(old, new, 1))
-          PY
-          npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts
-          git diff --check
-      - name: Commit transport shape type fix
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/src/governed-network-http.ts
-          git commit -m "fix(mgsn): use recursive interface for transport shape"
-          git push origin HEAD:mgsn-governed-network-http-825
+      - run: echo "Parser fix helper is staged; push trigger intentionally disabled."
