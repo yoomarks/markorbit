@@ -99,6 +99,7 @@ jobs:
           pnpm --filter @markorbit/core-service typecheck
           pnpm --filter @markorbit/gateway lint
           pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway... build
           pnpm --filter @markorbit/gateway exec vitest run tests/mgsn-governed-network-http.test.ts
           git diff --check
       - name: Commit exact checked patch
