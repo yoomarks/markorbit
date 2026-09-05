@@ -1,0 +1,66 @@
+name: Temporary Integration 815 Apply
+
+on:
+  push:
+    branches:
+      - tmp-integration-815-apply
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout helper
+        uses: actions/checkout@v4
+        with:
+          ref: tmp-integration-815-apply
+          path: helper
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: integration-mgsn-workplace-governed-815
+          fetch-depth: 0
+          path: target
+      - name: Lock target base and apply patch
+        working-directory: target
+        run: |
+          test "$(git rev-parse HEAD)" = "4af4881f5990ea14f3d1cebfe098c3a31c133766"
+          python3 ../helper/.agents/integration-815-patch.py
+          git diff --check
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: target/pnpm-lock.yaml
+      - name: Install dependencies
+        working-directory: target
+        run: pnpm install --frozen-lockfile
+      - name: Format and validate focused closure
+        working-directory: target
+        run: |
+          pnpm exec prettier --write packages/contracts/src/auth.ts services/core/src/auth.ts apps/gateway/src/mgsn-http.ts apps/gateway/tests/mgsn-governed-network-http.test.ts
+          pnpm --filter @markorbit/contracts lint
+          pnpm --filter @markorbit/contracts typecheck
+          pnpm --filter @markorbit/contracts build
+          pnpm --filter @markorbit/core-service lint
+          pnpm --filter @markorbit/core-service typecheck
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway exec vitest run tests/mgsn-governed-network-http.test.ts
+          git diff --check
+      - name: Commit exact checked patch
+        working-directory: target
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/auth.ts services/core/src/auth.ts apps/gateway/src/mgsn-http.ts apps/gateway/tests/mgsn-governed-network-http.test.ts
+          git diff --cached --check
+          git commit -m "feat(gateway): wire governed Workplace MGSN progression"
+          git push origin HEAD:integration-mgsn-workplace-governed-815
