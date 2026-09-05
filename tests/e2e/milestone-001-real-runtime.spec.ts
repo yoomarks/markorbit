@@ -31,10 +31,14 @@ const checkpoint = async (
       if (request.url().startsWith(milestoneUrls.gateway))
         requests.push({ method: request.method(), url: request.url() });
     });
-    const query =
+    const routeQuery =
       app === 'markreg'
         ? serializeMarkregRoute(route as MarkregRoute)
         : serializeLiteRoute(route as LiteRoute);
+    const query =
+      app === 'lite' && (route.view === 'execution-release' || route.view === 'filing-task-draft')
+        ? `${routeQuery}&workspaceId=${encodeURIComponent(milestoneAuth.workspaceId)}`
+        : routeQuery;
     const base = app === 'markreg' ? milestoneUrls.markregWeb : milestoneUrls.liteWeb;
     await direct.goto(`${base}/${query}`);
     await expect(direct).toHaveURL(`${base}/${query}`);

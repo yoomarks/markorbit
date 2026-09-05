@@ -3,35 +3,32 @@ import { defineConfig } from '@playwright/test';
 import { milestoneAuth, milestonePorts } from './scripts/milestone-runtime.mjs';
 
 const inCI = Boolean(process.env['CI']);
-const authenticated = Boolean(process.env['MO_INTERNAL_SERVICE_SECRET']);
-const csrfSecret = process.env['MO_CSRF_SECRET'];
-if (authenticated && !csrfSecret)
-  throw new Error('MO_CSRF_SECRET is required when the milestone runtime is authenticated.');
-const authenticatedUse = authenticated
-  ? {
-      extraHTTPHeaders: {
-        'x-markorbit-workspace-id': milestoneAuth.workspaceId,
-        'x-markorbit-csrf-token': createHmac('sha256', csrfSecret!)
-          .update(milestoneAuth.sessionId)
-          .digest('base64url')
-      },
-      storageState: {
-        cookies: [
-          {
-            name: 'mo_session',
-            value: milestoneAuth.sessionValue,
-            domain: '127.0.0.1',
-            path: '/',
-            expires: -1,
-            httpOnly: true,
-            secure: false,
-            sameSite: 'Lax' as const
-          }
-        ],
-        origins: []
+const internalServiceSecret =
+  process.env['MO_INTERNAL_SERVICE_SECRET'] ?? 'milestone-real-runtime-internal-secret-32-bytes';
+const csrfSecret = process.env['MO_CSRF_SECRET'] ?? 'milestone-real-runtime-csrf-secret-32-bytes';
+const authenticatedUse = {
+  extraHTTPHeaders: {
+    'x-markorbit-workspace-id': milestoneAuth.workspaceId,
+    'x-markorbit-csrf-token': createHmac('sha256', csrfSecret)
+      .update(milestoneAuth.sessionId)
+      .digest('base64url')
+  },
+  storageState: {
+    cookies: [
+      {
+        name: 'mo_session',
+        value: milestoneAuth.sessionValue,
+        domain: '127.0.0.1',
+        path: '/',
+        expires: -1,
+        httpOnly: true,
+        secure: false,
+        sameSite: 'Lax' as const
       }
-    }
-  : {};
+    ],
+    origins: []
+  }
+};
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -66,6 +63,10 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60_000,
     stdout: 'pipe',
-    stderr: 'pipe'
+    stderr: 'pipe',
+    env: {
+      MO_INTERNAL_SERVICE_SECRET: internalServiceSecret,
+      MO_CSRF_SECRET: csrfSecret
+    }
   }
 });
