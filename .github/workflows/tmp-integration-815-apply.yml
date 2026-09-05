@@ -47,6 +47,11 @@ jobs:
           new = '  async resolveWorkspacePrincipal(token: string, workspaceId: string): Promise<WorkspacePrincipal> {'
           if old not in text:
               raise SystemExit('resolveWorkspacePrincipal marker missing')
+          text = text.replace(old, new, 1)
+          old = """      permissions: Object.freeze(permissions),\n      sessionCreatedAt: principal.sessionCreatedAt,\n      sessionExpiresAt: principal.sessionExpiresAt"""
+          new = """      permissions: Object.freeze(permissions),\n      ...(principal.sessionCreatedAt ? { sessionCreatedAt: principal.sessionCreatedAt } : {}),\n      sessionExpiresAt: principal.sessionExpiresAt"""
+          if old not in text:
+              raise SystemExit('workspace principal optional timestamp marker missing')
           path.write_text(text.replace(old, new, 1))
           PY
           git diff --check
