@@ -2,10 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import type { DailyOrbitItem } from '@markorbit/contracts/daily-workspace';
-import type {
-  PreparedActionJourney,
-  TodayRecommendation
-} from '@markorbit/contracts/product-loop';
+import type { PreparedActionJourney, TodayRecommendation } from '@markorbit/contracts/product-loop';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DailyOrbitSnapshot } from '../../api/daily-workspace.js';
 import type { TodayProductLoopSnapshot } from '../../api/product-loop.js';
