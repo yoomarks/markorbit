@@ -5,7 +5,16 @@ import type {
   PlatformVariant,
   VisualOutputKind
 } from '@markorbit/contracts/daily-workspace';
-import { Alert, Badge, Button, Card, EmptyState, LoadingState, Select, TextInput } from '@markorbit/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  LoadingState,
+  Select,
+  TextInput
+} from '@markorbit/ui';
 import type {
   DailyWorkspaceHttpError,
   VisualBriefRecordResponse
@@ -318,7 +327,7 @@ export function TodayCreateSections({
   onCopyVariant,
   onExportVariant
 }: {
-  contentPicks: readonly ContentPick[];
+  contentPicks: ReadonlyArray<Readonly<ContentPick>>;
   selectedPick?: Readonly<ContentPick>;
   kit?: Readonly<ContentKit>;
   kitLoading: boolean;
