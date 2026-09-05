@@ -289,7 +289,9 @@ async function governedHumanActionEnvelope(
     receipt.authenticatedAt !== materialization.authenticatedAt ||
     receipt.authorityVersion !== 1 ||
     !receipt.authorityReference.startsWith('core-governed-human-action-receipt:') ||
-    !receipt.affirmativeHumanActionEvidenceReference.startsWith('core-governed-human-action-evidence:')
+    !receipt.affirmativeHumanActionEvidenceReference.startsWith(
+      'core-governed-human-action-evidence:'
+    )
   )
     throw new HttpError(
       503,

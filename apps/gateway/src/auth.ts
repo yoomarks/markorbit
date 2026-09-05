@@ -66,8 +66,7 @@ export interface GovernedHumanActionReceiptMaterializationV1 {
   authenticatedAt: string;
 }
 
-export interface GovernedHumanActionReceiptV1
-  extends GovernedHumanActionReceiptMaterializationV1 {
+export interface GovernedHumanActionReceiptV1 extends GovernedHumanActionReceiptMaterializationV1 {
   schemaVersion: 1;
   receiptId: string;
   receiptVersion: 1;

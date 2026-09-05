@@ -47,7 +47,13 @@ function principal(
 }
 
 function receiptReplayKey(input: GovernedHumanActionReceiptMaterializationV1) {
-  return [input.kind, input.workspaceId, input.userId, input.membershipId, input.idempotencyKey].join(':');
+  return [
+    input.kind,
+    input.workspaceId,
+    input.userId,
+    input.membershipId,
+    input.idempotencyKey
+  ].join(':');
 }
 
 function authenticationFor(value: WorkspacePrincipal): CoreAuthenticationClient {
@@ -75,7 +81,11 @@ function authenticationFor(value: WorkspacePrincipal): CoreAuthenticationClient 
         );
         if (!exact)
           return Promise.reject(
-            new GovernedHumanActionReceiptClientError(409, 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT', 'replay conflict')
+            new GovernedHumanActionReceiptClientError(
+              409,
+              'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+              'replay conflict'
+            )
           );
         return Promise.resolve(existing);
       }
