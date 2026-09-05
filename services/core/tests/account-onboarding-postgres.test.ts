@@ -55,7 +55,7 @@ integration('PostgreSQL account workspace onboarding', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_auth', await coreMigrations());
   });
