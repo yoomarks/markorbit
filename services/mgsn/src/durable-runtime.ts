@@ -37,6 +37,7 @@ import {
   type ProviderSelectionCurrentAuthoritySource
 } from './provider-selection.js';
 import { PostgresProviderSelectionRepository } from './provider-selection-postgres.js';
+import { GovernedProviderWorkHttpReadService } from './provider-work-http-read-service.js';
 import {
   GovernedProviderWorkReadModelService,
   PostgresProviderWorkIncomingAuthorityRepository
@@ -186,10 +187,19 @@ export function createDurableMgsnServices(
     providerRepository,
     providerResponsibility
   );
-  const providerWorkRead = new GovernedProviderWorkReadModelService(
-    new ProviderWorkReadModelService(providerWorkReadRepository, providerRepository),
+  const baseProviderWorkRead = new ProviderWorkReadModelService(
+    providerWorkReadRepository,
+    providerRepository
+  );
+  const governedProviderWorkRead = new GovernedProviderWorkReadModelService(
+    baseProviderWorkRead,
     providerWorkIncomingAuthorityRepository,
     controlledHandoff
+  );
+  const providerWorkRead = new GovernedProviderWorkHttpReadService(
+    providerWorkReadRepository,
+    providerRepository,
+    governedProviderWorkRead
   );
   const governedAllocation = new GovernedAllocationService(
     new ExactM4GovernedAllocationPlanner(
@@ -226,7 +236,7 @@ export function createDurableMgsnServices(
       providerRepository,
       evidenceHandoff
     ),
-    providerWorkRead: providerWorkRead as unknown as ProviderWorkReadModelService,
+    providerWorkRead,
     networkParticipation: new NetworkParticipationService(
       networkParticipationRepository,
       providerRepository
