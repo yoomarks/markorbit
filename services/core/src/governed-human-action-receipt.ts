@@ -199,7 +199,9 @@ export class GovernedHumanActionReceiptService {
     validateBinding(request);
     let authority: Readonly<CurrentWorkspaceAuthorityResult>;
     try {
-      authority = await this.options.currentWorkspaceAuthority.validate(currentAuthorityRequest(request));
+      authority = await this.options.currentWorkspaceAuthority.validate(
+        currentAuthorityRequest(request)
+      );
     } catch (cause) {
       throw mapCurrentAuthorityFailure(cause);
     }
@@ -254,7 +256,9 @@ export class GovernedHumanActionReceiptService {
         409
       );
     try {
-      await this.options.currentWorkspaceAuthority.validate(currentAuthorityRequest(request, receipt));
+      await this.options.currentWorkspaceAuthority.validate(
+        currentAuthorityRequest(request, receipt)
+      );
     } catch (cause) {
       throw mapCurrentAuthorityFailure(cause);
     }
