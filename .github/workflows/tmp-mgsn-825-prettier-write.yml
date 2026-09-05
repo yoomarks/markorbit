@@ -73,6 +73,7 @@ jobs:
           pnpm --filter @markorbit/mgsn-service exec eslint src/governed-network-http.ts tests/governed-network-http.test.ts --fix
           pnpm --filter @markorbit/mgsn-service lint
           pnpm --filter @markorbit/mgsn-service typecheck
+          pnpm --filter @markorbit/mgsn-service... build
           pnpm --filter @markorbit/mgsn-service exec vitest run tests/governed-network-http.test.ts
           pnpm exec prettier --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
           git diff --check
