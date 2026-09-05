@@ -1,0 +1,27 @@
+name: Temporary Integration 815 Rebase
+
+on:
+  push:
+    branches:
+      - tmp-integration-815-apply
+
+permissions:
+  contents: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: integration-mgsn-workplace-governed-815
+          fetch-depth: 0
+      - name: Clean replay onto exact current main
+        run: |
+          test "$(git rev-parse HEAD)" = "e1b962af8b06428a1163ad9a0c63f7baaea0bc34"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "83fa2659664fc67b732ed50209b92458f93f5b92"
+          git rebase origin/main
+          git diff --check origin/main...HEAD
+          git push --force-with-lease origin HEAD:integration-mgsn-workplace-governed-815
