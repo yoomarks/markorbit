@@ -121,5 +121,8 @@ test('human-readable report is deterministic and generated from registry truth',
   assert.match(first, /J3_COGNITIVE_CONTROL_PLANE_READ/);
   assert.match(first, /DURABLE_NO_PRODUCT_CONSUMER/);
   assert.match(first, /#843:OPEN/);
-  assert.match(first, /\| Journey \| Consumer \| Gateway \| Owner \| Authority \| Persistence \| Proof \| Maturity \| Blocker \|/);
+  assert.match(
+    first,
+    /\| Journey \| Consumer \| Gateway \| Owner \| Authority \| Persistence \| Proof \| Maturity \| Blocker \|/
+  );
 });
