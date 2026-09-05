@@ -23,6 +23,22 @@ const projection = {
   runtimeCapabilities: [],
   implementationProfiles: [],
   sourceAdmissionPolicies: [],
+  catalogIntegrity: {
+    status: 'CATALOG_HEALTHY' as const,
+    snapshotFingerprintSha256: 'c'.repeat(64),
+    auditFingerprintSha256: 'd'.repeat(64),
+    findings: [],
+    authority: {
+      productionSourceAdmitted: false as const,
+      implementationSelected: false as const,
+      productStateCreated: false as const,
+      brainGapCreated: false as const,
+      methodImprovementTriggerCreated: false as const,
+      researchMissionCreated: false as const,
+      officialTruthCreated: false as const,
+      automaticRemediationExecuted: false as const
+    }
+  },
   summary: {
     runtimeCapabilityCount: 0,
     implementationProfileCount: 0,
