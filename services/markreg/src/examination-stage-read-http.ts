@@ -4,7 +4,12 @@ import {
   type FormalMatterId,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  HttpError,
+  json,
+  type JsonRequest,
+  type JsonRoute
+} from '@markorbit/service-kit';
 import {
   ExaminationStageReadError,
   type ExaminationStageReadService
@@ -74,7 +79,10 @@ export function createMarkRegExaminationStageReadRoutes(
         const principal = principalOf(request, options.internalServiceSecret);
         const formalMatterId = request.params.formalMatterId! as FormalMatterId;
         try {
-          const examination = await options.service.get(principal.workspaceId, formalMatterId);
+          const examination = await options.service.get(
+            principal.workspaceId,
+            formalMatterId
+          );
           return json(200, { examination });
         } catch (error) {
           return mapError(error);
