@@ -1,0 +1,26 @@
+name: tmp-864-refresh-main
+
+on:
+  push:
+    branches:
+      - tmp/864-refresh-main-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge current main into PR branch
+        shell: bash
+        run: |
+          git config user.name 'yoomarks'
+          git config user.email 'actions@users.noreply.github.com'
+          git fetch origin main integration/mgsn-provider-work-action-lineage-860
+          git checkout -B integration/mgsn-provider-work-action-lineage-860 origin/integration/mgsn-provider-work-action-lineage-860
+          git merge --no-edit origin/main
+          git push origin HEAD:integration/mgsn-provider-work-action-lineage-860
