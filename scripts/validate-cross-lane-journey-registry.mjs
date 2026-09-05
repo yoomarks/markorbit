@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -98,8 +99,27 @@ function validateFilePath(path, repoRoot, label, errors) {
   if (!existsSync(resolve(repoRoot, path))) errors.push(`${label} does not exist: ${path}`);
 }
 
-function validateRoute(route, label, errors) {
-  pushError(errors, nonEmptyString(route) && route.startsWith('/'), `${label} must start with '/'.`);
+function gitContains(repoRoot, needle) {
+  try {
+    execFileSync('git', ['grep', '-F', '-q', '-e', needle, '--', 'apps', 'services', 'tests'], {
+      cwd: repoRoot,
+      stdio: 'ignore'
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function routeExists(route, repoRoot) {
+  return gitContains(repoRoot, route) || gitContains(repoRoot, route.replaceAll('/', '\\/'));
+}
+
+function validateRoute(route, repoRoot, label, errors) {
+  const valid = nonEmptyString(route) && route.startsWith('/');
+  pushError(errors, valid, `${label} must start with '/'.`);
+  if (valid && !routeExists(route, repoRoot))
+    errors.push(`${label} no longer exists in app/service/test source: ${route}`);
 }
 
 function validateFilesAndRoutes(section, repoRoot, label, errors, { allowEmptyFiles = false } = {}) {
@@ -111,7 +131,9 @@ function validateFilesAndRoutes(section, repoRoot, label, errors, { allowEmptyFi
   const files = array(object.files);
   if (!allowEmptyFiles) pushError(errors, files.length > 0, `${label}.files must not be empty.`);
   files.forEach((path, index) => validateFilePath(path, repoRoot, `${label}.files[${index}]`, errors));
-  array(object.routes).forEach((route, index) => validateRoute(route, `${label}.routes[${index}]`, errors));
+  array(object.routes).forEach((route, index) =>
+    validateRoute(route, repoRoot, `${label}.routes[${index}]`, errors)
+  );
 }
 
 function validateProof(proof, repoRoot, label, errors) {
