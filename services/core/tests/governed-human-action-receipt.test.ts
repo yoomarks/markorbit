@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   CurrentWorkspaceAuthorityError,
+  type CurrentWorkspaceAuthorityRequest,
   type CurrentWorkspaceAuthorityResult
 } from '../src/current-workspace-authority.js';
 import {
@@ -43,7 +44,7 @@ const authority: CurrentWorkspaceAuthorityResult = {
     membershipId: ids.membership,
     workspaceId: ids.workspace,
     userId: ids.user,
-    role: 'WORKSPACE_OWNER',
+    role: 'WORKSPACE_ADMIN',
     version: 3
   },
   requiredPermission: 'workspace:manage'
@@ -85,16 +86,16 @@ class MemoryStore implements GovernedHumanActionReceiptStore {
 
 function service(options?: {
   store?: GovernedHumanActionReceiptStore;
-  validate?: (request: unknown) => Promise<Readonly<CurrentWorkspaceAuthorityResult>>;
+  validate?: (
+    request: Readonly<CurrentWorkspaceAuthorityRequest>
+  ) => Promise<Readonly<CurrentWorkspaceAuthorityResult>>;
 }) {
-  const validate =
-    options?.validate ??
-    vi.fn(() => Promise.resolve(authority));
+  const validate = options?.validate ?? vi.fn(() => Promise.resolve(authority));
   return {
     validate,
     service: new GovernedHumanActionReceiptService({
       store: options?.store ?? new MemoryStore(),
-      currentWorkspaceAuthority: { validate } as never,
+      currentWorkspaceAuthority: { validate },
       clock: () => new Date('2026-09-05T09:01:00.000Z')
     })
   };
@@ -159,10 +160,11 @@ describe('governed human-action receipt authority', () => {
 
   it('revalidates the exact stored authority versions before a receipt remains current', async () => {
     const store = new MemoryStore();
-    const validate = vi
-      .fn()
-      .mockResolvedValueOnce(authority)
-      .mockResolvedValueOnce(authority);
+    const validate = vi.fn<
+      (request: Readonly<CurrentWorkspaceAuthorityRequest>) =>
+        Promise<Readonly<CurrentWorkspaceAuthorityResult>>
+    >();
+    validate.mockResolvedValueOnce(authority).mockResolvedValueOnce(authority);
     const f = service({ store, validate });
     const receipt = await f.service.materializeOrResolve(command());
     await expect(
