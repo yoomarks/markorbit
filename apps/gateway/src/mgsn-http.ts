@@ -231,8 +231,7 @@ async function governedHumanActionEnvelope(
       'Core session authentication time is unavailable for governed human action.',
       true
     );
-  const materialize = authentication.materializeGovernedHumanActionReceipt;
-  if (!materialize)
+  if (!authentication.materializeGovernedHumanActionReceipt)
     throw new HttpError(
       503,
       'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
@@ -270,7 +269,10 @@ async function governedHumanActionEnvelope(
   };
   let receipt;
   try {
-    receipt = await materialize.call(authentication, materialization, correlationId);
+    receipt = await authentication.materializeGovernedHumanActionReceipt(
+      materialization,
+      correlationId
+    );
   } catch (error) {
     return mapGovernedReceipt(error);
   }
