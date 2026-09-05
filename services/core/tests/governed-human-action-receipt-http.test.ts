@@ -44,7 +44,11 @@ const receipt: GovernedHumanActionReceipt = {
   createdAt: '2026-09-05T09:01:00.000Z'
 };
 
-function request(path: string, body: unknown, authorization: string | undefined = secret): JsonRequest {
+function request(
+  path: string,
+  body: unknown,
+  authorization: string | undefined = secret
+): JsonRequest {
   return {
     method: 'POST',
     path,
@@ -63,8 +67,7 @@ function routes(overrides?: {
     input: Readonly<ValidateGovernedHumanActionReceiptRequest>
   ) => Promise<Readonly<GovernedHumanActionReceipt>>;
 }) {
-  const materializeOrResolve =
-    overrides?.materialize ?? vi.fn(() => Promise.resolve(receipt));
+  const materializeOrResolve = overrides?.materialize ?? vi.fn(() => Promise.resolve(receipt));
   const validateCurrent = overrides?.validate ?? vi.fn(() => Promise.resolve(receipt));
   const result = createGovernedHumanActionReceiptRoutes({
     internalServiceSecret: secret,
