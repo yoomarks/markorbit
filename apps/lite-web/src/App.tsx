@@ -47,12 +47,25 @@ export interface LiteAppProps {
   initialContentOpportunityId?: string;
 }
 
+const workSubnavigationSurfaces: readonly LiteSurface[] = [
+  'work',
+  'professional-review',
+  'execution-release',
+  'customers'
+];
+
 function workspaceRequired(description: string) {
   return <ErrorState title="Select a Workspace" description={description} />;
 }
 
-function WorkSubnavigation({ surface, workspaceId }: { surface: LiteSurface; workspaceId: string }) {
-  if (!['work', 'professional-review', 'execution-release', 'customers'].includes(surface)) return null;
+function WorkSubnavigation({
+  surface,
+  workspaceId
+}: {
+  surface: LiteSurface;
+  workspaceId: string;
+}) {
+  if (!workSubnavigationSurfaces.includes(surface)) return null;
   const items = [
     { label: 'Overview', surface: 'work' },
     { label: 'Professional Review', surface: 'professional-review' },
@@ -119,6 +132,10 @@ export function LiteApp({
   const isWorkHub = surface === 'work';
   const workContext = primary === 'work';
   const currentQuery = new URLSearchParams(window.location.search);
+  const contentOpportunityId =
+    initialContentOpportunityId ?? currentQuery.get('contentOpportunityId') ?? undefined;
+  const professionalReviewCaseId =
+    initialReviewCaseId ?? currentQuery.get('professionalReviewCaseId') ?? undefined;
 
   return (
     <AppShell
@@ -181,12 +198,7 @@ export function LiteApp({
             <ContentStudio
               workspaceId={activeWorkspaceId}
               {...(contentStudioClient ? { client: contentStudioClient } : {})}
-              {...((initialContentOpportunityId ?? currentQuery.get('contentOpportunityId'))
-                ? {
-                    initialContentOpportunityId:
-                      initialContentOpportunityId ?? currentQuery.get('contentOpportunityId')!
-                  }
-                : {})}
+              {...(contentOpportunityId ? { initialContentOpportunityId: contentOpportunityId } : {})}
             />
           ) : (
             workspaceRequired(
@@ -207,12 +219,7 @@ export function LiteApp({
           <ProfessionalReview
             state={state}
             workspaceId={activeWorkspaceId}
-            {...(initialReviewCaseId || currentQuery.get('professionalReviewCaseId')
-              ? {
-                  initialSelected:
-                    initialReviewCaseId ?? currentQuery.get('professionalReviewCaseId')!
-                }
-              : {})}
+            {...(professionalReviewCaseId ? { initialSelected: professionalReviewCaseId } : {})}
           />
         ) : surface === 'execution-release' ? (
           <ExecutionReleaseView
