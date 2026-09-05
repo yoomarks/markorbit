@@ -204,8 +204,6 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/node@22.20.1)(jsdom@26.1.0)(tsx@4.23.1)
 
-  apps/provider-web: {}
-
   packages/ai:
     dependencies:
       '@markorbit/contracts':
