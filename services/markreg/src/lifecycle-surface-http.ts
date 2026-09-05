@@ -6,6 +6,11 @@ import {
 } from '@markorbit/contracts';
 import type { RecommendedActionId } from '@markorbit/contracts/evidence-lifecycle';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  ExaminationStageReadService,
+  type ExaminationLifecycleReader
+} from './examination-stage-read.js';
+import { createMarkRegExaminationStageReadRoutes } from './examination-stage-read-http.js';
 import type { FormalMatterRepository } from './formal-matter.js';
 import {
   LifecycleProjectionError,
@@ -123,7 +128,19 @@ async function requireMatter(
 export function createMarkRegLifecycleSurfaceRoutes(
   options: MarkRegLifecycleSurfaceRouteOptions
 ): JsonRoute[] {
+  const examinationLifecycle: ExaminationLifecycleReader = {
+    getCurrentView: (workspaceId, formalMatterId) =>
+      options.lifecycleServiceFor(workspaceId).getCurrentView(workspaceId, formalMatterId),
+    listEvents: (workspaceId, formalMatterId) =>
+      options.lifecycleServiceFor(workspaceId).listEvents(workspaceId, formalMatterId)
+  };
+  const examinationRoutes = createMarkRegExaminationStageReadRoutes({
+    internalServiceSecret: options.internalServiceSecret,
+    service: new ExaminationStageReadService(options.formalMatterRepository, examinationLifecycle)
+  });
+
   return [
+    ...examinationRoutes,
     {
       method: 'GET',
       path: '/v1/formal-matters/:formalMatterId/lifecycle',
