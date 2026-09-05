@@ -36,7 +36,7 @@ export interface GovernedWorkspaceMutationPolicy {
 }
 
 export interface GovernedWorkspaceMutationOptions {
-  authenticationClient?: CoreAuthenticationClient;
+  authenticationClient?: CoreAuthenticationClient | undefined;
   csrfSecret: string;
   allowedOrigins: readonly string[];
 }
