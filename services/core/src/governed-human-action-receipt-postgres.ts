@@ -54,7 +54,10 @@ function fromRow(row: ReceiptRow): Readonly<GovernedHumanActionReceipt> {
   });
 }
 
-function exactReplay(existing: Readonly<GovernedHumanActionReceipt>, incoming: Readonly<GovernedHumanActionReceipt>) {
+function exactReplay(
+  existing: Readonly<GovernedHumanActionReceipt>,
+  incoming: Readonly<GovernedHumanActionReceipt>
+) {
   return (
     existing.workspaceId === incoming.workspaceId &&
     existing.userId === incoming.userId &&
@@ -68,7 +71,11 @@ function exactReplay(existing: Readonly<GovernedHumanActionReceipt>, incoming: R
   );
 }
 
-async function lock(client: QueryClient, workspaceId: string, idempotencyKey: string): Promise<void> {
+async function lock(
+  client: QueryClient,
+  workspaceId: string,
+  idempotencyKey: string
+): Promise<void> {
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
     `core-governed-human-action:${workspaceId}:${idempotencyKey}`
   ]);
