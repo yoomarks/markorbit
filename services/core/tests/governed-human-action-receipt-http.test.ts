@@ -28,7 +28,7 @@ function materialization(): GovernedHumanActionReceiptMaterializationV1 {
 function authority(): GovernedHumanActionReceiptAuthorityV1 {
   const rows = new Map<string, GovernedHumanActionReceiptV1>();
   return {
-    async materialize(input) {
+    materialize(input) {
       const existing = [...rows.values()].find(
         (row) =>
           row.kind === input.kind &&
@@ -37,7 +37,7 @@ function authority(): GovernedHumanActionReceiptAuthorityV1 {
           row.membershipId === input.membershipId &&
           row.idempotencyKeySha256 === input.idempotencyKeySha256
       );
-      if (existing) return existing;
+      if (existing) return Promise.resolve(existing);
       const receiptId = 'governed-human-action-receipt_01900000-0000-7000-8000-000000000001';
       const receipt: GovernedHumanActionReceiptV1 = {
         ...input,
@@ -46,10 +46,10 @@ function authority(): GovernedHumanActionReceiptAuthorityV1 {
         createdAt: '2026-09-05T08:00:01.000Z'
       };
       rows.set(receiptId, receipt);
-      return receipt;
+      return Promise.resolve(receipt);
     },
-    async get(receiptId) {
-      return rows.get(receiptId);
+    get(receiptId) {
+      return Promise.resolve(rows.get(receiptId));
     }
   };
 }
