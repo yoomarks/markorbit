@@ -1,88 +1,13 @@
-name: Temporary MGSN 825 Runtime Parser Fix
+name: Temporary MGSN 825 Parser Helper Disabled
 
 on:
-  push:
-    branches:
-      - tmp-mgsn-825-prettier-write
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch-and-push:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout helper
-        uses: actions/checkout@v4
-        with:
-          ref: tmp-mgsn-825-prettier-write
-          path: helper
-      - name: Checkout target
-        uses: actions/checkout@v4
-        with:
-          ref: mgsn-governed-network-http-825
-          fetch-depth: 0
-          path: target
-      - name: Replay onto current main and apply typed parsers
-        working-directory: target
-        run: |
-          test "$(git rev-parse HEAD)" = "072e643389be05599d2a80926f4d47394fe52abf"
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "ab8252a3814e9bc9fa8f2ce87e0a5a7ee8128e2a"
-          git rebase origin/main
-          python3 ../helper/.agents/mgsn-825-parser-fix.py
-          python3 - <<'PY'
-          from pathlib import Path
-
-          source = Path('services/mgsn/src/governed-network-http.ts')
-          text = source.read_text()
-          old = """: CreateOrReplaceProviderSelectionCommandV1['expectedCurrent'] extends infer _T
-            ? Readonly<{ providerSelectionId: ProviderSelectionId; version: number; scopeVersion: number }>
-            : never {"""
-          new = ": Readonly<{ providerSelectionId: ProviderSelectionId; version: number; scopeVersion: number }> {"
-          if old not in text:
-              raise SystemExit('selection version helper type marker missing')
-          source.write_text(text.replace(old, new, 1))
-
-          test = Path('services/mgsn/tests/governed-network-http.test.ts')
-          text = test.read_text()
-          old = '/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- boundary tests intentionally capture normalized transport commands. */'
-          new = '/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- boundary tests intentionally capture normalized transport commands. */'
-          if old not in text:
-              raise SystemExit('test lint boundary marker missing')
-          test.write_text(text.replace(old, new, 1))
-          PY
-          npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
-          git diff --check
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: target/pnpm-lock.yaml
-      - name: Install dependencies
-        working-directory: target
-        run: pnpm install --frozen-lockfile
-      - name: Check MGSN parser boundary
-        working-directory: target
-        run: |
-          pnpm --filter @markorbit/mgsn-service exec eslint src/governed-network-http.ts tests/governed-network-http.test.ts --fix
-          pnpm --filter @markorbit/mgsn-service lint
-          pnpm --filter @markorbit/mgsn-service typecheck
-          pnpm --filter @markorbit/mgsn-service... build
-          pnpm --filter @markorbit/mgsn-service exec vitest run tests/governed-network-http.test.ts
-          pnpm exec prettier --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
-          git diff --check
-      - name: Commit and push exact owner-local patch
-        working-directory: target
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
-          git diff --cached --check
-          git commit -m "fix(mgsn): parse governed transport DTOs"
-          git push --force-with-lease origin HEAD:mgsn-governed-network-http-825
+      - run: echo "Temporary MGSN #825 helper is disabled after successful replay."
