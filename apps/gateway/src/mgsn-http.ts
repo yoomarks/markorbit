@@ -424,160 +424,168 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       return mapAuthentication(error);
     }
   };
-  const resolveGovernedPrincipal = async (request: JsonRequest) => {
-    const workspaceId = request.headers['x-markorbit-workspace-id'];
-    if (!workspaceId)
-      throw new HttpError(
-        400,
-        'INVALID_WORKSPACE_CONTEXT',
-        'Trusted Workspace header is required for governed-network operations.'
-      );
-    try {
-      return await authentication().resolveWorkspace(
-        requestToken(request),
-        workspaceId,
-        correlation(request)
-      );
-    } catch (error) {
-      return mapAuthentication(error);
-    }
-  };
+
   const forward = async (
     request: JsonRequest,
+    downstream: string,
     principal: WorkspacePrincipal,
-    provider: boolean,
-    networkParticipationOwnerAuthority?: NetworkParticipationOwnerAuthority,
-    governedHumanAction?: string
+    extraHeaders: Record<string, string> = {}
   ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
         503,
-        'MGSN_INTERNAL_AUTHORIZATION_UNAVAILABLE',
-        'MGSN internal authorization is unavailable.',
+        'MGSN_SERVICE_UNAVAILABLE',
+        'MGSN service is unavailable.',
         true
       );
-    const search = new URLSearchParams(request.query).toString();
-    try {
-      const response = await fetch(
-        `${options.mgsnUrl}${downstreamPath(request.path, provider)}${search ? `?${search}` : ''}`,
-        {
-          method: request.method,
-          headers: {
-            'content-type': 'application/json',
-            'x-markorbit-internal-authorization': options.internalServiceSecret,
-            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
-            'x-markorbit-workspace-id': principal.workspaceId,
-            ...(networkParticipationOwnerAuthority
-              ? {
-                  'x-markorbit-network-participation-owner-authority':
-                    networkParticipationOwnerAuthority
-                }
-              : {}),
-            ...(governedHumanAction
-              ? { [GOVERNED_HUMAN_ACTION_HEADER_NAME]: governedHumanAction }
-              : {}),
-            ...(correlation(request) ? { 'x-correlation-id': correlation(request)! } : {}),
-            ...(request.headers['idempotency-key']
-              ? { 'idempotency-key': request.headers['idempotency-key'] }
-              : {})
-          },
-          ...(request.method === 'GET' ? {} : { body: JSON.stringify(request.body ?? {}) })
+    const response = await fetch(`${options.mgsnUrl}${downstream}`, {
+      method: request.method,
+      headers: {
+        'content-type': 'application/json',
+        'x-markorbit-internal-authorization': options.internalServiceSecret,
+        'x-markorbit-workspace-principal': encodeInternalWorkspacePrincipal(principal),
+        ...(correlation(request) ? { 'x-correlation-id': correlation(request)! } : {}),
+        ...(request.headers['idempotency-key']
+          ? { 'idempotency-key': request.headers['idempotency-key'] }
+          : {}),
+        ...extraHeaders
+      },
+      ...(request.method === 'POST' ? { body: JSON.stringify(request.body ?? {}) } : {})
+    });
+    const responseBody = await response.json();
+    return json(response.status, responseBody);
+  };
+
+  const routes: JsonRoute[] = [];
+  for (const [method, path] of operationsRoutes) {
+    routes.push({
+      method,
+      path,
+      handler: async (request) => {
+        const principal = await resolvePrincipal(request, false);
+        try {
+          requirePermission(principal, method !== 'GET');
+        } catch (error) {
+          return mapAuthentication(error);
         }
-      );
-      return json(response.status, await response.json());
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(503, 'MGSN_UNAVAILABLE', 'MGSN service is unavailable.', true);
-    }
-  };
-  const handle = async (request: JsonRequest, provider: boolean) => {
-    const mutation = request.method !== 'GET';
-    if (provider && mutation) forbidProviderIdentityPayload(request);
-    try {
-      const principal = await resolvePrincipal(request, provider);
-      requirePermission(principal, mutation);
-      if (provider && !mutation) validateProviderWorkQuery(request);
-      if (mutation) {
-        requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-        validateCsrf(
-          principal.sessionId,
-          options.csrfSecret,
-          request.headers['x-markorbit-csrf-token']
-        );
+        return forward(request, downstreamPath(request.path, false), principal);
       }
-      return forward(request, principal, provider);
-    } catch (error) {
-      return mapAuthentication(error);
-    }
-  };
-  const handleGoverned = async (request: JsonRequest, route: GovernedRouteDefinition) => {
-    try {
-      const principal = await resolveGovernedPrincipal(request);
-      requireGovernedPermission(principal, route.permission);
-      requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-      validateCsrf(
-        principal.sessionId,
-        options.csrfSecret,
-        request.headers['x-markorbit-csrf-token']
-      );
-      forbidBrowserGovernedAuthority(request);
-      if (route.idempotency) requireGovernedIdempotency(request);
-      const client = authentication();
-      const humanAction = route.humanAction
-        ? await governedHumanActionEnvelope(
-            request,
-            principal,
-            route.humanAction,
-            client,
-            correlation(request)
-          )
-        : undefined;
-      return forward(request, principal, false, undefined, humanAction);
-    } catch (error) {
-      if (error instanceof GovernedHumanActionReceiptClientError) return mapGovernedReceipt(error);
-      return mapAuthentication(error);
-    }
-  };
-  const handleNetworkParticipation = async (request: JsonRequest) => {
-    const mutation = request.method !== 'GET';
-    try {
-      const principal = await resolvePrincipal(request, true);
-      const ownerAuthority = requireNetworkParticipationPermission(principal, mutation);
-      if (mutation) {
-        forbidNetworkParticipationAuthorityPayload(request);
-        requireNetworkParticipationIdempotency(request);
-        requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-        validateCsrf(
-          principal.sessionId,
-          options.csrfSecret,
-          request.headers['x-markorbit-csrf-token']
-        );
-      }
-      return forward(request, principal, false, ownerAuthority);
-    } catch (error) {
-      return mapAuthentication(error);
-    }
-  };
-  return [
-    ...governedRoutes.map((route): JsonRoute => ({
+    });
+  }
+  for (const route of governedRoutes) {
+    routes.push({
       method: route.method,
       path: route.path,
-      handle: (request) => handleGoverned(request, route)
-    })),
-    ...networkParticipationRoutes.map(([method, path]): JsonRoute => ({
+      handler: async (request) => {
+        forbidBrowserGovernedAuthority(request);
+        const principal = await resolvePrincipal(request, false);
+        if (route.idempotency) requireGovernedIdempotency(request);
+        if (route.permission === 'workspace:manage') {
+          try {
+            requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+            validateCsrf(
+              principal.sessionId,
+              options.csrfSecret,
+              request.headers['x-markorbit-csrf-token']
+            );
+          } catch (error) {
+            return mapAuthentication(error);
+          }
+        }
+        try {
+          requireGovernedPermission(principal, route.permission);
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+        const extraHeaders = route.humanAction
+          ? {
+              [GOVERNED_HUMAN_ACTION_HEADER_NAME]: await governedHumanActionEnvelope(
+                request,
+                principal,
+                route.humanAction,
+                authentication(),
+                correlation(request)
+              )
+            }
+          : {};
+        return forward(request, downstreamPath(request.path, false), principal, extraHeaders);
+      }
+    });
+  }
+  for (const [method, path] of networkParticipationRoutes) {
+    routes.push({
       method,
       path,
-      handle: handleNetworkParticipation
-    })),
-    ...operationsRoutes.map(([method, path]): JsonRoute => ({
+      handler: async (request) => {
+        const mutation = method === 'POST';
+        if (mutation) {
+          try {
+            requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+          } catch (error) {
+            return mapAuthentication(error);
+          }
+          forbidNetworkParticipationAuthorityPayload(request);
+          requireNetworkParticipationIdempotency(request);
+        }
+        const principal = await resolvePrincipal(request, false);
+        if (mutation) {
+          try {
+            validateCsrf(
+              principal.sessionId,
+              options.csrfSecret,
+              request.headers['x-markorbit-csrf-token']
+            );
+          } catch (error) {
+            return mapAuthentication(error);
+          }
+        }
+        let authority: NetworkParticipationOwnerAuthority;
+        try {
+          authority = requireNetworkParticipationPermission(principal, mutation);
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+        return forward(request, downstreamPath(request.path, false), principal, {
+          'x-markorbit-network-participation-authority': authority
+        });
+      }
+    });
+  }
+  for (const [method, path] of providerRoutes) {
+    routes.push({
       method,
       path,
-      handle: (request) => handle(request, false)
-    })),
-    ...providerRoutes.map(([method, path]): JsonRoute => ({
-      method,
-      path,
-      handle: (request) => handle(request, true)
-    }))
-  ];
+      handler: async (request) => {
+        const mutation = method === 'POST';
+        if (mutation) {
+          try {
+            requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+          } catch (error) {
+            return mapAuthentication(error);
+          }
+          requireNetworkParticipationIdempotency(request);
+          forbidProviderIdentityPayload(request);
+        } else validateProviderWorkQuery(request);
+        const principal = await resolvePrincipal(request, true);
+        if (mutation) {
+          try {
+            validateCsrf(
+              principal.sessionId,
+              options.csrfSecret,
+              request.headers['x-markorbit-csrf-token']
+            );
+          } catch (error) {
+            return mapAuthentication(error);
+          }
+        }
+        try {
+          requireNetworkParticipationPermission(principal, mutation);
+        } catch (error) {
+          return mapAuthentication(error);
+        }
+        return forward(request, downstreamPath(request.path, true), principal);
+      }
+    });
+  }
+  return routes;
 }
