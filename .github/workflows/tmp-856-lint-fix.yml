@@ -1,0 +1,56 @@
+name: tmp-856-lint-fix
+
+on:
+  push:
+    branches:
+      - tmp/856-lint-fix
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/856-lint-fix
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply fail-closed row mapping and lint fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          source = Path('services/markreg/src/workspace-action-read.ts')
+          text = source.read_text()
+          marker = "function optionalText(value: unknown): string | undefined {\n  return typeof value === 'string' && value.trim() ? value : undefined;\n}\n"
+          helper = marker + "\nfunction requiredText(value: unknown, field: string): string {\n  if (typeof value !== 'string' || !value.trim())\n    throw new WorkspaceActionReadError(\n      'WORKSPACE_ACTION_TRUTH_UNAVAILABLE',\n      `Workspace Action source ${field} is unavailable.`,\n      503,\n      true\n    );\n  return value;\n}\n"
+          if marker not in text:
+              raise SystemExit('optionalText marker not found')
+          text = text.replace(marker, helper, 1)
+          text = re.sub(r"String\(row\.([a-z0-9_]+)\)", lambda m: f"requiredText(row.{m.group(1)}, '{m.group(1)}')", text)
+          source.write_text(text)
+
+          test = Path('services/markreg/tests/workspace-action-read.test.ts')
+          text = test.read_text()
+          text = text.replace("import type { FormalMatterId } from '@markorbit/contracts';\n", '')
+          text = text.replace("const formalMatterId = `formal-matter_${suffix}` as FormalMatterId;", "const formalMatterId = `formal-matter_${suffix}`;")
+          test.write_text(text)
+          PY
+          pnpm exec prettier --write \
+            services/markreg/src/workspace-action-read.ts \
+            services/markreg/tests/workspace-action-read.test.ts
+          pnpm --filter @markorbit/markreg-service lint
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/markreg/src/workspace-action-read.ts services/markreg/tests/workspace-action-read.test.ts
+          git commit -m "tmp: fix #856 strict row mapping lint [skip ci]"
+          git push origin HEAD:tmp/856-lint-fix
