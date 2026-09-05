@@ -48,5 +48,4 @@ jobs:
             apps/operations-console/src/cognitive-dependency-paths.ts \
             apps/operations-console/src/cognitive-dependency-workspace.tsx
           git commit -m "[OPERATIONS-P0] Apply exact Prettier 3.9.6 output"
-          git pull --rebase origin operations/850-cognitive-blocker-paths
           git push origin HEAD:operations/850-cognitive-blocker-paths
