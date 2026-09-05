@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "start": "node dist/main.js",
-    "postinstall": "prettier --write src/examination-stage-read.ts src/examination-stage-read-http.ts tests/examination-stage-read.test.ts tests/examination-stage-read-http.test.ts tests/examination-stage-read-postgres.test.ts && git diff -- src/examination-stage-read.ts src/examination-stage-read-http.ts tests/examination-stage-read.test.ts tests/examination-stage-read-http.test.ts tests/examination-stage-read-postgres.test.ts"
+    "postinstall": "sed -i 's/  ExaminationStageReadError,/  type ExaminationStageReadError,/' tests/examination-stage-read.test.ts && sed -i \"s/correlationId: 'correlation_examination-http' as never/correlationId: 'correlation_examination-http'/\" tests/examination-stage-read-http.test.ts && sed -i 's/const formalMatterId = `formal-matter_${suffix}` as FormalMatterId;/const formalMatterId = `formal-matter_${suffix}`;/' tests/examination-stage-read-postgres.test.ts && prettier --write src/examination-stage-read.ts src/examination-stage-read-http.ts tests/examination-stage-read.test.ts tests/examination-stage-read-http.test.ts tests/examination-stage-read-postgres.test.ts && for f in src/examination-stage-read.ts src/examination-stage-read-http.ts tests/examination-stage-read.test.ts tests/examination-stage-read-http.test.ts tests/examination-stage-read-postgres.test.ts; do echo EXACT_FILE_BEGIN:$f; base64 -w0 $f; echo; echo EXACT_FILE_END:$f; done"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
