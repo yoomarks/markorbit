@@ -17,9 +17,10 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
         actions={<Badge>Work overview</Badge>}
       />
       <Alert tone="info" title="Different work surfaces have different maturity">
-        Professional Review is authenticated Workspace work. Execution Release is API-backed but is
-        not yet promoted as fully authenticated Workspace work. Customers remains a fixture-only
-        preview until a canonical Customer owner is available.
+        Professional Review and Execution Release are authenticated Workspace work. Execution
+        Release consumes durable governed preparation truth but does not itself perform an external
+        filing or execution. Customers remains a fixture-only preview until a canonical Customer
+        owner is available.
       </Alert>
       <div className="lite-grid" aria-label="Work surfaces">
         <Card>
@@ -44,14 +45,15 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
               <p>Governed execution preparation</p>
               <h2>Execution Release</h2>
             </div>
-            <Badge>Hardening in progress</Badge>
+            <Badge>Authenticated governed</Badge>
           </div>
           <p>
-            Inspect bounded release evidence and prepared execution state. This surface does not
-            mean a filing was submitted, and its browser authority boundary is still being hardened.
+            Inspect exact durable release evidence and prepared execution task receipt truth for the
+            selected Workspace. Release does not mean a filing was submitted, a provider was
+            appointed, payment occurred, or Official Truth changed.
           </p>
           <Button variant="secondary" onClick={() => open('work-execution-release')}>
-            Open bounded release surface
+            Open Execution Release
           </Button>
         </Card>
         <Card>
