@@ -67,8 +67,9 @@ const governedHumanActionReceipts = new GovernedHumanActionReceiptService({
   currentWorkspaceAuthority: currentWorkspaceAuthorityService
 });
 const currentWorkspaceAuthority = Object.assign(currentWorkspaceAuthorityService, {
-  materializeOrResolve:
-    governedHumanActionReceipts.materializeOrResolve.bind(governedHumanActionReceipts),
+  materializeOrResolve: governedHumanActionReceipts.materializeOrResolve.bind(
+    governedHumanActionReceipts
+  ),
   validateCurrent: governedHumanActionReceipts.validateCurrent.bind(governedHumanActionReceipts)
 });
 const accountAccess = new AccountAccessService(
