@@ -20,30 +20,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('apps/gateway/src/mgsn-http.ts')
-          s = p.read_text()
-          old = """  const materialize = authentication.materializeGovernedHumanActionReceipt;
-  if (!materialize)
-"""
-          new = """  if (!authentication.materializeGovernedHumanActionReceipt)
-"""
-          if old not in s:
-              raise SystemExit('materialize extraction block not found')
-          s = s.replace(old, new, 1)
-          old = "receipt = await materialize.call(authentication, materialization, correlationId);"
-          new = "receipt = await authentication.materializeGovernedHumanActionReceipt(materialization, correlationId);"
-          if old not in s:
-              raise SystemExit('materialize call not found')
-          s = s.replace(old, new, 1)
-          p.write_text(s)
-          PY
-          pnpm exec prettier --write apps/gateway/src/mgsn-http.ts
-          git diff --check
+      - run: perl -0pi -e 's/  const materialize = authentication\.materializeGovernedHumanActionReceipt;\n  if \(!materialize\)\n/  if (!authentication.materializeGovernedHumanActionReceipt)\n/' apps/gateway/src/mgsn-http.ts
+      - run: perl -0pi -e 's/receipt = await materialize\.call\(authentication, materialization, correlationId\);/receipt = await authentication.materializeGovernedHumanActionReceipt(materialization, correlationId);/' apps/gateway/src/mgsn-http.ts
+      - run: pnpm exec prettier --write apps/gateway/src/mgsn-http.ts
       - run: |
+          git diff --check
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add apps/gateway/src/mgsn-http.ts
