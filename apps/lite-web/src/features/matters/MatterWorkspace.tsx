@@ -48,16 +48,17 @@ export function MatterWorkspace({
     () => suppliedClient ?? createMatterWorkspaceClient(workspaceId),
     [suppliedClient, workspaceId]
   );
-  const [tick, setTick] = useState(0),
-    [data, setData] = useState<FormalMatterListResponse>(),
-    [detail, setDetail] = useState<FormalMatter>(),
-    [error, setError] = useState<{ status?: number; message: string }>(),
-    [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+  const [data, setData] = useState<FormalMatterListResponse>();
+  const [detail, setDetail] = useState<FormalMatter>();
+  const [error, setError] = useState<{ status?: number; message: string }>();
+  const [loading, setLoading] = useState(true);
   const origin = useRef<string>();
   const priorWorkspace = useRef(workspaceId);
 
   useEffect(() => {
-    if (priorWorkspace.current !== workspaceId && current().has('formalMatterId')) {
+    const workspaceChanged = priorWorkspace.current !== workspaceId;
+    if (workspaceChanged && current().has('formalMatterId')) {
       priorWorkspace.current = workspaceId;
       navigateMatter(workspaceId, { formalMatterId: undefined }, true);
     }
@@ -69,12 +70,12 @@ export function MatterWorkspace({
     return () => removeEventListener('popstate', followLocation);
   }, []);
 
-  const query = current(),
-    selected = query.get('formalMatterId') ?? '',
-    search = query.get('search') ?? '',
-    status = query.get('status') ?? '',
-    type = query.get('type') ?? '',
-    page = query.get('page') ?? '1';
+  const query = current();
+  const selected = query.get('formalMatterId') ?? '';
+  const search = query.get('search') ?? '';
+  const status = query.get('status') ?? '';
+  const type = query.get('type') ?? '';
+  const page = query.get('page') ?? '1';
 
   useEffect(() => {
     const controller = new AbortController();
@@ -96,6 +97,7 @@ export function MatterWorkspace({
             controller.signal
           )
           .then((list) => ({ list }));
+
     void request
       .then((result) => {
         if ('formalMatter' in result) setDetail(result.formalMatter);
@@ -129,34 +131,34 @@ export function MatterWorkspace({
   }, [selected, data]);
 
   if (loading) return <LoadingState label="Loading durable Matters" />;
-  if (error)
+  if (error) {
+    const title =
+      error.status === 404
+        ? 'Matter not found'
+        : error.status === 403
+          ? 'Matter access denied'
+          : error.status === 401
+            ? 'Sign in required'
+            : error.status === 503
+              ? 'Matter service unavailable'
+              : 'Matters unavailable';
     return (
       <ErrorState
-        title={
-          error.status === 404
-            ? 'Matter not found'
-            : error.status === 403
-              ? 'Matter access denied'
-              : error.status === 401
-                ? 'Sign in required'
-                : error.status === 503
-                  ? 'Matter service unavailable'
-                  : 'Matters unavailable'
-        }
+        title={title}
         description={error.message}
         onRetry={() => setTick((value) => value + 1)}
       />
     );
-  if (detail)
+  }
+  if (detail) {
     return (
       <MatterDetail
         matter={detail}
         client={client}
-        onBack={() => {
-          navigateMatter(workspaceId, { formalMatterId: undefined });
-        }}
+        onBack={() => navigateMatter(workspaceId, { formalMatterId: undefined })}
       />
     );
+  }
 
   return (
     <>
@@ -289,6 +291,10 @@ function MatterDetail({
   onBack: () => void;
 }) {
   const preparation = matter.sourceSnapshot.preparation;
+  const readyAtCreation = matter.sourceSnapshot.matterDraft.readiness.readyForProfessionalReview;
+  const readinessLabel = readyAtCreation
+    ? 'ready for professional review at creation'
+    : 'not ready for professional review at creation';
   const [startingReview, setStartingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
 
@@ -337,11 +343,8 @@ function MatterDetail({
         <p className="lite-eyebrow">NEXT ACTION</p>
         <h2>Review the current Matter before moving it forward</h2>
         <p>
-          This record was {matter.sourceSnapshot.matterDraft.readiness.readyForProfessionalReview
-            ? 'ready for professional review at creation'
-            : 'not ready for professional review at creation'}.
-          Starting or resuming review records bounded professional review work; it does not submit a
-          filing or create Official Truth.
+          This record was {readinessLabel}. Starting or resuming review records bounded professional
+          review work; it does not submit a filing or create Official Truth.
         </p>
         <Button disabled={startingReview} onClick={() => void startReview()}>
           {startingReview ? 'Starting Review…' : 'Start or Resume Professional Review'}
@@ -354,10 +357,19 @@ function MatterDetail({
             items={[
               { key: 'Status', value: matter.status },
               { key: 'Matter type', value: matter.kind },
-              { key: 'Applicant / owner', value: preparation.applicantName ?? 'Not captured' },
-              { key: 'Jurisdiction', value: preparation.targetJurisdiction ?? 'Not captured' },
+              {
+                key: 'Applicant / owner',
+                value: preparation.applicantName ?? 'Not captured'
+              },
+              {
+                key: 'Jurisdiction',
+                value: preparation.targetJurisdiction ?? 'Not captured'
+              },
               { key: 'Classes', value: preparation.classes.join(', ') || 'Not captured' },
-              { key: 'Goods / services', value: preparation.goodsServices ?? 'Not captured' }
+              {
+                key: 'Goods / services',
+                value: preparation.goodsServices ?? 'Not captured'
+              }
             ]}
           />
         </Card>
@@ -399,7 +411,10 @@ function MatterDetail({
                   key: 'Matter Draft',
                   value: `${matter.sourceMatterDraftId} · v${matter.sourceMatterDraftVersion}`
                 },
-                { key: 'Quote', value: `${matter.sourceQuoteId} · v${matter.sourceQuoteVersion}` },
+                {
+                  key: 'Quote',
+                  value: `${matter.sourceQuoteId} · v${matter.sourceQuoteVersion}`
+                },
                 { key: 'Snapshot schema', value: `v${matter.snapshotSchemaVersion}` },
                 { key: 'Integrity', value: `SHA-256 captured · ${matter.snapshotSha256}` }
               ]}
