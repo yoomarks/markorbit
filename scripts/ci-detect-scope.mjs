@@ -296,8 +296,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     core || lite || capability || markreg || execution || mgsn || payment || persistence;
   const integration = postgres || gateway;
   const fullTypecheck = workspaceTopology || compilerConfiguration || dependencyTopology;
-  const l1Fast = !docsOnly;
   const l2Merge = integration || browser || hardGate;
+  const l1Fast = !docsOnly || l2Merge || postgres;
   const l3Full = hardGate || highRiskRoot || productionRuntime;
 
   return {
