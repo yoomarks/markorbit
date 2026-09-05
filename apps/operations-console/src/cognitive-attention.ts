@@ -76,12 +76,14 @@ function groupForPath(path: CognitiveDependencyPath): CognitiveAttentionGroup {
 }
 
 function needsAttention(path: CognitiveDependencyPath): string {
-  if (path.kind === 'BLOCKER') return `Owner reports an open blocker condition: ${path.title}.`;
+  if (path.kind === 'BLOCKER')
+    return `Owner reports an open blocker condition: ${path.title}.`;
   if (path.kind === 'FINDING') return `Owner audit reports a finding: ${path.title}.`;
   if (path.kind === 'LIMITATION' && path.id.includes('audit-unavailable')) {
     return `An owner audit dependency is unavailable: ${path.title}.`;
   }
-  if (path.kind === 'LIMITATION') return `Owner truth is bounded by a recording limitation: ${path.title}.`;
+  if (path.kind === 'LIMITATION')
+    return `Owner truth is bounded by a recording limitation: ${path.title}.`;
   return `An owner relationship or state is not established: ${path.title}.`;
 }
 
@@ -126,7 +128,8 @@ function ownerUnavailableAttention(
 ): CognitiveAttentionItem | null {
   if (result.status !== 'unavailable') return null;
   const ownerLabel = owner === 'CORE' ? 'Core' : 'Capability Engine';
-  const status = result.error.status === null ? 'transport unavailable' : `HTTP ${result.error.status}`;
+  const status =
+    result.error.status === null ? 'transport unavailable' : `HTTP ${result.error.status}`;
   return {
     id: `attention:${owner.toLowerCase()}:owner-read-unavailable`,
     owner,
@@ -143,7 +146,10 @@ function ownerUnavailableAttention(
     resolutionMode: 'EXTERNAL_OWNER_DEPENDENCY',
     evidence: [
       { label: 'Error code', value: result.error.code },
-      { label: 'HTTP status', value: result.error.status === null ? 'Unavailable' : String(result.error.status) },
+      {
+        label: 'HTTP status',
+        value: result.error.status === null ? 'Unavailable' : String(result.error.status)
+      },
       { label: 'Owner message', value: result.error.message }
     ],
     explanationTargetId:
