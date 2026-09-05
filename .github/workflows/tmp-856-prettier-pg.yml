@@ -1,0 +1,35 @@
+name: tmp-856-prettier-pg
+
+on:
+  push:
+    branches:
+      - tmp/856-prettier-pg
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/856-prettier-pg
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact file
+        run: |
+          pnpm exec prettier --write services/markreg/tests/workspace-action-read-postgres.test.ts
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/markreg/tests/workspace-action-read-postgres.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "tmp: format #856 postgres test [skip ci]"
+            git push origin HEAD:tmp/856-prettier-pg
+          fi
