@@ -157,7 +157,8 @@ describe('Brain Build Run truth language', () => {
   it('does not infer empty inventory when the owner availability shape is absent', () => {
     expect(describeBrainBuildRuns(undefined)).toEqual({
       title: 'Brain Build Run availability unavailable',
-      detail: 'No valid owner availability field is present; the console does not infer an empty inventory.'
+      detail:
+        'No valid owner availability field is present; the console does not infer an empty inventory.'
     });
   });
 });

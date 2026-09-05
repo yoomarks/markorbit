@@ -147,14 +147,16 @@ export function describeBrainBuildRuns(value: unknown): Readonly<{
   }
   return {
     title: 'Brain Build Run availability unavailable',
-    detail: 'No valid owner availability field is present; the console does not infer an empty inventory.'
+    detail:
+      'No valid owner availability field is present; the console does not infer an empty inventory.'
   };
 }
 
 function OwnerUnavailable({ owner, error }: { owner: string; error: CognitiveOwnerReadFailure }) {
   return (
     <Alert tone="warning" title={`${owner} cognitive read unavailable`}>
-      {error.status === null ? error.code : `HTTP ${error.status} · ${error.code}`} · {error.message}
+      {error.status === null ? error.code : `HTTP ${error.status} · ${error.code}`} ·{' '}
+      {error.message}
     </Alert>
   );
 }
@@ -198,8 +200,8 @@ function CoreInventory({ value }: { value: JsonObject }) {
               return (
                 <li key={text(asset.brainAssetVersionId, text(asset.brainAssetId))}>
                   <strong>{text(asset.brainAssetId)}</strong> · {text(asset.assetType)} ·{' '}
-                  {text(asset.status)} · v{count(asset.version)} · confidence {count(confidence.score)}{' '}
-                  {text(confidence.band, '')}
+                  {text(asset.status)} · v{count(asset.version)} · confidence{' '}
+                  {count(confidence.score)} {text(confidence.band, '')}
                 </li>
               );
             })}
@@ -235,8 +237,9 @@ function CoreInventory({ value }: { value: JsonObject }) {
               const mission = object(improvement.researchMission);
               return (
                 <li key={text(trigger.triggerId, text(mission.researchMissionId))}>
-                  <strong>{text(trigger.triggerType)}</strong> · {text(trigger.triggerId)} · admitted{' '}
-                  {timestamp(trigger.admittedAt)} · mission {text(mission.researchMissionId)}
+                  <strong>{text(trigger.triggerType)}</strong> · {text(trigger.triggerId)} ·
+                  admitted {timestamp(trigger.admittedAt)} · mission{' '}
+                  {text(mission.researchMissionId)}
                 </li>
               );
             })}
@@ -286,7 +289,9 @@ function CapabilityInventory({ value }: { value: JsonObject }) {
         ) : (
           <ol>
             {capabilities.map((capability) => (
-              <li key={text(capability.runtimeCapabilityDefinitionId, text(capability.capabilityId))}>
+              <li
+                key={text(capability.runtimeCapabilityDefinitionId, text(capability.capabilityId))}
+              >
                 <strong>{text(capability.title, text(capability.capabilityId))}</strong> ·{' '}
                 {text(capability.capabilityId)}@{text(capability.capabilityVersion)} · definition v
                 {count(capability.version)}
@@ -328,7 +333,8 @@ function CapabilityInventory({ value }: { value: JsonObject }) {
               return (
                 <li key={`${text(policy.policyId)}:${count(policy.policyVersion)}`}>
                   <strong>{text(policy.policyId)}</strong> v{count(policy.policyVersion)} ·{' '}
-                  {text(policy.maturityClass)} · {text(policy.capabilityId)}@{text(policy.capabilityVersion)}
+                  {text(policy.maturityClass)} · {text(policy.capabilityId)}@
+                  {text(policy.capabilityVersion)}
                   {' · '}fingerprint {text(policy.policyFingerprintSha256)}
                   {policy.maturityClass === 'PRODUCTION_ADMISSIBLE'
                     ? ` · currentness method ${text(currentness.method)} / reference ${text(currentness.reference)}`
