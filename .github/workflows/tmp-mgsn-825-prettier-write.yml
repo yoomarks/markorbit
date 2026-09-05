@@ -1,4 +1,4 @@
-name: Temporary MGSN 825 Exact Transport Finish
+name: Temporary MGSN 825 Final Branch Refresh
 
 on:
   push:
@@ -9,30 +9,20 @@ permissions:
   contents: write
 
 jobs:
-  finish-and-push:
+  refresh-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          path: helper
-      - uses: actions/checkout@v4
-        with:
           ref: mgsn-governed-network-http-825
-          path: target
           fetch-depth: 0
-      - name: Apply owner-local transport hardening
-        working-directory: target
+      - name: Rebase exact hardened head onto current main
         run: |
-          test "$(git rev-parse HEAD)" = "8fb43ca9e911f86ec92e01559b48cf708e59edc9"
-          python3 ../helper/.agents/tmp-mgsn-825-finish.py
-          npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
-          git diff --check
-      - name: Commit exact transport hardening
-        working-directory: target
-        run: |
+          expected=14a1a291ca2c91559f0f29f502118d59eba1730b
+          test "$(git rev-parse HEAD)" = "$expected"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "36af06ec7d87b7c60e0bf755f4a94b4fad67d895"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
-          git diff --cached --quiet && exit 0
-          git commit -m "fix(mgsn): close remaining transport shape gaps"
-          git push origin HEAD:mgsn-governed-network-http-825
+          git rebase origin/main
+          git push --force-with-lease=refs/heads/mgsn-governed-network-http-825:$expected origin HEAD:mgsn-governed-network-http-825
