@@ -55,28 +55,40 @@ export interface CommercialAdminAccountInspection {
 export type GovernedHumanActionReceiptKind = 'PROVIDER_SELECTION' | 'CONTROLLED_HANDOFF';
 
 export interface GovernedHumanActionReceiptMaterializationV1 {
-  schemaVersion: 1;
-  kind: GovernedHumanActionReceiptKind;
   workspaceId: string;
   userId: string;
   membershipId: string;
   principalReference: string;
-  authorityReference: string;
-  idempotencyKeySha256: string;
-  requestFingerprintSha256: string;
+  kind: GovernedHumanActionReceiptKind;
+  mutationRoute: string;
+  reviewedActionDigest: string;
+  idempotencyKey: string;
   authenticatedAt: string;
 }
 
-export interface GovernedHumanActionReceiptV1 extends GovernedHumanActionReceiptMaterializationV1 {
+export interface GovernedHumanActionReceiptV1
+  extends GovernedHumanActionReceiptMaterializationV1 {
+  schemaVersion: 1;
   receiptId: string;
-  receiptReference: string;
+  receiptVersion: 1;
+  authorityReference: string;
+  authorityVersion: 1;
+  affirmativeHumanActionEvidenceReference: string;
+  source: 'CORE';
+  actorKind: 'HUMAN_USER';
+  workspaceVersion: number;
+  userVersion: number;
+  membershipVersion: number;
   createdAt: string;
 }
 
 export class GovernedHumanActionReceiptClientError extends Error {
   constructor(
     readonly status: 409 | 503,
-    readonly code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT' | 'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+    readonly code:
+      | 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT'
+      | 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+      | 'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
     message: string
   ) {
     super(message);
@@ -217,7 +229,7 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
   ): Promise<GovernedHumanActionReceiptV1> {
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}/internal/v1/governed-human-action-receipts`, {
+      response = await fetch(`${this.baseUrl}/internal/auth/governed-human-actions/receipts`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -230,20 +242,22 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     } catch {
       throw new GovernedHumanActionReceiptClientError(
         503,
-        'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
         'Governed human-action receipt authority is unavailable.'
       );
     }
-    if (response.status === 409)
-      throw new GovernedHumanActionReceiptClientError(
-        409,
-        'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
-        'Idempotency-Key was already bound to different governed human-action evidence.'
-      );
+    if (response.status === 409) {
+      const error = (await response.json()) as { code?: string };
+      const code =
+        error.code === 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+          ? 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+          : 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT';
+      throw new GovernedHumanActionReceiptClientError(409, code, 'Governed human action is stale.');
+    }
     if (!response.ok)
       throw new GovernedHumanActionReceiptClientError(
         503,
-        'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
         'Governed human-action receipt authority is unavailable.'
       );
     return response.json() as Promise<GovernedHumanActionReceiptV1>;
