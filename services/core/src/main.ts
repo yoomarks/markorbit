@@ -10,12 +10,13 @@ import {
   validateInternalServiceSecret
 } from './auth.js';
 import { createPostgresBrainCognitiveReadServiceV1 } from './brain-cognitive-read-postgres.js';
+import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
+import { PostgresGovernedHumanActionReceiptStore } from './governed-human-action-receipt.js';
 import {
   PostgresMembershipRepository,
   PostgresUserRepository,
   PostgresWorkspaceRepository
 } from './identity.js';
-import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
 import { createRuntime } from './index.js';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
@@ -86,6 +87,7 @@ const runtime = createRuntime({
   accountOnboarding,
   workspaces,
   currentWorkspaceAuthority,
+  governedHumanActionReceipts: new PostgresGovernedHumanActionReceiptStore(database),
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
