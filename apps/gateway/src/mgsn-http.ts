@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import {
   AuthenticationError,
   encodeInternalWorkspacePrincipal,
@@ -6,13 +5,12 @@ import {
 } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
-  GovernedHumanActionReceiptClientError,
   readSessionCookie,
   requireTrustedOrigin,
   validateCsrf,
-  type CoreAuthenticationClient,
-  type GovernedHumanActionReceiptMaterializationV1
+  type CoreAuthenticationClient
 } from './auth.js';
+import { authorizeGovernedWorkspaceMutation } from './governed-action.js';
 
 export const PROVIDER_WORKSPACE_HEADER_NAME = 'x-markorbit-provider-workspace-id';
 export const GOVERNED_HUMAN_ACTION_HEADER_NAME =
@@ -163,161 +161,10 @@ function mapAuthentication(error: unknown): never {
   throw new HttpError(status, error.code, error.message, status === 503);
 }
 
-function mapGovernedReceipt(error: unknown): never {
-  if (!(error instanceof GovernedHumanActionReceiptClientError)) throw error;
-  throw new HttpError(error.status, error.code, error.message, error.status === 503);
-}
-
 function requirePermission(principal: WorkspacePrincipal, mutation: boolean) {
   const permission = mutation ? 'execution:manage' : 'execution:read';
   if (!principal.permissions.includes(permission))
     throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
-}
-
-function requireGovernedPermission(principal: WorkspacePrincipal, permission: GovernedPermission) {
-  if (!principal.permissions.includes(permission))
-    throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
-}
-
-function stableSerialize(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map((item) => stableSerialize(item)).join(',')}]`;
-  if (value && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, item]) => item !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right));
-    return `{${entries
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function fingerprint(value: unknown): string {
-  return createHash('sha256').update(stableSerialize(value)).digest('hex');
-}
-
-function requireGovernedIdempotency(request: JsonRequest): string {
-  const key = request.headers['idempotency-key']?.trim();
-  if (!key)
-    throw new HttpError(
-      400,
-      'IDEMPOTENCY_KEY_REQUIRED',
-      'Idempotency-Key is required for governed-network mutations.'
-    );
-  return key;
-}
-
-function forbidBrowserGovernedAuthority(request: JsonRequest): void {
-  if (request.headers[GOVERNED_HUMAN_ACTION_HEADER_NAME])
-    throw new HttpError(
-      400,
-      'BROWSER_GOVERNED_AUTHORITY_FORBIDDEN',
-      'Browser-supplied governed-network authority is not accepted.'
-    );
-}
-
-async function governedHumanActionEnvelope(
-  request: JsonRequest,
-  principal: WorkspacePrincipal,
-  kind: GovernedHumanActionKind,
-  authentication: CoreAuthenticationClient,
-  correlationId?: string
-): Promise<string> {
-  const authenticatedAt = principal.sessionCreatedAt;
-  if (!authenticatedAt || !Number.isFinite(Date.parse(authenticatedAt)))
-    throw new HttpError(
-      503,
-      'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
-      'Core session authentication time is unavailable for governed human action.',
-      true
-    );
-  if (!authentication.materializeGovernedHumanActionReceipt)
-    throw new HttpError(
-      503,
-      'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
-      'Core governed human-action receipt authority is unavailable.',
-      true
-    );
-  const idempotencyKey = requireGovernedIdempotency(request);
-  const principalReference = `core-workspace-principal:${fingerprint({
-    kind: principal.kind,
-    workspaceId: principal.workspaceId.toLowerCase(),
-    userId: principal.userId,
-    membershipId: principal.membershipId,
-    role: principal.role,
-    permissions: [...principal.permissions].sort(),
-    sessionCreatedAt: authenticatedAt,
-    sessionExpiresAt: principal.sessionExpiresAt
-  })}`;
-  const reviewedActionDigest = fingerprint({
-    kind,
-    principalReference,
-    method: request.method,
-    path: request.path,
-    body: request.body ?? {}
-  });
-  const materialization: GovernedHumanActionReceiptMaterializationV1 = {
-    workspaceId: principal.workspaceId,
-    userId: principal.userId,
-    membershipId: principal.membershipId,
-    principalReference,
-    kind,
-    mutationRoute: request.path,
-    reviewedActionDigest,
-    idempotencyKey,
-    authenticatedAt
-  };
-  let receipt;
-  try {
-    receipt = await authentication.materializeGovernedHumanActionReceipt(
-      materialization,
-      correlationId
-    );
-  } catch (error) {
-    return mapGovernedReceipt(error);
-  }
-  if (
-    receipt.schemaVersion !== 1 ||
-    receipt.source !== 'CORE' ||
-    receipt.actorKind !== 'HUMAN_USER' ||
-    receipt.kind !== materialization.kind ||
-    receipt.workspaceId !== materialization.workspaceId ||
-    receipt.userId !== materialization.userId ||
-    receipt.membershipId !== materialization.membershipId ||
-    receipt.principalReference !== materialization.principalReference ||
-    receipt.mutationRoute !== materialization.mutationRoute ||
-    receipt.reviewedActionDigest !== materialization.reviewedActionDigest ||
-    receipt.idempotencyKey !== materialization.idempotencyKey ||
-    receipt.authenticatedAt !== materialization.authenticatedAt ||
-    receipt.authorityVersion !== 1 ||
-    !receipt.authorityReference.startsWith('core-governed-human-action-receipt:') ||
-    !receipt.affirmativeHumanActionEvidenceReference.startsWith(
-      'core-governed-human-action-evidence:'
-    )
-  )
-    throw new HttpError(
-      503,
-      'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
-      'Core governed human-action receipt did not match the trusted action context.',
-      true
-    );
-  return Buffer.from(
-    JSON.stringify({
-      schemaVersion: 1,
-      kind,
-      actorKind: receipt.actorKind,
-      workspaceId: principal.workspaceId,
-      userId: principal.userId,
-      membershipId: principal.membershipId,
-      principalReference,
-      authorityReference: receipt.authorityReference,
-      authorityVersion: receipt.authorityVersion,
-      authenticatedAt,
-      affirmativeHumanActionEvidenceReference: receipt.affirmativeHumanActionEvidenceReference,
-      payloadIdentityAuthoritative: false
-    }),
-    'utf8'
-  ).toString('base64url');
 }
 
 function requireNetworkParticipationPermission(
@@ -357,33 +204,6 @@ function validateProviderWorkQuery(request: JsonRequest) {
       400,
       'PROVIDER_WORK_QUERY_FORBIDDEN',
       'Provider work detail does not accept query controls.'
-    );
-}
-
-function forbidNetworkParticipationAuthorityPayload(request: JsonRequest) {
-  const body = recordBody(request);
-  const forbidden = [
-    'workspaceId',
-    'actorId',
-    'providerWorkspaceId',
-    'providerId',
-    'principal',
-    'trustedActorId'
-  ];
-  if (forbidden.some((field) => Object.prototype.hasOwnProperty.call(body, field)))
-    throw new HttpError(
-      400,
-      'NETWORK_PARTICIPATION_AUTHORITY_PAYLOAD_FORBIDDEN',
-      'Network Participation identity and authority come only from the authenticated Provider Workspace.'
-    );
-}
-
-function requireNetworkParticipationIdempotency(request: JsonRequest) {
-  if (!request.headers['idempotency-key'])
-    throw new HttpError(
-      400,
-      'IDEMPOTENCY_KEY_REQUIRED',
-      'Idempotency-Key is required for Network Participation mutations.'
     );
 }
 
@@ -428,24 +248,7 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       return mapAuthentication(error);
     }
   };
-  const resolveGovernedPrincipal = async (request: JsonRequest) => {
-    const workspaceId = request.headers['x-markorbit-workspace-id'];
-    if (!workspaceId)
-      throw new HttpError(
-        400,
-        'INVALID_WORKSPACE_CONTEXT',
-        'Trusted Workspace header is required for governed-network operations.'
-      );
-    try {
-      return await authentication().resolveWorkspace(
-        requestToken(request),
-        workspaceId,
-        correlation(request)
-      );
-    } catch (error) {
-      return mapAuthentication(error);
-    }
-  };
+
   const forward = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -516,26 +319,37 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
   };
   const handleGoverned = async (request: JsonRequest, route: GovernedRouteDefinition) => {
     try {
-      const principal = await resolveGovernedPrincipal(request);
-      requireGovernedPermission(principal, route.permission);
-      requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-      validateCsrf(
-        principal.sessionId,
-        options.csrfSecret,
-        request.headers['x-markorbit-csrf-token']
+      const context = await authorizeGovernedWorkspaceMutation(
+        request,
+        {
+          authenticationClient: authentication(),
+          csrfSecret: options.csrfSecret,
+          allowedOrigins: options.allowedOrigins
+        },
+        {
+          permission: route.permission,
+          idempotency: route.idempotency ? 'REQUIRED' : 'OPTIONAL',
+          ...(route.idempotency
+            ? {
+                idempotencyError: {
+                  code: 'IDEMPOTENCY_KEY_REQUIRED',
+                  message: 'Idempotency-Key is required for governed-network mutations.'
+                }
+              }
+            : {}),
+          forbiddenHeaders: [GOVERNED_HUMAN_ACTION_HEADER_NAME],
+          browserAuthorityError: {
+            code: 'BROWSER_GOVERNED_AUTHORITY_FORBIDDEN',
+            message: () => 'Browser-supplied governed-network authority is not accepted.'
+          },
+          workspaceContextError: {
+            code: 'INVALID_WORKSPACE_CONTEXT',
+            message: 'Trusted Workspace header is required for governed-network operations.'
+          },
+          ...(route.humanAction ? { humanAction: route.humanAction } : {})
+        }
       );
-      forbidBrowserGovernedAuthority(request);
-      if (route.idempotency) requireGovernedIdempotency(request);
-      const humanAction = route.humanAction
-        ? await governedHumanActionEnvelope(
-            request,
-            principal,
-            route.humanAction,
-            authentication(),
-            correlation(request)
-          )
-        : undefined;
-      return forward(request, principal, false, undefined, humanAction);
+      return forward(request, context.principal, false, undefined, context.humanActionEnvelope);
     } catch (error) {
       return mapAuthentication(error);
     }
@@ -543,18 +357,45 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
   const handleNetworkParticipation = async (request: JsonRequest) => {
     const mutation = request.method !== 'GET';
     try {
-      const principal = await resolvePrincipal(request, true);
-      const ownerAuthority = requireNetworkParticipationPermission(principal, mutation);
       if (mutation) {
-        forbidNetworkParticipationAuthorityPayload(request);
-        requireNetworkParticipationIdempotency(request);
-        requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
-        validateCsrf(
-          principal.sessionId,
-          options.csrfSecret,
-          request.headers['x-markorbit-csrf-token']
+        const context = await authorizeGovernedWorkspaceMutation(
+          request,
+          {
+            authenticationClient: authentication(),
+            csrfSecret: options.csrfSecret,
+            allowedOrigins: options.allowedOrigins
+          },
+          {
+            permission: 'workspace:manage',
+            workspaceHeaderName: PROVIDER_WORKSPACE_HEADER_NAME,
+            workspaceContextError: {
+              code: 'PROVIDER_WORKSPACE_CONTEXT_REQUIRED',
+              message: 'Provider Workspace context is required.'
+            },
+            idempotency: 'REQUIRED',
+            idempotencyError: {
+              code: 'IDEMPOTENCY_KEY_REQUIRED',
+              message: 'Idempotency-Key is required for Network Participation mutations.'
+            },
+            forbiddenBodyFields: [
+              'workspaceId',
+              'actorId',
+              'providerWorkspaceId',
+              'providerId',
+              'principal',
+              'trustedActorId'
+            ],
+            browserAuthorityError: {
+              code: 'NETWORK_PARTICIPATION_AUTHORITY_PAYLOAD_FORBIDDEN',
+              message: () =>
+                'Network Participation identity and authority come only from the authenticated Provider Workspace.'
+            }
+          }
         );
+        return forward(request, context.principal, false, 'manage');
       }
+      const principal = await resolvePrincipal(request, true);
+      const ownerAuthority = requireNetworkParticipationPermission(principal, false);
       return forward(request, principal, false, ownerAuthority);
     } catch (error) {
       return mapAuthentication(error);

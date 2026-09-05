@@ -16,6 +16,7 @@ import {
   requireTrustedOrigin,
   validateCsrf
 } from './auth.js';
+import { authorizeGovernedWorkspaceMutation } from './governed-action.js';
 
 export interface GatewayMarkRegEarlyFunnelOptions {
   markRegUrl: string;
@@ -535,38 +536,60 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
   };
 
   const customerConfirmationRoute: JsonRoute = {
-    method: 'POST',
-    path: '/api/markreg/customer-confirmations',
-    handle: async (request) => {
-      const body = bodyRecord(request);
-      rejectTopLevelAuthoritySpoof(body);
-      const key = idempotency(request, body);
-      const correlation = correlationId(request);
-      const principal = await authenticate(request);
-      const command = {
-        workspaceId: principal.workspaceId,
-        quoteId: body.quoteId,
-        quoteVersion: body.quoteVersion,
-        planId: body.planId,
-        planVersion: body.planVersion,
-        customerId: body.customerId,
-        termsVersion: body.termsVersion,
-        acknowledgements: body.acknowledgements,
-        actor: trustedActor(principal, body),
-        idempotencyKey: key
-      };
-      return forward(
-        request,
-        principal,
-        '/v1/customer-confirmations',
-        command,
-        key,
-        correlation
-      );
-    }
-  };
+  method: 'POST',
+  path: '/api/markreg/customer-confirmations',
+  handle: async (request) => {
+    const context = await authorizeGovernedWorkspaceMutation(
+      request,
+      {
+        authenticationClient: options.authenticationClient,
+        csrfSecret: options.csrfSecret,
+        allowedOrigins: options.allowedOrigins
+      },
+      {
+        permission: 'matter:create',
+        idempotency: 'REQUIRED',
+        idempotencyError: {
+code: 'INVALID_REQUEST',
+message: 'Idempotency-Key header is required.'
+        },
+        bodyIdempotency: 'MATCH_IF_PRESENT',
+        forbiddenBodyFields: topLevelAuthorityFields,
+        browserAuthorityError: {
+code: 'ACTOR_SPOOF_REJECTED',
+message: (field) =>
+  `${field} is trusted authority context and must not be supplied by the browser.`
+        },
+        bindTrustedWorkspaceField: 'workspaceId'
+      }
+    );
+    const { body, principal } = context;
+    const key = context.idempotencyKey!;
+    const correlation = correlationId(request);
+    const command = {
+      workspaceId: principal.workspaceId,
+      quoteId: body.quoteId,
+      quoteVersion: body.quoteVersion,
+      planId: body.planId,
+      planVersion: body.planVersion,
+      customerId: body.customerId,
+      termsVersion: body.termsVersion,
+      acknowledgements: body.acknowledgements,
+      actor: trustedActor(principal, body),
+      idempotencyKey: key
+    };
+    return forward(
+      request,
+      principal,
+      '/v1/customer-confirmations',
+      command,
+      key,
+      correlation
+    );
+  }
+};
 
-  const matterDraftRoute: JsonRoute = {
+const matterDraftRoute: JsonRoute = {
     method: 'POST',
     path: '/api/markreg/matter-drafts',
     handle: async (request) => {

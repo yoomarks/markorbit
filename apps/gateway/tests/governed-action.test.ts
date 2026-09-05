@@ -104,21 +104,18 @@ function receipt(
 
 describe('Governed Gateway action framework', () => {
   it('binds trusted Workspace and exact idempotency after authentication and mutation guards', async () => {
-    const authentication = client();
-  const result = await authorizeGovernedWorkspaceMutation(
-    request(),
-    options(authentication),
-    standardPolicy
-  );
-
-  expect(result.principal).toEqual(principal);
-  expect(result.idempotencyKey).toBe('key-840');
-  expect(result.body).toMatchObject({ value: 'reviewed', workspaceId });
-  expect(authentication.resolveWorkspace).toHaveBeenCalledWith(
-      'token-840',
-      workspaceId,
-      'correlation-840'
+    const resolveWorkspace = vi.fn(() => Promise.resolve(principal));
+    const authentication = client({ resolveWorkspace });
+    const result = await authorizeGovernedWorkspaceMutation(
+      request(),
+      options(authentication),
+      standardPolicy
     );
+
+    expect(result.principal).toEqual(principal);
+    expect(result.idempotencyKey).toBe('key-840');
+    expect(result.body).toMatchObject({ value: 'reviewed', workspaceId });
+    expect(resolveWorkspace).toHaveBeenCalledWith('token-840', workspaceId, 'correlation-840');
   });
 
   it.each([
@@ -128,7 +125,11 @@ describe('Governed Gateway action framework', () => {
     ['missing idempotency', { 'idempotency-key': '' }, 400, 'IDEMPOTENCY_KEY_REQUIRED']
   ] as const)('fails closed for %s', async (_name, headers, status, code) => {
     await expect(
-      authorizeGovernedWorkspaceMutation(request(undefined, headers), options(client()), standardPolicy)
+      authorizeGovernedWorkspaceMutation(
+        request(undefined, headers),
+        options(client()),
+        standardPolicy
+      )
     ).rejects.toMatchObject({ status, code });
   });
 
@@ -144,8 +145,7 @@ describe('Governed Gateway action framework', () => {
 
   it('requires the exact declared permission', async () => {
     const denied = client({
-      resolveWorkspace: () =>
-        Promise.resolve({ ...principal, permissions: ['workspace:read'] })
+      resolveWorkspace: () => Promise.resolve({ ...principal, permissions: ['workspace:read'] })
     });
     await expect(
       authorizeGovernedWorkspaceMutation(request(), options(denied), standardPolicy)
