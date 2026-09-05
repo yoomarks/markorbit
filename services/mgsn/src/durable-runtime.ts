@@ -117,8 +117,9 @@ export function createDurableMgsnServices(
   );
   const providerReturnRepository = new PostgresProviderReturnRepository(options.database, query);
   const providerWorkReadRepository = new PostgresProviderWorkReadRepository(query);
-  const providerWorkIncomingAuthorityRepository =
-    new PostgresProviderWorkIncomingAuthorityRepository(query);
+  const providerWorkIncomingAuthorityRepository = new PostgresProviderWorkIncomingAuthorityRepository(
+    query
+  );
   const networkParticipationRepository = new PostgresNetworkParticipationRepository(
     options.database,
     query
