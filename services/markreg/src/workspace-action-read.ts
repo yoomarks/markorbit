@@ -1,5 +1,8 @@
 import type { FormalMatterId } from '@markorbit/contracts';
-import type { LifecycleProjectionState, RecommendedActionStatus } from '@markorbit/contracts/evidence-lifecycle';
+import type {
+  LifecycleProjectionState,
+  RecommendedActionStatus
+} from '@markorbit/contracts/evidence-lifecycle';
 import type { QueryClient } from '@markorbit/persistence';
 import { examinationEventPolicy, type ExaminationEventCode } from './examination-stage-read.js';
 
@@ -9,9 +12,7 @@ export const WORKSPACE_ACTION_LIMIT = 100;
 export type WorkspaceActionTruthStatus = 'CURRENT' | 'NO_LIFECYCLE' | 'STALE';
 export type WorkspaceActionAttentionStatus = 'OPEN' | 'NONE' | 'STALE';
 
-export type WorkspaceActionReadErrorCode =
-  | 'INVALID_INPUT'
-  | 'WORKSPACE_ACTION_TRUTH_UNAVAILABLE';
+export type WorkspaceActionReadErrorCode = 'INVALID_INPUT' | 'WORKSPACE_ACTION_TRUTH_UNAVAILABLE';
 
 export class WorkspaceActionReadError extends Error {
   constructor(
@@ -413,7 +414,9 @@ function mapRow(row: Row): WorkspaceActionSourceRecord {
   const matter: MatterSource = {
     id: String(row.formal_matter_id) as FormalMatterId,
     version: Number(row.formal_matter_version),
-    ...(optionalText(preparation.trademark) ? { trademark: optionalText(preparation.trademark) } : {}),
+    ...(optionalText(preparation.trademark)
+      ? { trademark: optionalText(preparation.trademark) }
+      : {}),
     ...(optionalText(preparation.applicantName)
       ? { applicant: optionalText(preparation.applicantName) }
       : {}),

@@ -90,7 +90,9 @@ const sourceRecord: WorkspaceActionSourceRecord = {
   }
 };
 
-async function stack(input: { failure?: boolean; records?: readonly WorkspaceActionSourceRecord[] } = {}) {
+async function stack(
+  input: { failure?: boolean; records?: readonly WorkspaceActionSourceRecord[] } = {}
+) {
   const source: WorkspaceActionSourceReader = {
     list: () =>
       input.failure

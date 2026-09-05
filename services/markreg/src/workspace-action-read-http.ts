@@ -1,7 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
-import { WorkspaceActionReadError, type WorkspaceActionReadService } from './workspace-action-read.js';
+import {
+  WorkspaceActionReadError,
+  type WorkspaceActionReadService
+} from './workspace-action-read.js';
 
 export interface MarkRegWorkspaceActionReadRouteOptions {
   internalServiceSecret: string;
