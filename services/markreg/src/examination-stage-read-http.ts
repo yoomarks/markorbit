@@ -4,12 +4,7 @@ import {
   type FormalMatterId,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import {
-  HttpError,
-  json,
-  type JsonRequest,
-  type JsonRoute
-} from '@markorbit/service-kit';
+import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   ExaminationStageReadError,
   type ExaminationStageReadService
@@ -49,33 +44,16 @@ function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   }
 
   const workspaceId = request.headers['x-markorbit-workspace-id'];
-  if (
-    !workspaceId ||
-    workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase()
-  )
-    throw new HttpError(
-      404,
-      'WORKSPACE_MISMATCH',
-      'Workspace-scoped record was not found.'
-    );
+  if (!workspaceId || workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase())
+    throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped record was not found.');
   if (!principal.permissions.includes('matter:read'))
-    throw new HttpError(
-      403,
-      'PERMISSION_DENIED',
-      'matter:read permission is required.'
-    );
+    throw new HttpError(403, 'PERMISSION_DENIED', 'matter:read permission is required.');
   return principal;
 }
 
 function mapError(error: unknown): never {
   if (error instanceof ExaminationStageReadError)
-    throw new HttpError(
-      error.status,
-      error.code,
-      error.message,
-      error.retryable,
-      error.details
-    );
+    throw new HttpError(error.status, error.code, error.message, error.retryable, error.details);
   throw error;
 }
 
@@ -90,10 +68,7 @@ export function createMarkRegExaminationStageReadRoutes(
         const principal = principalOf(request, options.internalServiceSecret);
         const formalMatterId = request.params.formalMatterId! as FormalMatterId;
         try {
-          const examination = await options.service.get(
-            principal.workspaceId,
-            formalMatterId
-          );
+          const examination = await options.service.get(principal.workspaceId, formalMatterId);
           return json(200, { examination });
         } catch (error) {
           return mapError(error);
