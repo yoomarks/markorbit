@@ -53,6 +53,26 @@ jobs:
           if old not in text:
               raise SystemExit('workspace principal optional timestamp marker missing')
           path.write_text(text.replace(old, new, 1))
+
+          test = Path('apps/gateway/tests/mgsn-governed-network-http.test.ts')
+          text = test.read_text()
+          marker = """function decodeHumanAction(value: string | string[] | undefined) {\n  if (typeof value !== 'string') throw new Error('human action header missing');\n  return JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Record<string, unknown>;\n}\n\nbeforeEach(async () => {"""
+          replacement = """function decodeHumanAction(value: string | string[] | undefined) {\n  if (typeof value !== 'string') throw new Error('human action header missing');\n  return JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Record<string, unknown>;\n}\n\nasync function responseCode(response: Response): Promise<string | undefined> {\n  const payload: unknown = await response.json();\n  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return undefined;\n  const code = (payload as Record<string, unknown>).code;\n  return typeof code === 'string' ? code : undefined;\n}\n\nbeforeEach(async () => {"""
+          if marker not in text:
+              raise SystemExit('test response helper insertion marker missing')
+          text = text.replace(marker, replacement, 1)
+          replacements = {
+              "expect((await response.json()).code).toBe('PERMISSION_DENIED');": "expect(await responseCode(response)).toBe('PERMISSION_DENIED');",
+              "expect((await response.json()).code).toBe('INVALID_WORKSPACE_CONTEXT');": "expect(await responseCode(response)).toBe('INVALID_WORKSPACE_CONTEXT');",
+              "expect((await response.json()).code).toBe('BROWSER_GOVERNED_AUTHORITY_FORBIDDEN');": "expect(await responseCode(response)).toBe('BROWSER_GOVERNED_AUTHORITY_FORBIDDEN');",
+              "expect((await response.json()).code).toBe('GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE');": "expect(await responseCode(response)).toBe('GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE');",
+              "expect((await noIdempotency.json()).code).toBe('IDEMPOTENCY_KEY_REQUIRED');": "expect(await responseCode(noIdempotency)).toBe('IDEMPOTENCY_KEY_REQUIRED');",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'test response replacement marker missing: {old}')
+              text = text.replace(old, new, 1)
+          test.write_text(text)
           PY
           git diff --check
       - name: Set up pnpm
