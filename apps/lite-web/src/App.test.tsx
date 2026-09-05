@@ -22,6 +22,9 @@ vi.mock('./features/capability/CapabilityCenter.js', () => ({
 vi.mock('./features/content-studio/ContentStudio.js', () => ({
   ContentStudio: ({ workspaceId }: { workspaceId: string }) => <h1>Content Studio {workspaceId}</h1>
 }));
+vi.mock('./features/guide/GuideWorkspace.js', () => ({
+  GuideWorkspace: ({ workspaceId }: { workspaceId: string }) => <h1>Guide {workspaceId}</h1>
+}));
 vi.mock('./features/professional-review/ProfessionalReview.js', () => ({
   ProfessionalReview: ({
     workspaceId,
@@ -78,7 +81,7 @@ describe('Lite shell navigation truth', () => {
       ['Trademarks', 'Trademarks workspace-1', '#trademarks'],
       ['Work', 'Work', '#work'],
       ['Capability', 'Capability workspace-1', '#capability'],
-      ['Guide', 'Guide', '#guide']
+      ['Guide', 'Guide workspace-1', '#guide']
     ] as const) {
       const link = within(nav).getByRole('link', { name: label });
       await user.click(link);
@@ -102,12 +105,14 @@ describe('Lite shell navigation truth', () => {
     expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
   });
 
-  it('keeps Guide as a bounded entry without fixture or live claims', () => {
+  it('promotes Guide as an authenticated Workspace surface', () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1#guide');
     render(<LiteApp />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible();
-    expect(screen.getByText('Not yet promoted')).toBeVisible();
-    expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Guide workspace-1' })).toBeVisible();
+    expect(screen.getByText('Authenticated')).toBeVisible();
+    expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
+    expect(screen.queryByText('Not yet promoted')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
   });
 
   it.each(['today', 'matters', 'trademarks', 'capability', 'work-professional-review'])(
@@ -219,15 +224,20 @@ describe('Lite shell navigation truth', () => {
     expect(screen.queryByText('API-backed')).not.toBeInTheDocument();
   });
 
-  it.each(['today', 'matters', 'content', 'trademarks', 'capability', 'opportunities'] as const)(
-    'keeps the missing-Workspace state for %s',
-    (surface) => {
-      render(<LiteApp initialSurface={surface} />);
-      expect(screen.getByText('Select a Workspace')).toBeVisible();
-      expect(screen.getByText('Workspace required')).toBeVisible();
-      expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
-    }
-  );
+  it.each([
+    'today',
+    'matters',
+    'content',
+    'trademarks',
+    'capability',
+    'opportunities',
+    'guide'
+  ] as const)('keeps the missing-Workspace state for %s', (surface) => {
+    render(<LiteApp initialSurface={surface} />);
+    expect(screen.getByText('Select a Workspace')).toBeVisible();
+    expect(screen.getByText('Workspace required')).toBeVisible();
+    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
+  });
 
   it.each(['popstate', 'hashchange'] as const)(
     'clears a URL-derived Workspace when %s removes it from the URL',
