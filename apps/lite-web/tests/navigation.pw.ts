@@ -8,22 +8,19 @@ import {
   publishPackage
 } from '../src/features/content-studio/fixtures.js';
 
-test('every primary destination is explicit and truthful on desktop and mobile', async ({
+test('Workspace Shell exposes five truthful primary destinations on desktop and mobile', async ({
   page
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/#work-customers');
+  await page.goto('/#today');
   const nav = page.getByRole('navigation', { name: 'Primary' });
   for (const [label, hash, title, badge] of [
     ['Today', 'today', 'Select a Workspace', 'Workspace required'],
     ['Matters', 'matters', 'Select a Workspace', 'Workspace required'],
-    ['Content', 'content', 'Select a Workspace', 'Workspace required'],
-    ['Opportunities', 'opportunities', 'Select a Workspace', 'Workspace required'],
-    ['Trademarks', 'trademarks', 'Select a Workspace', 'Workspace required'],
-    ['Work', 'work-customers', 'Customers', 'Not live data'],
-    ['Capability', 'capability', 'Select a Workspace', 'Workspace required'],
-    ['Guide', 'guide', 'Guide', 'Not yet promoted']
+    ['Create', 'content', 'Select a Workspace', 'Workspace required'],
+    ['Portfolio', 'trademarks', 'Select a Workspace', 'Workspace required'],
+    ['Work', 'work', 'Work', 'Mixed maturity']
   ] as const) {
     const link = nav.getByRole('link', { name: label, exact: true });
     await link.click();
@@ -32,17 +29,15 @@ test('every primary destination is explicit and truthful on desktop and mobile',
     await expect(page.locator('.mo-topbar')).toContainText(badge);
     await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(link).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByText(/Demonstration only/)).toHaveCount(
-      badge === 'Not live data' ? 1 : 0
-    );
+    await expect(page.getByText(/Demonstration only/)).toHaveCount(0);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
     ).toBe(true);
-    if (['Content', 'Guide', 'Work'].includes(label)) {
+    if (['Create', 'Portfolio', 'Work'].includes(label)) {
       await page.screenshot({ path: testInfo.outputPath(`${hash}.png`), fullPage: true });
     }
   }
-  await nav.getByRole('link', { name: 'Content', exact: true }).focus();
+  await nav.getByRole('link', { name: 'Create', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(
     page.getByRole('heading', { name: 'Select a Workspace', exact: true })
@@ -52,7 +47,34 @@ test('every primary destination is explicit and truthful on desktop and mobile',
   expect(await focus.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
     'none'
   );
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#work');
+  await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({ path: testInfo.outputPath('work-mobile-390.png'), fullPage: true });
   expect(errors).toEqual([]);
+});
+
+test('legacy specialist deep links remain reachable under Work context', async ({ page }) => {
+  for (const [hash, heading] of [
+    ['opportunities', 'Opportunity Center'],
+    ['capability', 'Capability Center'],
+    ['guide', 'Guide']
+  ] as const) {
+    await page.goto(`/?workspaceId=workspace-browser#${hash}`);
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    await expect(page.locator('.mo-topbar')).toContainText('Work · workspace-browser');
+    await expect(page.locator('.mo-topbar')).toContainText('Authenticated');
+    await expect(
+      page.getByRole('navigation', { name: 'Primary' }).getByRole('link', {
+        name: 'Work',
+        exact: true
+      })
+    ).toHaveAttribute('aria-current', 'page');
+  }
 });
 
 test('Work navigation survives back, forward and reload while retaining review deep links', async ({
@@ -74,12 +96,12 @@ test('Work navigation survives back, forward and reload while retaining review d
   await work.getByRole('button', { name: 'Professional Review', exact: true }).click();
   await expect(page).toHaveURL(`${new URL(page.url()).origin}/${query}#work-professional-review`);
   await expect(page.getByRole('heading', { name: 'No professional review cases' })).toBeVisible();
-  await expect(page.locator('.mo-topbar')).toHaveText('Workspace · workspace-browserAuthenticated');
+  await expect(page.locator('.mo-topbar')).toHaveText('Work · workspace-browserAuthenticated');
   await expect(page.getByText(/Demonstration only/)).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('professional-review.png'), fullPage: true });
   await work.getByRole('button', { name: 'Execution Release', exact: true }).click();
   await expect(page).toHaveURL(/#work-execution-release$/);
-  await expect(page.locator('.mo-topbar')).toHaveText('Work · Execution APIAPI-backed');
+  await expect(page.locator('.mo-topbar')).toHaveText('Work · workspace-browserAuthenticated');
   await page.goBack();
   await expect(
     work.getByRole('button', { name: 'Professional Review', exact: true })
@@ -89,13 +111,14 @@ test('Work navigation survives back, forward and reload while retaining review d
     work.getByRole('button', { name: 'Execution Release', exact: true })
   ).toHaveAttribute('aria-current', 'page');
   await page.reload();
-  await expect(page.locator('.mo-topbar')).toContainText('API-backed');
+  await expect(page.locator('.mo-topbar')).toContainText('Authenticated');
   await expect(
     work.getByRole('button', { name: 'Execution Release', exact: true })
   ).toHaveAttribute('aria-current', 'page');
   await work.getByRole('button', { name: 'Customers', exact: true }).click();
   await expect(page).toHaveURL(/#work-customers$/);
   await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
+  await expect(page.locator('.mo-topbar')).toContainText('Not live data');
   expect(new URL(page.url()).search).toBe(query);
   expect(workspaceHeaders.length).toBeGreaterThan(0);
   expect(workspaceHeaders.every((value) => value === 'workspace-browser')).toBe(true);
@@ -257,7 +280,8 @@ test('Content Studio keeps owner failure distinct from empty while Guide remains
   await expect(page.getByRole('heading', { name: 'No content work yet' })).toHaveCount(0);
   await page.goto('/?workspaceId=workspace-browser#guide');
   await expect(page.getByRole('heading', { name: 'Guide', exact: true })).toBeVisible();
-  await expect(page.locator('.mo-topbar')).toContainText('Not yet promoted');
+  await expect(page.locator('.mo-topbar')).toContainText('Work · workspace-browser');
+  await expect(page.locator('.mo-topbar')).toContainText('Authenticated');
 });
 
 test('Content Studio records governed package feedback and refreshes durable detail', async ({
