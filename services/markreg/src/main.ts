@@ -73,6 +73,11 @@ import { PostgresDurablePreparationLockService } from './durable-preparation-loc
 import { createDurablePreparationLockRoutes } from './durable-preparation-lock-http.js';
 import { PostgresProductionIntakeService } from './production-intake.js';
 import { createProductionIntakeRoutes } from './production-intake-http.js';
+import {
+  PostgresWorkspaceActionSourceReader,
+  WorkspaceActionReadService
+} from './workspace-action-read.js';
+import { createMarkRegWorkspaceActionReadRoutes } from './workspace-action-read-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 const durableMilestoneOwners = process.env.MO_MILESTONE_DURABLE_OWNERS === '1';
@@ -268,6 +273,13 @@ if (fixtureRuntime) {
     service: formalMatterEvidenceReadService
   });
   const recommendedActionRepository = new PostgresRecommendedActionRepository(database, pool);
+  const workspaceActionReadService = new WorkspaceActionReadService(
+    new PostgresWorkspaceActionSourceReader(pool)
+  );
+  const workspaceActionReadRoutes = createMarkRegWorkspaceActionReadRoutes({
+    internalServiceSecret,
+    service: workspaceActionReadService
+  });
   const lifecycleServiceFor = (workspaceId: string) =>
     new LifecycleProjectionService(
       lifecycleRepository,
@@ -324,6 +336,7 @@ if (fixtureRuntime) {
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,
       ...commercialAdminRoutes,
+      ...workspaceActionReadRoutes,
       ...lifecycleRoutes,
       ...lifecycleSurfaceRoutes,
       ...formalOpportunityRoutes,
