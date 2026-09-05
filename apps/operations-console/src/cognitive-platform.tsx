@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
 import { CapabilityCatalogIntegrity } from './capability-catalog-integrity.js';
+import { CognitiveAttentionWorkspace } from './cognitive-attention-workspace.js';
 import { CognitiveDependencyWorkspace } from './cognitive-dependency-workspace.js';
 
 type JsonObject = Record<string, unknown>;
@@ -373,8 +374,8 @@ export function CognitivePlatformWorkspace() {
   return (
     <section id="cognitive-platform" aria-labelledby="cognitive-platform-heading">
       <PageHeader
-        title="Cognitive owner inventory"
-        description="Read-only owner truth for Brain, BrainGap, Method Improvement, Brain Build availability, Runtime Capabilities, Implementation Profiles and source-admission policy state."
+        title="Cognitive attention and owner truth"
+        description="Attention-first, read-only Control Center for Brain, Method Improvement and Capability owner truth: what needs attention, why, what it affects, and the exact bounded dependency before audit detail."
       />
       <Alert tone="info" title="Read plane only">
         This surface does not mutate Brain or Capability state and does not synthesize cross-owner
@@ -396,12 +397,13 @@ export function CognitivePlatformWorkspace() {
         <p>No cognitive owner snapshot loaded. Load owner truth to determine current state.</p>
       ) : (
         <>
+          <CognitiveAttentionWorkspace snapshot={snapshot} />
           <CognitiveDependencyWorkspace snapshot={snapshot} />
           <Card>
             <h2>Owner inventory and audit detail</h2>
             <p>
-              The inventory below remains the owner-detail view. Dependency explanations above do
-              not replace or reinterpret these records.
+              The inventory below remains the owner-detail view. Attention and dependency
+              explanations above do not replace or reinterpret these records.
             </p>
           </Card>
           <div className="mo-grid">
