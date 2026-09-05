@@ -45,9 +45,7 @@ export interface CognitiveAttentionItem {
   explanationTargetId: string;
 }
 
-export const COGNITIVE_ATTENTION_GROUP_LABELS: Readonly<
-  Record<CognitiveAttentionGroup, string>
-> = {
+export const COGNITIVE_ATTENTION_GROUP_LABELS: Readonly<Record<CognitiveAttentionGroup, string>> = {
   HUMAN_GOVERNANCE_ATTENTION: 'Human / governance attention required',
   INTEGRITY_CURRENTNESS_FINDING: 'Integrity / currentness finding',
   SOURCE_DEPENDENCY_UNAVAILABLE: 'Source / dependency unavailable',
@@ -76,8 +74,7 @@ function groupForPath(path: CognitiveDependencyPath): CognitiveAttentionGroup {
 }
 
 function needsAttention(path: CognitiveDependencyPath): string {
-  if (path.kind === 'BLOCKER')
-    return `Owner reports an open blocker condition: ${path.title}.`;
+  if (path.kind === 'BLOCKER') return `Owner reports an open blocker condition: ${path.title}.`;
   if (path.kind === 'FINDING') return `Owner audit reports a finding: ${path.title}.`;
   if (path.kind === 'LIMITATION' && path.id.includes('audit-unavailable')) {
     return `An owner audit dependency is unavailable: ${path.title}.`;
