@@ -39,6 +39,26 @@ const projection = {
       automaticRemediationExecuted: false as const
     }
   },
+  sourcePolicyBindingIntegrity: {
+    status: 'SOURCE_POLICY_BINDINGS_HEALTHY' as const,
+    snapshotFingerprintSha256: 'e'.repeat(64),
+    auditFingerprintSha256: 'f'.repeat(64),
+    findings: [],
+    authority: {
+      productionSourceAdmitted: false as const,
+      sourceAdmissionEvaluated: false as const,
+      methodCurrentnessEvaluated: false as const,
+      referenceCurrentnessEvaluated: false as const,
+      implementationSelected: false as const,
+      policyMutated: false as const,
+      productStateCreated: false as const,
+      brainGapCreated: false as const,
+      methodImprovementTriggerCreated: false as const,
+      researchMissionCreated: false as const,
+      officialTruthCreated: false as const,
+      automaticRemediationExecuted: false as const
+    }
+  },
   summary: {
     runtimeCapabilityCount: 0,
     implementationProfileCount: 0,

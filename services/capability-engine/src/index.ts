@@ -82,6 +82,7 @@ export * from './runtime-capability-http.js';
 export * from './runtime-capability-registry.js';
 export * from './source-admission-policy-catalog.js';
 export * from './source-admission-policy-content-provenance.js';
+export * from './source-policy-binding-integrity.js';
 export * from './source-admission-policy-provenance.js';
 export * from './uspto-official-fee-method-currentness.js';
 export * from './uspto-official-fee-production-source-evidence.js';

@@ -8,6 +8,13 @@ import {
   type CapabilityCatalogIntegrityUnavailableResultV1
 } from './capability-catalog-integrity.js';
 import {
+  CapabilitySourcePolicyBindingIntegrityAuditorV1,
+  type CapabilitySourcePolicyBindingIntegrityAuditResultV1,
+  type CapabilitySourcePolicyBindingIntegrityFindingV1,
+  type CapabilitySourcePolicyBindingIntegrityNoAuthorityV1,
+  type CapabilitySourcePolicyBindingIntegrityUnavailableResultV1
+} from './source-policy-binding-integrity.js';
+import {
   capabilitySourceMaturityClasses,
   currentCapabilitySourceAdmissionPolicyCatalogV1,
   type CapabilitySourceAdmissionPolicyEntryV1
@@ -106,6 +113,51 @@ export type CapabilityCatalogIntegrityProjectionV1 =
       authority: Readonly<CapabilityCatalogIntegrityNoAuthorityV1>;
     }>;
 
+type SourcePolicyBindingIntegrityFindingProjectionV1 = Readonly<{
+  findingId: CapabilitySourcePolicyBindingIntegrityFindingV1['findingId'];
+  findingFingerprintSha256: string;
+  code: CapabilitySourcePolicyBindingIntegrityFindingV1['code'];
+  policy: Readonly<{
+    policyId: string;
+    policyVersion: number;
+    policyFingerprintSha256: string;
+    maturityClass: CapabilitySourceAdmissionPolicyEntryV1['maturityClass'];
+    capabilityId: string;
+    capabilityVersion: string;
+    implementationProfileId: string;
+    implementationProfileVersion: number;
+  }>;
+  currentRuntimeCapability?: Readonly<{
+    runtimeCapabilityDefinitionId: string;
+    version: number;
+    capabilityId: string;
+    capabilityVersion: string;
+  }>;
+  currentImplementationProfile?: Readonly<{
+    implementationProfileId: string;
+    version: number;
+    status: ImplementationProfile['status'];
+    capabilityId: string;
+    capabilityVersion: string;
+    implementationKey: string;
+  }>;
+}>;
+
+export type SourcePolicyBindingIntegrityProjectionV1 =
+  | Readonly<{
+      status: 'SOURCE_POLICY_BINDINGS_HEALTHY' | 'SOURCE_POLICY_BINDING_FINDINGS';
+      snapshotFingerprintSha256: string;
+      auditFingerprintSha256: string;
+      findings: readonly SourcePolicyBindingIntegrityFindingProjectionV1[];
+      authority: Readonly<CapabilitySourcePolicyBindingIntegrityNoAuthorityV1>;
+    }>
+  | Readonly<{
+      status: 'SOURCE_POLICY_BINDING_AUDIT_UNAVAILABLE';
+      unavailableDependency: CapabilitySourcePolicyBindingIntegrityUnavailableResultV1['unavailableDependency'];
+      findings: readonly [];
+      authority: Readonly<CapabilitySourcePolicyBindingIntegrityNoAuthorityV1>;
+    }>;
+
 export interface CapabilityCognitiveReadProjectionV1 {
   schemaVersion: 1;
   generatedAt: string;
@@ -156,6 +208,7 @@ export interface CapabilityCognitiveReadProjectionV1 {
   }>[];
   sourceAdmissionPolicies: readonly SourceAdmissionPolicyProjectionV1[];
   catalogIntegrity: Readonly<CapabilityCatalogIntegrityProjectionV1>;
+  sourcePolicyBindingIntegrity: Readonly<SourcePolicyBindingIntegrityProjectionV1>;
   summary: Readonly<{
     runtimeCapabilityCount: number;
     implementationProfileCount: number;
@@ -470,6 +523,72 @@ function projectCatalogIntegrity(
   });
 }
 
+function projectSourcePolicyBindingIntegrityFinding(
+  finding: Readonly<CapabilitySourcePolicyBindingIntegrityFindingV1>
+): SourcePolicyBindingIntegrityFindingProjectionV1 {
+  return Object.freeze({
+    findingId: finding.findingId,
+    findingFingerprintSha256: finding.findingFingerprintSha256,
+    code: finding.code,
+    policy: Object.freeze({
+      policyId: finding.policy.policyId,
+      policyVersion: finding.policy.policyVersion,
+      policyFingerprintSha256: finding.policy.policyFingerprintSha256,
+      maturityClass: finding.policy.maturityClass,
+      capabilityId: finding.policy.capabilityId,
+      capabilityVersion: finding.policy.capabilityVersion,
+      implementationProfileId: finding.policy.implementationProfileId,
+      implementationProfileVersion: finding.policy.implementationProfileVersion
+    }),
+    ...(finding.currentRuntimeCapability
+      ? {
+          currentRuntimeCapability: Object.freeze({
+            runtimeCapabilityDefinitionId:
+              finding.currentRuntimeCapability.runtimeCapabilityDefinitionId,
+            version: finding.currentRuntimeCapability.version,
+            capabilityId: finding.currentRuntimeCapability.capabilityId,
+            capabilityVersion: finding.currentRuntimeCapability.capabilityVersion
+          })
+        }
+      : {}),
+    ...(finding.currentImplementationProfile
+      ? {
+          currentImplementationProfile: Object.freeze({
+            implementationProfileId: finding.currentImplementationProfile.implementationProfileId,
+            version: finding.currentImplementationProfile.version,
+            status: finding.currentImplementationProfile.status,
+            capabilityId: finding.currentImplementationProfile.capabilityId,
+            capabilityVersion: finding.currentImplementationProfile.capabilityVersion,
+            implementationKey: finding.currentImplementationProfile.implementationKey
+          })
+        }
+      : {})
+  });
+}
+
+function projectSourcePolicyBindingIntegrity(
+  result: Readonly<CapabilitySourcePolicyBindingIntegrityAuditResultV1>
+): SourcePolicyBindingIntegrityProjectionV1 {
+  if (result.status === 'SOURCE_POLICY_BINDING_AUDIT_UNAVAILABLE') {
+    return Object.freeze({
+      status: result.status,
+      unavailableDependency: result.unavailableDependency,
+      findings: [] as const,
+      authority: Object.freeze({ ...result.authority })
+    });
+  }
+
+  return Object.freeze({
+    status: result.status,
+    snapshotFingerprintSha256: result.snapshot.snapshotFingerprintSha256,
+    auditFingerprintSha256: result.auditFingerprintSha256,
+    findings: Object.freeze(
+      result.findings.map((finding) => projectSourcePolicyBindingIntegrityFinding(finding))
+    ),
+    authority: Object.freeze({ ...result.authority })
+  });
+}
+
 export class CapabilityCognitiveReadServiceV1 {
   constructor(
     private readonly runtimeCapabilities: Readonly<CurrentRuntimeCapabilityCatalogReadV1>,
@@ -498,8 +617,8 @@ export class CapabilityCognitiveReadServiceV1 {
             ? left.version - right.version
             : left.implementationProfileId.localeCompare(right.implementationProfileId)
         );
-      const sourceAdmissionPolicies = this.sourceAdmissionPolicies
-        .list()
+      const policyEntries = this.sourceAdmissionPolicies.list();
+      const sourceAdmissionPolicies = policyEntries
         .map((policy) => projectSourceAdmissionPolicy(policy))
         .sort((left, right) =>
           left.policyId === right.policyId
@@ -510,6 +629,15 @@ export class CapabilityCognitiveReadServiceV1 {
         await new CapabilityCatalogIntegrityAuditorV1({
           capabilities: { listCurrent: () => capabilities },
           implementations: { listCurrent: () => profiles }
+        }).audit()
+      );
+      const sourcePolicyBindingIntegrity = projectSourcePolicyBindingIntegrity(
+        await new CapabilitySourcePolicyBindingIntegrityAuditorV1({
+          capabilities: { listCurrent: () => capabilities },
+          implementations: { listCurrent: () => profiles },
+          policies: {
+            list: () => policyEntries as readonly Readonly<CapabilitySourceAdmissionPolicyEntryV1>[]
+          }
         }).audit()
       );
       const generatedAt = canonicalTimestamp(this.now(), 'generatedAt');
@@ -530,6 +658,7 @@ export class CapabilityCognitiveReadServiceV1 {
         implementationProfiles: Object.freeze(implementationProfiles),
         sourceAdmissionPolicies: Object.freeze(sourceAdmissionPolicies),
         catalogIntegrity,
+        sourcePolicyBindingIntegrity,
         summary: Object.freeze({
           runtimeCapabilityCount: runtimeCapabilities.length,
           implementationProfileCount: implementationProfiles.length,
