@@ -16,18 +16,14 @@ export interface GovernedHumanActionReceiptMaterializationV1 {
   authenticatedAt: string;
 }
 
-export interface GovernedHumanActionReceiptV1
-  extends GovernedHumanActionReceiptMaterializationV1 {
+export interface GovernedHumanActionReceiptV1 extends GovernedHumanActionReceiptMaterializationV1 {
   receiptId: string;
   receiptReference: string;
   createdAt: string;
 }
 
 export type GovernedHumanActionReceiptErrorCode =
-  | 'INVALID_INPUT'
-  | 'CONFLICT'
-  | 'NOT_FOUND'
-  | 'PERSISTENCE_UNAVAILABLE';
+  'INVALID_INPUT' | 'CONFLICT' | 'NOT_FOUND' | 'PERSISTENCE_UNAVAILABLE';
 
 export class GovernedHumanActionReceiptError extends Error {
   constructor(
@@ -114,9 +110,7 @@ export interface GovernedHumanActionReceiptAuthorityV1 {
   get(receiptId: string): Promise<Readonly<GovernedHumanActionReceiptV1> | undefined>;
 }
 
-export class PostgresGovernedHumanActionReceiptStore
-  implements GovernedHumanActionReceiptAuthorityV1
-{
+export class PostgresGovernedHumanActionReceiptStore implements GovernedHumanActionReceiptAuthorityV1 {
   constructor(private readonly database: ManagedDatabase) {}
 
   async materialize(
@@ -190,9 +184,7 @@ export class PostgresGovernedHumanActionReceiptStore
     }
   }
 
-  async get(
-    receiptId: string
-  ): Promise<Readonly<GovernedHumanActionReceiptV1> | undefined> {
+  async get(receiptId: string): Promise<Readonly<GovernedHumanActionReceiptV1> | undefined> {
     if (!receiptId.startsWith('governed-human-action-receipt_'))
       throw new GovernedHumanActionReceiptError('INVALID_INPUT', 'Receipt id is invalid.');
     try {
