@@ -1,7 +1,8 @@
 import type { Permission } from '@markorbit/contracts';
-import type {
-  CurrentWorkspaceAuthorityResult,
-  CurrentWorkspaceAuthorityService
+import {
+  CurrentWorkspaceAuthorityError,
+  type CurrentWorkspaceAuthorityResult,
+  type CurrentWorkspaceAuthorityService
 } from './current-workspace-authority.js';
 import { uuidV7 } from './auth.js';
 
@@ -140,6 +141,27 @@ function currentAuthorityRequest(
   };
 }
 
+function mapCurrentAuthorityFailure(cause: unknown): GovernedHumanActionReceiptError {
+  if (
+    cause instanceof CurrentWorkspaceAuthorityError &&
+    cause.code === 'CURRENT_AUTHORITY_SOURCE_UNAVAILABLE'
+  )
+    return new GovernedHumanActionReceiptError(
+      'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+      'Current Core Workspace authority source is unavailable.',
+      503,
+      true,
+      { cause }
+    );
+  return new GovernedHumanActionReceiptError(
+    'GOVERNED_HUMAN_ACTION_RECEIPT_STALE',
+    'Current Workspace authority does not support this governed human action.',
+    cause instanceof CurrentWorkspaceAuthorityError ? cause.status : 409,
+    false,
+    { cause: cause instanceof Error ? cause : undefined }
+  );
+}
+
 function receiptFrom(
   request: Readonly<MaterializeGovernedHumanActionReceiptRequest>,
   authority: Readonly<CurrentWorkspaceAuthorityResult>,
@@ -180,13 +202,7 @@ export class GovernedHumanActionReceiptService {
     try {
       authority = await this.options.currentWorkspaceAuthority.validate(currentAuthorityRequest(request));
     } catch (cause) {
-      throw new GovernedHumanActionReceiptError(
-        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
-        'Current Core Workspace authority could not establish the governed human action.',
-        503,
-        true,
-        { cause: cause instanceof Error ? cause : undefined }
-      );
+      throw mapCurrentAuthorityFailure(cause);
     }
     const now = (this.options.clock ?? (() => new Date()))().toISOString();
     try {
@@ -217,6 +233,7 @@ export class GovernedHumanActionReceiptService {
     try {
       receipt = await this.options.store.findById(request.receiptId);
     } catch (cause) {
+      if (cause instanceof GovernedHumanActionReceiptError) throw cause;
       throw new GovernedHumanActionReceiptError(
         'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
         'Governed human-action receipt source is unavailable.',
@@ -240,13 +257,7 @@ export class GovernedHumanActionReceiptService {
     try {
       await this.options.currentWorkspaceAuthority.validate(currentAuthorityRequest(request, receipt));
     } catch (cause) {
-      throw new GovernedHumanActionReceiptError(
-        'GOVERNED_HUMAN_ACTION_RECEIPT_STALE',
-        'Governed human-action receipt is no longer backed by current Workspace authority.',
-        409,
-        false,
-        { cause: cause instanceof Error ? cause : undefined }
-      );
+      throw mapCurrentAuthorityFailure(cause);
     }
     return receipt;
   }
