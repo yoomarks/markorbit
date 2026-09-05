@@ -26,6 +26,10 @@ import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
 import {
+  createGovernedHumanActionReceiptRoutesV1
+} from './governed-human-action-receipt-http.js';
+import type { GovernedHumanActionReceiptAuthorityV1 } from './governed-human-action-receipt.js';
+import {
   fingerprintReadyPackageContentExport,
   validateReadyPackageContentExport,
   type KnowledgeReadyPackageContentRepository
@@ -69,6 +73,7 @@ export interface CoreRuntimeOptions {
   accountOnboarding?: AccountOnboardingService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   currentWorkspaceAuthority?: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
+  governedHumanActionReceipts?: Readonly<GovernedHumanActionReceiptAuthorityV1>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
@@ -128,6 +133,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
     );
+  if (options.governedHumanActionReceipts && !secret)
+    throw new Error('internalServiceSecret is required for governed human-action receipts.');
   const onboardingRoutes =
     options.accountOnboarding && secret
       ? createCoreAccountOnboardingRoutes({
@@ -181,6 +188,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.currentWorkspaceAuthority && secret
       ? createCurrentWorkspaceAuthorityRoutes({
           service: options.currentWorkspaceAuthority,
+          internalServiceSecret: secret
+        })
+      : [];
+  const governedHumanActionReceiptRoutes =
+    options.governedHumanActionReceipts && secret
+      ? createGovernedHumanActionReceiptRoutesV1({
+          receipts: options.governedHumanActionReceipts,
           internalServiceSecret: secret
         })
       : [];
@@ -680,6 +694,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     : [];
   routes.push(
     ...currentWorkspaceAuthorityRoutes,
+    ...governedHumanActionReceiptRoutes,
     ...internalOperatorPrincipalRoutes,
     ...brainCognitiveReadRoutes,
     ...methodOutcomeEvidenceRoutes,
@@ -701,6 +716,8 @@ export * from './internal-operator-principal.js';
 export * from './internal-operator-principal-http.js';
 export * from './current-workspace-authority.js';
 export * from './current-workspace-authority-http.js';
+export * from './governed-human-action-receipt.js';
+export * from './governed-human-action-receipt-http.js';
 export * from './account-access.js';
 export * from './account-onboarding.js';
 export * from './knowledge-intake.js';
