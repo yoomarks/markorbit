@@ -7,10 +7,7 @@ import {
   parseDatabaseConfig
 } from '@markorbit/persistence';
 import { PostgresGovernedHumanActionReceiptStore } from '../src/governed-human-action-receipt-postgres.js';
-import {
-  GovernedHumanActionReceiptError,
-  type GovernedHumanActionReceipt
-} from '../src/governed-human-action-receipt.js';
+import type { GovernedHumanActionReceipt } from '../src/governed-human-action-receipt.js';
 
 const url = process.env.AUTH_TEST_DATABASE_URL;
 const required = process.env.AUTH_POSTGRES_TEST_REQUIRED === '1';
@@ -110,7 +107,7 @@ integration('PostgreSQL governed human-action receipt authority', () => {
           reviewedActionDigest: 'b'.repeat(64)
         })
       )
-    ).rejects.toMatchObject<Partial<GovernedHumanActionReceiptError>>({
+    ).rejects.toMatchObject({
       code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
       status: 409
     });
