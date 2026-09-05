@@ -18,16 +18,22 @@ describe('Matter Workspace Gateway client', () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ items: [], page: 2, pageSize: 20, total: 0 }),
-          { status: 200 }
-        )
+        new Response(JSON.stringify({ items: [], page: 2, pageSize: 20, total: 0 }), {
+          status: 200
+        })
       )
-      .mockResolvedValueOnce(new Response(JSON.stringify({ formalMatter: matter }), { status: 200 }));
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ formalMatter: matter }), { status: 200 })
+      );
     vi.stubGlobal('fetch', fetchMock);
     const client = createMatterWorkspaceClient('workspace-live');
 
-    await client.list({ search: 'orbit mark', status: 'OPEN', type: 'TRADEMARK_REGISTRATION', page: 2 });
+    await client.list({
+      search: 'orbit mark',
+      status: 'OPEN',
+      type: 'TRADEMARK_REGISTRATION',
+      page: 2
+    });
     await client.load('formal-matter_a/b');
 
     const urls = fetchMock.mock.calls.map(([url]) =>
@@ -62,7 +68,9 @@ describe('Matter Workspace Gateway client', () => {
   it('obtains CSRF and starts review from exact current Matter lineage without browser actor fields', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ csrfToken: 'csrf-matter-846' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ csrfToken: 'csrf-matter-846' }), { status: 200 })
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({ reviewCase: { reviewCaseId: 'review_846', version: 2 } }),
@@ -71,7 +79,9 @@ describe('Matter Workspace Gateway client', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await createMatterWorkspaceClient('workspace-live').startProfessionalReview(matter);
+    const result = await createMatterWorkspaceClient('workspace-live').startProfessionalReview(
+      matter
+    );
 
     expect(result).toEqual({ reviewCaseId: 'review_846', version: 2 });
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/auth/session', { credentials: 'include' });
@@ -98,7 +108,9 @@ describe('Matter Workspace Gateway client', () => {
       'fetch',
       vi
         .fn<typeof fetch>()
-        .mockResolvedValueOnce(new Response(JSON.stringify({ csrfToken: 'csrf-matter-846' }), { status: 200 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ csrfToken: 'csrf-matter-846' }), { status: 200 })
+        )
         .mockResolvedValueOnce(new Response(JSON.stringify({ reviewCase: {} }), { status: 201 }))
     );
     await expect(
