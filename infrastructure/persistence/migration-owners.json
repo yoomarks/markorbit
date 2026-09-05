@@ -6,6 +6,7 @@
     "core_account_access": "@markorbit/core-service",
     "core_method_outcome_evidence": "@markorbit/core-service",
     "core_method_improvement": "@markorbit/core-service",
+    "core_governed_human_action_receipts": "@markorbit/core-service",
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
     "markreg_formal_matters": "@markorbit/markreg-service",
@@ -146,6 +147,7 @@
     "0091_core_method_improvement_coverage_gap": "@markorbit/core-service",
     "0092_mgsn_allocation_admission_lineage": "@markorbit/mgsn-service",
     "0093_mgsn_allocation_admission_lineage_integrity": "@markorbit/mgsn-service",
-    "0094_mgsn_allocation_admission_lineage_replay_audit_integrity": "@markorbit/mgsn-service"
+    "0094_mgsn_allocation_admission_lineage_replay_audit_integrity": "@markorbit/mgsn-service",
+    "0095_core_governed_human_action_receipts": "@markorbit/core-service"
   }
 }
