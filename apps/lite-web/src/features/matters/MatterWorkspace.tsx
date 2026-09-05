@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormalMatter, FormalMatterListResponse } from '@markorbit/contracts';
 import {
   Alert,
@@ -13,86 +13,111 @@ import {
   Select,
   TextInput
 } from '@markorbit/ui';
-function parseGatewayUrl(value: unknown): string {
-  if (value === undefined || value === '') return '';
-  if (typeof value !== 'string') return '';
-  try {
-    const parsed = new URL(value);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
-    return parsed.origin;
-  } catch {
-    return '';
-  }
-}
-const gateway = parseGatewayUrl(
-  import.meta.env.VITE_LITE_GATEWAY_URL ?? import.meta.env.VITE_GATEWAY_URL
-);
+import {
+  createMatterWorkspaceClient,
+  MatterWorkspaceHttpError,
+  type MatterWorkspaceClient
+} from '../../api/matters.js';
+import { updateLiteLocation } from '../../routing/workspace-navigation.js';
+
 const current = () => new URLSearchParams(location.search);
-function navigate(values: Record<string, string | undefined>, replace = false) {
-  const q = current();
-  for (const [k, v] of Object.entries(values)) {
-    if (v === undefined) q.delete(k);
-    else q.set(k, v);
-  }
-  history[replace ? 'replaceState' : 'pushState'](null, '', `${location.pathname}?${q}#matters`);
-  dispatchEvent(new PopStateEvent('popstate'));
+
+function navigateMatter(
+  workspaceId: string,
+  values: Record<string, string | number | undefined>,
+  replace = false
+) {
+  updateLiteLocation(
+    {
+      surface: 'matters',
+      workspaceId,
+      params: values
+    },
+    { preserveSearch: true, replace }
+  );
 }
-async function load<T>(path: string, workspaceId: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(`${gateway}${path}`, {
-    credentials: 'include',
-    headers: { 'x-markorbit-workspace-id': workspaceId, 'x-correlation-id': crypto.randomUUID() },
-    signal
-  });
-  const body = (await response.json()) as { message?: string };
-  if (!response.ok)
-    throw Object.assign(new Error(body.message ?? 'Matter data is unavailable.'), {
-      status: response.status
-    });
-  return body as T;
-}
-export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
-  const [tick, setTick] = useState(0),
-    [data, setData] = useState<FormalMatterListResponse>(),
-    [detail, setDetail] = useState<FormalMatter>(),
-    [error, setError] = useState<{ status?: number; message: string }>(),
-    [loading, setLoading] = useState(true);
+
+export function MatterWorkspace({
+  workspaceId,
+  client: suppliedClient
+}: {
+  workspaceId: string;
+  client?: MatterWorkspaceClient;
+}) {
+  const client = useMemo(
+    () => suppliedClient ?? createMatterWorkspaceClient(workspaceId),
+    [suppliedClient, workspaceId]
+  );
+  const [tick, setTick] = useState(0);
+  const [data, setData] = useState<FormalMatterListResponse>();
+  const [detail, setDetail] = useState<FormalMatter>();
+  const [error, setError] = useState<{ status?: number; message: string }>();
+  const [loading, setLoading] = useState(true);
   const origin = useRef<string>();
   const priorWorkspace = useRef(workspaceId);
+
   useEffect(() => {
-    if (priorWorkspace.current !== workspaceId && current().has('formalMatterId')) {
+    const workspaceChanged = priorWorkspace.current !== workspaceId;
+    if (workspaceChanged && current().has('formalMatterId')) {
       priorWorkspace.current = workspaceId;
-      navigate({ formalMatterId: undefined }, true);
+      navigateMatter(workspaceId, { formalMatterId: undefined }, true);
     }
   }, [workspaceId]);
+
   useEffect(() => {
-    const f = () => setTick((v) => v + 1);
-    addEventListener('popstate', f);
-    return () => removeEventListener('popstate', f);
+    const followLocation = () => setTick((value) => value + 1);
+    addEventListener('popstate', followLocation);
+    return () => removeEventListener('popstate', followLocation);
   }, []);
-  const q = current(),
-    selected = q.get('formalMatterId') ?? '',
-    search = q.get('search') ?? '',
-    status = q.get('status') ?? '',
-    type = q.get('type') ?? '',
-    page = q.get('page') ?? '1';
+
+  const query = current();
+  const selected = query.get('formalMatterId') ?? '';
+  const search = query.get('search') ?? '';
+  const status = query.get('status') ?? '';
+  const type = query.get('type') ?? '';
+  const page = query.get('page') ?? '1';
+
   useEffect(() => {
-    const c = new AbortController();
+    const controller = new AbortController();
     setLoading(true);
     setError(undefined);
     setData(undefined);
     setDetail(undefined);
-    const path = selected
-      ? `/api/markreg/formal-matters/${encodeURIComponent(selected)}`
-      : `/api/markreg/formal-matters?${new URLSearchParams({ ...(search && { search }), ...(status && { status }), ...(type && { type }), page, pageSize: '20' })}`;
-    load<{ formalMatter: FormalMatter } | FormalMatterListResponse>(path, workspaceId, c.signal)
-      .then((r) => ('formalMatter' in r ? setDetail(r.formalMatter) : setData(r)))
-      .catch((e: Error & { status?: number }) => {
-        if (e.name !== 'AbortError')
-          setError({ ...(e.status ? { status: e.status } : {}), message: e.message });
+    const request = selected
+      ? client.load(selected, controller.signal).then((formalMatter) => ({ formalMatter }))
+      : client
+          .list(
+            {
+              ...(search ? { search } : {}),
+              ...(status ? { status } : {}),
+              ...(type ? { type } : {}),
+              page: Number(page),
+              pageSize: 20
+            },
+            controller.signal
+          )
+          .then((list) => ({ list }));
+
+    void request
+      .then((result) => {
+        if ('formalMatter' in result) setDetail(result.formalMatter);
+        else setData(result.list);
+      })
+      .catch((cause: unknown) => {
+        if (cause instanceof DOMException && cause.name === 'AbortError') return;
+        const next =
+          cause instanceof MatterWorkspaceHttpError
+            ? { status: cause.status, message: cause.message }
+            : {
+                status: 503,
+                message: cause instanceof Error ? cause.message : 'Matter data is unavailable.'
+              };
+        setError(next);
       })
       .finally(() => setLoading(false));
-    return () => c.abort();
-  }, [workspaceId, selected, search, status, type, page, tick]);
+    return () => controller.abort();
+  }, [client, selected, search, status, type, page, tick]);
+
   useEffect(() => {
     if (!selected && origin.current) {
       const trigger = document.querySelector<HTMLButtonElement>(
@@ -104,31 +129,48 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
       }
     }
   }, [selected, data]);
+
   if (loading) return <LoadingState label="Loading durable Matters" />;
-  if (error)
+  if (error) {
+    const title =
+      error.status === 404
+        ? 'Matter not found'
+        : error.status === 403
+          ? 'Matter access denied'
+          : error.status === 401
+            ? 'Sign in required'
+            : error.status === 503
+              ? 'Matter service unavailable'
+              : 'Matters unavailable';
     return (
       <ErrorState
-        title={
-          error.status === 404
-            ? 'Matter not found'
-            : error.status === 403
-              ? 'Matter access denied'
-              : error.status === 503
-                ? 'Matter service unavailable'
-                : 'Matters unavailable'
-        }
+        title={title}
         description={error.message}
-        onRetry={() => setTick((v) => v + 1)}
+        onRetry={() => setTick((value) => value + 1)}
       />
     );
-  if (detail) return <MatterDetail matter={detail} onBack={() => history.back()} />;
+  }
+  if (detail) {
+    return (
+      <MatterDetail
+        matter={detail}
+        client={client}
+        onBack={() => navigateMatter(workspaceId, { formalMatterId: undefined })}
+      />
+    );
+  }
+
   return (
     <>
       <PageHeader
         title="Matters"
-        description="Today / Matters · durable Formal Matters in this Workspace"
+        description="Durable Formal Matters in this Workspace"
         actions={<Badge>MarkReg live data</Badge>}
       />
+      <p className="lite-page-intro">
+        Start with the Matter that needs professional attention. Open a record for its current state,
+        next bounded action, and exact owner evidence.
+      </p>
       <Alert title="Read-only operational view">
         Formal Matter is owned by MarkReg. Next steps are summaries only; nothing here executes a
         protected action.
@@ -137,12 +179,16 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
         <TextInput
           label="Search Matters"
           value={search}
-          onChange={(e) => navigate({ search: e.target.value, page: undefined }, true)}
+          onChange={(event) =>
+            navigateMatter(workspaceId, { search: event.target.value, page: undefined }, true)
+          }
         />
         <Select
           label="Status"
           value={status}
-          onChange={(e) => navigate({ status: e.target.value, page: undefined }, true)}
+          onChange={(event) =>
+            navigateMatter(workspaceId, { status: event.target.value, page: undefined }, true)
+          }
         >
           <option value="">All statuses</option>
           <option value="OPEN">OPEN</option>
@@ -150,7 +196,9 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
         <Select
           label="Matter type"
           value={type}
-          onChange={(e) => navigate({ type: e.target.value, page: undefined }, true)}
+          onChange={(event) =>
+            navigateMatter(workspaceId, { type: event.target.value, page: undefined }, true)
+          }
         >
           <option value="">All types</option>
           <option value="TRADEMARK_REGISTRATION">Trademark registration</option>
@@ -158,30 +206,32 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
       </div>
       {data?.items.length ? (
         <div className="lite-list" aria-live="polite">
-          {data.items.map((m) => (
-            <Card key={m.formalMatterId}>
+          {data.items.map((matter) => (
+            <Card key={matter.formalMatterId}>
               <div className="lite-row">
                 <div>
-                  <h2>{m.trademark ?? m.applicant ?? m.formalMatterId}</h2>
+                  <p className="lite-eyebrow">Matter · {matter.type.replaceAll('_', ' ')}</p>
+                  <h2>{matter.trademark ?? matter.applicant ?? matter.formalMatterId}</h2>
                   <p>
-                    {m.applicant ?? 'Applicant not captured'} ·{' '}
-                    {m.jurisdiction ?? 'Jurisdiction not captured'} · Classes{' '}
-                    {m.classes.join(', ') || 'not captured'}
+                    {matter.applicant ?? 'Applicant not captured'} ·{' '}
+                    {matter.jurisdiction ?? 'Jurisdiction not captured'} · Classes{' '}
+                    {matter.classes.join(', ') || 'not captured'}
                   </p>
                 </div>
-                <Badge>{m.status}</Badge>
+                <Badge>{matter.status}</Badge>
               </div>
               <p>
-                {m.type} · Created {new Date(m.createdAt).toLocaleString()}
+                <strong>Next:</strong> Open current Matter and decide whether Professional Review is
+                the appropriate bounded next step.
               </p>
               <Button
-                data-matter-id={m.formalMatterId}
+                data-matter-id={matter.formalMatterId}
                 onClick={() => {
-                  origin.current = m.formalMatterId;
-                  navigate({ formalMatterId: m.formalMatterId });
+                  origin.current = matter.formalMatterId;
+                  navigateMatter(workspaceId, { formalMatterId: matter.formalMatterId });
                 }}
               >
-                View Matter details
+                Open current Matter
               </Button>
             </Card>
           ))}
@@ -194,7 +244,8 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
             <Button
               variant="secondary"
               onClick={() =>
-                navigate(
+                navigateMatter(
+                  workspaceId,
                   { search: undefined, status: undefined, type: undefined, page: undefined },
                   true
                 )
@@ -204,13 +255,13 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
             </Button>
           }
         />
-      )}{' '}
+      )}
       {data && (
         <nav className="lite-pagination" aria-label="Matter pages">
           <Button
             variant="secondary"
             disabled={data.page <= 1}
-            onClick={() => navigate({ page: String(data.page - 1) })}
+            onClick={() => navigateMatter(workspaceId, { page: data.page - 1 })}
           >
             Previous
           </Button>
@@ -220,7 +271,7 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
           <Button
             variant="secondary"
             disabled={data.page * data.pageSize >= data.total}
-            onClick={() => navigate({ page: String(data.page + 1) })}
+            onClick={() => navigateMatter(workspaceId, { page: data.page + 1 })}
           >
             Next
           </Button>
@@ -229,45 +280,41 @@ export function MatterWorkspace({ workspaceId }: { workspaceId: string }) {
     </>
   );
 }
-function MatterDetail({ matter, onBack }: { matter: FormalMatter; onBack: () => void }) {
-  const p = matter.sourceSnapshot.preparation;
+
+function MatterDetail({
+  matter,
+  client,
+  onBack
+}: {
+  matter: FormalMatter;
+  client: MatterWorkspaceClient;
+  onBack: () => void;
+}) {
+  const preparation = matter.sourceSnapshot.preparation;
+  const readyAtCreation = matter.sourceSnapshot.matterDraft.readiness.readyForProfessionalReview;
+  const readinessLabel = readyAtCreation
+    ? 'ready for professional review at creation'
+    : 'not ready for professional review at creation';
   const [startingReview, setStartingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
+
   const startReview = async () => {
     setStartingReview(true);
     setReviewError('');
     try {
-      const session = await fetch(`${gateway}/api/auth/session`, { credentials: 'include' });
-      const auth = (await session.json()) as { csrfToken?: string };
-      const response = await fetch(`${gateway}/api/lite/professional-review-cases`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'content-type': 'application/json',
-          'idempotency-key': `professional-review:${matter.formalMatterId}`,
-          'x-markorbit-workspace-id': matter.workspaceId,
-          ...(auth.csrfToken ? { 'x-markorbit-csrf-token': auth.csrfToken } : {})
+      const reviewCase = await client.startProfessionalReview(matter);
+      updateLiteLocation(
+        {
+          surface: 'professional-review',
+          workspaceId: matter.workspaceId,
+          params: {
+            formalMatterId: undefined,
+            professionalReviewCaseId: reviewCase.reviewCaseId,
+            professionalReviewCaseVersion: reviewCase.version
+          }
         },
-        body: JSON.stringify({
-          formalMatterId: matter.formalMatterId,
-          sourceFormalMatterVersion: matter.version,
-          sourceSnapshotSha256: matter.snapshotSha256,
-          matterDraftId: matter.sourceMatterDraftId,
-          matterDraftVersion: String(matter.sourceMatterDraftVersion)
-        })
-      });
-      const body = (await response.json()) as {
-        reviewCase?: { reviewCaseId: string; version?: number };
-        message?: string;
-      };
-      if (!response.ok || !body.reviewCase)
-        throw new Error(body.message ?? 'Professional Review could not be started.');
-      const query = current();
-      query.delete('formalMatterId');
-      query.set('professionalReviewCaseId', body.reviewCase.reviewCaseId);
-      query.set('professionalReviewCaseVersion', String(body.reviewCase.version ?? 1));
-      history.pushState(null, '', `${location.pathname}?${query}#work-professional-review`);
-      dispatchEvent(new PopStateEvent('popstate'));
+        { preserveSearch: true }
+      );
     } catch (error) {
       setReviewError(
         error instanceof Error ? error.message : 'Professional Review could not be started.'
@@ -276,14 +323,15 @@ function MatterDetail({ matter, onBack }: { matter: FormalMatter; onBack: () => 
       setStartingReview(false);
     }
   };
+
   return (
     <>
       <Button variant="secondary" onClick={onBack}>
         ← Back to Matters
       </Button>
       <PageHeader
-        title={p.trademark ?? matter.formalMatterId}
-        description="Formal Matter · immutable creation lineage"
+        title={preparation.trademark ?? matter.formalMatterId}
+        description="Formal Matter · current state and bounded next action"
         actions={<Badge>{matter.status}</Badge>}
       />
       {reviewError && (
@@ -291,73 +339,92 @@ function MatterDetail({ matter, onBack }: { matter: FormalMatter; onBack: () => 
           {reviewError}
         </Alert>
       )}
-      <Button disabled={startingReview} onClick={() => void startReview()}>
-        {startingReview ? 'Starting Review…' : 'Start or Resume Professional Review'}
-      </Button>
+      <Card>
+        <p className="lite-eyebrow">NEXT ACTION</p>
+        <h2>Review the current Matter before moving it forward</h2>
+        <p>
+          This record was {readinessLabel}. Starting or resuming review records bounded professional
+          review work; it does not submit a filing or create Official Truth.
+        </p>
+        <Button disabled={startingReview} onClick={() => void startReview()}>
+          {startingReview ? 'Starting Review…' : 'Start or Resume Professional Review'}
+        </Button>
+      </Card>
       <div className="lite-detail-grid">
         <Card>
-          <h2>Current identity</h2>
+          <h2>Current state</h2>
           <KeyValueList
             items={[
-              { key: 'Formal Matter ID', value: matter.formalMatterId },
-              { key: 'Type', value: matter.kind },
               { key: 'Status', value: matter.status },
-              { key: 'Version', value: String(matter.version) },
-              { key: 'Workspace', value: matter.workspaceId },
-              { key: 'Created', value: new Date(matter.createdAt).toLocaleString() },
-              { key: 'Created by', value: matter.createdByUserId }
-            ]}
-          />
-        </Card>
-        <Card>
-          <h2>Immutable source lineage</h2>
-          <KeyValueList
-            items={[
+              { key: 'Matter type', value: matter.kind },
               {
-                key: 'Customer Confirmation',
-                value: `${matter.sourceCustomerConfirmationId} · v${matter.sourceCustomerConfirmationVersion}`
+                key: 'Applicant / owner',
+                value: preparation.applicantName ?? 'Not captured'
               },
               {
-                key: 'Matter Draft',
-                value: `${matter.sourceMatterDraftId} · v${matter.sourceMatterDraftVersion}`
+                key: 'Jurisdiction',
+                value: preparation.targetJurisdiction ?? 'Not captured'
               },
-              { key: 'Quote', value: `${matter.sourceQuoteId} · v${matter.sourceQuoteVersion}` },
-              { key: 'Snapshot schema', value: `v${matter.snapshotSchemaVersion}` },
-              { key: 'Integrity', value: `SHA-256 captured · ${matter.snapshotSha256}` }
-            ]}
-          />
-          <a href={`/markreg?matterDraftId=${encodeURIComponent(matter.sourceMatterDraftId)}`}>
-            Open MarkReg source receipt
-          </a>
-        </Card>
-        <Card>
-          <h2>Applicant and scope</h2>
-          <KeyValueList
-            items={[
-              { key: 'Applicant / owner', value: p.applicantName ?? 'Not captured' },
-              { key: 'Address', value: p.applicantAddress ?? 'Not captured' },
-              { key: 'Jurisdiction', value: p.targetJurisdiction ?? 'Not captured' },
-              { key: 'Classes', value: p.classes.join(', ') || 'Not captured' },
-              { key: 'Goods / services', value: p.goodsServices ?? 'Not captured' }
+              { key: 'Classes', value: preparation.classes.join(', ') || 'Not captured' },
+              {
+                key: 'Goods / services',
+                value: preparation.goodsServices ?? 'Not captured'
+              }
             ]}
           />
         </Card>
         <Card>
           <h2>Creation readiness</h2>
-          <p>
-            {matter.sourceSnapshot.matterDraft.readiness.readyForProfessionalReview
-              ? 'Ready for professional review at creation.'
-              : 'Not ready at creation.'}
-          </p>
           <ul>
-            {matter.sourceSnapshot.matterDraft.readiness.checks.map((c) => (
-              <li key={c.code}>
-                <strong>{c.code}</strong>: {c.status} — {c.explanation}
+            {matter.sourceSnapshot.matterDraft.readiness.checks.map((check) => (
+              <li key={check.code}>
+                <strong>{check.code}</strong>: {check.status} — {check.explanation}
               </li>
             ))}
           </ul>
         </Card>
       </div>
+      <details className="lite-evidence-panel">
+        <summary>Exact Matter evidence and immutable lineage</summary>
+        <div className="lite-detail-grid">
+          <Card>
+            <h2>Exact owner identity</h2>
+            <KeyValueList
+              items={[
+                { key: 'Formal Matter ID', value: matter.formalMatterId },
+                { key: 'Version', value: String(matter.version) },
+                { key: 'Workspace', value: matter.workspaceId },
+                { key: 'Created', value: new Date(matter.createdAt).toLocaleString() },
+                { key: 'Created by', value: matter.createdByUserId }
+              ]}
+            />
+          </Card>
+          <Card>
+            <h2>Immutable source lineage</h2>
+            <KeyValueList
+              items={[
+                {
+                  key: 'Customer Confirmation',
+                  value: `${matter.sourceCustomerConfirmationId} · v${matter.sourceCustomerConfirmationVersion}`
+                },
+                {
+                  key: 'Matter Draft',
+                  value: `${matter.sourceMatterDraftId} · v${matter.sourceMatterDraftVersion}`
+                },
+                {
+                  key: 'Quote',
+                  value: `${matter.sourceQuoteId} · v${matter.sourceQuoteVersion}`
+                },
+                { key: 'Snapshot schema', value: `v${matter.snapshotSchemaVersion}` },
+                { key: 'Integrity', value: `SHA-256 captured · ${matter.snapshotSha256}` }
+              ]}
+            />
+            <a href={`/markreg?matterDraftId=${encodeURIComponent(matter.sourceMatterDraftId)}`}>
+              Open MarkReg source receipt
+            </a>
+          </Card>
+        </div>
+      </details>
     </>
   );
 }

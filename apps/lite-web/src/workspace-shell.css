@@ -1,0 +1,36 @@
+.lite-page-intro {
+  max-width: 70ch;
+  margin: 0 0 var(--mo-space-lg);
+  color: var(--mo-color-text-secondary);
+}
+
+.lite-eyebrow {
+  margin: 0 0 var(--mo-space-xs);
+  font-size: var(--mo-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mo-color-text-secondary);
+}
+
+.lite-evidence-panel {
+  margin-top: var(--mo-space-lg);
+  border-top: 1px solid var(--mo-color-border-subtle);
+  padding-top: var(--mo-space-md);
+}
+
+.lite-evidence-panel > summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.lite-evidence-panel[open] > summary {
+  margin-bottom: var(--mo-space-lg);
+}
+
+@media (max-width: 760px) {
+  .lite-page-intro {
+    max-width: none;
+  }
+}
