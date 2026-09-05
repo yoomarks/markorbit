@@ -2,8 +2,10 @@ import type { RuntimeCapabilityDefinition } from '@markorbit/contracts/capabilit
 import type { ImplementationProfile } from '@markorbit/contracts/capability-runtime';
 import {
   capabilitySourceMaturityClasses,
-  currentCapabilitySourceAdmissionPolicyCatalogV1
+  currentCapabilitySourceAdmissionPolicyCatalogV1,
+  type CapabilitySourceAdmissionPolicyEntryV1
 } from './source-admission-policy-catalog.js';
+import { materializeCapabilitySourceAdmissionPolicyContentIdentityV1 } from './source-admission-policy-content-provenance.js';
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const RISK_CLASSES = new Set(['LOW', 'MODERATE', 'HIGH', 'PROTECTED']);
@@ -32,6 +34,7 @@ export interface CurrentSourceAdmissionPolicyReadV1 {
 type SourceAdmissionPolicyProjectionBaseV1 = Readonly<{
   policyId: string;
   policyVersion: number;
+  policyFingerprintSha256: string;
   capabilityId: string;
   capabilityVersion: string;
   implementationProfileId: string;
@@ -289,6 +292,17 @@ const COMMON_POLICY_KEYS = [
   'maximumRiskClass'
 ] as const;
 
+function policyContentFingerprint(policy: Record<string, unknown>): string {
+  const fingerprint = materializeCapabilitySourceAdmissionPolicyContentIdentityV1(
+    policy as unknown as Readonly<CapabilitySourceAdmissionPolicyEntryV1>
+  ).policyFingerprintSha256;
+  if (!SHA256.test(fingerprint))
+    throw new CapabilityCognitiveReadError(
+      'sourceAdmissionPolicy policy fingerprint is malformed.'
+    );
+  return fingerprint;
+}
+
 function projectSourceAdmissionPolicy(value: unknown): SourceAdmissionPolicyProjectionV1 {
   const policy = record(value, 'sourceAdmissionPolicy');
   if (policy.schemaVersion !== 1)
@@ -328,27 +342,31 @@ function projectSourceAdmissionPolicy(value: unknown): SourceAdmissionPolicyProj
       [...COMMON_POLICY_KEYS, 'methodCurrentness', 'referenceCurrentness'],
       'sourceAdmissionPolicy'
     );
+    const currentnessRequirements = Object.freeze({
+      method: currentnessRequirement(
+        policy.methodCurrentness,
+        'sourceAdmissionPolicy.methodCurrentness'
+      ),
+      reference: currentnessRequirement(
+        policy.referenceCurrentness,
+        'sourceAdmissionPolicy.referenceCurrentness'
+      )
+    });
     return Object.freeze({
       ...common,
+      policyFingerprintSha256: policyContentFingerprint(policy),
       maturityClass: 'PRODUCTION_ADMISSIBLE',
-      currentnessRequirements: Object.freeze({
-        method: currentnessRequirement(
-          policy.methodCurrentness,
-          'sourceAdmissionPolicy.methodCurrentness'
-        ),
-        reference: currentnessRequirement(
-          policy.referenceCurrentness,
-          'sourceAdmissionPolicy.referenceCurrentness'
-        )
-      })
+      currentnessRequirements
     });
   }
 
   exactKeys(policy, [...COMMON_POLICY_KEYS, 'reason'], 'sourceAdmissionPolicy');
+  const reason = text(policy.reason, 'sourceAdmissionPolicy.reason', 1000);
   return Object.freeze({
     ...common,
+    policyFingerprintSha256: policyContentFingerprint(policy),
     maturityClass: policy.maturityClass as 'PILOT' | 'FIXTURE_TEST' | 'UNSUPPORTED',
-    reason: text(policy.reason, 'sourceAdmissionPolicy.reason', 1000)
+    reason
   });
 }
 
