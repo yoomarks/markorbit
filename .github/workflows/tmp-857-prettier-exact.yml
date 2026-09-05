@@ -1,0 +1,43 @@
+name: tmp-857-prettier-exact
+
+on:
+  push:
+    branches:
+      - tmp/857-prettier-exact-20260906
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format target files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/package.json
+          packages/contracts/src/provider-discovery-trust.ts
+          packages/contracts/tests/provider-discovery-trust.test.ts
+      - name: Verify exact format
+        run: >-
+          pnpm exec prettier --check
+          packages/contracts/package.json
+          packages/contracts/src/provider-discovery-trust.ts
+          packages/contracts/tests/provider-discovery-trust.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prettier-857
+          path: |
+            packages/contracts/package.json
+            packages/contracts/src/provider-discovery-trust.ts
+            packages/contracts/tests/provider-discovery-trust.test.ts
+          if-no-files-found: error
