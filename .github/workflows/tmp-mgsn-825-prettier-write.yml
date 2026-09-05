@@ -1,4 +1,4 @@
-name: Temporary MGSN 825 Lint Cleanup
+name: Temporary MGSN 825 Branch Refresh
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  cleanup-and-push:
+  refresh-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,11 +17,10 @@ jobs:
           ref: mgsn-governed-network-http-825
           fetch-depth: 0
       - run: |
-          sed -i '1{/^\/\* eslint-disable @typescript-eslint\/no-unsafe-assignment, @typescript-eslint\/no-unsafe-argument /d;}' services/mgsn/src/governed-network-http.ts
-          git diff --check
+          expected=322f5e7b64a72b4fed59b134db4d5972784da9be
+          test "$(git rev-parse HEAD)" = "$expected"
+          git fetch origin main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/src/governed-network-http.ts
-          git diff --cached --quiet && exit 0
-          git commit -m "chore(mgsn): remove unused lint suppression"
-          git push origin HEAD:mgsn-governed-network-http-825
+          git rebase origin/main
+          git push --force-with-lease=refs/heads/mgsn-governed-network-http-825:$expected origin HEAD:mgsn-governed-network-http-825
