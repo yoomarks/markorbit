@@ -27,37 +27,32 @@ jobs:
 
           source = Path('services/markreg/src/workspace-action-read.ts')
           text = source.read_text()
-          old = """  const snapshot = object(row.source_snapshot);\n  const preparation = object(snapshot.preparation);\n  const matter: MatterSource = {\n    id: requiredText(row.formal_matter_id, 'formal_matter_id') as FormalMatterId,\n    version: Number(row.formal_matter_version),\n    ...(optionalText(preparation.trademark)\n      ? { trademark: optionalText(preparation.trademark) }\n      : {}),\n    ...(optionalText(preparation.applicantName)\n      ? { applicant: optionalText(preparation.applicantName) }\n      : {}),\n    ...(optionalText(preparation.targetJurisdiction)\n      ? { jurisdiction: optionalText(preparation.targetJurisdiction) }\n      : {}),\n    updatedAt: asTimestamp(row.matter_updated_at)\n  };\n"""
-          new = """  const snapshot = object(row.source_snapshot);\n  const preparation = object(snapshot.preparation);\n  const trademark = optionalText(preparation.trademark);\n  const applicant = optionalText(preparation.applicantName);\n  const jurisdiction = optionalText(preparation.targetJurisdiction);\n  const matter: MatterSource = {\n    id: requiredText(row.formal_matter_id, 'formal_matter_id') as FormalMatterId,\n    version: Number(row.formal_matter_version),\n    ...(trademark ? { trademark } : {}),\n    ...(applicant ? { applicant } : {}),\n    ...(jurisdiction ? { jurisdiction } : {}),\n    updatedAt: asTimestamp(row.matter_updated_at)\n  };\n"""
-          if old not in text:
-              raise SystemExit('matter mapping marker not found')
-          text = text.replace(old, new, 1)
-
-          old = """  const recommendedAction = row.recommended_action_id\n    ? {\n"""
-          new = """  const actionTimingBasis = optionalText(row.action_timing_basis);\n  const recommendedAction = row.recommended_action_id\n    ? {\n"""
-          if old not in text:
-              raise SystemExit('recommended action marker not found')
-          text = text.replace(old, new, 1)
-
-          old = """        ...(optionalText(row.action_timing_basis)\n          ? { timingBasis: optionalText(row.action_timing_basis) }\n          : {}),\n"""
-          new = """        ...(actionTimingBasis ? { timingBasis: actionTimingBasis } : {}),\n"""
-          if old not in text:
-              raise SystemExit('timing basis marker not found')
-          text = text.replace(old, new, 1)
+          text = text.replace(
+              """  const snapshot = object(row.source_snapshot);\n  const preparation = object(snapshot.preparation);\n  const matter: MatterSource = {\n    id: requiredText(row.formal_matter_id, 'formal_matter_id') as FormalMatterId,\n    version: Number(row.formal_matter_version),\n    ...(optionalText(preparation.trademark)\n      ? { trademark: optionalText(preparation.trademark) }\n      : {}),\n    ...(optionalText(preparation.applicantName)\n      ? { applicant: optionalText(preparation.applicantName) }\n      : {}),\n    ...(optionalText(preparation.targetJurisdiction)\n      ? { jurisdiction: optionalText(preparation.targetJurisdiction) }\n      : {}),\n    updatedAt: asTimestamp(row.matter_updated_at)\n  };\n""",
+              """  const snapshot = object(row.source_snapshot);\n  const preparation = object(snapshot.preparation);\n  const trademark = optionalText(preparation.trademark);\n  const applicant = optionalText(preparation.applicantName);\n  const jurisdiction = optionalText(preparation.targetJurisdiction);\n  const matter: MatterSource = {\n    id: requiredText(row.formal_matter_id, 'formal_matter_id') as FormalMatterId,\n    version: Number(row.formal_matter_version),\n    ...(trademark ? { trademark } : {}),\n    ...(applicant ? { applicant } : {}),\n    ...(jurisdiction ? { jurisdiction } : {}),\n    updatedAt: asTimestamp(row.matter_updated_at)\n  };\n""",
+              1
+          )
+          text = text.replace(
+              """  const recommendedAction = row.recommended_action_id\n    ? {\n""",
+              """  const actionTimingBasis = optionalText(row.action_timing_basis);\n  const recommendedAction = row.recommended_action_id\n    ? {\n""",
+              1
+          )
+          text = text.replace(
+              """        ...(optionalText(row.action_timing_basis)\n          ? { timingBasis: optionalText(row.action_timing_basis) }\n          : {}),\n""",
+              """        ...(actionTimingBasis ? { timingBasis: actionTimingBasis } : {}),\n""",
+              1
+          )
           source.write_text(text)
 
           test = Path('services/markreg/tests/workspace-action-read.test.ts')
-          text = test.read_text()
-          text = text.replace(
+          text = test.read_text().replace(
               "const formalMatterId = `formal-matter_${suffix}`;",
-              "const formalMatterId: FormalMatterId = `formal-matter_${suffix}`;",
+              "const formalMatterId: `formal-matter_${string}` = `formal-matter_${suffix}`;",
               1
           )
           test.write_text(text)
           PY
           pnpm exec prettier --write services/markreg/src/workspace-action-read.ts services/markreg/tests/workspace-action-read.test.ts
-          pnpm --filter @markorbit/markreg-service lint
-          pnpm --filter @markorbit/markreg-service typecheck
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add services/markreg/src/workspace-action-read.ts services/markreg/tests/workspace-action-read.test.ts
