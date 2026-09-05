@@ -25,4 +25,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build Gateway dependency closure
+        run: pnpm exec turbo run build --filter='@markorbit/gateway^...'
+      - name: Narrow writer validation to focused suite
+        run: >-
+          python -c "from pathlib import Path; p=Path('.tmp-writer/.github/scripts/tmp-867-gateway-writer.py'); t=p.read_text(); old=\"run('pnpm', '--filter', '@markorbit/gateway', 'test', '--', 'workspace-action-gateway.test.ts')\"; new=\"run('pnpm', '--filter', '@markorbit/gateway', 'exec', 'vitest', 'run', 'tests/workspace-action-gateway.test.ts')\"; assert old in t; p.write_text(t.replace(old,new,1))"
       - run: python .tmp-writer/.github/scripts/tmp-867-gateway-writer.py
