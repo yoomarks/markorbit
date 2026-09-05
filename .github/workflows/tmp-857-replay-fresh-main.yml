@@ -1,0 +1,67 @@
+name: tmp-857-replay-fresh-main
+
+on:
+  push:
+    branches:
+      - tmp/857-replay-fresh-main-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Materialize clean Trust contract diff on fresh main
+        shell: bash
+        run: |
+          git config user.name 'yoomarks'
+          git config user.email 'actions@users.noreply.github.com'
+          git fetch origin main integration/mgsn-trust-discovery-contract-845 integration/mgsn-trust-discovery-contract-845-main
+          BASE=$(git merge-base origin/main origin/integration/mgsn-trust-discovery-contract-845)
+          git diff --binary "$BASE" origin/integration/mgsn-trust-discovery-contract-845 -- \
+            packages/contracts/package.json \
+            packages/contracts/src/provider-discovery-trust.ts \
+            packages/contracts/tests/provider-discovery-trust.test.ts > /tmp/857.patch
+          test -s /tmp/857.patch
+          git checkout -B integration/mgsn-trust-discovery-contract-845-main origin/integration/mgsn-trust-discovery-contract-845-main
+          test "$(git rev-parse HEAD)" = "9887b7fd6d20b75a1c8fed1817750aa2cb92e38b"
+          git apply --3way /tmp/857.patch
+      - run: pnpm install --frozen-lockfile
+      - name: Format and verify bounded shared-contract diff
+        shell: bash
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/package.json \
+            packages/contracts/src/provider-discovery-trust.ts \
+            packages/contracts/tests/provider-discovery-trust.test.ts
+          git diff --name-only origin/main...HEAD > /tmp/committed-before.txt || true
+          git diff --name-only > /tmp/working.txt
+          cat /tmp/working.txt
+          test "$(wc -l < /tmp/working.txt)" -eq 3
+          grep -qx 'packages/contracts/package.json' /tmp/working.txt
+          grep -qx 'packages/contracts/src/provider-discovery-trust.ts' /tmp/working.txt
+          grep -qx 'packages/contracts/tests/provider-discovery-trust.test.ts' /tmp/working.txt
+          git diff --check
+      - name: Contracts typecheck
+        run: pnpm --filter @markorbit/contracts typecheck
+      - name: Contracts tests
+        run: pnpm --filter @markorbit/contracts test
+      - name: Contracts build
+        run: pnpm --filter @markorbit/contracts build
+      - name: Commit and push clean branch
+        shell: bash
+        run: |
+          git add packages/contracts/package.json packages/contracts/src/provider-discovery-trust.ts packages/contracts/tests/provider-discovery-trust.test.ts
+          git commit -m 'feat(contracts): bind Trust context to Provider Discovery'
+          git push origin HEAD:integration/mgsn-trust-discovery-contract-845-main
