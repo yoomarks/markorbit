@@ -41,10 +41,7 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
             Review exact Matter evidence, resolve blocking checks and record a bounded human review
             decision without performing an external filing.
           </p>
-          <Button
-            disabled={!workspaceId}
-            onClick={() => open('professional-review', workspaceId)}
-          >
+          <Button disabled={!workspaceId} onClick={() => open('professional-review', workspaceId)}>
             {workspaceId ? 'Open Professional Review' : 'Select a Workspace first'}
           </Button>
         </Card>
