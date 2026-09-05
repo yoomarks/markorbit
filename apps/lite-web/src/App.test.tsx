@@ -134,8 +134,9 @@ describe('Lite shell navigation truth', () => {
     expect(screen.getByText('Mixed maturity')).toBeVisible();
     expect(screen.getByText('Work · workspace-1')).toBeVisible();
     expect(screen.getByText('Live governed')).toBeVisible();
-    expect(screen.getByText('Hardening in progress')).toBeVisible();
+    expect(screen.getByText('Authenticated governed')).toBeVisible();
     expect(screen.getByText('Fixture preview')).toBeVisible();
+    expect(screen.queryByText('Hardening in progress')).not.toBeInTheDocument();
     expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
     expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
   });
@@ -199,14 +200,23 @@ describe('Lite shell navigation truth', () => {
     expect(screen.getByText('Mixed maturity')).toBeVisible();
   });
 
-  it('labels Execution Release as API-backed without claiming authenticated Workspace scope', () => {
+  it('labels Execution Release as authenticated Workspace-governed work', () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1#work-execution-release');
     render(<LiteApp initialFilingAuthorization={{ id: 'authorization_1', version: 2 }} />);
-    expect(screen.getByText('API-backed')).toBeVisible();
-    expect(screen.getByText('Work · Execution API')).toBeVisible();
+    expect(screen.getByText('Authenticated')).toBeVisible();
+    expect(screen.getByText('Work · workspace-1')).toBeVisible();
+    expect(screen.queryByText('API-backed')).not.toBeInTheDocument();
     expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('authorization_1 2');
+  });
+
+  it('keeps Execution Release Workspace-required when no Workspace is selected', () => {
+    window.history.replaceState(null, '', '/#work-execution-release');
+    render(<LiteApp initialFilingAuthorization={{ id: 'authorization_1', version: 2 }} />);
+    expect(screen.getByText('Workspace required')).toBeVisible();
+    expect(screen.getByText('Work · Workspace not selected')).toBeVisible();
+    expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
+    expect(screen.queryByText('API-backed')).not.toBeInTheDocument();
   });
 
   it.each(['today', 'matters', 'content', 'trademarks', 'capability', 'opportunities'] as const)(

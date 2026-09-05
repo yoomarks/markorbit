@@ -361,11 +361,9 @@ export function LiteApp({
           context={
             isFixture
               ? 'Northstar IP · Fixture workspace'
-              : surface === 'execution-release'
-                ? 'Work · Execution API'
-                : isWorkHub
-                  ? `Work · ${activeWorkspaceId || 'Workspace not selected'}`
-                  : `Workspace · ${activeWorkspaceId || 'not selected'}`
+              : surface === 'execution-release' || isWorkHub
+                ? `Work · ${activeWorkspaceId || 'Workspace not selected'}`
+                : `Workspace · ${activeWorkspaceId || 'not selected'}`
           }
           actions={
             <Badge>
@@ -373,13 +371,11 @@ export function LiteApp({
                 ? 'Not live data'
                 : isEntry
                   ? 'Not yet promoted'
-                  : surface === 'execution-release'
-                    ? 'API-backed'
-                    : isWorkHub
-                      ? 'Mixed maturity'
-                      : activeWorkspaceId
-                        ? 'Authenticated'
-                        : 'Workspace required'}
+                  : isWorkHub
+                    ? 'Mixed maturity'
+                    : activeWorkspaceId
+                      ? 'Authenticated'
+                      : 'Workspace required'}
             </Badge>
           }
         />
