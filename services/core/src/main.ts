@@ -16,9 +16,7 @@ import {
   PostgresWorkspaceRepository
 } from './identity.js';
 import { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
-import {
-  PostgresGovernedHumanActionReceiptStore
-} from './governed-human-action-receipt-postgres.js';
+import { PostgresGovernedHumanActionReceiptStore } from './governed-human-action-receipt-postgres.js';
 import { GovernedHumanActionReceiptService } from './governed-human-action-receipt.js';
 import { createRuntime } from './index.js';
 import {

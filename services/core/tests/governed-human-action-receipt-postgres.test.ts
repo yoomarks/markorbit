@@ -6,9 +6,7 @@ import {
   migrate,
   parseDatabaseConfig
 } from '@markorbit/persistence';
-import {
-  PostgresGovernedHumanActionReceiptStore
-} from '../src/governed-human-action-receipt-postgres.js';
+import { PostgresGovernedHumanActionReceiptStore } from '../src/governed-human-action-receipt-postgres.js';
 import type { GovernedHumanActionReceipt } from '../src/governed-human-action-receipt.js';
 
 const url = process.env.AUTH_TEST_DATABASE_URL;
@@ -76,7 +74,11 @@ integration('PostgreSQL governed human-action receipt authority', () => {
       .query(
         'DROP TABLE IF EXISTS core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
-    await migrate(database.getPool(), 'core_governed_human_action_receipts', await coreMigrations());
+    await migrate(
+      database.getPool(),
+      'core_governed_human_action_receipts',
+      await coreMigrations()
+    );
   });
 
   afterAll(async () => database.close());

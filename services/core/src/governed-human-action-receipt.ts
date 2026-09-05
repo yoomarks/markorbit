@@ -6,10 +6,7 @@ import {
 } from './current-workspace-authority.js';
 import { uuidV7 } from './auth.js';
 
-export const GOVERNED_HUMAN_ACTION_KINDS = [
-  'PROVIDER_SELECTION',
-  'CONTROLLED_HANDOFF'
-] as const;
+export const GOVERNED_HUMAN_ACTION_KINDS = ['PROVIDER_SELECTION', 'CONTROLLED_HANDOFF'] as const;
 export type GovernedHumanActionKind = (typeof GOVERNED_HUMAN_ACTION_KINDS)[number];
 
 export type GovernedHumanActionReceiptErrorCode =
@@ -68,8 +65,7 @@ export interface GovernedHumanActionReceiptStore {
 
 export type MaterializeGovernedHumanActionReceiptRequest = GovernedHumanActionReceiptBinding;
 
-export interface ValidateGovernedHumanActionReceiptRequest
-  extends GovernedHumanActionReceiptBinding {
+export interface ValidateGovernedHumanActionReceiptRequest extends GovernedHumanActionReceiptBinding {
   receiptId: string;
 }
 

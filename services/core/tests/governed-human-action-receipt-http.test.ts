@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { JsonRequest } from '@markorbit/service-kit';
-import {
-  createGovernedHumanActionReceiptRoutes
-} from '../src/governed-human-action-receipt-http.js';
+import { createGovernedHumanActionReceiptRoutes } from '../src/governed-human-action-receipt-http.js';
 import {
   GovernedHumanActionReceiptError,
   type GovernedHumanActionReceipt,

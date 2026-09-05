@@ -163,10 +163,12 @@ describe('governed human-action receipt authority', () => {
 
   it('revalidates the exact stored authority versions before a receipt remains current', async () => {
     const store = new MemoryStore();
-    const validate = vi.fn<
-      (request: Readonly<CurrentWorkspaceAuthorityRequest>) =>
-        Promise<Readonly<CurrentWorkspaceAuthorityResult>>
-    >();
+    const validate =
+      vi.fn<
+        (
+          request: Readonly<CurrentWorkspaceAuthorityRequest>
+        ) => Promise<Readonly<CurrentWorkspaceAuthorityResult>>
+      >();
     validate.mockResolvedValueOnce(authority).mockResolvedValueOnce(authority);
     const f = service({ store, validate });
     const receipt = await f.service.materializeOrResolve(command());
