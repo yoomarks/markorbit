@@ -56,9 +56,11 @@ function sha256(value: string, field: string): string {
 /**
  * Pure M4 Allocation preflight for the governed path.
  *
- * This intentionally mirrors AllocationProviderAcceptanceService.allocateProvider() checks but does
- * not invoke its mutation repository. The final one-active-allocation decision is repeated under
- * lock by PostgresGovernedAllocationRepository.commit().
+ * This intentionally mirrors the immutable/current M4 source checks but does not invoke the legacy
+ * mutation repository. The one-active-allocation decision belongs only to
+ * PostgresGovernedAllocationRepository.commit() under its transaction lock. Reading active state
+ * here would create a TOCTOU window where a concurrent identical idempotent command can observe the
+ * winner's Allocation before the caller has a chance to resolve the winner's governed replay.
  */
 export class ExactM4GovernedAllocationPlanner implements GovernedAllocationPlanner {
   constructor(
@@ -233,13 +235,6 @@ export class ExactM4GovernedAllocationPlanner implements GovernedAllocationPlann
       throw new AllocationProviderAcceptanceError(
         'SUPPLY_CAPABILITY_INACTIVE',
         'Provider Supply Capability is no longer operationally eligible.',
-        409
-      );
-
-    if (await this.allocations.findActiveAllocation(servicePackage.servicePackageId))
-      throw new AllocationProviderAcceptanceError(
-        'ACTIVE_ALLOCATION_EXISTS',
-        'An active Allocation already exists for this Service Package.',
         409
       );
 
