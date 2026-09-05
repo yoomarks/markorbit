@@ -36,8 +36,7 @@ const checkpoint = async (
         ? serializeMarkregRoute(route as MarkregRoute)
         : serializeLiteRoute(route as LiteRoute);
     const query =
-      app === 'lite' &&
-      (route.view === 'execution-release' || route.view === 'filing-task-draft')
+      app === 'lite' && (route.view === 'execution-release' || route.view === 'filing-task-draft')
         ? `${routeQuery}&workspaceId=${encodeURIComponent(milestoneAuth.workspaceId)}`
         : routeQuery;
     const base = app === 'markreg' ? milestoneUrls.markregWeb : milestoneUrls.liteWeb;
