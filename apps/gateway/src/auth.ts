@@ -52,6 +52,49 @@ export interface CommercialAdminAccountInspection {
   workspaces: readonly WorkspaceEntry[];
 }
 
+export type GovernedHumanActionReceiptKind = 'PROVIDER_SELECTION' | 'CONTROLLED_HANDOFF';
+
+export interface GovernedHumanActionReceiptMaterializationV1 {
+  workspaceId: string;
+  userId: string;
+  membershipId: string;
+  principalReference: string;
+  kind: GovernedHumanActionReceiptKind;
+  mutationRoute: string;
+  reviewedActionDigest: string;
+  idempotencyKey: string;
+  authenticatedAt: string;
+}
+
+export interface GovernedHumanActionReceiptV1 extends GovernedHumanActionReceiptMaterializationV1 {
+  schemaVersion: 1;
+  receiptId: string;
+  receiptVersion: 1;
+  authorityReference: string;
+  authorityVersion: 1;
+  affirmativeHumanActionEvidenceReference: string;
+  source: 'CORE';
+  actorKind: 'HUMAN_USER';
+  workspaceVersion: number;
+  userVersion: number;
+  membershipVersion: number;
+  createdAt: string;
+}
+
+export class GovernedHumanActionReceiptClientError extends Error {
+  constructor(
+    readonly status: 409 | 503,
+    readonly code:
+      | 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT'
+      | 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+      | 'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+    message: string
+  ) {
+    super(message);
+    this.name = 'GovernedHumanActionReceiptClientError';
+  }
+}
+
 export interface CoreAuthenticationClient {
   register?(command: RegisterAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
   login?(command: LoginAccountCommand, correlationId?: string): Promise<AccountAccessResult>;
@@ -74,6 +117,10 @@ export interface CoreAuthenticationClient {
     workspaceId: string,
     correlationId?: string
   ): Promise<WorkspacePrincipal>;
+  materializeGovernedHumanActionReceipt?(
+    input: GovernedHumanActionReceiptMaterializationV1,
+    correlationId?: string
+  ): Promise<GovernedHumanActionReceiptV1>;
   resolveInternalOperator?(
     token: string,
     correlationId?: string
@@ -174,6 +221,45 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
       { token, workspaceId },
       correlationId
     );
+  }
+  async materializeGovernedHumanActionReceipt(
+    input: GovernedHumanActionReceiptMaterializationV1,
+    correlationId?: string
+  ): Promise<GovernedHumanActionReceiptV1> {
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/auth/governed-human-actions/receipts`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': this.serviceSecret,
+          ...(correlationId ? { 'x-correlation-id': correlationId } : {})
+        },
+        body: JSON.stringify(input),
+        signal: AbortSignal.timeout(this.timeoutMs)
+      });
+    } catch {
+      throw new GovernedHumanActionReceiptClientError(
+        503,
+        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+        'Governed human-action receipt authority is unavailable.'
+      );
+    }
+    if (response.status === 409) {
+      const error = (await response.json()) as { code?: string };
+      const code =
+        error.code === 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+          ? 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+          : 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT';
+      throw new GovernedHumanActionReceiptClientError(409, code, 'Governed human action is stale.');
+    }
+    if (!response.ok)
+      throw new GovernedHumanActionReceiptClientError(
+        503,
+        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+        'Governed human-action receipt authority is unavailable.'
+      );
+    return response.json() as Promise<GovernedHumanActionReceiptV1>;
   }
   resolveInternalOperator(token: string, correlationId?: string) {
     return this.call<InternalOperatorPrincipal>(

@@ -6,10 +6,12 @@ import {
 } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
+  GovernedHumanActionReceiptClientError,
   readSessionCookie,
   requireTrustedOrigin,
   validateCsrf,
-  type CoreAuthenticationClient
+  type CoreAuthenticationClient,
+  type GovernedHumanActionReceiptMaterializationV1
 } from './auth.js';
 
 export const PROVIDER_WORKSPACE_HEADER_NAME = 'x-markorbit-provider-workspace-id';
@@ -161,6 +163,11 @@ function mapAuthentication(error: unknown): never {
   throw new HttpError(status, error.code, error.message, status === 503);
 }
 
+function mapGovernedReceipt(error: unknown): never {
+  if (!(error instanceof GovernedHumanActionReceiptClientError)) throw error;
+  throw new HttpError(error.status, error.code, error.message, error.status === 503);
+}
+
 function requirePermission(principal: WorkspacePrincipal, mutation: boolean) {
   const permission = mutation ? 'execution:manage' : 'execution:read';
   if (!principal.permissions.includes(permission))
@@ -209,17 +216,26 @@ function forbidBrowserGovernedAuthority(request: JsonRequest): void {
     );
 }
 
-function governedHumanActionEnvelope(
+async function governedHumanActionEnvelope(
   request: JsonRequest,
   principal: WorkspacePrincipal,
-  kind: GovernedHumanActionKind
-): string {
+  kind: GovernedHumanActionKind,
+  authentication: CoreAuthenticationClient,
+  correlationId?: string
+): Promise<string> {
   const authenticatedAt = principal.sessionCreatedAt;
   if (!authenticatedAt || !Number.isFinite(Date.parse(authenticatedAt)))
     throw new HttpError(
       503,
       'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
       'Core session authentication time is unavailable for governed human action.',
+      true
+    );
+  if (!authentication.materializeGovernedHumanActionReceipt)
+    throw new HttpError(
+      503,
+      'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+      'Core governed human-action receipt authority is unavailable.',
       true
     );
   const idempotencyKey = requireGovernedIdempotency(request);
@@ -233,27 +249,71 @@ function governedHumanActionEnvelope(
     sessionCreatedAt: authenticatedAt,
     sessionExpiresAt: principal.sessionExpiresAt
   })}`;
-  const actionFingerprint = fingerprint({
+  const reviewedActionDigest = fingerprint({
     kind,
     principalReference,
     method: request.method,
     path: request.path,
-    idempotencyKey,
     body: request.body ?? {}
   });
+  const materialization: GovernedHumanActionReceiptMaterializationV1 = {
+    workspaceId: principal.workspaceId,
+    userId: principal.userId,
+    membershipId: principal.membershipId,
+    principalReference,
+    kind,
+    mutationRoute: request.path,
+    reviewedActionDigest,
+    idempotencyKey,
+    authenticatedAt
+  };
+  let receipt;
+  try {
+    receipt = await authentication.materializeGovernedHumanActionReceipt(
+      materialization,
+      correlationId
+    );
+  } catch (error) {
+    return mapGovernedReceipt(error);
+  }
+  if (
+    receipt.schemaVersion !== 1 ||
+    receipt.source !== 'CORE' ||
+    receipt.actorKind !== 'HUMAN_USER' ||
+    receipt.kind !== materialization.kind ||
+    receipt.workspaceId !== materialization.workspaceId ||
+    receipt.userId !== materialization.userId ||
+    receipt.membershipId !== materialization.membershipId ||
+    receipt.principalReference !== materialization.principalReference ||
+    receipt.mutationRoute !== materialization.mutationRoute ||
+    receipt.reviewedActionDigest !== materialization.reviewedActionDigest ||
+    receipt.idempotencyKey !== materialization.idempotencyKey ||
+    receipt.authenticatedAt !== materialization.authenticatedAt ||
+    receipt.authorityVersion !== 1 ||
+    !receipt.authorityReference.startsWith('core-governed-human-action-receipt:') ||
+    !receipt.affirmativeHumanActionEvidenceReference.startsWith(
+      'core-governed-human-action-evidence:'
+    )
+  )
+    throw new HttpError(
+      503,
+      'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+      'Core governed human-action receipt did not match the trusted action context.',
+      true
+    );
   return Buffer.from(
     JSON.stringify({
       schemaVersion: 1,
       kind,
-      actorKind: 'HUMAN_USER',
+      actorKind: receipt.actorKind,
       workspaceId: principal.workspaceId,
       userId: principal.userId,
       membershipId: principal.membershipId,
       principalReference,
-      authorityReference: `gateway-governed-action:${kind.toLowerCase()}:${actionFingerprint}`,
-      authorityVersion: 1,
+      authorityReference: receipt.authorityReference,
+      authorityVersion: receipt.authorityVersion,
       authenticatedAt,
-      affirmativeHumanActionEvidenceReference: `gateway-human-action:${kind.toLowerCase()}:${actionFingerprint}`,
+      affirmativeHumanActionEvidenceReference: receipt.affirmativeHumanActionEvidenceReference,
       payloadIdentityAuthoritative: false
     }),
     'utf8'
@@ -467,7 +527,13 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       forbidBrowserGovernedAuthority(request);
       if (route.idempotency) requireGovernedIdempotency(request);
       const humanAction = route.humanAction
-        ? governedHumanActionEnvelope(request, principal, route.humanAction)
+        ? await governedHumanActionEnvelope(
+            request,
+            principal,
+            route.humanAction,
+            authentication(),
+            correlation(request)
+          )
         : undefined;
       return forward(request, principal, false, undefined, humanAction);
     } catch (error) {

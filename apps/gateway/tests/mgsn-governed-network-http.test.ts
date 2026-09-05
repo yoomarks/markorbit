@@ -5,8 +5,11 @@ import type { ServiceRuntime } from '@markorbit/service-kit';
 import {
   createRuntime as createGateway,
   csrfToken,
+  GovernedHumanActionReceiptClientError,
   GOVERNED_HUMAN_ACTION_HEADER_NAME,
-  type CoreAuthenticationClient
+  type CoreAuthenticationClient,
+  type GovernedHumanActionReceiptMaterializationV1,
+  type GovernedHumanActionReceiptV1
 } from '../src/index.js';
 
 const secret = 'governed-workplace-internal-secret-123456789';
@@ -24,6 +27,7 @@ let captured: Array<{
   headers: Record<string, string | string[] | undefined>;
   body: unknown;
 }> = [];
+let receipts = new Map<string, GovernedHumanActionReceiptV1>();
 
 function principal(
   permissions: WorkspacePrincipal['permissions'] = ['workspace:read', 'workspace:manage'],
@@ -42,6 +46,16 @@ function principal(
   };
 }
 
+function receiptReplayKey(input: GovernedHumanActionReceiptMaterializationV1) {
+  return [
+    input.kind,
+    input.workspaceId,
+    input.userId,
+    input.membershipId,
+    input.idempotencyKey
+  ].join(':');
+}
+
 function authenticationFor(value: WorkspacePrincipal): CoreAuthenticationClient {
   return {
     issue: () => Promise.reject(new Error('not used')),
@@ -57,6 +71,42 @@ function authenticationFor(value: WorkspacePrincipal): CoreAuthenticationClient 
       if (requestedWorkspaceId !== workspaceId)
         return Promise.reject(new Error('unexpected workspace in test'));
       return Promise.resolve(value);
+    },
+    materializeGovernedHumanActionReceipt: (input) => {
+      const key = receiptReplayKey(input);
+      const existing = receipts.get(key);
+      if (existing) {
+        const exact = Object.entries(input).every(
+          ([field, expected]) => existing[field as keyof GovernedHumanActionReceiptV1] === expected
+        );
+        if (!exact)
+          return Promise.reject(
+            new GovernedHumanActionReceiptClientError(
+              409,
+              'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+              'replay conflict'
+            )
+          );
+        return Promise.resolve(existing);
+      }
+      const receiptId = `01900000-0000-7000-8000-${String(receipts.size + 1).padStart(12, '0')}`;
+      const receipt: GovernedHumanActionReceiptV1 = {
+        ...input,
+        schemaVersion: 1,
+        receiptId,
+        receiptVersion: 1,
+        authorityReference: `core-governed-human-action-receipt:${receiptId}`,
+        authorityVersion: 1,
+        affirmativeHumanActionEvidenceReference: `core-governed-human-action-evidence:${receiptId}`,
+        source: 'CORE',
+        actorKind: 'HUMAN_USER',
+        workspaceVersion: 1,
+        userVersion: 1,
+        membershipVersion: 1,
+        createdAt: '2026-09-05T08:00:01.000Z'
+      };
+      receipts.set(key, receipt);
+      return Promise.resolve(receipt);
     },
     revoke: () => Promise.resolve()
   };
@@ -84,11 +134,15 @@ async function startDownstream() {
   downstreamUrl = `http://127.0.0.1:${address.port}`;
 }
 
-async function startGateway(value = principal(), mgsnUrl = downstreamUrl) {
+async function startGateway(
+  value = principal(),
+  mgsnUrl = downstreamUrl,
+  authenticationClient: CoreAuthenticationClient = authenticationFor(value)
+) {
   const gateway = createGateway({
     port: 0,
     mgsnUrl,
-    authenticationClient: authenticationFor(value),
+    authenticationClient,
     internalServiceSecret: secret,
     csrfSecret,
     allowedOrigins: [origin]
@@ -124,6 +178,7 @@ async function responseCode(response: Response): Promise<string | undefined> {
 
 beforeEach(async () => {
   captured = [];
+  receipts = new Map();
   await startDownstream();
   await startGateway();
 });
@@ -182,6 +237,11 @@ describe('Workplace governed-network Gateway transport', () => {
       payloadIdentityAuthoritative: false
     });
     expect(String(envelope.principalReference)).not.toContain('session-governed-user');
+    expect(String(envelope.authorityReference)).toMatch(/^core-governed-human-action-receipt:/u);
+    expect(String(envelope.affirmativeHumanActionEvidenceReference)).toMatch(
+      /^core-governed-human-action-evidence:/u
+    );
+    expect(receipts).toHaveLength(1);
   });
 
   it('keeps Selection and Handoff authority domains distinct', async () => {
@@ -209,6 +269,46 @@ describe('Workplace governed-network Gateway transport', () => {
     expect(selectionEnvelope.affirmativeHumanActionEvidenceReference).not.toBe(
       handoffEnvelope.affirmativeHumanActionEvidenceReference
     );
+  });
+
+  it('fails 409 before forwarding when an Idempotency-Key is replayed with different action evidence', async () => {
+    const first = await fetch(`${base}/api/mgsn/governed-network/selections`, {
+      method: 'POST',
+      headers: headers('conflicting-selection-key'),
+      body: JSON.stringify({ candidate: 'one' })
+    });
+    expect(first.status).toBe(200);
+    const conflict = await fetch(`${base}/api/mgsn/governed-network/selections`, {
+      method: 'POST',
+      headers: headers('conflicting-selection-key'),
+      body: JSON.stringify({ candidate: 'two' })
+    });
+    expect(conflict.status).toBe(409);
+    expect(await responseCode(conflict)).toBe('GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT');
+    expect(captured).toHaveLength(1);
+  });
+
+  it('fails closed before MGSN forwarding when Core receipt authority is unavailable', async () => {
+    await active.pop()!.stop();
+    const p = principal();
+    const client = authenticationFor(p);
+    client.materializeGovernedHumanActionReceipt = () =>
+      Promise.reject(
+        new GovernedHumanActionReceiptClientError(
+          503,
+          'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+          'unavailable'
+        )
+      );
+    await startGateway(p, downstreamUrl, client);
+    const response = await fetch(`${base}/api/mgsn/governed-network/selections`, {
+      method: 'POST',
+      headers: headers('receipt-outage-key'),
+      body: JSON.stringify({ action: 'selection' })
+    });
+    expect(response.status).toBe(503);
+    expect(await responseCode(response)).toBe('GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE');
+    expect(captured).toHaveLength(0);
   });
 
   it('does not treat generic execution:manage as governed human authority', async () => {
