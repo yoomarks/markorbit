@@ -49,10 +49,21 @@ function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   }
 
   const workspaceId = request.headers['x-markorbit-workspace-id'];
-  if (!workspaceId || workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase())
-    throw new HttpError(404, 'WORKSPACE_MISMATCH', 'Workspace-scoped record was not found.');
+  if (
+    !workspaceId ||
+    workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase()
+  )
+    throw new HttpError(
+      404,
+      'WORKSPACE_MISMATCH',
+      'Workspace-scoped record was not found.'
+    );
   if (!principal.permissions.includes('matter:read'))
-    throw new HttpError(403, 'PERMISSION_DENIED', 'matter:read permission is required.');
+    throw new HttpError(
+      403,
+      'PERMISSION_DENIED',
+      'matter:read permission is required.'
+    );
   return principal;
 }
 
