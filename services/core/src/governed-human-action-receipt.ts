@@ -190,7 +190,9 @@ export class PostgresGovernedHumanActionReceiptStore
     }
   }
 
-  async get(receiptId: string): Promise<Readonly<GovernedHumanActionReceiptV1> | undefined> {
+  async get(
+    receiptId: string
+  ): Promise<Readonly<GovernedHumanActionReceiptV1> | undefined> {
     if (!receiptId.startsWith('governed-human-action-receipt_'))
       throw new GovernedHumanActionReceiptError('INVALID_INPUT', 'Receipt id is invalid.');
     try {
