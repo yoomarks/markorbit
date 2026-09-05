@@ -69,12 +69,13 @@ function OwnerUnavailable({ owner, result }: { owner: string; result: OwnerReadR
 }
 
 function CorePaths({ result }: { result: OwnerReadResult }) {
-  if (result.status === 'unavailable') return <OwnerUnavailable owner="Core" result={result} />;
-  const paths = buildCoreDependencyPaths(result.value);
+  const paths = result.status === 'available' ? buildCoreDependencyPaths(result.value) : [];
   return (
     <section aria-labelledby="core-cognitive-dependencies-heading">
       <h3 id="core-cognitive-dependencies-heading">Core · Brain / Method Improvement</h3>
-      {paths.length === 0 ? (
+      {result.status === 'unavailable' ? (
+        <OwnerUnavailable owner="Core" result={result} />
+      ) : paths.length === 0 ? (
         <p>
           No Core blocker or limitation path is established by the current bounded projection. This
           is not a healthy, ready or complete conclusion.
@@ -87,24 +88,28 @@ function CorePaths({ result }: { result: OwnerReadResult }) {
 }
 
 function CapabilityPaths({ result }: { result: OwnerReadResult }) {
-  if (result.status === 'unavailable')
-    return <OwnerUnavailable owner="Capability Engine" result={result} />;
-  const paths = buildCapabilityDependencyPaths(result.value);
+  const paths = result.status === 'available' ? buildCapabilityDependencyPaths(result.value) : [];
   return (
     <section aria-labelledby="capability-cognitive-dependencies-heading">
       <h3 id="capability-cognitive-dependencies-heading">
         Capability Engine · runtime / source policy
       </h3>
-      <Alert tone="info" title="Integrity boundary">
-        {CAPABILITY_INTEGRITY_BOUNDARY}
-      </Alert>
-      {paths.length === 0 ? (
-        <p>
-          No Capability blocker or limitation path is established by the current bounded projection.
-          This is not a healthy, current, correct or production-ready conclusion.
-        </p>
+      {result.status === 'unavailable' ? (
+        <OwnerUnavailable owner="Capability Engine" result={result} />
       ) : (
-        paths.map((path) => <DependencyPath key={path.id} path={path} />)
+        <>
+          <Alert tone="info" title="Integrity boundary">
+            {CAPABILITY_INTEGRITY_BOUNDARY}
+          </Alert>
+          {paths.length === 0 ? (
+            <p>
+              No Capability blocker or limitation path is established by the current bounded
+              projection. This is not a healthy, current, correct or production-ready conclusion.
+            </p>
+          ) : (
+            paths.map((path) => <DependencyPath key={path.id} path={path} />)
+          )}
+        </>
       )}
     </section>
   );
