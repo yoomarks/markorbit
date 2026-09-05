@@ -4,7 +4,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: tmp/858-prettier-exact
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -23,16 +25,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Format exact files
         run: pnpm exec prettier --write docs/architecture/cross-lane-journey-registry.v1.json scripts/validate-cross-lane-journey-registry.mjs scripts/validate-cross-lane-journey-registry.test.mjs
-      - name: Emit exact formatted bytes
+      - name: Commit exact formatted bytes to probe branch
         shell: bash
         run: |
-          for file in \
+          if git diff --quiet -- \
             docs/architecture/cross-lane-journey-registry.v1.json \
             scripts/validate-cross-lane-journey-registry.mjs \
             scripts/validate-cross-lane-journey-registry.test.mjs
-          do
-            echo "BEGIN_BASE64:${file}"
-            base64 -w0 "${file}"
-            echo
-            echo "END_BASE64:${file}"
-          done
+          then
+            echo "Prettier output already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/architecture/cross-lane-journey-registry.v1.json \
+            scripts/validate-cross-lane-journey-registry.mjs \
+            scripts/validate-cross-lane-journey-registry.test.mjs
+          git commit -m "[VOID] Apply exact Prettier 3.9.6 output"
+          git push origin HEAD:tmp/858-prettier-exact
