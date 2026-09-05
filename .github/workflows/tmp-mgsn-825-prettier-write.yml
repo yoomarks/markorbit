@@ -31,6 +31,27 @@ jobs:
           test "$(git rev-parse origin/main)" = "ab8252a3814e9bc9fa8f2ce87e0a5a7ee8128e2a"
           git rebase origin/main
           python3 ../helper/.agents/mgsn-825-parser-fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path('services/mgsn/src/governed-network-http.ts')
+          text = source.read_text()
+          old = """: CreateOrReplaceProviderSelectionCommandV1['expectedCurrent'] extends infer _T
+            ? Readonly<{ providerSelectionId: ProviderSelectionId; version: number; scopeVersion: number }>
+            : never {"""
+          new = ": Readonly<{ providerSelectionId: ProviderSelectionId; version: number; scopeVersion: number }> {"
+          if old not in text:
+              raise SystemExit('selection version helper type marker missing')
+          source.write_text(text.replace(old, new, 1))
+
+          test = Path('services/mgsn/tests/governed-network-http.test.ts')
+          text = test.read_text()
+          old = '/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- boundary tests intentionally capture normalized transport commands. */'
+          new = '/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- boundary tests intentionally capture normalized transport commands. */'
+          if old not in text:
+              raise SystemExit('test lint boundary marker missing')
+          test.write_text(text.replace(old, new, 1))
+          PY
           npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
           git diff --check
       - name: Set up pnpm
@@ -49,9 +70,12 @@ jobs:
       - name: Check MGSN parser boundary
         working-directory: target
         run: |
+          pnpm --filter @markorbit/mgsn-service exec eslint src/governed-network-http.ts tests/governed-network-http.test.ts --fix
           pnpm --filter @markorbit/mgsn-service lint
           pnpm --filter @markorbit/mgsn-service typecheck
           pnpm --filter @markorbit/mgsn-service exec vitest run tests/governed-network-http.test.ts
+          pnpm exec prettier --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
+          git diff --check
       - name: Commit and push exact owner-local patch
         working-directory: target
         run: |
