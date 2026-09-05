@@ -99,7 +99,7 @@ function OrbitSection({
   kicker: string;
   title: string;
   description: string;
-  items: readonly DailyOrbitItem[];
+  items: ReadonlyArray<Readonly<DailyOrbitItem>>;
   today?: Readonly<TodayProductLoopSnapshot>;
   savedOrbitItemIds: ReadonlySet<string>;
   ownerSavedOrbitItemIds: readonly string[];
@@ -148,8 +148,8 @@ export function TodaySeeSections({
   savedOrbitItemIds,
   onPreference
 }: {
-  mainOrbit: readonly DailyOrbitItem[];
-  revisiting: readonly DailyOrbitItem[];
+  mainOrbit: ReadonlyArray<Readonly<DailyOrbitItem>>;
+  revisiting: ReadonlyArray<Readonly<DailyOrbitItem>>;
   today?: Readonly<TodayProductLoopSnapshot>;
   orbit?: Readonly<DailyOrbitSnapshot>;
   savedOrbitItemIds: ReadonlySet<string>;
