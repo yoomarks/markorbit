@@ -1,12 +1,14 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion -- repositories deliberately share async contracts and normalize driver rows at the boundary. */
 import type {
+  AuthenticatedUserPrincipal,
   MembershipRepository,
   Permission,
   Principal,
   Session,
   SessionRepository,
   UserRepository,
+  WorkspacePrincipal,
   WorkspaceRepository
 } from '@markorbit/contracts';
 import { AuthenticationError, PERMISSIONS, ROLES } from '@markorbit/contracts';
@@ -220,7 +222,7 @@ export class AuthenticationService {
     };
     return { rawToken, session };
   }
-  async resolveSession(rawToken: string) {
+  async resolveSession(rawToken: string): Promise<AuthenticatedUserPrincipal> {
     const row = await this.d.sessions.findByTokenHash(hashSessionToken(rawToken));
     if (!row) throw new AuthenticationError('INVALID_SESSION', 'Session is invalid.');
     if (row.status === 'REVOKED')
@@ -235,6 +237,7 @@ export class AuthenticationService {
       kind: 'AUTHENTICATED_USER',
       sessionId: row.sessionId,
       userId: row.userId,
+      sessionCreatedAt: row.createdAt,
       sessionExpiresAt: row.expiresAt
     } as const);
   }
@@ -249,7 +252,7 @@ export class AuthenticationService {
   async revokeUserSessions(id: string) {
     return this.d.sessions.revokeAllForUser(id, this.clock().toISOString());
   }
-  async resolveWorkspacePrincipal(token: string, workspaceId: string) {
+  async resolveWorkspacePrincipal(token: string, workspaceId: string): Promise<WorkspacePrincipal> {
     if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(workspaceId))
       throw new AuthenticationError('INVALID_WORKSPACE_CONTEXT', 'Workspace context is invalid.');
     const principal = await this.resolveSession(token);
@@ -285,6 +288,7 @@ export class AuthenticationService {
       membershipId: membership.membershipId,
       role: membership.role,
       permissions: Object.freeze(permissions),
+      ...(principal.sessionCreatedAt ? { sessionCreatedAt: principal.sessionCreatedAt } : {}),
       sessionExpiresAt: principal.sessionExpiresAt
     } as const);
   }

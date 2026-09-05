@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   AuthenticationError,
   encodeInternalWorkspacePrincipal,
@@ -12,6 +13,8 @@ import {
 } from './auth.js';
 
 export const PROVIDER_WORKSPACE_HEADER_NAME = 'x-markorbit-provider-workspace-id';
+export const GOVERNED_HUMAN_ACTION_HEADER_NAME =
+  'x-markorbit-governed-network-human-action' as const;
 
 export interface GatewayMgsnRouteOptions {
   mgsnUrl: string;
@@ -24,6 +27,15 @@ export interface GatewayMgsnRouteOptions {
 type RouteMethod = 'GET' | 'POST';
 type RouteDefinition = readonly [RouteMethod, string];
 type NetworkParticipationOwnerAuthority = 'read' | 'manage';
+type GovernedHumanActionKind = 'PROVIDER_SELECTION' | 'CONTROLLED_HANDOFF';
+type GovernedPermission = 'workspace:read' | 'workspace:manage';
+interface GovernedRouteDefinition {
+  method: 'POST';
+  path: string;
+  permission: GovernedPermission;
+  idempotency: boolean;
+  humanAction?: GovernedHumanActionKind;
+}
 
 const operationsRoutes: readonly RouteDefinition[] = [
   ['GET', '/api/mgsn/providers'],
@@ -43,6 +55,61 @@ const operationsRoutes: readonly RouteDefinition[] = [
   ['GET', '/api/mgsn/allocations/:allocationId'],
   ['GET', '/api/mgsn/provider-acceptances/:providerAcceptanceId'],
   ['POST', '/api/mgsn/provider-returns/:providerReturnId/handoff']
+];
+
+const governedRoutes: readonly GovernedRouteDefinition[] = [
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/discovery/evaluate',
+    permission: 'workspace:read',
+    idempotency: false
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/selections',
+    permission: 'workspace:manage',
+    idempotency: true,
+    humanAction: 'PROVIDER_SELECTION'
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/selections/:providerSelectionId/revoke',
+    permission: 'workspace:manage',
+    idempotency: true,
+    humanAction: 'PROVIDER_SELECTION'
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/selections/:providerSelectionId/validate-current',
+    permission: 'workspace:read',
+    idempotency: false
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/handoffs',
+    permission: 'workspace:manage',
+    idempotency: true,
+    humanAction: 'CONTROLLED_HANDOFF'
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/handoffs/:controlledHandoffId/revoke',
+    permission: 'workspace:manage',
+    idempotency: true,
+    humanAction: 'CONTROLLED_HANDOFF'
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/handoffs/:controlledHandoffId/validate-current',
+    permission: 'workspace:read',
+    idempotency: false
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/allocations',
+    permission: 'workspace:manage',
+    idempotency: true
+  }
 ];
 
 const networkParticipationRoutes: readonly RouteDefinition[] = [
@@ -98,6 +165,99 @@ function requirePermission(principal: WorkspacePrincipal, mutation: boolean) {
   const permission = mutation ? 'execution:manage' : 'execution:read';
   if (!principal.permissions.includes(permission))
     throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
+}
+
+function requireGovernedPermission(principal: WorkspacePrincipal, permission: GovernedPermission) {
+  if (!principal.permissions.includes(permission))
+    throw new AuthenticationError('PERMISSION_DENIED', `${permission} permission is required.`);
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => stableSerialize(item)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function fingerprint(value: unknown): string {
+  return createHash('sha256').update(stableSerialize(value)).digest('hex');
+}
+
+function requireGovernedIdempotency(request: JsonRequest): string {
+  const key = request.headers['idempotency-key']?.trim();
+  if (!key)
+    throw new HttpError(
+      400,
+      'IDEMPOTENCY_KEY_REQUIRED',
+      'Idempotency-Key is required for governed-network mutations.'
+    );
+  return key;
+}
+
+function forbidBrowserGovernedAuthority(request: JsonRequest): void {
+  if (request.headers[GOVERNED_HUMAN_ACTION_HEADER_NAME])
+    throw new HttpError(
+      400,
+      'BROWSER_GOVERNED_AUTHORITY_FORBIDDEN',
+      'Browser-supplied governed-network authority is not accepted.'
+    );
+}
+
+function governedHumanActionEnvelope(
+  request: JsonRequest,
+  principal: WorkspacePrincipal,
+  kind: GovernedHumanActionKind
+): string {
+  const authenticatedAt = principal.sessionCreatedAt;
+  if (!authenticatedAt || !Number.isFinite(Date.parse(authenticatedAt)))
+    throw new HttpError(
+      503,
+      'GOVERNED_HUMAN_AUTHORITY_UNAVAILABLE',
+      'Core session authentication time is unavailable for governed human action.',
+      true
+    );
+  const idempotencyKey = requireGovernedIdempotency(request);
+  const principalReference = `core-workspace-principal:${fingerprint({
+    kind: principal.kind,
+    workspaceId: principal.workspaceId.toLowerCase(),
+    userId: principal.userId,
+    membershipId: principal.membershipId,
+    role: principal.role,
+    permissions: [...principal.permissions].sort(),
+    sessionCreatedAt: authenticatedAt,
+    sessionExpiresAt: principal.sessionExpiresAt
+  })}`;
+  const actionFingerprint = fingerprint({
+    kind,
+    principalReference,
+    method: request.method,
+    path: request.path,
+    idempotencyKey,
+    body: request.body ?? {}
+  });
+  return Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      kind,
+      actorKind: 'HUMAN_USER',
+      workspaceId: principal.workspaceId,
+      userId: principal.userId,
+      membershipId: principal.membershipId,
+      principalReference,
+      authorityReference: `gateway-governed-action:${kind.toLowerCase()}:${actionFingerprint}`,
+      authorityVersion: 1,
+      authenticatedAt,
+      affirmativeHumanActionEvidenceReference: `gateway-human-action:${kind.toLowerCase()}:${actionFingerprint}`,
+      payloadIdentityAuthoritative: false
+    }),
+    'utf8'
+  ).toString('base64url');
 }
 
 function requireNetworkParticipationPermission(
@@ -208,11 +368,30 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       return mapAuthentication(error);
     }
   };
+  const resolveGovernedPrincipal = async (request: JsonRequest) => {
+    const workspaceId = request.headers['x-markorbit-workspace-id'];
+    if (!workspaceId)
+      throw new HttpError(
+        400,
+        'INVALID_WORKSPACE_CONTEXT',
+        'Trusted Workspace header is required for governed-network operations.'
+      );
+    try {
+      return await authentication().resolveWorkspace(
+        requestToken(request),
+        workspaceId,
+        correlation(request)
+      );
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
   const forward = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
     provider: boolean,
-    networkParticipationOwnerAuthority?: NetworkParticipationOwnerAuthority
+    networkParticipationOwnerAuthority?: NetworkParticipationOwnerAuthority,
+    governedHumanAction?: string
   ) => {
     if (!options.internalServiceSecret)
       throw new HttpError(
@@ -237,6 +416,9 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
                   'x-markorbit-network-participation-owner-authority':
                     networkParticipationOwnerAuthority
                 }
+              : {}),
+            ...(governedHumanAction
+              ? { [GOVERNED_HUMAN_ACTION_HEADER_NAME]: governedHumanAction }
               : {}),
             ...(correlation(request) ? { 'x-correlation-id': correlation(request)! } : {}),
             ...(request.headers['idempotency-key']
@@ -272,6 +454,26 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
       return mapAuthentication(error);
     }
   };
+  const handleGoverned = async (request: JsonRequest, route: GovernedRouteDefinition) => {
+    try {
+      const principal = await resolveGovernedPrincipal(request);
+      requireGovernedPermission(principal, route.permission);
+      requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+      validateCsrf(
+        principal.sessionId,
+        options.csrfSecret,
+        request.headers['x-markorbit-csrf-token']
+      );
+      forbidBrowserGovernedAuthority(request);
+      if (route.idempotency) requireGovernedIdempotency(request);
+      const humanAction = route.humanAction
+        ? governedHumanActionEnvelope(request, principal, route.humanAction)
+        : undefined;
+      return forward(request, principal, false, undefined, humanAction);
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
   const handleNetworkParticipation = async (request: JsonRequest) => {
     const mutation = request.method !== 'GET';
     try {
@@ -293,6 +495,11 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
     }
   };
   return [
+    ...governedRoutes.map((route): JsonRoute => ({
+      method: route.method,
+      path: route.path,
+      handle: (request) => handleGoverned(request, route)
+    })),
     ...networkParticipationRoutes.map(([method, path]): JsonRoute => ({
       method,
       path,
