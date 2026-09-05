@@ -6,10 +6,13 @@ import {
   type CurrentWorkspaceAuthorityRequest,
   type CurrentWorkspaceAuthorityService
 } from './current-workspace-authority.js';
+import { createGovernedHumanActionReceiptRoutes } from './governed-human-action-receipt-http.js';
+import type { GovernedHumanActionReceiptService } from './governed-human-action-receipt.js';
 
 export interface CurrentWorkspaceAuthorityHttpOptions {
   internalServiceSecret: string;
-  service: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
+  service: Pick<CurrentWorkspaceAuthorityService, 'validate'> &
+    Partial<Pick<GovernedHumanActionReceiptService, 'materializeOrResolve' | 'validateCurrent'>>;
 }
 
 const allowedKeys = new Set([
@@ -103,7 +106,7 @@ function authenticated(request: JsonRequest, configured: string) {
 export function createCurrentWorkspaceAuthorityRoutes(
   options: CurrentWorkspaceAuthorityHttpOptions
 ): readonly JsonRoute[] {
-  return [
+  const routes: JsonRoute[] = [
     {
       method: 'POST',
       path: '/internal/auth/workspace-authority/validate-current',
@@ -119,4 +122,15 @@ export function createCurrentWorkspaceAuthorityRoutes(
       }
     }
   ];
+  if (options.service.materializeOrResolve && options.service.validateCurrent)
+    routes.push(
+      ...createGovernedHumanActionReceiptRoutes({
+        internalServiceSecret: options.internalServiceSecret,
+        service: {
+          materializeOrResolve: options.service.materializeOrResolve.bind(options.service),
+          validateCurrent: options.service.validateCurrent.bind(options.service)
+        }
+      })
+    );
+  return routes;
 }
