@@ -1,4 +1,4 @@
-name: Temporary MGSN 825 Guard Precedence Fix
+name: Temporary MGSN 825 Transport Shape Type Fix
 
 on:
   push:
@@ -14,25 +14,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          path: helper
-      - uses: actions/checkout@v4
-        with:
           ref: mgsn-governed-network-http-825
-          path: target
           fetch-depth: 0
-      - name: Apply guard precedence fix
-        working-directory: target
+      - name: Replace recursive type alias with recursive interface
         run: |
-          test "$(git rev-parse HEAD)" = "739331ad06d4260a5156b540a8cfe3dc4f29df0a"
-          python3 ../helper/.agents/tmp-mgsn-825-precedence.py
+          test "$(git rev-parse HEAD)" = "6fab64b3b60984b5d7185506bb4ddcb9dcdd4d7e"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('services/mgsn/src/governed-network-http.ts')
+          text = path.read_text()
+          old = "type TransportShape = Readonly<Record<string, null | TransportShape | readonly [TransportShape]>>;"
+          new = """interface TransportShape {
+            readonly [key: string]: null | TransportShape | readonly [TransportShape];
+          }"""
+          if text.count(old) != 1:
+              raise SystemExit('expected one recursive TransportShape alias')
+          path.write_text(text.replace(old, new, 1))
+          PY
           npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts
           git diff --check
-      - name: Commit guard precedence fix
-        working-directory: target
+      - name: Commit transport shape type fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add services/mgsn/src/governed-network-http.ts
-          git diff --cached --quiet && exit 0
-          git commit -m "fix(mgsn): preserve authority and idempotency guard precedence"
+          git commit -m "fix(mgsn): use recursive interface for transport shape"
           git push origin HEAD:mgsn-governed-network-http-825
