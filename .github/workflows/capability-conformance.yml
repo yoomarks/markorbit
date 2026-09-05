@@ -35,6 +35,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Upload temporary #815 formatter output
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 837
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-815-prettier-output
+          path: |
+            apps/gateway/src/auth.ts
+            apps/gateway/src/mgsn-http.ts
+            apps/gateway/tests/mgsn-governed-network-http.test.ts
+            services/core/src/governed-human-action-receipt.ts
+            services/core/src/index.ts
+            services/core/tests/governed-human-action-receipt-http.test.ts
       - name: Build Capability dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
       - name: Run reusable runtime conformance suite
