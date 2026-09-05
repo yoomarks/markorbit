@@ -1,4 +1,4 @@
-name: Temporary MGSN 825 Final Branch Refresh
+name: Temporary MGSN 825 Guard Precedence Fix
 
 on:
   push:
@@ -9,20 +9,145 @@ permissions:
   contents: write
 
 jobs:
-  refresh-and-push:
+  patch-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: mgsn-governed-network-http-825
           fetch-depth: 0
-      - name: Rebase exact hardened head onto current main
+      - name: Fix exact transport guard precedence
         run: |
-          expected=14a1a291ca2c91559f0f29f502118d59eba1730b
-          test "$(git rev-parse HEAD)" = "$expected"
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "36af06ec7d87b7c60e0bf755f4a94b4fad67d895"
+          test "$(git rev-parse HEAD)" = "739331ad06d4260a5156b540a8cfe3dc4f29df0a"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('services/mgsn/src/governed-network-http.ts')
+          text = path.read_text()
+
+          text = text.replace(
+          '''const controlledHandoffRevokeTransportShape = {
+            schemaVersion: null,
+            target: {
+              controlledHandoffId: null,
+              version: null
+            },''',
+          '''const controlledHandoffRevokeTransportShape = {
+            schemaVersion: null,
+            target: controlledHandoffVersionReferenceTransportShape,''',
+          1)
+
+          text = text.replace(
+          '''        assertExactTransportShape(body, discoveryRequestTransportShape, 'body');
+        const audience = objectOf(body.audience, 'audience');
+        if (
+          audience.kind === 'BOUNDED_NETWORK' &&
+          audience.relationshipAuthorityReference !== undefined
+        )''',
+          '''        assertExactTransportShape(body, discoveryRequestTransportShape, 'body');
+        const audience =
+          body.audience === undefined ? undefined : objectOf(body.audience, 'audience');
+        if (
+          audience?.kind === 'BOUNDED_NETWORK' &&
+          audience.relationshipAuthorityReference !== undefined
+        )''',
+          1)
+
+          text = text.replace(
+          '''        assertExactTransportShape(body, providerSelectionCreateTransportShape, 'body');
+        const expectedCurrent = objectOf(body.expectedCurrent, 'expectedCurrent');
+        if (
+          expectedCurrent.kind === 'ABSENT' &&
+          (expectedCurrent.providerSelectionId !== undefined || expectedCurrent.version !== undefined)
+        )
+          throw new HttpError(
+            400,
+            'UNEXPECTED_GOVERNED_NETWORK_FIELD',
+            'ABSENT Selection expectedCurrent cannot carry an exact Selection reference.'
+          );
+        const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');''',
+          '''        assertExactTransportShape(body, providerSelectionCreateTransportShape, 'body');
+        const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');
+        const expectedCurrent =
+          body.expectedCurrent === undefined
+            ? undefined
+            : objectOf(body.expectedCurrent, 'expectedCurrent');
+        if (
+          expectedCurrent?.kind === 'ABSENT' &&
+          (expectedCurrent.providerSelectionId !== undefined || expectedCurrent.version !== undefined)
+        )
+          throw new HttpError(
+            400,
+            'UNEXPECTED_GOVERNED_NETWORK_FIELD',
+            'ABSENT Selection expectedCurrent cannot carry an exact Selection reference.'
+          );''',
+          1)
+
+          text = text.replace(
+          '''        assertExactTransportShape(body, controlledHandoffAuthorizeTransportShape, 'body');
+        const expectedCurrent = objectOf(body.expectedCurrent, 'expectedCurrent');
+        if (
+          expectedCurrent.kind === 'ABSENT' &&
+          (expectedCurrent.controlledHandoffId !== undefined || expectedCurrent.version !== undefined)
+        )
+          throw new HttpError(
+            400,
+            'UNEXPECTED_GOVERNED_NETWORK_FIELD',
+            'ABSENT Handoff expectedCurrent cannot carry an exact Handoff reference.'
+          );
+        const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');''',
+          '''        assertExactTransportShape(body, controlledHandoffAuthorizeTransportShape, 'body');
+        const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');
+        const expectedCurrent =
+          body.expectedCurrent === undefined
+            ? undefined
+            : objectOf(body.expectedCurrent, 'expectedCurrent');
+        if (
+          expectedCurrent?.kind === 'ABSENT' &&
+          (expectedCurrent.controlledHandoffId !== undefined || expectedCurrent.version !== undefined)
+        )
+          throw new HttpError(
+            400,
+            'UNEXPECTED_GOVERNED_NETWORK_FIELD',
+            'ABSENT Handoff expectedCurrent cannot carry an exact Handoff reference.'
+          );''',
+          1)
+
+          text = text.replace(
+          '''        assertExactTransportShape(body, governedAllocationTransportShape, 'body');
+        const handoffBinding = objectOf(body.handoffBinding, 'handoffBinding');
+        if (
+          handoffBinding.mode === 'NONE_EXPLICIT' &&
+          Object.keys(handoffBinding).some((field) => field !== 'mode')
+        )''',
+          '''        assertExactTransportShape(body, governedAllocationTransportShape, 'body');
+        const idempotencyKey = requireIdempotency(request, body);
+        const handoffBinding =
+          body.handoffBinding === undefined
+            ? undefined
+            : objectOf(body.handoffBinding, 'handoffBinding');
+        if (
+          handoffBinding?.mode === 'NONE_EXPLICIT' &&
+          Object.keys(handoffBinding).some((field) => field !== 'mode')
+        )''',
+          1)
+          text = text.replace(
+          '''            actorId: principal.userId,
+            idempotencyKey: requireIdempotency(request, body)
+          } as Parameters<GovernedAllocationService['allocate']>[0])''',
+          '''            actorId: principal.userId,
+            idempotencyKey
+          } as Parameters<GovernedAllocationService['allocate']>[0])''',
+          1)
+
+          path.write_text(text)
+          PY
+          npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts
+          git diff --check
+      - name: Commit guard precedence fix
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rebase origin/main
-          git push --force-with-lease=refs/heads/mgsn-governed-network-http-825:$expected origin HEAD:mgsn-governed-network-http-825
+          git add services/mgsn/src/governed-network-http.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(mgsn): preserve authority and idempotency guard precedence"
+          git push origin HEAD:mgsn-governed-network-http-825
