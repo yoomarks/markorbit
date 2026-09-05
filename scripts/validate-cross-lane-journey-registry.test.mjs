@@ -21,7 +21,7 @@ function assertError(errors, fragment) {
   );
 }
 
-test('current V1 registry validates against repository files', () => {
+test('current V1 registry validates against repository files and named routes', () => {
   assert.deepEqual(errorsFor(current()), []);
 });
 
@@ -54,6 +54,13 @@ test('missing repository references are detected', () => {
   journey(registry, 'J3_COGNITIVE_CONTROL_PLANE_READ').consumer.files[0] =
     'apps/operations-console/src/does-not-exist.tsx';
   assertError(errorsFor(registry), 'does not exist');
+});
+
+test('named route drift is detected even when referenced files still exist', () => {
+  const registry = current();
+  journey(registry, 'J3_COGNITIVE_CONTROL_PLANE_READ').gateway.routes[0] =
+    '/api/internal/control-plane/cognitive/route-that-does-not-exist';
+  assertError(errorsFor(registry), 'no longer exists in app/service/test source');
 });
 
 test('LIVE maturity cannot be backed only by fixture evidence', () => {
