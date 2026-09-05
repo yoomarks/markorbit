@@ -6,7 +6,9 @@ import {
   migrate,
   parseDatabaseConfig
 } from '@markorbit/persistence';
-import { PostgresGovernedHumanActionReceiptStore } from '../src/governed-human-action-receipt-postgres.js';
+import {
+  PostgresGovernedHumanActionReceiptStore
+} from '../src/governed-human-action-receipt-postgres.js';
 import type { GovernedHumanActionReceipt } from '../src/governed-human-action-receipt.js';
 
 const url = process.env.AUTH_TEST_DATABASE_URL;
