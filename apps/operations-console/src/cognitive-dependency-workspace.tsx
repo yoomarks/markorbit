@@ -1,4 +1,5 @@
 import { Alert, Card, DataList } from '@markorbit/ui';
+import { cognitiveDependencyTargetId } from './cognitive-attention.js';
 import {
   CAPABILITY_INTEGRITY_BOUNDARY,
   buildCapabilityDependencyPaths,
@@ -35,21 +36,23 @@ function Evidence({ path }: { path: CognitiveDependencyPath }) {
 
 function DependencyPath({ path }: { path: CognitiveDependencyPath }) {
   return (
-    <Card>
-      <h4>{path.title}</h4>
-      <p>
-        <strong>{path.kind}</strong> · {path.owner}
-      </p>
-      <DataList
-        items={[
-          { label: 'What is true now', value: path.currentState },
-          { label: 'Why / blocker', value: path.why },
-          { label: 'What it affects', value: path.affects },
-          { label: 'Owner / dependency', value: path.dependency }
-        ]}
-      />
-      <Evidence path={path} />
-    </Card>
+    <div id={cognitiveDependencyTargetId(path.id)}>
+      <Card>
+        <h4>{path.title}</h4>
+        <p>
+          <strong>{path.kind}</strong> · {path.owner}
+        </p>
+        <DataList
+          items={[
+            { label: 'What is true now', value: path.currentState },
+            { label: 'Why / blocker', value: path.why },
+            { label: 'What it affects', value: path.affects },
+            { label: 'Owner / dependency', value: path.dependency }
+          ]}
+        />
+        <Evidence path={path} />
+      </Card>
+    </div>
   );
 }
 
