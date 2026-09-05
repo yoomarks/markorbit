@@ -305,7 +305,10 @@ test('documentation-only changes do not request product runtime gates', () => {
 });
 
 test('MarkReg docs-only paths schedule L1 when owner L2 and PostgreSQL remain required', () => {
-  for (const path of ['services/markreg/README.md', 'services/markreg/docs/EXAMINATION-STAGE-V1.md']) {
+  for (const path of [
+    'services/markreg/README.md',
+    'services/markreg/docs/EXAMINATION-STAGE-V1.md'
+  ]) {
     const scope = assertRequiredMergeGatesHaveFastPrerequisite([path], {
       paymentAvailable: false
     });
