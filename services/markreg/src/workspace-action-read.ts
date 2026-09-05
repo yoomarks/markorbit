@@ -397,6 +397,17 @@ function optionalText(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
+function requiredText(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim())
+    throw new WorkspaceActionReadError(
+      'WORKSPACE_ACTION_TRUTH_UNAVAILABLE',
+      `Workspace Action source ${field} is unavailable.`,
+      503,
+      true
+    );
+  return value;
+}
+
 function asTimestamp(value: unknown): string {
   if (!(typeof value === 'string' || value instanceof Date))
     throw new WorkspaceActionReadError(
@@ -412,7 +423,7 @@ function mapRow(row: Row): WorkspaceActionSourceRecord {
   const snapshot = object(row.source_snapshot);
   const preparation = object(snapshot.preparation);
   const matter: MatterSource = {
-    id: String(row.formal_matter_id) as FormalMatterId,
+    id: requiredText(row.formal_matter_id, 'formal_matter_id') as FormalMatterId,
     version: Number(row.formal_matter_version),
     ...(optionalText(preparation.trademark)
       ? { trademark: optionalText(preparation.trademark) }
@@ -428,18 +439,33 @@ function mapRow(row: Row): WorkspaceActionSourceRecord {
 
   const lifecycle = row.lifecycle_view_id
     ? {
-        id: String(row.lifecycle_view_id),
+        id: requiredText(row.lifecycle_view_id, 'lifecycle_view_id'),
         version: Number(row.lifecycle_view_version),
-        fingerprintSha256: String(row.lifecycle_view_fingerprint_sha256),
-        formalMatterVersion: String(row.lifecycle_formal_matter_version),
+        fingerprintSha256: requiredText(
+          row.lifecycle_view_fingerprint_sha256,
+          'lifecycle_view_fingerprint_sha256'
+        ),
+        formalMatterVersion: requiredText(
+          row.lifecycle_formal_matter_version,
+          'lifecycle_formal_matter_version'
+        ),
         currentEvent: {
-          id: String(row.current_event_id),
+          id: requiredText(row.current_event_id, 'current_event_id'),
           version: Number(row.current_event_version),
-          fingerprintSha256: String(row.current_event_fingerprint_sha256)
+          fingerprintSha256: requiredText(
+            row.current_event_fingerprint_sha256,
+            'current_event_fingerprint_sha256'
+          )
         },
-        state: String(row.lifecycle_state) as LifecycleProjectionState,
-        customerSafeLabel: String(row.lifecycle_customer_safe_label),
-        customerSafeSummary: String(row.lifecycle_customer_safe_summary),
+        state: requiredText(row.lifecycle_state, 'lifecycle_state') as LifecycleProjectionState,
+        customerSafeLabel: requiredText(
+          row.lifecycle_customer_safe_label,
+          'lifecycle_customer_safe_label'
+        ),
+        customerSafeSummary: requiredText(
+          row.lifecycle_customer_safe_summary,
+          'lifecycle_customer_safe_summary'
+        ),
         officialStatusVerified: row.lifecycle_official_status_verified === true,
         updatedAt: asTimestamp(row.lifecycle_updated_at)
       }
@@ -447,33 +473,48 @@ function mapRow(row: Row): WorkspaceActionSourceRecord {
 
   const currentEvent = row.current_event_row_id
     ? {
-        id: String(row.current_event_row_id),
+        id: requiredText(row.current_event_row_id, 'current_event_row_id'),
         version: Number(row.current_event_row_version),
-        fingerprintSha256: String(row.current_event_row_fingerprint_sha256),
-        formalMatterVersion: String(row.current_event_formal_matter_version),
-        state: String(row.current_event_state) as LifecycleProjectionState,
-        eventCode: String(row.current_event_code),
+        fingerprintSha256: requiredText(
+          row.current_event_row_fingerprint_sha256,
+          'current_event_row_fingerprint_sha256'
+        ),
+        formalMatterVersion: requiredText(
+          row.current_event_formal_matter_version,
+          'current_event_formal_matter_version'
+        ),
+        state: requiredText(
+          row.current_event_state,
+          'current_event_state'
+        ) as LifecycleProjectionState,
+        eventCode: requiredText(row.current_event_code, 'current_event_code'),
         officialStatusVerified: row.current_event_official_status_verified === true
       }
     : undefined;
 
   const recommendedAction = row.recommended_action_id
     ? {
-        id: String(row.recommended_action_id),
+        id: requiredText(row.recommended_action_id, 'recommended_action_id'),
         version: Number(row.recommended_action_version),
-        formalMatterVersion: String(row.action_formal_matter_version),
+        formalMatterVersion: requiredText(
+          row.action_formal_matter_version,
+          'action_formal_matter_version'
+        ),
         sourceLifecycleView: {
-          id: String(row.action_source_lifecycle_view_id),
+          id: requiredText(row.action_source_lifecycle_view_id, 'action_source_lifecycle_view_id'),
           version: Number(row.action_source_lifecycle_view_version),
-          fingerprintSha256: String(row.action_source_lifecycle_view_fingerprint_sha256)
+          fingerprintSha256: requiredText(
+            row.action_source_lifecycle_view_fingerprint_sha256,
+            'action_source_lifecycle_view_fingerprint_sha256'
+          )
         },
-        title: String(row.action_title),
-        explanation: String(row.action_explanation),
+        title: requiredText(row.action_title, 'action_title'),
+        explanation: requiredText(row.action_explanation, 'action_explanation'),
         ...(row.action_due_at ? { dueAt: asTimestamp(row.action_due_at) } : {}),
         ...(optionalText(row.action_timing_basis)
           ? { timingBasis: optionalText(row.action_timing_basis) }
           : {}),
-        status: String(row.action_status) as RecommendedActionStatus,
+        status: requiredText(row.action_status, 'action_status') as RecommendedActionStatus,
         executionAuthorized: row.action_execution_authorized === true,
         updatedAt: asTimestamp(row.action_updated_at)
       }
