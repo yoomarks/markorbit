@@ -45,14 +45,12 @@ jobs:
             packages/contracts/package.json \
             packages/contracts/src/provider-discovery-trust.ts \
             packages/contracts/tests/provider-discovery-trust.test.ts
-          git diff --name-only origin/main...HEAD > /tmp/committed-before.txt || true
-          git diff --name-only > /tmp/working.txt
-          cat /tmp/working.txt
-          test "$(wc -l < /tmp/working.txt)" -eq 3
-          grep -qx 'packages/contracts/package.json' /tmp/working.txt
-          grep -qx 'packages/contracts/src/provider-discovery-trust.ts' /tmp/working.txt
-          grep -qx 'packages/contracts/tests/provider-discovery-trust.test.ts' /tmp/working.txt
-          git diff --check
+          git diff HEAD --name-only | tee /tmp/changed.txt
+          test "$(wc -l < /tmp/changed.txt)" -eq 3
+          grep -qx 'packages/contracts/package.json' /tmp/changed.txt
+          grep -qx 'packages/contracts/src/provider-discovery-trust.ts' /tmp/changed.txt
+          grep -qx 'packages/contracts/tests/provider-discovery-trust.test.ts' /tmp/changed.txt
+          git diff HEAD --check
       - name: Contracts typecheck
         run: pnpm --filter @markorbit/contracts typecheck
       - name: Contracts tests
