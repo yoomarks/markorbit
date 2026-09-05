@@ -401,6 +401,41 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+
+  const forwardWorkspaceActionRead = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'MarkReg service authentication is unavailable.',
+        true
+      );
+    try {
+      const response = await fetch(`${options.markRegUrl}/internal/v1/workspace-actions`, {
+        method: 'GET',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': principal.workspaceId,
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {}),
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {})
+        }
+      });
+      return json(response.status, await response.json());
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
   const productionIntakeRoute: JsonRoute = {
     method: 'POST',
     path: '/api/markreg/production-intakes',
@@ -468,6 +503,16 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     handle: async (request) => {
       const principal = await authenticateMatterRead(request);
       return forwardExaminationRead(request, principal);
+    }
+  };
+
+
+  const workspaceActionRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/workspace-actions',
+    handle: async (request) => {
+      const principal = await authenticateMatterRead(request);
+      return forwardWorkspaceActionRead(request, principal);
     }
   };
 
@@ -666,6 +711,7 @@ const matterDraftRoute: JsonRoute = {
     matterDraftRoute,
     matterIntelligenceRoute,
     formalMatterEvidenceRoute,
-    formalMatterExaminationRoute
+    formalMatterExaminationRoute,
+    workspaceActionRoute
   ];
 }
