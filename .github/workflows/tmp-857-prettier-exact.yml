@@ -6,13 +6,16 @@ on:
       - tmp/857-prettier-exact-20260906
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: integration/mgsn-trust-discovery-contract-845
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
@@ -33,11 +36,16 @@ jobs:
           packages/contracts/package.json
           packages/contracts/src/provider-discovery-trust.ts
           packages/contracts/tests/provider-discovery-trust.test.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: prettier-857
-          path: |
-            packages/contracts/package.json
-            packages/contracts/src/provider-discovery-trust.ts
-            packages/contracts/tests/provider-discovery-trust.test.ts
-          if-no-files-found: error
+      - name: Commit exact formatting
+        shell: bash
+        run: |
+          git config user.name 'yoomarks'
+          git config user.email 'actions@users.noreply.github.com'
+          git add packages/contracts/package.json packages/contracts/src/provider-discovery-trust.ts packages/contracts/tests/provider-discovery-trust.test.ts
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No formatting changes required.'
+            exit 0
+          fi
+          git commit -m 'style(contracts): format discovery trust companion'
+          git push origin HEAD:integration/mgsn-trust-discovery-contract-845
