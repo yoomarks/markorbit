@@ -211,7 +211,7 @@ export function TodayMoveSection({
   onRecordFeedback
 }: {
   workspaceId: string;
-  today?: Readonly<TodayProductLoopSnapshot>;
+  today: Readonly<TodayProductLoopSnapshot> | undefined;
   selectionRecommendationId: string;
   selectedJourney?: Readonly<PreparedActionJourney>;
   busy: TodayBusyState;
