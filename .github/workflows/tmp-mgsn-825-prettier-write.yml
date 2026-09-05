@@ -14,176 +14,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          path: helper
+      - uses: actions/checkout@v4
+        with:
           ref: mgsn-governed-network-http-825
+          path: target
           fetch-depth: 0
-      - run: |
-          expected=8fb43ca9e911f86ec92e01559b48cf708e59edc9
-          test "$(git rev-parse HEAD)" = "$expected"
-          python3 - <<'PY'
-          from pathlib import Path
-
-          route = Path('services/mgsn/src/governed-network-http.ts')
-          text = route.read_text()
-
-          old = '''const versionReferenceTransportShape = {
-            providerSelectionId: null,
-            controlledHandoffId: null,
-            version: null,
-            scopeVersion: null
-          } satisfies TransportShape;
-
-          const selectionScopeTransportShape = {'''
-          new = '''const providerSelectionVersionReferenceTransportShape = {
-            providerSelectionId: null,
-            version: null,
-            scopeVersion: null
-          } satisfies TransportShape;
-
-          const controlledHandoffVersionReferenceTransportShape = {
-            controlledHandoffId: null,
-            version: null
-          } satisfies TransportShape;
-
-          const discoveryRequestTransportShape = {
-            schemaVersion: null,
-            providerDiscoveryRequestId: null,
-            need: {
-              reference: null,
-              version: null,
-              fingerprintSha256: null,
-              jurisdiction: null,
-              serviceType: null
-            },
-            purpose: null,
-            audience: {
-              kind: null,
-              relationshipAuthorityReference: null
-            },
-            contextReference: null,
-            requestedDataClasses: null,
-            requestedFields: null,
-            requestedAt: null,
-            requestFingerprintSha256: null,
-            correlationId: null
-          } satisfies TransportShape;
-
-          const selectionScopeTransportShape = {'''
-          if old not in text:
-              raise SystemExit('reference-shape marker missing')
-          text = text.replace(old, new, 1)
-          text = text.replace('target: versionReferenceTransportShape,', 'target: providerSelectionVersionReferenceTransportShape,', 1)
-          text = text.replace('selection: versionReferenceTransportShape,', 'selection: providerSelectionVersionReferenceTransportShape,', 1)
-          text = text.replace('selection: versionReferenceTransportShape,', 'selection: providerSelectionVersionReferenceTransportShape,', 1)
-
-          human_marker = '''  const envelope = parsed as Partial<MgsnGovernedHumanActionEnvelopeV1>;
-          const strings = ['''
-          human_new = '''  const envelope = parsed as Partial<MgsnGovernedHumanActionEnvelopeV1>;
-          const allowedHumanActionFields = new Set([
-            'schemaVersion',
-            'kind',
-            'actorKind',
-            'workspaceId',
-            'userId',
-            'membershipId',
-            'principalReference',
-            'authorityReference',
-            'authorityVersion',
-            'authenticatedAt',
-            'affirmativeHumanActionEvidenceReference',
-            'payloadIdentityAuthoritative'
-          ]);
-          if (Object.keys(envelope).some((field) => !allowedHumanActionFields.has(field)))
-            throw new HttpError(
-              403,
-              'INVALID_GOVERNED_HUMAN_ACTION',
-              'Governed-network human-action authority contains unsupported fields.'
-            );
-          const strings = ['''
-          if human_marker not in text:
-              raise SystemExit('human-action marker missing')
-          text = text.replace(human_marker, human_new, 1)
-
-          discovery_marker = '''        const body = bodyOf(request);
-        rejectTopLevelAuthority(body);
-        const discoveryRequest = {
-          ...body,
-          requesterWorkspaceId: principal.workspaceId
-        } as unknown as ProviderDiscoveryRequestReferenceV1;'''
-          discovery_new = '''        const body = bodyOf(request);
-        rejectTopLevelAuthority(body);
-        assertExactTransportShape(body, discoveryRequestTransportShape, 'body');
-        const audience = objectOf(body.audience, 'audience');
-        if (
-          audience.kind === 'BOUNDED_NETWORK' &&
-          audience.relationshipAuthorityReference !== undefined
-        )
-          throw new HttpError(
-            400,
-            'UNEXPECTED_GOVERNED_NETWORK_FIELD',
-            'body.audience.relationshipAuthorityReference is not permitted for BOUNDED_NETWORK.'
-          );
-        const discoveryRequest = {
-          ...body,
-          requesterWorkspaceId: principal.workspaceId
-        } as unknown as ProviderDiscoveryRequestReferenceV1;'''
-          if discovery_marker not in text:
-              raise SystemExit('discovery route marker missing')
-          text = text.replace(discovery_marker, discovery_new, 1)
-
-          route.write_text(text)
-
-          tests_path = Path('services/mgsn/tests/governed-network-http.test.ts')
-          tests = tests_path.read_text()
-          anchor = '\n});\n'
-          extra = r'''
-            it('rejects arbitrary private fields from Provider Discovery requests', async () => {
-              const response = await fetch(`${base}/v1/governed-network/discovery/evaluate`, {
-                method: 'POST',
-                headers: { ...headers(), 'content-type': 'application/json' },
-                body: JSON.stringify({
-                  schemaVersion: 1,
-                  customerDocument: { raw: 'must-not-be-reflected' }
-                })
-              });
-
-              expect(response.status).toBe(400);
-              expect((await response.json()).code).toBe('UNEXPECTED_GOVERNED_NETWORK_FIELD');
-              expect(captured).toBeUndefined();
-            });
-
-            it('rejects unsupported fields inside the reviewed human-action envelope', async () => {
-              const encoded = Buffer.from(
-                JSON.stringify({
-                  ...humanAction('PROVIDER_SELECTION'),
-                  customerDocument: 'must-not-cross-the-authority-boundary'
-                }),
-                'utf8'
-              ).toString('base64url');
-              const response = await fetch(`${base}/v1/governed-network/selections`, {
-                method: 'POST',
-                headers: {
-                  ...headers({ idempotencyKey: 'selection-extra-human-action-field' }),
-                  [MGSN_GOVERNED_HUMAN_ACTION_HEADER]: encoded,
-                  'content-type': 'application/json'
-                },
-                body: JSON.stringify({ sourceLineage: { discoveryRequest: {} } })
-              });
-
-              expect(response.status).toBe(403);
-              expect((await response.json()).code).toBe('INVALID_GOVERNED_HUMAN_ACTION');
-              expect(captured).toBeUndefined();
-            });
-          '''
-          if 'rejects arbitrary private fields from Provider Discovery requests' in tests:
-              raise SystemExit('final transport tests already inserted')
-          head, sep, tail = tests.rpartition(anchor)
-          if not sep:
-              raise SystemExit('test-suite end marker missing')
-          tests_path.write_text(head + extra + anchor + tail)
-          PY
-      - run: npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
-      - run: |
+      - name: Apply owner-local transport hardening
+        working-directory: target
+        run: |
+          test "$(git rev-parse HEAD)" = "8fb43ca9e911f86ec92e01559b48cf708e59edc9"
+          python3 ../helper/.agents/tmp-mgsn-825-finish.py
+          npx --yes prettier@3.9.6 --write services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
           git diff --check
+      - name: Commit exact transport hardening
+        working-directory: target
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add services/mgsn/src/governed-network-http.ts services/mgsn/tests/governed-network-http.test.ts
