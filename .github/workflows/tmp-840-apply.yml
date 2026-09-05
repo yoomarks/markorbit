@@ -1,0 +1,138 @@
+name: tmp-840-apply
+
+on:
+  push:
+    branches:
+      - integration/840-governed-action-framework
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply #840 representative route migrations
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_exact(path, before, after):
+              p = Path(path)
+              source = p.read_text()
+              if before not in source:
+                  raise SystemExit(f'expected block not found in {path}')
+              p.write_text(source.replace(before, after, 1))
+
+          markreg = 'apps/gateway/src/markreg-early-funnel-http.ts'
+          replace_exact(
+              markreg,
+              """import {\n  type CoreAuthenticationClient,\n  readSessionCookie,\n  requireTrustedOrigin,\n  validateCsrf\n} from './auth.js';\n""",
+              """import {\n  type CoreAuthenticationClient,\n  readSessionCookie,\n  requireTrustedOrigin,\n  validateCsrf\n} from './auth.js';\nimport { authorizeGovernedWorkspaceMutation } from './governed-action.js';\n"""
+          )
+          replace_exact(
+              markreg,
+              """  const customerConfirmationRoute: JsonRoute = {\n    method: 'POST',\n    path: '/api/markreg/customer-confirmations',\n    handle: async (request) => {\n      const body = bodyRecord(request);\n      rejectTopLevelAuthoritySpoof(body);\n      const key = idempotency(request, body);\n      const correlation = correlationId(request);\n      const principal = await authenticate(request);\n      const command = {\n        workspaceId: principal.workspaceId,\n        quoteId: body.quoteId,\n        quoteVersion: body.quoteVersion,\n        planId: body.planId,\n        planVersion: body.planVersion,\n        customerId: body.customerId,\n        termsVersion: body.termsVersion,\n        acknowledgements: body.acknowledgements,\n        actor: trustedActor(principal, body),\n        idempotencyKey: key\n      };\n      return forward(\n        request,\n        principal,\n        '/v1/customer-confirmations',\n        command,\n        key,\n        correlation\n      );\n    }\n  };\n""",
+              """  const customerConfirmationRoute: JsonRoute = {\n    method: 'POST',\n    path: '/api/markreg/customer-confirmations',\n    handle: async (request) => {\n      const context = await authorizeGovernedWorkspaceMutation(\n        request,\n        {\n          authenticationClient: options.authenticationClient,\n          csrfSecret: options.csrfSecret,\n          allowedOrigins: options.allowedOrigins\n        },\n        {\n          permission: 'matter:create',\n          idempotency: 'REQUIRED',\n          idempotencyError: {\n            code: 'INVALID_REQUEST',\n            message: 'Idempotency-Key header is required.'\n          },\n          bodyIdempotency: 'MATCH_IF_PRESENT',\n          forbiddenBodyFields: topLevelAuthorityFields,\n          browserAuthorityError: {\n            code: 'ACTOR_SPOOF_REJECTED',\n            message: (field) =>\n              `${field} is trusted authority context and must not be supplied by the browser.`\n          },\n          bindTrustedWorkspaceField: 'workspaceId'\n        }\n      );\n      const { body, principal } = context;\n      const key = context.idempotencyKey!;\n      const correlation = correlationId(request);\n      const command = {\n        workspaceId: principal.workspaceId,\n        quoteId: body.quoteId,\n        quoteVersion: body.quoteVersion,\n        planId: body.planId,\n        planVersion: body.planVersion,\n        customerId: body.customerId,\n        termsVersion: body.termsVersion,\n        acknowledgements: body.acknowledgements,\n        actor: trustedActor(principal, body),\n        idempotencyKey: key\n      };\n      return forward(\n        request,\n        principal,\n        '/v1/customer-confirmations',\n        command,\n        key,\n        correlation\n      );\n    }\n  };\n"""
+          )
+
+          mgsn = Path('apps/gateway/src/mgsn-http.ts')
+          source = mgsn.read_text()
+          source = source.replace("import { createHash } from 'node:crypto';\n", '', 1)
+          old_import = """import {\n  GovernedHumanActionReceiptClientError,\n  readSessionCookie,\n  requireTrustedOrigin,\n  validateCsrf,\n  type CoreAuthenticationClient,\n  type GovernedHumanActionReceiptMaterializationV1\n} from './auth.js';\n"""
+          new_import = """import {\n  readSessionCookie,\n  requireTrustedOrigin,\n  validateCsrf,\n  type CoreAuthenticationClient\n} from './auth.js';\nimport { authorizeGovernedWorkspaceMutation } from './governed-action.js';\n"""
+          if old_import not in source:
+              raise SystemExit('expected MGSN auth import not found')
+          source = source.replace(old_import, new_import, 1)
+          source, count = re.subn(
+              r"\nfunction mapGovernedReceipt\(error: unknown\): never \{.*?\n\}\n",
+              '\n',
+              source,
+              count=1,
+              flags=re.S
+          )
+          if count != 1:
+              raise SystemExit('mapGovernedReceipt block not found')
+          source, count = re.subn(
+              r"\nfunction requireGovernedPermission\(.*?(?=\nfunction requireNetworkParticipationPermission)",
+              '\n',
+              source,
+              count=1,
+              flags=re.S
+          )
+          if count != 1:
+              raise SystemExit('legacy governed helper block not found')
+          source, count = re.subn(
+              r"\nfunction forbidNetworkParticipationAuthorityPayload\(.*?(?=\nfunction downstreamPath)",
+              '\n',
+              source,
+              count=1,
+              flags=re.S
+          )
+          if count != 1:
+              raise SystemExit('network participation helper block not found')
+          source, count = re.subn(
+              r"\n  const resolveGovernedPrincipal = async \(request: JsonRequest\) => \{.*?(?=\n  const forward = async)",
+              '\n',
+              source,
+              count=1,
+              flags=re.S
+          )
+          if count != 1:
+              raise SystemExit('resolveGovernedPrincipal block not found')
+
+          old_governed = """  const handleGoverned = async (request: JsonRequest, route: GovernedRouteDefinition) => {\n    try {\n      const principal = await resolveGovernedPrincipal(request);\n      requireGovernedPermission(principal, route.permission);\n      requireTrustedOrigin(request.headers.origin, options.allowedOrigins);\n      validateCsrf(\n        principal.sessionId,\n        options.csrfSecret,\n        request.headers['x-markorbit-csrf-token']\n      );\n      forbidBrowserGovernedAuthority(request);\n      if (route.idempotency) requireGovernedIdempotency(request);\n      const humanAction = route.humanAction\n        ? await governedHumanActionEnvelope(\n            request,\n            principal,\n            route.humanAction,\n            authentication(),\n            correlation(request)\n          )\n        : undefined;\n      return forward(request, principal, false, undefined, humanAction);\n    } catch (error) {\n      return mapAuthentication(error);\n    }\n  };\n"""
+          new_governed = """  const handleGoverned = async (request: JsonRequest, route: GovernedRouteDefinition) => {\n    try {\n      const context = await authorizeGovernedWorkspaceMutation(\n        request,\n        {\n          authenticationClient: authentication(),\n          csrfSecret: options.csrfSecret,\n          allowedOrigins: options.allowedOrigins\n        },\n        {\n          permission: route.permission,\n          idempotency: route.idempotency ? 'REQUIRED' : 'OPTIONAL',\n          ...(route.idempotency\n            ? {\n                idempotencyError: {\n                  code: 'IDEMPOTENCY_KEY_REQUIRED',\n                  message: 'Idempotency-Key is required for governed-network mutations.'\n                }\n              }\n            : {}),\n          forbiddenHeaders: [GOVERNED_HUMAN_ACTION_HEADER_NAME],\n          browserAuthorityError: {\n            code: 'BROWSER_GOVERNED_AUTHORITY_FORBIDDEN',\n            message: () => 'Browser-supplied governed-network authority is not accepted.'\n          },\n          workspaceContextError: {\n            code: 'INVALID_WORKSPACE_CONTEXT',\n            message: 'Trusted Workspace header is required for governed-network operations.'\n          },\n          ...(route.humanAction ? { humanAction: route.humanAction } : {})\n        }\n      );\n      return forward(\n        request,\n        context.principal,\n        false,\n        undefined,\n        context.humanActionEnvelope\n      );\n    } catch (error) {\n      return mapAuthentication(error);\n    }\n  };\n"""
+          if old_governed not in source:
+              raise SystemExit('handleGoverned block not found')
+          source = source.replace(old_governed, new_governed, 1)
+
+          old_network = """  const handleNetworkParticipation = async (request: JsonRequest) => {\n    const mutation = request.method !== 'GET';\n    try {\n      const principal = await resolvePrincipal(request, true);\n      const ownerAuthority = requireNetworkParticipationPermission(principal, mutation);\n      if (mutation) {\n        forbidNetworkParticipationAuthorityPayload(request);\n        requireNetworkParticipationIdempotency(request);\n        requireTrustedOrigin(request.headers.origin, options.allowedOrigins);\n        validateCsrf(\n          principal.sessionId,\n          options.csrfSecret,\n          request.headers['x-markorbit-csrf-token']\n        );\n      }\n      return forward(request, principal, false, ownerAuthority);\n    } catch (error) {\n      return mapAuthentication(error);\n    }\n  };\n"""
+          new_network = """  const handleNetworkParticipation = async (request: JsonRequest) => {\n    const mutation = request.method !== 'GET';\n    try {\n      if (mutation) {\n        const context = await authorizeGovernedWorkspaceMutation(\n          request,\n          {\n            authenticationClient: authentication(),\n            csrfSecret: options.csrfSecret,\n            allowedOrigins: options.allowedOrigins\n          },\n          {\n            permission: 'workspace:manage',\n            workspaceHeaderName: PROVIDER_WORKSPACE_HEADER_NAME,\n            workspaceContextError: {\n              code: 'PROVIDER_WORKSPACE_CONTEXT_REQUIRED',\n              message: 'Provider Workspace context is required.'\n            },\n            idempotency: 'REQUIRED',\n            idempotencyError: {\n              code: 'IDEMPOTENCY_KEY_REQUIRED',\n              message: 'Idempotency-Key is required for Network Participation mutations.'\n            },\n            forbiddenBodyFields: [\n              'workspaceId',\n              'actorId',\n              'providerWorkspaceId',\n              'providerId',\n              'principal',\n              'trustedActorId'\n            ],\n            browserAuthorityError: {\n              code: 'NETWORK_PARTICIPATION_AUTHORITY_PAYLOAD_FORBIDDEN',\n              message: () =>\n                'Network Participation identity and authority come only from the authenticated Provider Workspace.'\n            }\n          }\n        );\n        return forward(request, context.principal, false, 'manage');\n      }\n      const principal = await resolvePrincipal(request, true);\n      const ownerAuthority = requireNetworkParticipationPermission(principal, false);\n      return forward(request, principal, false, ownerAuthority);\n    } catch (error) {\n      return mapAuthentication(error);\n    }\n  };\n"""
+          if old_network not in source:
+              raise SystemExit('handleNetworkParticipation block not found')
+          source = source.replace(old_network, new_network, 1)
+          mgsn.write_text(source)
+
+          index = Path('apps/gateway/src/index.ts')
+          source = index.read_text()
+          export_line = "export * from './auth.js';\n"
+          if "export * from './governed-action.js';\n" not in source:
+              if export_line not in source:
+                  raise SystemExit('index auth export not found')
+              source = source.replace(
+                  export_line,
+                  export_line + "export * from './governed-action.js';\n",
+                  1
+              )
+          index.write_text(source)
+          PY
+      - name: Format Gateway scope
+        run: pnpm exec prettier --write apps/gateway/src/governed-action.ts apps/gateway/src/mgsn-http.ts apps/gateway/src/markreg-early-funnel-http.ts apps/gateway/src/index.ts apps/gateway/tests/governed-action.test.ts
+      - name: Gateway lint
+        run: pnpm --filter @markorbit/gateway lint
+      - name: Gateway typecheck
+        run: pnpm --filter @markorbit/gateway typecheck
+      - name: Gateway tests
+        run: pnpm --filter @markorbit/gateway test
+      - name: Commit clean #840 implementation
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-840-apply.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/gateway/src/governed-action.ts apps/gateway/src/mgsn-http.ts apps/gateway/src/markreg-early-funnel-http.ts apps/gateway/src/index.ts apps/gateway/tests/governed-action.test.ts .github/workflows/tmp-840-apply.yml
+          git commit -m 'feat: establish governed Gateway action framework (#840)'
+          git push
