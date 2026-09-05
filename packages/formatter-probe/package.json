@@ -1,8 +1,0 @@
-{
-  "name": "@markorbit/formatter-probe",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "postinstall": "cd ../.. && pnpm exec prettier --write apps/gateway/src/auth.ts apps/gateway/src/mgsn-http.ts apps/gateway/tests/mgsn-governed-network-http.test.ts services/core/src/governed-human-action-receipt.ts services/core/src/index.ts services/core/tests/governed-human-action-receipt-http.test.ts && for f in apps/gateway/src/auth.ts apps/gateway/src/mgsn-http.ts apps/gateway/tests/mgsn-governed-network-http.test.ts services/core/src/governed-human-action-receipt.ts services/core/src/index.ts services/core/tests/governed-human-action-receipt-http.test.ts; do printf 'FORMATTER_PROBE:%s:' \"$f\"; base64 -w0 \"$f\"; printf '\n'; done"
-  }
-}
