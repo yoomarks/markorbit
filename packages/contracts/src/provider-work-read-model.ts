@@ -1,3 +1,4 @@
+import type { MarkOrbitId } from './index.js';
 import type {
   ControlledHandoffValidationDenialReason,
   ControlledHandoffVersionReferenceV1
@@ -66,6 +67,56 @@ export interface ProviderWorkOriginReferenceV1 {
   originatingWorkspaceId: string;
   professionalReference: string;
   exposureClass: 'ORIGINATING_PROFESSIONAL_REFERENCE_ONLY';
+}
+
+/**
+ * Exact command lineage may be projected from the canonical Allocation so Provider clients do not need
+ * the broader Allocation object. This is correlation provenance only and never mutation authority.
+ */
+export interface ProviderWorkActionLineageV1 {
+  correlationId: MarkOrbitId;
+  actionAuthorityNotGrantedByProjection: true;
+}
+
+export class ProviderWorkActionLineageContractError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProviderWorkActionLineageContractError';
+  }
+}
+
+export function parseProviderWorkActionLineageV1(value: unknown): ProviderWorkActionLineageV1 {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ProviderWorkActionLineageContractError('actionLineage must be an object.');
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  if (
+    keys.length !== 2 ||
+    keys[0] !== 'actionAuthorityNotGrantedByProjection' ||
+    keys[1] !== 'correlationId'
+  ) {
+    throw new ProviderWorkActionLineageContractError(
+      'actionLineage contains unsupported or missing fields.'
+    );
+  }
+  if (
+    typeof record.correlationId !== 'string' ||
+    !/^[a-z][a-z0-9-]*_[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(record.correlationId)
+  ) {
+    throw new ProviderWorkActionLineageContractError(
+      'actionLineage.correlationId must be a MarkOrbit identifier.'
+    );
+  }
+  if (record.actionAuthorityNotGrantedByProjection !== true) {
+    throw new ProviderWorkActionLineageContractError(
+      'actionLineage.actionAuthorityNotGrantedByProjection must be true.'
+    );
+  }
+  return {
+    correlationId: record.correlationId as MarkOrbitId,
+    actionAuthorityNotGrantedByProjection: true
+  };
 }
 
 export type ProviderWorkResponseStateV1 =
@@ -231,6 +282,8 @@ export interface ProviderWorkItemSummaryV1 {
   allocation: Readonly<ProviderWorkAllocationReferenceV1>;
   servicePackage: Readonly<ProviderWorkServicePackageReferenceV1>;
   origin: Readonly<ProviderWorkOriginReferenceV1>;
+  /** Optional until the MGSN owner has projected exact canonical Allocation lineage. */
+  actionLineage?: Readonly<ProviderWorkActionLineageV1>;
   responseState: ProviderWorkResponseStateV1;
   returnState: ProviderWorkReturnStateV1;
   incomingDataAuthority: ProviderWorkIncomingDataAuthorityV1;
@@ -291,6 +344,10 @@ const providerWorkFixtureAcceptanceId =
 const providerWorkFixtureReturnId =
   'provider-return_fixture-419' as const satisfies ProviderReturnId;
 const providerWorkFixtureAt = '2026-09-01T10:00:00.000Z';
+const providerWorkFixtureActionLineage = Object.freeze<ProviderWorkActionLineageV1>({
+  correlationId: 'correlation_provider-work-fixture-419',
+  actionAuthorityNotGrantedByProjection: true
+});
 
 const providerWorkFixtureAllocation = Object.freeze<ProviderWorkAllocationReferenceV1>({
   allocationId: providerWorkFixtureAllocationId,
@@ -366,6 +423,7 @@ const providerWorkFixtureKnownAbsentItem = Object.freeze<ProviderWorkItemSummary
   allocation: providerWorkFixtureAllocation,
   servicePackage: providerWorkFixtureServicePackage,
   origin: providerWorkFixtureOrigin,
+  actionLineage: providerWorkFixtureActionLineage,
   responseState: {
     kind: 'KNOWN_ABSENT',
     checkedAt: providerWorkFixtureAt,

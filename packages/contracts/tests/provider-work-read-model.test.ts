@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   noProviderWorkReadModelAuthorityConsequences,
+  parseProviderWorkActionLineageV1,
   providerWorkPrivacyExclusionsV1,
   providerWorkReadModelContractFixtureV1,
   providerWorkSourceKinds,
@@ -20,6 +21,61 @@ describe('Provider Work Read Model V1 contract', () => {
     expect(item.allocationIsExistingM4TruthNotCreatedByProjection).toBe(true);
     expect(item).not.toHaveProperty('providerWorkItemId');
     expect(item).not.toHaveProperty('lifecycleStatus');
+  });
+
+  it('carries only privacy-safe correlation lineage and grants no action authority', () => {
+    const item = providerWorkReadModelContractFixtureV1.activeAllocationKnownNoResponse;
+
+    expect(item.actionLineage).toEqual({
+      correlationId: 'correlation_provider-work-fixture-419',
+      actionAuthorityNotGrantedByProjection: true
+    });
+    expect(item.queuePresenceIsNotActionAuthority).toBe(true);
+    expect(item.authorityConsequences).toEqual(noProviderWorkReadModelAuthorityConsequences);
+
+    const json = JSON.stringify(item.actionLineage);
+    expect(json).not.toContain('rationale');
+    expect(json).not.toContain('allocatedBy');
+    expect(json).not.toContain('supplyCapability');
+    expect(json).not.toContain('customer');
+    expect(json).not.toContain('artifact');
+  });
+
+  it('validates exact action lineage and rejects malformed or authority-expanding shapes', () => {
+    expect(
+      parseProviderWorkActionLineageV1({
+        correlationId: 'correlation_provider-work-fixture-419',
+        actionAuthorityNotGrantedByProjection: true
+      })
+    ).toEqual({
+      correlationId: 'correlation_provider-work-fixture-419',
+      actionAuthorityNotGrantedByProjection: true
+    });
+
+    expect(() =>
+      parseProviderWorkActionLineageV1({
+        actionAuthorityNotGrantedByProjection: true
+      })
+    ).toThrow(/unsupported or missing fields/);
+    expect(() =>
+      parseProviderWorkActionLineageV1({
+        correlationId: 'not-a-markorbit-id',
+        actionAuthorityNotGrantedByProjection: true
+      })
+    ).toThrow(/MarkOrbit identifier/);
+    expect(() =>
+      parseProviderWorkActionLineageV1({
+        correlationId: 'correlation_provider-work-fixture-419',
+        actionAuthorityNotGrantedByProjection: false
+      })
+    ).toThrow(/must be true/);
+    expect(() =>
+      parseProviderWorkActionLineageV1({
+        correlationId: 'correlation_provider-work-fixture-419',
+        actionAuthorityNotGrantedByProjection: true,
+        allocationRationale: 'hidden'
+      })
+    ).toThrow(/unsupported or missing fields/);
   });
 
   it('does not infer Provider Acceptance from an ACTIVE Allocation', () => {
