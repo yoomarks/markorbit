@@ -30,6 +30,7 @@ import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAs
 import { ContentStudio } from './features/content-studio/ContentStudio.js';
 import type { ContentStudioClient } from './api/content-studio.js';
 import { CandidateReview } from './features/opportunities/CandidateReview.js';
+import { GuideWorkspace } from './features/guide/GuideWorkspace.js';
 
 const nav = [
   'Today',
@@ -342,7 +343,6 @@ export function LiteApp({
     surface === 'professional-review' ||
     surface === 'execution-release';
   const isFixture = surface === 'customers';
-  const isEntry = surface === 'guide';
   const isWorkHub = surface === 'work';
   return (
     <AppShell
@@ -369,13 +369,11 @@ export function LiteApp({
             <Badge>
               {isFixture
                 ? 'Not live data'
-                : isEntry
-                  ? 'Not yet promoted'
-                  : isWorkHub
-                    ? 'Mixed maturity'
-                    : activeWorkspaceId
-                      ? 'Authenticated'
-                      : 'Workspace required'}
+                : isWorkHub
+                  ? 'Mixed maturity'
+                  : activeWorkspaceId
+                    ? 'Authenticated'
+                    : 'Workspace required'}
             </Badge>
           }
         />
@@ -479,20 +477,15 @@ export function LiteApp({
               description="A valid Workspace context is required to load durable Content Studio work."
             />
           )
-        ) : isEntry ? (
-          <>
-            <PageHeader
-              title="Guide"
-              description="An official Lite product pillar with a bounded entry surface."
+        ) : surface === 'guide' ? (
+          activeWorkspaceId ? (
+            <GuideWorkspace workspaceId={activeWorkspaceId} />
+          ) : (
+            <ErrorState
+              title="Select a Workspace"
+              description="A valid Workspace context is required to load the asset-scoped AI Guide."
             />
-            <EmptyState
-              title={'AI Guide is not yet promoted'}
-              description={
-                'A first-class AI Guide is not available here. Opening this page does not start an AI conversation, create a recommendation, or authorize an action.'
-              }
-              action={<a href="#today">Open Today</a>}
-            />
-          </>
+          )
         ) : surface === 'work' ? (
           <WorkHub workspaceId={activeWorkspaceId} />
         ) : surface === 'customers' ? (
