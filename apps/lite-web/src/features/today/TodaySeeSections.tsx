@@ -150,8 +150,8 @@ export function TodaySeeSections({
 }: {
   mainOrbit: ReadonlyArray<Readonly<DailyOrbitItem>>;
   revisiting: ReadonlyArray<Readonly<DailyOrbitItem>>;
-  today?: Readonly<TodayProductLoopSnapshot>;
-  orbit?: Readonly<DailyOrbitSnapshot>;
+  today: Readonly<TodayProductLoopSnapshot> | undefined;
+  orbit: Readonly<DailyOrbitSnapshot> | undefined;
   savedOrbitItemIds: ReadonlySet<string>;
   onPreference: (kind: 'SAVED' | 'DISMISSED', item: Readonly<DailyOrbitItem>) => void;
 }) {
