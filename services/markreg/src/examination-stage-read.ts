@@ -137,7 +137,9 @@ function policyState(eventCode: string): LifecycleProjectionState | undefined {
   return (examinationEventPolicy as Readonly<Record<string, LifecycleProjectionState>>)[eventCode];
 }
 
-function ensureEventPolicy(event: Readonly<LifecycleEventProjection>): event is LifecycleEventProjection & {
+function ensureEventPolicy(
+  event: Readonly<LifecycleEventProjection>
+): event is LifecycleEventProjection & {
   eventCode: ExaminationEventCode;
 } {
   const expected = policyState(event.eventCode);
@@ -178,7 +180,9 @@ function ensureCurrentIntegrity(
       true
     );
 
-  const currentEvent = events.find((event) => event.lifecycleEventId === view.currentEvent.id);
+  const currentEvent = events.find(
+    (event) => event.lifecycleEventId === view.currentEvent.id
+  );
   if (!currentEvent)
     throw new ExaminationStageReadError(
       'EXAMINATION_TRUTH_UNAVAILABLE',
@@ -229,7 +233,9 @@ function ensureCurrentIntegrity(
   return currentEvent;
 }
 
-function sourceOf(event: Readonly<LifecycleEventProjection>): ExaminationStageSourceProjection {
+function sourceOf(
+  event: Readonly<LifecycleEventProjection>
+): ExaminationStageSourceProjection {
   return {
     reviewedSourceAdmission: {
       id: event.source.reviewedSourceAdmission.id,
@@ -362,7 +368,10 @@ export class ExaminationStageReadService {
 
     const currentQualifies = currentEvent ? ensureEventPolicy(currentEvent) : false;
     const history = qualifying
-      .filter((event) => !currentQualifies || event.lifecycleEventId !== currentEvent?.lifecycleEventId)
+      .filter(
+        (event) =>
+          !currentQualifies || event.lifecycleEventId !== currentEvent?.lifecycleEventId
+      )
       .slice(-EXAMINATION_HISTORY_LIMIT)
       .map(historicalEntry);
 
@@ -373,9 +382,12 @@ export class ExaminationStageReadService {
       status: currentQualifies ? 'ESTABLISHED' : 'NOT_ESTABLISHED',
       current:
         currentQualifies && view && currentEvent
-          ? currentEntry(view, currentEvent as LifecycleEventProjection & {
-              eventCode: ExaminationEventCode;
-            })
+          ? currentEntry(
+              view,
+              currentEvent as LifecycleEventProjection & {
+                eventCode: ExaminationEventCode;
+              }
+            )
           : null,
       history,
       deadline: null,
