@@ -1,6 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- boundary tests intentionally capture normalized transport commands. */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- boundary tests intentionally capture normalized transport commands. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import { controlledHandoffContractFixtureV1 } from '@markorbit/contracts/controlled-privacy-handoff';
+import { providerDiscoveryContractFixtureV1 } from '@markorbit/contracts/provider-discovery';
+import { providerSelectionContractFixtureV1 } from '@markorbit/contracts/provider-selection';
 import type { ServiceRuntime } from '@markorbit/service-kit';
 import {
   createRuntime,
@@ -130,6 +133,54 @@ function governedServices(): MgsnGovernedNetworkHttpServices {
   };
 }
 
+function discoveryBody() {
+  const body = structuredClone(providerDiscoveryContractFixtureV1.candidateResult.request) as any;
+  delete body.requesterWorkspaceId;
+  return body;
+}
+
+function selectionCreateBody() {
+  const body = structuredClone(providerSelectionContractFixtureV1.createCommand) as any;
+  delete body.requesterWorkspaceId;
+  delete body.trustedHumanAuthority;
+  delete body.idempotencyKey;
+  body.sourceLineage.discoveryRequest.requesterWorkspaceId = 'ignored-lineage-input';
+  return body;
+}
+
+function handoffAuthorizeBody() {
+  const body = structuredClone(controlledHandoffContractFixtureV1.authorizeCommand) as any;
+  delete body.originatingWorkspaceId;
+  delete body.trustedHumanAuthority;
+  delete body.idempotencyKey;
+  body.privacyPreviewAcknowledgement.originatingWorkspaceId = 'ignored-preview-input';
+  return body;
+}
+
+function governedAllocationBody() {
+  return {
+    servicePackageId: 'service-package_http-825',
+    expectedServicePackageVersion: 1,
+    expectedServicePackageFingerprintSha256: 'a'.repeat(64),
+    eligibilityEvaluationId: 'eligibility-evaluation_http-825',
+    expectedEligibilityEvaluationVersion: 1,
+    expectedEligibilityFingerprintSha256: 'b'.repeat(64),
+    providerId: 'provider_http-825',
+    providerSupplyCapabilityId: 'provider-supply-capability_http-825',
+    expectedProviderSupplyCapabilityVersion: 1,
+    rationale: 'Allocate the exact reviewed Provider.',
+    selection: { providerSelectionId: selectionId, version: 1, scopeVersion: 1 },
+    selectionScope: {
+      owner: 'LITE',
+      reference: 'need:http-825',
+      version: 1,
+      fingerprintSha256: '1'.repeat(64)
+    },
+    handoffBinding: { mode: 'NONE_EXPLICIT' },
+    correlationId: 'correlation_http_825_allocation'
+  };
+}
+
 beforeEach(async () => {
   captured = undefined;
   runtime = createRuntime({
@@ -148,7 +199,7 @@ describe('MGSN governed-network internal HTTP producer', () => {
     const response = await fetch(`${base}/v1/governed-network/discovery/evaluate`, {
       method: 'POST',
       headers: { ...headers(), 'content-type': 'application/json' },
-      body: JSON.stringify({ schemaVersion: 1, providerDiscoveryRequestId: 'request_http-825' })
+      body: JSON.stringify(discoveryBody())
     });
 
     expect(response.status).toBe(200);
@@ -193,20 +244,7 @@ describe('MGSN governed-network internal HTTP producer', () => {
         ...headers({ kind: 'PROVIDER_SELECTION', idempotencyKey: 'selection-create' }),
         'content-type': 'application/json'
       },
-      body: JSON.stringify({
-        schemaVersion: 1,
-        scope: {
-          owner: 'LITE',
-          reference: 'need:http-825',
-          version: 1,
-          fingerprintSha256: '1'.repeat(64)
-        },
-        sourceLineage: { discoveryRequest: { requesterWorkspaceId: 'ignored-lineage-input' } },
-        acknowledgement: { affirmativeHumanAction: true },
-        expectedCurrent: { kind: 'ABSENT', expectedScopeVersion: 0 },
-        commandFingerprintSha256: '2'.repeat(64),
-        correlationId: 'correlation_http_825_selection'
-      })
+      body: JSON.stringify(selectionCreateBody())
     });
 
     expect(response.status).toBe(201);
@@ -256,12 +294,7 @@ describe('MGSN governed-network internal HTTP producer', () => {
         ...headers({ kind: 'CONTROLLED_HANDOFF', idempotencyKey: 'handoff-authorize' }),
         'content-type': 'application/json'
       },
-      body: JSON.stringify({
-        schemaVersion: 1,
-        privacyPreviewAcknowledgement: { originatingWorkspaceId: 'ignored-preview-input' },
-        commandFingerprintSha256: '3'.repeat(64),
-        correlationId: 'correlation_http_825_handoff'
-      })
+      body: JSON.stringify(handoffAuthorizeBody())
     });
 
     expect(response.status).toBe(201);
@@ -329,17 +362,7 @@ describe('MGSN governed-network internal HTTP producer', () => {
         ...headers({ idempotencyKey: 'governed-allocation' }),
         'content-type': 'application/json'
       },
-      body: JSON.stringify({
-        servicePackageId: 'service-package_http-825',
-        selection: { providerSelectionId: selectionId, version: 1, scopeVersion: 1 },
-        selectionScope: {
-          owner: 'LITE',
-          reference: 'need:http-825',
-          version: 1,
-          fingerprintSha256: '1'.repeat(64)
-        },
-        handoffBinding: { mode: 'NONE_EXPLICIT' }
-      })
+      body: JSON.stringify(governedAllocationBody())
     });
 
     expect(response.status).toBe(201);
@@ -580,6 +603,47 @@ describe('MGSN governed-network internal HTTP producer', () => {
     });
     expect(allocationResponse.status).toBe(400);
     expect((await allocationResponse.json()).code).toBe('UNEXPECTED_GOVERNED_NETWORK_FIELD');
+    expect(captured).toBeUndefined();
+  });
+
+  it('rejects malformed scalar, timestamp and branded-id input before owner services', async () => {
+    const discovery = discoveryBody();
+    discovery.requestedAt = 'not-an-instant';
+    const discoveryResponse = await fetch(`${base}/v1/governed-network/discovery/evaluate`, {
+      method: 'POST',
+      headers: { ...headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(discovery)
+    });
+    expect(discoveryResponse.status).toBe(400);
+    expect((await discoveryResponse.json()).code).toBe('INVALID_GOVERNED_NETWORK_REQUEST');
+    expect(captured).toBeUndefined();
+
+    const selection = selectionCreateBody();
+    selection.sourceLineage.discoveryCandidate.providerDiscoveryCandidateId = 'candidate_http-825';
+    const selectionResponse = await fetch(`${base}/v1/governed-network/selections`, {
+      method: 'POST',
+      headers: {
+        ...headers({ kind: 'PROVIDER_SELECTION', idempotencyKey: 'selection-invalid-brand' }),
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(selection)
+    });
+    expect(selectionResponse.status).toBe(400);
+    expect((await selectionResponse.json()).code).toBe('INVALID_GOVERNED_NETWORK_REQUEST');
+    expect(captured).toBeUndefined();
+
+    const allocation = governedAllocationBody() as any;
+    allocation.expectedServicePackageVersion = '1';
+    const allocationResponse = await fetch(`${base}/v1/governed-network/allocations`, {
+      method: 'POST',
+      headers: {
+        ...headers({ idempotencyKey: 'allocation-invalid-version' }),
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(allocation)
+    });
+    expect(allocationResponse.status).toBe(400);
+    expect((await allocationResponse.json()).code).toBe('INVALID_GOVERNED_NETWORK_REQUEST');
     expect(captured).toBeUndefined();
   });
 });
