@@ -1,0 +1,164 @@
+name: tmp-861-owner-patch
+
+on:
+  push:
+    branches:
+      - tmp/861-owner-patch-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mgsn/provider-work-action-lineage-861
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply bounded owner patch
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one replacement, found {count}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          read_model = 'services/mgsn/src/provider-work-read-model.ts'
+          replace_once(
+              read_model,
+              "import { createHash } from 'node:crypto';\n",
+              "import { createHash } from 'node:crypto';\nimport type { MarkOrbitId } from '@markorbit/contracts';\n"
+          )
+          replace_once(
+              read_model,
+              "  allocationUpdatedAt: string;\n  originatingWorkspaceId: string;\n",
+              "  allocationUpdatedAt: string;\n  allocationCorrelationId: MarkOrbitId;\n  originatingWorkspaceId: string;\n"
+          )
+          replace_once(
+              read_model,
+              "const sha256Pattern = /^[0-9a-f]{64}$/;\n",
+              "const sha256Pattern = /^[0-9a-f]{64}$/;\nconst markOrbitIdPattern = /^[a-z][a-z0-9-]*_[A-Za-z0-9][A-Za-z0-9_-]*$/;\n"
+          )
+          replace_once(
+              read_model,
+              "function exactTimestamp(value: string | undefined, field: string): string {\n",
+              "function exactMarkOrbitId(value: string | undefined, field: string): MarkOrbitId {\n  requireSource(\n    typeof value === 'string' && markOrbitIdPattern.test(value),\n    `${field} is invalid.`\n  );\n  return value as MarkOrbitId;\n}\n\nfunction exactTimestamp(value: string | undefined, field: string): string {\n"
+          )
+          replace_once(
+              read_model,
+              "    const allocationUpdatedAt = exactTimestamp(source.allocationUpdatedAt, 'Allocation updatedAt');\n    const originatingWorkspaceId = normalizedWorkspaceId(\n",
+              "    const allocationUpdatedAt = exactTimestamp(source.allocationUpdatedAt, 'Allocation updatedAt');\n    const correlationId = exactMarkOrbitId(\n      source.allocationCorrelationId,\n      'Allocation correlationId'\n    );\n    const originatingWorkspaceId = normalizedWorkspaceId(\n"
+          )
+          replace_once(
+              read_model,
+              "      updatedAt: allocationUpdatedAt,\n      providerId: source.providerId,\n",
+              "      updatedAt: allocationUpdatedAt,\n      correlationId,\n      providerId: source.providerId,\n"
+          )
+          replace_once(
+              read_model,
+              "      origin: {\n        originatingWorkspaceId,\n        professionalReference: `workspace:${originatingWorkspaceId}`\n      },\n      responseState: withoutCheckedAt(responseState),\n",
+              "      origin: {\n        originatingWorkspaceId,\n        professionalReference: `workspace:${originatingWorkspaceId}`\n      },\n      actionLineage: {\n        correlationId,\n        actionAuthorityNotGrantedByProjection: true\n      },\n      responseState: withoutCheckedAt(responseState),\n"
+          )
+          replace_once(
+              read_model,
+              "      origin: {\n        originatingWorkspaceId,\n        professionalReference: `workspace:${originatingWorkspaceId}`,\n        exposureClass: 'ORIGINATING_PROFESSIONAL_REFERENCE_ONLY'\n      },\n      responseState,\n",
+              "      origin: {\n        originatingWorkspaceId,\n        professionalReference: `workspace:${originatingWorkspaceId}`,\n        exposureClass: 'ORIGINATING_PROFESSIONAL_REFERENCE_ONLY'\n      },\n      actionLineage: boundedProjection.actionLineage,\n      responseState,\n"
+          )
+
+          postgres = 'services/mgsn/src/provider-work-read-model-postgres.ts'
+          replace_once(
+              postgres,
+              "  allocation.updated_at,\n  allocation.workspace_id::text AS originating_workspace_id,\n",
+              "  allocation.updated_at,\n  allocation.allocation_record ->> 'correlationId' AS allocation_correlation_id,\n  allocation.workspace_id::text AS originating_workspace_id,\n"
+          )
+          replace_once(
+              postgres,
+              "      allocationUpdatedAt: this.timestamp(row.updated_at),\n      originatingWorkspaceId: String(row.originating_workspace_id),\n",
+              "      allocationUpdatedAt: this.timestamp(row.updated_at),\n      allocationCorrelationId: String(\n        row.allocation_correlation_id\n      ) as ProviderWorkProjectionSource['allocationCorrelationId'],\n      originatingWorkspaceId: String(row.originating_workspace_id),\n"
+          )
+
+          incoming = 'services/mgsn/src/provider-work-incoming-authority.ts'
+          replace_once(
+              incoming,
+              "    origin: {\n      originatingWorkspaceId: item.origin.originatingWorkspaceId,\n      professionalReference: item.origin.professionalReference\n    },\n    responseState: withoutCheckedAt(item.responseState),\n",
+              "    origin: {\n      originatingWorkspaceId: item.origin.originatingWorkspaceId,\n      professionalReference: item.origin.professionalReference\n    },\n    actionLineage: item.actionLineage,\n    responseState: withoutCheckedAt(item.responseState),\n"
+          )
+
+          unit = 'services/mgsn/tests/provider-work-read-model.test.ts'
+          replace_once(
+              unit,
+              "    allocationUpdatedAt: '2026-09-01T10:00:00.000Z',\n    originatingWorkspaceId,\n",
+              "    allocationUpdatedAt: '2026-09-01T10:00:00.000Z',\n    allocationCorrelationId: 'correlation_provider-work-action-lineage-a',\n    originatingWorkspaceId,\n"
+          )
+          replace_once(
+              unit,
+              "    expect(result.items[0]?.provider.providerId).toBe(ownProvider.providerId);\n  });\n\n  it('makes unknown and other-Provider detail reads publicly indistinguishable', async () => {\n",
+              "    expect(result.items[0]?.provider.providerId).toBe(ownProvider.providerId);\n  });\n\n  it('projects exact canonical Allocation correlation lineage without granting action authority', async () => {\n    const item = (await setup().service.list(principal())).items[0]!;\n\n    expect(item.actionLineage).toEqual({\n      correlationId: 'correlation_provider-work-action-lineage-a',\n      actionAuthorityNotGrantedByProjection: true\n    });\n    expect(item.queuePresenceIsNotActionAuthority).toBe(true);\n    const serialized = JSON.stringify(item.actionLineage);\n    expect(serialized).not.toMatch(/rationale|allocatedBy|customer|artifact|supplyCapability/i);\n  });\n\n  it('makes unknown and other-Provider detail reads publicly indistinguishable', async () => {\n"
+          )
+          replace_once(
+              unit,
+              "  it('fails closed when persisted Service Package lineage is missing or inconsistent', async () => {\n",
+              "  it('fails closed when canonical Allocation correlation lineage is missing or malformed', async () => {\n    const missing = { ...source(), allocationCorrelationId: undefined } as unknown as ProviderWorkProjectionSource;\n    const malformed = {\n      ...source(),\n      allocationCorrelationId: 'not-a-markorbit-id'\n    } as unknown as ProviderWorkProjectionSource;\n\n    for (const row of [missing, malformed]) {\n      const { service } = setup({ rows: [row] });\n      await expect(service.list(principal())).rejects.toMatchObject({\n        code: 'SOURCE_INCONSISTENT',\n        status: 503\n      });\n      await expect(service.read(principal(), 'allocation_work_a')).resolves.toMatchObject({\n        decision: 'SOURCE_UNAVAILABLE'\n      });\n    }\n  });\n\n  it('fails closed when persisted Service Package lineage is missing or inconsistent', async () => {\n"
+          )
+
+          pgtest = 'services/mgsn/tests/provider-work-read-model-postgres.test.ts'
+          replace_once(
+              pgtest,
+              "         rationale,status,allocation_record,created_at,updated_at\n       ) VALUES($1,1,true,$2,$3,1,$4,$5,1,$4,$6,1,$7,1,$4,'private-allocator',\n         'private rationale',$8,'{}'::jsonb,$9,$9)`,\n",
+              "         rationale,status,allocation_record,created_at,updated_at\n       ) VALUES($1,1,true,$2,$3,1,$4,$5,1,$4,$6,1,$7,1,$4,'private-allocator',\n         'private rationale',$8,$9::jsonb,$10,$10)`,\n"
+          )
+          replace_once(
+              pgtest,
+              "        input.capabilityId,\n        input.status ?? 'ACTIVE',\n        input.updatedAt\n      ]\n",
+              "        input.capabilityId,\n        input.status ?? 'ACTIVE',\n        JSON.stringify({\n          correlationId: `correlation_provider-work-read-${input.suffix}`\n        }),\n        input.updatedAt\n      ]\n"
+          )
+          replace_once(
+              pgtest,
+              "    expect(accepted.responseState).toMatchObject({ kind: 'KNOWN_RESPONSE', decision: 'ACCEPTED' });\n",
+              "    expect(accepted.actionLineage).toEqual({\n      correlationId: 'correlation_provider-work-read-accepted',\n      actionAuthorityNotGrantedByProjection: true\n    });\n    expect(accepted.responseState).toMatchObject({ kind: 'KNOWN_RESPONSE', decision: 'ACCEPTED' });\n"
+          )
+          replace_once(
+              pgtest,
+              "  it('fails closed instead of dropping a malformed exact Service Package lineage', async () => {\n",
+              "  it('fails closed when canonical Allocation correlation lineage is unavailable', async () => {\n    const own = await seedProvider('own', providerWorkspaceId);\n    const seeded = await seedAllocation({\n      suffix: 'missing_lineage',\n      ...own,\n      updatedAt: '2026-09-01T10:00:00.000Z'\n    });\n    await database.getPool().query(\n      `UPDATE mgsn_allocations\n       SET allocation_record='{}'::jsonb\n       WHERE allocation_id=$1`,\n      [seeded.allocationId]\n    );\n\n    await expect(service().list(principal())).rejects.toMatchObject({\n      code: 'SOURCE_INCONSISTENT',\n      status: 503\n    });\n    await expect(service().read(principal(), seeded.allocationId as never)).resolves.toMatchObject({\n      decision: 'SOURCE_UNAVAILABLE'\n    });\n  });\n\n  it('fails closed instead of dropping a malformed exact Service Package lineage', async () => {\n"
+          )
+          PY
+      - name: Format owner files
+        run: >-
+          pnpm exec prettier --write
+          services/mgsn/src/provider-work-read-model.ts
+          services/mgsn/src/provider-work-read-model-postgres.ts
+          services/mgsn/src/provider-work-incoming-authority.ts
+          services/mgsn/tests/provider-work-read-model.test.ts
+          services/mgsn/tests/provider-work-read-model-postgres.test.ts
+      - name: Focused verification
+        run: >-
+          pnpm --filter @markorbit/mgsn-service exec vitest run
+          tests/provider-work-read-model.test.ts
+          tests/provider-work-incoming-authority.test.ts
+      - name: Typecheck MGSN
+        run: pnpm --filter @markorbit/mgsn-service typecheck
+      - name: Commit owner patch
+        shell: bash
+        run: |
+          git config user.name 'yoomarks'
+          git config user.email 'actions@users.noreply.github.com'
+          git add services/mgsn
+          git diff --cached --check
+          git commit -m 'feat(mgsn): project Provider Work action lineage'
+          git push origin HEAD:mgsn/provider-work-action-lineage-861
