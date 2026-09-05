@@ -25,9 +25,7 @@ import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-pr
 import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
-import {
-  createGovernedHumanActionReceiptRoutesV1
-} from './governed-human-action-receipt-http.js';
+import { createGovernedHumanActionReceiptRoutesV1 } from './governed-human-action-receipt-http.js';
 import type { GovernedHumanActionReceiptAuthorityV1 } from './governed-human-action-receipt.js';
 import {
   fingerprintReadyPackageContentExport,

@@ -432,12 +432,7 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
     extraHeaders: Record<string, string> = {}
   ) => {
     if (!options.internalServiceSecret)
-      throw new HttpError(
-        503,
-        'MGSN_SERVICE_UNAVAILABLE',
-        'MGSN service is unavailable.',
-        true
-      );
+      throw new HttpError(503, 'MGSN_SERVICE_UNAVAILABLE', 'MGSN service is unavailable.', true);
     const response = await fetch(`${options.mgsnUrl}${downstream}`, {
       method: request.method,
       headers: {
