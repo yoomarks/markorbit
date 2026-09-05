@@ -105,16 +105,16 @@ function receipt(
 describe('Governed Gateway action framework', () => {
   it('binds trusted Workspace and exact idempotency after authentication and mutation guards', async () => {
     const authentication = client();
-    const result = await authorizeGovernedWorkspaceMutation(
-      request(),
-      options(authentication),
-      standardPolicy
-    );
+  const result = await authorizeGovernedWorkspaceMutation(
+    request(),
+    options(authentication),
+    standardPolicy
+  );
 
-    expect(result.principal).toEqual(principal);
-    expect(result.idempotencyKey).toBe('key-840');
-    expect(result.body).toMatchObject({ value: 'reviewed', workspaceId });
-    expect(authentication.resolveWorkspace).toHaveBeenCalledWith(
+  expect(result.principal).toEqual(principal);
+  expect(result.idempotencyKey).toBe('key-840');
+  expect(result.body).toMatchObject({ value: 'reviewed', workspaceId });
+  expect(authentication.resolveWorkspace).toHaveBeenCalledWith(
       'token-840',
       workspaceId,
       'correlation-840'
