@@ -38,8 +38,7 @@ function authority(): GovernedHumanActionReceiptAuthorityV1 {
           row.idempotencyKeySha256 === input.idempotencyKeySha256
       );
       if (existing) return existing;
-      const receiptId =
-        'governed-human-action-receipt_01900000-0000-7000-8000-000000000001';
+      const receiptId = 'governed-human-action-receipt_01900000-0000-7000-8000-000000000001';
       const receipt: GovernedHumanActionReceiptV1 = {
         ...input,
         receiptId,
