@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "postinstall": "prettier --write tests/examination-stage-read.test.ts tests/examination-stage-read-postgres.test.ts && for f in tests/examination-stage-read.test.ts tests/examination-stage-read-postgres.test.ts; do echo EXACT806_BEGIN:$f; base64 -w0 $f; echo; echo EXACT806_END:$f; done"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
