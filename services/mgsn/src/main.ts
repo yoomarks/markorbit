@@ -26,6 +26,7 @@ const services = createDurableMgsnServices({
 const runtime = createRuntime({
   internalServiceSecret,
   services,
+  governedNetworkServices: services,
   commercialAdminReadService: new MgsnCommercialAdminReadService(services.providerRegistry)
 });
 
