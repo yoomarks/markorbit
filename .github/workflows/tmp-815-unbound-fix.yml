@@ -1,0 +1,51 @@
+name: TMP 815 Unbound Fix
+on:
+  push:
+    branches:
+      - integration/815-durable-human-action-receipt
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/815-durable-human-action-receipt
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('apps/gateway/src/mgsn-http.ts')
+          s = p.read_text()
+          old = """  const materialize = authentication.materializeGovernedHumanActionReceipt;
+  if (!materialize)
+"""
+          new = """  if (!authentication.materializeGovernedHumanActionReceipt)
+"""
+          if old not in s:
+              raise SystemExit('materialize extraction block not found')
+          s = s.replace(old, new, 1)
+          old = "receipt = await materialize.call(authentication, materialization, correlationId);"
+          new = "receipt = await authentication.materializeGovernedHumanActionReceipt(materialization, correlationId);"
+          if old not in s:
+              raise SystemExit('materialize call not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+          pnpm exec prettier --write apps/gateway/src/mgsn-http.ts
+          git diff --check
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/gateway/src/mgsn-http.ts
+          git commit -m 'fix: call Core governed receipt client directly'
+          git push origin HEAD:integration/815-durable-human-action-receipt
