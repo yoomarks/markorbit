@@ -1,4 +1,4 @@
-name: Temporary MGSN 825 Prettier Write
+name: Temporary MGSN 825 Lint Cleanup
 
 on:
   push:
@@ -9,34 +9,19 @@ permissions:
   contents: write
 
 jobs:
-  format-and-push:
+  cleanup-and-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: mgsn-governed-network-http-825
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: >-
-          pnpm exec prettier --write
-          services/mgsn/src/governed-network-http.ts
-          services/mgsn/src/index.ts
-          services/mgsn/tests/governed-network-http.test.ts
       - run: |
-          if git diff --quiet; then
-            echo "No formatting changes needed."
-            exit 0
-          fi
+          sed -i '1{/^\/\* eslint-disable @typescript-eslint\/no-unsafe-assignment, @typescript-eslint\/no-unsafe-argument /d;}' services/mgsn/src/governed-network-http.ts
+          git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add services/mgsn/src/governed-network-http.ts services/mgsn/src/index.ts services/mgsn/tests/governed-network-http.test.ts
-          git commit -m "style(mgsn): apply repository prettier rules"
+          git add services/mgsn/src/governed-network-http.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(mgsn): remove unused lint suppression"
           git push origin HEAD:mgsn-governed-network-http-825
