@@ -34,6 +34,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Apply bounded owner patch
         run: python /tmp/owner-patch.py
+      - name: Preserve action-lineage literal type
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('services/mgsn/src/provider-work-read-model.ts')
+          text = path.read_text()
+          old = "actionAuthorityNotGrantedByProjection: true\n      },"
+          new = "actionAuthorityNotGrantedByProjection: true as const\n      },"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one bounded action-lineage literal, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Format owner files
         run: >-
           pnpm exec prettier --write
