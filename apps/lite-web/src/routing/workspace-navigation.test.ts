@@ -34,7 +34,11 @@ describe('Workspace navigation helper', () => {
   });
 
   it('can preserve current search while moving to a governed work surface', () => {
-    window.history.replaceState({}, '', '/?workspaceId=workspace-1&formalMatterId=matter_1#matters');
+    window.history.replaceState(
+      {},
+      '',
+      '/?workspaceId=workspace-1&formalMatterId=matter_1#matters'
+    );
     updateLiteLocation(
       {
         surface: 'professional-review',
