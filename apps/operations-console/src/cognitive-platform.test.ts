@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe('Operations Console cognitive owner client', () => {
   it('loads the exact Core Gateway route with only the authenticated browser session', async () => {
-    const seen: Array<{ path: string; init?: RequestInit }> = [];
+    const seen: Array<{ path: string; init: RequestInit | undefined }> = [];
     vi.stubGlobal(
       'fetch',
       vi.fn((input: string | URL | Request, init?: RequestInit) => {
@@ -51,7 +51,7 @@ describe('Operations Console cognitive owner client', () => {
   });
 
   it('loads the exact Capability Gateway route without Workspace or browser authority headers', async () => {
-    const seen: Array<{ path: string; init?: RequestInit }> = [];
+    const seen: Array<{ path: string; init: RequestInit | undefined }> = [];
     vi.stubGlobal(
       'fetch',
       vi.fn((input: string | URL | Request, init?: RequestInit) => {
