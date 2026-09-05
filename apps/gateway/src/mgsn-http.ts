@@ -124,7 +124,6 @@ const networkParticipationRoutes: readonly RouteDefinition[] = [
 const providerRoutes: readonly RouteDefinition[] = [
   ['GET', '/api/provider/work-items'],
   ['GET', '/api/provider/work-items/:allocationId'],
-  ['GET', '/api/provider/allocations/:allocationId'],
   ['POST', '/api/provider/allocations/:allocationId/respond'],
   ['POST', '/api/provider/returns'],
   ['GET', '/api/provider/returns/:providerReturnId']
@@ -255,20 +254,17 @@ async function governedHumanActionEnvelope(
     principalReference,
     method: request.method,
     path: request.path,
-    idempotencyKey,
     body: request.body ?? {}
   });
-  const authorityReference = `gateway-governed-action:${kind.toLowerCase()}:${actionFingerprint}`;
   const materialization: GovernedHumanActionReceiptMaterializationV1 = {
-    schemaVersion: 1,
     kind,
     workspaceId: principal.workspaceId,
     userId: principal.userId,
     membershipId: principal.membershipId,
     principalReference,
-    authorityReference,
-    idempotencyKeySha256: fingerprint(idempotencyKey),
-    requestFingerprintSha256: actionFingerprint,
+    mutationRoute: request.path,
+    reviewedActionDigest: actionFingerprint,
+    idempotencyKey,
     authenticatedAt
   };
   let receipt;
@@ -279,17 +275,24 @@ async function governedHumanActionEnvelope(
   }
   if (
     receipt.schemaVersion !== 1 ||
+    receipt.source !== 'CORE' ||
+    receipt.actorKind !== 'HUMAN_USER' ||
     receipt.kind !== materialization.kind ||
     receipt.workspaceId !== materialization.workspaceId ||
     receipt.userId !== materialization.userId ||
     receipt.membershipId !== materialization.membershipId ||
     receipt.principalReference !== materialization.principalReference ||
-    receipt.authorityReference !== materialization.authorityReference ||
-    receipt.idempotencyKeySha256 !== materialization.idempotencyKeySha256 ||
-    receipt.requestFingerprintSha256 !== materialization.requestFingerprintSha256 ||
+    receipt.mutationRoute !== materialization.mutationRoute ||
+    receipt.reviewedActionDigest !== materialization.reviewedActionDigest ||
+    receipt.idempotencyKey !== materialization.idempotencyKey ||
     receipt.authenticatedAt !== materialization.authenticatedAt ||
-    typeof receipt.receiptReference !== 'string' ||
-    !receipt.receiptReference.startsWith('core-governed-human-action-receipt:')
+    receipt.authorityVersion !== 1 ||
+    typeof receipt.authorityReference !== 'string' ||
+    !receipt.authorityReference.startsWith('core-governed-human-action-receipt:') ||
+    typeof receipt.affirmativeHumanActionEvidenceReference !== 'string' ||
+    !receipt.affirmativeHumanActionEvidenceReference.startsWith(
+      'core-governed-human-action-evidence:'
+    )
   )
     throw new HttpError(
       503,
@@ -301,15 +304,15 @@ async function governedHumanActionEnvelope(
     JSON.stringify({
       schemaVersion: 1,
       kind,
-      actorKind: 'HUMAN_USER',
+      actorKind: receipt.actorKind,
       workspaceId: principal.workspaceId,
       userId: principal.userId,
       membershipId: principal.membershipId,
       principalReference,
-      authorityReference,
-      authorityVersion: 1,
+      authorityReference: receipt.authorityReference,
+      authorityVersion: receipt.authorityVersion,
       authenticatedAt,
-      affirmativeHumanActionEvidenceReference: receipt.receiptReference,
+      affirmativeHumanActionEvidenceReference: receipt.affirmativeHumanActionEvidenceReference,
       payloadIdentityAuthoritative: false
     }),
     'utf8'
@@ -432,7 +435,12 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
     extraHeaders: Record<string, string> = {}
   ) => {
     if (!options.internalServiceSecret)
-      throw new HttpError(503, 'MGSN_SERVICE_UNAVAILABLE', 'MGSN service is unavailable.', true);
+      throw new HttpError(
+        503,
+        'MGSN_SERVICE_UNAVAILABLE',
+        'MGSN service is unavailable.',
+        true
+      );
     const response = await fetch(`${options.mgsnUrl}${downstream}`, {
       method: request.method,
       headers: {
