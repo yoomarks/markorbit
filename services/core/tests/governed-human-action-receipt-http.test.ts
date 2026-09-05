@@ -38,7 +38,8 @@ function authority(): GovernedHumanActionReceiptAuthorityV1 {
           row.idempotencyKeySha256 === input.idempotencyKeySha256
       );
       if (existing) return existing;
-      const receiptId = 'governed-human-action-receipt_01900000-0000-7000-8000-000000000001';
+      const receiptId =
+        'governed-human-action-receipt_01900000-0000-7000-8000-000000000001';
       const receipt: GovernedHumanActionReceiptV1 = {
         ...input,
         receiptId,
@@ -66,7 +67,12 @@ async function runtime(receipts = authority()) {
 }
 
 afterEach(async () => {
-  await Promise.all(active.splice(0).reverse().map((service) => service.stop()));
+  await Promise.all(
+    active
+      .splice(0)
+      .reverse()
+      .map((service) => service.stop())
+  );
 });
 
 describe('Core governed human-action receipt internal API', () => {
@@ -102,6 +108,8 @@ describe('Core governed human-action receipt internal API', () => {
       body: JSON.stringify(materialization())
     });
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toMatchObject({ code: 'INTERNAL_SERVICE_UNAUTHORIZED' });
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'INTERNAL_SERVICE_UNAUTHORIZED'
+    });
   });
 });
