@@ -7,7 +7,6 @@ import {
   parseDatabaseConfig
 } from '@markorbit/persistence';
 import {
-  GovernedHumanActionReceiptError,
   PostgresGovernedHumanActionReceiptStore,
   type GovernedHumanActionReceiptMaterializationV1
 } from '../src/governed-human-action-receipt.js';
@@ -30,7 +29,8 @@ const migrationOwners = path.resolve('../../infrastructure/persistence/migration
 
 function input(
   kind: GovernedHumanActionReceiptMaterializationV1['kind'] = 'PROVIDER_SELECTION',
-  requestFingerprintSha256 = 'b'.repeat(64)
+  requestFingerprintSha256 = 'b'.repeat(64),
+  idempotencyKeySha256 = 'd'.repeat(64)
 ): GovernedHumanActionReceiptMaterializationV1 {
   return {
     schemaVersion: 1,
@@ -39,8 +39,8 @@ function input(
     userId: 'user_governed',
     membershipId: 'membership-governed',
     principalReference: `core-workspace-principal:${'a'.repeat(64)}`,
-    authorityReference: `gateway-governed-action:${kind.toLowerCase()}:${'c'.repeat(64)}`,
-    idempotencyKeySha256: 'd'.repeat(64),
+    authorityReference: `gateway-governed-action:${kind.toLowerCase()}:${requestFingerprintSha256}`,
+    idempotencyKeySha256,
     requestFingerprintSha256,
     authenticatedAt: '2026-09-05T08:00:00.000Z'
   };
@@ -69,8 +69,9 @@ integration('PostgreSQL governed human-action receipts', () => {
 
   it('materializes one stable receipt for an exact replay and resolves it after reopen', async () => {
     let store = new PostgresGovernedHumanActionReceiptStore(database);
-    const first = await store.materialize(input());
-    const replay = await store.materialize(input());
+    const exact = input('PROVIDER_SELECTION', 'b'.repeat(64), 'd'.repeat(64));
+    const first = await store.materialize(exact);
+    const replay = await store.materialize(exact);
     expect(replay.receiptId).toBe(first.receiptId);
     expect(replay.receiptReference).toBe(first.receiptReference);
     expect(first.receiptReference).toBe(`core-governed-human-action-receipt:${first.receiptId}`);
@@ -84,16 +85,20 @@ integration('PostgreSQL governed human-action receipts', () => {
 
   it('fails closed when the same replay identity carries different action evidence', async () => {
     const store = new PostgresGovernedHumanActionReceiptStore(database);
-    await store.materialize(input('PROVIDER_SELECTION', 'e'.repeat(64)));
+    await store.materialize(input('PROVIDER_SELECTION', 'e'.repeat(64), '5'.repeat(64)));
     await expect(
-      store.materialize(input('PROVIDER_SELECTION', 'f'.repeat(64)))
-    ).rejects.toMatchObject<Partial<GovernedHumanActionReceiptError>>({ code: 'CONFLICT' });
+      store.materialize(input('PROVIDER_SELECTION', 'f'.repeat(64), '5'.repeat(64)))
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
   });
 
   it('keeps Selection and Controlled Handoff receipt domains distinct', async () => {
     const store = new PostgresGovernedHumanActionReceiptStore(database);
-    const selection = await store.materialize(input('PROVIDER_SELECTION', '1'.repeat(64)));
-    const handoff = await store.materialize(input('CONTROLLED_HANDOFF', '2'.repeat(64)));
+    const selection = await store.materialize(
+      input('PROVIDER_SELECTION', '1'.repeat(64), '6'.repeat(64))
+    );
+    const handoff = await store.materialize(
+      input('CONTROLLED_HANDOFF', '2'.repeat(64), '6'.repeat(64))
+    );
     expect(selection.receiptId).not.toBe(handoff.receiptId);
     expect(selection.receiptReference).not.toBe(handoff.receiptReference);
   });
