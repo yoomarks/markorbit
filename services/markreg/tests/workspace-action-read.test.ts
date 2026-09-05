@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { FormalMatterId } from '@markorbit/contracts';
 import type {
   LifecycleProjectionState,
   RecommendedActionStatus
@@ -28,7 +27,7 @@ function record(
     changedAt?: string;
   } = {}
 ): WorkspaceActionSourceRecord {
-  const formalMatterId = `formal-matter_${suffix}` as FormalMatterId;
+  const formalMatterId = `formal-matter_${suffix}`;
   const changedAt = input.changedAt ?? '2026-09-05T10:00:00.000Z';
   const lifecycleState = input.lifecycleState ?? 'CUSTOMER_ACTION_NEEDED';
   const lifecycleId = `lifecycle-view_${suffix}`;
