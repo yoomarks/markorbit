@@ -34,7 +34,9 @@ const ids = {
   receipt: '018f0000-0000-7000-8000-000000000104'
 };
 
-const receipt = (overrides: Partial<GovernedHumanActionReceipt> = {}): GovernedHumanActionReceipt => ({
+const receipt = (
+  overrides: Partial<GovernedHumanActionReceipt> = {}
+): GovernedHumanActionReceipt => ({
   schemaVersion: 1,
   receiptId: ids.receipt,
   receiptVersion: 1,
