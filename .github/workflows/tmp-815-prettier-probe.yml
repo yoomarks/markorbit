@@ -1,0 +1,39 @@
+name: TMP 815 Prettier Probe
+
+on:
+  push:
+    branches:
+      - integration/815-durable-human-action-receipt
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact #815 files and print diff
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/auth.ts \
+            apps/gateway/src/mgsn-http.ts \
+            apps/gateway/tests/mgsn-governed-network-http.test.ts \
+            services/core/src/governed-human-action-receipt.ts \
+            services/core/src/index.ts \
+            services/core/tests/governed-human-action-receipt-http.test.ts
+          git diff --no-ext-diff -- \
+            apps/gateway/src/auth.ts \
+            apps/gateway/src/mgsn-http.ts \
+            apps/gateway/tests/mgsn-governed-network-http.test.ts \
+            services/core/src/governed-human-action-receipt.ts \
+            services/core/src/index.ts \
+            services/core/tests/governed-human-action-receipt-http.test.ts
