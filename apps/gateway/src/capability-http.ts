@@ -1,13 +1,22 @@
 import {
   AuthenticationError,
+  encodeInternalOperatorPrincipal,
   encodeInternalWorkspacePrincipal,
+  parseInternalOperatorPrincipal,
+  type InternalOperatorPrincipal,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import {
   parseCapabilityRequestV2Command,
   type CapabilityRequestV2Command
 } from '@markorbit/contracts/capability-runtime';
-import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import {
+  HttpError,
+  json,
+  type JsonRequest,
+  type JsonResult,
+  type JsonRoute
+} from '@markorbit/service-kit';
 import {
   type CoreAuthenticationClient,
   readSessionCookie,
@@ -21,6 +30,8 @@ export interface GatewayCapabilityOptions {
   internalServiceSecret?: string;
   csrfSecret: string;
   allowedOrigins: readonly string[];
+  coreUrl?: string;
+  cognitiveTimeoutMs?: number;
 }
 
 const identitySpoofFields = [
@@ -75,6 +86,7 @@ const implementationControlFields = [
   'implementationKey',
   'implementationProfileId'
 ] as const;
+const COGNITIVE_READ_CAPABILITY = 'control-plane:cognitive:read' as const;
 
 function token(request: JsonRequest): string {
   const value = readSessionCookie(request.headers.cookie);
@@ -93,6 +105,79 @@ function bodyRecord(request: JsonRequest): Record<string, unknown> {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
   return request.body as Record<string, unknown>;
+}
+
+function projectionRecord(value: unknown, owner: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new HttpError(
+      503,
+      'COGNITIVE_OWNER_RESPONSE_INVALID',
+      `${owner} cognitive owner response is malformed.`,
+      true
+    );
+  return value as Record<string, unknown>;
+}
+
+function canonicalTimestamp(value: unknown): boolean {
+  if (typeof value !== 'string' || !value) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
+}
+
+function invalidProjection(owner: string): never {
+  throw new HttpError(
+    503,
+    'COGNITIVE_OWNER_RESPONSE_INVALID',
+    `${owner} cognitive owner response is malformed.`,
+    true
+  );
+}
+
+function validateCoreCognitiveProjection(value: unknown): unknown {
+  const projection = projectionRecord(value, 'Core');
+  const source = projectionRecord(projection.source, 'Core');
+  const buildRuns = projectionRecord(projection.brainBuildRuns, 'Core');
+  projectionRecord(projection.summary, 'Core');
+  if (
+    projection.schemaVersion !== 1 ||
+    !canonicalTimestamp(projection.generatedAt) ||
+    source.domain !== 'CORE' ||
+    source.authority !== 'BRAIN_REGISTRIES' ||
+    source.availability !== 'AVAILABLE' ||
+    !Array.isArray(projection.brainAssets) ||
+    !Array.isArray(projection.brainGaps) ||
+    !Array.isArray(projection.methodImprovements) ||
+    buildRuns.availability !== 'NOT_DURABLY_RECORDED' ||
+    buildRuns.inventory !== null ||
+    buildRuns.reasonCode !== 'NO_DURABLE_BUILD_RUN_REGISTRY'
+  )
+    return invalidProjection('Core');
+  return value;
+}
+
+function validateCapabilityCognitiveProjection(value: unknown): unknown {
+  const projection = projectionRecord(value, 'Capability Engine');
+  const source = projectionRecord(projection.source, 'Capability Engine');
+  const policySource = projectionRecord(
+    projection.sourceAdmissionPolicySource,
+    'Capability Engine'
+  );
+  projectionRecord(projection.summary, 'Capability Engine');
+  if (
+    projection.schemaVersion !== 1 ||
+    !canonicalTimestamp(projection.generatedAt) ||
+    source.domain !== 'CAPABILITY_ENGINE' ||
+    source.authority !== 'RUNTIME_CAPABILITY_AND_IMPLEMENTATION_PROFILE_REGISTRIES' ||
+    source.availability !== 'AVAILABLE' ||
+    policySource.domain !== 'CAPABILITY_ENGINE' ||
+    policySource.authority !== 'SOURCE_ADMISSION_POLICY_CATALOG' ||
+    policySource.availability !== 'AVAILABLE' ||
+    !Array.isArray(projection.runtimeCapabilities) ||
+    !Array.isArray(projection.implementationProfiles) ||
+    !Array.isArray(projection.sourceAdmissionPolicies)
+  )
+    return invalidProjection('Capability Engine');
+  return value;
 }
 
 function mapAuthentication(error: unknown): never {
@@ -221,6 +306,9 @@ function trustedCapabilityCommand(
 export function createGatewayCapabilityRoutes(
   options: GatewayCapabilityOptions
 ): readonly JsonRoute[] {
+  const coreUrl = options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101';
+  const cognitiveTimeoutMs = options.cognitiveTimeoutMs ?? 3_000;
+
   const authenticate = async (
     request: JsonRequest,
     mutation: boolean
@@ -299,6 +387,77 @@ export function createGatewayCapabilityRoutes(
     }
   };
 
+  const resolveCognitiveOperator = async (
+    request: JsonRequest
+  ): Promise<{ principal: InternalOperatorPrincipal } | { response: JsonResult }> => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Cognitive operator authentication is unavailable.',
+        true
+      );
+    let response: Response;
+    try {
+      response = await fetch(`${coreUrl}/internal/control-plane/operator-principals/resolve`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {}),
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {})
+        },
+        body: JSON.stringify({ token: token(request) }),
+        signal: AbortSignal.timeout(cognitiveTimeoutMs)
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        503,
+        'AUTHENTICATION_SERVICE_UNAVAILABLE',
+        'Cognitive operator authentication is unavailable.',
+        true
+      );
+    }
+    const value: unknown = await response.json().catch(() => undefined);
+    if (value === undefined)
+      throw new HttpError(
+        503,
+        'COGNITIVE_OPERATOR_RESPONSE_INVALID',
+        'Core cognitive operator response is malformed.',
+        true
+      );
+    if (!response.ok) return { response: json(response.status, value) };
+
+    let principal: InternalOperatorPrincipal;
+    try {
+      const encoded = Buffer.from(
+        JSON.stringify({ schemaVersion: 1, principal: value }),
+        'utf8'
+      ).toString('base64url');
+      principal = parseInternalOperatorPrincipal(encoded);
+    } catch {
+      throw new HttpError(
+        503,
+        'COGNITIVE_OPERATOR_RESPONSE_INVALID',
+        'Core cognitive operator response is malformed.',
+        true
+      );
+    }
+    if (!principal.capabilities.includes(COGNITIVE_READ_CAPABILITY))
+      return {
+        response: json(403, {
+          code: 'PERMISSION_DENIED',
+          message: `${COGNITIVE_READ_CAPABILITY} capability is required.`
+        })
+      };
+    return { principal };
+  };
+
   const forward = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -337,6 +496,69 @@ export function createGatewayCapabilityRoutes(
       if (error instanceof HttpError) throw error;
       throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'Capability Engine is unavailable.', true);
     }
+  };
+
+  const forwardCognitive = async (
+    request: JsonRequest,
+    principal: InternalOperatorPrincipal,
+    ownerUrl: string,
+    path: string,
+    owner: 'Core' | 'Capability Engine',
+    validate: (value: unknown) => unknown
+  ): Promise<JsonResult> => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        `${owner} service authentication is unavailable.`,
+        true
+      );
+    try {
+      const response = await fetch(`${ownerUrl}${path}`, {
+        method: 'GET',
+        headers: {
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalOperatorPrincipal(principal),
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {}),
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {})
+        },
+        signal: AbortSignal.timeout(cognitiveTimeoutMs)
+      });
+      const value: unknown = await response.json().catch(() => undefined);
+      if (value === undefined)
+        throw new HttpError(
+          503,
+          'COGNITIVE_OWNER_RESPONSE_INVALID',
+          `${owner} cognitive owner response is malformed.`,
+          true
+        );
+      if (response.ok) validate(value);
+      return json(response.status, value);
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        `${owner} cognitive owner source is unavailable.`,
+        true
+      );
+    }
+  };
+
+  const cognitive = async (
+    request: JsonRequest,
+    ownerUrl: string,
+    path: string,
+    owner: 'Core' | 'Capability Engine',
+    validate: (value: unknown) => unknown
+  ): Promise<JsonResult> => {
+    const resolution = await resolveCognitiveOperator(request);
+    if ('response' in resolution) return resolution.response;
+    return forwardCognitive(request, resolution.principal, ownerUrl, path, owner, validate);
   };
 
   return [
@@ -382,6 +604,30 @@ export function createGatewayCapabilityRoutes(
           }
         );
       }
+    },
+    {
+      method: 'GET',
+      path: '/api/internal/control-plane/cognitive/brain',
+      handle: (request) =>
+        cognitive(
+          request,
+          coreUrl,
+          '/internal/control-plane/cognitive',
+          'Core',
+          validateCoreCognitiveProjection
+        )
+    },
+    {
+      method: 'GET',
+      path: '/api/internal/control-plane/cognitive/capabilities',
+      handle: (request) =>
+        cognitive(
+          request,
+          options.capabilityEngineUrl,
+          '/internal/control-plane/cognitive/capabilities',
+          'Capability Engine',
+          validateCapabilityCognitiveProjection
+        )
     }
   ];
 }
