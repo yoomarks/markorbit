@@ -28,6 +28,27 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "4af4881f5990ea14f3d1cebfe098c3a31c133766"
           python3 ../helper/.agents/integration-815-patch.py
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('services/core/src/auth.ts')
+          text = path.read_text()
+          old = """import type {\n  MembershipRepository,\n  Permission,\n  Principal,\n  Session,\n  SessionRepository,\n  UserRepository,\n  WorkspaceRepository\n} from '@markorbit/contracts';"""
+          new = """import type {\n  AuthenticatedUserPrincipal,\n  MembershipRepository,\n  Permission,\n  Principal,\n  Session,\n  SessionRepository,\n  UserRepository,\n  WorkspacePrincipal,\n  WorkspaceRepository\n} from '@markorbit/contracts';"""
+          if old not in text:
+              raise SystemExit('core auth import marker missing')
+          text = text.replace(old, new, 1)
+          old = '  async resolveSession(rawToken: string) {'
+          new = '  async resolveSession(rawToken: string): Promise<AuthenticatedUserPrincipal> {'
+          if old not in text:
+              raise SystemExit('resolveSession marker missing')
+          text = text.replace(old, new, 1)
+          old = '  async resolveWorkspacePrincipal(token: string, workspaceId: string) {'
+          new = '  async resolveWorkspacePrincipal(token: string, workspaceId: string): Promise<WorkspacePrincipal> {'
+          if old not in text:
+              raise SystemExit('resolveWorkspacePrincipal marker missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
           git diff --check
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
