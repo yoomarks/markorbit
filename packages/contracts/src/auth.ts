@@ -144,6 +144,7 @@ export interface AuthenticatedUserPrincipal {
   kind: 'AUTHENTICATED_USER';
   sessionId: string;
   userId: string;
+  sessionCreatedAt?: string;
   sessionExpiresAt: string;
 }
 export interface WorkspacePrincipal {
@@ -154,6 +155,7 @@ export interface WorkspacePrincipal {
   membershipId: string;
   role: Role;
   permissions: readonly Permission[];
+  sessionCreatedAt?: string;
   sessionExpiresAt: string;
 }
 export type Principal =
@@ -185,7 +187,9 @@ export function parseInternalWorkspacePrincipal(value: string | undefined): Work
     p.permissions.some((x) => !PERMISSIONS.includes(x as Permission)) ||
     [p.sessionId, p.userId, p.workspaceId, p.membershipId, p.sessionExpiresAt].some(
       (x) => typeof x !== 'string' || x.length === 0
-    )
+    ) ||
+    (p.sessionCreatedAt !== undefined &&
+      (typeof p.sessionCreatedAt !== 'string' || !Number.isFinite(Date.parse(p.sessionCreatedAt))))
   )
     throw new AuthenticationError('AUTHENTICATION_REQUIRED', 'Workspace Principal is invalid.');
   return structuredClone(p as WorkspacePrincipal);
