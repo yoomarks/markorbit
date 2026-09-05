@@ -26,6 +26,9 @@ const services = createDurableMgsnServices({
 const runtime = createRuntime({
   internalServiceSecret,
   services,
+  // Governed producer routes reuse durable owner services; Selection/Handoff authority is still
+  // admitted only through reviewed, operation-scoped human-action ingress, never by wiring itself.
+  governedNetworkServices: services,
   commercialAdminReadService: new MgsnCommercialAdminReadService(services.providerRegistry)
 });
 
