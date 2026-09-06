@@ -3,7 +3,11 @@ import {
   AllocationProviderAcceptanceService,
   type ProviderAcceptanceRecord
 } from '../src/allocation-provider-acceptance.js';
-import { ProviderReturnError, ProviderReturnService, type ProviderReturnRecord } from '../src/provider-return.js';
+import {
+  ProviderReturnError,
+  ProviderReturnService,
+  type ProviderReturnRecord
+} from '../src/provider-return.js';
 import {
   ObservedAllocationProviderAcceptanceService,
   ObservedProviderReturnService

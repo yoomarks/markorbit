@@ -67,8 +67,7 @@ export const mgsnSemanticTelemetryNoAuthority = Object.freeze({
 }) satisfies Readonly<MgsnSemanticTelemetryAuthorityV1>;
 
 export type MgsnSemanticTelemetryEventTypeV1 =
-  | 'MGSN_GOVERNED_NETWORK_OPERATION'
-  | 'MGSN_PROVIDER_WORKFLOW_OPERATION';
+  'MGSN_GOVERNED_NETWORK_OPERATION' | 'MGSN_PROVIDER_WORKFLOW_OPERATION';
 
 export interface MgsnSemanticTelemetryEventV1 {
   schemaVersion: 1;
