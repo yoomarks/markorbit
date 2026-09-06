@@ -1,4 +1,6 @@
-﻿export type MgsnSemanticTelemetryOperationV1 =
+import type { JsonResult, JsonRoute } from '@markorbit/service-kit';
+
+export type MgsnSemanticTelemetryOperationV1 =
   | 'PROVIDER_DISCOVERY_EVALUATE'
   | 'PROVIDER_SELECTION_CREATE_OR_REPLACE'
   | 'PROVIDER_SELECTION_REVOKE'
@@ -6,7 +8,9 @@
   | 'CONTROLLED_HANDOFF_AUTHORIZE_OR_REPLACE'
   | 'CONTROLLED_HANDOFF_REVOKE'
   | 'CONTROLLED_HANDOFF_VALIDATE_CURRENT'
-  | 'GOVERNED_ALLOCATION_COMMIT';
+  | 'GOVERNED_ALLOCATION_COMMIT'
+  | 'PROVIDER_ACCEPTANCE_RESPOND'
+  | 'PROVIDER_RETURN_SUBMIT_OR_CORRECT';
 
 export type MgsnSemanticTelemetryOutcomeClassV1 =
   'SUCCESS' | 'EMPTY' | 'DENIED' | 'UNAVAILABLE' | 'CONFLICT' | 'ERROR';
@@ -22,6 +26,10 @@ export type MgsnSemanticTelemetryResultCodeV1 =
   | 'VALIDATION_DENIED'
   | 'AUTHORIZED'
   | 'ALLOCATED'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'RETURN_SUBMITTED'
+  | 'RETURN_CORRECTED'
   | 'IDEMPOTENCY_CONFLICT'
   | 'STALE_OR_VERSION_CONFLICT'
   | 'CURRENT_AUTHORITY_DENIED'
@@ -182,6 +190,73 @@ export async function observeMgsnSemanticOperationV1<T>(
     throw error;
   }
 }
+
+export const MGSN_PROVIDER_EXECUTION_SEMANTIC_ROUTES = Object.freeze([
+  {
+    method: 'POST',
+    path: '/v1/provider/allocations/:allocationId/respond',
+    operation: 'PROVIDER_ACCEPTANCE_RESPOND'
+  },
+  {
+    method: 'POST',
+    path: '/v1/provider/returns',
+    operation: 'PROVIDER_RETURN_SUBMIT_OR_CORRECT'
+  }
+] as const);
+
+function object(value: unknown): Readonly<Record<string, unknown>> | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Readonly<Record<string, unknown>>)
+    : undefined;
+}
+
+function classifyProviderExecutionSuccess(
+  operation: Extract<
+    MgsnSemanticTelemetryOperationV1,
+    'PROVIDER_ACCEPTANCE_RESPOND' | 'PROVIDER_RETURN_SUBMIT_OR_CORRECT'
+  >,
+  result: Readonly<JsonResult>
+): Pick<MgsnSemanticTelemetryEventInputV1, 'outcomeClass' | 'resultCode'> {
+  const body = object(result.body);
+  if (operation === 'PROVIDER_ACCEPTANCE_RESPOND') {
+    const acceptance = object(body?.providerAcceptance);
+    if (acceptance?.decision === 'ACCEPTED')
+      return { outcomeClass: 'SUCCESS', resultCode: 'ACCEPTED' };
+    if (acceptance?.decision === 'DECLINED')
+      // A recorded decline is a successful Provider decision, never negative quality evidence.
+      return { outcomeClass: 'SUCCESS', resultCode: 'DECLINED' };
+    return { outcomeClass: 'ERROR', resultCode: 'INTERNAL_ERROR' };
+  }
+  const providerReturn = object(body?.providerReturn);
+  if (!providerReturn) return { outcomeClass: 'ERROR', resultCode: 'INTERNAL_ERROR' };
+  return object(providerReturn.supersedes)
+    ? { outcomeClass: 'SUCCESS', resultCode: 'RETURN_CORRECTED' }
+    : { outcomeClass: 'SUCCESS', resultCode: 'RETURN_SUBMITTED' };
+}
+
+export function observeMgsnProviderExecutionSemanticRoutesV1(
+  routes: readonly JsonRoute[],
+  sink: Readonly<MgsnSemanticTelemetrySinkV1> | undefined
+): JsonRoute[] {
+  if (!sink) return [...routes];
+  return routes.map((route) => {
+    const observed = MGSN_PROVIDER_EXECUTION_SEMANTIC_ROUTES.find(
+      (item) => item.method === route.method && item.path === route.path
+    );
+    if (!observed) return route;
+    return {
+      ...route,
+      handle: (request) =>
+        observeMgsnSemanticOperationV1(
+          sink,
+          observed.operation,
+          async () => await route.handle(request),
+          (result) => classifyProviderExecutionSuccess(observed.operation, result)
+        )
+    };
+  });
+}
+
 export class JsonLineMgsnSemanticTelemetrySinkV1 implements MgsnSemanticTelemetrySinkV1 {
   constructor(
     private readonly writeLine: (line: string) => void = (line) => {
