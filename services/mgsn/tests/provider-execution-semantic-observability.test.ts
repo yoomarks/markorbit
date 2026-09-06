@@ -100,9 +100,7 @@ describe('MGSN Provider execution semantic observability', () => {
               providerReturn: {
                 version: supersedes ? 2 : 1,
                 workStatusClaim: 'SECRET RETURN CLAIM',
-                assertions: [
-                  { code: 'SECRET_ASSERTION', value: 'SECRET ASSERTION VALUE' }
-                ],
+                assertions: [{ code: 'SECRET_ASSERTION', value: 'SECRET ASSERTION VALUE' }],
                 artifacts: [{ reference: 'SECRET_ARTIFACT_REFERENCE' }],
                 ...(supersedes ? { supersedes } : {})
               }
