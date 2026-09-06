@@ -6,6 +6,10 @@ import { HttpError, json, type JsonRoute } from '@markorbit/service-kit';
 import type { ProviderDiscoveryCurrentResponsibilityService } from './provider-discovery-current-responsibility.js';
 import { ProviderDiscoveryError } from './provider-discovery.js';
 import {
+  observeMgsnSemanticOperationV1,
+  type MgsnSemanticTelemetrySinkV1
+} from './semantic-observability.js';
+import {
   assertExactTransportShape,
   bodyOf,
   enumArray,
@@ -27,6 +31,7 @@ import {
 export interface MgsnProviderDiscoveryHttpOptions {
   internalServiceSecret?: string;
   service?: Pick<ProviderDiscoveryCurrentResponsibilityService, 'evaluate'>;
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
 }
 
 const discoveryRequestTransportShape = {
@@ -161,9 +166,28 @@ export function createMgsnProviderDiscoveryHttpRoutes(
         assertExactTransportShape(body, discoveryRequestTransportShape, 'body');
         const discoveryRequest = parseDiscoveryRequest(body, principal.workspaceId);
         try {
-          const result = await service().evaluate(
-            { workspaceId: principal.workspaceId, actorId: principal.userId },
-            discoveryRequest
+          const result = await observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'PROVIDER_DISCOVERY_EVALUATE',
+            () =>
+              service().evaluate(
+                { workspaceId: principal.workspaceId, actorId: principal.userId },
+                discoveryRequest
+              ),
+            (value) =>
+              value.status === 'CANDIDATES'
+                ? {
+                    outcomeClass: 'SUCCESS',
+                    resultCode: 'CANDIDATES',
+                    candidateCount: value.candidates.length
+                  }
+                : value.status === 'NO_AUTHORIZED_CANDIDATES'
+                  ? {
+                      outcomeClass: 'EMPTY',
+                      resultCode: 'NO_AUTHORIZED_CANDIDATES',
+                      candidateCount: 0
+                    }
+                  : { outcomeClass: 'UNAVAILABLE', resultCode: 'AUTHORITY_UNAVAILABLE' }
           );
           return json(200, { providerDiscovery: result });
         } catch (error) {

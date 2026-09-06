@@ -7,6 +7,7 @@ import { createMgsnProviderDiscoveryHttpRoutes } from './governed-network-discov
 import { createMgsnControlledHandoffHttpRoutes } from './governed-network-handoff-http.js';
 import { createMgsnProviderSelectionHttpRoutes } from './governed-network-selection-http.js';
 import type { ProviderSelectionService } from './provider-selection.js';
+import type { MgsnSemanticTelemetrySinkV1 } from './semantic-observability.js';
 
 export {
   MGSN_GOVERNED_HUMAN_ACTION_HEADER,
@@ -30,6 +31,7 @@ export interface MgsnGovernedNetworkHttpServices {
 export interface MgsnGovernedNetworkHttpOptions {
   internalServiceSecret?: string;
   services?: MgsnGovernedNetworkHttpServices;
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
 }
 
 export function createMgsnGovernedNetworkHttpRoutes(
@@ -38,20 +40,32 @@ export function createMgsnGovernedNetworkHttpRoutes(
   const secret = options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET;
   const discoveryOptions = {
     ...(secret ? { internalServiceSecret: secret } : {}),
-    ...(options.services?.providerDiscovery ? { service: options.services.providerDiscovery } : {})
+    ...(options.services?.providerDiscovery ? { service: options.services.providerDiscovery } : {}),
+    ...(options.semanticTelemetrySink
+      ? { semanticTelemetrySink: options.semanticTelemetrySink }
+      : {})
   };
   const selectionOptions = {
     ...(secret ? { internalServiceSecret: secret } : {}),
-    ...(options.services?.providerSelection ? { service: options.services.providerSelection } : {})
+    ...(options.services?.providerSelection ? { service: options.services.providerSelection } : {}),
+    ...(options.semanticTelemetrySink
+      ? { semanticTelemetrySink: options.semanticTelemetrySink }
+      : {})
   };
   const handoffOptions = {
     ...(secret ? { internalServiceSecret: secret } : {}),
-    ...(options.services?.controlledHandoff ? { service: options.services.controlledHandoff } : {})
+    ...(options.services?.controlledHandoff ? { service: options.services.controlledHandoff } : {}),
+    ...(options.semanticTelemetrySink
+      ? { semanticTelemetrySink: options.semanticTelemetrySink }
+      : {})
   };
   const allocationOptions = {
     ...(secret ? { internalServiceSecret: secret } : {}),
     ...(options.services?.governedAllocation
       ? { service: options.services.governedAllocation }
+      : {}),
+    ...(options.semanticTelemetrySink
+      ? { semanticTelemetrySink: options.semanticTelemetrySink }
       : {})
   };
 
