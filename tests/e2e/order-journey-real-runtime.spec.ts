@@ -122,7 +122,11 @@ test.describe('M3-WP-06 real durable Order journey', () => {
     await expect(
       page.getByRole('heading', { name: scenario.trademark, exact: true })
     ).toBeVisible();
-    await expect(page.getByText(/does not create a payment, invoice/)).toBeVisible();
+    await expect(
+      page.getByText(
+        /This view creates no payment,\s*provider contact,\s*office mutation,\s*external filing,\s*or Official Truth\./
+      )
+    ).toBeVisible();
     const matterUrl = page.url();
 
     const directMatter = await context.newPage();
