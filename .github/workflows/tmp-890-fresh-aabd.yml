@@ -1,0 +1,50 @@
+name: tmp-890-fresh-aabd
+
+on:
+  push:
+    branches: [tmp/890-fresh-aabd-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replay exact product commit on fresh main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin main integration/provider-web-storybook-browser-880
+          test "$(git rev-parse origin/main)" = "aabd286b982c94e5bc68c00eee4be3706b1c7e6b"
+          git checkout -B clean-890 origin/main
+          git cherry-pick dba111eaad52cc4ef1a8ddb2ffec16d6be6ac2be
+          test "$(git rev-list --count origin/main..HEAD)" -eq 1
+          git diff --check origin/main...HEAD
+          git diff --name-only origin/main...HEAD | sort > /tmp/changed
+          test "$(wc -l < /tmp/changed)" -eq 15
+          cat > /tmp/expected <<'EOF'
+          .github/workflows/ci.yml
+          apps/provider-web/src/ProviderWorkspaceShell.stories.js
+          package.json
+          packages/ui/.storybook-provider/main.ts
+          packages/ui/package.json
+          packages/ui/tsconfig.json
+          playwright.provider-storybook.config.ts
+          playwright.provider.config.ts
+          pnpm-lock.yaml
+          scripts/ci-detect-scope.mjs
+          scripts/ci-detect-scope.test.mjs
+          scripts/validate-provider-storybook-index.mjs
+          tests/e2e/applications.ts
+          tests/e2e/provider-storybook.spec.ts
+          tests/e2e/provider.spec.ts
+          EOF
+          sort -o /tmp/expected /tmp/expected
+          diff -u /tmp/expected /tmp/changed
+          git push --force-with-lease origin HEAD:integration/provider-web-storybook-browser-880
