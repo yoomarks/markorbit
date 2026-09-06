@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   write-format-validate:
-    if: github.event.head_commit.message != '[tmp] formatted #882 output'
+    if: github.event.head_commit.message != 'tmp formatted 882 output'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,7 +151,7 @@ jobs:
               "    source_owner: 'MARKORBIT_DATA_ENGINE',",
           )
           PY
-      - name: Format exact #882 files
+      - name: Format exact files
         run: |
           pnpm exec prettier --write \
             apps/gateway/src/data-engine-owner-summary.ts \
@@ -181,5 +181,5 @@ jobs:
             apps/operations-console/src/data-platform.tsx \
             apps/operations-console/src/data-platform.test.ts \
             apps/operations-console/src/App.tsx
-          git commit -m "[tmp] formatted #882 output"
+          git commit -m "tmp formatted 882 output"
           git push origin HEAD:tmp/882-writer-20260906
