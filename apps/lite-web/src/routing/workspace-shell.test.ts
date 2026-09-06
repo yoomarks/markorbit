@@ -28,6 +28,7 @@ describe('Workspace Shell registry', () => {
   it('groups specialist tools under Work without changing their deep links', () => {
     for (const surface of [
       'opportunities',
+      'opportunities-provider',
       'capability',
       'guide',
       'professional-review',

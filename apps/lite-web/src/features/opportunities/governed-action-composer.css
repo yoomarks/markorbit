@@ -1,0 +1,145 @@
+.governed-journey {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--mo-space-sm);
+  padding: 0;
+  margin: var(--mo-space-xl) 0;
+  list-style: none;
+}
+
+.governed-journey li {
+  display: flex;
+  gap: var(--mo-space-sm);
+  align-items: center;
+  min-width: 0;
+  padding: var(--mo-space-md);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius);
+}
+
+.governed-journey li[data-state='current'] {
+  border-color: var(--mo-brand);
+  box-shadow: 0 0 0 1px var(--mo-brand);
+}
+
+.governed-journey li[data-state='complete'] {
+  background: var(--mo-surface-muted);
+}
+
+.governed-journey span {
+  display: grid;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--mo-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.governed-section-heading,
+.governed-card-heading,
+.governed-actions {
+  display: flex;
+  gap: var(--mo-space-md);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.governed-section-heading {
+  margin-top: var(--mo-space-xl);
+}
+
+.governed-card-heading small {
+  color: var(--mo-secondary);
+  text-align: right;
+}
+
+.governed-candidate-grid,
+.governed-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-lg);
+  margin: var(--mo-space-lg) 0;
+}
+
+.governed-candidate-grid > *,
+.governed-preview-grid > * {
+  min-width: 0;
+}
+
+.governed-evidence-list,
+.governed-limitations,
+.governed-inline-list,
+.governed-preview-grid ul {
+  padding-left: 1.25rem;
+}
+
+.governed-limitations {
+  color: var(--mo-secondary);
+}
+
+.governed-form {
+  display: grid;
+  gap: var(--mo-space-lg);
+}
+
+.governed-preview-grid section {
+  padding: var(--mo-space-md);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius);
+}
+
+.governed-preview-grid h3 {
+  margin-top: 0;
+}
+
+.governed-acknowledgement {
+  display: flex;
+  gap: var(--mo-space-sm);
+  align-items: flex-start;
+  padding: var(--mo-space-md);
+  margin: var(--mo-space-lg) 0;
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius);
+  cursor: pointer;
+}
+
+.governed-acknowledgement:has(input:checked) {
+  border-color: var(--mo-brand);
+  box-shadow: 0 0 0 1px var(--mo-brand);
+}
+
+.governed-acknowledgement input {
+  margin-top: 0.2rem;
+}
+
+.governed-non-consequences {
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .governed-journey,
+  .governed-candidate-grid,
+  .governed-preview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .governed-section-heading,
+  .governed-card-heading,
+  .governed-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .governed-card-heading small {
+    text-align: left;
+  }
+
+  .governed-actions .mo-button,
+  .governed-candidate-grid .mo-button,
+  .governed-preview-grid + .mo-alert + .governed-acknowledgement + .mo-button {
+    width: 100%;
+    min-height: 44px;
+  }
+}

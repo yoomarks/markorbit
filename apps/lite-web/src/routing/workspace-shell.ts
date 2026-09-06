@@ -8,6 +8,7 @@ export type LiteSurface =
   | 'work'
   | 'customers'
   | 'opportunities'
+  | 'opportunities-provider'
   | 'professional-review'
   | 'execution-release';
 
@@ -55,6 +56,12 @@ export const LITE_SURFACES: Readonly<Record<LiteSurface, LiteSurfaceDefinition>>
   opportunities: {
     surface: 'opportunities',
     hash: '#opportunities',
+    primary: 'work',
+    requiresWorkspace: true
+  },
+  'opportunities-provider': {
+    surface: 'opportunities-provider',
+    hash: '#opportunities-provider',
     primary: 'work',
     requiresWorkspace: true
   },

@@ -21,6 +21,7 @@ import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAs
 import { ContentStudio } from './features/content-studio/ContentStudio.js';
 import type { ContentStudioClient } from './api/content-studio.js';
 import { CandidateReview } from './features/opportunities/CandidateReview.js';
+import { GovernedActionComposer } from './features/opportunities/GovernedActionComposer.js';
 import { GuideWorkspace } from './features/guide/GuideWorkspace.js';
 import {
   LITE_PRIMARY_NAV,
@@ -40,6 +41,7 @@ export interface LiteAppProps {
   initialState?: FixtureState;
   initialCustomerId?: string;
   initialOpportunityId?: string;
+  initialServicePackageId?: string;
   initialReviewCaseId?: string;
   initialFilingAuthorization?: { id: string; version: number };
   workspaceId?: string;
@@ -52,6 +54,11 @@ const workSubnavigationSurfaces: readonly LiteSurface[] = [
   'professional-review',
   'execution-release',
   'customers'
+];
+
+const opportunitySubnavigationSurfaces: readonly LiteSurface[] = [
+  'opportunities',
+  'opportunities-provider'
 ];
 
 function workspaceRequired(description: string) {
@@ -93,11 +100,51 @@ function WorkSubnavigation({
   );
 }
 
+function OpportunitySubnavigation({
+  surface,
+  workspaceId,
+  servicePackageId
+}: {
+  surface: LiteSurface;
+  workspaceId: string;
+  servicePackageId?: string;
+}) {
+  if (!opportunitySubnavigationSurfaces.includes(surface)) return null;
+  const items = [
+    { label: 'Candidate Review', surface: 'opportunities' },
+    { label: 'Provider Progression', surface: 'opportunities-provider' }
+  ] as const;
+  return (
+    <nav className="lite-subnav" aria-label="Opportunity view">
+      {items.map((item) => (
+        <Button
+          key={item.surface}
+          variant={surface === item.surface ? 'primary' : 'secondary'}
+          aria-current={surface === item.surface ? 'page' : undefined}
+          onClick={() =>
+            updateLiteLocation(
+              {
+                surface: item.surface,
+                workspaceId: workspaceId || undefined,
+                ...(servicePackageId ? { params: { servicePackageId } } : {})
+              },
+              { preserveSearch: true }
+            )
+          }
+        >
+          {item.label}
+        </Button>
+      ))}
+    </nav>
+  );
+}
+
 export function LiteApp({
   initialSurface = 'today',
   initialState = 'ready',
   initialCustomerId,
   initialOpportunityId,
+  initialServicePackageId,
   initialReviewCaseId,
   initialFilingAuthorization,
   workspaceId,
@@ -136,6 +183,8 @@ export function LiteApp({
     initialContentOpportunityId ?? currentQuery.get('contentOpportunityId') ?? undefined;
   const professionalReviewCaseId =
     initialReviewCaseId ?? currentQuery.get('professionalReviewCaseId') ?? undefined;
+  const servicePackageId =
+    initialServicePackageId ?? currentQuery.get('servicePackageId') ?? undefined;
 
   return (
     <AppShell
@@ -178,6 +227,11 @@ export function LiteApp({
       <div className="lite-workspace">
         {isFixture && <FixtureBanner />}
         <WorkSubnavigation surface={surface} workspaceId={activeWorkspaceId} />
+        <OpportunitySubnavigation
+          surface={surface}
+          workspaceId={activeWorkspaceId}
+          {...(servicePackageId ? { servicePackageId } : {})}
+        />
 
         {surface === 'today' ? (
           activeWorkspaceId ? (
@@ -238,6 +292,25 @@ export function LiteApp({
           ) : (
             workspaceRequired(
               'A valid Workspace context is required to load Opportunity Candidates.'
+            )
+          )
+        ) : surface === 'opportunities-provider' ? (
+          activeWorkspaceId ? (
+            servicePackageId ? (
+              <GovernedActionComposer
+                key={`${activeWorkspaceId}:${servicePackageId}`}
+                workspaceId={activeWorkspaceId}
+                servicePackageId={servicePackageId}
+              />
+            ) : (
+              <ErrorState
+                title="Open from a Service Package"
+                description="Provider Progression requires one existing bounded Service Package context. Workspace, actor, authority, and fingerprints are not entered manually here."
+              />
+            )
+          ) : (
+            workspaceRequired(
+              'A valid Workspace context is required for governed Provider progression.'
             )
           )
         ) : surface === 'capability' ? (
