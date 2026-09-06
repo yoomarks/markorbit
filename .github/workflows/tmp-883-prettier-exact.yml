@@ -1,0 +1,40 @@
+name: tmp-883-prettier-exact
+
+on:
+  push:
+    branches:
+      - tmp/883-prettier-exact-20260906
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact files
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/tests/commercial-admin-auth.test.ts \
+            services/core/src/internal-operator-principal.ts \
+            services/core/tests/internal-operator-principal.test.ts
+      - name: Emit formatted files
+        run: |
+          for f in \
+            packages/contracts/tests/commercial-admin-auth.test.ts \
+            services/core/src/internal-operator-principal.ts \
+            services/core/tests/internal-operator-principal.test.ts; do
+            echo "=====BEGIN:$f====="
+            base64 -w0 "$f"
+            echo
+            echo "=====END:$f====="
+          done
