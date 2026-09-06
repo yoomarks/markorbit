@@ -2,6 +2,8 @@
 
 ## 1. Status and scope
 
+> **Current-state overlay (2026-09-06):** This document preserves the original #371 Discovery boundary freeze below. Provider Discovery runtime and its later bounded Trust-aware decision-support composition now exist on current `main`; see [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md). The historical statement that #371 did not implement Discovery runtime remains issue-scoped history, not current implementation status.
+
 **MGSN-P0-002 / #371, parent #358.**
 
 This is an architecture, privacy, and contract-boundary freeze.
