@@ -37,6 +37,7 @@ export * from './mgsn-http.js';
 export * from './product-loop-http.js';
 export * from './data-engine-product-http.js';
 export * from './data-control-plane-http.js';
+export * from './knowledge-control-plane-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
@@ -61,6 +62,7 @@ import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';
+import { createGatewayKnowledgeControlPlaneRoutes } from './knowledge-control-plane-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
@@ -81,6 +83,9 @@ export interface GatewayOptions {
   dataEngineApiKey?: string;
   dataEngineTimeoutMs?: number;
   dataEngineFetchImpl?: typeof fetch;
+  knowledgeUrl?: string;
+  knowledgeTimeoutMs?: number;
+  knowledgeFetchImpl?: typeof fetch;
   milestoneTestRuntime?: boolean;
   authenticationClient?: CoreAuthenticationClient;
   internalServiceSecret?: string;
@@ -108,6 +113,10 @@ export function createRuntime(options: GatewayOptions = {}) {
   const dataEngineTimeoutMs =
     options.dataEngineTimeoutMs ??
     (process.env.DATA_ENGINE_TIMEOUT_MS ? Number(process.env.DATA_ENGINE_TIMEOUT_MS) : undefined);
+  const knowledgeUrl = options.knowledgeUrl ?? process.env.KNOWLEDGE_URL;
+  const knowledgeTimeoutMs =
+    options.knowledgeTimeoutMs ??
+    (process.env.KNOWLEDGE_TIMEOUT_MS ? Number(process.env.KNOWLEDGE_TIMEOUT_MS) : undefined);
   const milestoneTestRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
   const allowedOrigins =
@@ -462,6 +471,19 @@ export function createRuntime(options: GatewayOptions = {}) {
               }
             : {}),
           ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+        }),
+        ...createGatewayKnowledgeControlPlaneRoutes({
+          ...(knowledgeUrl ? { knowledgeUrl } : {}),
+          ...(knowledgeTimeoutMs === undefined ? {} : { knowledgeTimeoutMs }),
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          ...(options.knowledgeFetchImpl ? { fetchImpl: options.knowledgeFetchImpl } : {})
         }),
         ...createGatewayCapabilityRoutes({
           capabilityEngineUrl,
