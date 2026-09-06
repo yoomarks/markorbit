@@ -1,0 +1,100 @@
+name: tmp-844-v1-overlays-writer
+
+on:
+  push:
+    branches:
+      - tmp/844-v1-overlays-writer-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Apply bounded documentation overlays
+        run: |
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin mgsn-phase2-844-v1-current-overlays
+          git checkout -B owner origin/mgsn-phase2-844-v1-current-overlays
+          test "$(git rev-parse HEAD)" = "e54edcdccc7df4f0bef8ffa7cfb5601ed9f16fab"
+          python - <<'PY'
+          from pathlib import Path
+
+          def insert_overlay(path: str, anchor: str, overlay: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              if 'Current-state overlay (2026-09-06)' in text:
+                  raise SystemExit(f'{path}: overlay already exists')
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'{path}: expected exactly one insertion anchor')
+              target.write_text(text.replace(anchor, anchor + overlay + '\n\n', 1))
+
+          insert_overlay(
+              'services/mgsn/docs/NETWORK-PARTICIPATION-VISIBILITY-V1.md',
+              '## 1. Status and scope\n\n',
+              '> **Current-state overlay (2026-09-06):** Durable Network Participation and Private First Visibility owner/runtime enforcement described here as future or not implemented has since landed. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; Provider `ACTIVE` still does not imply participation or visibility, and public/live Provider exposure remains deferred.'
+          )
+          insert_overlay(
+              'services/mgsn/docs/HUMAN-PROVIDER-SELECTION-V1.md',
+              '## 1. Status and scope\n\n',
+              '> **Current-state overlay (2026-09-06):** Explicit Human Provider Selection is now implemented as durable MGSN owner truth with current-authority validation and an authenticated product-facing path. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; Selection remains distinct from Handoff, Allocation, Acceptance, appointment and external contact.'
+          )
+          insert_overlay(
+              'services/mgsn/docs/CONTROLLED-PRIVACY-HANDOFF-V1.md',
+              '## 1. Status, outcome and scope\n\n',
+              '> **Current-state overlay (2026-09-06):** Controlled Privacy Handoff is now implemented as durable MGSN authorization with current validation, revocation and privacy-preparation support. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; Handoff does not authorize Provider selection/allocation/acceptance/contact, artifact retrieval, Filing, Payment or Official Truth.'
+          )
+          insert_overlay(
+              'services/mgsn/docs/PROVIDER-DISCOVERY-EXPLAINABILITY-V1.md',
+              '## 1. Status and scope\n\n',
+              '> **Current-state overlay (2026-09-06):** Provider Discovery runtime and explainability are now implemented/productized, and post-#841 can compose exact contextual Trust decision support only after current exposure authorization. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; candidates remain decision support and create no score, rank, winner, Selection or Allocation authority.'
+          )
+          PY
+      - name: Verify exact docs-only diff
+        run: |
+          pnpm install --frozen-lockfile
+          git restore pnpm-lock.yaml
+          pnpm exec prettier --check \
+            services/mgsn/docs/NETWORK-PARTICIPATION-VISIBILITY-V1.md \
+            services/mgsn/docs/HUMAN-PROVIDER-SELECTION-V1.md \
+            services/mgsn/docs/CONTROLLED-PRIVACY-HANDOFF-V1.md \
+            services/mgsn/docs/PROVIDER-DISCOVERY-EXPLAINABILITY-V1.md
+          git diff --name-only | sort > /tmp/changed.txt
+          cat /tmp/changed.txt
+          test "$(wc -l < /tmp/changed.txt)" -eq 4
+          cat > /tmp/expected.txt <<'EOF'
+          services/mgsn/docs/CONTROLLED-PRIVACY-HANDOFF-V1.md
+          services/mgsn/docs/HUMAN-PROVIDER-SELECTION-V1.md
+          services/mgsn/docs/NETWORK-PARTICIPATION-VISIBILITY-V1.md
+          services/mgsn/docs/PROVIDER-DISCOVERY-EXPLAINABILITY-V1.md
+          EOF
+          diff -u /tmp/expected.txt /tmp/changed.txt
+          git diff --check
+          for file in $(cat /tmp/changed.txt); do
+            test "$(grep -c 'Current-state overlay (2026-09-06)' "$file")" -eq 1
+          done
+          grep -Fq 'Not Implemented' services/mgsn/docs/NETWORK-PARTICIPATION-VISIBILITY-V1.md
+          grep -Fq 'V1 Boundary / Not Implemented' services/mgsn/docs/HUMAN-PROVIDER-SELECTION-V1.md
+          grep -Fq 'No runtime, UI, API or database is implemented.' services/mgsn/docs/CONTROLLED-PRIVACY-HANDOFF-V1.md
+          grep -Fq 'This issue does not implement Provider Discovery runtime.' services/mgsn/docs/PROVIDER-DISCOVERY-EXPLAINABILITY-V1.md
+      - name: Commit owner-local overlay slice
+        run: |
+          git add \
+            services/mgsn/docs/NETWORK-PARTICIPATION-VISIBILITY-V1.md \
+            services/mgsn/docs/HUMAN-PROVIDER-SELECTION-V1.md \
+            services/mgsn/docs/CONTROLLED-PRIVACY-HANDOFF-V1.md \
+            services/mgsn/docs/PROVIDER-DISCOVERY-EXPLAINABILITY-V1.md
+          git commit -m "docs(mgsn): overlay current state on V1 boundary docs"
+          git push origin HEAD:mgsn-phase2-844-v1-current-overlays
