@@ -85,29 +85,32 @@ describe('commercial admin authority contract', () => {
       )
     ).toEqual(['control-plane:cognitive:read']);
     expect(
-      INTERNAL_OPERATOR_CAPABILITIES.filter((capability) => capability.startsWith('control-plane:data:'))
+      INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
+        capability.startsWith('control-plane:data:')
+      )
     ).toEqual(['control-plane:data:read']);
   });
 
-  it.each(['control-plane:cognitive:operate', 'control-plane:data:operate', 'control-plane:data:write'])(
-    'rejects browser-invented or unknown internal operator capability %s',
-    (capability) => {
-      const value = Buffer.from(
-        JSON.stringify({
-          schemaVersion: 1,
-          principal: {
-            kind: 'INTERNAL_OPERATOR',
-            sessionId: 'session_internal_1',
-            userId: 'user_internal_1',
-            capabilities: [capability],
-            sessionExpiresAt: '2099-01-01T00:00:00.000Z'
-          }
-        }),
-        'utf8'
-      ).toString('base64url');
-      expect(() => parseInternalOperatorPrincipal(value)).toThrow(
-        'Internal operator Principal is invalid.'
-      );
-    }
-  );
+  it.each([
+    'control-plane:cognitive:operate',
+    'control-plane:data:operate',
+    'control-plane:data:write'
+  ])('rejects browser-invented or unknown internal operator capability %s', (capability) => {
+    const value = Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        principal: {
+          kind: 'INTERNAL_OPERATOR',
+          sessionId: 'session_internal_1',
+          userId: 'user_internal_1',
+          capabilities: [capability],
+          sessionExpiresAt: '2099-01-01T00:00:00.000Z'
+        }
+      }),
+      'utf8'
+    ).toString('base64url');
+    expect(() => parseInternalOperatorPrincipal(value)).toThrow(
+      'Internal operator Principal is invalid.'
+    );
+  });
 });

@@ -45,7 +45,8 @@ function normalizedUserIds(userIds: Iterable<string>, label: 'Cognitive' | 'Data
       throw new CognitiveReadGrantSourceError('Cognitive read grant user identity is duplicated.');
   } else {
     if (invalid) throw new DataReadGrantSourceError('Data read grant user identity is malformed.');
-    if (duplicated) throw new DataReadGrantSourceError('Data read grant user identity is duplicated.');
+    if (duplicated)
+      throw new DataReadGrantSourceError('Data read grant user identity is duplicated.');
   }
   return normalized;
 }
@@ -231,7 +232,10 @@ export class InternalOperatorPrincipalResolverV1 {
     try {
       granted = await source.hasGrant(session.userId);
     } catch (error) {
-      if (error instanceof CognitiveReadGrantSourceError || error instanceof DataReadGrantSourceError)
+      if (
+        error instanceof CognitiveReadGrantSourceError ||
+        error instanceof DataReadGrantSourceError
+      )
         throw new AuthenticationError(
           'AUTHENTICATION_SERVICE_UNAVAILABLE',
           `${requiredCapability} grant source is unavailable.`,
