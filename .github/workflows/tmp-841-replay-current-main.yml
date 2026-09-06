@@ -1,0 +1,91 @@
+name: tmp-841-replay-current-main
+
+on:
+  push:
+    branches: [tmp/841-replay-current-main-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Replay verified owner commit onto exact current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/mgsn/phase2-trust-discovery-841-main:refs/remotes/origin/mgsn/phase2-trust-discovery-841-main'
+          echo "main=$(git rev-parse origin/main)"
+          echo "owner=$(git rev-parse origin/mgsn/phase2-trust-discovery-841-main)"
+          test "$(git rev-parse origin/main)" = "aabd286b982c94e5bc68c00eee4be3706b1c7e6b"
+          test "$(git rev-parse origin/mgsn/phase2-trust-discovery-841-main)" = "710fd2c1308eb426751524409b831a47f4ff2ee9"
+          git checkout -B fresh origin/main
+          if ! git cherry-pick --no-commit 710fd2c1308eb426751524409b831a47f4ff2ee9; then
+            echo '--- cherry-pick conflict status ---'
+            git status --short
+            echo '--- durable-runtime conflict ---'
+            git diff -- services/mgsn/src/durable-runtime.ts || true
+            exit 1
+          fi
+          git diff --cached --name-only | sort -u | tee /tmp/changed
+          test "$(wc -l < /tmp/changed)" -eq 6
+          ! grep -Ev '^services/mgsn/' /tmp/changed
+          git diff --cached --check
+      - name: Install and exact-format owner scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          git restore pnpm-lock.yaml
+          pnpm exec prettier --write services/mgsn/src/outcome-trust-evidence.ts services/mgsn/src/outcome-trust-evidence-postgres.ts services/mgsn/src/provider-discovery-trust.ts services/mgsn/src/durable-runtime.ts services/mgsn/tests/provider-discovery-trust.test.ts services/mgsn/tests/outcome-trust-evidence-postgres.test.ts
+          git add services/mgsn
+          test "$(git diff --cached --name-only | wc -l)" -eq 6
+          ! git diff --cached --name-only | grep -Ev '^services/mgsn/'
+          git diff --cached --check
+      - name: Build dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/mgsn-service...
+      - name: Focused unit evidence
+        run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-discovery-trust.test.ts tests/outcome-trust-evidence.test.ts tests/provider-discovery-current-responsibility.test.ts
+      - name: Focused PostgreSQL evidence
+        env:
+          MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+          MGSN_OUTCOME_TRUST_POSTGRES_REQUIRED: '1'
+        run: |
+          PGPASSWORD=markorbit-test-only psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_mgsn_test;'
+          pnpm --filter @markorbit/mgsn-service exec vitest run tests/outcome-trust-evidence-postgres.test.ts
+      - name: Lint and typecheck
+        run: |
+          pnpm --filter @markorbit/mgsn-service lint
+          pnpm --filter @markorbit/mgsn-service typecheck
+      - name: Commit and push fresh-main owner head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m 'feat(mgsn): compose Trust evidence into Provider Discovery'
+          git push --force origin HEAD:refs/heads/mgsn/phase2-trust-discovery-841-main
