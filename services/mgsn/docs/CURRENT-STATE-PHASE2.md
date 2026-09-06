@@ -15,20 +15,20 @@ This document is the principal current-state entry point for MGSN after Epic #35
 
 ## Current capability map
 
-| Capability | Current classification | Current owner/runtime truth |
-| --- | --- | --- |
-| Provider Registry + Supply Capability | IMPLEMENTED / INTERNAL_ONLY | Durable MGSN owner truth with Core Workspace references; no duplicated identity. |
-| Service Package + Eligibility | IMPLEMENTED | Existing M4 execution substrate remains authoritative and backward compatible. |
-| Network Participation + Visibility | IMPLEMENTED | Durable owner service and authenticated owner transport exist; Provider `ACTIVE` alone still does not imply participation or exposure authority. |
-| Provider Discovery + explainability | IMPLEMENTED / PRODUCTIZED | Current Discovery composes Participation/Visibility, operational/supply suitability and Direct-Executor evidence. It may consume exact contextual Trust decision-support evidence without score/rank/winner semantics. |
-| Explicit Human Provider Selection | IMPLEMENTED / PRODUCTIZED | Durable exact-candidate lineage and current-authority validation exist. Human choice remains the Selection authority. |
-| Controlled Privacy Handoff | IMPLEMENTED / PRODUCTIZED | Durable exact minimum-necessary authorization, current validation/revocation and privacy-preparation support exist. Evidence/reference visibility does not authorize artifact retrieval. |
-| Governed Allocation | IMPLEMENTED / PRODUCTIZED | #716 admission reuses M4 Allocation while atomically preserving exact Selection/Handoff lineage; governed admission never falls back to legacy Allocation. |
-| Provider Work incoming authority | IMPLEMENTED / PRODUCTIZED | Provider Work reads distinguish `CURRENTLY_USABLE`, `DENIED`, `KNOWN_ABSENT`, `UNKNOWN` and `SOURCE_UNAVAILABLE` without embedding private field values. The Provider Web task-first action console is productized by #930. |
-| Provider Acceptance + Provider Return | IMPLEMENTED / PRODUCTIZED | Existing M4 owner truth is exposed through the governed Provider Workspace action flow. Acceptance != appointment; Provider Return != Official Truth. |
-| Outcome + Trust Evidence | IMPLEMENTED | Contextual/advisory evidence with current exposure authority. It is not a universal Provider quality score and is not Official Truth. |
-| Trusted Public Exposure | IMPLEMENTED / LIVE_DEFERRED | Bounded trusted-public owner logic exists, but this does not authorize a public marketplace, live Provider contact/delivery or generic public discovery. |
-| Live Provider operation | LIVE_DEFERRED | No live contact/delivery, appointment, Filing, Payment or Official Truth authority is implied by the completed governed network path. |
+| Capability                            | Current classification      | Current owner/runtime truth                                                                                                                                                                                                 |
+| ------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider Registry + Supply Capability | IMPLEMENTED / INTERNAL_ONLY | Durable MGSN owner truth with Core Workspace references; no duplicated identity.                                                                                                                                            |
+| Service Package + Eligibility         | IMPLEMENTED                 | Existing M4 execution substrate remains authoritative and backward compatible.                                                                                                                                              |
+| Network Participation + Visibility    | IMPLEMENTED                 | Durable owner service and authenticated owner transport exist; Provider `ACTIVE` alone still does not imply participation or exposure authority.                                                                            |
+| Provider Discovery + explainability   | IMPLEMENTED / PRODUCTIZED   | Current Discovery composes Participation/Visibility, operational/supply suitability and Direct-Executor evidence. It may consume exact contextual Trust decision-support evidence without score/rank/winner semantics.      |
+| Explicit Human Provider Selection     | IMPLEMENTED / PRODUCTIZED   | Durable exact-candidate lineage and current-authority validation exist. Human choice remains the Selection authority.                                                                                                       |
+| Controlled Privacy Handoff            | IMPLEMENTED / PRODUCTIZED   | Durable exact minimum-necessary authorization, current validation/revocation and privacy-preparation support exist. Evidence/reference visibility does not authorize artifact retrieval.                                    |
+| Governed Allocation                   | IMPLEMENTED / PRODUCTIZED   | #716 admission reuses M4 Allocation while atomically preserving exact Selection/Handoff lineage; governed admission never falls back to legacy Allocation.                                                                  |
+| Provider Work incoming authority      | IMPLEMENTED / PRODUCTIZED   | Provider Work reads distinguish `CURRENTLY_USABLE`, `DENIED`, `KNOWN_ABSENT`, `UNKNOWN` and `SOURCE_UNAVAILABLE` without embedding private field values. The Provider Web task-first action console is productized by #930. |
+| Provider Acceptance + Provider Return | IMPLEMENTED / PRODUCTIZED   | Existing M4 owner truth is exposed through the governed Provider Workspace action flow. Acceptance != appointment; Provider Return != Official Truth.                                                                       |
+| Outcome + Trust Evidence              | IMPLEMENTED                 | Contextual/advisory evidence with current exposure authority. It is not a universal Provider quality score and is not Official Truth.                                                                                       |
+| Trusted Public Exposure               | IMPLEMENTED / LIVE_DEFERRED | Bounded trusted-public owner logic exists, but this does not authorize a public marketplace, live Provider contact/delivery or generic public discovery.                                                                    |
+| Live Provider operation               | LIVE_DEFERRED               | No live contact/delivery, appointment, Filing, Payment or Official Truth authority is implied by the completed governed network path.                                                                                       |
 
 ## Product-path closure
 
