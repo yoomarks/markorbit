@@ -62,8 +62,8 @@ jobs:
           test "$(wc -l < /tmp/changed.txt)" -eq 6
           if grep -Ev '^services/mgsn/' /tmp/changed.txt; then exit 1; fi
           git diff --check
-      - name: Build shared contracts
-        run: pnpm --filter @markorbit/contracts build
+      - name: Build MGSN dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/mgsn-service...
       - name: Focused MGSN unit evidence
         run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-discovery-trust.test.ts tests/outcome-trust-evidence.test.ts tests/provider-discovery-current-responsibility.test.ts
       - name: Focused MGSN PostgreSQL evidence
