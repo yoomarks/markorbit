@@ -148,6 +148,7 @@
     "0092_mgsn_allocation_admission_lineage": "@markorbit/mgsn-service",
     "0093_mgsn_allocation_admission_lineage_integrity": "@markorbit/mgsn-service",
     "0094_mgsn_allocation_admission_lineage_replay_audit_integrity": "@markorbit/mgsn-service",
-    "0095_core_governed_human_action_receipts": "@markorbit/core-service"
+    "0095_core_governed_human_action_receipts": "@markorbit/core-service",
+    "0096_markreg_customer_relationships": "@markorbit/markreg-service"
   }
 }
