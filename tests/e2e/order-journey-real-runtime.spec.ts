@@ -7,13 +7,15 @@ const scenarios = {
     fixture: 'm3Wp06Desktop',
     workspaceId: '61616161-6161-4616-8616-616161616161',
     otherWorkspaceId: '62626262-6262-4626-8626-626262626262',
-    confirmationId: 'confirmation_wp06-desktop'
+    confirmationId: 'confirmation_wp06-desktop',
+    trademark: 'MARK ORBIT WP06 DESKTOP'
   },
   'order-journey-mobile-390': {
     fixture: 'm3Wp06Mobile',
     workspaceId: '63636363-6363-4636-8636-636363636363',
     otherWorkspaceId: '64646464-6464-4646-8646-646464646464',
-    confirmationId: 'confirmation_wp06-mobile'
+    confirmationId: 'confirmation_wp06-mobile',
+    trademark: 'MARK ORBIT WP06 MOBILE'
   }
 } as const;
 
@@ -118,7 +120,7 @@ test.describe('M3-WP-06 real durable Order journey', () => {
     expect(matterHref).toContain('view=formal-matter');
     await matterLink.click();
     await expect(
-      page.getByRole('heading', { name: 'Trademark Matter', exact: true })
+      page.getByRole('heading', { name: scenario.trademark, exact: true })
     ).toBeVisible();
     await expect(page.getByText(/does not create a payment, invoice/)).toBeVisible();
     const matterUrl = page.url();
@@ -126,7 +128,7 @@ test.describe('M3-WP-06 real durable Order journey', () => {
     const directMatter = await context.newPage();
     await directMatter.goto(matterUrl);
     await expect(
-      directMatter.getByRole('heading', { name: 'Trademark Matter', exact: true })
+      directMatter.getByRole('heading', { name: scenario.trademark, exact: true })
     ).toBeVisible();
     await directMatter.close();
 
