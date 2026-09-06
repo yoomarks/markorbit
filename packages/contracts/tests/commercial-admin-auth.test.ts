@@ -70,15 +70,33 @@ describe('commercial admin authority contract', () => {
     expect(parsed.capabilities).not.toContain('commercial-admin:operate');
   });
 
+  it('round-trips bounded Knowledge read without implying other authority', () => {
+    const principal: InternalOperatorPrincipal = {
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: 'session_knowledge_1',
+      userId: 'user_knowledge_1',
+      capabilities: ['control-plane:knowledge:read'],
+      sessionExpiresAt: '2099-01-01T00:00:00.000Z'
+    };
+    const parsed = parseInternalOperatorPrincipal(encodeInternalOperatorPrincipal(principal));
+    expect(parsed).toEqual(principal);
+    expect(parsed.capabilities).not.toContain('control-plane:cognitive:read');
+    expect(parsed.capabilities).not.toContain('control-plane:data:read');
+    expect(parsed.capabilities).not.toContain('commercial-admin:read');
+    expect(parsed.capabilities).not.toContain('commercial-admin:operate');
+  });
+
   it('keeps commercial account derivation from automatically granting Control Plane reads', () => {
     const capabilities = commercialAdminCapabilitiesForAccount(account('INTERNAL', 'ACTIVE'));
     expect(capabilities).not.toContain('control-plane:cognitive:read');
     expect(capabilities).not.toContain('control-plane:data:read');
+    expect(capabilities).not.toContain('control-plane:knowledge:read');
   });
 
   it('defines Control Plane operator authority as bounded read-only vocabulary', () => {
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('control-plane:cognitive:read');
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('control-plane:data:read');
+    expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('control-plane:knowledge:read');
     expect(
       INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
         capability.startsWith('control-plane:cognitive:')
@@ -89,12 +107,19 @@ describe('commercial admin authority contract', () => {
         capability.startsWith('control-plane:data:')
       )
     ).toEqual(['control-plane:data:read']);
+    expect(
+      INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
+        capability.startsWith('control-plane:knowledge:')
+      )
+    ).toEqual(['control-plane:knowledge:read']);
   });
 
   it.each([
     'control-plane:cognitive:operate',
     'control-plane:data:operate',
-    'control-plane:data:write'
+    'control-plane:data:write',
+    'control-plane:knowledge:operate',
+    'control-plane:knowledge:write'
   ])('rejects browser-invented or unknown internal operator capability %s', (capability) => {
     const value = Buffer.from(
       JSON.stringify({
