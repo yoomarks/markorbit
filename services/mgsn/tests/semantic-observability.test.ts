@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   InMemoryMgsnSemanticTelemetrySinkV1,
   JsonLineMgsnSemanticTelemetrySinkV1,
@@ -54,13 +54,29 @@ describe('MGSN semantic observability', () => {
       outcomeClass: 'CONFLICT',
       resultCode: 'IDEMPOTENCY_CONFLICT'
     });
-    expect(classifyMgsnSemanticFailure({ code: 'STALE_SELECTION', status: 409 })).toEqual({
+    expect(classifyMgsnSemanticFailure({ code: 'RETURN_SUPERSEDED', status: 409 })).toEqual({
+      outcomeClass: 'CONFLICT',
+      resultCode: 'STALE_OR_VERSION_CONFLICT'
+    });
+    expect(classifyMgsnSemanticFailure({ code: 'VERSION_CONFLICT', status: 409 })).toEqual({
       outcomeClass: 'CONFLICT',
       resultCode: 'STALE_OR_VERSION_CONFLICT'
     });
     expect(classifyMgsnSemanticFailure({ code: 'AUTHORITY_UNAVAILABLE', status: 503 })).toEqual({
       outcomeClass: 'UNAVAILABLE',
       resultCode: 'AUTHORITY_UNAVAILABLE'
+    });
+    expect(classifyMgsnSemanticFailure({ code: 'DEPENDENCY_DOWN', status: 503 })).toEqual({
+      outcomeClass: 'UNAVAILABLE',
+      resultCode: 'DEPENDENCY_UNAVAILABLE'
+    });
+    expect(classifyMgsnSemanticFailure({ code: 'PROVIDER_SUSPENDED', status: 409 })).toEqual({
+      outcomeClass: 'DENIED',
+      resultCode: 'CURRENT_AUTHORITY_DENIED'
+    });
+    expect(classifyMgsnSemanticFailure({ code: 'OTHER_CONFLICT', status: 409 })).toEqual({
+      outcomeClass: 'CONFLICT',
+      resultCode: 'OPERATION_CONFLICT'
     });
     expect(classifyMgsnSemanticFailure(new Error('private detail'))).toEqual({
       outcomeClass: 'ERROR',

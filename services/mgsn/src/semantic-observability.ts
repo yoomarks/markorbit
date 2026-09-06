@@ -1,4 +1,4 @@
-﻿export type MgsnSemanticTelemetryOperationV1 =
+export type MgsnSemanticTelemetryOperationV1 =
   | 'PROVIDER_DISCOVERY_EVALUATE'
   | 'PROVIDER_SELECTION_CREATE_OR_REPLACE'
   | 'PROVIDER_SELECTION_REVOKE'
@@ -6,7 +6,9 @@
   | 'CONTROLLED_HANDOFF_AUTHORIZE_OR_REPLACE'
   | 'CONTROLLED_HANDOFF_REVOKE'
   | 'CONTROLLED_HANDOFF_VALIDATE_CURRENT'
-  | 'GOVERNED_ALLOCATION_COMMIT';
+  | 'GOVERNED_ALLOCATION_COMMIT'
+  | 'PROVIDER_ACCEPTANCE_RECORD'
+  | 'PROVIDER_RETURN_CREATE_OR_CORRECT';
 
 export type MgsnSemanticTelemetryOutcomeClassV1 =
   'SUCCESS' | 'EMPTY' | 'DENIED' | 'UNAVAILABLE' | 'CONFLICT' | 'ERROR';
@@ -22,8 +24,13 @@ export type MgsnSemanticTelemetryResultCodeV1 =
   | 'VALIDATION_DENIED'
   | 'AUTHORIZED'
   | 'ALLOCATED'
+  | 'PROVIDER_ACCEPTED'
+  | 'PROVIDER_DECLINED'
+  | 'PROVIDER_RETURN_SUBMITTED'
+  | 'PROVIDER_RETURN_CORRECTED'
   | 'IDEMPOTENCY_CONFLICT'
   | 'STALE_OR_VERSION_CONFLICT'
+  | 'OPERATION_CONFLICT'
   | 'CURRENT_AUTHORITY_DENIED'
   | 'DEPENDENCY_UNAVAILABLE'
   | 'NOT_FOUND'
@@ -138,16 +145,27 @@ export function classifyMgsnSemanticFailure(
   if (
     code.includes('STALE') ||
     code.includes('VERSION_MISMATCH') ||
+    code.includes('VERSION_CONFLICT') ||
     code.includes('NOT_CURRENT') ||
+    code.includes('SUPERSEDED') ||
+    code.includes('FINGERPRINT_MISMATCH') ||
     code.includes('ALREADY_EXISTS')
   )
     return { outcomeClass: 'CONFLICT', resultCode: 'STALE_OR_VERSION_CONFLICT' };
-  if (code.includes('AUTHORITY_UNAVAILABLE') || status === 503)
+  if (code.includes('AUTHORITY_UNAVAILABLE'))
     return { outcomeClass: 'UNAVAILABLE', resultCode: 'AUTHORITY_UNAVAILABLE' };
+  if (status === 503)
+    return { outcomeClass: 'UNAVAILABLE', resultCode: 'DEPENDENCY_UNAVAILABLE' };
   if (code.includes('NOT_FOUND') || status === 404)
     return { outcomeClass: 'DENIED', resultCode: 'NOT_FOUND' };
-  if (code.includes('AUTHORITY_DENIED') || code.includes('DENIED'))
+  if (
+    code.includes('AUTHORITY_DENIED') ||
+    code.includes('DENIED') ||
+    code.includes('SUSPENDED')
+  )
     return { outcomeClass: 'DENIED', resultCode: 'CURRENT_AUTHORITY_DENIED' };
+  if (status === 409)
+    return { outcomeClass: 'CONFLICT', resultCode: 'OPERATION_CONFLICT' };
   if (status !== undefined && status >= 400 && status < 500)
     return { outcomeClass: 'DENIED', resultCode: 'INVALID_OR_FORBIDDEN' };
   return { outcomeClass: 'ERROR', resultCode: 'INTERNAL_ERROR' };
