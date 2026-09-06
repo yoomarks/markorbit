@@ -1,5 +1,6 @@
 import { Alert, Button, Card, KeyValueList, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { TruthContext } from './TruthContext.js';
 import { MarkregApiError } from './api/errors.js';
 import {
   createExaminationStageClient,
@@ -32,8 +33,12 @@ const displayTimestamp = (value: string) => {
 function HistoricalContext({ history }: { history: readonly ExaminationStageHistoryEntry[] }) {
   if (history.length === 0) return null;
   return (
-    <details>
+    <details className="markreg-cockpit-secondary-details">
       <summary>Historical Examination context ({history.length})</summary>
+      <div className="markreg-truth-row">
+        <TruthContext truthClass="HISTORICAL" detail="Prior Examination workflow context" />
+        <TruthContext truthClass="REVIEWED_EVIDENCE" />
+      </div>
       <ol>
         {history.map((entry) => (
           <li key={entry.lifecycleEvent.id}>
@@ -41,15 +46,11 @@ function HistoricalContext({ history }: { history: readonly ExaminationStageHist
             <br />
             {entry.customerSafeSummary}
             <br />
-            Historical reviewed-evidence projection · occurred {displayTimestamp(entry.occurredAt)}
+            Occurred {displayTimestamp(entry.occurredAt)}
           </li>
         ))}
       </ol>
-      <p>
-        These entries are historical internal product context. They are not the current
-        trademark-office status and do not establish a filing, deadline, payment, or external
-        action.
-      </p>
+      <p>Historical context is not current trademark-office status or deadline truth.</p>
     </details>
   );
 }
@@ -129,11 +130,13 @@ export function ExaminationPanel({
 
   return (
     <>
-      <Alert tone="info" title="Governed internal Examination workflow">
-        This section shows MarkReg&apos;s bounded internal Examination projection from reviewed
-        evidence. It is not trademark-office status or deadline truth. Viewing it does not authorize
-        filing, submission, payment, provider contact, or office mutation.
-      </Alert>
+      <div className="markreg-truth-row">
+        <TruthContext
+          truthClass="GOVERNED_INTERNAL_WORKFLOW"
+          detail="Examination workflow inside MarkReg"
+        />
+        <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Source context" />
+      </div>
 
       {value.status === 'NOT_ESTABLISHED' ? (
         <Card>
@@ -165,6 +168,10 @@ export function ExaminationPanel({
                 }
               ]}
             />
+            <small>
+              This projection is not trademark-office status or deadline truth and does not
+              authorize a protected external action.
+            </small>
           </Card>
         )
       )}

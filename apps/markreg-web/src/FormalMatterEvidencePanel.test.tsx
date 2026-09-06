@@ -92,10 +92,13 @@ describe('FormalMatterEvidencePanel', () => {
     expect(await screen.findByText(/No durable Document Packages are recorded/)).toBeTruthy();
     expect(screen.getByText(/No durable Lifecycle Projection is recorded/)).toBeTruthy();
     expect(screen.getByText(/Evidence Projection ≠ Official Truth/)).toBeTruthy();
+    expect(screen.getByText('Reviewed evidence')).toBeTruthy();
+    expect(screen.queryByText('Official verified')).toBeNull();
+    expect(screen.getByText('Evidence source record').closest('details')?.open).toBe(false);
     expect(get).toHaveBeenCalledWith('formal-matter_one');
   });
 
-  it('renders stale package and lifecycle lineage without promoting either to Official Truth', async () => {
+  it('renders stale package and lifecycle lineage as historical without promoting either to current truth', async () => {
     const projection = {
       ...baseProjection,
       documentPackages: {
@@ -181,9 +184,10 @@ describe('FormalMatterEvidencePanel', () => {
 
     expect(await screen.findByText('Historical Matter source')).toBeTruthy();
     expect(screen.getByText('Historical lifecycle source')).toBeTruthy();
+    expect(screen.getAllByText('Historical').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Under examination').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No').length).toBeGreaterThan(0);
-    expect(screen.getByText(/not Official Status/)).toBeTruthy();
+    expect(screen.getByText('Documents and exact provenance').closest('details')?.open).toBe(false);
+    expect(screen.queryByText('Official verified')).toBeNull();
   });
 
   it('keeps dependency failure visibly different from successful empty evidence', async () => {

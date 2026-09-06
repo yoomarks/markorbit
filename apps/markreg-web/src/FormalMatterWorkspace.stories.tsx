@@ -2,6 +2,7 @@ import type { FormalMatter } from '@markorbit/contracts';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Alert, Card } from '@markorbit/ui';
 import { FormalMatterWorkspace } from './FormalMatterWorkspace.js';
+import { TruthContext } from './TruthContext.js';
 
 const matter = {
   schemaVersion: 1,
@@ -52,36 +53,51 @@ const matter = {
 
 const lifecycle = ({ disabled }: { disabled: boolean }) => (
   <Card>
-    <strong>{disabled ? 'Lifecycle actions disabled' : 'Governed lifecycle available'}</strong>
+    <div className="markreg-truth-row">
+      <TruthContext truthClass="GOVERNED_INTERNAL_WORKFLOW" detail="Current action context" />
+    </div>
+    <strong>{disabled ? 'Lifecycle actions disabled' : 'Review the latest evidence'}</strong>
     <p>Story-only presentation seam. Production uses the live LifecyclePanel.</p>
   </Card>
 );
 
+const examination = () => (
+  <Card>
+    <div className="markreg-truth-row">
+      <TruthContext truthClass="GOVERNED_INTERNAL_WORKFLOW" detail="Examination workflow" />
+      <TruthContext truthClass="REVIEWED_EVIDENCE" />
+    </div>
+    <strong>Customer action needed</strong>
+    <p>Current reviewed evidence requires bounded internal workflow attention.</p>
+  </Card>
+);
+
 const evidence = () => (
-  <>
-    <Alert tone="info" title="Read-only evidence context">
-      Reviewed Evidence and Provider Return are not Official Truth; Lifecycle Projection is not
-      Official Status.
-    </Alert>
-    <Card>
-      <strong>1 current Document Package · 0 historical packages</strong>
-      <p>Lifecycle evidence remains non-official and source-current.</p>
-      <p>Story-only presentation seam. Production uses the live FormalMatterEvidencePanel.</p>
-    </Card>
-  </>
+  <Card>
+    <div className="markreg-truth-row">
+      <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Current Matter source" />
+    </div>
+    <strong>1 current Document Package</strong>
+    <p>Story-only presentation seam. Production uses the live FormalMatterEvidencePanel.</p>
+  </Card>
 );
 
 const intelligence = () => (
-  <>
-    <Alert tone="info" title="Descriptive analytical evidence">
-      Historical evidence only — not prediction, legal conclusion, office status, or Official Truth.
-    </Alert>
-    <Card>
-      <strong>180 days · P50_TO_P75</strong>
-      <p>Current Human Review: CONFIRMED</p>
-      <p>Story-only presentation seam. Production uses the live MatterIntelligencePanel.</p>
-    </Card>
-  </>
+  <Card>
+    <div className="markreg-truth-row">
+      <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Descriptive analytical context" />
+    </div>
+    <strong>180 days · P50_TO_P75</strong>
+    <p>Current Human Review: CONFIRMED</p>
+    <p>Story-only presentation seam. Production uses the live MatterIntelligencePanel.</p>
+  </Card>
+);
+
+const unavailableEvidence = () => (
+  <Alert tone="warning" title="Formal Matter evidence unavailable">
+    The supporting evidence projection could not be loaded. Current Matter and action truth remain
+    visible above.
+  </Alert>
 );
 
 const meta = {
@@ -98,6 +114,7 @@ export const CurrentMatter: Story = {
     expectedVersion: '5',
     actualVersion: '5',
     renderLifecycle: lifecycle,
+    renderExamination: examination,
     renderEvidence: evidence,
     renderIntelligence: intelligence
   }
@@ -110,7 +127,20 @@ export const StaleDirectLink: Story = {
     actualVersion: '5',
     versionMismatch: true,
     renderLifecycle: lifecycle,
+    renderExamination: examination,
     renderEvidence: evidence,
+    renderIntelligence: intelligence
+  }
+};
+
+export const SecondaryEvidenceUnavailable: Story = {
+  args: {
+    matter,
+    expectedVersion: '5',
+    actualVersion: '5',
+    renderLifecycle: lifecycle,
+    renderExamination: examination,
+    renderEvidence: unavailableEvidence,
     renderIntelligence: intelligence
   }
 };
