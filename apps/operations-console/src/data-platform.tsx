@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Alert, Card, DataList, PageHeader } from '@markorbit/ui';
+import { useState } from 'react';
+import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
 
 export const DATA_PLATFORM_UNAVAILABLE_TEXT =
   'Unavailable is not the same as healthy, empty, zero, or no active work. No fallback state is inferred.';
@@ -155,28 +155,20 @@ function stateCountLabel(counts: Readonly<Record<string, number>>): string {
 export function DataPlatformWorkspace() {
   const [summary, setSummary] = useState<DataOwnerSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    void loadDataOwnerSummary()
-      .then((value) => {
-        if (!active) return;
-        setSummary(value);
-        setError(null);
-      })
-      .catch((cause: unknown) => {
-        if (!active) return;
-        setSummary(null);
-        setError(cause instanceof Error ? cause.message : 'Data owner summary is unavailable.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    setSummary(null);
+    setError(null);
+    try {
+      setSummary(await loadDataOwnerSummary());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Data owner summary is unavailable.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section id="data-platform">
@@ -184,6 +176,28 @@ export function DataPlatformWorkspace() {
         title="Data"
         description="Bounded read-only Data Engine owner summary. Owner truth remains in Data Engine; this surface does not reconstruct specialist operational detail."
       />
+
+      <Card>
+        <h2>Current owner snapshot</h2>
+        <p>
+          Reads use the authenticated HttpOnly operator session through the bounded Gateway. No
+          Data Engine owner state is inferred until an operator explicitly loads the owner summary.
+        </p>
+        <Button disabled={loading} onClick={() => void load()}>
+          {loading
+            ? 'Loading owner summary…'
+            : summary
+              ? 'Reload owner summary'
+              : 'Load owner summary'}
+        </Button>
+      </Card>
+
+      {!loading && !summary && !error && (
+        <p>
+          No Data Engine owner summary loaded. Load owner summary to determine current owner state.{' '}
+          {DATA_PLATFORM_UNAVAILABLE_TEXT}
+        </p>
+      )}
 
       {loading && (
         <Alert tone="info" title="Loading Data Engine owner summary">
