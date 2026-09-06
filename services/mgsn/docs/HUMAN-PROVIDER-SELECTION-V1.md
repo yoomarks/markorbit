@@ -2,6 +2,8 @@
 
 ## 1. Status and scope
 
+> **Current-state overlay (2026-09-06):** This document preserves the original #382 Selection boundary freeze below. Explicit Human Provider Selection, durable exact-candidate lineage, replacement/revocation and current-authority validation now exist on current `main`; see [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md). Historical `V1 Boundary / Not Implemented` and dependency labels below describe the state when #382 was authored.
+
 **MGSN-P0-003 / #382, parent #358.**
 
 Audited against fetched `origin/main` at `eae62894b74ed5bd50ae589b906d77eb46afa771` in the dedicated `mgsn-c` worktree. The existing #382 branch draft is retained and reconciled here; no other Lane is changed.

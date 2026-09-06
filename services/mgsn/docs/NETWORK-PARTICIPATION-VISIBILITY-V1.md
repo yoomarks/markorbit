@@ -2,6 +2,8 @@
 
 ## 1. Status and scope
 
+> **Current-state overlay (2026-09-06):** This document preserves the original #359 boundary-freeze status below. Network Participation and versioned Visibility owner/runtime implementation now exists on current `main`; see [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md). Historical `V1 Boundary`, `Future / Shared Dependency`, and `Not Implemented` labels below describe this document's inception state, not current implementation status.
+
 **MGSN-P0-001 / [#359](https://github.com/yoomarks/markorbit/issues/359), parent [#358](https://github.com/yoomarks/markorbit/issues/358).** Architecture, privacy and contract-boundary freeze for review. Audited against fetched `origin/main` at `574d142f1965fcc31bf77f64b065ad5d22d76c79` on 2026-08-31, in the dedicated `mgsn-a` worktree/branch.
 
 The smallest new boundary is explicit participation authorization and a versioned, Private First visibility policy referencing an existing Core Workspace and MGSN Provider. It answers whether a node and selected fields may be exposed for a specified discovery purpose. It does not implement discovery or provider execution.
