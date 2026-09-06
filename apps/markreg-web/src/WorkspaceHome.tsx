@@ -13,6 +13,7 @@ import {
 } from '@markorbit/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ProductionIntakePlanning } from './ProductionIntakePlanning.js';
+import { WorkspaceActionCenter } from './WorkspaceActionCenter.js';
 import { MarkregApiError } from './api/errors.js';
 import { createFormalMatterListClient, type FormalMatterListClient } from './api/formal-matter.js';
 import {
@@ -21,6 +22,7 @@ import {
   type OrderListView,
   type OrderView
 } from './api/order.js';
+import type { WorkspaceActionClient } from './api/workspace-action.js';
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 const PAGE_SIZE = 10;
@@ -112,10 +114,12 @@ const defaultMatterClient = createFormalMatterListClient();
 export function MarkregWorkspaceHome({
   client = defaultOrderClient,
   matterClient = defaultMatterClient,
+  actionClient,
   renderPlanning = () => <ProductionIntakePlanning />
 }: {
   client?: OrderClient;
   matterClient?: FormalMatterListClient;
+  actionClient?: WorkspaceActionClient;
   renderPlanning?: () => ReactNode;
 }) {
   const [planning, setPlanning] = useState(false);
@@ -312,6 +316,11 @@ export function MarkregWorkspaceHome({
       <div className="markreg-workspace-primary-actions">
         <Button onClick={() => setPlanning(true)}>Plan a new filing</Button>
       </div>
+
+      <WorkspaceActionCenter
+        workspaceKey={workspaceId}
+        {...(actionClient ? { client: actionClient } : {})}
+      />
 
       <section className="markreg-workspace-list" aria-labelledby="workspace-orders-heading">
         <h2 id="workspace-orders-heading">Service Orders</h2>

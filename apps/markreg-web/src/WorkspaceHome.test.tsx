@@ -6,10 +6,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkregApiError } from './api/errors.js';
 import type { FormalMatterListClient } from './api/formal-matter.js';
 import type { OrderClient, OrderListView, OrderView } from './api/order.js';
+import type { WorkspaceActionClient } from './api/workspace-action.js';
 import { MarkregWorkspaceHome } from './WorkspaceHome.js';
 
 const workspaceOne = '018f0000-0000-7000-8000-000000000501';
 const workspaceTwo = '018f0000-0000-7000-8000-000000000502';
+
+const emptyActionCenter = {
+  workspaceId: workspaceOne,
+  generatedAt: '2026-09-06T00:00:00.000Z',
+  truncated: false,
+  needsAttention: [],
+  waitingOrInProgress: [],
+  recentlyChanged: []
+};
+
+const actionClient: WorkspaceActionClient = {
+  get: () => Promise.resolve(emptyActionCenter)
+};
 
 const order = {
   orderId: '018f0000-0000-7000-8000-000000000601',
@@ -107,6 +121,7 @@ describe('MarkReg durable Workspace Home', () => {
     const listMatters = vi.fn(() => Promise.resolve(matterPage([matter])));
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />
@@ -142,6 +157,7 @@ describe('MarkReg durable Workspace Home', () => {
     );
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />
@@ -182,6 +198,7 @@ describe('MarkReg durable Workspace Home', () => {
     );
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />
@@ -228,6 +245,7 @@ describe('MarkReg durable Workspace Home', () => {
     const listMatters = vi.fn(() => Promise.resolve(matterPage([matter])));
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />
@@ -255,6 +273,7 @@ describe('MarkReg durable Workspace Home', () => {
     const user = userEvent.setup();
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(() => Promise.resolve(orderPage([])))}
         matterClient={matterClient(() => Promise.resolve(matterPage([matter])))}
       />
@@ -271,6 +290,7 @@ describe('MarkReg durable Workspace Home', () => {
   it('does not convert a Formal Matter failure into empty truth or hide successful Orders', async () => {
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(() => Promise.resolve(orderPage([order])))}
         matterClient={matterClient(() =>
           Promise.reject(
@@ -295,6 +315,7 @@ describe('MarkReg durable Workspace Home', () => {
   it('does not convert an Order failure into empty truth or hide successful Formal Matters', async () => {
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(() =>
           Promise.reject(
             new MarkregApiError(
@@ -340,6 +361,7 @@ describe('MarkReg durable Workspace Home', () => {
     );
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />

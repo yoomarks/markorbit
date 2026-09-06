@@ -5,10 +5,24 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FormalMatterListClient } from './api/formal-matter.js';
 import type { OrderClient, OrderListView, OrderView } from './api/order.js';
+import type { WorkspaceActionClient } from './api/workspace-action.js';
 import { MarkregWorkspaceHome } from './WorkspaceHome.js';
 
 const workspaceOne = '018f0000-0000-7000-8000-000000000801';
 const workspaceTwo = '018f0000-0000-7000-8000-000000000802';
+
+const emptyActionCenter = {
+  workspaceId: workspaceOne,
+  generatedAt: '2026-09-06T00:00:00.000Z',
+  truncated: false,
+  needsAttention: [],
+  waitingOrInProgress: [],
+  recentlyChanged: []
+};
+
+const actionClient: WorkspaceActionClient = {
+  get: () => Promise.resolve(emptyActionCenter)
+};
 
 const order = {
   orderId: 'order_018f0000-0000-7000-8000-000000000811',
@@ -70,6 +84,7 @@ describe('MarkReg Workspace Home Service Order status filter', () => {
     const listMatters = vi.fn(() => Promise.resolve(emptyMatterPage()));
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />
@@ -116,6 +131,7 @@ describe('MarkReg Workspace Home Service Order status filter', () => {
     const listMatters = vi.fn(() => Promise.resolve(emptyMatterPage()));
     render(
       <MarkregWorkspaceHome
+        actionClient={actionClient}
         client={orderClient(listOrders)}
         matterClient={matterClient(listMatters)}
       />
