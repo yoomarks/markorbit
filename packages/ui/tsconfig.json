@@ -10,6 +10,7 @@
     "src/**/*.tsx",
     "tests/**/*.ts",
     "tests/**/*.tsx",
-    ".storybook/**/*.ts"
+    ".storybook/**/*.ts",
+    ".storybook-provider/**/*.ts"
   ]
 }
