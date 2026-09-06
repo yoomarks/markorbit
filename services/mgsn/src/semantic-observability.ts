@@ -1,4 +1,4 @@
-﻿export type MgsnSemanticTelemetryOperationV1 =
+export type MgsnSemanticTelemetryOperationV1 =
   | 'PROVIDER_DISCOVERY_EVALUATE'
   | 'PROVIDER_SELECTION_CREATE_OR_REPLACE'
   | 'PROVIDER_SELECTION_REVOKE'
@@ -6,7 +6,10 @@
   | 'CONTROLLED_HANDOFF_AUTHORIZE_OR_REPLACE'
   | 'CONTROLLED_HANDOFF_REVOKE'
   | 'CONTROLLED_HANDOFF_VALIDATE_CURRENT'
-  | 'GOVERNED_ALLOCATION_COMMIT';
+  | 'GOVERNED_ALLOCATION_COMMIT'
+  | 'PROVIDER_ALLOCATION_RESPOND'
+  | 'PROVIDER_RETURN_CREATE'
+  | 'PROVIDER_RETURN_HANDOFF';
 
 export type MgsnSemanticTelemetryOutcomeClassV1 =
   'SUCCESS' | 'EMPTY' | 'DENIED' | 'UNAVAILABLE' | 'CONFLICT' | 'ERROR';
@@ -22,6 +25,11 @@ export type MgsnSemanticTelemetryResultCodeV1 =
   | 'VALIDATION_DENIED'
   | 'AUTHORIZED'
   | 'ALLOCATED'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'RETURN_SUBMITTED'
+  | 'RETURN_CORRECTED'
+  | 'EVIDENCE_HANDOFF_COMPLETED'
   | 'IDEMPOTENCY_CONFLICT'
   | 'STALE_OR_VERSION_CONFLICT'
   | 'CURRENT_AUTHORITY_DENIED'
@@ -58,9 +66,12 @@ export const mgsnSemanticTelemetryNoAuthority = Object.freeze({
   officialTruthCreated: false
 }) satisfies Readonly<MgsnSemanticTelemetryAuthorityV1>;
 
+export type MgsnSemanticTelemetryEventTypeV1 =
+  'MGSN_GOVERNED_NETWORK_OPERATION' | 'MGSN_PROVIDER_WORKFLOW_OPERATION';
+
 export interface MgsnSemanticTelemetryEventV1 {
   schemaVersion: 1;
-  eventType: 'MGSN_GOVERNED_NETWORK_OPERATION';
+  eventType: MgsnSemanticTelemetryEventTypeV1;
   operation: MgsnSemanticTelemetryOperationV1;
   outcomeClass: MgsnSemanticTelemetryOutcomeClassV1;
   resultCode: MgsnSemanticTelemetryResultCodeV1;
@@ -88,6 +99,16 @@ export interface MgsnSemanticTelemetryEventInputV1 {
   recordedAt?: string;
 }
 
+function eventTypeForOperation(
+  operation: MgsnSemanticTelemetryOperationV1
+): MgsnSemanticTelemetryEventTypeV1 {
+  return operation === 'PROVIDER_ALLOCATION_RESPOND' ||
+    operation === 'PROVIDER_RETURN_CREATE' ||
+    operation === 'PROVIDER_RETURN_HANDOFF'
+    ? 'MGSN_PROVIDER_WORKFLOW_OPERATION'
+    : 'MGSN_GOVERNED_NETWORK_OPERATION';
+}
+
 export function createMgsnSemanticTelemetryEventV1(
   input: Readonly<MgsnSemanticTelemetryEventInputV1>
 ): MgsnSemanticTelemetryEventV1 {
@@ -100,7 +121,7 @@ export function createMgsnSemanticTelemetryEventV1(
     throw new Error('MGSN semantic telemetry candidate count must be a non-negative integer.');
   return {
     schemaVersion: 1,
-    eventType: 'MGSN_GOVERNED_NETWORK_OPERATION',
+    eventType: eventTypeForOperation(input.operation),
     operation: input.operation,
     outcomeClass: input.outcomeClass,
     resultCode: input.resultCode,
@@ -138,7 +159,10 @@ export function classifyMgsnSemanticFailure(
   if (
     code.includes('STALE') ||
     code.includes('VERSION_MISMATCH') ||
+    code.includes('VERSION_CONFLICT') ||
+    code.includes('FINGERPRINT_MISMATCH') ||
     code.includes('NOT_CURRENT') ||
+    code.includes('SUPERSEDED') ||
     code.includes('ALREADY_EXISTS')
   )
     return { outcomeClass: 'CONFLICT', resultCode: 'STALE_OR_VERSION_CONFLICT' };
@@ -182,6 +206,7 @@ export async function observeMgsnSemanticOperationV1<T>(
     throw error;
   }
 }
+
 export class JsonLineMgsnSemanticTelemetrySinkV1 implements MgsnSemanticTelemetrySinkV1 {
   constructor(
     private readonly writeLine: (line: string) => void = (line) => {
