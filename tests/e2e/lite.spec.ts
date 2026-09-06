@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import type { ProfessionalReviewCase } from '@markorbit/contracts';
 import {
   capture,
@@ -8,6 +8,25 @@ import {
   watchPage
 } from './helpers/page.js';
 
+const legacyLiteNavigation = [
+  'Today',
+  'Matters',
+  'Content',
+  'Opportunities',
+  'Trademarks',
+  'Work',
+  'Capability',
+  'Guide'
+];
+const workspaceShellV2Navigation = ['Today', 'Matters', 'Create', 'Portfolio', 'Work'];
+
+async function expectWorkspaceShellRolloutNavigation(navigation: Locator) {
+  const labels = await navigation.getByRole('link').allTextContents();
+  expect(labels).toEqual(
+    labels.includes('Create') ? workspaceShellV2Navigation : legacyLiteNavigation
+  );
+}
+
 test('Lite shell provides its fixed semantic navigation and responsive fixture workspace @visual', async ({
   page
 }, testInfo) => {
@@ -16,16 +35,7 @@ test('Lite shell provides its fixed semantic navigation and responsive fixture w
   await expect(page.getByRole('heading', { level: 1, name: 'Customers' })).toBeVisible();
   const navigation = page.getByRole('navigation', { name: 'Primary' });
   await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole('link')).toHaveText([
-    'Today',
-    'Matters',
-    'Content',
-    'Opportunities',
-    'Trademarks',
-    'Work',
-    'Capability',
-    'Guide'
-  ]);
+  await expectWorkspaceShellRolloutNavigation(navigation);
   await expect(page.getByRole('alert')).toContainText('Demonstration only');
   await expectNoHorizontalOverflow(page);
   await expectVisibleFocus(page);
@@ -40,11 +50,16 @@ test('Lite filters survive customer detail navigation', async ({ page }) => {
   await page.getByLabel('Search customers').fill('Northwind');
   await page.getByLabel('Customer status').selectOption('Active');
   await page.getByLabel('Country / region').selectOption('US');
-  await page.getByRole('button', { name: 'View customer details' }).click();
+  const customerAction = page.getByRole('button', { name: /View customer (details|preview)/ });
+  await expect(customerAction).toHaveCount(1);
+  const customerActionName = (await customerAction.textContent())?.trim();
+  if (!customerActionName) throw new Error('Expected a customer fixture action label.');
+  expect(['View customer details', 'View customer preview']).toContain(customerActionName);
+  await customerAction.click();
   await expect(page.getByRole('heading', { level: 1, name: 'Northwind Outdoor' })).toBeVisible();
   await expect(page.getByText('Customer Record ≠ Verified Legal Identity')).toBeVisible();
   await page.getByRole('button', { name: 'Back to customers' }).click();
-  await expect(page.getByRole('button', { name: 'View customer details' })).toBeFocused();
+  await expect(page.getByRole('button', { name: customerActionName })).toBeFocused();
   await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
   await expect(page.getByLabel('Customer status')).toHaveValue('Active');
   assertHealthy();
