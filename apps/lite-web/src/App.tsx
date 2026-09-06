@@ -230,7 +230,7 @@ export function LiteApp({
         <OpportunitySubnavigation
           surface={surface}
           workspaceId={activeWorkspaceId}
-          servicePackageId={servicePackageId}
+          {...(servicePackageId ? { servicePackageId } : {})}
         />
 
         {surface === 'today' ? (
