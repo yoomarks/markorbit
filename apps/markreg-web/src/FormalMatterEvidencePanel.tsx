@@ -1,5 +1,6 @@
 import { Alert, Button, Card, KeyValueList, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { TruthContext } from './TruthContext.js';
 import {
   createFormalMatterEvidenceClient,
   type FormalMatterEvidenceClient,
@@ -23,7 +24,13 @@ const displayTimestamp = (value: string) => {
 function PackageCard({ value }: { value: FormalMatterEvidenceDocumentPackage }) {
   return (
     <Card>
-      <h3>Document Package</h3>
+      <h3>Document package</h3>
+      <div className="markreg-truth-row">
+        <TruthContext
+          truthClass={value.matterSourceCurrent ? 'REVIEWED_EVIDENCE' : 'HISTORICAL'}
+          detail={value.matterSourceCurrent ? 'Current Matter source' : 'Older Matter source'}
+        />
+      </div>
       {!value.matterSourceCurrent && (
         <Alert tone="warning" title="Historical Matter source">
           This package is pinned to an older Formal Matter version or snapshot. It remains durable
@@ -32,26 +39,32 @@ function PackageCard({ value }: { value: FormalMatterEvidenceDocumentPackage }) 
       )}
       <KeyValueList
         items={[
-          { key: 'Document Package ID', value: value.documentPackageId },
           { key: 'Status', value: value.status },
-          { key: 'Package version', value: value.version },
           {
             key: 'Matter source',
-            value: `${value.matterSourceCurrent ? 'Current' : 'Historical'} · version ${value.sourceFormalMatterVersion}`
+            value: value.matterSourceCurrent ? 'Current' : 'Historical'
           },
-          { key: 'Matter snapshot SHA-256', value: value.sourceFormalMatterSha256 },
-          { key: 'Professional Review case', value: value.professionalReviewCaseId },
-          { key: 'Review source version', value: value.sourceReviewVersion },
-          { key: 'Completed decision', value: value.sourceCompletedDecisionId },
-          { key: 'Completed decision SHA-256', value: value.sourceCompletedDecisionSha256 },
-          ...(value.canonicalEvidenceSha256
-            ? [{ key: 'Ready evidence SHA-256', value: value.canonicalEvidenceSha256 }]
-            : []),
+          { key: 'Reviewed documents', value: value.documentEvidenceTotal },
           { key: 'Updated', value: displayTimestamp(value.updatedAt) }
         ]}
       />
-      <details>
-        <summary>Bounded document evidence</summary>
+      <details className="markreg-cockpit-secondary-details">
+        <summary>Documents and exact provenance</summary>
+        <KeyValueList
+          items={[
+            { key: 'Document Package ID', value: value.documentPackageId },
+            { key: 'Package version', value: value.version },
+            { key: 'Matter source version', value: value.sourceFormalMatterVersion },
+            { key: 'Matter snapshot SHA-256', value: value.sourceFormalMatterSha256 },
+            { key: 'Professional Review case', value: value.professionalReviewCaseId },
+            { key: 'Review source version', value: value.sourceReviewVersion },
+            { key: 'Completed decision', value: value.sourceCompletedDecisionId },
+            { key: 'Completed decision SHA-256', value: value.sourceCompletedDecisionSha256 },
+            ...(value.canonicalEvidenceSha256
+              ? [{ key: 'Ready evidence SHA-256', value: value.canonicalEvidenceSha256 }]
+              : [])
+          ]}
+        />
         {value.documentEvidence.length === 0 ? (
           <p>No document evidence items are present in this package.</p>
         ) : (
@@ -85,7 +98,7 @@ function LifecycleEvent({ value }: { value: FormalMatterEvidenceLifecycleEvent }
       <br />
       {value.customerSafeSummary}
       <br />
-      Projected {displayTimestamp(value.projectedAt)} · official status verified: No
+      Projected {displayTimestamp(value.projectedAt)}
     </li>
   );
 }
@@ -128,25 +141,25 @@ export function FormalMatterEvidencePanel({
 
   return (
     <>
-      <Alert tone="info" title="Read-only evidence context">
-        Evidence Projection ≠ Official Truth. Reviewed Evidence and Provider Return are not Official
-        Truth; Lifecycle Projection is not Official Status; Matter Intelligence is descriptive
-        analytical evidence, not a legal or professional conclusion. This read does not authorize
-        filing, payment, provider contact, or external action.
-      </Alert>
+      <div className="markreg-truth-row">
+        <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Read-only supporting context" />
+      </div>
+      <p>Evidence Projection ≠ Official Truth. Exact lineage remains available below on demand.</p>
 
-      <Card>
-        <h3>Evidence source Matter</h3>
-        <KeyValueList
-          items={[
-            { key: 'Formal Matter ID', value: value.formalMatter.formalMatterId },
-            { key: 'Current version', value: value.formalMatter.version },
-            { key: 'Current snapshot SHA-256', value: value.formalMatter.snapshotSha256 },
-            { key: 'Governed status', value: value.formalMatter.status },
-            { key: 'Updated', value: displayTimestamp(value.formalMatter.updatedAt) }
-          ]}
-        />
-      </Card>
+      <details className="markreg-cockpit-secondary-details">
+        <summary>Evidence source record</summary>
+        <Card>
+          <KeyValueList
+            items={[
+              { key: 'Formal Matter ID', value: value.formalMatter.formalMatterId },
+              { key: 'Current version', value: value.formalMatter.version },
+              { key: 'Current snapshot SHA-256', value: value.formalMatter.snapshotSha256 },
+              { key: 'Governed status', value: value.formalMatter.status },
+              { key: 'Updated', value: displayTimestamp(value.formalMatter.updatedAt) }
+            ]}
+          />
+        </Card>
+      </details>
 
       <h3>Document evidence</h3>
       {value.documentPackages.total === 0 ? (
@@ -182,6 +195,12 @@ export function FormalMatterEvidencePanel({
         <Card>
           {lifecycle ? (
             <>
+              <div className="markreg-truth-row">
+                <TruthContext
+                  truthClass={lifecycle.matterSourceCurrent ? 'GOVERNED_INTERNAL_WORKFLOW' : 'HISTORICAL'}
+                  detail={lifecycle.matterSourceCurrent ? 'Current lifecycle evidence' : 'Older Matter source'}
+                />
+              </div>
               {!lifecycle.matterSourceCurrent && (
                 <Alert tone="warning" title="Historical lifecycle source">
                   The current stored Lifecycle Projection is pinned to an older Matter version. It
@@ -197,7 +216,6 @@ export function FormalMatterEvidencePanel({
                     key: 'Matter source',
                     value: lifecycle.matterSourceCurrent ? 'Current' : 'Historical'
                   },
-                  { key: 'Official status verified', value: 'No' },
                   { key: 'Updated', value: displayTimestamp(lifecycle.updatedAt) }
                 ]}
               />
@@ -206,8 +224,11 @@ export function FormalMatterEvidencePanel({
             <p>No current Lifecycle Projection is present.</p>
           )}
           {value.lifecycle.events.length > 0 && (
-            <details>
+            <details className="markreg-cockpit-secondary-details">
               <summary>Bounded lifecycle timeline</summary>
+              <div className="markreg-truth-row">
+                <TruthContext truthClass="HISTORICAL" detail="Prior lifecycle events" />
+              </div>
               <ol>
                 {value.lifecycle.events.map((event) => (
                   <LifecycleEvent key={event.lifecycleEventId} value={event} />
@@ -230,19 +251,13 @@ export function FormalMatterEvidencePanel({
           items={[
             { key: 'Bounded observations returned', value: value.intelligence.items.length },
             { key: 'Total observations', value: value.intelligence.total },
-            { key: 'Historical-source observations in this page', value: staleIntelligence },
-            { key: 'Prediction', value: 'No' },
-            { key: 'Deadline / SLA', value: 'No' },
-            { key: 'Official status', value: 'No' }
+            { key: 'Historical-source observations in this page', value: staleIntelligence }
           ]}
         />
-        <p>
-          Observation-level provenance and Human Review remain available in the Matter Intelligence
-          section. Evidence context does not create a second analytical state machine.
-        </p>
+        <p>Descriptive analytical context only; this projection creates no deadline or Official Status.</p>
       </Card>
 
-      <details>
+      <details className="markreg-cockpit-secondary-details">
         <summary>Projection authority consequences</summary>
         <Card>
           <KeyValueList

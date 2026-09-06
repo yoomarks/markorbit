@@ -62,7 +62,7 @@ const matter = {
 afterEach(cleanup);
 
 describe('FormalMatterWorkspace', () => {
-  it('prioritizes human-readable Matter identity and current work before technical provenance', () => {
+  it('prioritizes identity, current work and truth context before technical provenance', () => {
     const renderLifecycle = vi.fn(() => <div>Recommended action truth</div>);
     const renderExamination = vi.fn(() => <div>Examination Stage truth</div>);
     const renderEvidence = vi.fn(() => <div>Evidence Projection truth</div>);
@@ -80,14 +80,20 @@ describe('FormalMatterWorkspace', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Current matter' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Examination' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Documents & evidence' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Intelligence' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Record' })).toBeTruthy();
     expect(screen.getByText('ORBIT')).toBeTruthy();
     expect(screen.getByText('Orbit Labs Inc.')).toBeTruthy();
     expect(screen.getByText('US')).toBeTruthy();
     expect(screen.getByText('9, 42')).toBeTruthy();
     expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
+    expect(screen.getByText('Governed internal workflow')).toBeTruthy();
+    expect(screen.getByText('Customer supplied')).toBeTruthy();
+    expect(screen.queryByText('Official verified')).toBeNull();
     expect(screen.getByText('Recommended action truth')).toBeTruthy();
     expect(screen.getByText('Examination Stage truth')).toBeTruthy();
     expect(screen.getByText('Evidence Projection truth')).toBeTruthy();
@@ -95,16 +101,16 @@ describe('FormalMatterWorkspace', () => {
 
     const textContent = container.textContent ?? '';
     expect(textContent.indexOf('Recommended action truth')).toBeLessThan(
-      textContent.indexOf('Record details and source lineage')
+      textContent.indexOf('Exact record and source lineage')
     );
     expect(textContent.indexOf('Examination Stage truth')).toBeLessThan(
-      textContent.indexOf('Record details and source lineage')
+      textContent.indexOf('Exact record and source lineage')
     );
     expect(textContent.indexOf('Evidence Projection truth')).toBeLessThan(
-      textContent.indexOf('Record details and source lineage')
+      textContent.indexOf('Exact record and source lineage')
     );
 
-    const recordDetails = screen.getByText('Record details and source lineage').closest('details');
+    const recordDetails = screen.getByText('Exact record and source lineage').closest('details');
     expect(recordDetails?.open).toBe(false);
     expect(screen.getByText(/confirmation_workspace-one · version 2/)).toBeTruthy();
     expect(screen.getByText(/matter-draft_workspace-one · version 3/)).toBeTruthy();
@@ -133,7 +139,7 @@ describe('FormalMatterWorkspace', () => {
     });
   });
 
-  it('keeps read-only Examination truth visible while version mismatch disables lifecycle actions', () => {
+  it('keeps read-only secondary truth visible while version mismatch disables lifecycle actions', () => {
     const renderLifecycle = vi.fn(({ disabled }: { disabled: boolean }) => (
       <div>{disabled ? 'Lifecycle disabled' : 'Lifecycle enabled'}</div>
     ));
@@ -162,15 +168,6 @@ describe('FormalMatterWorkspace', () => {
     expect(renderLifecycle).toHaveBeenCalledWith({
       formalMatterId: 'formal-matter_workspace-one',
       disabled: true
-    });
-    expect(renderExamination).toHaveBeenCalledWith({
-      formalMatterId: 'formal-matter_workspace-one'
-    });
-    expect(renderEvidence).toHaveBeenCalledWith({
-      formalMatterId: 'formal-matter_workspace-one'
-    });
-    expect(renderIntelligence).toHaveBeenCalledWith({
-      formalMatterId: 'formal-matter_workspace-one'
     });
   });
 });

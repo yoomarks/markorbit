@@ -5,6 +5,7 @@ import { ExaminationPanel } from './ExaminationPanel.js';
 import { FormalMatterEvidencePanel } from './FormalMatterEvidencePanel.js';
 import { LifecyclePanel } from './LifecyclePanel.js';
 import { MatterIntelligencePanel } from './MatterIntelligencePanel.js';
+import { TruthContext } from './TruthContext.js';
 import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 export type FormalMatterLifecycleRenderer = (input: {
@@ -108,7 +109,7 @@ export function FormalMatterWorkspace({
     <main className="markreg-workspace-home" aria-label="Formal Matter workspace">
       <PageHeader
         title="Trademark Matter"
-        description="See the current governed Matter, what needs attention, and the evidence behind it without treating product state as an external filing or office status."
+        description="Current work state first, supporting context second, exact provenance on demand."
       />
 
       {versionMismatch && (
@@ -123,28 +124,25 @@ export function FormalMatterWorkspace({
           This Matter state cannot progress from this view.
         </Alert>
       )}
-      <Alert tone="info" title="Governed product truth">
-        Matter ≠ Filing. Lifecycle Projection ≠ Official Status. Examination Stage ≠ Official
-        Status. Recommended Action ≠ authorization. Matter Intelligence ≠ legal/professional
-        conclusion. Evidence Projection ≠ Official Truth. Viewing or acknowledging this workspace
-        does not create a payment, invoice, professional appointment, external submission, or
-        official application.
+      <Alert tone="info" title="Matter authority boundary">
+        Matter ≠ Filing. MarkReg workflow, reviewed evidence, recommendations and analysis remain
+        separate from trademark-office status, official deadlines and protected external actions.
       </Alert>
 
-      <section
-        className="markreg-workspace-list markreg-matter-priority"
-        aria-labelledby="matter-current-heading"
-      >
-        <h2 id="matter-current-heading">Current matter</h2>
+      <section className="markreg-cockpit-section markreg-matter-priority" aria-labelledby="matter-current-heading">
+        <h2 id="matter-current-heading">Overview</h2>
+        <div className="markreg-truth-row">
+          <TruthContext
+            truthClass="GOVERNED_INTERNAL_WORKFLOW"
+            detail="Current MarkReg Matter state"
+          />
+        </div>
         <Card>
           <KeyValueList items={identityItems} />
         </Card>
       </section>
 
-      <section
-        className="markreg-workspace-list markreg-matter-priority"
-        aria-labelledby="matter-lifecycle-heading"
-      >
+      <section className="markreg-cockpit-section markreg-matter-priority" aria-labelledby="matter-lifecycle-heading">
         <h2 id="matter-lifecycle-heading">Needs attention</h2>
         {renderLifecycle({
           formalMatterId: String(matter.formalMatterId),
@@ -152,46 +150,45 @@ export function FormalMatterWorkspace({
         })}
       </section>
 
-      <section
-        className="markreg-workspace-list markreg-matter-priority"
-        aria-labelledby="matter-examination-heading"
-      >
+      <section className="markreg-cockpit-section markreg-matter-priority" aria-labelledby="matter-examination-heading">
         <h2 id="matter-examination-heading">Examination</h2>
         {renderExamination({ formalMatterId: String(matter.formalMatterId) })}
       </section>
 
-      <section className="markreg-workspace-list" aria-labelledby="matter-scope-heading">
-        <h2 id="matter-scope-heading">Application scope</h2>
+      <section className="markreg-cockpit-section" aria-labelledby="matter-scope-heading">
+        <h2 id="matter-scope-heading">Application details</h2>
+        <div className="markreg-truth-row">
+          <TruthContext
+            truthClass="CUSTOMER_SUPPLIED"
+            detail="Captured in the Matter source snapshot"
+          />
+        </div>
         <Card>
           {scopeItems.length > 0 ? (
             <KeyValueList items={scopeItems} />
           ) : (
             <p>No additional preparation summary is present in this Matter snapshot.</p>
           )}
-          <p>
-            These values are the captured source snapshot for this Matter. They are not
-            independently revalidated office or legal truth by this view.
-          </p>
         </Card>
       </section>
 
-      <section aria-labelledby="matter-evidence-heading">
-        <h2 id="matter-evidence-heading">Evidence</h2>
+      <section className="markreg-cockpit-section" aria-labelledby="matter-evidence-heading">
+        <h2 id="matter-evidence-heading">Documents &amp; evidence</h2>
         {renderEvidence({ formalMatterId: String(matter.formalMatterId) })}
       </section>
 
-      <section aria-labelledby="matter-intelligence-heading">
-        <h2 id="matter-intelligence-heading">Matter intelligence</h2>
+      <section className="markreg-cockpit-section" aria-labelledby="matter-intelligence-heading">
+        <h2 id="matter-intelligence-heading">Intelligence</h2>
         {renderIntelligence({ formalMatterId: String(matter.formalMatterId) })}
       </section>
 
       <section
-        className="markreg-workspace-list markreg-matter-secondary"
+        className="markreg-cockpit-section markreg-matter-secondary"
         aria-labelledby="matter-record-heading"
       >
-        <h2 id="matter-record-heading">Record and provenance</h2>
-        <details className="markreg-matter-record-details">
-          <summary>Record details and source lineage</summary>
+        <h2 id="matter-record-heading">Record</h2>
+        <details className="markreg-matter-record-details markreg-cockpit-provenance">
+          <summary>Exact record and source lineage</summary>
           <div className="markreg-workspace-list">
             <Card>
               <h3>Exact Matter record</h3>

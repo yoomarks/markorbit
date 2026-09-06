@@ -1,5 +1,6 @@
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { TruthContext } from './TruthContext.js';
 import {
   createCustomerLifecycleClient,
   type CustomerLifecycleClient,
@@ -73,15 +74,15 @@ export function LifecyclePanel({
   const { lifecycle, timeline, recommendedAction, noAction } = state.value;
   const content = (
     <>
-      {!embedded && (
-        <Alert tone="info" title="Internal governed status">
-          This lifecycle view helps track the Matter. It is not trademark-office status or proof of
-          filing.
-        </Alert>
-      )}
+      <div className="markreg-truth-row">
+        <TruthContext
+          truthClass="GOVERNED_INTERNAL_WORKFLOW"
+          detail="Current MarkReg lifecycle and action guidance"
+        />
+      </div>
       <Card>
         <h3>Current recommended action</h3>
-        <div aria-live="polite">
+        <div aria-live="polite" className="markreg-cockpit-summary">
           {recommendedAction ? (
             <>
               <strong>{recommendedAction.title}</strong>
@@ -105,8 +106,8 @@ export function LifecyclePanel({
                 </p>
               )}
               <small>
-                Recommended Action is governed product guidance, not authorization. Acknowledging or
-                dismissing does not execute, file or pay for anything.
+                Recommended Action is guidance, not authorization. Acknowledge or dismiss records
+                only this product action state.
               </small>
             </>
           ) : noAction ? (
@@ -119,20 +120,20 @@ export function LifecyclePanel({
       <Card>
         <h3>Current lifecycle</h3>
         {lifecycle ? (
-          <>
+          <div className="markreg-cockpit-summary">
             <strong>{lifecycle.customerSafeLabel}</strong>
             <p>{lifecycle.customerSafeSummary}</p>
-            <small>
-              Updated {new Date(lifecycle.updatedAt).toLocaleString()} · internal governed state,
-              not official-office status
-            </small>
-          </>
+            <small>Updated {new Date(lifecycle.updatedAt).toLocaleString()}</small>
+          </div>
         ) : (
           <p>No governed lifecycle view has been recorded for this Matter yet.</p>
         )}
       </Card>
-      <details className="markreg-lifecycle-history">
+      <details className="markreg-lifecycle-history markreg-cockpit-secondary-details">
         <summary>Lifecycle history ({timeline.length})</summary>
+        <div className="markreg-truth-row">
+          <TruthContext truthClass="HISTORICAL" detail="Prior governed workflow context" />
+        </div>
         <Card>
           {timeline.length === 0 ? (
             <p>No lifecycle events yet.</p>
@@ -156,6 +157,10 @@ export function LifecyclePanel({
   return (
     <section aria-labelledby="matter-lifecycle-heading">
       <h2 id="matter-lifecycle-heading">Matter lifecycle</h2>
+      <Alert tone="info" title="Lifecycle authority boundary">
+        Governed lifecycle state is MarkReg product workflow, not trademark-office status or proof
+        of filing.
+      </Alert>
       {content}
     </section>
   );

@@ -30,7 +30,7 @@ const client = (value: CustomerLifecycleSurface = lifecycle): CustomerLifecycleC
 afterEach(cleanup);
 
 describe('LifecyclePanel landmark identity', () => {
-  it('uses the enclosing Formal Matter lifecycle landmark when embedded and avoids duplicate warning copy', async () => {
+  it('uses the enclosing Formal Matter lifecycle landmark and a semantic internal-workflow class when embedded', async () => {
     render(
       <section aria-labelledby="matter-lifecycle-heading">
         <h2 id="matter-lifecycle-heading">Needs attention</h2>
@@ -42,11 +42,11 @@ describe('LifecyclePanel landmark identity', () => {
     expect(document.querySelectorAll('#matter-lifecycle-heading')).toHaveLength(1);
     expect(screen.getByRole('region', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Matter lifecycle' })).toBeNull();
+    expect(screen.getByText('Governed internal workflow')).toBeTruthy();
     expect(screen.queryByText(/not trademark-office status or proof of filing/i)).toBeNull();
-    expect(screen.getByText(/not official-office status/i)).toBeTruthy();
   });
 
-  it('keeps its own labelled lifecycle landmark and non-official warning when rendered standalone', async () => {
+  it('keeps its own labelled lifecycle landmark and concise authority boundary standalone', async () => {
     render(<LifecyclePanel formalMatterId={formalMatterId} client={client()} />);
 
     expect(await screen.findByText('Application pending review')).toBeTruthy();
@@ -56,7 +56,7 @@ describe('LifecyclePanel landmark identity', () => {
     expect(screen.getByText(/not trademark-office status or proof of filing/i)).toBeTruthy();
   });
 
-  it('renders the exact current recommended action before lifecycle history', async () => {
+  it('renders the exact current recommended action before historical lifecycle context', async () => {
     const withAction: CustomerLifecycleSurface = {
       ...lifecycle,
       timeline: [
@@ -92,9 +92,8 @@ describe('LifecyclePanel landmark identity', () => {
     expect(await screen.findByText('Review the latest evidence')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Acknowledge' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy();
-    expect(
-      screen.getByText(/Recommended Action is governed product guidance, not authorization/i)
-    ).toBeTruthy();
+    expect(screen.getByText(/Recommended Action is guidance, not authorization/i)).toBeTruthy();
+    expect(screen.getByText('Historical')).toBeTruthy();
     const textContent = container.textContent ?? '';
     expect(textContent.indexOf('Review the latest evidence')).toBeLessThan(
       textContent.indexOf('Lifecycle history (1)')
