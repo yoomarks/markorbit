@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { selectExecutableMethodPackageV1 } from '../src/brain-method.js';
+import { executableMethodPackageFingerprintV1 } from '../src/brain-method-activation.js';
 import {
   USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE,
   USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
@@ -141,8 +142,62 @@ describe('US trademark mark-representation strategy Method', () => {
         reference: { ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE, currentness: 'CURRENT' }
       })
     ).toEqual({ status: 'REJECTED', reason: 'LINEAGE_MISMATCH' });
+
+    const wrongChunk = USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE.map((source, index) =>
+      index === 0 ? { ...structuredClone(source), chunkId: 'rch_wrong' } : structuredClone(source)
+    );
+    expect(
+      compileUsTrademarkMarkRepresentationMethodPackageV1({
+        knowledgeSources: wrongChunk,
+        reference: { ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE, currentness: 'CURRENT' }
+      })
+    ).toEqual({ status: 'REJECTED', reason: 'LINEAGE_MISMATCH' });
+
+    for (const reference of [
+      {
+        ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
+        documentId: 'art_wrong',
+        currentness: 'CURRENT' as const
+      },
+      {
+        ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
+        artifactVersion: 2,
+        currentness: 'CURRENT' as const
+      },
+      {
+        ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
+        documentContentSha256: 'f'.repeat(64),
+        currentness: 'CURRENT' as const
+      }
+    ]) {
+      expect(
+        compileUsTrademarkMarkRepresentationMethodPackageV1({
+          knowledgeSources: USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE,
+          reference
+        })
+      ).toEqual({ status: 'REJECTED', reason: 'REFERENCE_MISMATCH' });
+    }
+
+    expect(
+      compileUsTrademarkMarkRepresentationMethodPackageV1({
+        knowledgeSources: USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE,
+        reference: { ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE } as never
+      })
+    ).toEqual({ status: 'REJECTED', reason: 'REFERENCE_NOT_CURRENT' });
   });
-  it('replays deterministically for identical intake', () => {
+  it('replays deterministically for identical source and intake', () => {
+    const firstCompilation = compileCurrent();
+    const secondCompilation = compileCurrent();
+    expect(firstCompilation.status).toBe('READY');
+    expect(secondCompilation.status).toBe('READY');
+    if (firstCompilation.status !== 'READY' || secondCompilation.status !== 'READY') {
+      throw new Error('Expected the exact current source to compile.');
+    }
+    expect(secondCompilation.method).toEqual(firstCompilation.method);
+    expect(executableMethodPackageFingerprintV1(secondCompilation.package)).toBe(
+      executableMethodPackageFingerprintV1(firstCompilation.package)
+    );
+
     const first = executeUsTrademarkMarkRepresentationStrategyV1(intake('COMPOSITE'));
     const second = executeUsTrademarkMarkRepresentationStrategyV1(intake('COMPOSITE'));
     expect(second).toEqual(first);
