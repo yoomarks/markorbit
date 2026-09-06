@@ -205,7 +205,7 @@ export function DataPlatformWorkspace() {
             MO platform health score.
           </Alert>
 
-          <div className="mo-grid">
+          <div className="mo-grid" style={{ overflowWrap: 'anywhere' }}>
             <Card>
               <h2>Owner and currentness</h2>
               <DataList
