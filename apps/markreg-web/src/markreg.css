@@ -324,3 +324,186 @@ fieldset:has(.authorization-acknowledgement) {
     margin-top: var(--mo-space-xs);
   }
 }
+
+.markreg-matter-cockpit {
+  gap: var(--mo-space-xl);
+}
+
+.markreg-matter-authority,
+.markreg-cockpit-section,
+.markreg-cockpit-subsection {
+  display: grid;
+  gap: var(--mo-space-md);
+  min-width: 0;
+}
+
+.markreg-matter-authority {
+  padding-block-end: var(--mo-space-md);
+  border-block-end: 1px solid var(--mo-border);
+}
+
+.markreg-cockpit-section {
+  padding-block: var(--mo-space-sm);
+}
+
+.markreg-cockpit-section + .markreg-cockpit-section {
+  border-block-start: 1px solid var(--mo-border);
+  padding-block-start: var(--mo-space-xl);
+}
+
+.markreg-cockpit-section-header {
+  display: grid;
+  gap: var(--mo-space-xs);
+}
+
+.markreg-cockpit-section-header h2,
+.markreg-cockpit-section-header p,
+.markreg-cockpit-card-heading h3,
+.markreg-cockpit-card-heading h4 {
+  margin-block: 0;
+}
+
+.markreg-cockpit-section-header p {
+  color: var(--mo-muted);
+  max-width: 52rem;
+}
+
+.markreg-cockpit-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-md);
+}
+
+.markreg-cockpit-card-heading,
+.markreg-cockpit-source-row,
+.markreg-truth-context-line {
+  display: flex;
+  align-items: center;
+  gap: var(--mo-space-sm);
+  flex-wrap: wrap;
+}
+
+.markreg-cockpit-card-heading {
+  justify-content: space-between;
+  margin-block-end: var(--mo-space-md);
+}
+
+.markreg-cockpit-source-row {
+  margin-block: var(--mo-space-md);
+  color: var(--mo-muted);
+  font-size: 0.9rem;
+}
+
+.markreg-truth-context {
+  display: grid;
+  gap: var(--mo-space-sm);
+  min-width: 0;
+}
+
+.markreg-truth-context-line {
+  color: var(--mo-secondary);
+}
+
+.markreg-truth-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--mo-surface);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.markreg-truth-badge-customer-supplied {
+  color: var(--mo-secondary);
+}
+
+.markreg-truth-badge-governed-internal {
+  color: var(--mo-brand);
+}
+
+.markreg-truth-badge-reviewed-evidence {
+  color: var(--mo-info);
+}
+
+.markreg-truth-badge-official-verified {
+  color: var(--mo-success);
+}
+
+.markreg-truth-badge-unavailable-stale {
+  color: var(--mo-warning);
+}
+
+.markreg-truth-badge-historical {
+  color: var(--mo-muted);
+}
+
+.markreg-truth-context-details,
+.markreg-cockpit-inline-details,
+.markreg-cockpit-secondary-details {
+  min-width: 0;
+}
+
+.markreg-truth-context-details > summary,
+.markreg-cockpit-inline-details > summary,
+.markreg-cockpit-secondary-details > summary,
+.markreg-matter-record-details > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.markreg-cockpit-secondary-details {
+  padding-block: var(--mo-space-sm);
+}
+
+.markreg-cockpit-subsection + .markreg-cockpit-subsection {
+  margin-block-start: var(--mo-space-lg);
+}
+
+.markreg-cockpit-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mo-space-md);
+  flex-wrap: wrap;
+}
+
+.markreg-truth-grammar-grid {
+  display: flex;
+  gap: var(--mo-space-md);
+  flex-wrap: wrap;
+}
+
+.markreg-truth-grammar-item {
+  padding: var(--mo-space-lg);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius);
+  background: var(--mo-surface);
+}
+
+@media (max-width: 640px) {
+  .markreg-matter-cockpit {
+    gap: var(--mo-space-lg);
+  }
+
+  .markreg-cockpit-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .markreg-cockpit-section + .markreg-cockpit-section {
+    padding-block-start: var(--mo-space-lg);
+  }
+
+  .markreg-cockpit-card-heading {
+    align-items: flex-start;
+  }
+
+  .markreg-cockpit-footer-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

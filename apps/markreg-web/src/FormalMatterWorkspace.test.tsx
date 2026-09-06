@@ -1,5 +1,6 @@
 import type { FormalMatter } from '@markorbit/contracts';
 import { cleanup, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FormalMatterWorkspace } from './FormalMatterWorkspace.js';
 
@@ -62,7 +63,7 @@ const matter = {
 afterEach(cleanup);
 
 describe('FormalMatterWorkspace', () => {
-  it('prioritizes identity, current work and truth context before technical provenance', () => {
+  it('prioritizes human-readable Matter identity and current work before technical provenance', () => {
     const renderLifecycle = vi.fn(() => <div>Recommended action truth</div>);
     const renderExamination = vi.fn(() => <div>Examination Stage truth</div>);
     const renderEvidence = vi.fn(() => <div>Evidence Projection truth</div>);
@@ -79,21 +80,17 @@ describe('FormalMatterWorkspace', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Overview' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'ORBIT' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Current matter' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Examination' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Documents & evidence' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Intelligence' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Record' })).toBeTruthy();
-    expect(screen.getByText('ORBIT')).toBeTruthy();
+    expect(screen.getAllByText('ORBIT').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Truth class: Customer supplied')).toBeTruthy();
+    expect(screen.queryByLabelText('Truth class: Official verified')).toBeNull();
     expect(screen.getByText('Orbit Labs Inc.')).toBeTruthy();
     expect(screen.getByText('US')).toBeTruthy();
     expect(screen.getByText('9, 42')).toBeTruthy();
     expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
-    expect(screen.getByText('Governed internal workflow')).toBeTruthy();
-    expect(screen.getByText('Customer supplied')).toBeTruthy();
-    expect(screen.queryByText('Official verified')).toBeNull();
     expect(screen.getByText('Recommended action truth')).toBeTruthy();
     expect(screen.getByText('Examination Stage truth')).toBeTruthy();
     expect(screen.getByText('Evidence Projection truth')).toBeTruthy();
@@ -101,16 +98,26 @@ describe('FormalMatterWorkspace', () => {
 
     const textContent = container.textContent ?? '';
     expect(textContent.indexOf('Recommended action truth')).toBeLessThan(
-      textContent.indexOf('Exact record and source lineage')
+      textContent.indexOf('Record details and source lineage')
     );
     expect(textContent.indexOf('Examination Stage truth')).toBeLessThan(
-      textContent.indexOf('Exact record and source lineage')
+      textContent.indexOf('Record details and source lineage')
     );
     expect(textContent.indexOf('Evidence Projection truth')).toBeLessThan(
-      textContent.indexOf('Exact record and source lineage')
+      textContent.indexOf('Record details and source lineage')
     );
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
+    ).toEqual([
+      'Overview',
+      'Needs attention',
+      'Examination',
+      'Documents & Evidence',
+      'Intelligence',
+      'Record'
+    ]);
 
-    const recordDetails = screen.getByText('Exact record and source lineage').closest('details');
+    const recordDetails = screen.getByText('Record details and source lineage').closest('details');
     expect(recordDetails?.open).toBe(false);
     expect(screen.getByText(/confirmation_workspace-one · version 2/)).toBeTruthy();
     expect(screen.getByText(/matter-draft_workspace-one · version 3/)).toBeTruthy();
@@ -139,7 +146,7 @@ describe('FormalMatterWorkspace', () => {
     });
   });
 
-  it('keeps read-only secondary truth visible while version mismatch disables lifecycle actions', () => {
+  it('keeps read-only Examination truth visible while version mismatch disables lifecycle actions', () => {
     const renderLifecycle = vi.fn(({ disabled }: { disabled: boolean }) => (
       <div>{disabled ? 'Lifecycle disabled' : 'Lifecycle enabled'}</div>
     ));
@@ -169,5 +176,78 @@ describe('FormalMatterWorkspace', () => {
       formalMatterId: 'formal-matter_workspace-one',
       disabled: true
     });
+    expect(renderExamination).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
+    });
+    expect(renderEvidence).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
+    });
+    expect(renderIntelligence).toHaveBeenCalledWith({
+      formalMatterId: 'formal-matter_workspace-one'
+    });
+  });
+
+  it('keeps primary Matter truth visible when secondary evidence and intelligence are unavailable', () => {
+    render(
+      <FormalMatterWorkspace
+        matter={matter}
+        expectedVersion="5"
+        actualVersion="5"
+        renderLifecycle={() => <div>Review required action</div>}
+        renderExamination={() => <div>Current internal Examination</div>}
+        renderEvidence={() => <div role="alert">Formal Matter evidence unavailable</div>}
+        renderIntelligence={() => <div role="alert">Matter intelligence unavailable</div>}
+      />
+    );
+    expect(screen.getByRole('heading', { name: 'ORBIT' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeTruthy();
+    expect(screen.getByText('Review required action')).toBeTruthy();
+    expect(screen.getByText('Current internal Examination')).toBeTruthy();
+    expect(screen.getByText('Formal Matter evidence unavailable')).toBeTruthy();
+    expect(screen.getByText('Matter intelligence unavailable')).toBeTruthy();
+  });
+
+  it('remounts Matter panel truth when the Formal Matter identity changes', () => {
+    function StickyProbe({ formalMatterId }: { formalMatterId: string }) {
+      const [capturedId] = useState(formalMatterId);
+      return <div>Captured panel truth: {capturedId}</div>;
+    }
+    const renderLifecycle = ({ formalMatterId }: { formalMatterId: string }) => (
+      <StickyProbe formalMatterId={formalMatterId} />
+    );
+    const quiet = () => <div>Secondary panel</div>;
+    const otherMatter = {
+      ...matter,
+      formalMatterId: 'formal-matter_workspace-two',
+      sourceSnapshot: {
+        ...matter.sourceSnapshot,
+        preparation: { ...matter.sourceSnapshot.preparation, trademark: 'NOVA' }
+      }
+    } as FormalMatter;
+    const { rerender } = render(
+      <FormalMatterWorkspace
+        matter={matter}
+        expectedVersion="5"
+        actualVersion="5"
+        renderLifecycle={renderLifecycle}
+        renderExamination={quiet}
+        renderEvidence={quiet}
+        renderIntelligence={quiet}
+      />
+    );
+    expect(screen.getByText('Captured panel truth: formal-matter_workspace-one')).toBeTruthy();
+    rerender(
+      <FormalMatterWorkspace
+        matter={otherMatter}
+        expectedVersion="5"
+        actualVersion="5"
+        renderLifecycle={renderLifecycle}
+        renderExamination={quiet}
+        renderEvidence={quiet}
+        renderIntelligence={quiet}
+      />
+    );
+    expect(screen.getByText('Captured panel truth: formal-matter_workspace-two')).toBeTruthy();
+    expect(screen.queryByText('Captured panel truth: formal-matter_workspace-one')).toBeNull();
   });
 });

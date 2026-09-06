@@ -1,8 +1,17 @@
 import type { FormalMatter } from '@markorbit/contracts';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Alert, Card } from '@markorbit/ui';
+import { ExaminationPanel } from './ExaminationPanel.js';
 import { FormalMatterWorkspace } from './FormalMatterWorkspace.js';
-import { TruthContext } from './TruthContext.js';
+import { LifecyclePanel } from './LifecyclePanel.js';
+import { TruthBadge, TruthContext } from './TruthContext.js';
+import type {
+  ExaminationStageClient,
+  ExaminationStageProjection
+} from './api/examination-stage.js';
+import { MarkregApiError } from './api/errors.js';
+import type { CustomerLifecycleClient, CustomerLifecycleSurface } from './api/lifecycle.js';
+import './markreg.css';
 
 const matter = {
   schemaVersion: 1,
@@ -51,96 +60,192 @@ const matter = {
   updatedAt: '2026-09-01T02:10:00.000Z'
 } as unknown as FormalMatter;
 
-const lifecycle = ({ disabled }: { disabled: boolean }) => (
-  <Card>
-    <div className="markreg-truth-row">
-      <TruthContext truthClass="GOVERNED_INTERNAL_WORKFLOW" detail="Current action context" />
-    </div>
-    <strong>{disabled ? 'Lifecycle actions disabled' : 'Review the latest evidence'}</strong>
-    <p>Story-only presentation seam. Production uses the live LifecyclePanel.</p>
-  </Card>
-);
+const lifecycleBase = {
+  lifecycle: {
+    lifecycleViewId: 'lifecycle-view_story-one',
+    formalMatter: { id: matter.formalMatterId, version: 5 },
+    version: 2,
+    state: 'APPLICATION_PENDING',
+    customerSafeLabel: 'Application pending review',
+    customerSafeSummary: 'The current governed Matter is awaiting the next reviewed event.',
+    officialStatusVerified: false,
+    updatedAt: '2026-09-01T02:15:00.000Z'
+  },
+  timeline: [],
+  recommendedAction: null,
+  noAction: true
+} satisfies CustomerLifecycleSurface;
 
-const examination = () => (
-  <Card>
-    <div className="markreg-truth-row">
-      <TruthContext truthClass="GOVERNED_INTERNAL_WORKFLOW" detail="Examination workflow" />
-      <TruthContext truthClass="REVIEWED_EVIDENCE" />
-    </div>
-    <strong>Customer action needed</strong>
-    <p>Current reviewed evidence requires bounded internal workflow attention.</p>
-  </Card>
-);
+const lifecycleWithAction: CustomerLifecycleSurface = {
+  ...lifecycleBase,
+  recommendedAction: {
+    recommendedActionId: 'recommended-action_story-one',
+    formalMatter: { id: matter.formalMatterId, version: 5 },
+    version: 3,
+    title: 'Review the latest evidence',
+    explanation: 'New reviewed evidence is available for this Matter.',
+    timingBasis: 'Review before deciding whether to continue.',
+    status: 'OPEN',
+    executionAuthorized: false,
+    updatedAt: '2026-09-01T02:16:00.000Z'
+  },
+  noAction: false
+};
+
+const lifecycleClient = (value: CustomerLifecycleSurface): CustomerLifecycleClient => ({
+  get: () => Promise.resolve(value),
+  acknowledge: () => Promise.resolve(),
+  dismiss: () => Promise.resolve()
+});
+
+const examinationEstablished = {
+  status: 'ESTABLISHED',
+  current: {
+    customerSafeLabel: 'Customer review needed',
+    customerSafeSummary: 'Reviewed evidence requires bounded internal workflow attention.',
+    workflowState: 'CUSTOMER_ACTION_NEEDED',
+    sourceCurrentness: 'CURRENT'
+  },
+  history: [],
+  deadlineStatus: 'UNAVAILABLE'
+} as unknown as ExaminationStageProjection;
+const examinationNotEstablished = {
+  ...examinationEstablished,
+  status: 'NOT_ESTABLISHED',
+  current: null
+} as unknown as ExaminationStageProjection;
+
+const examinationClient = (value: ExaminationStageProjection): ExaminationStageClient => ({
+  get: () => Promise.resolve(value)
+});
+
+const staleExaminationClient: ExaminationStageClient = {
+  get: () =>
+    Promise.reject(
+      new MarkregApiError(
+        'conflict',
+        'Examination source changed.',
+        undefined,
+        'EXAMINATION_SOURCE_STALE',
+        409
+      )
+    )
+};
+
+const unavailableExaminationClient: ExaminationStageClient = {
+  get: () =>
+    Promise.reject(
+      new MarkregApiError(
+        'recoverable',
+        'Examination source unavailable.',
+        undefined,
+        'EXAMINATION_TRUTH_UNAVAILABLE',
+        503
+      )
+    )
+};
+const lifecycleRenderer =
+  (value: CustomerLifecycleSurface) =>
+  ({ formalMatterId, disabled }: { formalMatterId: string; disabled: boolean }) => (
+    <LifecyclePanel
+      formalMatterId={formalMatterId}
+      disabled={disabled}
+      embedded
+      client={lifecycleClient(value)}
+    />
+  );
+
+const examinationRenderer =
+  (client: ExaminationStageClient) =>
+  ({ formalMatterId }: { formalMatterId: string }) => (
+    <ExaminationPanel formalMatterId={formalMatterId} client={client} />
+  );
 
 const evidence = () => (
   <Card>
-    <div className="markreg-truth-row">
-      <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Current Matter source" />
-    </div>
-    <strong>1 current Document Package</strong>
-    <p>Story-only presentation seam. Production uses the live FormalMatterEvidencePanel.</p>
+    <TruthContext kind="REVIEWED_EVIDENCE">1 current reviewed document package</TruthContext>
+    <p>Human-readable evidence summary first. Package IDs and fingerprints remain in disclosure.</p>
   </Card>
 );
 
 const intelligence = () => (
   <Card>
-    <div className="markreg-truth-row">
-      <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Descriptive analytical context" />
-    </div>
-    <strong>180 days · P50_TO_P75</strong>
-    <p>Current Human Review: CONFIRMED</p>
-    <p>Story-only presentation seam. Production uses the live MatterIntelligencePanel.</p>
+    <TruthContext kind="HISTORICAL">Descriptive analytical evidence</TruthContext>
+    <p>180 days · P50_TO_P75 · Human Review CONFIRMED</p>
   </Card>
 );
 
 const unavailableEvidence = () => (
   <Alert tone="warning" title="Formal Matter evidence unavailable">
-    The supporting evidence projection could not be loaded. Current Matter and action truth remain
-    visible above.
+    <TruthBadge kind="UNAVAILABLE_STALE" /> Secondary evidence is unavailable; primary Matter truth
+    remains visible.
+  </Alert>
+);
+const unavailableIntelligence = () => (
+  <Alert tone="warning" title="Matter intelligence unavailable">
+    <TruthBadge kind="UNAVAILABLE_STALE" /> Secondary analysis is unavailable; no empty truth is
+    fabricated.
   </Alert>
 );
 
 const meta = {
-  title: 'MarkReg/Formal Matter Workspace',
+  title: 'MarkReg/Formal Matter Workspace V2',
   component: FormalMatterWorkspace,
   parameters: { layout: 'fullscreen' }
 } satisfies Meta<typeof FormalMatterWorkspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const CurrentMatter: Story = {
-  args: {
-    matter,
-    expectedVersion: '5',
-    actualVersion: '5',
-    renderLifecycle: lifecycle,
-    renderExamination: examination,
-    renderEvidence: evidence,
-    renderIntelligence: intelligence
-  }
+const currentArgs = {
+  matter,
+  expectedVersion: '5',
+  actualVersion: '5',
+  renderLifecycle: lifecycleRenderer(lifecycleWithAction),
+  renderExamination: examinationRenderer(examinationClient(examinationEstablished)),
+  renderEvidence: evidence,
+  renderIntelligence: intelligence
 };
 
+export const CurrentActionEstablishedExamination: Story = {
+  args: currentArgs
+};
+
+export const NoActionExaminationNotEstablished: Story = {
+  args: {
+    ...currentArgs,
+    renderLifecycle: lifecycleRenderer(lifecycleBase),
+    renderExamination: examinationRenderer(examinationClient(examinationNotEstablished))
+  }
+};
 export const StaleDirectLink: Story = {
   args: {
-    matter,
+    ...currentArgs,
     expectedVersion: '4',
-    actualVersion: '5',
     versionMismatch: true,
-    renderLifecycle: lifecycle,
-    renderExamination: examination,
-    renderEvidence: evidence,
-    renderIntelligence: intelligence
+    renderExamination: examinationRenderer(staleExaminationClient)
   }
 };
 
-export const SecondaryEvidenceUnavailable: Story = {
+export const SecondaryUnavailable: Story = {
   args: {
-    matter,
-    expectedVersion: '5',
-    actualVersion: '5',
-    renderLifecycle: lifecycle,
-    renderExamination: examination,
+    ...currentArgs,
+    renderExamination: examinationRenderer(unavailableExaminationClient),
     renderEvidence: unavailableEvidence,
-    renderIntelligence: intelligence
+    renderIntelligence: unavailableIntelligence
+  }
+};
+
+export const Mobile390CurrentAction: Story = {
+  args: currentArgs,
+  parameters: {
+    viewport: {
+      viewports: {
+        markreg390: {
+          name: 'MarkReg 390px',
+          styles: { width: '390px', height: '844px' }
+        }
+      },
+      defaultViewport: 'markreg390'
+    }
   }
 };

@@ -1,23 +1,48 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
-import { TruthContext, type MarkregTruthClass } from './TruthContext.js';
+// @vitest-environment jsdom
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { TruthBadge, TruthContext } from './TruthContext.js';
 
-const cases = [
-  ['CUSTOMER_SUPPLIED', 'Customer supplied'],
-  ['GOVERNED_INTERNAL_WORKFLOW', 'Governed internal workflow'],
-  ['REVIEWED_EVIDENCE', 'Reviewed evidence'],
-  ['OFFICIAL_VERIFIED', 'Official verified'],
-  ['UNAVAILABLE_OR_STALE', 'Unavailable / stale'],
-  ['HISTORICAL', 'Historical']
-] as const satisfies readonly (readonly [MarkregTruthClass, string])[];
+describe('MarkReg Truth UX grammar', () => {
+  it('renders semantic text and accessible labels for the production truth classes', () => {
+    render(
+      <>
+        <TruthBadge kind="CUSTOMER_SUPPLIED" />
+        <TruthBadge kind="GOVERNED_INTERNAL" />
+        <TruthBadge kind="REVIEWED_EVIDENCE" />
+        <TruthBadge kind="UNAVAILABLE_STALE" />
+        <TruthBadge kind="HISTORICAL" />
+      </>
+    );
 
-afterEach(cleanup);
+    for (const label of [
+      'Customer supplied',
+      'Governed internal workflow',
+      'Reviewed evidence',
+      'Unavailable / stale',
+      'Historical'
+    ]) {
+      expect(screen.getByText(label)).toBeTruthy();
+      expect(screen.getByLabelText(`Truth class: ${label}`)).toBeTruthy();
+    }
+  });
 
-describe('TruthContext', () => {
-  it.each(cases)('renders %s as semantic text, not color-only meaning', (truthClass, label) => {
-    render(<TruthContext truthClass={truthClass} detail="Bounded context" />);
-    expect(screen.getByText(label)).toBeTruthy();
-    expect(screen.getByText('Bounded context')).toBeTruthy();
-    expect(screen.getByLabelText(`Truth class: ${label}. Bounded context`)).toBeTruthy();
+  it('keeps the future-safe Official verified class explicit without manufacturing owner support', () => {
+    render(
+      <TruthContext
+        kind="OFFICIAL_VERIFIED"
+        details={<span>Only render when exact owner data admits verified official truth.</span>}
+      >
+        Future-safe grammar fixture
+      </TruthContext>
+    );
+
+    expect(screen.getByText('Official verified')).toBeTruthy();
+    expect(screen.getByText('Future-safe grammar fixture')).toBeTruthy();
+    expect(
+      screen.getByText('Only render when exact owner data admits verified official truth.', {
+        exact: true
+      })
+    ).toBeTruthy();
   });
 });

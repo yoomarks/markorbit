@@ -140,13 +140,13 @@ describe('ExaminationPanel', () => {
 
     expect(await screen.findByText(`Current ${state}`)).toBeTruthy();
     expect(screen.getByText(label)).toBeTruthy();
-    expect(screen.getByText('Reviewed external evidence')).toBeTruthy();
+    expect(screen.getByLabelText('Truth class: Reviewed evidence')).toBeTruthy();
     expect(screen.getByText('Current')).toBeTruthy();
     expect(screen.getByText('Unavailable from this Examination projection')).toBeTruthy();
-    expect(screen.getByText('Governed internal workflow')).toBeTruthy();
-    expect(screen.getByText('Reviewed evidence')).toBeTruthy();
-    expect(screen.getByText(/not trademark-office status or deadline truth/i)).toBeTruthy();
-    expect(screen.queryByText('Official verified')).toBeNull();
+    expect(
+      screen.getByText(/not trademark-office Official Status or deadline truth/i)
+    ).toBeTruthy();
+    expect(screen.queryByText('Official Status')).toBeNull();
   });
 
   it('renders NOT_ESTABLISHED as a neutral governed empty state without negative office truth', async () => {
@@ -182,9 +182,12 @@ describe('ExaminationPanel', () => {
 
     expect(await screen.findByText('Current CUSTOMER_ACTION_NEEDED')).toBeTruthy();
     expect(screen.getByText('Historical Examination context (1)')).toBeTruthy();
-    expect(screen.getByText('Historical')).toBeTruthy();
     expect(
       screen.getByText('Historical REVIEWED_PROVIDER_EVIDENCE', { exact: false })
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Truth class: Historical')).toBeTruthy();
+    expect(
+      screen.getByText(/Historical context is not current trademark-office status/i)
     ).toBeTruthy();
   });
 

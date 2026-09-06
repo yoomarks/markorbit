@@ -119,7 +119,8 @@ describe('MatterIntelligencePanel', () => {
     expect(screen.getByText('P50_TO_P75')).toBeTruthy();
     expect(screen.getByText('Historical source')).toBeTruthy();
     expect(screen.getByText(/CONFIRMED/)).toBeTruthy();
-    expect(screen.getByText(/not external certification or Official Truth/i)).toBeTruthy();
+    expect(screen.getByLabelText('Truth class: Reviewed evidence')).toBeTruthy();
+    expect(screen.queryByLabelText('Truth class: Official verified')).toBeNull();
     expect(screen.getByText('method-package-one')).toBeTruthy();
     expect(screen.getByText('evidence-one')).toBeTruthy();
     expect(screen.getByText(/not a prediction, deadline/i)).toBeTruthy();
