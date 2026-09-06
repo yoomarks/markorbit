@@ -1,4 +1,8 @@
-import { AuthenticationError } from '@markorbit/contracts';
+import {
+  AuthenticationError,
+  type ControlPlaneCapability,
+  type InternalOperatorPrincipal
+} from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
 import { describe, expect, it, vi } from 'vitest';
 import { createInternalOperatorPrincipalRoutesV1 } from '../src/internal-operator-principal-http.js';
@@ -16,6 +20,11 @@ const dataPrincipal = {
   capabilities: ['control-plane:data:read' as const]
 };
 
+type ResolverFunction = (
+  token: string,
+  requiredCapability?: ControlPlaneCapability
+) => Promise<Readonly<InternalOperatorPrincipal>>;
+
 function request(
   body: unknown = { token: 'raw-session-token' },
   includeAuthorization = true
@@ -30,7 +39,7 @@ function request(
   };
 }
 
-function route(resolve = vi.fn(() => Promise.resolve(cognitivePrincipal))) {
+function route(resolve: ResolverFunction = vi.fn(() => Promise.resolve(cognitivePrincipal))) {
   return {
     resolve,
     route: createInternalOperatorPrincipalRoutesV1({
