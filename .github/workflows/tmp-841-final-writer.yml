@@ -43,6 +43,7 @@ jobs:
           python /tmp/writer.py
           sed -i 's/async function harness(/function harness(/' services/mgsn/tests/provider-discovery-trust.test.ts
           sed -i 's/await harness()/harness()/g' services/mgsn/tests/provider-discovery-trust.test.ts
+          sed -i "s/if (support.state !== 'TRUST_EVIDENCE_AVAILABLE')/if (!support || support.state !== 'TRUST_EVIDENCE_AVAILABLE')/" services/mgsn/tests/provider-discovery-trust.test.ts
           python - <<'PY'
           from pathlib import Path
           p = Path('services/mgsn/tests/provider-discovery-trust.test.ts')
