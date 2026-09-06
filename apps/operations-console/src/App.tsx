@@ -12,6 +12,7 @@ import {
 import { CommercialAdminWorkspace } from './commercial-admin.js';
 import { CognitivePlatformWorkspace } from './cognitive-platform.js';
 import { DataPlatformWorkspace } from './data-platform.js';
+import { KnowledgePlatformWorkspace } from './knowledge-platform.js';
 import {
   admitReviewedSource,
   captureEvidenceReviewSource,
@@ -178,6 +179,7 @@ export function OperationsApp() {
             { label: 'Evidence review', href: '#evidence-review' },
             { label: 'Lifecycle provenance', href: '#lifecycle-review' },
             { label: 'Cognitive Platform', href: '#cognitive-platform' },
+            { label: 'Knowledge', href: '#knowledge-platform' },
             { label: 'Data', href: '#data-platform' },
             { label: 'Commercial', href: '#commercial-admin' }
           ]}
@@ -212,6 +214,10 @@ export function OperationsApp() {
                   value: 'Owner-routed · cognitive read authority'
                 },
                 {
+                  label: 'Knowledge evidence supply',
+                  value: 'Owner-routed · Knowledge read + Workspace authority'
+                },
+                {
                   label: 'Data Engine summary',
                   value: 'Owner-routed · data read authority'
                 }
@@ -236,9 +242,9 @@ export function OperationsApp() {
           <Card>
             <h2>Specialist administration</h2>
             <p>
-              Data Engine now federates a bounded owner-produced operational summary while its
-              specialist admin remains authoritative for deeper owner operations. Knowledge
-              federation still requires an explicit owner-produced summary contract.
+              Data Engine and Knowledge now federate bounded owner-produced read projections while
+              their specialist admin surfaces remain authoritative for deeper owner operations.
+              Neither projection creates aggregate MO platform health.
             </p>
           </Card>
         </div>
@@ -606,6 +612,8 @@ export function OperationsApp() {
       </section>
 
       <CognitivePlatformWorkspace />
+
+      <KnowledgePlatformWorkspace />
 
       <DataPlatformWorkspace />
 
