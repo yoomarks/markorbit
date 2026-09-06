@@ -66,7 +66,11 @@ test('named route drift is detected even when referenced files still exist', () 
 test('LIVE maturity cannot be backed only by fixture evidence', () => {
   const registry = current();
   const target = journey(registry, 'J1_MARKREG_GOVERNED_PREPARATION');
-  target.proof = target.proof.map((item) => ({ ...item, kind: 'FIXTURE_TEST', fixtureOnly: true }));
+  target.proof = target.proof.map((item) => ({
+    ...item,
+    kind: 'FIXTURE_TEST',
+    fixtureOnly: true
+  }));
   const errors = errorsFor(registry);
   assertError(errors, 'LIVE but has only fixture proof');
   assertError(errors, 'LIVE but has no product or real-runtime proof');
@@ -87,7 +91,17 @@ test('governed journey authority classification is mandatory', () => {
 
 test('closed blocker requires maturity review instead of automatic promotion', () => {
   const registry = current();
-  journey(registry, 'J2_MGSN_GOVERNED_PROVIDER').blockers[0].observedState = 'CLOSED';
+  const target = journey(registry, 'J2_MGSN_GOVERNED_PROVIDER');
+  target.maturity = 'DURABLE_NO_PRODUCT_CONSUMER';
+  target.consumer = { status: 'NONE_ACCEPTED', files: [], routes: [] };
+  target.blockers = [
+    {
+      issue: 999999,
+      observedState: 'CLOSED',
+      verifiedAtMainSha: registry.lastVerifiedMainSha,
+      reason: 'Synthetic closed blocker for validator regression coverage.'
+    }
+  ];
   assertError(errorsFor(registry), 'review maturity before merge');
 });
 
@@ -105,7 +119,9 @@ test('SOURCE_UNAVAILABLE and FIXTURE_ONLY remain legal states rather than CI fai
 
 test('forbidden raw payload/secret keys are rejected even when nested', () => {
   const registry = current();
-  journey(registry, 'J1_MARKREG_GOVERNED_PREPARATION').authority.rawPayload = { secret: 'x' };
+  journey(registry, 'J1_MARKREG_GOVERNED_PREPARATION').authority.rawPayload = {
+    secret: 'x'
+  };
   const errors = errorsFor(registry);
   assertError(errors, 'rawPayload is forbidden');
   assertError(errors, 'secret is forbidden');
@@ -119,8 +135,11 @@ test('human-readable report is deterministic and generated from registry truth',
   assert.match(first, /J1_MARKREG_GOVERNED_PREPARATION/);
   assert.match(first, /J2_MGSN_GOVERNED_PROVIDER/);
   assert.match(first, /J3_COGNITIVE_CONTROL_PLANE_READ/);
-  assert.match(first, /DURABLE_NO_PRODUCT_CONSUMER/);
-  assert.match(first, /#843:OPEN/);
+  assert.match(first, /J2_MGSN_GOVERNED_PROVIDER.*\| LIVE \| None \|/);
+  assert.match(
+    first,
+    /OWNER_DURABILITY, INTEGRATION_TEST, INTEGRATION_TEST, PRODUCT_TEST, FIXTURE_TEST/
+  );
   assert.match(
     first,
     /\| Journey \| Consumer \| Gateway \| Owner \| Authority \| Persistence \| Proof \| Maturity \| Blocker \|/

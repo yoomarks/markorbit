@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastVerifiedMainSha": "a7d52029d2bd943b175db112ca5759d11da952ab",
+  "lastVerifiedMainSha": "db85fa9301505c03cd8e35c24ec2bc1831fd622d",
   "reportColumns": [
     "Journey",
     "Consumer",
@@ -87,17 +87,27 @@
     {
       "id": "J2_MGSN_GOVERNED_PROVIDER",
       "title": "MGSN governed Provider journey",
-      "maturity": "DURABLE_NO_PRODUCT_CONSUMER",
+      "maturity": "LIVE",
       "consumer": {
-        "status": "NONE_ACCEPTED",
-        "files": [],
-        "routes": []
+        "status": "PRODUCT_CONSUMER_PRESENT",
+        "files": [
+          "apps/lite-web/src/features/opportunities/GovernedActionComposer.tsx",
+          "apps/lite-web/src/api/governed-provider.ts"
+        ],
+        "routes": [
+          "/api/mgsn/governed-network/discovery/evaluate",
+          "/api/mgsn/governed-network/selections",
+          "/api/mgsn/governed-network/handoffs/prepare",
+          "/api/mgsn/governed-network/handoffs",
+          "/api/mgsn/governed-network/allocations"
+        ]
       },
       "gateway": {
         "files": ["apps/gateway/src/mgsn-http.ts"],
         "routes": [
           "/api/mgsn/governed-network/discovery/evaluate",
           "/api/mgsn/governed-network/selections",
+          "/api/mgsn/governed-network/handoffs/prepare",
           "/api/mgsn/governed-network/handoffs",
           "/api/mgsn/governed-network/allocations"
         ]
@@ -118,15 +128,17 @@
           "owner": "MGSN",
           "files": [
             "services/mgsn/src/durable-runtime.ts",
+            "services/mgsn/src/controlled-handoff-preparation-http.ts",
+            "services/mgsn/src/controlled-handoff-preparation.ts",
             "services/mgsn/src/controlled-privacy-handoff-postgres.ts",
             "services/mgsn/src/governed-allocation-postgres.ts"
           ],
-          "routes": ["/v1/governed-network/allocations"]
+          "routes": ["/v1/governed-network/handoffs/prepare", "/v1/governed-network/allocations"]
         }
       ],
       "authority": {
         "class": "WORKSPACE_PRINCIPAL_EXPLICIT_HUMAN_ACTION_RECEIPT",
-        "notes": "Provider Selection and Controlled Handoff require distinct durable Core-owned HUMAN_USER action receipts. Candidate, Selection, Handoff and Allocation remain separate authorities."
+        "notes": "Provider Selection and Controlled Handoff require distinct durable Core-owned HUMAN_USER action receipts. Privacy Preview preparation is read/compute only and creates no HUMAN_USER receipt. Candidate, Selection, Handoff and Allocation remain separate authorities."
       },
       "persistence": {
         "files": [
@@ -134,7 +146,7 @@
           "services/mgsn/src/controlled-privacy-handoff-postgres.ts",
           "services/mgsn/src/governed-allocation-postgres.ts"
         ],
-        "notes": "Human-action authority, Handoff and governed Allocation are durable; accepted Workplace/Lite product consumption is still pending."
+        "notes": "Human-action authority, Handoff and governed Allocation are durable. An accepted Workplace/Lite product consumer now composes the governed path while Privacy Preview remains non-authorizing preparation."
       },
       "proof": [
         {
@@ -146,16 +158,24 @@
           "file": "apps/gateway/tests/mgsn-governed-network-http.test.ts",
           "kind": "INTEGRATION_TEST",
           "fixtureOnly": false
-        }
-      ],
-      "blockers": [
+        },
         {
-          "issue": 843,
-          "observedState": "OPEN",
-          "verifiedAtMainSha": "a7d52029d2bd943b175db112ca5759d11da952ab",
-          "reason": "The merged durable governed path has no accepted Workplace/Lite product consumer yet."
+          "file": "apps/gateway/tests/mgsn-handoff-preparation-http.test.ts",
+          "kind": "INTEGRATION_TEST",
+          "fixtureOnly": false
+        },
+        {
+          "file": "apps/lite-web/src/features/opportunities/GovernedActionComposer.test.tsx",
+          "kind": "PRODUCT_TEST",
+          "fixtureOnly": false
+        },
+        {
+          "file": "apps/lite-web/tests/governed-provider.pw.ts",
+          "kind": "FIXTURE_TEST",
+          "fixtureOnly": true
         }
       ],
+      "blockers": [],
       "forbiddenConsequences": [
         "CANDIDATE_IS_SELECTION",
         "SELECTION_IS_HANDOFF",
