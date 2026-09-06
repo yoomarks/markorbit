@@ -28,10 +28,10 @@ jobs:
           git config user.name 'yoomarks'
           git config user.email 'actions@users.noreply.github.com'
           git fetch origin main integration/mgsn-trust-discovery-contract-845-main
-          test "$(git rev-parse origin/main)" = "799f2c28cdd2810c84406ede18fa72bb120c9ef6"
-          test "$(git rev-parse origin/integration/mgsn-trust-discovery-contract-845-main)" = "26a76158f52983fc3c3a011a7baea2da7b5aaee7"
+          test "$(git rev-parse origin/main)" = "8be6be8ef1402eeb183d95976a1646677cbcb558"
+          test "$(git rev-parse origin/integration/mgsn-trust-discovery-contract-845-main)" = "7f57c10082d4ce898a8019c278ccf211ef8a57f5"
           git checkout -B replay-857 origin/main
-          git cherry-pick 26a76158f52983fc3c3a011a7baea2da7b5aaee7
+          git cherry-pick 7f57c10082d4ce898a8019c278ccf211ef8a57f5
       - run: pnpm install --frozen-lockfile
       - name: Format and verify bounded shared-contract diff
         shell: bash
@@ -56,5 +56,5 @@ jobs:
       - name: Push refreshed clean branch
         shell: bash
         run: |
-          git push --force-with-lease=refs/heads/integration/mgsn-trust-discovery-contract-845-main:26a76158f52983fc3c3a011a7baea2da7b5aaee7 \
+          git push --force-with-lease=refs/heads/integration/mgsn-trust-discovery-contract-845-main:7f57c10082d4ce898a8019c278ccf211ef8a57f5 \
             origin HEAD:refs/heads/integration/mgsn-trust-discovery-contract-845-main
