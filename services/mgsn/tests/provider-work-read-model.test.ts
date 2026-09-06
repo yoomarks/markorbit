@@ -48,6 +48,7 @@ function source(
     allocationVersion: 1,
     allocationStatus: 'ACTIVE',
     allocationUpdatedAt: '2026-09-01T10:00:00.000Z',
+    allocationCorrelationId: 'correlation_provider-work-action-lineage-a',
     originatingWorkspaceId,
     allocationServicePackageId: 'service-package_work_a',
     allocationServicePackageVersion: 2,
@@ -138,6 +139,18 @@ describe('Provider Workspace own-work read model', () => {
 
     expect(result.items.map((item) => item.allocation.allocationId)).toEqual(['allocation_work_a']);
     expect(result.items[0]?.provider.providerId).toBe(ownProvider.providerId);
+  });
+
+  it('projects exact canonical Allocation correlation lineage without granting action authority', async () => {
+    const item = (await setup().service.list(principal())).items[0]!;
+
+    expect(item.actionLineage).toEqual({
+      correlationId: 'correlation_provider-work-action-lineage-a',
+      actionAuthorityNotGrantedByProjection: true
+    });
+    expect(item.queuePresenceIsNotActionAuthority).toBe(true);
+    const serialized = JSON.stringify(item.actionLineage);
+    expect(serialized).not.toMatch(/rationale|allocatedBy|customer|artifact|supplyCapability/i);
   });
 
   it('makes unknown and other-Provider detail reads publicly indistinguishable', async () => {
@@ -264,6 +277,28 @@ describe('Provider Workspace own-work read model', () => {
     expect(restarted.sourceSetFingerprintSha256).toBe(first.sourceSetFingerprintSha256);
     expect(restarted.projectionFingerprintSha256).toBe(first.projectionFingerprintSha256);
     expect(restarted.projectedAt).not.toBe(first.projectedAt);
+  });
+
+  it('fails closed when canonical Allocation correlation lineage is missing or malformed', async () => {
+    const missing = {
+      ...source(),
+      allocationCorrelationId: undefined
+    } as unknown as ProviderWorkProjectionSource;
+    const malformed = {
+      ...source(),
+      allocationCorrelationId: 'not-a-markorbit-id'
+    } as unknown as ProviderWorkProjectionSource;
+
+    for (const row of [missing, malformed]) {
+      const { service } = setup({ rows: [row] });
+      await expect(service.list(principal())).rejects.toMatchObject({
+        code: 'SOURCE_INCONSISTENT',
+        status: 503
+      });
+      await expect(service.read(principal(), 'allocation_work_a')).resolves.toMatchObject({
+        decision: 'SOURCE_UNAVAILABLE'
+      });
+    }
   });
 
   it('fails closed when persisted Service Package lineage is missing or inconsistent', async () => {
