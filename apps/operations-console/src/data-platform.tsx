@@ -180,8 +180,8 @@ export function DataPlatformWorkspace() {
       <Card>
         <h2>Current owner snapshot</h2>
         <p>
-          Reads use the authenticated HttpOnly operator session through the bounded Gateway. No
-          Data Engine owner state is inferred until an operator explicitly loads the owner summary.
+          Reads use the authenticated HttpOnly operator session through the bounded Gateway. No Data
+          Engine owner state is inferred until an operator explicitly loads the owner summary.
         </p>
         <Button disabled={loading} onClick={() => void load()}>
           {loading
