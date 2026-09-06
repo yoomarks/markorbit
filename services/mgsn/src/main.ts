@@ -23,7 +23,8 @@ const services = createDurableMgsnServices({
   database,
   coreUrl: process.env.CORE_URL ?? 'http://127.0.0.1:4101',
   executionUrl: process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104',
-  internalServiceSecret
+  internalServiceSecret,
+  semanticTelemetrySink
 });
 const runtime = createRuntime({
   internalServiceSecret,

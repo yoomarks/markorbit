@@ -1,5 +1,4 @@
 import type { ManagedDatabase } from '@markorbit/persistence';
-import { AllocationProviderAcceptanceService } from './allocation-provider-acceptance.js';
 import { PostgresAllocationProviderAcceptanceRepository } from './allocation-provider-acceptance-postgres.js';
 import { MgsnControlledHandoffCurrentAuthoritySource } from './controlled-handoff-current-authority.js';
 import { ControlledHandoffPreparationService } from './controlled-handoff-preparation.js';
@@ -31,8 +30,11 @@ import { ProviderRegistryService } from './provider-registry.js';
 import { PostgresProviderRegistryRepository } from './provider-registry-postgres.js';
 import { ProviderResponsibilityService } from './provider-responsibility.js';
 import { PostgresProviderResponsibilityRepository } from './provider-responsibility-postgres.js';
-import { ProviderReturnService } from './provider-return.js';
 import { PostgresProviderReturnRepository } from './provider-return-postgres.js';
+import {
+  ObservedAllocationProviderAcceptanceService,
+  ObservedProviderReturnService
+} from './provider-workflow-observability.js';
 import { MgsnProviderSelectionCurrentAuthoritySource } from './provider-selection-current-authority.js';
 import {
   ProviderSelectionService,
@@ -52,6 +54,7 @@ import {
   HttpExecutionSourceAdmissionSource,
   HttpProviderReturnEvidenceHandoffTarget
 } from './runtime-dependencies.js';
+import type { MgsnSemanticTelemetrySinkV1 } from './semantic-observability.js';
 import { ServicePackageEligibilityService } from './service-package-eligibility.js';
 import { PostgresServicePackageEligibilityRepository } from './service-package-eligibility-postgres.js';
 import {
@@ -85,6 +88,7 @@ export interface DurableMgsnServicesOptions {
   coreUrl: string;
   executionUrl: string;
   internalServiceSecret: string;
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
   providerSelectionCurrentAuthoritySource?: ProviderSelectionCurrentAuthoritySource;
   controlledHandoffCurrentAuthoritySource?: ControlledHandoffCurrentAuthoritySource;
   trustEvidenceCurrentAuthoritySource?: TrustEvidenceCurrentAuthoritySource;
@@ -238,6 +242,21 @@ export function createDurableMgsnServices(
     controlledHandoff,
     new ProviderResponsibilityGovernedAllocationSource(providerResponsibility)
   );
+  const allocationProviderAcceptance = new ObservedAllocationProviderAcceptanceService(
+    allocationRepository,
+    servicePackageRepository,
+    providerRepository,
+    executionSource,
+    options.semanticTelemetrySink
+  );
+  const providerReturn = new ObservedProviderReturnService(
+    providerReturnRepository,
+    allocationRepository,
+    servicePackageRepository,
+    providerRepository,
+    evidenceHandoff,
+    options.semanticTelemetrySink
+  );
 
   return {
     providerRegistry: new ProviderRegistryService(providerRepository, coreWorkspaces),
@@ -246,19 +265,8 @@ export function createDurableMgsnServices(
       providerRepository,
       executionSource
     ),
-    allocationProviderAcceptance: new AllocationProviderAcceptanceService(
-      allocationRepository,
-      servicePackageRepository,
-      providerRepository,
-      executionSource
-    ),
-    providerReturn: new ProviderReturnService(
-      providerReturnRepository,
-      allocationRepository,
-      servicePackageRepository,
-      providerRepository,
-      evidenceHandoff
-    ),
+    allocationProviderAcceptance,
+    providerReturn,
     providerWorkRead,
     networkParticipation: new NetworkParticipationService(
       networkParticipationRepository,
