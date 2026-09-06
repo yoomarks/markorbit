@@ -33,10 +33,15 @@ import {
   parseSelectionVersionReference,
   selectionScopeTransportShape
 } from './governed-network-selection-http.js';
+import {
+  observeMgsnSemanticOperationV1,
+  type MgsnSemanticTelemetrySinkV1
+} from './semantic-observability.js';
 
 export interface MgsnGovernedAllocationHttpOptions {
   internalServiceSecret?: string;
   service?: Pick<GovernedAllocationService, 'allocate'>;
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
 }
 
 const governedAllocationTransportShape = {
@@ -217,7 +222,14 @@ export function createMgsnGovernedAllocationHttpRoutes(
             'NONE_EXPLICIT Handoff binding cannot carry an exact Handoff reference or fingerprints.'
           );
         const command = parseGovernedAllocationCommand(body, principal, idempotencyKey);
-        const result = await operation(() => service().allocate(command));
+        const result = await operation(() =>
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'GOVERNED_ALLOCATION_COMMIT',
+            () => service().allocate(command),
+            () => ({ outcomeClass: 'SUCCESS', resultCode: 'ALLOCATED' })
+          )
+        );
         return json(201, { governedAllocation: result });
       }
     }

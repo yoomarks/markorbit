@@ -48,10 +48,15 @@ import {
   type ProviderSelectionPrincipal,
   type ProviderSelectionService
 } from './provider-selection.js';
+import {
+  observeMgsnSemanticOperationV1,
+  type MgsnSemanticTelemetrySinkV1
+} from './semantic-observability.js';
 
 export interface MgsnProviderSelectionHttpOptions {
   internalServiceSecret?: string;
   service?: Pick<ProviderSelectionService, 'createOrReplace' | 'revoke' | 'validateCurrent'>;
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
 }
 
 export const providerSelectionVersionReferenceTransportShape = {
@@ -686,7 +691,16 @@ export function createMgsnProviderSelectionHttpRoutes(
           );
         const command = parseProviderSelectionCreateCommand(body, principal, envelope, request);
         const result = await operation(() =>
-          service().createOrReplace(selectionPrincipal(principal, envelope), command)
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'PROVIDER_SELECTION_CREATE_OR_REPLACE',
+            () => service().createOrReplace(selectionPrincipal(principal, envelope), command),
+            (value) => ({
+              outcomeClass: 'SUCCESS',
+              resultCode: value.mutation === 'CREATED' ? 'CREATED' : 'REPLACED',
+              replayed: value.replayed
+            })
+          )
         );
         return json(result.mutation === 'CREATED' ? 201 : 200, { providerSelection: result });
       }
@@ -702,7 +716,16 @@ export function createMgsnProviderSelectionHttpRoutes(
         const envelope = parseHumanActionEnvelope(request, principal, 'PROVIDER_SELECTION');
         const command = parseProviderSelectionRevokeCommand(body, principal, envelope, request);
         const result = await operation(() =>
-          service().revoke(selectionPrincipal(principal, envelope), command)
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'PROVIDER_SELECTION_REVOKE',
+            () => service().revoke(selectionPrincipal(principal, envelope), command),
+            (value) => ({
+              outcomeClass: 'SUCCESS',
+              resultCode: 'REVOKED',
+              replayed: value.replayed
+            })
+          )
         );
         return json(200, { providerSelection: result });
       }
@@ -720,7 +743,17 @@ export function createMgsnProviderSelectionHttpRoutes(
           request.params.providerSelectionId
         );
         const result = await operation(() =>
-          service().validateCurrent({ workspaceId: principal.workspaceId }, input)
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'PROVIDER_SELECTION_VALIDATE_CURRENT',
+            () => service().validateCurrent({ workspaceId: principal.workspaceId }, input),
+            (value) =>
+              value.currentlyUsable
+                ? { outcomeClass: 'SUCCESS', resultCode: 'CURRENTLY_USABLE' }
+                : value.denialReason === 'AUTHORITY_UNAVAILABLE'
+                  ? { outcomeClass: 'UNAVAILABLE', resultCode: 'AUTHORITY_UNAVAILABLE' }
+                  : { outcomeClass: 'DENIED', resultCode: 'VALIDATION_DENIED' }
+          )
         );
         return json(200, { providerSelectionValidation: result });
       }

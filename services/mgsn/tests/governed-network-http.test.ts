@@ -7,6 +7,7 @@ import { providerSelectionContractFixtureV1 } from '@markorbit/contracts/provide
 import type { ServiceRuntime } from '@markorbit/service-kit';
 import {
   createRuntime,
+  InMemoryMgsnSemanticTelemetrySinkV1,
   MGSN_GOVERNED_HUMAN_ACTION_HEADER,
   type MgsnGovernedHumanActionEnvelopeV1,
   type MgsnGovernedNetworkHttpServices
@@ -21,6 +22,7 @@ const handoffId = 'controlled-handoff_http-825';
 let runtime: ServiceRuntime;
 let base = '';
 let captured: any;
+let telemetry: InMemoryMgsnSemanticTelemetrySinkV1;
 
 function principal(): WorkspacePrincipal {
   return {
@@ -81,7 +83,7 @@ function governedServices(): MgsnGovernedNetworkHttpServices {
     providerDiscovery: {
       evaluate: (trustedPrincipal: any, request: any) => {
         captured = { kind: 'discovery', trustedPrincipal, request };
-        return Promise.resolve({ schemaVersion: 1, status: 'NO_CANDIDATES' } as any);
+        return Promise.resolve({ schemaVersion: 1, status: 'NO_AUTHORIZED_CANDIDATES' } as any);
       }
     },
     providerSelection: {
@@ -89,19 +91,24 @@ function governedServices(): MgsnGovernedNetworkHttpServices {
         captured = { kind: 'selection-create', trustedPrincipal, command };
         return Promise.resolve({
           mutation: 'CREATED',
-          selection: { providerSelectionId: selectionId }
+          selection: { providerSelectionId: selectionId },
+          replayed: false
         } as any);
       },
       revoke: (trustedPrincipal: any, command: any) => {
         captured = { kind: 'selection-revoke', trustedPrincipal, command };
         return Promise.resolve({
           mutation: 'REVOKED',
-          selection: { providerSelectionId: selectionId }
+          selection: { providerSelectionId: selectionId },
+          replayed: false
         } as any);
       },
       validateCurrent: (trustedPrincipal: any, input: any) => {
         captured = { kind: 'selection-validate', trustedPrincipal, input };
-        return Promise.resolve({ decision: 'CURRENTLY_USABLE_FOR_BOUNDED_REVIEW' } as any);
+        return Promise.resolve({
+          decision: 'CURRENTLY_USABLE_FOR_BOUNDED_REVIEW',
+          currentlyUsable: true
+        } as any);
       }
     },
     controlledHandoff: {
@@ -109,19 +116,24 @@ function governedServices(): MgsnGovernedNetworkHttpServices {
         captured = { kind: 'handoff-authorize', trustedPrincipal, command };
         return Promise.resolve({
           mutation: 'AUTHORIZED',
-          envelope: { controlledHandoffId: handoffId }
+          envelope: { controlledHandoffId: handoffId },
+          replayed: false
         } as any);
       },
       revoke: (trustedPrincipal: any, command: any) => {
         captured = { kind: 'handoff-revoke', trustedPrincipal, command };
         return Promise.resolve({
           mutation: 'REVOKED',
-          envelope: { controlledHandoffId: handoffId }
+          envelope: { controlledHandoffId: handoffId },
+          replayed: false
         } as any);
       },
       validateCurrent: (trustedPrincipal: any, input: any) => {
         captured = { kind: 'handoff-validate', trustedPrincipal, input };
-        return Promise.resolve({ decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION' } as any);
+        return Promise.resolve({
+          decision: 'CURRENTLY_USABLE_FOR_EXACT_CONSUMPTION',
+          currentlyUsable: true
+        } as any);
       }
     },
     governedAllocation: {
@@ -183,10 +195,12 @@ function governedAllocationBody() {
 
 beforeEach(async () => {
   captured = undefined;
+  telemetry = new InMemoryMgsnSemanticTelemetrySinkV1();
   runtime = createRuntime({
     port: 0,
     internalServiceSecret: secret,
-    governedNetworkServices: governedServices()
+    governedNetworkServices: governedServices(),
+    semanticTelemetrySink: telemetry
   });
   await runtime.start();
   base = `http://127.0.0.1:${runtime.listeningPort}`;
@@ -195,6 +209,52 @@ beforeEach(async () => {
 afterEach(async () => runtime.stop());
 
 describe('MGSN governed-network internal HTTP producer', () => {
+  it('records one privacy-safe semantic event for each governed-network authority domain', async () => {
+    const requests = [
+      fetch(`${base}/v1/governed-network/discovery/evaluate`, {
+        method: 'POST',
+        headers: { ...headers(), 'content-type': 'application/json' },
+        body: JSON.stringify(discoveryBody())
+      }),
+      fetch(`${base}/v1/governed-network/selections`, {
+        method: 'POST',
+        headers: {
+          ...headers({ kind: 'PROVIDER_SELECTION', idempotencyKey: 'telemetry-selection' }),
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(selectionCreateBody())
+      }),
+      fetch(`${base}/v1/governed-network/handoffs`, {
+        method: 'POST',
+        headers: {
+          ...headers({ kind: 'CONTROLLED_HANDOFF', idempotencyKey: 'telemetry-handoff' }),
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(handoffAuthorizeBody())
+      }),
+      fetch(`${base}/v1/governed-network/allocations`, {
+        method: 'POST',
+        headers: {
+          ...headers({ idempotencyKey: 'telemetry-allocation' }),
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(governedAllocationBody())
+      })
+    ];
+    const responses = await Promise.all(requests);
+    expect(responses.map((response) => response.status)).toEqual([200, 201, 201, 201]);
+    expect(telemetry.list().map((event) => [event.operation, event.resultCode])).toEqual([
+      ['PROVIDER_DISCOVERY_EVALUATE', 'NO_AUTHORIZED_CANDIDATES'],
+      ['PROVIDER_SELECTION_CREATE_OR_REPLACE', 'CREATED'],
+      ['CONTROLLED_HANDOFF_AUTHORIZE_OR_REPLACE', 'AUTHORIZED'],
+      ['GOVERNED_ALLOCATION_COMMIT', 'ALLOCATED']
+    ]);
+    const serialized = JSON.stringify(telemetry.list());
+    expect(serialized).not.toContain(workspaceId);
+    expect(serialized).not.toContain('provider_http-825');
+    expect(serialized).not.toContain('controlled-handoff_http-825');
+  });
+
   it('derives Discovery requester identity from the trusted Workspace Principal', async () => {
     const response = await fetch(`${base}/v1/governed-network/discovery/evaluate`, {
       method: 'POST',

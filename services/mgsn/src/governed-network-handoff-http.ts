@@ -49,6 +49,10 @@ import {
   providerSelectionVersionReferenceTransportShape,
   selectionScopeTransportShape
 } from './governed-network-selection-http.js';
+import {
+  observeMgsnSemanticOperationV1,
+  type MgsnSemanticTelemetrySinkV1
+} from './semantic-observability.js';
 
 export interface MgsnControlledHandoffHttpOptions {
   internalServiceSecret?: string;
@@ -56,6 +60,7 @@ export interface MgsnControlledHandoffHttpOptions {
     ControlledPrivacyHandoffService,
     'authorizeOrReplace' | 'revoke' | 'validateCurrent'
   >;
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
 }
 
 const controlledHandoffVersionReferenceTransportShape = {
@@ -856,7 +861,16 @@ export function createMgsnControlledHandoffHttpRoutes(
           );
         const command = parseControlledHandoffAuthorizeCommand(body, principal, envelope, request);
         const result = await operation(() =>
-          service().authorizeOrReplace(handoffPrincipal(principal, envelope), command)
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'CONTROLLED_HANDOFF_AUTHORIZE_OR_REPLACE',
+            () => service().authorizeOrReplace(handoffPrincipal(principal, envelope), command),
+            (value) => ({
+              outcomeClass: 'SUCCESS',
+              resultCode: value.mutation === 'AUTHORIZED' ? 'AUTHORIZED' : 'REPLACED',
+              replayed: value.replayed
+            })
+          )
         );
         return json(result.mutation === 'AUTHORIZED' ? 201 : 200, { controlledHandoff: result });
       }
@@ -872,7 +886,16 @@ export function createMgsnControlledHandoffHttpRoutes(
         const envelope = parseHumanActionEnvelope(request, principal, 'CONTROLLED_HANDOFF');
         const command = parseControlledHandoffRevokeCommand(body, principal, envelope, request);
         const result = await operation(() =>
-          service().revoke(handoffPrincipal(principal, envelope), command)
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'CONTROLLED_HANDOFF_REVOKE',
+            () => service().revoke(handoffPrincipal(principal, envelope), command),
+            (value) => ({
+              outcomeClass: 'SUCCESS',
+              resultCode: 'REVOKED',
+              replayed: value.replayed
+            })
+          )
         );
         return json(200, { controlledHandoff: result });
       }
@@ -905,7 +928,17 @@ export function createMgsnControlledHandoffHttpRoutes(
           principal.workspaceId
         );
         const result = await operation(() =>
-          service().validateCurrent({ workspaceId: principal.workspaceId }, input)
+          observeMgsnSemanticOperationV1(
+            options.semanticTelemetrySink,
+            'CONTROLLED_HANDOFF_VALIDATE_CURRENT',
+            () => service().validateCurrent({ workspaceId: principal.workspaceId }, input),
+            (value) =>
+              value.currentlyUsable
+                ? { outcomeClass: 'SUCCESS', resultCode: 'CURRENTLY_USABLE' }
+                : value.denialReason === 'AUTHORITY_UNAVAILABLE'
+                  ? { outcomeClass: 'UNAVAILABLE', resultCode: 'AUTHORITY_UNAVAILABLE' }
+                  : { outcomeClass: 'DENIED', resultCode: 'VALIDATION_DENIED' }
+          )
         );
         return json(200, { controlledHandoffValidation: result });
       }

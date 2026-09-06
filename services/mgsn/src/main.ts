@@ -2,6 +2,7 @@ import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
 import { MgsnCommercialAdminReadService } from './commercial-admin-read.js';
 import { createDurableMgsnServices } from './durable-runtime.js';
 import { createRuntime } from './index.js';
+import { JsonLineMgsnSemanticTelemetrySinkV1 } from './semantic-observability.js';
 
 const internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!internalServiceSecret || Buffer.byteLength(internalServiceSecret) < 32)
@@ -17,6 +18,7 @@ const database = new ManagedDatabase(
   })
 );
 await database.start();
+const semanticTelemetrySink = new JsonLineMgsnSemanticTelemetrySinkV1();
 const services = createDurableMgsnServices({
   database,
   coreUrl: process.env.CORE_URL ?? 'http://127.0.0.1:4101',
@@ -26,6 +28,7 @@ const services = createDurableMgsnServices({
 const runtime = createRuntime({
   internalServiceSecret,
   services,
+  semanticTelemetrySink,
   // Governed producer routes reuse durable owner services; Selection/Handoff authority is still
   // admitted only through reviewed, operation-scoped human-action ingress, never by wiring itself.
   // External JSON is normalized by the owner-local governed ingress before owner services run.

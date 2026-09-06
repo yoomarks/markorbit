@@ -12,6 +12,7 @@ import {
   type MgsnGovernedNetworkHttpOptions
 } from './governed-network-http.js';
 import { createMgsnHttpRoutes, type MgsnHttpOptions } from './http.js';
+import type { MgsnSemanticTelemetrySinkV1 } from './semantic-observability.js';
 
 export * from './provider-registry.js';
 export * from './provider-registry-postgres.js';
@@ -23,6 +24,7 @@ export * from './governed-allocation.js';
 export * from './governed-allocation-runtime.js';
 export * from './governed-allocation-postgres.js';
 export * from './governed-network-http.js';
+export * from './semantic-observability.js';
 export * from './controlled-handoff-preparation.js';
 export * from './controlled-handoff-preparation-http.js';
 export * from './provider-return.js';
@@ -71,6 +73,7 @@ export interface MgsnRuntimeOptions extends MgsnHttpOptions {
   port?: number;
   commercialAdminReadService?: MgsnCommercialAdminHttpOptions['service'];
   governedNetworkServices?: MgsnGovernedNetworkHttpOptions['services'];
+  semanticTelemetrySink?: MgsnSemanticTelemetrySinkV1;
   controlledHandoffPreparationService?: MgsnControlledHandoffPreparationHttpOptions['service'];
 }
 
@@ -84,6 +87,9 @@ export function createRuntime(options: MgsnRuntimeOptions = {}) {
           ...(options.governedNetworkServices ? { services: options.governedNetworkServices } : {}),
           ...(options.internalServiceSecret
             ? { internalServiceSecret: options.internalServiceSecret }
+            : {}),
+          ...(options.semanticTelemetrySink
+            ? { semanticTelemetrySink: options.semanticTelemetrySink }
             : {})
         }),
         ...createMgsnControlledHandoffPreparationHttpRoutes({
