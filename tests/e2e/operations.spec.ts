@@ -61,7 +61,9 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   }
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await expect(
-    page.getByText('No Data Engine owner summary loaded. Load owner summary to determine current owner state.')
+    page.getByText(
+      'No Data Engine owner summary loaded. Load owner summary to determine current owner state.'
+    )
   ).toBeVisible();
   const loadOwnerSummary = page.getByRole('button', { name: 'Load owner summary' });
   await expect(loadOwnerSummary).toBeVisible();
