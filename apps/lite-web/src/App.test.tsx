@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LiteApp } from './App.js';
@@ -12,8 +12,16 @@ vi.mock('./features/matters/MatterWorkspace.js', () => ({
   MatterWorkspace: ({ workspaceId }: { workspaceId: string }) => <h1>Matters {workspaceId}</h1>
 }));
 vi.mock('./features/trademark-assets/TrademarkAssetPortfolio.js', () => ({
-  TrademarkAssetPortfolio: ({ workspaceId }: { workspaceId: string }) => (
-    <h1>Trademarks {workspaceId}</h1>
+  TrademarkAssetPortfolio: ({
+    workspaceId,
+    initialTrademarkAssetId
+  }: {
+    workspaceId: string;
+    initialTrademarkAssetId?: string;
+  }) => (
+    <h1>
+      Trademarks {workspaceId} {initialTrademarkAssetId}
+    </h1>
   )
 }));
 vi.mock('./features/capability/CapabilityCenter.js', () => ({
@@ -23,7 +31,19 @@ vi.mock('./features/content-studio/ContentStudio.js', () => ({
   ContentStudio: ({ workspaceId }: { workspaceId: string }) => <h1>Content Studio {workspaceId}</h1>
 }));
 vi.mock('./features/guide/GuideWorkspace.js', () => ({
-  GuideWorkspace: ({ workspaceId }: { workspaceId: string }) => <h1>Guide {workspaceId}</h1>
+  GuideWorkspace: ({
+    workspaceId,
+    initialTrademarkAssetId,
+    initialTrademarkAssetVersion
+  }: {
+    workspaceId: string;
+    initialTrademarkAssetId?: string;
+    initialTrademarkAssetVersion?: number;
+  }) => (
+    <h1>
+      Guide {workspaceId} {initialTrademarkAssetId} {initialTrademarkAssetVersion}
+    </h1>
+  )
 }));
 vi.mock('./features/professional-review/ProfessionalReview.js', () => ({
   ProfessionalReview: ({
@@ -268,5 +288,27 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Today workspace-story');
     rerender(<LiteApp workspaceId="workspace-next" />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Today workspace-next');
+  });
+
+  it('passes exact Trademark Asset context to Guide and clears it on Workspace change', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?workspaceId=workspace-1&trademarkAssetId=trademark-asset_1&trademarkAssetVersion=7#guide'
+    );
+    render(<LiteApp />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Guide workspace-1 trademark-asset_1 7'
+    );
+
+    location(
+      '/?workspaceId=workspace-2&trademarkAssetId=trademark-asset_1&trademarkAssetVersion=7#guide',
+      'popstate'
+    );
+
+    await waitFor(() => expect(window.location.search).toBe('?workspaceId=workspace-2'));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Guide workspace-2');
+    expect(screen.getByRole('heading', { level: 1 })).not.toHaveTextContent('trademark-asset_1');
   });
 });

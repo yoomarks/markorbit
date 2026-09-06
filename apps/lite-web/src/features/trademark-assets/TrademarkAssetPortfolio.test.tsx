@@ -79,7 +79,10 @@ const managementDispositions = {
   items: []
 } as const;
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, '', '/');
+});
 
 function clientWithLoad(load: TrademarkAssetClient['load']): TrademarkAssetClient {
   return {
@@ -215,5 +218,28 @@ describe('TrademarkAssetPortfolio', () => {
     expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
     expect(screen.getByText(copy)).toBeInTheDocument();
     expect(screen.queryByText('No sell-side profile has been set up.')).not.toBeInTheDocument();
+  });
+
+  it('opens an exact Asset deep link and hands the current owner version to Guide', async () => {
+    const load = vi.fn().mockResolvedValue({ view, commerceProfile: null });
+    const client = clientWithLoad(load);
+    const user = userEvent.setup();
+
+    render(
+      <TrademarkAssetPortfolio
+        workspaceId={workspaceId}
+        initialTrademarkAssetId={view.trademarkAssetId}
+        client={client}
+      />
+    );
+
+    await waitFor(() => expect(load).toHaveBeenCalledWith(view.trademarkAssetId));
+    expect(await screen.findByRole('heading', { name: 'MARK ORBIT' })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Open in AI Guide' }));
+    expect(window.location.hash).toBe('#guide');
+    expect(window.location.search).toContain(`workspaceId=${workspaceId}`);
+    expect(window.location.search).toContain(`trademarkAssetId=${view.trademarkAssetId}`);
+    expect(window.location.search).toContain('trademarkAssetVersion=3');
   });
 });

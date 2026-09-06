@@ -4,6 +4,7 @@ import type {
   TrademarkAssetId
 } from '@markorbit/contracts/trademark-asset-workspace';
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -18,11 +19,14 @@ import {
   type TrademarkAssetClient,
   type TrademarkAssetDetailResponse
 } from '../../api/trademark-assets.js';
+import { updateLiteLocation } from '../../routing/workspace-navigation.js';
 import { TrademarkAssetAiGuide } from '../trademark-assets/TrademarkAssetAiGuide.js';
 import '../trademark-assets/trademark-asset-workspace.css';
 
 export interface GuideWorkspaceProps {
   workspaceId: string;
+  initialTrademarkAssetId?: TrademarkAssetId;
+  initialTrademarkAssetVersion?: number;
   client?: TrademarkAssetClient;
 }
 
@@ -54,7 +58,12 @@ function detailFailure(status: number | undefined): { title: string; description
   };
 }
 
-export function GuideWorkspace({ workspaceId, client: suppliedClient }: GuideWorkspaceProps) {
+export function GuideWorkspace({
+  workspaceId,
+  initialTrademarkAssetId,
+  initialTrademarkAssetVersion,
+  client: suppliedClient
+}: GuideWorkspaceProps) {
   const client = useMemo(
     () => suppliedClient ?? createTrademarkAssetClient(workspaceId),
     [suppliedClient, workspaceId]
@@ -78,31 +87,57 @@ export function GuideWorkspace({ workspaceId, client: suppliedClient }: GuideWor
     }
   }, [client]);
 
-  useEffect(() => {
-    void loadAssets();
-  }, [loadAssets]);
+  const chooseAsset = useCallback(
+    async (trademarkAssetId: TrademarkAssetId) => {
+      setSelectedId(trademarkAssetId);
+      setDetail(undefined);
+      setDetailErrorStatus(undefined);
+      setDetailState('loading');
+      try {
+        const loaded = await client.load(trademarkAssetId);
+        setDetail(loaded);
+        setDetailState('ready');
+      } catch (error) {
+        setDetailErrorStatus(error instanceof TrademarkAssetHttpError ? error.status : 503);
+        setDetailState('error');
+      }
+    },
+    [client]
+  );
 
-  const chooseAsset = async (trademarkAssetId: TrademarkAssetId) => {
-    setSelectedId(trademarkAssetId);
+  useEffect(() => {
+    if (initialTrademarkAssetId) {
+      void chooseAsset(initialTrademarkAssetId);
+      return;
+    }
+    setSelectedId(undefined);
     setDetail(undefined);
     setDetailErrorStatus(undefined);
-    setDetailState('loading');
-    try {
-      const loaded = await client.load(trademarkAssetId);
-      setDetail(loaded);
-      setDetailState('ready');
-    } catch (error) {
-      setDetailErrorStatus(error instanceof TrademarkAssetHttpError ? error.status : 503);
-      setDetailState('error');
-    }
-  };
+    setDetailState('ready');
+    void loadAssets();
+  }, [chooseAsset, initialTrademarkAssetId, loadAssets]);
 
   const resetSelection = () => {
     setSelectedId(undefined);
     setDetail(undefined);
     setDetailErrorStatus(undefined);
     setDetailState('ready');
+    updateLiteLocation({ surface: 'guide', workspaceId }, { replace: true });
   };
+
+  const returnToAsset = () => {
+    if (!selectedId) return;
+    updateLiteLocation({
+      surface: 'trademarks',
+      workspaceId,
+      params: { trademarkAssetId: selectedId }
+    });
+  };
+
+  const handoffVersionChanged =
+    detail &&
+    initialTrademarkAssetVersion !== undefined &&
+    detail.view.anchor.version !== initialTrademarkAssetVersion;
 
   return (
     <main aria-label="AI Guide workspace">
@@ -115,17 +150,26 @@ export function GuideWorkspace({ workspaceId, client: suppliedClient }: GuideWor
       <Card>
         <strong>Guide is advisory, not a universal assistant authority.</strong>
         <p>
-          Choose a current Workspace Trademark Asset before asking for bounded explanation, missing
-          information review, or checklist preparation. Guide output does not create official truth,
-          filing, execution, contact, payment, publication, or other protected authority.
+          {selectedId
+            ? 'This Guide session is scoped to one explicit Workspace Trademark Asset. Current owner truth is loaded before any guidance is prepared.'
+            : 'Choose a current Workspace Trademark Asset before asking for bounded explanation, missing information review, or checklist preparation.'}{' '}
+          Guide output does not create official truth, filing, execution, contact, payment,
+          publication, or other protected authority.
         </p>
       </Card>
 
       {selectedId ? (
         <section aria-label="Selected Guide asset">
-          <Button variant="secondary" onClick={resetSelection}>
-            ← Choose another Asset
-          </Button>
+          <div className="trademark-asset-portfolio__actions">
+            {initialTrademarkAssetId ? (
+              <Button variant="secondary" onClick={returnToAsset}>
+                ← Back to Trademark Asset
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={resetSelection}>
+              Choose another Asset
+            </Button>
+          </div>
           {detailState === 'loading' ? (
             <LoadingState label="Loading current Trademark Asset for Guide" />
           ) : detailState === 'error' ? (
@@ -135,6 +179,13 @@ export function GuideWorkspace({ workspaceId, client: suppliedClient }: GuideWor
             />
           ) : detail ? (
             <>
+              {handoffVersionChanged ? (
+                <Alert tone="warning" title="Trademark Asset changed since Guide handoff">
+                  The handoff referenced version {initialTrademarkAssetVersion}; current owner truth
+                  is version {detail.view.anchor.version}. Guide preparation will use only the
+                  current owner version shown below.
+                </Alert>
+              ) : null}
               <Card>
                 <p>Current Guide subject</p>
                 <h2>{detail.view.anchor.identity.markText || 'Untitled trademark asset'}</h2>
