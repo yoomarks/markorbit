@@ -50,6 +50,15 @@ export interface TrustEvidenceCurrentAuthoritySource {
   }): Promise<Readonly<TrustEvidenceCurrentAuthoritySnapshot>>;
 }
 
+export interface TrustEvidenceDiscoveryContextLookup {
+  providerId: TrustEvidenceItemV1['providerId'];
+  contextReference: string;
+  jurisdiction: string;
+  serviceType: string;
+  taskType: string;
+  collaborationScope: string;
+}
+
 export interface OutcomeTrustEvidenceRepository {
   putEvidenceItem(item: Readonly<TrustEvidenceItemV1>): Promise<void>;
   findEvidenceItem(
@@ -58,6 +67,9 @@ export interface OutcomeTrustEvidenceRepository {
   putProjection(projection: Readonly<TrustEvidenceVisibilityProjectionV1>): Promise<void>;
   findProjection(
     projectionId: TrustEvidenceVisibilityProjectionIdV1
+  ): Promise<Readonly<TrustEvidenceVisibilityProjectionV1> | undefined>;
+  findLatestDiscoveryProjectionForContext(
+    input: Readonly<TrustEvidenceDiscoveryContextLookup>
   ): Promise<Readonly<TrustEvidenceVisibilityProjectionV1> | undefined>;
   putExplanation(explanation: Readonly<TrustExplanationV1>): Promise<void>;
   findExplanation(
@@ -123,6 +135,40 @@ export class InMemoryOutcomeTrustEvidenceRepository implements OutcomeTrustEvide
     projectionId: TrustEvidenceVisibilityProjectionIdV1
   ): Promise<Readonly<TrustEvidenceVisibilityProjectionV1> | undefined> {
     return Promise.resolve(clone(this.projections.get(projectionId)));
+  }
+
+  findLatestDiscoveryProjectionForContext(
+    input: Readonly<TrustEvidenceDiscoveryContextLookup>
+  ): Promise<Readonly<TrustEvidenceVisibilityProjectionV1> | undefined> {
+    const exactContextFingerprints = new Set(
+      [...this.items.values()]
+        .filter(
+          (item) =>
+            item.providerId === input.providerId &&
+            item.context.contextReference === input.contextReference &&
+            item.context.jurisdiction === input.jurisdiction &&
+            item.context.serviceType === input.serviceType &&
+            item.context.taskType === input.taskType &&
+            item.context.collaborationScope === input.collaborationScope
+        )
+        .map((item) => item.context.contextFingerprintSha256)
+    );
+    if (exactContextFingerprints.size === 0) return Promise.resolve(undefined);
+    const projection = [...this.projections.values()]
+      .filter(
+        (candidate) =>
+          candidate.providerId === input.providerId &&
+          candidate.purpose === 'PROVIDER_DISCOVERY_TRUST_EXPLANATION' &&
+          exactContextFingerprints.has(candidate.contextFingerprintSha256)
+      )
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) ||
+          right.trustEvidenceVisibilityProjectionId.localeCompare(
+            left.trustEvidenceVisibilityProjectionId
+          )
+      )[0];
+    return Promise.resolve(clone(projection));
   }
 
   putExplanation(explanation: Readonly<TrustExplanationV1>): Promise<void> {
