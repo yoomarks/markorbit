@@ -13,7 +13,7 @@ def replace_once(path: str, old: str, new: str) -> None:
 replace_once(
     'packages/ui/package.json',
     '    "@storybook/addon-essentials": "8.6.14",\n',
-    '    "@storybook/addon-essentials": "8.6.14",\n    "@storybook/html-vite": "8.6.14",\n',
+    '    "@storybook/addon-essentials": "8.6.14",\n    "@storybook/html": "8.6.14",\n    "@storybook/html-vite": "8.6.14",\n',
 )
 replace_once(
     'packages/ui/package.json',
