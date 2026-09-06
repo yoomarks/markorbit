@@ -104,7 +104,10 @@ function guideClient(overrides: Partial<TrademarkAssetClient> = {}): TrademarkAs
   };
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, '', '/');
+});
 
 describe('GuideWorkspace', () => {
   it('requires explicit Asset selection and prepares against the exact loaded current version', async () => {
@@ -173,5 +176,91 @@ describe('GuideWorkspace', () => {
     ).toBeVisible();
     expect(screen.getByText(/No local Guide context was substituted/i)).toBeVisible();
     expect(prepareAiGuide).not.toHaveBeenCalled();
+  });
+
+  it('opens an explicit Asset context directly without rediscovering the portfolio', async () => {
+    const search = vi.fn();
+    const load = vi.fn().mockResolvedValue({ view, commerceProfile: null });
+    const client = guideClient({ search, load });
+    const user = userEvent.setup();
+    window.history.replaceState(
+      null,
+      '',
+      `/?workspaceId=${workspaceId}&trademarkAssetId=${view.trademarkAssetId}&trademarkAssetVersion=9#guide`
+    );
+
+    render(
+      <GuideWorkspace
+        workspaceId={workspaceId}
+        initialTrademarkAssetId={view.trademarkAssetId}
+        initialTrademarkAssetVersion={9}
+        client={client}
+      />
+    );
+
+    await waitFor(() => expect(load).toHaveBeenCalledWith(view.trademarkAssetId));
+    expect(search).not.toHaveBeenCalled();
+    expect(await screen.findByText(/exact version 9/i)).toBeVisible();
+    expect(screen.queryByText(/changed since Guide handoff/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Back to Trademark Asset/i }));
+    expect(window.location.hash).toBe('#trademarks');
+    expect(window.location.search).toContain(`workspaceId=${workspaceId}`);
+    expect(window.location.search).toContain(`trademarkAssetId=${view.trademarkAssetId}`);
+  });
+
+  it('surfaces version drift and prepares only against current owner truth', async () => {
+    const prepareAiGuide = vi.fn().mockResolvedValue(prepared);
+    const client = guideClient({ prepareAiGuide });
+    const user = userEvent.setup();
+
+    render(
+      <GuideWorkspace
+        workspaceId={workspaceId}
+        initialTrademarkAssetId={view.trademarkAssetId}
+        initialTrademarkAssetVersion={8}
+        client={client}
+      />
+    );
+
+    expect(
+      await screen.findByText(/handoff referenced version 8; current owner truth is version 9/i)
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Prepare AI guidance' }));
+    await waitFor(() =>
+      expect(prepareAiGuide).toHaveBeenCalledWith(view.trademarkAssetId, {
+        expectedTrademarkAssetVersion: 9,
+        requestedKinds: ['EXPLAIN_ASSET', 'IDENTIFY_MISSING_INFORMATION', 'PREPARE_CHECKLIST']
+      })
+    );
+  });
+
+  it.each([
+    [403, 'AI Guide permission required'],
+    [404, 'Trademark Asset unavailable for Guide'],
+    [503, 'AI Guide source unavailable']
+  ])('fails closed for explicit Asset context when detail returns %s', async (status, title) => {
+    const search = vi.fn();
+    const prepareAiGuide = vi.fn();
+    const client = guideClient({
+      search,
+      load: vi
+        .fn()
+        .mockRejectedValue(new TrademarkAssetHttpError(status, 'DETAIL_FAILED', 'Detail failed.')),
+      prepareAiGuide
+    });
+
+    render(
+      <GuideWorkspace
+        workspaceId={workspaceId}
+        initialTrademarkAssetId={view.trademarkAssetId}
+        client={client}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: title })).toBeVisible();
+    expect(search).not.toHaveBeenCalled();
+    expect(prepareAiGuide).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Prepare AI guidance' })).not.toBeInTheDocument();
   });
 });

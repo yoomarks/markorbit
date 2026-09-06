@@ -68,3 +68,46 @@ test('AI Guide stale evidence warning remains prominent at 390px', async ({ page
     true
   );
 });
+
+test('Contextual Guide opens one exact Trademark Asset without portfolio rediscovery', async ({
+  page
+}) => {
+  await page.goto(story('lite-guide-contextual-ai-guide--exact-asset-context'));
+
+  await expect(page.getByRole('heading', { name: 'NORTH STAR' })).toBeVisible();
+  await expect(
+    page
+      .locator('p')
+      .filter({ hasText: 'trademark-asset_guide-story' })
+      .filter({ hasText: 'exact version 9' })
+  ).toBeVisible();
+  await expect(page.getByText(/exact version 9/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Back to Trademark Asset/i })).toBeVisible();
+  await expect(page.getByText(/advisory, not a universal assistant authority/i)).toBeVisible();
+  expect(await page.locator('body').evaluate((body) => body.scrollWidth <= body.clientWidth)).toBe(
+    true
+  );
+});
+
+test('Contextual Guide makes handoff version drift explicit at 390px', async ({ page }) => {
+  await page.goto(story('lite-guide-contextual-ai-guide--version-drift-mobile-390'));
+
+  const drift = page
+    .getByRole('status')
+    .filter({ hasText: 'Trademark Asset changed since Guide handoff' });
+  await expect(drift).toContainText('Trademark Asset changed since Guide handoff');
+  await expect(drift).toContainText('version 8');
+  await expect(drift).toContainText('version 9');
+  await expect(page.getByText(/exact version 9/i)).toBeVisible();
+  expect(await page.locator('body').evaluate((body) => body.scrollWidth <= body.clientWidth)).toBe(
+    true
+  );
+});
+
+test('Contextual Guide keeps explicit owner outage distinct from empty state', async ({ page }) => {
+  await page.goto(story('lite-guide-contextual-ai-guide--explicit-asset-unavailable'));
+
+  await expect(page.getByRole('heading', { name: 'AI Guide source unavailable' })).toBeVisible();
+  await expect(page.getByText(/No fixture or local suggestion was substituted/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Prepare AI guidance' })).toHaveCount(0);
+});

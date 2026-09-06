@@ -25,12 +25,14 @@ import {
   type TrademarkAssetPortfolioManagementEntry,
   type TrademarkAssetPortfolioManagementSummary
 } from '../../api/trademark-assets.js';
+import { updateLiteLocation } from '../../routing/workspace-navigation.js';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 import { TrademarkServiceWorkbench } from './TrademarkServiceWorkbench.js';
 import './trademark-asset-workspace.css';
 
 export interface TrademarkAssetPortfolioProps {
   workspaceId: string;
+  initialTrademarkAssetId?: TrademarkAssetId;
   client?: TrademarkAssetClient;
 }
 
@@ -54,6 +56,7 @@ function relationshipLabel(asset: Readonly<TrademarkAsset>): string {
 
 export function TrademarkAssetPortfolio({
   workspaceId,
+  initialTrademarkAssetId,
   client: suppliedClient
 }: TrademarkAssetPortfolioProps) {
   const client = useMemo(
@@ -101,51 +104,66 @@ export function TrademarkAssetPortfolio({
     void loadPortfolio();
   }, [loadPortfolio]);
 
-  const reloadManagementDispositions = async (
-    trademarkAssetId: TrademarkAssetId
-  ): Promise<CurrentTrademarkAssetManagementDispositionProjection> => {
-    const projection = await client.loadManagementDispositions(trademarkAssetId);
-    setManagementDispositions(projection);
-    setManagementDispositionReadUnavailable(false);
-    return projection;
-  };
+  const reloadManagementDispositions = useCallback(
+    async (
+      trademarkAssetId: TrademarkAssetId
+    ): Promise<CurrentTrademarkAssetManagementDispositionProjection> => {
+      const projection = await client.loadManagementDispositions(trademarkAssetId);
+      setManagementDispositions(projection);
+      setManagementDispositionReadUnavailable(false);
+      return projection;
+    },
+    [client]
+  );
 
-  const openAsset = async (trademarkAssetId: TrademarkAssetId) => {
-    setSelectedId(trademarkAssetId);
-    setDetail(undefined);
-    setManagementDispositions(undefined);
-    setManagementDispositionReadUnavailable(false);
-    setServiceWorkPackage(undefined);
-    setDetailState('loading');
-    setDetailErrorStatus(undefined);
-    try {
-      const [loadedDetail, loadedWorkPackage] = await Promise.all([
-        client.load(trademarkAssetId),
-        client.loadServiceWorkPackage(trademarkAssetId)
-      ]);
+  const openAsset = useCallback(
+    async (trademarkAssetId: TrademarkAssetId) => {
+      setSelectedId(trademarkAssetId);
+      setDetail(undefined);
+      setManagementDispositions(undefined);
+      setManagementDispositionReadUnavailable(false);
+      setServiceWorkPackage(undefined);
+      setDetailState('loading');
+      setDetailErrorStatus(undefined);
+      try {
+        const [loadedDetail, loadedWorkPackage] = await Promise.all([
+          client.load(trademarkAssetId),
+          client.loadServiceWorkPackage(trademarkAssetId)
+        ]);
+        setDetail(loadedDetail);
+        setServiceWorkPackage(loadedWorkPackage);
+        try {
+          await reloadManagementDispositions(trademarkAssetId);
+        } catch {
+          setManagementDispositionReadUnavailable(true);
+        }
+        setDetailState('ready');
+      } catch (error) {
+        setDetailErrorStatus(error instanceof TrademarkAssetHttpError ? error.status : 503);
+        setDetailState('error');
+      }
+    },
+    [client, reloadManagementDispositions]
+  );
+
+  useEffect(() => {
+    if (initialTrademarkAssetId && initialTrademarkAssetId !== selectedId) {
+      void openAsset(initialTrademarkAssetId);
+    }
+  }, [initialTrademarkAssetId, openAsset, selectedId]);
+
+  const reloadAssetCurrentness = useCallback(
+    async (trademarkAssetId: TrademarkAssetId) => {
+      const loadedDetail = await client.load(trademarkAssetId);
       setDetail(loadedDetail);
-      setServiceWorkPackage(loadedWorkPackage);
       try {
         await reloadManagementDispositions(trademarkAssetId);
       } catch {
         setManagementDispositionReadUnavailable(true);
       }
-      setDetailState('ready');
-    } catch (error) {
-      setDetailErrorStatus(error instanceof TrademarkAssetHttpError ? error.status : 503);
-      setDetailState('error');
-    }
-  };
-
-  const reloadAssetCurrentness = async (trademarkAssetId: TrademarkAssetId) => {
-    const loadedDetail = await client.load(trademarkAssetId);
-    setDetail(loadedDetail);
-    try {
-      await reloadManagementDispositions(trademarkAssetId);
-    } catch {
-      setManagementDispositionReadUnavailable(true);
-    }
-  };
+    },
+    [client, reloadManagementDispositions]
+  );
 
   const managementEntry = (trademarkAssetId: TrademarkAssetId) =>
     managementByAsset.find((entry) => entry.trademarkAssetId === trademarkAssetId);
@@ -176,9 +194,32 @@ export function TrademarkAssetPortfolio({
     if (detail)
       return (
         <div className="trademark-asset-portfolio__detail">
-          <Button variant="secondary" onClick={() => setSelectedId(undefined)}>
-            ← Back to trademarks
-          </Button>
+          <div className="trademark-asset-portfolio__actions">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelectedId(undefined);
+                setDetail(undefined);
+                updateLiteLocation({ surface: 'trademarks', workspaceId }, { replace: true });
+              }}
+            >
+              ← Back to trademarks
+            </Button>
+            <Button
+              onClick={() =>
+                updateLiteLocation({
+                  surface: 'guide',
+                  workspaceId,
+                  params: {
+                    trademarkAssetId: selectedId,
+                    trademarkAssetVersion: detail.view.anchor.version
+                  }
+                })
+              }
+            >
+              Open in AI Guide
+            </Button>
+          </div>
           <TrademarkAssetWorkspace
             view={detail.view}
             attention={detail.attention ?? []}
@@ -333,7 +374,16 @@ export function TrademarkAssetPortfolio({
                   verified by Lite
                 </small>
                 <div className="trademark-asset-portfolio__actions">
-                  <Button onClick={() => void openAsset(asset.trademarkAssetId)}>
+                  <Button
+                    onClick={() => {
+                      updateLiteLocation({
+                        surface: 'trademarks',
+                        workspaceId,
+                        params: { trademarkAssetId: asset.trademarkAssetId }
+                      });
+                      void openAsset(asset.trademarkAssetId);
+                    }}
+                  >
                     View asset details
                   </Button>
                 </div>

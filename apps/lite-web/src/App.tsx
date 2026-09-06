@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-workspace';
 import {
   AppShell,
   Badge,
@@ -158,9 +159,12 @@ export function LiteApp({
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(() =>
     liteWorkspaceIdFromLocation(window.location, workspaceId ?? '')
   );
+  const previousWorkspaceId = useRef(activeWorkspaceId);
+  const [, setLocationRevision] = useState(0);
 
   useEffect(() => {
     const followLocation = () => {
+      setLocationRevision((value) => value + 1);
       setActiveWorkspaceId(liteWorkspaceIdFromLocation(window.location, workspaceId ?? ''));
       const nextSurface = liteSurfaceFromHash(window.location.hash);
       if (nextSurface) setSurface(nextSurface);
@@ -174,6 +178,19 @@ export function LiteApp({
     };
   }, [workspaceId]);
 
+  useEffect(() => {
+    const previous = previousWorkspaceId.current;
+    previousWorkspaceId.current = activeWorkspaceId;
+    if (!previous || previous === activeWorkspaceId) return;
+    const context = new URLSearchParams(window.location.search);
+    if ((surface === 'trademarks' || surface === 'guide') && context.has('trademarkAssetId')) {
+      updateLiteLocation(
+        { surface, workspaceId: activeWorkspaceId || undefined },
+        { replace: true }
+      );
+    }
+  }, [activeWorkspaceId, surface]);
+
   const primary = litePrimaryForSurface(surface);
   const isFixture = isLiteFixtureSurface(surface);
   const isWorkHub = surface === 'work';
@@ -185,6 +202,16 @@ export function LiteApp({
     initialReviewCaseId ?? currentQuery.get('professionalReviewCaseId') ?? undefined;
   const servicePackageId =
     initialServicePackageId ?? currentQuery.get('servicePackageId') ?? undefined;
+  const trademarkAssetIdValue = currentQuery.get('trademarkAssetId');
+  const trademarkAssetId =
+    trademarkAssetIdValue?.startsWith('trademark-asset_') === true
+      ? (trademarkAssetIdValue as TrademarkAssetId)
+      : undefined;
+  const trademarkAssetVersionValue = currentQuery.get('trademarkAssetVersion');
+  const trademarkAssetVersion =
+    trademarkAssetVersionValue && /^[1-9]\d*$/.test(trademarkAssetVersionValue)
+      ? Number(trademarkAssetVersionValue)
+      : undefined;
 
   return (
     <AppShell
@@ -263,7 +290,11 @@ export function LiteApp({
           )
         ) : surface === 'trademarks' ? (
           activeWorkspaceId ? (
-            <TrademarkAssetPortfolio workspaceId={activeWorkspaceId} />
+            <TrademarkAssetPortfolio
+              key={activeWorkspaceId}
+              workspaceId={activeWorkspaceId}
+              {...(trademarkAssetId ? { initialTrademarkAssetId: trademarkAssetId } : {})}
+            />
           ) : (
             workspaceRequired(
               'A valid Workspace context is required to load durable Trademark Assets.'
@@ -323,7 +354,14 @@ export function LiteApp({
           )
         ) : surface === 'guide' ? (
           activeWorkspaceId ? (
-            <GuideWorkspace workspaceId={activeWorkspaceId} />
+            <GuideWorkspace
+              key={activeWorkspaceId}
+              workspaceId={activeWorkspaceId}
+              {...(trademarkAssetId ? { initialTrademarkAssetId: trademarkAssetId } : {})}
+              {...(trademarkAssetVersion
+                ? { initialTrademarkAssetVersion: trademarkAssetVersion }
+                : {})}
+            />
           ) : (
             workspaceRequired(
               'A valid Workspace context is required to load the asset-scoped AI Guide.'
