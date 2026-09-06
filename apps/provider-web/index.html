@@ -14,12 +14,14 @@
           <p class="eyebrow">MarkOrbit · governed provider work</p>
           <h1 id="provider-workspace-title">Provider Workspace</h1>
           <p class="summary">
-            Read your Workspace's current work queue through the governed MarkOrbit Gateway.
+            Review your Workspace's governed work, resolve the next human task, and submit
+            Provider-owned responses or claim evidence through the governed MarkOrbit Gateway.
           </p>
         </div>
         <p class="boundary">
-          Queue visibility is read-only context. It does not create allocation, acceptance,
-          appointment, contact, filing, payment, or Official Truth authority.
+          Queue visibility is read-only context. Action controls still require current Gateway +
+          Core + MGSN authority; no view creates allocation, appointment, contact, filing, payment,
+          or Official Truth authority.
         </p>
       </header>
 
@@ -57,7 +59,7 @@
           <div class="panel-heading">
             <div>
               <p class="section-kicker">Own work</p>
-              <h2 id="queue-title">Queue</h2>
+              <h2 id="queue-title">Work Queue</h2>
             </div>
             <button id="refresh-queue" class="secondary" type="button">Refresh</button>
           </div>
@@ -69,12 +71,12 @@
         <section class="panel detail-panel" aria-labelledby="detail-title">
           <div class="panel-heading">
             <div>
-              <p class="section-kicker">Exact read</p>
-              <h2 id="detail-title">Work item detail</h2>
+              <p class="section-kicker">Task-first view</p>
+              <h2 id="detail-title">Work item action console</h2>
             </div>
           </div>
           <div id="detail" class="detail-empty">
-            Select a work item to inspect its bounded read-only projection.
+            Select a work item to review its bounded owner-backed state and allowed Provider action.
           </div>
         </section>
       </section>
