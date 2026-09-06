@@ -1,0 +1,46 @@
+name: tmp-841-debug-line
+
+on:
+  push:
+    branches: [tmp/841-debug-line-20260906]
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate exact test and print lint window
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin tmp/841-trust-discovery-writer-20260906 mgsn/phase2-trust-discovery-841-main
+          git show origin/tmp/841-trust-discovery-writer-20260906:scripts/tmp-841-trust-discovery-writer.py > /tmp/writer.py
+          git checkout -B owner origin/mgsn/phase2-trust-discovery-841-main
+          python /tmp/writer.py
+          sed -i 's/async function harness(/function harness(/' services/mgsn/tests/provider-discovery-trust.test.ts
+          sed -i 's/await harness()/harness()/g' services/mgsn/tests/provider-discovery-trust.test.ts
+          sed -i "s/if (support.state !== 'TRUST_EVIDENCE_AVAILABLE')/if (!support || support.state !== 'TRUST_EVIDENCE_AVAILABLE')/" services/mgsn/tests/provider-discovery-trust.test.ts
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('services/mgsn/tests/provider-discovery-trust.test.ts')
+          s=p.read_text().replace(
+            "expect(support.currentExposureValidation.decision).toBe(\n      'AUTHORIZED_FOR_BOUNDED_TRUST_EXPLANATION'\n    );",
+            "expect(support.currentExposureValidation).toMatchObject({\n      decision: 'AUTHORIZED_FOR_BOUNDED_TRUST_EXPLANATION'\n    });",
+            1,
+          )
+          p.write_text(s)
+          PY
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write services/mgsn/tests/provider-discovery-trust.test.ts
+          echo '--- lines 300-315 ---'
+          nl -ba services/mgsn/tests/provider-discovery-trust.test.ts | sed -n '300,315p'
+          echo '--- all awaits ---'
+          grep -n 'await ' services/mgsn/tests/provider-discovery-trust.test.ts || true
