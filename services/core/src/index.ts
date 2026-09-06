@@ -55,6 +55,10 @@ import {
   createOfficialFeeReferenceRoutesV1,
   type OfficialFeeReferenceResolutionAuthorityV1
 } from './official-fee-reference-http.js';
+import {
+  createUsTrademarkMarkRepresentationMethodRoutesV1,
+  type UsTrademarkMarkRepresentationMethodResolutionAuthorityV1
+} from './us-trademark-mark-representation-method-http.js';
 
 export const serviceManifest = Object.freeze({
   name: 'core',
@@ -78,6 +82,7 @@ export interface CoreRuntimeOptions {
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
   officialFeeReferences?: Readonly<OfficialFeeReferenceResolutionAuthorityV1>;
+  usTrademarkMarkRepresentationMethods?: Readonly<UsTrademarkMarkRepresentationMethodResolutionAuthorityV1>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -124,6 +129,10 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Method Improvement admission.');
   if (options.officialFeeReferences && !secret)
     throw new Error('internalServiceSecret is required for Official Fee Reference reads.');
+  if (options.usTrademarkMarkRepresentationMethods && !secret)
+    throw new Error(
+      'internalServiceSecret is required for US trademark Method current-reference reads.'
+    );
   if (options.currentWorkspaceAuthority && !secret)
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
@@ -174,6 +183,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.officialFeeReferences && secret
       ? createOfficialFeeReferenceRoutesV1({
           references: options.officialFeeReferences,
+          internalServiceSecret: secret
+        })
+      : [];
+  const usTrademarkMarkRepresentationMethodRoutes =
+    options.usTrademarkMarkRepresentationMethods && secret
+      ? createUsTrademarkMarkRepresentationMethodRoutesV1({
+          methods: options.usTrademarkMarkRepresentationMethods,
           internalServiceSecret: secret
         })
       : [];
@@ -685,7 +701,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     ...methodOutcomeEvidenceRoutes,
     ...methodOutcomeReportRoutes,
     ...methodImprovementRoutes,
-    ...officialFeeReferenceRoutes
+    ...officialFeeReferenceRoutes,
+    ...usTrademarkMarkRepresentationMethodRoutes
   );
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
@@ -716,3 +733,5 @@ export * from './method-improvement-http.js';
 export * from './official-fee-reference-http.js';
 export * from './official-fee-reference-store.js';
 export * from './official-fee-reference-store-postgres.js';
+export * from './us-trademark-mark-representation-method-authority.js';
+export * from './us-trademark-mark-representation-method-http.js';
