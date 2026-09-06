@@ -1,0 +1,49 @@
+name: tmp-890-squash-clean
+
+on:
+  push:
+    branches: [tmp/890-squash-clean-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  squash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild one clean #890 commit from current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin main integration/provider-web-storybook-browser-880
+          test "$(git rev-parse origin/main)" = "df6b76bd28f85037f24730eb1ab9e383612047dc"
+          test "$(git rev-parse origin/integration/provider-web-storybook-browser-880)" = "5450ef23fbf0d639cac3e4259990ef092fdf316e"
+          git checkout -B clean origin/main
+          cat > /tmp/paths <<'EOF'
+          .github/workflows/ci.yml
+          apps/provider-web/src/ProviderWorkspaceShell.stories.js
+          package.json
+          packages/ui/.storybook-provider/main.ts
+          packages/ui/package.json
+          packages/ui/tsconfig.json
+          playwright.provider-storybook.config.ts
+          playwright.provider.config.ts
+          pnpm-lock.yaml
+          scripts/ci-detect-scope.mjs
+          scripts/ci-detect-scope.test.mjs
+          scripts/validate-provider-storybook-index.mjs
+          tests/e2e/applications.ts
+          tests/e2e/provider-storybook.spec.ts
+          tests/e2e/provider.spec.ts
+          EOF
+          while IFS= read -r p; do git checkout origin/integration/provider-web-storybook-browser-880 -- "$p"; done < /tmp/paths
+          git diff --cached --name-only | sort -u > /tmp/actual
+          diff -u <(sort /tmp/paths) /tmp/actual
+          git diff --cached --check
+          git commit -m 'chore(ci): register Provider Web visual surfaces'
+          git push --force origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
