@@ -2,6 +2,8 @@
 
 ## 1. Status and scope
 
+> **Current-state overlay (2026-09-06):** Durable Network Participation and Private First Visibility owner/runtime enforcement described here as future or not implemented has since landed. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; Provider `ACTIVE` still does not imply participation or visibility, and public/live Provider exposure remains deferred.
+
 **MGSN-P0-001 / [#359](https://github.com/yoomarks/markorbit/issues/359), parent [#358](https://github.com/yoomarks/markorbit/issues/358).** Architecture, privacy and contract-boundary freeze for review. Audited against fetched `origin/main` at `574d142f1965fcc31bf77f64b065ad5d22d76c79` on 2026-08-31, in the dedicated `mgsn-a` worktree/branch.
 
 The smallest new boundary is explicit participation authorization and a versioned, Private First visibility policy referencing an existing Core Workspace and MGSN Provider. It answers whether a node and selected fields may be exposed for a specified discovery purpose. It does not implement discovery or provider execution.

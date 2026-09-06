@@ -2,6 +2,8 @@
 
 ## 1. Status, outcome and scope
 
+> **Current-state overlay (2026-09-06):** Controlled Privacy Handoff is now implemented as durable MGSN authorization with current validation, revocation and privacy-preparation support. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; Handoff does not authorize Provider selection/allocation/acceptance/contact, artifact retrieval, Filing, Payment or Official Truth.
+
 **MGSN-P0-004 / [#395](https://github.com/yoomarks/markorbit/issues/395), parent [#358](https://github.com/yoomarks/markorbit/issues/358).** Documentation / architecture boundary freeze only, audited on 2026-09-01 against fetched `origin/main` at `70acdf30cb92b8470e3d022965a1815da5598587`, in the dedicated `mgsn-d` branch/worktree.
 
 The originating Workplace's authorized human needs to understand and authorize exactly which private fields may reach a selected final execution Provider for a bounded purpose. MGSN owns this disclosure authority boundary; the Workplace retains its customer relationship, private context and permissions.

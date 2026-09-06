@@ -2,6 +2,8 @@
 
 ## 1. Status and scope
 
+> **Current-state overlay (2026-09-06):** Explicit Human Provider Selection is now implemented as durable MGSN owner truth with current-authority validation and an authenticated product-facing path. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; Selection remains distinct from Handoff, Allocation, Acceptance, appointment and external contact.
+
 **MGSN-P0-003 / #382, parent #358.**
 
 Audited against fetched `origin/main` at `eae62894b74ed5bd50ae589b906d77eb46afa771` in the dedicated `mgsn-c` worktree. The existing #382 branch draft is retained and reconciled here; no other Lane is changed.

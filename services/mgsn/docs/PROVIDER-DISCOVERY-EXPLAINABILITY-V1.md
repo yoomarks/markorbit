@@ -2,6 +2,8 @@
 
 ## 1. Status and scope
 
+> **Current-state overlay (2026-09-06):** Provider Discovery runtime and explainability are now implemented/productized, and post-#841 can compose exact contextual Trust decision support only after current exposure authorization. See [MGSN Current State & Phase 2 Audit](CURRENT-STATE-PHASE2.md) for current implementation truth. The historical V1 freeze below remains the authority/design record; candidates remain decision support and create no score, rank, winner, Selection or Allocation authority.
+
 **MGSN-P0-002 / #371, parent #358.**
 
 This is an architecture, privacy, and contract-boundary freeze.
