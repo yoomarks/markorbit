@@ -1,4 +1,8 @@
-import { AuthenticationError } from '@markorbit/contracts';
+import {
+  AuthenticationError,
+  CONTROL_PLANE_CAPABILITIES,
+  type ControlPlaneCapability
+} from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import { validateInternalServiceSecret } from './auth.js';
 import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';
@@ -8,13 +12,39 @@ export interface InternalOperatorPrincipalHttpOptionsV1 {
   internalServiceSecret: string;
 }
 
-function token(request: JsonRequest): string {
+type ResolutionRequest = Readonly<{
+  token: string;
+  requiredCapability?: ControlPlaneCapability;
+}>;
+
+function resolutionRequest(request: JsonRequest): ResolutionRequest {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
   const body = request.body as Record<string, unknown>;
-  if (Object.keys(body).length !== 1 || typeof body.token !== 'string' || !body.token)
-    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must contain only token.');
-  return body.token;
+  const keys = Object.keys(body);
+  if (
+    !keys.every((key) => ['token', 'requiredCapability'].includes(key)) ||
+    keys.length < 1 ||
+    keys.length > 2 ||
+    typeof body.token !== 'string' ||
+    !body.token
+  )
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Request body must contain token and may contain one requiredCapability.'
+    );
+  if (
+    body.requiredCapability !== undefined &&
+    !(CONTROL_PLANE_CAPABILITIES as readonly unknown[]).includes(body.requiredCapability)
+  )
+    throw new HttpError(400, 'INVALID_REQUEST', 'Required Control Plane capability is invalid.');
+  return {
+    token: body.token,
+    ...(body.requiredCapability === undefined
+      ? {}
+      : { requiredCapability: body.requiredCapability as ControlPlaneCapability })
+  };
 }
 
 function translate(error: unknown): never {
@@ -47,8 +77,14 @@ export function createInternalOperatorPrincipalRoutesV1(
             'INTERNAL_SERVICE_UNAUTHORIZED',
             'Internal service identity is invalid.'
           );
+        const input = resolutionRequest(request);
         try {
-          return json(200, await options.resolver.resolve(token(request)));
+          return json(
+            200,
+            input.requiredCapability
+              ? await options.resolver.resolve(input.token, input.requiredCapability)
+              : await options.resolver.resolve(input.token)
+          );
         } catch (error) {
           return translate(error);
         }

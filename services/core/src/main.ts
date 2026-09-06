@@ -21,6 +21,7 @@ import { GovernedHumanActionReceiptService } from './governed-human-action-recei
 import { createRuntime } from './index.js';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
+  createEnvironmentDataReadGrantSourceV1,
   InternalOperatorPrincipalResolverV1
 } from './internal-operator-principal.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
@@ -77,7 +78,8 @@ const accountAccess = new AccountAccessService(
 const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV1({
   authentication,
   accountAccess,
-  cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1()
+  cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1(),
+  dataReadGrants: createEnvironmentDataReadGrantSourceV1()
 });
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)

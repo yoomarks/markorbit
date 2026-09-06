@@ -2,9 +2,12 @@ import { AuthenticationError, type CommercialAdminAccountView } from '@markorbit
 import { describe, expect, it, vi } from 'vitest';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
+  createEnvironmentDataReadGrantSourceV1,
   type CognitiveReadGrantSourceV1,
+  type DataReadGrantSourceV1,
   InternalOperatorPrincipalResolverV1,
-  StaticCognitiveReadGrantSourceV1
+  StaticCognitiveReadGrantSourceV1,
+  StaticDataReadGrantSourceV1
 } from '../src/internal-operator-principal.js';
 
 const userId = '018f0000-0000-7000-8000-000000000768';
@@ -20,7 +23,7 @@ function account(overrides: Partial<CommercialAdminAccountView> = {}): Commercia
   return {
     userId,
     email: 'operator@example.com',
-    displayName: 'Cognitive Operator',
+    displayName: 'Control Plane Operator',
     accountType: 'INTERNAL',
     status: 'ACTIVE',
     version: 1,
@@ -34,7 +37,8 @@ function account(overrides: Partial<CommercialAdminAccountView> = {}): Commercia
 
 function resolver(
   cognitiveReadGrants: CognitiveReadGrantSourceV1 = new StaticCognitiveReadGrantSourceV1([userId]),
-  inspected: CommercialAdminAccountView | null = account()
+  inspected: CommercialAdminAccountView | null = account(),
+  dataReadGrants: DataReadGrantSourceV1 = new StaticDataReadGrantSourceV1([userId])
 ) {
   const resolveSession = vi.fn(() => Promise.resolve(session));
   const inspectAccount = vi.fn(() => Promise.resolve(inspected));
@@ -44,13 +48,14 @@ function resolver(
     service: new InternalOperatorPrincipalResolverV1({
       authentication: { resolveSession },
       accountAccess: { inspectAccount },
-      cognitiveReadGrants
+      cognitiveReadGrants,
+      dataReadGrants
     })
   };
 }
 
-describe('explicit cognitive read Internal Operator grant resolution', () => {
-  it('issues a cognitive-only canonical Internal Operator principal for an exact explicit grant', async () => {
+describe('explicit Control Plane read Internal Operator grant resolution', () => {
+  it('preserves token-only cognitive resolution as a cognitive-only principal', async () => {
     const { service } = resolver();
 
     await expect(service.resolve('raw-session-token')).resolves.toEqual({
@@ -62,22 +67,97 @@ describe('explicit cognitive read Internal Operator grant resolution', () => {
     });
   });
 
-  it('does not let active INTERNAL/commercial authority imply cognitive read', async () => {
-    const { service } = resolver(new StaticCognitiveReadGrantSourceV1([otherUserId]));
+  it('issues a Data-only principal only for an exact explicit Data grant and request', async () => {
+    const { service } = resolver();
 
-    await expect(service.resolve('raw-session-token')).rejects.toMatchObject({
-      code: 'PERMISSION_DENIED'
+    await expect(service.resolve('raw-session-token', 'control-plane:data:read')).resolves.toEqual({
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: session.sessionId,
+      userId,
+      capabilities: ['control-plane:data:read'],
+      sessionExpiresAt: session.sessionExpiresAt
     });
   });
 
-  it('rejects non-INTERNAL account classification before consulting cognitive grants', async () => {
-    const grants = { hasGrant: vi.fn(() => Promise.resolve(true)) };
-    const { service } = resolver(grants, account({ accountType: 'PROFESSIONAL' }));
+  it('does not let active INTERNAL/commercial authority imply the requested Control Plane read', async () => {
+    const { service } = resolver(
+      new StaticCognitiveReadGrantSourceV1([otherUserId]),
+      account(),
+      new StaticDataReadGrantSourceV1([otherUserId])
+    );
 
     await expect(service.resolve('raw-session-token')).rejects.toMatchObject({
       code: 'PERMISSION_DENIED'
     });
-    expect(grants.hasGrant).not.toHaveBeenCalled();
+    await expect(
+      service.resolve('raw-session-token', 'control-plane:data:read')
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
+  });
+
+  it('keeps cognitive resolution independent from missing or malformed Data grant truth', async () => {
+    const missingData = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      createEnvironmentDataReadGrantSourceV1(undefined)
+    ).service;
+    await expect(missingData.resolve('raw-session-token')).resolves.toMatchObject({
+      capabilities: ['control-plane:cognitive:read']
+    });
+
+    const malformedData = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      createEnvironmentDataReadGrantSourceV1(
+        JSON.stringify({
+          schemaVersion: 1,
+          grants: [{ userId, capabilities: ['control-plane:data:operate'] }]
+        })
+      )
+    ).service;
+    await expect(malformedData.resolve('raw-session-token')).resolves.toMatchObject({
+      capabilities: ['control-plane:cognitive:read']
+    });
+  });
+
+  it('keeps Data resolution independent from missing or malformed cognitive grant truth', async () => {
+    const missingCognitive = resolver(
+      createEnvironmentCognitiveReadGrantSourceV1(undefined),
+      account(),
+      new StaticDataReadGrantSourceV1([userId])
+    ).service;
+    await expect(
+      missingCognitive.resolve('raw-session-token', 'control-plane:data:read')
+    ).resolves.toMatchObject({ capabilities: ['control-plane:data:read'] });
+
+    const malformedCognitive = resolver(
+      createEnvironmentCognitiveReadGrantSourceV1(
+        JSON.stringify({
+          schemaVersion: 1,
+          grants: [{ userId, capabilities: ['commercial-admin:read'] }]
+        })
+      ),
+      account(),
+      new StaticDataReadGrantSourceV1([userId])
+    ).service;
+    await expect(
+      malformedCognitive.resolve('raw-session-token', 'control-plane:data:read')
+    ).resolves.toMatchObject({ capabilities: ['control-plane:data:read'] });
+  });
+
+  it('rejects non-INTERNAL account classification before consulting grants', async () => {
+    const cognitiveGrants = { hasGrant: vi.fn(() => Promise.resolve(true)) };
+    const dataGrants = { hasGrant: vi.fn(() => Promise.resolve(true)) };
+    const { service } = resolver(
+      cognitiveGrants,
+      account({ accountType: 'PROFESSIONAL' }),
+      dataGrants
+    );
+
+    await expect(
+      service.resolve('raw-session-token', 'control-plane:data:read')
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
+    expect(cognitiveGrants.hasGrant).not.toHaveBeenCalled();
+    expect(dataGrants.hasGrant).not.toHaveBeenCalled();
   });
 
   it('preserves invalid, expired, revoked and disabled session failures from authentication', async () => {
@@ -86,19 +166,22 @@ describe('explicit cognitive read Internal Operator grant resolution', () => {
     const service = new InternalOperatorPrincipalResolverV1({
       authentication: { resolveSession },
       accountAccess: { inspectAccount: vi.fn() },
-      cognitiveReadGrants: new StaticCognitiveReadGrantSourceV1([userId])
+      cognitiveReadGrants: new StaticCognitiveReadGrantSourceV1([userId]),
+      dataReadGrants: new StaticDataReadGrantSourceV1([userId])
     });
 
-    await expect(service.resolve('revoked-token')).rejects.toBe(failure);
+    await expect(service.resolve('revoked-token', 'control-plane:data:read')).rejects.toBe(failure);
   });
 
-  it('fails explicitly when the grant source is missing or malformed', async () => {
-    const missing = resolver(createEnvironmentCognitiveReadGrantSourceV1(undefined)).service;
-    await expect(missing.resolve('raw-session-token')).rejects.toMatchObject({
+  it('fails explicitly when the requested grant source is missing or malformed', async () => {
+    const missingCognitive = resolver(
+      createEnvironmentCognitiveReadGrantSourceV1(undefined)
+    ).service;
+    await expect(missingCognitive.resolve('raw-session-token')).rejects.toMatchObject({
       code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
     });
 
-    const malformed = resolver(
+    const malformedCognitive = resolver(
       createEnvironmentCognitiveReadGrantSourceV1(
         JSON.stringify({
           schemaVersion: 1,
@@ -106,20 +189,51 @@ describe('explicit cognitive read Internal Operator grant resolution', () => {
         })
       )
     ).service;
-    await expect(malformed.resolve('raw-session-token')).rejects.toMatchObject({
+    await expect(malformedCognitive.resolve('raw-session-token')).rejects.toMatchObject({
       code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
     });
+
+    const missingData = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      createEnvironmentDataReadGrantSourceV1(undefined)
+    ).service;
+    await expect(
+      missingData.resolve('raw-session-token', 'control-plane:data:read')
+    ).rejects.toMatchObject({ code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
+
+    const malformedData = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      createEnvironmentDataReadGrantSourceV1(
+        JSON.stringify({
+          schemaVersion: 1,
+          grants: [{ userId, capabilities: ['control-plane:cognitive:read'] }]
+        })
+      )
+    ).service;
+    await expect(
+      malformedData.resolve('raw-session-token', 'control-plane:data:read')
+    ).rejects.toMatchObject({ code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
   });
 
-  it('accepts only strict exact-user cognitive grant configuration', async () => {
-    const source = createEnvironmentCognitiveReadGrantSourceV1(
+  it('accepts only strict exact-user grant configuration for each read plane', async () => {
+    const cognitive = createEnvironmentCognitiveReadGrantSourceV1(
       JSON.stringify({
         schemaVersion: 1,
         grants: [{ userId, capabilities: ['control-plane:cognitive:read'] }]
       })
     );
+    const data = createEnvironmentDataReadGrantSourceV1(
+      JSON.stringify({
+        schemaVersion: 1,
+        grants: [{ userId, capabilities: ['control-plane:data:read'] }]
+      })
+    );
 
-    await expect(source.hasGrant(userId)).resolves.toBe(true);
-    await expect(source.hasGrant(otherUserId)).resolves.toBe(false);
+    await expect(cognitive.hasGrant(userId)).resolves.toBe(true);
+    await expect(cognitive.hasGrant(otherUserId)).resolves.toBe(false);
+    await expect(data.hasGrant(userId)).resolves.toBe(true);
+    await expect(data.hasGrant(otherUserId)).resolves.toBe(false);
   });
 });
