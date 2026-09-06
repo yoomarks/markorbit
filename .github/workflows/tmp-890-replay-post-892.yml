@@ -1,0 +1,52 @@
+name: tmp-890-replay-post-892
+
+on:
+  push:
+    branches: [tmp/890-replay-post-892-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replay exact Provider Web CI change on fresh main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/integration/provider-web-storybook-browser-880:refs/remotes/origin/integration/provider-web-storybook-browser-880'
+          test "$(git rev-parse origin/main)" = "56c4d7c6544a4fd90f88751a2615e1374c21fa2e"
+          test "$(git rev-parse origin/integration/provider-web-storybook-browser-880)" = "234da306f773b0206730934200701e61933db4a2"
+          git checkout -B clean origin/main
+          git cherry-pick 234da306f773b0206730934200701e61933db4a2
+          test "$(git rev-list --count origin/main..HEAD)" -eq 1
+          git diff --name-only origin/main...HEAD | sort > /tmp/changed
+          cat > /tmp/expected <<'EOF'
+.github/workflows/ci.yml
+apps/provider-web/src/ProviderWorkspaceShell.stories.js
+package.json
+packages/ui/.storybook-provider/main.ts
+packages/ui/package.json
+packages/ui/tsconfig.json
+playwright.provider-storybook.config.ts
+playwright.provider.config.ts
+pnpm-lock.yaml
+scripts/ci-detect-scope.mjs
+scripts/ci-detect-scope.test.mjs
+scripts/validate-provider-storybook-index.mjs
+tests/e2e/applications.ts
+tests/e2e/provider-storybook.spec.ts
+tests/e2e/provider.spec.ts
+EOF
+          sort -o /tmp/expected /tmp/expected
+          diff -u /tmp/expected /tmp/changed
+          git diff --check origin/main...HEAD
+          git push --force origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
