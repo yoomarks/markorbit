@@ -70,9 +70,7 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
   it('issues a Data-only principal only for an exact explicit Data grant and request', async () => {
     const { service } = resolver();
 
-    await expect(
-      service.resolve('raw-session-token', 'control-plane:data:read')
-    ).resolves.toEqual({
+    await expect(service.resolve('raw-session-token', 'control-plane:data:read')).resolves.toEqual({
       kind: 'INTERNAL_OPERATOR',
       sessionId: session.sessionId,
       userId,
@@ -172,13 +170,13 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
       dataReadGrants: new StaticDataReadGrantSourceV1([userId])
     });
 
-    await expect(
-      service.resolve('revoked-token', 'control-plane:data:read')
-    ).rejects.toBe(failure);
+    await expect(service.resolve('revoked-token', 'control-plane:data:read')).rejects.toBe(failure);
   });
 
   it('fails explicitly when the requested grant source is missing or malformed', async () => {
-    const missingCognitive = resolver(createEnvironmentCognitiveReadGrantSourceV1(undefined)).service;
+    const missingCognitive = resolver(
+      createEnvironmentCognitiveReadGrantSourceV1(undefined)
+    ).service;
     await expect(missingCognitive.resolve('raw-session-token')).rejects.toMatchObject({
       code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
     });
