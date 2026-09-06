@@ -12,7 +12,9 @@ import {
 } from './semantic-observability.js';
 
 interface ProviderAcceptanceTelemetryTarget {
-  respondToAllocation(command: RespondToAllocationServiceCommand): Promise<ProviderAcceptanceRecord>;
+  respondToAllocation(
+    command: RespondToAllocationServiceCommand
+  ): Promise<ProviderAcceptanceRecord>;
 }
 
 interface ProviderReturnTelemetryTarget {
