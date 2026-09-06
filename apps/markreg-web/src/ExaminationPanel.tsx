@@ -1,6 +1,6 @@
 import { Alert, Button, Card, KeyValueList, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { TruthContext } from './TruthContext.js';
+import { TruthBadge, TruthContext } from './TruthContext.js';
 import { MarkregApiError } from './api/errors.js';
 import {
   createExaminationStageClient,
@@ -35,10 +35,7 @@ function HistoricalContext({ history }: { history: readonly ExaminationStageHist
   return (
     <details className="markreg-cockpit-secondary-details">
       <summary>Historical Examination context ({history.length})</summary>
-      <div className="markreg-truth-row">
-        <TruthContext truthClass="HISTORICAL" detail="Prior Examination workflow context" />
-        <TruthContext truthClass="REVIEWED_EVIDENCE" />
-      </div>
+      <TruthContext kind="HISTORICAL">Prior reviewed-evidence Examination context</TruthContext>
       <ol>
         {history.map((entry) => (
           <li key={entry.lifecycleEvent.id}>
@@ -50,7 +47,10 @@ function HistoricalContext({ history }: { history: readonly ExaminationStageHist
           </li>
         ))}
       </ol>
-      <p>Historical context is not current trademark-office status or deadline truth.</p>
+      <p>
+        Historical context is not current trademark-office status and establishes no filing,
+        deadline, payment, or external action.
+      </p>
     </details>
   );
 }
@@ -59,34 +59,37 @@ function ErrorState({ status, onRetry }: { status: number | undefined; onRetry: 
   if (status === 409)
     return (
       <Alert tone="warning" title="Examination source needs review">
-        The governed Examination source is stale or no longer matches the current Matter. No status
-        has been guessed from older lifecycle data. <Button onClick={onRetry}>Reload</Button>
+        <TruthBadge kind="UNAVAILABLE_STALE" /> The governed Examination source is stale or no
+        longer matches the current Matter. No status has been guessed from older lifecycle data.{' '}
+        <Button onClick={onRetry}>Reload</Button>
       </Alert>
     );
   if (status === 503)
     return (
       <Alert tone="warning" title="Examination source temporarily unavailable">
-        Current governed Examination truth could not be established from the owner source. This is a
-        source failure, not a “no Examination stage” result.{' '}
-        <Button onClick={onRetry}>Retry</Button>
+        <TruthBadge kind="UNAVAILABLE_STALE" /> Current governed Examination truth could not be
+        established from the owner source. This is a source failure, not a “no Examination stage”
+        result. <Button onClick={onRetry}>Retry</Button>
       </Alert>
     );
   if (status === 404)
     return (
       <Alert tone="warning" title="Formal Matter not available">
-        This Matter could not be found in the current Workspace. No Examination state is shown.
+        <TruthBadge kind="UNAVAILABLE_STALE" /> This Matter could not be found in the current
+        Workspace. No Examination state is shown.
       </Alert>
     );
   if (status === 401)
     return (
       <Alert tone="warning" title="Session required">
-        Your authenticated session is required before this Matter can be read.
+        <TruthBadge kind="UNAVAILABLE_STALE" /> Your authenticated session is required before this
+        Matter can be read.
       </Alert>
     );
   return (
     <Alert tone="warning" title="Examination stage unavailable">
-      The governed Examination read could not be loaded. No status or deadline has been inferred.{' '}
-      <Button onClick={onRetry}>Retry</Button>
+      <TruthBadge kind="UNAVAILABLE_STALE" /> The governed Examination read could not be loaded. No
+      status or deadline has been inferred. <Button onClick={onRetry}>Retry</Button>
     </Alert>
   );
 }
@@ -123,23 +126,32 @@ export function ExaminationPanel({
   if (value.status === 'ESTABLISHED' && !value.current)
     return (
       <Alert tone="warning" title="Examination projection unavailable">
-        The owner response did not contain the current Examination entry required by its established
-        state. No fallback status has been inferred.
+        <TruthBadge kind="UNAVAILABLE_STALE" /> The owner response did not contain the current
+        Examination entry required by its established state. No fallback status has been inferred.
       </Alert>
     );
 
   return (
     <>
-      <div className="markreg-truth-row">
-        <TruthContext
-          truthClass="GOVERNED_INTERNAL_WORKFLOW"
-          detail="Examination workflow inside MarkReg"
-        />
-        <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Source context" />
-      </div>
+      <TruthContext
+        kind="GOVERNED_INTERNAL"
+        details={
+          <p>
+            Examination Stage is an internal MarkReg workflow projection from reviewed evidence. It
+            is not trademark-office Official Status or deadline truth and authorizes no filing,
+            submission, payment, provider contact, or office mutation.
+          </p>
+        }
+      >
+        Internal Examination workflow
+      </TruthContext>
 
       {value.status === 'NOT_ESTABLISHED' ? (
         <Card>
+          <div className="markreg-cockpit-card-heading">
+            <h3>Examination not established</h3>
+            <TruthBadge kind="GOVERNED_INTERNAL" />
+          </div>
           <p>
             No governed Examination stage is currently established from available MarkReg lifecycle
             evidence.
@@ -152,12 +164,18 @@ export function ExaminationPanel({
       ) : (
         value.current && (
           <Card>
-            <h3>{value.current.customerSafeLabel}</h3>
+            <div className="markreg-cockpit-card-heading">
+              <h3>{value.current.customerSafeLabel}</h3>
+              <TruthBadge kind="GOVERNED_INTERNAL" />
+            </div>
             <p>{value.current.customerSafeSummary}</p>
+            <div className="markreg-cockpit-source-row">
+              <TruthBadge kind="REVIEWED_EVIDENCE" />
+              <span>Source for this internal projection</span>
+            </div>
             <KeyValueList
               items={[
                 { key: 'Internal workflow', value: workflowLabels[value.current.workflowState] },
-                { key: 'Source', value: 'Reviewed external evidence' },
                 { key: 'Currentness', value: 'Current' },
                 {
                   key: 'Governed deadline',
@@ -168,10 +186,6 @@ export function ExaminationPanel({
                 }
               ]}
             />
-            <small>
-              This projection is not trademark-office status or deadline truth and does not
-              authorize a protected external action.
-            </small>
           </Card>
         )
       )}

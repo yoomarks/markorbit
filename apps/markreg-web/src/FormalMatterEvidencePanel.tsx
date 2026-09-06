@@ -1,6 +1,6 @@
 import { Alert, Button, Card, KeyValueList, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { TruthContext } from './TruthContext.js';
+import { TruthBadge, TruthContext } from './TruthContext.js';
 import {
   createFormalMatterEvidenceClient,
   type FormalMatterEvidenceClient,
@@ -24,47 +24,33 @@ const displayTimestamp = (value: string) => {
 function PackageCard({ value }: { value: FormalMatterEvidenceDocumentPackage }) {
   return (
     <Card>
-      <h3>Document package</h3>
-      <div className="markreg-truth-row">
-        <TruthContext
-          truthClass={value.matterSourceCurrent ? 'REVIEWED_EVIDENCE' : 'HISTORICAL'}
-          detail={value.matterSourceCurrent ? 'Current Matter source' : 'Older Matter source'}
-        />
+      <div className="markreg-cockpit-card-heading">
+        <h3>Document package</h3>
+        <TruthBadge kind={value.matterSourceCurrent ? 'REVIEWED_EVIDENCE' : 'HISTORICAL'} />
       </div>
+
       {!value.matterSourceCurrent && (
         <Alert tone="warning" title="Historical Matter source">
-          This package is pinned to an older Formal Matter version or snapshot. It remains durable
-          historical evidence and is not rebound to current Matter truth.
+          <TruthBadge kind="HISTORICAL" /> This package is pinned to an older Formal Matter version
+          or snapshot. It remains durable historical evidence and is not rebound to current Matter
+          truth.
         </Alert>
       )}
+
       <KeyValueList
         items={[
           { key: 'Status', value: value.status },
           {
             key: 'Matter source',
-            value: value.matterSourceCurrent ? 'Current' : 'Historical'
+            value: `${value.matterSourceCurrent ? 'Current' : 'Historical'} · version ${value.sourceFormalMatterVersion}`
           },
-          { key: 'Reviewed documents', value: value.documentEvidenceTotal },
+          { key: 'Document evidence items', value: value.documentEvidence.length },
           { key: 'Updated', value: displayTimestamp(value.updatedAt) }
         ]}
       />
-      <details className="markreg-cockpit-secondary-details">
-        <summary>Documents and exact provenance</summary>
-        <KeyValueList
-          items={[
-            { key: 'Document Package ID', value: value.documentPackageId },
-            { key: 'Package version', value: value.version },
-            { key: 'Matter source version', value: value.sourceFormalMatterVersion },
-            { key: 'Matter snapshot SHA-256', value: value.sourceFormalMatterSha256 },
-            { key: 'Professional Review case', value: value.professionalReviewCaseId },
-            { key: 'Review source version', value: value.sourceReviewVersion },
-            { key: 'Completed decision', value: value.sourceCompletedDecisionId },
-            { key: 'Completed decision SHA-256', value: value.sourceCompletedDecisionSha256 },
-            ...(value.canonicalEvidenceSha256
-              ? [{ key: 'Ready evidence SHA-256', value: value.canonicalEvidenceSha256 }]
-              : [])
-          ]}
-        />
+
+      <details className="markreg-cockpit-inline-details">
+        <summary>Document evidence ({value.documentEvidence.length})</summary>
         {value.documentEvidence.length === 0 ? (
           <p>No document evidence items are present in this package.</p>
         ) : (
@@ -73,8 +59,14 @@ function PackageCard({ value }: { value: FormalMatterEvidenceDocumentPackage }) 
               <li key={item.documentItemId}>
                 <strong>{item.displayName}</strong> · {item.documentType} ·{' '}
                 {item.verificationStatus}
-                <br />
-                Evidence SHA-256: {item.evidenceSha256}
+                <details>
+                  <summary>Evidence provenance</summary>
+                  <p>
+                    Document item: {item.documentItemId}
+                    <br />
+                    Evidence SHA-256: {item.evidenceSha256}
+                  </p>
+                </details>
               </li>
             ))}
           </ul>
@@ -86,6 +78,24 @@ function PackageCard({ value }: { value: FormalMatterEvidenceDocumentPackage }) 
           </p>
         )}
       </details>
+
+      <details className="markreg-cockpit-secondary-details">
+        <summary>Package provenance</summary>
+        <KeyValueList
+          items={[
+            { key: 'Document Package ID', value: value.documentPackageId },
+            { key: 'Package version', value: value.version },
+            { key: 'Matter snapshot SHA-256', value: value.sourceFormalMatterSha256 },
+            { key: 'Professional Review case', value: value.professionalReviewCaseId },
+            { key: 'Review source version', value: value.sourceReviewVersion },
+            { key: 'Completed decision', value: value.sourceCompletedDecisionId },
+            { key: 'Completed decision SHA-256', value: value.sourceCompletedDecisionSha256 },
+            ...(value.canonicalEvidenceSha256
+              ? [{ key: 'Ready evidence SHA-256', value: value.canonicalEvidenceSha256 }]
+              : [])
+          ]}
+        />
+      </details>
     </Card>
   );
 }
@@ -93,12 +103,13 @@ function PackageCard({ value }: { value: FormalMatterEvidenceDocumentPackage }) 
 function LifecycleEvent({ value }: { value: FormalMatterEvidenceLifecycleEvent }) {
   return (
     <li>
-      <strong>{value.customerSafeLabel}</strong> · {value.eventCode} ·{' '}
-      {value.matterSourceCurrent ? 'current Matter source' : 'historical Matter source'}
+      <strong>{value.customerSafeLabel}</strong> · {value.eventCode}
       <br />
       {value.customerSafeSummary}
       <br />
-      Projected {displayTimestamp(value.projectedAt)}
+      <TruthBadge
+        kind={value.matterSourceCurrent ? 'GOVERNED_INTERNAL' : 'HISTORICAL'}
+      /> Projected {displayTimestamp(value.projectedAt)}
     </li>
   );
 }
@@ -128,8 +139,9 @@ export function FormalMatterEvidencePanel({
   if (state.kind === 'ERROR')
     return (
       <Alert tone="warning" title="Formal Matter evidence unavailable">
-        The governed Evidence Projection could not be loaded. Existing Matter, lifecycle, review,
-        and evidence truth are unchanged. <Button onClick={() => void load()}>Retry</Button>
+        <TruthBadge kind="UNAVAILABLE_STALE" /> The governed Evidence Projection could not be
+        loaded. Existing Matter, lifecycle, review, and evidence truth are unchanged.{' '}
+        <Button onClick={() => void load()}>Retry</Button>
       </Alert>
     );
 
@@ -141,14 +153,108 @@ export function FormalMatterEvidencePanel({
 
   return (
     <>
-      <div className="markreg-truth-row">
-        <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Read-only supporting context" />
-      </div>
-      <p>Evidence Projection ≠ Official Truth. Exact lineage remains available below on demand.</p>
+      <TruthContext
+        kind="REVIEWED_EVIDENCE"
+        details={
+          <p>
+            Reviewed Evidence and Provider Return are not Official Truth. Evidence Projection does
+            not authorize filing, payment, provider contact, office mutation, or any external
+            action.
+          </p>
+        }
+      >
+        Read-only evidence context
+      </TruthContext>
+
+      <section className="markreg-cockpit-subsection" aria-labelledby="document-evidence-heading">
+        <h3 id="document-evidence-heading">Document evidence</h3>
+        {value.documentPackages.total === 0 ? (
+          <Card>
+            <p>
+              No durable Document Packages are recorded for this Formal Matter. This is a successful
+              empty evidence component, not a service failure.
+            </p>
+          </Card>
+        ) : (
+          <>
+            {value.documentPackages.items.map((item) => (
+              <PackageCard key={item.documentPackageId} value={item} />
+            ))}
+            {value.documentPackages.truncated && (
+              <p>
+                Showing {value.documentPackages.returned} of {value.documentPackages.total} Document
+                Packages within the bounded owner projection.
+              </p>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="markreg-cockpit-subsection" aria-labelledby="lifecycle-evidence-heading">
+        <h3 id="lifecycle-evidence-heading">Lifecycle evidence</h3>
+        {!lifecycle && value.lifecycle.total === 0 ? (
+          <Card>
+            <p>
+              No durable Lifecycle Projection is recorded for this Formal Matter. This is a
+              successful empty lifecycle evidence component.
+            </p>
+          </Card>
+        ) : (
+          <Card>
+            {lifecycle ? (
+              <>
+                <div className="markreg-cockpit-card-heading">
+                  <strong>{lifecycle.customerSafeLabel}</strong>
+                  <TruthBadge
+                    kind={lifecycle.matterSourceCurrent ? 'GOVERNED_INTERNAL' : 'HISTORICAL'}
+                  />
+                </div>
+                {!lifecycle.matterSourceCurrent && (
+                  <Alert tone="warning" title="Historical lifecycle source">
+                    <TruthBadge kind="HISTORICAL" /> The stored Lifecycle Projection is pinned to an
+                    older Matter version. It is historical product evidence, not current Matter or
+                    trademark-office truth.
+                  </Alert>
+                )}
+                <p>{lifecycle.customerSafeSummary}</p>
+                <KeyValueList
+                  items={[
+                    { key: 'Lifecycle state', value: lifecycle.state },
+                    {
+                      key: 'Matter source',
+                      value: lifecycle.matterSourceCurrent ? 'Current' : 'Historical'
+                    },
+                    { key: 'Updated', value: displayTimestamp(lifecycle.updatedAt) }
+                  ]}
+                />
+              </>
+            ) : (
+              <p>No current Lifecycle Projection is present.</p>
+            )}
+            {value.lifecycle.events.length > 0 && (
+              <details className="markreg-cockpit-secondary-details">
+                <summary>Bounded lifecycle timeline</summary>
+                <ol>
+                  {value.lifecycle.events.map((event) => (
+                    <LifecycleEvent key={event.lifecycleEventId} value={event} />
+                  ))}
+                </ol>
+                {value.lifecycle.truncated && (
+                  <p>
+                    Showing {value.lifecycle.events.length} of {value.lifecycle.total} lifecycle
+                    events within the bounded owner projection.
+                  </p>
+                )}
+              </details>
+            )}
+          </Card>
+        )}
+      </section>
 
       <details className="markreg-cockpit-secondary-details">
-        <summary>Evidence source record</summary>
+        <summary>Evidence projection source and authority</summary>
         <Card>
+          <h3>Evidence source Matter</h3>
           <KeyValueList
             items={[
               { key: 'Formal Matter ID', value: value.formalMatter.formalMatterId },
@@ -159,116 +265,21 @@ export function FormalMatterEvidencePanel({
             ]}
           />
         </Card>
-      </details>
-
-      <h3>Document evidence</h3>
-      {value.documentPackages.total === 0 ? (
         <Card>
-          <p>
-            No durable Document Packages are recorded for this Formal Matter. This is a successful
-            empty evidence component, not a service failure.
-          </p>
+          <h3>Matter Intelligence evidence context</h3>
+          <KeyValueList
+            items={[
+              { key: 'Bounded observations returned', value: value.intelligence.items.length },
+              { key: 'Total observations', value: value.intelligence.total },
+              { key: 'Historical-source observations in this page', value: staleIntelligence },
+              { key: 'Prediction', value: 'No' },
+              { key: 'Deadline / SLA', value: 'No' },
+              { key: 'Official status', value: 'No' }
+            ]}
+          />
         </Card>
-      ) : (
-        <>
-          {value.documentPackages.items.map((item) => (
-            <PackageCard key={item.documentPackageId} value={item} />
-          ))}
-          {value.documentPackages.truncated && (
-            <p>
-              Showing {value.documentPackages.returned} of {value.documentPackages.total} Document
-              Packages within the bounded owner projection.
-            </p>
-          )}
-        </>
-      )}
-
-      <h3>Lifecycle evidence</h3>
-      {!lifecycle && value.lifecycle.total === 0 ? (
         <Card>
-          <p>
-            No durable Lifecycle Projection is recorded for this Formal Matter. This is a successful
-            empty lifecycle evidence component.
-          </p>
-        </Card>
-      ) : (
-        <Card>
-          {lifecycle ? (
-            <>
-              <div className="markreg-truth-row">
-                <TruthContext
-                  truthClass={
-                    lifecycle.matterSourceCurrent ? 'GOVERNED_INTERNAL_WORKFLOW' : 'HISTORICAL'
-                  }
-                  detail={
-                    lifecycle.matterSourceCurrent
-                      ? 'Current lifecycle evidence'
-                      : 'Older Matter source'
-                  }
-                />
-              </div>
-              {!lifecycle.matterSourceCurrent && (
-                <Alert tone="warning" title="Historical lifecycle source">
-                  The current stored Lifecycle Projection is pinned to an older Matter version. It
-                  is historical product evidence, not current Matter or official-office truth.
-                </Alert>
-              )}
-              <KeyValueList
-                items={[
-                  { key: 'Lifecycle state', value: lifecycle.state },
-                  { key: 'Customer-safe label', value: lifecycle.customerSafeLabel },
-                  { key: 'Summary', value: lifecycle.customerSafeSummary },
-                  {
-                    key: 'Matter source',
-                    value: lifecycle.matterSourceCurrent ? 'Current' : 'Historical'
-                  },
-                  { key: 'Updated', value: displayTimestamp(lifecycle.updatedAt) }
-                ]}
-              />
-            </>
-          ) : (
-            <p>No current Lifecycle Projection is present.</p>
-          )}
-          {value.lifecycle.events.length > 0 && (
-            <details className="markreg-cockpit-secondary-details">
-              <summary>Bounded lifecycle timeline</summary>
-              <div className="markreg-truth-row">
-                <TruthContext truthClass="HISTORICAL" detail="Prior lifecycle events" />
-              </div>
-              <ol>
-                {value.lifecycle.events.map((event) => (
-                  <LifecycleEvent key={event.lifecycleEventId} value={event} />
-                ))}
-              </ol>
-              {value.lifecycle.truncated && (
-                <p>
-                  Showing {value.lifecycle.events.length} of {value.lifecycle.total} lifecycle
-                  events within the bounded owner projection.
-                </p>
-              )}
-            </details>
-          )}
-        </Card>
-      )}
-
-      <h3>Matter Intelligence evidence context</h3>
-      <Card>
-        <KeyValueList
-          items={[
-            { key: 'Bounded observations returned', value: value.intelligence.items.length },
-            { key: 'Total observations', value: value.intelligence.total },
-            { key: 'Historical-source observations in this page', value: staleIntelligence }
-          ]}
-        />
-        <p>
-          Descriptive analytical context only; this projection creates no deadline or Official
-          Status.
-        </p>
-      </Card>
-
-      <details className="markreg-cockpit-secondary-details">
-        <summary>Projection authority consequences</summary>
-        <Card>
+          <h3>Projection authority consequences</h3>
           <KeyValueList
             items={[
               {

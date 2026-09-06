@@ -1,6 +1,6 @@
 import { Alert, Button, Card, KeyValueList, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { TruthContext } from './TruthContext.js';
+import { TruthBadge, TruthContext } from './TruthContext.js';
 import {
   createMatterIntelligenceClient,
   type MatterIntelligenceClient,
@@ -38,19 +38,19 @@ function ObservationCard({ item }: { item: MatterIntelligenceReadItem }) {
 
   return (
     <Card>
-      <h3>Historical duration observation</h3>
-      <div className="markreg-truth-row">
-        <TruthContext
-          truthClass={item.matterSourceCurrent ? 'REVIEWED_EVIDENCE' : 'HISTORICAL'}
-          detail={item.matterSourceCurrent ? 'Current Matter source' : 'Older Matter source'}
-        />
+      <div className="markreg-cockpit-card-heading">
+        <h3>Historical duration observation</h3>
+        <TruthBadge kind={item.matterSourceCurrent ? 'HISTORICAL' : 'UNAVAILABLE_STALE'} />
       </div>
+
       {!item.matterSourceCurrent && (
         <Alert tone="warning" title="Historical source">
-          This observation is pinned to an older Formal Matter version or snapshot. Keep it as
-          historical evidence; do not treat it as current Matter truth.
+          <TruthBadge kind="UNAVAILABLE_STALE" /> This observation is pinned to an older Formal
+          Matter version or snapshot. Keep it as historical evidence; do not treat it as current
+          Matter truth.
         </Alert>
       )}
+
       <KeyValueList
         items={[
           {
@@ -68,9 +68,12 @@ function ObservationCard({ item }: { item: MatterIntelligenceReadItem }) {
         ]}
       />
 
-      <h4>Human review</h4>
-      {currentReview ? (
-        <>
+      <div className="markreg-cockpit-subsection">
+        <div className="markreg-cockpit-card-heading">
+          <h4>Human review</h4>
+          {currentReview && <TruthBadge kind="REVIEWED_EVIDENCE" />}
+        </div>
+        {currentReview ? (
           <KeyValueList
             items={[
               { key: 'Current review', value: reviewSummary(currentReview) },
@@ -79,21 +82,15 @@ function ObservationCard({ item }: { item: MatterIntelligenceReadItem }) {
                 : [])
             ]}
           />
-          <p>
-            Human review evaluates this analytical observation inside MarkReg; it is not external
-            certification or Official Truth.
-          </p>
-        </>
-      ) : (
-        <p>No Human Intelligence Review has been recorded for this observation.</p>
-      )}
+        ) : (
+          <p>No Human Intelligence Review has been recorded for this observation.</p>
+        )}
+      </div>
 
       {priorReviews.length > 0 && (
         <details className="markreg-cockpit-secondary-details">
           <summary>Prior review history</summary>
-          <div className="markreg-truth-row">
-            <TruthContext truthClass="HISTORICAL" detail="Prior Human Review versions" />
-          </div>
+          <TruthContext kind="HISTORICAL">Prior Human Intelligence Review versions</TruthContext>
           <ol>
             {priorReviews.map((review) => (
               <li key={review.matterIntelligenceReviewId}>{reviewSummary(review)}</li>
@@ -167,20 +164,26 @@ export function MatterIntelligencePanel({
   if (state.kind === 'ERROR')
     return (
       <Alert tone="warning" title="Matter intelligence unavailable">
-        The governed analytical read could not be loaded. The Matter is unchanged.{' '}
-        <Button onClick={() => void load()}>Retry</Button>
+        <TruthBadge kind="UNAVAILABLE_STALE" /> The governed analytical read could not be loaded.
+        The Matter is unchanged. <Button onClick={() => void load()}>Retry</Button>
       </Alert>
     );
 
   return (
     <>
-      <div className="markreg-truth-row">
-        <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Descriptive analytical context" />
-      </div>
-      <p>
-        Matter Intelligence is historical analytical evidence, not a prediction, deadline, legal
-        conclusion or Official Truth.
-      </p>
+      <TruthContext
+        kind="HISTORICAL"
+        details={
+          <p>
+            Matter Intelligence describes bounded historical evidence. It is not a prediction,
+            deadline, SLA, legal conclusion, lifecycle status, trademark-office status, or Official
+            Truth, and authorizes no external action.
+          </p>
+        }
+      >
+        Descriptive analytical evidence
+      </TruthContext>
+
       {state.value.total === 0 ? (
         <Card>
           <p>
