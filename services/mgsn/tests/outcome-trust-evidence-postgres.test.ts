@@ -282,6 +282,29 @@ suite('MGSN P0 #633 durable Outcome & Trust Evidence', () => {
     });
   });
 
+  it('resolves Discovery Trust projection only from exact canonical context fields', async () => {
+    const runtime = service();
+    const item = providerClaimItem();
+    const projected = projection([item]);
+    await runtime.recordEvidenceItem(item);
+    await runtime.recordVisibilityProjection(projected);
+
+    const exact = {
+      providerId: item.providerId,
+      contextReference: item.context.contextReference,
+      jurisdiction: item.context.jurisdiction,
+      serviceType: item.context.serviceType,
+      taskType: item.context.taskType,
+      collaborationScope: item.context.collaborationScope
+    };
+    await expect(repository().findLatestDiscoveryProjectionForContext(exact)).resolves.toEqual(
+      projected
+    );
+    await expect(
+      repository().findLatestDiscoveryProjectionForContext({ ...exact, taskType: 'DIFFERENT_TASK' })
+    ).resolves.toBeUndefined();
+  });
+
   it('rejects divergent immutable writes and all append-only UPDATE/DELETE mutation attempts', async () => {
     const item = providerClaimItem();
     await repository().putEvidenceItem(item);

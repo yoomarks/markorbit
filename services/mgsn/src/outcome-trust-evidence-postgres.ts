@@ -12,7 +12,8 @@ import {
 import type { QueryClient } from '@markorbit/persistence';
 import {
   OutcomeTrustEvidenceRuntimeError,
-  type OutcomeTrustEvidenceRepository
+  type OutcomeTrustEvidenceRepository,
+  type TrustEvidenceDiscoveryContextLookup
 } from './outcome-trust-evidence.js';
 
 type Row = Record<string, unknown>;
@@ -174,6 +175,44 @@ export class PostgresOutcomeTrustEvidenceRepository implements OutcomeTrustEvide
         `SELECT * FROM mgsn_trust_evidence_visibility_projections
          WHERE trust_evidence_visibility_projection_id=$1`,
         [projectionId]
+      );
+      return result.rows[0] ? this.projectionFromRow(result.rows[0] as Row) : undefined;
+    } catch (cause) {
+      throw unavailable(cause);
+    }
+  }
+
+  async findLatestDiscoveryProjectionForContext(
+    input: Readonly<TrustEvidenceDiscoveryContextLookup>
+  ): Promise<Readonly<TrustEvidenceVisibilityProjectionV1> | undefined> {
+    try {
+      const result = await this.query.query(
+        `SELECT projection.*
+         FROM mgsn_trust_evidence_visibility_projections projection
+         WHERE projection.provider_id=$1
+           AND projection.purpose='PROVIDER_DISCOVERY_TRUST_EXPLANATION'
+           AND EXISTS (
+             SELECT 1
+             FROM mgsn_trust_evidence_items item
+             WHERE item.provider_id=projection.provider_id
+               AND item.context_fingerprint_sha256=projection.context_fingerprint_sha256
+               AND item.item_record #>> '{context,contextReference}'=$2
+               AND item.item_record #>> '{context,jurisdiction}'=$3
+               AND item.item_record #>> '{context,serviceType}'=$4
+               AND item.item_record #>> '{context,taskType}'=$5
+               AND item.item_record #>> '{context,collaborationScope}'=$6
+           )
+         ORDER BY projection.created_at DESC,
+                  projection.trust_evidence_visibility_projection_id DESC
+         LIMIT 1`,
+        [
+          input.providerId,
+          input.contextReference,
+          input.jurisdiction,
+          input.serviceType,
+          input.taskType,
+          input.collaborationScope
+        ]
       );
       return result.rows[0] ? this.projectionFromRow(result.rows[0] as Row) : undefined;
     } catch (cause) {
