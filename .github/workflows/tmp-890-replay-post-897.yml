@@ -1,0 +1,57 @@
+name: tmp-890-replay-post-897
+
+on:
+  push:
+    branches:
+      - tmp/890-replay-post-897-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replay exact #890 product diff onto fresh main
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD_BASE=e96755f11e71d1641708b0bc821983dcbe1c40a8
+          OLD_HEAD=15492e862d6969819884471e7803e5be94f6efff
+          CURRENT_BASE=30501cd61f1507625ce79065887ca3779a642225
+          TARGET=integration/provider-web-storybook-browser-880
+
+          git fetch origin main "$TARGET"
+          test "$(git rev-parse origin/main)" = "$CURRENT_BASE"
+
+          git diff --name-only "$OLD_BASE" "$OLD_HEAD" | sort > /tmp/product-paths
+          git diff --name-only "$OLD_BASE" "$CURRENT_BASE" | sort > /tmp/main-paths
+          comm -12 /tmp/product-paths /tmp/main-paths > /tmp/overlap
+          echo 'Product paths:'
+          cat /tmp/product-paths
+          echo 'Main paths since old base:'
+          cat /tmp/main-paths
+          echo 'Overlap:'
+          cat /tmp/overlap
+          test ! -s /tmp/overlap
+          test "$(wc -l < /tmp/product-paths)" -eq 15
+
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git checkout -B replay "$CURRENT_BASE"
+          git cherry-pick "$OLD_HEAD"
+
+          test "$(git rev-parse HEAD^)" = "$CURRENT_BASE"
+          git diff --name-only "$CURRENT_BASE" HEAD | sort > /tmp/replayed-paths
+          diff -u /tmp/product-paths /tmp/replayed-paths
+          test "$(wc -l < /tmp/replayed-paths)" -eq 15
+          git diff "$CURRENT_BASE" HEAD --check
+          diff -u \
+            <(git diff "$OLD_BASE" "$OLD_HEAD" -- $(cat /tmp/product-paths)) \
+            <(git diff "$CURRENT_BASE" HEAD -- $(cat /tmp/product-paths))
+
+          git push --force origin HEAD:"$TARGET"
+          echo "REPLAY_HEAD=$(git rev-parse HEAD)"
