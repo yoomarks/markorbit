@@ -57,6 +57,7 @@ for (const row of inventory) {
     row.path.startsWith('/api/markreg/orders') ||
     row.path.startsWith('/api/markreg/production-intakes') ||
     row.path.startsWith('/api/markreg/recommended-actions') ||
+    row.path.startsWith('/api/markreg/workspace-actions') ||
     row.path.startsWith('/api/operations/') ||
     row.path.startsWith('/v1/markreg/');
   const expected = authOwner
@@ -85,8 +86,8 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 96);
-assert.equal(inventory.length, 96);
+assert.equal(source.length, 97);
+assert.equal(inventory.length, 97);
 assert.equal(
   source.filter(
     (x) =>
@@ -95,8 +96,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  90
+  91
 );
 console.log(
-  'Gateway inventory PASS: 96 runtime routes; authenticated Early Funnel, Production Intake, Matter Intelligence, Formal Matter Evidence, Examination, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
+  'Gateway inventory PASS: 97 runtime routes; authenticated Early Funnel, Production Intake, Matter Intelligence, Formal Matter Evidence, Examination, Workspace Action, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
 );
