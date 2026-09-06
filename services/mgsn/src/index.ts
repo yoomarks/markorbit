@@ -12,7 +12,10 @@ import {
   type MgsnGovernedNetworkHttpOptions
 } from './governed-network-http.js';
 import { createMgsnHttpRoutes, type MgsnHttpOptions } from './http.js';
-import type { MgsnSemanticTelemetrySinkV1 } from './semantic-observability.js';
+import {
+  observeMgsnProviderExecutionSemanticRoutesV1,
+  type MgsnSemanticTelemetrySinkV1
+} from './semantic-observability.js';
 
 export * from './provider-registry.js';
 export * from './provider-registry-postgres.js';
@@ -82,7 +85,10 @@ export function createRuntime(options: MgsnRuntimeOptions = {}) {
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
     {
       routes: [
-        ...createMgsnHttpRoutes(options),
+        ...observeMgsnProviderExecutionSemanticRoutesV1(
+          createMgsnHttpRoutes(options),
+          options.semanticTelemetrySink
+        ),
         ...createMgsnGovernedNetworkHttpRoutes({
           ...(options.governedNetworkServices ? { services: options.governedNetworkServices } : {}),
           ...(options.internalServiceSecret
