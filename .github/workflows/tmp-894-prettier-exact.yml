@@ -1,0 +1,37 @@
+name: tmp-894-prettier-exact
+on:
+  push:
+    branches:
+      - tmp/894-prettier-exact-20260906
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/894-prettier-exact-20260906
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact Cockpit files
+        run: |
+          pnpm exec prettier --write \
+            apps/markreg-web/src/FormalMatterEvidencePanel.tsx \
+            apps/markreg-web/src/FormalMatterWorkspace.tsx \
+            apps/markreg-web/src/MatterIntelligencePanel.tsx
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            apps/markreg-web/src/FormalMatterEvidencePanel.tsx \
+            apps/markreg-web/src/FormalMatterWorkspace.tsx \
+            apps/markreg-web/src/MatterIntelligencePanel.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "tmp: prettier #894 exact files [skip ci]"
+          git push origin HEAD:tmp/894-prettier-exact-20260906
