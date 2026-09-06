@@ -1,0 +1,53 @@
+name: tmp-890-current-main-replay
+
+on:
+  push:
+    branches: [tmp/890-current-main-replay-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replay exact verified #890 paths onto current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/integration/provider-web-storybook-browser-880:refs/remotes/origin/integration/provider-web-storybook-browser-880'
+          test "$(git rev-parse origin/main)" = "aabd286b982c94e5bc68c00eee4be3706b1c7e6b"
+          test "$(git rev-parse origin/integration/provider-web-storybook-browser-880)" = "dba406aa8a23181c93beec147cf05a7c8477540d"
+          git checkout -B clean origin/main
+          cat > /tmp/paths <<'EOF'
+          .github/workflows/ci.yml
+          apps/provider-web/src/ProviderWorkspaceShell.stories.js
+          package.json
+          packages/ui/.storybook-provider/main.ts
+          packages/ui/package.json
+          packages/ui/tsconfig.json
+          playwright.provider-storybook.config.ts
+          playwright.provider.config.ts
+          pnpm-lock.yaml
+          scripts/ci-detect-scope.mjs
+          scripts/ci-detect-scope.test.mjs
+          scripts/validate-provider-storybook-index.mjs
+          tests/e2e/applications.ts
+          tests/e2e/provider-storybook.spec.ts
+          tests/e2e/provider.spec.ts
+          EOF
+          while IFS= read -r p; do
+            git checkout origin/integration/provider-web-storybook-browser-880 -- "$p"
+          done < /tmp/paths
+          git diff --cached --name-only | sort -u > /tmp/actual
+          diff -u <(sort /tmp/paths) /tmp/actual
+          git diff --cached --check
+          git commit -m 'chore(ci): register Provider Web visual surfaces'
+          git push --force origin HEAD:refs/heads/tmp/890-current-main-output-20260906
