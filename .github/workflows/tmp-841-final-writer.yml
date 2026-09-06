@@ -1,0 +1,82 @@
+name: tmp-841-final-writer
+
+on:
+  push:
+    branches: [tmp/841-trust-discovery-writer-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: markorbit_test
+          POSTGRES_PASSWORD: markorbit-test-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U markorbit_test -d postgres"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: cp scripts/tmp-841-trust-discovery-writer.py /tmp/writer.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Apply bounded owner patch
+        run: |
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin mgsn/phase2-trust-discovery-841-main
+          git checkout -B owner origin/mgsn/phase2-trust-discovery-841-main
+          test "$(git rev-parse HEAD)" = "2c3441dc6307da38e3552a111d231eacfd72fc39"
+          python /tmp/writer.py
+          sed -i 's/async function harness(/function harness(/' services/mgsn/tests/provider-discovery-trust.test.ts
+          sed -i 's/await harness()/harness()/g' services/mgsn/tests/provider-discovery-trust.test.ts
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('services/mgsn/tests/provider-discovery-trust.test.ts')
+          s = p.read_text()
+          s = s.replace(
+              "expect(support.currentExposureValidation.decision).toBe(\n      'AUTHORIZED_FOR_BOUNDED_TRUST_EXPLANATION'\n    );",
+              "expect(support.currentExposureValidation).toMatchObject({\n      decision: 'AUTHORIZED_FOR_BOUNDED_TRUST_EXPLANATION'\n    });",
+              1,
+          )
+          p.write_text(s)
+          PY
+      - run: |
+          pnpm install --frozen-lockfile
+          git restore pnpm-lock.yaml
+          pnpm exec prettier --write services/mgsn/src/outcome-trust-evidence.ts services/mgsn/src/outcome-trust-evidence-postgres.ts services/mgsn/src/provider-discovery-trust.ts services/mgsn/src/durable-runtime.ts services/mgsn/tests/provider-discovery-trust.test.ts services/mgsn/tests/outcome-trust-evidence-postgres.test.ts
+          { git diff --name-only; git ls-files --others --exclude-standard; } | sort -u > /tmp/changed
+          test "$(wc -l < /tmp/changed)" -eq 6
+          ! grep -Ev '^services/mgsn/' /tmp/changed
+          git diff --check
+      - run: pnpm exec turbo run build --filter=@markorbit/mgsn-service...
+      - run: pnpm --filter @markorbit/mgsn-service exec vitest run tests/provider-discovery-trust.test.ts tests/outcome-trust-evidence.test.ts tests/provider-discovery-current-responsibility.test.ts
+      - env:
+          MGSN_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_mgsn_test
+          MGSN_OUTCOME_TRUST_POSTGRES_REQUIRED: '1'
+        run: |
+          PGPASSWORD=markorbit-test-only psql -h 127.0.0.1 -U markorbit_test -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_mgsn_test;'
+          pnpm --filter @markorbit/mgsn-service exec vitest run tests/outcome-trust-evidence-postgres.test.ts
+      - run: |
+          pnpm --filter @markorbit/mgsn-service lint
+          pnpm --filter @markorbit/mgsn-service typecheck
+      - name: Commit owner patch
+        run: |
+          git add services/mgsn
+          test "$(git diff --cached --name-only | wc -l)" -eq 6
+          ! git diff --cached --name-only | grep -Ev '^services/mgsn/'
+          git commit -m 'feat(mgsn): compose Trust evidence into Provider Discovery'
+          git push origin HEAD:refs/heads/mgsn/phase2-trust-discovery-841-main
