@@ -24,7 +24,7 @@ replace_once(
 replace_once(
     'package.json',
     '    "build:storybook-matrix": "pnpm --filter @markorbit/ui build && rm -rf .artifacts/storybook && pnpm --filter @markorbit/markreg-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/markreg && pnpm --filter @markorbit/lite-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/lite",\n',
-    '    "build:provider-storybook": "pnpm --filter @markorbit/ui exec storybook build -c .storybook-provider -o ../../.artifacts/storybook/provider",\n    "build:storybook-matrix": "pnpm --filter @markorbit/ui build && rm -rf .artifacts/storybook && pnpm --filter @markorbit/markreg-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/markreg && pnpm --filter @markorbit/lite-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/lite && pnpm build:provider-storybook",\n',
+    '    "build:provider-storybook": "pnpm --filter @markorbit/ui exec storybook build -c .storybook-provider -o ../../.artifacts/storybook/provider",\n    "build:storybook-matrix": "pnpm --filter @markorbit/contracts build && pnpm --filter @markorbit/ui build && rm -rf .artifacts/storybook && pnpm --filter @markorbit/markreg-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/markreg && pnpm --filter @markorbit/lite-web exec storybook build -c ../../packages/ui/.storybook -o ../../.artifacts/storybook/lite && pnpm build:provider-storybook",\n',
 )
 replace_once(
     'package.json',
