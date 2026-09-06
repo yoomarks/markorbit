@@ -19,6 +19,10 @@ const dataPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['control-plane:data:read' as const]
 };
+const knowledgePrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['control-plane:knowledge:read' as const]
+};
 
 type ResolverFunction = (
   token: string,
@@ -75,6 +79,21 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'control-plane:data:read');
   });
 
+  it('passes one exact requested Knowledge read capability from the trusted internal caller', async () => {
+    const resolve = vi.fn(() => Promise.resolve(knowledgePrincipal));
+    const { route: resolverRoute } = route(resolve);
+
+    await expect(
+      resolverRoute.handle(
+        request({
+          token: 'raw-session-token',
+          requiredCapability: 'control-plane:knowledge:read'
+        })
+      )
+    ).resolves.toEqual({ status: 200, body: knowledgePrincipal });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'control-plane:knowledge:read');
+  });
+
   it('allows an explicit cognitive read request without changing its authority', async () => {
     const { resolve, route: resolverRoute } = route();
 
@@ -107,6 +126,10 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
     [
       'unsupported Data operate capability',
       { token: 'raw-session-token', requiredCapability: 'control-plane:data:operate' }
+    ],
+    [
+      'unsupported Knowledge operate capability',
+      { token: 'raw-session-token', requiredCapability: 'control-plane:knowledge:operate' }
     ],
     [
       'commercial capability in Control Plane resolver',

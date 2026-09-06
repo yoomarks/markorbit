@@ -22,6 +22,7 @@ import { createRuntime } from './index.js';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
+  createEnvironmentKnowledgeReadGrantSourceV1,
   InternalOperatorPrincipalResolverV1
 } from './internal-operator-principal.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
@@ -79,7 +80,8 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   authentication,
   accountAccess,
   cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1(),
-  dataReadGrants: createEnvironmentDataReadGrantSourceV1()
+  dataReadGrants: createEnvironmentDataReadGrantSourceV1(),
+  knowledgeReadGrants: createEnvironmentKnowledgeReadGrantSourceV1()
 });
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)

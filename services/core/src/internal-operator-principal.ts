@@ -8,8 +8,10 @@ import type { AuthenticationService } from './auth.js';
 
 export const COGNITIVE_READ_GRANTS_ENV = 'MO_COGNITIVE_READ_GRANTS_JSON';
 export const DATA_READ_GRANTS_ENV = 'MO_DATA_READ_GRANTS_JSON';
+export const KNOWLEDGE_READ_GRANTS_ENV = 'MO_KNOWLEDGE_READ_GRANTS_JSON';
 const COGNITIVE_READ_CAPABILITY = 'control-plane:cognitive:read' as const;
 const DATA_READ_CAPABILITY = 'control-plane:data:read' as const;
+const KNOWLEDGE_READ_CAPABILITY = 'control-plane:knowledge:read' as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export class CognitiveReadGrantSourceError extends Error {
@@ -26,6 +28,13 @@ export class DataReadGrantSourceError extends Error {
   }
 }
 
+export class KnowledgeReadGrantSourceError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'KnowledgeReadGrantSourceError';
+  }
+}
+
 export interface CognitiveReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
@@ -34,7 +43,14 @@ export interface DataReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
 
-function normalizedUserIds(userIds: Iterable<string>, label: 'Cognitive' | 'Data'): string[] {
+export interface KnowledgeReadGrantSourceV1 {
+  hasGrant(userId: string): Promise<boolean>;
+}
+
+function normalizedUserIds(
+  userIds: Iterable<string>,
+  label: 'Cognitive' | 'Data' | 'Knowledge'
+): string[] {
   const normalized = [...userIds].map((userId) => userId.trim().toLowerCase());
   const invalid = normalized.some((userId) => !UUID.test(userId));
   const duplicated = new Set(normalized).size !== normalized.length;
@@ -43,10 +59,15 @@ function normalizedUserIds(userIds: Iterable<string>, label: 'Cognitive' | 'Data
       throw new CognitiveReadGrantSourceError('Cognitive read grant user identity is malformed.');
     if (duplicated)
       throw new CognitiveReadGrantSourceError('Cognitive read grant user identity is duplicated.');
-  } else {
+  } else if (label === 'Data') {
     if (invalid) throw new DataReadGrantSourceError('Data read grant user identity is malformed.');
     if (duplicated)
       throw new DataReadGrantSourceError('Data read grant user identity is duplicated.');
+  } else {
+    if (invalid)
+      throw new KnowledgeReadGrantSourceError('Knowledge read grant user identity is malformed.');
+    if (duplicated)
+      throw new KnowledgeReadGrantSourceError('Knowledge read grant user identity is duplicated.');
   }
   return normalized;
 }
@@ -68,6 +89,18 @@ export class StaticDataReadGrantSourceV1 implements DataReadGrantSourceV1 {
 
   constructor(userIds: Iterable<string>) {
     this.userIds = new Set(normalizedUserIds(userIds, 'Data'));
+  }
+
+  hasGrant(userId: string): Promise<boolean> {
+    return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
+  }
+}
+
+export class StaticKnowledgeReadGrantSourceV1 implements KnowledgeReadGrantSourceV1 {
+  private readonly userIds: ReadonlySet<string>;
+
+  constructor(userIds: Iterable<string>) {
+    this.userIds = new Set(normalizedUserIds(userIds, 'Knowledge'));
   }
 
   hasGrant(userId: string): Promise<boolean> {
@@ -99,6 +132,18 @@ class UnavailableDataReadGrantSourceV1 implements DataReadGrantSourceV1 {
   }
 }
 
+class UnavailableKnowledgeReadGrantSourceV1 implements KnowledgeReadGrantSourceV1 {
+  constructor(private readonly cause?: Error) {}
+
+  hasGrant(): Promise<boolean> {
+    return Promise.reject(
+      new KnowledgeReadGrantSourceError('Knowledge read grant source is unavailable.', {
+        cause: this.cause
+      })
+    );
+  }
+}
+
 type GrantConfig<TCapability extends ControlPlaneCapability> = {
   schemaVersion: 1;
   grants: readonly {
@@ -110,12 +155,14 @@ type GrantConfig<TCapability extends ControlPlaneCapability> = {
 function parseGrantConfig<TCapability extends ControlPlaneCapability>(
   value: string,
   capability: TCapability,
-  label: 'Cognitive' | 'Data'
+  label: 'Cognitive' | 'Data' | 'Knowledge'
 ): GrantConfig<TCapability> {
   const fail = (message: string, cause?: Error): never => {
     if (label === 'Cognitive')
       throw new CognitiveReadGrantSourceError(message, cause ? { cause } : undefined);
-    throw new DataReadGrantSourceError(message, cause ? { cause } : undefined);
+    if (label === 'Data')
+      throw new DataReadGrantSourceError(message, cause ? { cause } : undefined);
+    throw new KnowledgeReadGrantSourceError(message, cause ? { cause } : undefined);
   };
 
   let parsed: unknown;
@@ -190,11 +237,27 @@ export function createEnvironmentDataReadGrantSourceV1(
   }
 }
 
+export function createEnvironmentKnowledgeReadGrantSourceV1(
+  value = process.env[KNOWLEDGE_READ_GRANTS_ENV]
+): KnowledgeReadGrantSourceV1 {
+  if (value === undefined)
+    return new UnavailableKnowledgeReadGrantSourceV1(
+      new Error(`${KNOWLEDGE_READ_GRANTS_ENV} is not configured.`)
+    );
+  try {
+    const config = parseGrantConfig(value, KNOWLEDGE_READ_CAPABILITY, 'Knowledge');
+    return new StaticKnowledgeReadGrantSourceV1(config.grants.map((grant) => grant.userId));
+  } catch (error) {
+    return new UnavailableKnowledgeReadGrantSourceV1(error instanceof Error ? error : undefined);
+  }
+}
+
 export interface InternalOperatorPrincipalResolverOptionsV1 {
   authentication: Pick<AuthenticationService, 'resolveSession'>;
   accountAccess: Pick<AccountAccessService, 'inspectAccount'>;
   cognitiveReadGrants: Readonly<CognitiveReadGrantSourceV1>;
   dataReadGrants?: Readonly<DataReadGrantSourceV1>;
+  knowledgeReadGrants?: Readonly<KnowledgeReadGrantSourceV1>;
 }
 
 export class InternalOperatorPrincipalResolverV1 {
@@ -221,7 +284,9 @@ export class InternalOperatorPrincipalResolverV1 {
         ? this.options.cognitiveReadGrants
         : requiredCapability === DATA_READ_CAPABILITY
           ? this.options.dataReadGrants
-          : undefined;
+          : requiredCapability === KNOWLEDGE_READ_CAPABILITY
+            ? this.options.knowledgeReadGrants
+            : undefined;
     if (!source)
       throw new AuthenticationError(
         'AUTHENTICATION_SERVICE_UNAVAILABLE',
@@ -234,7 +299,8 @@ export class InternalOperatorPrincipalResolverV1 {
     } catch (error) {
       if (
         error instanceof CognitiveReadGrantSourceError ||
-        error instanceof DataReadGrantSourceError
+        error instanceof DataReadGrantSourceError ||
+        error instanceof KnowledgeReadGrantSourceError
       )
         throw new AuthenticationError(
           'AUTHENTICATION_SERVICE_UNAVAILABLE',
