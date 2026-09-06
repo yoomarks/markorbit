@@ -67,62 +67,78 @@ function location(url: string, event: 'hashchange' | 'popstate' = 'hashchange') 
   });
 }
 
-describe('Lite shell navigation truth', () => {
-  it('resolves every primary navigation click with exactly one active item', async () => {
+describe('Lite Workspace Shell V2 navigation truth', () => {
+  it('keeps exactly five action-oriented primary destinations', async () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
     render(<LiteApp />);
     const user = userEvent.setup();
     const nav = screen.getByRole('navigation', { name: 'Primary' });
+    const labels = within(nav)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+
+    expect(labels).toEqual(['Today', 'Matters', 'Create', 'Portfolio', 'Work']);
+
     for (const [label, heading, hash] of [
       ['Today', 'Today workspace-1', '#today'],
       ['Matters', 'Matters workspace-1', '#matters'],
-      ['Content', 'Content Studio workspace-1', '#content'],
-      ['Opportunities', 'Opportunity Center workspace-1', '#opportunities'],
-      ['Trademarks', 'Trademarks workspace-1', '#trademarks'],
-      ['Work', 'Work', '#work'],
-      ['Capability', 'Capability workspace-1', '#capability'],
-      ['Guide', 'Guide workspace-1', '#guide']
+      ['Create', 'Content Studio workspace-1', '#content'],
+      ['Portfolio', 'Trademarks workspace-1', '#trademarks'],
+      ['Work', 'Work', '#work']
     ] as const) {
       const link = within(nav).getByRole('link', { name: label });
       await user.click(link);
       expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible();
       expect(window.location.hash).toBe(hash);
+      expect(window.location.search).toBe('?workspaceId=workspace-1');
       expect(link).toHaveAttribute('aria-current', 'page');
       expect(nav.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     }
   });
 
-  it('opens Content directly as an authenticated Workspace surface', () => {
-    const surface = 'content';
-    window.history.replaceState(null, '', `/?workspaceId=workspace-1#${surface}`);
+  it('opens Content directly as the Create destination', () => {
+    window.history.replaceState(null, '', '/?workspaceId=workspace-1#content');
     render(<LiteApp />);
     expect(
       screen.getByRole('heading', { level: 1, name: 'Content Studio workspace-1' })
     ).toBeVisible();
     expect(screen.getByText('Authenticated')).toBeVisible();
     expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
-    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Primary' })).getByRole('link', {
+        name: 'Create'
+      })
+    ).toHaveAttribute('aria-current', 'page');
   });
 
-  it('promotes Guide as an authenticated Workspace surface', () => {
-    window.history.replaceState(null, '', '/?workspaceId=workspace-1#guide');
+  it.each([
+    ['opportunities', 'Opportunity Center workspace-1'],
+    ['capability', 'Capability workspace-1'],
+    ['guide', 'Guide workspace-1']
+  ] as const)('preserves legacy #%s as an authenticated Work tool deep link', (hash, heading) => {
+    window.history.replaceState(null, '', `/?workspaceId=workspace-1#${hash}`);
     render(<LiteApp />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Guide workspace-1' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: heading })).toBeVisible();
     expect(screen.getByText('Authenticated')).toBeVisible();
-    expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
-    expect(screen.queryByText('Not yet promoted')).not.toBeInTheDocument();
-    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
+    expect(screen.getByText('Work · workspace-1')).toBeVisible();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Primary' })).getByRole('link', {
+        name: 'Work'
+      })
+    ).toHaveAttribute('aria-current', 'page');
   });
 
-  it.each(['today', 'matters', 'trademarks', 'capability', 'work-professional-review'])(
+  it.each(['today', 'matters', 'trademarks', 'work-professional-review'])(
     'preserves Workspace context on #%s, including query deep links',
     (hash) => {
       const query =
         '?workspaceId=workspace-1&todayRecommendationId=today_1&preparedActionId=prepared_1&contentPickId=pick_1&formalMatterId=matter_1&trademarkAssetId=asset_1&professionalReviewCaseId=review_1&professionalReviewCaseVersion=3';
       window.history.replaceState(null, '', `/${query}#${hash}`);
       render(<LiteApp />);
-      expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
+      const expectedContext = hash.startsWith('work-')
+        ? 'Work · workspace-1'
+        : 'Workspace · workspace-1';
+      expect(screen.getByText(expectedContext)).toBeVisible();
       expect(screen.getByText('Authenticated')).toBeVisible();
       expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('workspace-1');
@@ -132,7 +148,7 @@ describe('Lite shell navigation truth', () => {
     }
   );
 
-  it('makes Work a truthful overview instead of opening fixture Customers', () => {
+  it('makes Work the discoverable home for specialist tools without promoting Customers to live truth', () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
     render(<LiteApp />);
     expect(screen.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
@@ -140,9 +156,10 @@ describe('Lite shell navigation truth', () => {
     expect(screen.getByText('Work · workspace-1')).toBeVisible();
     expect(screen.getByText('Live governed')).toBeVisible();
     expect(screen.getByText('Authenticated governed')).toBeVisible();
+    expect(screen.getByText('Live · human review')).toBeVisible();
+    expect(screen.getByText('Private')).toBeVisible();
+    expect(screen.getByText('Asset-scoped advisory')).toBeVisible();
     expect(screen.getByText('Fixture preview')).toBeVisible();
-    expect(screen.queryByText('Hardening in progress')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
     expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
   });
 
@@ -158,17 +175,7 @@ describe('Lite shell navigation truth', () => {
     }
   });
 
-  it('promotes Opportunities as an authenticated Workspace Candidate Review surface', () => {
-    window.history.replaceState(null, '', '/?workspaceId=workspace-1#opportunities');
-    render(<LiteApp />);
-    expect(screen.getByRole('heading', { name: 'Opportunity Center workspace-1' })).toBeVisible();
-    expect(screen.getByText('Workspace · workspace-1')).toBeVisible();
-    expect(screen.getByText('Authenticated')).toBeVisible();
-    expect(screen.queryByText('Not live data')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
-  });
-
-  it('synchronizes Work subnavigation with URL and browser history', async () => {
+  it('synchronizes governed Work subnavigation with URL and browser history', async () => {
     window.history.replaceState(null, '', '/?workspaceId=workspace-1#work');
     render(<LiteApp />);
     const user = userEvent.setup();
@@ -194,13 +201,16 @@ describe('Lite shell navigation truth', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Professional Review workspace-2'
     );
-    expect(screen.getByText('Workspace · workspace-2')).toBeVisible();
+    expect(screen.getByText('Work · workspace-2')).toBeVisible();
   });
 
-  it('keeps the live Professional Review action disabled on Work when no Workspace is selected', () => {
+  it('keeps authenticated Work actions disabled when no Workspace is selected', () => {
     window.history.replaceState(null, '', '/#work');
     render(<LiteApp />);
-    expect(screen.getByRole('button', { name: 'Select a Workspace first' })).toBeDisabled();
+    const disabledWorkspaceActions = screen.getAllByRole('button', {
+      name: 'Select a Workspace first'
+    });
+    expect(disabledWorkspaceActions.length).toBeGreaterThan(1);
     expect(screen.getByText('Work · Workspace not selected')).toBeVisible();
     expect(screen.getByText('Mixed maturity')).toBeVisible();
   });
@@ -210,8 +220,6 @@ describe('Lite shell navigation truth', () => {
     render(<LiteApp initialFilingAuthorization={{ id: 'authorization_1', version: 2 }} />);
     expect(screen.getByText('Authenticated')).toBeVisible();
     expect(screen.getByText('Work · workspace-1')).toBeVisible();
-    expect(screen.queryByText('API-backed')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Demonstration only/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('authorization_1 2');
   });
 
@@ -221,7 +229,6 @@ describe('Lite shell navigation truth', () => {
     expect(screen.getByText('Workspace required')).toBeVisible();
     expect(screen.getByText('Work · Workspace not selected')).toBeVisible();
     expect(screen.queryByText('Authenticated')).not.toBeInTheDocument();
-    expect(screen.queryByText('API-backed')).not.toBeInTheDocument();
   });
 
   it.each([
