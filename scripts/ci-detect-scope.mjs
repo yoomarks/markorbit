@@ -71,6 +71,10 @@ const browserOrderJourneySpecific = (path) =>
   path.includes('order-journey') || path.includes('OrderJourney') || path.includes('order_journey');
 const browserProductLoopSpecific = (path) =>
   productLoopSpecific(path) || path.includes('trademark-asset') || path.includes('prepared-action');
+const browserProviderWebSpecific = (path) =>
+  starts(path, 'apps/provider-web/') ||
+  path === 'tests/e2e/provider.spec.ts' ||
+  path === 'playwright.provider.config.ts';
 
 const markregWebProductionRuntimeSpecific = (path) => {
   if (!starts(path, 'apps/markreg-web/src/')) return false;
@@ -223,6 +227,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       starts(path, 'apps/lite-web/') ||
       starts(path, 'apps/markreg-web/') ||
       starts(path, 'apps/operations-console/') ||
+      starts(path, 'apps/provider-web/') ||
       starts(path, 'packages/ui/')
   );
 
@@ -230,6 +235,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   let browserDocumentPackage = files.some(browserDocumentPackageSpecific);
   let browserOrderJourney = files.some(browserOrderJourneySpecific);
   let browserProductLoop = files.some(browserProductLoopSpecific) && web;
+  let browserProviderWeb = files.some(browserProviderWebSpecific);
   let browserExplicit = files.some(
     (path) =>
       starts(path, 'tests/e2e/') ||
@@ -242,7 +248,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     !browserProfessionalReview &&
     !browserDocumentPackage &&
     !browserOrderJourney &&
-    !browserProductLoop;
+    !browserProductLoop &&
+    !browserProviderWeb;
 
   const persistence =
     persistenceSource ||
@@ -291,7 +298,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     browserProfessionalReview ||
     browserDocumentPackage ||
     browserOrderJourney ||
-    browserProductLoop;
+    browserProductLoop ||
+    browserProviderWeb;
   const postgres =
     core || lite || capability || markreg || execution || mgsn || payment || persistence;
   const integration = postgres || gateway;
@@ -316,6 +324,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     postgres,
     browser,
     browser_generic: browserGeneric,
+    browser_provider_web: browserProviderWeb,
     browser_professional_review: browserProfessionalReview,
     browser_document_package: browserDocumentPackage,
     browser_order_journey: browserOrderJourney,
