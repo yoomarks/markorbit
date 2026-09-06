@@ -37,6 +37,7 @@ jobs:
       postgres: ${{ steps.scope.outputs.postgres }}
       browser: ${{ steps.scope.outputs.browser }}
       browser_generic: ${{ steps.scope.outputs.browser_generic }}
+      browser_provider_web: ${{ steps.scope.outputs.browser_provider_web }}
       browser_professional_review: ${{ steps.scope.outputs.browser_professional_review }}
       browser_document_package: ${{ steps.scope.outputs.browser_document_package }}
       browser_order_journey: ${{ steps.scope.outputs.browser_order_journey }}
@@ -536,9 +537,13 @@ jobs:
       - name: Product Loop browser
         if: needs.detect.outputs.browser_product_loop == 'true' || needs.detect.outputs.hard_gate == 'true'
         run: pnpm exec playwright test -c playwright.product-loop-closure-real-runtime.config.ts
+      - name: Provider Web browser
+        if: needs.detect.outputs.browser_provider_web == 'true'
+        run: pnpm exec playwright test --config playwright.provider.config.ts --reporter=line
       - name: Explicit browser fallback
         if: >-
           needs.detect.outputs.browser == 'true' &&
+          needs.detect.outputs.browser_provider_web != 'true' &&
           needs.detect.outputs.browser_professional_review != 'true' &&
           needs.detect.outputs.browser_document_package != 'true' &&
           needs.detect.outputs.browser_order_journey != 'true' &&

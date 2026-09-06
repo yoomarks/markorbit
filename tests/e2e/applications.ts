@@ -1,7 +1,8 @@
 export const applications = {
   lite: { package: '@markorbit/lite-web', port: 4171 },
   markreg: { package: '@markorbit/markreg-web', port: 4172 },
-  operations: { package: '@markorbit/operations-console', port: 4173 }
+  operations: { package: '@markorbit/operations-console', port: 4173 },
+  provider: { package: '@markorbit/provider-web', port: 4175 }
 } as const;
 
 export type ApplicationName = keyof typeof applications;

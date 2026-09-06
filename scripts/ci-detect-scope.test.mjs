@@ -151,6 +151,23 @@ test('ordinary MarkReg web changes select browser L2 without database or Product
   assert.equal(scope.l3_full, false);
 });
 
+test('Provider Web changes select the dedicated browser acceptance lane', () => {
+  const scope = classifyChangedFiles(['apps/provider-web/src/main.js'], {
+    paymentAvailable: false
+  });
+  assert.equal(scope.web, true);
+  assert.equal(scope.browser, true);
+  assert.equal(scope.browser_provider_web, true);
+  assert.equal(scope.browser_generic, false);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.integration, false);
+  assert.equal(scope.product_loop, false);
+  assert.equal(scope.hard_gate, false);
+  assert.equal(scope.l1_fast, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l3_full, false);
+});
+
 test('MarkReg durable API and production entry changes require owner persistence plus L3 proof', () => {
   for (const path of [
     'apps/markreg-web/src/api/production-intake.ts',
