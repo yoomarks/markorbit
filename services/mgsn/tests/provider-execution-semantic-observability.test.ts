@@ -67,7 +67,9 @@ describe('provider execution semantic observability', () => {
       'PROVIDER_ACCEPTED',
       'PROVIDER_DECLINED'
     ]);
-    expect(sink.list().every((event) => event.operation === 'PROVIDER_ACCEPTANCE_RECORD')).toBe(true);
+    expect(sink.list().every((event) => event.operation === 'PROVIDER_ACCEPTANCE_RECORD')).toBe(
+      true
+    );
     const serialized = JSON.stringify(sink.list());
     expect(serialized).not.toContain('private provider acknowledgement');
     expect(serialized).not.toContain('private-workspace-id');
