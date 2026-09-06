@@ -13,8 +13,8 @@ import {
 import { createUsTrademarkMarkRepresentationMethodRoutesV1 } from '../src/us-trademark-mark-representation-method-http.js';
 
 const SECRET = 'core-us-mark-representation-secret-32-bytes';
-const ACTIVE_AT = '2026-09-06T15:27:00.000Z';
-const AFTER_ACTIVE = '2026-09-06T15:30:00.000Z';
+const ACTIVE_AT = '2026-09-06T19:05:00.000Z';
+const AFTER_ACTIVE = '2026-09-06T19:10:00.000Z';
 
 function exactQuery(asOf = AFTER_ACTIVE): UsTrademarkMarkRepresentationResolutionQueryV1 {
   return {
@@ -61,7 +61,7 @@ describe('governed US trademark mark-representation Method authority', () => {
 
     const authority = new UsTrademarkMarkRepresentationMethodAuthorityV1(registry);
     await expect(
-      authority.resolveCurrent(exactQuery('2026-09-06T15:26:59.999Z'))
+      authority.resolveCurrent(exactQuery('2026-09-06T19:04:59.999Z'))
     ).rejects.toMatchObject({
       code: 'NO_CURRENT_METHOD'
     });
@@ -97,14 +97,21 @@ describe('governed US trademark mark-representation Method authority', () => {
       version: 5,
       status: 'DEGRADED',
       derivedFromBrainAssetVersionIds: [active.brainAssetVersionId],
-      createdAt: '2026-09-06T15:35:00.000Z'
+      createdAt: '2026-09-06T19:15:00.000Z'
     });
 
     await expect(
-      authority.resolveCurrent(exactQuery('2026-09-06T15:40:00.000Z'))
+      authority.resolveCurrent(exactQuery('2026-09-06T19:20:00.000Z'))
     ).rejects.toMatchObject({
       code: 'NO_CURRENT_METHOD'
     });
+  });
+
+  it('fails closed after the governed Knowledge capture window expires', async () => {
+    const { authority } = await currentAuthority();
+    await expect(
+      authority.resolveCurrent(exactQuery('2026-10-07T18:41:54.822Z'))
+    ).rejects.toMatchObject({ code: 'NO_CURRENT_METHOD' });
   });
 
   it('serves the exact current identity only to an authenticated internal caller', async () => {
@@ -134,7 +141,7 @@ describe('governed US trademark mark-representation Method authority', () => {
     })[0]!;
 
     await expect(
-      route.handle(request(exactQuery('2026-09-06T15:26:00.000Z')))
+      route.handle(request(exactQuery('2026-09-06T19:04:00.000Z')))
     ).rejects.toMatchObject({ status: 404, code: 'NO_CURRENT_METHOD', retryable: false });
   });
 });

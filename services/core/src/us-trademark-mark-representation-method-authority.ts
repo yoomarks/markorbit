@@ -3,7 +3,10 @@ import {
   type BrainAssetVersion,
   type BrainAssetVersionId
 } from '@markorbit/contracts/brain';
-import { executableMethodPackageFingerprintV1 } from '@markorbit/contracts/brain-method-activation';
+import {
+  brainMethodFingerprintV1,
+  executableMethodPackageFingerprintV1
+} from '@markorbit/contracts/brain-method-activation';
 import {
   USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE,
   USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
@@ -27,7 +30,7 @@ export const US_TRADEMARK_MARK_REPRESENTATION_BRAIN_DOMAIN = 'TRADEMARK' as cons
 export const US_TRADEMARK_MARK_REPRESENTATION_BRAIN_CONCEPT =
   'trademark.mark-representation.strategy' as const;
 export const US_TRADEMARK_MARK_REPRESENTATION_KNOWLEDGE_GOVERNANCE_REF =
-  'github:yoomarks/markorbit-knowledge@09eb8114c80cea8cfa3699188d2ce6076cc7f3da' as const;
+  'github:yoomarks/markorbit-knowledge@7ba94f5e7d45bd451d6ac25d5b509a600da43b7f' as const;
 export const US_TRADEMARK_MARK_REPRESENTATION_BRAIN_VERSION_IDS = Object.freeze([
   'brain-asset-version_us-trademark-mark-representation-strategy-draft-v1',
   'brain-asset-version_us-trademark-mark-representation-strategy-candidate-v1',
@@ -36,7 +39,8 @@ export const US_TRADEMARK_MARK_REPRESENTATION_BRAIN_VERSION_IDS = Object.freeze(
 ] as const satisfies readonly BrainAssetVersionId[]);
 
 export const US_TRADEMARK_MARK_REPRESENTATION_CURRENTNESS_MECHANISM =
-  'CORE_BRAIN_ASSET_LATEST_ACTIVE_PLUS_EXACT_KNOWLEDGE_REFERENCE_IDENTITY' as const;
+  'CORE_BRAIN_ASSET_LATEST_ACTIVE_PLUS_EXACT_KNOWLEDGE_REFERENCE_IDENTITY_AND_CAPTURE_WINDOW' as const;
+const US_TRADEMARK_MARK_REPRESENTATION_MAX_CAPTURE_AGE_MS = 31 * 86_400_000;
 
 export interface UsTrademarkMarkRepresentationResolutionQueryV1 {
   operation: 'MARK_REPRESENTATION_STRATEGY';
@@ -83,6 +87,7 @@ export interface CurrentUsTrademarkMarkRepresentationMethodV1 {
   brainAssetVersionId: BrainAssetVersionId;
   methodId: typeof US_TRADEMARK_MARK_REPRESENTATION_METHOD_ID;
   methodVersionId: typeof US_TRADEMARK_MARK_REPRESENTATION_METHOD_VERSION_ID;
+  methodFingerprintSha256: string;
   packageId: typeof US_TRADEMARK_MARK_REPRESENTATION_PACKAGE_ID;
   packageVersion: 2;
   packageFingerprintSha256: string;
@@ -116,7 +121,7 @@ function canonicalBundle() {
 }
 
 function storedCurrentIdentity() {
-  const { activation } = canonicalBundle();
+  const { compiled, activation } = canonicalBundle();
   return Object.freeze({
     schemaVersion: 1 as const,
     kind: 'GOVERNED_US_TRADEMARK_MARK_REPRESENTATION_METHOD' as const,
@@ -124,6 +129,7 @@ function storedCurrentIdentity() {
     currentnessMechanism: US_TRADEMARK_MARK_REPRESENTATION_CURRENTNESS_MECHANISM,
     methodId: US_TRADEMARK_MARK_REPRESENTATION_METHOD_ID,
     methodVersionId: US_TRADEMARK_MARK_REPRESENTATION_METHOD_VERSION_ID,
+    methodFingerprintSha256: brainMethodFingerprintV1(compiled.method),
     packageId: US_TRADEMARK_MARK_REPRESENTATION_PACKAGE_ID,
     packageVersion: 2 as const,
     packageFingerprintSha256: executableMethodPackageFingerprintV1(activation.activePackage),
@@ -145,17 +151,17 @@ function storedCurrentIdentity() {
 }
 const BRAIN_ASSET_STATUSES = ['DRAFT', 'CANDIDATE', 'VALIDATED', 'ACTIVE'] as const;
 const BRAIN_ASSET_CREATED_AT = [
-  '2026-09-06T15:20:00.000Z',
-  '2026-09-06T15:22:00.000Z',
-  '2026-09-06T15:25:00.000Z',
-  '2026-09-06T15:27:00.000Z'
+  '2026-09-06T19:00:00.000Z',
+  '2026-09-06T19:02:00.000Z',
+  '2026-09-06T19:04:00.000Z',
+  '2026-09-06T19:05:00.000Z'
 ] as const;
 
 function evidenceRefs() {
   return USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE.map((source) => ({
     sourceOwner: 'KNOWLEDGE' as const,
     sourceObjectId: source.chunkId,
-    sourceVersion: `${source.content.objectId}:artifact-v1:${source.indexedAt}`,
+    sourceVersion: `${source.content.objectId}:artifact-v${USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE.artifactVersion}:${source.indexedAt}`,
     sourceFingerprintSha256: source.contentSha256,
     observedAt: source.indexedAt
   }));
@@ -227,7 +233,7 @@ export function buildUsTrademarkMarkRepresentationBrainAssetLifecycleV1(): reado
           : preActivePayload(status),
       createdAt: BRAIN_ASSET_CREATED_AT[index],
       ...(status === 'VALIDATED' || status === 'ACTIVE'
-        ? { validatedAt: '2026-09-06T15:25:00.000Z' }
+        ? { validatedAt: '2026-09-06T19:04:00.000Z' }
         : {})
     })
   );
@@ -338,6 +344,16 @@ export class UsTrademarkMarkRepresentationMethodAuthorityV1 {
     query: Readonly<UsTrademarkMarkRepresentationResolutionQueryV1>
   ): Promise<Readonly<CurrentUsTrademarkMarkRepresentationMethodV1>> {
     validateQuery(query);
+    if (
+      Date.parse(query.asOf) -
+        Date.parse(USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE.capturedAt) >
+      US_TRADEMARK_MARK_REPRESENTATION_MAX_CAPTURE_AGE_MS
+    ) {
+      throw new UsTrademarkMarkRepresentationMethodAuthorityError(
+        'NO_CURRENT_METHOD',
+        'The governed USPTO reference capture is stale and must be refreshed before Method resolution.'
+      );
+    }
     let active: Readonly<BrainAssetVersion>;
     try {
       active = await this.registry.resolveActive({
@@ -390,6 +406,7 @@ export class UsTrademarkMarkRepresentationMethodAuthorityV1 {
       brainAssetVersionId: active.brainAssetVersionId,
       methodId: stored.methodId,
       methodVersionId: stored.methodVersionId,
+      methodFingerprintSha256: stored.methodFingerprintSha256,
       packageId: stored.packageId,
       packageVersion: stored.packageVersion,
       packageFingerprintSha256: stored.packageFingerprintSha256,

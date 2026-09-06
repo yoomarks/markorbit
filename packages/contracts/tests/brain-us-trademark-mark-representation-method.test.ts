@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { selectExecutableMethodPackageV1 } from '../src/brain-method.js';
-import { executableMethodPackageFingerprintV1 } from '../src/brain-method-activation.js';
+import {
+  brainMethodFingerprintV1,
+  executableMethodPackageFingerprintV1
+} from '../src/brain-method-activation.js';
 import {
   USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE,
   USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
@@ -56,7 +59,7 @@ const selectionContext = {
     'TARGET_JURISDICTIONS',
     'SOURCE_LINEAGE'
   ],
-  asOf: '2026-09-06T16:00:00.000Z'
+  asOf: '2026-09-06T19:10:00.000Z'
 };
 
 describe('US trademark mark-representation strategy Method', () => {
@@ -161,12 +164,27 @@ describe('US trademark mark-representation strategy Method', () => {
       },
       {
         ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
-        artifactVersion: 2,
+        artifactVersion: 1,
         currentness: 'CURRENT' as const
       },
       {
         ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
         documentContentSha256: 'f'.repeat(64),
+        currentness: 'CURRENT' as const
+      },
+      {
+        ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
+        sourceVersion: '2023-11-30',
+        currentness: 'CURRENT' as const
+      },
+      {
+        ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
+        httpBodySha256: 'f'.repeat(64),
+        currentness: 'CURRENT' as const
+      },
+      {
+        ...USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE,
+        retrievalDocumentCurrent: false,
         currentness: 'CURRENT' as const
       }
     ]) {
@@ -194,6 +212,9 @@ describe('US trademark mark-representation strategy Method', () => {
       throw new Error('Expected the exact current source to compile.');
     }
     expect(secondCompilation.method).toEqual(firstCompilation.method);
+    expect(brainMethodFingerprintV1(secondCompilation.method)).toBe(
+      brainMethodFingerprintV1(firstCompilation.method)
+    );
     expect(executableMethodPackageFingerprintV1(secondCompilation.package)).toBe(
       executableMethodPackageFingerprintV1(firstCompilation.package)
     );

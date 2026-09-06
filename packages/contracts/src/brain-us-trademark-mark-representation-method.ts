@@ -32,8 +32,8 @@ export const US_TRADEMARK_MARK_REPRESENTATION_REFERENCE_DEPENDENCY =
   'KNOWLEDGE_USPTO_MARK_DRAWING_STRATEGY_V1' as const;
 
 const KNOWLEDGE_WORKSPACE_ID = 'wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV';
-const KNOWLEDGE_DOCUMENT_ID = 'art_01M1VK55XXGXG9B2SYMZPJP4ND';
-const KNOWLEDGE_INDEXED_AT = '2026-09-06T14:50:02.597Z';
+const KNOWLEDGE_DOCUMENT_ID = 'art_01M1W0DV47JED4RVBMVY8CGV0N';
+const KNOWLEDGE_INDEXED_AT = '2026-09-06T18:41:55.021Z';
 const KNOWLEDGE_HEADING = Object.freeze(['Drawing of your trademark']);
 
 function lineage(
@@ -62,48 +62,51 @@ function lineage(
 
 export const USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_LINEAGE = Object.freeze([
   lineage(
-    'rch_b8ea9cbcb8f2f8c469cc48e23a241bbb',
-    'b8ea9cbcb8f2f8c469cc48e23a241bbb871f175c34c345dd3e75787476f61c55',
-    'DECISION_FACTORS: exact USPTO lexical chunk describing factors that make drawing-type choice context-dependent.'
+    'rch_b002fe081a4a658a96ecab518ecdf6c4',
+    'b002fe081a4a658a96ecab518ecdf6c40a39a4c827bced34c0d1ca57481eb14e',
+    'MARK_FORMAT_DEFINITIONS: exact governed USPTO chunk supporting both the text-only standard-character and stylization/design special-form facts.'
   ),
   lineage(
-    'rch_da637ddfbb5d3f17886518fe8aa68780',
-    'da637ddfbb5d3f17886518fe8aa687802d19c8247c9d9cc2551133a159748106',
-    'DRAWING_TYPE_DEFINITIONS: exact USPTO lexical chunk defining standard-character and special-form drawings.'
-  ),
-  lineage(
-    'rch_8e1d4f6b51c7e404a8a6847f8b1e408e',
-    '8e1d4f6b51c7e404a8a6847f8b1e408ee594e3090d38dee6f530c2f315ffa0d9',
-    'PROTECTION_SCOPE: exact USPTO lexical chunk distinguishing protection scope and special-form-required conditions.'
+    'rch_bea5cef8d9d245612387ec1c3d48c8a1',
+    'bea5cef8d9d245612387ec1c3d48c8a1cfbe775f1b0a97e2a077e333ca865565',
+    'PROTECTION_SCOPE: exact governed USPTO chunk supporting the drawing-type protection-scope distinction.'
   )
 ]) satisfies readonly Readonly<KnowledgeRetrievalLineageRefV1>[];
 export const USPTO_MARK_DRAWING_STRATEGY_ACCEPTED_REFERENCE = Object.freeze({
-  sourceId: 'src_01M1VK4XG63T35RWV5Z87JCBJ2',
+  profileId: 'uspto-mark-format-reference-v1',
+  sourceKey: 'MARK_DRAWINGS',
+  sourceVersion: '2025-01-18',
+  sourceId: 'src_01M1W0DKQ8FZATW86G84302ZSV',
   documentId: KNOWLEDGE_DOCUMENT_ID,
-  artifactVersion: 1,
-  documentContentSha256: '2184c01582fe6edae7fbbcc7a3992af448cc15bb32f8ff00204b087803b7341b',
+  artifactVersion: 2,
+  documentContentSha256: '53b4392acfa3cccecccf6290c14a943995e3a7f835e812fa90232a51e23dd198',
   rawArtifactId: KNOWLEDGE_DOCUMENT_ID,
-  rawArtifactVersion: 1,
-  rawArtifactSha256: 'f62b67acd4db4207b04be0242f0850993e693701124fbdc1676d02e1254ac089',
-  stagingDocumentId: 'std_01M1VK58YKT74HVQFQHCVQ1G1T',
-  readyPackageId: 'rdp_01M1VK58YWPF8DVWSZKJNJ72N1',
   canonicalUri: 'https://www.uspto.gov/trademarks/basics/mark-drawings-trademarks',
+  sourceLastUpdatedDate: '2025-01-18',
+  httpLastUpdatedDate: '2025-01-18',
+  capturedAt: '2026-09-06T18:41:54.821Z',
+  retrievalDocumentCurrent: true,
+  httpBodySha256: 'db194da64476a406684ec709b8715eee054c6bbcfe7cdc8c19b211aa0344caa4',
   indexedAt: KNOWLEDGE_INDEXED_AT
 });
 
 export interface UsTrademarkMarkRepresentationReferenceStateV1 {
+  profileId: string;
+  sourceKey: string;
+  sourceVersion: string;
   sourceId: string;
   documentId: string;
   artifactVersion: number;
   documentContentSha256: string;
   rawArtifactId: string;
-  rawArtifactVersion: number;
-  rawArtifactSha256: string;
-  stagingDocumentId: string;
-  readyPackageId: string;
   canonicalUri: string;
+  sourceLastUpdatedDate: string;
+  httpLastUpdatedDate: string;
+  capturedAt: string;
+  retrievalDocumentCurrent: boolean;
+  httpBodySha256: string;
   indexedAt: string;
-  currentness: 'CURRENT' | 'STALE';
+  currentness: 'CURRENT' | 'STALE' | 'DRIFT' | 'UNVERIFIED';
 }
 export interface CompileUsTrademarkMarkRepresentationMethodInputV1 {
   knowledgeSources: readonly Readonly<KnowledgeRetrievalLineageRefV1>[];
@@ -322,12 +325,12 @@ export function compileUsTrademarkMarkRepresentationMethodPackageV1(
   } as const;
   const evaluation = {
     evaluationId: 'evaluation_us-trademark-mark-representation-strategy-v1',
-    evaluatedAt: '2026-09-06T15:20:00.000Z',
+    evaluatedAt: '2026-09-06T19:00:00.000Z',
     status: 'PASSED' as const,
     baseline: 'exact-uspto-mark-drawing-source-plus-deterministic-intake-cases-v1',
     metrics: {
       exactSourceCount: 1,
-      exactChunkCount: 3,
+      exactChunkCount: 2,
       positiveCasePassRate: 1,
       notApplicableCasePassRate: 1,
       staleTamperRejectionRate: 1,
@@ -335,7 +338,7 @@ export function compileUsTrademarkMarkRepresentationMethodPackageV1(
       authorityConsequenceFalseRate: 1
     },
     evidenceSummary:
-      'One current USPTO primary-authority document and three exact retrieval chunks support a deterministic mark-representation candidate classifier; all unsupported legal and filing conclusions remain NOT_ESTABLISHED.'
+      'One current USPTO primary-authority document and two exact governed retrieval chunks support a deterministic mark-representation candidate classifier; all unsupported legal and filing conclusions remain NOT_ESTABLISHED.'
   } as const;
   const lineageValue = {
     knowledgeSources: input.knowledgeSources.map((source) => structuredClone(source)),
@@ -386,8 +389,8 @@ export function compileUsTrademarkMarkRepresentationMethodPackageV1(
     lineage: lineageValue,
     lifecycle: 'VALIDATED',
     supersedesMethodVersionIds: [],
-    createdAt: '2026-09-06T15:20:00.000Z',
-    validatedAt: '2026-09-06T15:20:00.000Z'
+    createdAt: '2026-09-06T19:00:00.000Z',
+    validatedAt: '2026-09-06T19:00:00.000Z'
   });
 
   const pkg = parseExecutableMethodPackageV1({
@@ -420,7 +423,7 @@ export function compileUsTrademarkMarkRepresentationMethodPackageV1(
     evaluation,
     lineage: lineageValue,
     limitations: US_TRADEMARK_STRATEGY_LIMITATIONS,
-    createdAt: '2026-09-06T15:20:00.000Z'
+    createdAt: '2026-09-06T19:00:00.000Z'
   });
 
   return { status: 'READY', method, package: pkg };
@@ -466,7 +469,7 @@ export function activateUsTrademarkMarkRepresentationMethodPackageV1(
     policyVersion: 'brain-governance.markreg-strategy-method.v1',
     approvedBy: 'markorbit-core-governance',
     approvalTicketRef: 'github:yoomarks/markorbit#903',
-    approvedAt: '2026-09-06T15:27:00.000Z',
+    approvedAt: '2026-09-06T19:05:00.000Z',
     rationale:
       'Activate only the evidence-backed US mark-representation strategy classifier for bounded human-review candidates; no legal conclusion, Recommendation, filing authorization, payment, provider contact, customer selection, or protected action authority is granted.'
   });
