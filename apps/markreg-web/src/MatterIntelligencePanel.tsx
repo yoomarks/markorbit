@@ -79,7 +79,10 @@ function ObservationCard({ item }: { item: MatterIntelligenceReadItem }) {
                 : [])
             ]}
           />
-          <p>Human review evaluates this analytical observation inside MarkReg; it is not external certification or Official Truth.</p>
+          <p>
+            Human review evaluates this analytical observation inside MarkReg; it is not external
+            certification or Official Truth.
+          </p>
         </>
       ) : (
         <p>No Human Intelligence Review has been recorded for this observation.</p>
@@ -174,7 +177,10 @@ export function MatterIntelligencePanel({
       <div className="markreg-truth-row">
         <TruthContext truthClass="REVIEWED_EVIDENCE" detail="Descriptive analytical context" />
       </div>
-      <p>Matter Intelligence is historical analytical evidence, not a prediction, deadline, legal conclusion or Official Truth.</p>
+      <p>
+        Matter Intelligence is historical analytical evidence, not a prediction, deadline, legal
+        conclusion or Official Truth.
+      </p>
       {state.value.total === 0 ? (
         <Card>
           <p>

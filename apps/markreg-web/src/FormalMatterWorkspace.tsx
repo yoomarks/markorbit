@@ -129,7 +129,10 @@ export function FormalMatterWorkspace({
         separate from trademark-office status, official deadlines and protected external actions.
       </Alert>
 
-      <section className="markreg-cockpit-section markreg-matter-priority" aria-labelledby="matter-current-heading">
+      <section
+        className="markreg-cockpit-section markreg-matter-priority"
+        aria-labelledby="matter-current-heading"
+      >
         <h2 id="matter-current-heading">Overview</h2>
         <div className="markreg-truth-row">
           <TruthContext
@@ -142,7 +145,10 @@ export function FormalMatterWorkspace({
         </Card>
       </section>
 
-      <section className="markreg-cockpit-section markreg-matter-priority" aria-labelledby="matter-lifecycle-heading">
+      <section
+        className="markreg-cockpit-section markreg-matter-priority"
+        aria-labelledby="matter-lifecycle-heading"
+      >
         <h2 id="matter-lifecycle-heading">Needs attention</h2>
         {renderLifecycle({
           formalMatterId: String(matter.formalMatterId),
@@ -150,7 +156,10 @@ export function FormalMatterWorkspace({
         })}
       </section>
 
-      <section className="markreg-cockpit-section markreg-matter-priority" aria-labelledby="matter-examination-heading">
+      <section
+        className="markreg-cockpit-section markreg-matter-priority"
+        aria-labelledby="matter-examination-heading"
+      >
         <h2 id="matter-examination-heading">Examination</h2>
         {renderExamination({ formalMatterId: String(matter.formalMatterId) })}
       </section>

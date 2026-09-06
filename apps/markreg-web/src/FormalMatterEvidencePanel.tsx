@@ -197,8 +197,14 @@ export function FormalMatterEvidencePanel({
             <>
               <div className="markreg-truth-row">
                 <TruthContext
-                  truthClass={lifecycle.matterSourceCurrent ? 'GOVERNED_INTERNAL_WORKFLOW' : 'HISTORICAL'}
-                  detail={lifecycle.matterSourceCurrent ? 'Current lifecycle evidence' : 'Older Matter source'}
+                  truthClass={
+                    lifecycle.matterSourceCurrent ? 'GOVERNED_INTERNAL_WORKFLOW' : 'HISTORICAL'
+                  }
+                  detail={
+                    lifecycle.matterSourceCurrent
+                      ? 'Current lifecycle evidence'
+                      : 'Older Matter source'
+                  }
                 />
               </div>
               {!lifecycle.matterSourceCurrent && (
@@ -254,7 +260,10 @@ export function FormalMatterEvidencePanel({
             { key: 'Historical-source observations in this page', value: staleIntelligence }
           ]}
         />
-        <p>Descriptive analytical context only; this projection creates no deadline or Official Status.</p>
+        <p>
+          Descriptive analytical context only; this projection creates no deadline or Official
+          Status.
+        </p>
       </Card>
 
       <details className="markreg-cockpit-secondary-details">
