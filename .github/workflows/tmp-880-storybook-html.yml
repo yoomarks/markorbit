@@ -1,0 +1,71 @@
+name: tmp-880-storybook-html
+
+on:
+  push:
+    branches:
+      - tmp/880-storybook-html-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preserve adapter patch
+        run: cp scripts/tmp-880-storybook-html.py /tmp/storybook-patch.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Apply adapter on product branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin integration/provider-web-storybook-browser-880
+          git checkout -B target-880 origin/integration/provider-web-storybook-browser-880
+          test "$(git rev-parse HEAD)" = "a9ca8ad851ab37ba82cbaf083ad0a63a9a05586f"
+          python /tmp/storybook-patch.py
+      - name: Refresh lockfile for HTML Storybook renderer
+        run: pnpm install --lockfile-only
+      - name: Install exact refreshed dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Format adapter files
+        run: pnpm exec prettier --write package.json packages/ui/package.json packages/ui/.storybook-provider/main.ts apps/provider-web/src/ProviderWorkspaceShell.stories.js scripts/validate-provider-storybook-index.mjs playwright.provider-storybook.config.ts tests/e2e/provider-storybook.spec.ts pnpm-lock.yaml
+      - name: Provider production build excludes Storybook source
+        shell: bash
+        run: |
+          pnpm --filter @markorbit/provider-web build
+          test ! -e apps/provider-web/dist/src/ProviderWorkspaceShell.stories.js
+      - name: Existing and Provider Storybook matrix builds and indexes
+        run: |
+          pnpm build:storybook-matrix
+          pnpm test:storybook-index
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Render Provider story on desktop and mobile
+        env:
+          CI: '1'
+        run: pnpm exec playwright test --config playwright.provider-storybook.config.ts --reporter=line
+      - name: Provider and UI static checks
+        run: |
+          pnpm --filter @markorbit/provider-web test
+          pnpm --filter @markorbit/provider-web lint
+          pnpm --filter @markorbit/ui lint
+      - name: Commit verified non-workflow Storybook adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git add package.json pnpm-lock.yaml packages/ui/package.json packages/ui/.storybook-provider/main.ts apps/provider-web/src/ProviderWorkspaceShell.stories.js scripts/validate-provider-storybook-index.mjs playwright.provider-storybook.config.ts tests/e2e/provider-storybook.spec.ts
+          test "$(git diff --cached --name-only | wc -l)" -eq 8
+          git commit -m 'test(provider-web): add HTML Storybook acceptance adapter'
+          git push origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
