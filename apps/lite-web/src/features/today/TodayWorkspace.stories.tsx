@@ -10,6 +10,8 @@ import {
   type TodayClient,
   type TodayProductLoopSnapshot
 } from '../../api/product-loop.js';
+import type { WorkspaceInsightsClient } from '../../api/workspace-insights.js';
+import { workspaceInsightsFixture } from '../insights/fixtures.js';
 import { TodayWorkspace } from './TodayWorkspace.js';
 
 const workspaceId = '25252525-2525-4252-8252-252525252525';
@@ -152,9 +154,14 @@ function clientFor(value: TodayProductLoopSnapshot): TodayClient {
   };
 }
 
+const insightsClient: WorkspaceInsightsClient = {
+  load: () => Promise.resolve(workspaceInsightsFixture(workspaceId))
+};
+
 export default {
   title: 'Products/Lite/Today real runtime',
   component: TodayWorkspace,
+  args: { insightsClient },
   parameters: { layout: 'fullscreen', a11y: { disable: false } }
 } satisfies Meta<typeof TodayWorkspace>;
 

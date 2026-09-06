@@ -1,0 +1,120 @@
+.workspace-insights {
+  display: grid;
+  gap: var(--mo-space-lg);
+  min-width: 0;
+  padding-block: var(--mo-space-lg);
+  border-block: 1px solid var(--mo-border);
+}
+
+.workspace-insights__lead-grid,
+.workspace-insights__funnels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-lg);
+  min-width: 0;
+}
+
+.workspace-insights .mo-card {
+  display: grid;
+  gap: var(--mo-space-sm);
+  align-content: start;
+  min-width: 0;
+}
+
+.workspace-insights .mo-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-insights__stages {
+  display: grid;
+  gap: 0;
+  margin: var(--mo-space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.workspace-insights__stages li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mo-space-lg);
+  padding-block: var(--mo-space-sm);
+  border-bottom: 1px solid var(--mo-border);
+}
+
+.workspace-insights__stages span {
+  color: var(--mo-secondary);
+  overflow-wrap: anywhere;
+}
+
+.workspace-insights__stages strong {
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+}
+
+.workspace-insights__rates,
+.workspace-insights__evidence {
+  margin-top: var(--mo-space-sm);
+  padding-top: var(--mo-space-md);
+  border-top: 1px solid var(--mo-border);
+}
+
+.workspace-insights__rates summary,
+.workspace-insights__evidence summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.workspace-insights__rates dl,
+.workspace-insights__evidence dl {
+  display: grid;
+  gap: var(--mo-space-sm);
+}
+.workspace-insights__rates dl > div,
+.workspace-insights__evidence dl > div {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--mo-space-md);
+  padding-block: var(--mo-space-xs);
+}
+
+.workspace-insights__rates dt,
+.workspace-insights__evidence dt {
+  color: var(--mo-secondary);
+}
+
+.workspace-insights__rates dd,
+.workspace-insights__evidence dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-insights__evidence ul {
+  display: grid;
+  gap: var(--mo-space-xs);
+  padding-left: 1.2rem;
+}
+
+.workspace-insights button {
+  width: fit-content;
+}
+
+@media (max-width: 760px) {
+  .workspace-insights__lead-grid,
+  .workspace-insights__funnels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-insights__rates dl > div,
+  .workspace-insights__evidence dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mo-space-xs);
+  }
+
+  .workspace-insights__stages li {
+    align-items: flex-start;
+  }
+
+  .workspace-insights button {
+    width: 100%;
+  }
+}
