@@ -327,8 +327,8 @@ describe('MarkReg governed direct entry', () => {
       />
     );
 
-    expect(await screen.findByRole('heading', { name: 'Trademark Matter' })).toBeTruthy();
-    expect(screen.getByText('ORBIT')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'ORBIT' })).toBeTruthy();
+    expect(screen.getAllByText('ORBIT').length).toBeGreaterThan(0);
     expect(screen.getByText('Lifecycle current')).toBeTruthy();
     expect(screen.getByText(/Matter ≠ Filing/)).toBeTruthy();
     expect(getFormalMatter).toHaveBeenCalledWith('formal-matter_exact');

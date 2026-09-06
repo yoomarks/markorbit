@@ -1,6 +1,6 @@
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { TruthContext } from './TruthContext.js';
+import { TruthBadge, TruthContext } from './TruthContext.js';
 import {
   createCustomerLifecycleClient,
   type CustomerLifecycleClient,
@@ -67,22 +67,35 @@ export function LifecyclePanel({
   if (state.kind === 'ERROR')
     return (
       <Alert tone="warning" title="Lifecycle unavailable">
-        {state.message} <Button onClick={() => void load()}>Retry</Button>
+        <TruthBadge kind="UNAVAILABLE_STALE" /> {state.message}{' '}
+        <Button onClick={() => void load()}>Retry</Button>
       </Alert>
     );
 
   const { lifecycle, timeline, recommendedAction, noAction } = state.value;
   const content = (
     <>
-      <div className="markreg-truth-row">
+      {!embedded && (
         <TruthContext
-          truthClass="GOVERNED_INTERNAL_WORKFLOW"
-          detail="Current MarkReg lifecycle and action guidance"
-        />
-      </div>
+          kind="GOVERNED_INTERNAL"
+          details={
+            <p>
+              Lifecycle Projection is not trademark-office Official Status. Recommended Action is
+              guidance, not authorization, and its acknowledge/dismiss controls execute no filing,
+              payment, or external contact.
+            </p>
+          }
+        >
+          Current MarkReg lifecycle and recommendation
+        </TruthContext>
+      )}
+
       <Card>
-        <h3>Current recommended action</h3>
-        <div aria-live="polite" className="markreg-cockpit-summary">
+        <div className="markreg-cockpit-card-heading">
+          <h3>Current recommended action</h3>
+          <TruthBadge kind="GOVERNED_INTERNAL" />
+        </div>
+        <div aria-live="polite">
           {recommendedAction ? (
             <>
               <strong>{recommendedAction.title}</strong>
@@ -105,10 +118,13 @@ export function LifecyclePanel({
                   </Button>
                 </p>
               )}
-              <small>
-                Recommended Action is guidance, not authorization. Acknowledge or dismiss records
-                only this product action state.
-              </small>
+              <details className="markreg-cockpit-inline-details">
+                <summary>Recommendation boundary</summary>
+                <p>
+                  Recommended Action is governed product guidance, not authorization. Acknowledging
+                  or dismissing does not execute, file, contact a provider, or pay for anything.
+                </p>
+              </details>
             </>
           ) : noAction ? (
             <p>No customer action is currently recommended.</p>
@@ -117,23 +133,26 @@ export function LifecyclePanel({
           )}
         </div>
       </Card>
+
       <Card>
-        <h3>Current lifecycle</h3>
+        <div className="markreg-cockpit-card-heading">
+          <h3>Current lifecycle</h3>
+          <TruthBadge kind="GOVERNED_INTERNAL" />
+        </div>
         {lifecycle ? (
-          <div className="markreg-cockpit-summary">
+          <>
             <strong>{lifecycle.customerSafeLabel}</strong>
             <p>{lifecycle.customerSafeSummary}</p>
             <small>Updated {new Date(lifecycle.updatedAt).toLocaleString()}</small>
-          </div>
+          </>
         ) : (
           <p>No governed lifecycle view has been recorded for this Matter yet.</p>
         )}
       </Card>
+
       <details className="markreg-lifecycle-history markreg-cockpit-secondary-details">
         <summary>Lifecycle history ({timeline.length})</summary>
-        <div className="markreg-truth-row">
-          <TruthContext truthClass="HISTORICAL" detail="Prior governed workflow context" />
-        </div>
+        <TruthContext kind="HISTORICAL">Prior governed lifecycle context</TruthContext>
         <Card>
           {timeline.length === 0 ? (
             <p>No lifecycle events yet.</p>
@@ -157,10 +176,6 @@ export function LifecyclePanel({
   return (
     <section aria-labelledby="matter-lifecycle-heading">
       <h2 id="matter-lifecycle-heading">Matter lifecycle</h2>
-      <Alert tone="info" title="Lifecycle authority boundary">
-        Governed lifecycle state is MarkReg product workflow, not trademark-office status or proof
-        of filing. It does not execute, file or pay.
-      </Alert>
       {content}
     </section>
   );

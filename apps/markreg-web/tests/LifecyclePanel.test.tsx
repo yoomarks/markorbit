@@ -57,8 +57,17 @@ describe('M5-WP-06 customer lifecycle panel', () => {
     render(<LifecyclePanel formalMatterId="formal-matter_wp06" client={api} />);
     expect(await screen.findAllByText('Action required')).toHaveLength(2);
     expect(screen.getByText('Review required action')).toBeVisible();
-    expect(screen.getByText(/not trademark-office status or proof of filing/i)).toBeVisible();
-    expect(screen.getByText(/does not execute, file or pay/i)).toBeVisible();
+    expect(
+      screen.getAllByLabelText('Truth class: Governed internal workflow').length
+    ).toBeGreaterThanOrEqual(3);
+    expect(screen.getByText('What this truth class means')).toBeVisible();
+    expect(
+      screen.getByText(/Lifecycle Projection is not trademark-office Official Status/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Recommendation boundary')).toBeVisible();
+    expect(
+      screen.getByText(/does not execute, file, contact a provider, or pay/i)
+    ).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('admissionFingerprintSha256');
     expect(document.body.textContent).not.toContain('Provider Return');
   });
