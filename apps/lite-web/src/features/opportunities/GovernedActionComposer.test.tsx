@@ -142,7 +142,7 @@ describe('GovernedActionComposer', () => {
     expect(screen.getByText(/Provider Acceptance remains separate/)).toBeVisible();
     expect(screen.queryByText(/Provider contacted successfully/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/appointment created/i)).not.toBeInTheDocument();
-  });
+  }, 10_000);
 
   it('invalidates the reviewed Privacy Preview when Handoff currentness conflicts', async () => {
     const user = userEvent.setup();

@@ -29,6 +29,7 @@ export * from './governed-action.js';
 export * from './account-access-http.js';
 export * from './capability-http.js';
 export * from './order-http.js';
+export * from './customer-context-http.js';
 export * from './payment-http.js';
 export * from './commercial-admin-payment-http.js';
 export * from './commercial-admin-markreg-http.js';
@@ -54,6 +55,7 @@ import {
 import { createGatewayAccountAccessRoutes } from './account-access-http.js';
 import { createGatewayCapabilityRoutes } from './capability-http.js';
 import { createGatewayOrderRoutes } from './order-http.js';
+import { createGatewayCustomerContextRoutes } from './customer-context-http.js';
 import { createGatewayPaymentRoutes } from './payment-http.js';
 import { createGatewayCommercialAdminPaymentRoutes } from './commercial-admin-payment-http.js';
 import { createGatewayCommercialAdminMarkRegRoutes } from './commercial-admin-markreg-http.js';
@@ -520,6 +522,16 @@ export function createRuntime(options: GatewayOptions = {}) {
             : {}),
           csrfSecret,
           allowedOrigins
+        }),
+        ...createGatewayCustomerContextRoutes({
+          markRegUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
         }),
         ...createGatewayOrderRoutes({
           markRegUrl,
