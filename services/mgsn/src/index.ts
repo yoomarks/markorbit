@@ -4,6 +4,10 @@ import {
   type MgsnCommercialAdminHttpOptions
 } from './commercial-admin-http.js';
 import {
+  createMgsnControlledHandoffPreparationHttpRoutes,
+  type MgsnControlledHandoffPreparationHttpOptions
+} from './controlled-handoff-preparation-http.js';
+import {
   createMgsnGovernedNetworkHttpRoutes,
   type MgsnGovernedNetworkHttpOptions
 } from './governed-network-http.js';
@@ -19,6 +23,8 @@ export * from './governed-allocation.js';
 export * from './governed-allocation-runtime.js';
 export * from './governed-allocation-postgres.js';
 export * from './governed-network-http.js';
+export * from './controlled-handoff-preparation.js';
+export * from './controlled-handoff-preparation-http.js';
 export * from './provider-return.js';
 export * from './provider-return-postgres.js';
 export * from './provider-work-read-model.js';
@@ -65,6 +71,7 @@ export interface MgsnRuntimeOptions extends MgsnHttpOptions {
   port?: number;
   commercialAdminReadService?: MgsnCommercialAdminHttpOptions['service'];
   governedNetworkServices?: MgsnGovernedNetworkHttpOptions['services'];
+  controlledHandoffPreparationService?: MgsnControlledHandoffPreparationHttpOptions['service'];
 }
 
 export function createRuntime(options: MgsnRuntimeOptions = {}) {
@@ -75,6 +82,14 @@ export function createRuntime(options: MgsnRuntimeOptions = {}) {
         ...createMgsnHttpRoutes(options),
         ...createMgsnGovernedNetworkHttpRoutes({
           ...(options.governedNetworkServices ? { services: options.governedNetworkServices } : {}),
+          ...(options.internalServiceSecret
+            ? { internalServiceSecret: options.internalServiceSecret }
+            : {})
+        }),
+        ...createMgsnControlledHandoffPreparationHttpRoutes({
+          ...(options.controlledHandoffPreparationService
+            ? { service: options.controlledHandoffPreparationService }
+            : {}),
           ...(options.internalServiceSecret
             ? { internalServiceSecret: options.internalServiceSecret }
             : {})

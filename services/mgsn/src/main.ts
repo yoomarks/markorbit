@@ -30,6 +30,7 @@ const runtime = createRuntime({
   // admitted only through reviewed, operation-scoped human-action ingress, never by wiring itself.
   // External JSON is normalized by the owner-local governed ingress before owner services run.
   governedNetworkServices: services,
+  controlledHandoffPreparationService: services.controlledHandoffPreparation,
   commercialAdminReadService: new MgsnCommercialAdminReadService(services.providerRegistry)
 });
 
