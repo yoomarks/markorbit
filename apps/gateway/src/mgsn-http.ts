@@ -35,7 +35,29 @@ interface GovernedRouteDefinition {
   permission: GovernedPermission;
   idempotency: boolean;
   humanAction?: GovernedHumanActionKind;
+  forbiddenBodyFields?: readonly string[];
 }
+
+const controlledHandoffPreparationForbiddenAuthorityFields = [
+  'workspaceId',
+  'userId',
+  'membershipId',
+  'actorId',
+  'principal',
+  'principalReference',
+  'trustedHumanAuthority',
+  'directExecutorAuthority',
+  'currentSelectionValidation',
+  'currentSourceVersions',
+  'authorizedProjection',
+  'recipient',
+  'purposeFingerprintSha256',
+  'projectionFingerprintSha256',
+  'sourceSetFingerprintSha256',
+  'previewFingerprintSha256',
+  'authorityReference',
+  'authorityVersion'
+] as const;
 
 const operationsRoutes: readonly RouteDefinition[] = [
   ['GET', '/api/mgsn/providers'],
@@ -83,6 +105,13 @@ const governedRoutes: readonly GovernedRouteDefinition[] = [
     path: '/api/mgsn/governed-network/selections/:providerSelectionId/validate-current',
     permission: 'workspace:read',
     idempotency: false
+  },
+  {
+    method: 'POST',
+    path: '/api/mgsn/governed-network/handoffs/prepare',
+    permission: 'workspace:read',
+    idempotency: false,
+    forbiddenBodyFields: controlledHandoffPreparationForbiddenAuthorityFields
   },
   {
     method: 'POST',
@@ -337,6 +366,7 @@ export function createGatewayMgsnRoutes(options: GatewayMgsnRouteOptions): JsonR
                 }
               }
             : {}),
+          ...(route.forbiddenBodyFields ? { forbiddenBodyFields: route.forbiddenBodyFields } : {}),
           forbiddenHeaders: [GOVERNED_HUMAN_ACTION_HEADER_NAME],
           browserAuthorityError: {
             code: 'BROWSER_GOVERNED_AUTHORITY_FORBIDDEN',
