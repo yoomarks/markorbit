@@ -1,0 +1,220 @@
+name: tmp-880-provider-browser-register
+
+on:
+  push:
+    branches:
+      - tmp/880-provider-browser-register-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Apply bounded Provider Web browser registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'yoomarks'
+          git config user.email 'actions@users.noreply.github.com'
+          git fetch origin integration/provider-web-storybook-browser-880
+          git checkout -B target-880 origin/integration/provider-web-storybook-browser-880
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one replacement target, found {count}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'scripts/ci-detect-scope.mjs',
+              "const browserProductLoopSpecific = (path) =>\n  productLoopSpecific(path) || path.includes('trademark-asset') || path.includes('prepared-action');\n\nconst markregWebProductionRuntimeSpecific = (path) => {",
+              "const browserProductLoopSpecific = (path) =>\n  productLoopSpecific(path) || path.includes('trademark-asset') || path.includes('prepared-action');\nconst browserProviderWebSpecific = (path) =>\n  starts(path, 'apps/provider-web/') ||\n  path === 'tests/e2e/provider.spec.ts' ||\n  path === 'playwright.provider.config.ts';\n\nconst markregWebProductionRuntimeSpecific = (path) => {"
+          )
+          replace_once(
+              'scripts/ci-detect-scope.mjs',
+              "      starts(path, 'apps/operations-console/') ||\n      starts(path, 'packages/ui/')",
+              "      starts(path, 'apps/operations-console/') ||\n      starts(path, 'apps/provider-web/') ||\n      starts(path, 'packages/ui/')"
+          )
+          replace_once(
+              'scripts/ci-detect-scope.mjs',
+              "  let browserProductLoop = files.some(browserProductLoopSpecific) && web;\n  let browserExplicit = files.some(",
+              "  let browserProductLoop = files.some(browserProductLoopSpecific) && web;\n  let browserProviderWeb = files.some(browserProviderWebSpecific);\n  let browserExplicit = files.some("
+          )
+          replace_once(
+              'scripts/ci-detect-scope.mjs',
+              "    !browserOrderJourney &&\n    !browserProductLoop;",
+              "    !browserOrderJourney &&\n    !browserProductLoop &&\n    !browserProviderWeb;"
+          )
+          replace_once(
+              'scripts/ci-detect-scope.mjs',
+              "    browserDocumentPackage ||\n    browserOrderJourney ||\n    browserProductLoop;",
+              "    browserDocumentPackage ||\n    browserOrderJourney ||\n    browserProductLoop ||\n    browserProviderWeb;"
+          )
+          replace_once(
+              'scripts/ci-detect-scope.mjs',
+              "    browser_generic: browserGeneric,\n    browser_professional_review: browserProfessionalReview,",
+              "    browser_generic: browserGeneric,\n    browser_provider_web: browserProviderWeb,\n    browser_professional_review: browserProfessionalReview,"
+          )
+
+          test_anchor = """test('ordinary MarkReg web changes select browser L2 without database or Product Loop amplification', () => {
+  const scope = classifyChangedFiles(['apps/markreg-web/src/App.tsx'], {
+    paymentAvailable: false
+  });
+  assert.equal(scope.web, true);
+  assert.equal(scope.browser, true);
+  assert.equal(scope.browser_generic, true);
+  assert.equal(scope.production_runtime, false);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.integration, false);
+  assert.equal(scope.product_loop, false);
+  assert.equal(scope.hard_gate, false);
+  assert.equal(scope.l1_fast, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l3_full, false);
+});
+"""
+          provider_test = test_anchor + """
+
+test('Provider Web changes select the dedicated browser acceptance lane', () => {
+  const scope = classifyChangedFiles(['apps/provider-web/src/main.js'], {
+    paymentAvailable: false
+  });
+  assert.equal(scope.web, true);
+  assert.equal(scope.browser, true);
+  assert.equal(scope.browser_provider_web, true);
+  assert.equal(scope.browser_generic, false);
+  assert.equal(scope.postgres, false);
+  assert.equal(scope.integration, false);
+  assert.equal(scope.product_loop, false);
+  assert.equal(scope.hard_gate, false);
+  assert.equal(scope.l1_fast, true);
+  assert.equal(scope.l2_merge, true);
+  assert.equal(scope.l3_full, false);
+});
+"""
+          replace_once('scripts/ci-detect-scope.test.mjs', test_anchor, provider_test)
+
+          replace_once(
+              '.github/workflows/ci.yml',
+              "      browser_generic: ${{ steps.scope.outputs.browser_generic }}\n      browser_professional_review: ${{ steps.scope.outputs.browser_professional_review }}",
+              "      browser_generic: ${{ steps.scope.outputs.browser_generic }}\n      browser_provider_web: ${{ steps.scope.outputs.browser_provider_web }}\n      browser_professional_review: ${{ steps.scope.outputs.browser_professional_review }}"
+          )
+          replace_once(
+              '.github/workflows/ci.yml',
+              "      - name: Explicit browser fallback\n        if: >-\n          needs.detect.outputs.browser == 'true' &&\n          needs.detect.outputs.browser_professional_review != 'true' &&",
+              "      - name: Provider Web browser\n        if: needs.detect.outputs.browser_provider_web == 'true'\n        run: pnpm exec playwright test --config playwright.provider.config.ts --reporter=line\n      - name: Explicit browser fallback\n        if: >-\n          needs.detect.outputs.browser == 'true' &&\n          needs.detect.outputs.browser_provider_web != 'true' &&\n          needs.detect.outputs.browser_professional_review != 'true' &&"
+          )
+
+          replace_once(
+              'tests/e2e/applications.ts',
+              "  operations: { package: '@markorbit/operations-console', port: 4173 }\n} as const;",
+              "  operations: { package: '@markorbit/operations-console', port: 4173 },\n  provider: { package: '@markorbit/provider-web', port: 4175 }\n} as const;"
+          )
+
+          Path('playwright.provider.config.ts').write_text("""import { defineConfig } from '@playwright/test';
+import { applicationUrl, applications } from './tests/e2e/applications.js';
+
+const inCI = Boolean(process.env['CI']);
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  testMatch: /provider\\.spec\\.ts/,
+  outputDir: 'test-results/provider',
+  fullyParallel: true,
+  forbidOnly: inCI,
+  retries: 0,
+  timeout: 30_000,
+  expect: { timeout: 5_000 },
+  reporter: inCI
+    ? [['line'], ['html', { outputFolder: 'playwright-report/provider', open: 'never' }]]
+    : 'list',
+  use: {
+    browserName: 'chromium',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure'
+  },
+  projects: [
+    { name: 'provider-desktop', use: { viewport: { width: 1440, height: 900 } } },
+    {
+      name: 'provider-mobile-390',
+      use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
+    }
+  ],
+  webServer: {
+    command: `pnpm --filter ${applications.provider.package} dev`,
+    url: applicationUrl('provider'),
+    reuseExistingServer: !inCI
+  }
+});
+""")
+
+          Path('tests/e2e/provider.spec.ts').write_text("""import { expect, test } from '@playwright/test';
+import { applicationUrl } from './applications.js';
+
+test('Provider Workspace shell loads through the real vanilla app @visual', async ({ page }) => {
+  await page.goto(applicationUrl('provider'));
+
+  await expect(page).toHaveTitle('MarkOrbit Provider Workspace');
+  await expect(page.locator('#app')).toHaveAttribute('data-runtime', 'provider-workspace-own-work');
+  await expect(page.getByRole('heading', { level: 1, name: 'Provider Workspace' })).toBeVisible();
+  await expect(page.getByLabel('Core Workspace ID')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Load own work' })).toBeVisible();
+  await expect(page.getByText(/Queue visibility is read-only context/)).toBeVisible();
+});
+""")
+          PY
+      - run: pnpm install --frozen-lockfile
+      - name: Format browser registration
+        run: >-
+          pnpm exec prettier --write
+          scripts/ci-detect-scope.mjs
+          scripts/ci-detect-scope.test.mjs
+          .github/workflows/ci.yml
+          tests/e2e/applications.ts
+          playwright.provider.config.ts
+          tests/e2e/provider.spec.ts
+      - name: Verify CI scope classifier
+        run: node --test scripts/ci-detect-scope.test.mjs
+      - name: Verify Provider Web node tests
+        run: pnpm --filter @markorbit/provider-web test
+      - name: Verify Provider browser config discovery
+        run: pnpm exec playwright test --config playwright.provider.config.ts --list
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run Provider Web desktop and mobile smoke
+        env:
+          CI: '1'
+        run: pnpm exec playwright test --config playwright.provider.config.ts --reporter=line
+      - name: Commit bounded browser registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git add \
+            scripts/ci-detect-scope.mjs \
+            scripts/ci-detect-scope.test.mjs \
+            .github/workflows/ci.yml \
+            tests/e2e/applications.ts \
+            playwright.provider.config.ts \
+            tests/e2e/provider.spec.ts
+          git diff --cached --name-only
+          test "$(git diff --cached --name-only | wc -l)" -eq 6
+          git commit -m 'test(provider-web): register browser acceptance lane'
+          git push origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
