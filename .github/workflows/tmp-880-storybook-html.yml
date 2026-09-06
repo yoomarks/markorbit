@@ -39,7 +39,7 @@ jobs:
       - name: Install exact refreshed dependencies
         run: pnpm install --frozen-lockfile
       - name: Format adapter files
-        run: pnpm exec prettier --write package.json packages/ui/package.json packages/ui/.storybook-provider/main.ts apps/provider-web/src/ProviderWorkspaceShell.stories.js scripts/validate-provider-storybook-index.mjs playwright.provider-storybook.config.ts tests/e2e/provider-storybook.spec.ts pnpm-lock.yaml
+        run: pnpm exec prettier --write package.json packages/ui/package.json packages/ui/tsconfig.json packages/ui/.storybook-provider/main.ts apps/provider-web/src/ProviderWorkspaceShell.stories.js scripts/validate-provider-storybook-index.mjs playwright.provider-storybook.config.ts tests/e2e/provider-storybook.spec.ts pnpm-lock.yaml
       - name: Provider production build excludes Storybook source
         shell: bash
         run: |
@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           git diff --check
-          git add package.json pnpm-lock.yaml packages/ui/package.json packages/ui/.storybook-provider/main.ts apps/provider-web/src/ProviderWorkspaceShell.stories.js scripts/validate-provider-storybook-index.mjs playwright.provider-storybook.config.ts tests/e2e/provider-storybook.spec.ts
-          test "$(git diff --cached --name-only | wc -l)" -eq 8
+          git add package.json pnpm-lock.yaml packages/ui/package.json packages/ui/tsconfig.json packages/ui/.storybook-provider/main.ts apps/provider-web/src/ProviderWorkspaceShell.stories.js scripts/validate-provider-storybook-index.mjs playwright.provider-storybook.config.ts tests/e2e/provider-storybook.spec.ts
+          test "$(git diff --cached --name-only | wc -l)" -eq 9
           git commit -m 'test(provider-web): add HTML Storybook acceptance adapter'
           git push origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
