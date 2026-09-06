@@ -1,0 +1,59 @@
+name: tmp-880-provider-browser-register-v3
+
+on:
+  push:
+    branches:
+      - tmp/880-provider-browser-register-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Preserve temporary patch script
+        run: cp scripts/tmp-880-provider-browser-register.py /tmp/provider-browser-patch.py
+      - name: Apply bounded Provider Web browser registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin integration/provider-web-storybook-browser-880
+          git checkout -B target-880 origin/integration/provider-web-storybook-browser-880
+          python /tmp/provider-browser-patch.py
+      - run: pnpm install --frozen-lockfile
+      - name: Format browser registration
+        run: pnpm exec prettier --write scripts/ci-detect-scope.mjs scripts/ci-detect-scope.test.mjs .github/workflows/ci.yml tests/e2e/applications.ts playwright.provider.config.ts tests/e2e/provider.spec.ts
+      - name: Verify CI scope classifier
+        run: node --test scripts/ci-detect-scope.test.mjs
+      - name: Verify Provider Web node tests
+        run: pnpm --filter @markorbit/provider-web test
+      - name: Verify Provider browser config discovery
+        run: pnpm exec playwright test --config playwright.provider.config.ts --list
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run Provider Web desktop and mobile smoke
+        env:
+          CI: '1'
+        run: pnpm exec playwright test --config playwright.provider.config.ts --reporter=line
+      - name: Commit bounded browser registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git add scripts/ci-detect-scope.mjs scripts/ci-detect-scope.test.mjs .github/workflows/ci.yml tests/e2e/applications.ts playwright.provider.config.ts tests/e2e/provider.spec.ts
+          test "$(git diff --cached --name-only | wc -l)" -eq 6
+          git commit -m 'test(provider-web): register browser acceptance lane'
+          git push origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
