@@ -1,0 +1,185 @@
+name: tmp-882-writer
+
+on:
+  push:
+    branches:
+      - tmp/882-writer-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  write-format-validate:
+    if: ${{ !contains(github.event.head_commit.message, '[tmp] formatted #882 output') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch exact runtime and UI mount points
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one exact replacement, found {count}')
+              file.write_text(text.replace(old, new, 1))
+
+          index = 'apps/gateway/src/index.ts'
+          replace_once(
+              index,
+              "export * from './data-engine-product-http.js';\nexport * from './markreg-early-funnel-http.js';",
+              "export * from './data-engine-product-http.js';\nexport * from './data-control-plane-http.js';\nexport * from './markreg-early-funnel-http.js';",
+          )
+          replace_once(
+              index,
+              "import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';\nimport { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';",
+              "import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';\nimport { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';\nimport { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';",
+          )
+          data_routes = """        ...createGatewayDataEngineRoutes({
+          ...(dataEngineUrl ? { dataEngineUrl } : {}),
+          ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
+          ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+        }),
+        ...createGatewayCapabilityRoutes({"""
+          data_routes_with_control = """        ...createGatewayDataEngineRoutes({
+          ...(dataEngineUrl ? { dataEngineUrl } : {}),
+          ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
+          ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+        }),
+        ...createGatewayDataControlPlaneRoutes({
+          ...(dataEngineUrl ? { dataEngineUrl } : {}),
+          ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
+          ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          ...(options.coreUrl ?? process.env.CORE_URL
+            ? { coreUrl: (options.coreUrl ?? process.env.CORE_URL)! }
+            : {}),
+          ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+        }),
+        ...createGatewayCapabilityRoutes({"""
+          replace_once(index, data_routes, data_routes_with_control)
+
+          app = 'apps/operations-console/src/App.tsx'
+          replace_once(
+              app,
+              "import { CommercialAdminWorkspace } from './commercial-admin.js';\nimport { CognitivePlatformWorkspace } from './cognitive-platform.js';",
+              "import { CommercialAdminWorkspace } from './commercial-admin.js';\nimport { CognitivePlatformWorkspace } from './cognitive-platform.js';\nimport { DataPlatformWorkspace } from './data-platform.js';",
+          )
+          replace_once(
+              app,
+              "            { label: 'Cognitive Platform', href: '#cognitive-platform' },\n            { label: 'Commercial', href: '#commercial-admin' }",
+              "            { label: 'Cognitive Platform', href: '#cognitive-platform' },\n            { label: 'Data', href: '#data-platform' },\n            { label: 'Commercial', href: '#commercial-admin' }",
+          )
+          replace_once(
+              app,
+              """                {
+                  label: 'Cognitive Platform',
+                  value: 'Owner-routed · cognitive read authority'
+                }
+""",
+              """                {
+                  label: 'Cognitive Platform',
+                  value: 'Owner-routed · cognitive read authority'
+                },
+                {
+                  label: 'Data Engine summary',
+                  value: 'Owner-routed · data read authority'
+                }
+""",
+          )
+          replace_once(
+              app,
+              """              Knowledge and Data Engine retain their specialist admin products. Federation into this
+              Control Center requires an explicit owner-produced summary contract.
+""",
+              """              Data Engine now federates a bounded owner-produced operational summary, while its
+              specialist admin remains authoritative for deeper owner operations. Knowledge federation
+              still requires an explicit owner-produced summary contract.
+""",
+          )
+          replace_once(
+              app,
+              """      <CognitivePlatformWorkspace />
+
+      <CommercialAdminWorkspace />""",
+              """      <CognitivePlatformWorkspace />
+
+      <DataPlatformWorkspace />
+
+      <CommercialAdminWorkspace />""",
+          )
+
+          platform = 'apps/operations-console/src/data-platform.tsx'
+          replace_once(
+              platform,
+              "    !nonEmptyString(source.contract_version) ||",
+              "    source.contract_version !== 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1' ||",
+          )
+          replace_once(
+              platform,
+              "    !nonEmptyString(source.source_owner) ||",
+              "    source.source_owner !== 'MARKORBIT_DATA_ENGINE' ||",
+          )
+          replace_once(
+              platform,
+              "    contract_version: source.contract_version,",
+              "    contract_version: 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1',",
+          )
+          replace_once(
+              platform,
+              "    source_owner: source.source_owner,",
+              "    source_owner: 'MARKORBIT_DATA_ENGINE',",
+          )
+          PY
+      - name: Format exact #882 files
+        run: |
+          pnpm exec prettier --write \
+            apps/gateway/src/data-engine-owner-summary.ts \
+            apps/gateway/src/data-control-plane-http.ts \
+            apps/gateway/tests/data-control-plane-http.test.ts \
+            apps/gateway/src/index.ts \
+            apps/operations-console/src/data-platform.tsx \
+            apps/operations-console/src/data-platform.test.ts \
+            apps/operations-console/src/App.tsx
+      - name: Validate Gateway and Operations Console
+        run: |
+          pnpm --filter @markorbit/gateway lint
+          pnpm --filter @markorbit/gateway typecheck
+          pnpm --filter @markorbit/gateway test
+          pnpm --filter @markorbit/operations-console lint
+          pnpm --filter @markorbit/operations-console typecheck
+          pnpm --filter @markorbit/operations-console test
+      - name: Commit exact formatted output on temporary branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/gateway/src/data-engine-owner-summary.ts \
+            apps/gateway/src/data-control-plane-http.ts \
+            apps/gateway/tests/data-control-plane-http.test.ts \
+            apps/gateway/src/index.ts \
+            apps/operations-console/src/data-platform.tsx \
+            apps/operations-console/src/data-platform.test.ts \
+            apps/operations-console/src/App.tsx
+          git commit -m "[tmp] formatted #882 output"
+          git push origin HEAD:tmp/882-writer-20260906
