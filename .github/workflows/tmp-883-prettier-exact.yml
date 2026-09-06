@@ -6,10 +6,11 @@ on:
       - tmp/883-prettier-exact-20260906
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
+    if: ${{ !contains(github.event.head_commit.message, '[tmp formatted]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,14 +28,15 @@ jobs:
             packages/contracts/tests/commercial-admin-auth.test.ts \
             services/core/src/internal-operator-principal.ts \
             services/core/tests/internal-operator-principal.test.ts
-      - name: Emit formatted files
+      - name: Commit exact formatted files
         run: |
-          for f in \
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
             packages/contracts/tests/commercial-admin-auth.test.ts \
             services/core/src/internal-operator-principal.ts \
-            services/core/tests/internal-operator-principal.test.ts; do
-            echo "=====BEGIN:$f====="
-            base64 -w0 "$f"
-            echo
-            echo "=====END:$f====="
-          done
+            services/core/tests/internal-operator-principal.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "[tmp formatted] exact Prettier output for #883"
+            git push
+          fi
