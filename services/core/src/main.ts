@@ -10,6 +10,7 @@ import {
   validateInternalServiceSecret
 } from './auth.js';
 import { createPostgresBrainCognitiveReadServiceV1 } from './brain-cognitive-read-postgres.js';
+import { PostgresBrainAssetRegistry } from './brain-asset-registry-postgres.js';
 import {
   PostgresMembershipRepository,
   PostgresUserRepository,
@@ -41,6 +42,10 @@ import {
   PostgresMethodOutcomeReportReaderV1
 } from './method-outcome-report.js';
 import { PostgresOfficialFeeReferenceStore } from './official-fee-reference-store-postgres.js';
+import {
+  UsTrademarkMarkRepresentationMethodAuthorityV1,
+  materializeUsTrademarkMarkRepresentationBrainAssetLifecycleV1
+} from './us-trademark-mark-representation-method-authority.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -96,6 +101,11 @@ const methodImprovementAdmissions = new MethodImprovementAdmissionServiceV1({
   repository: new PostgresMethodImprovementAdmissionRepositoryV1(database),
   reports: methodOutcomeReports
 });
+const brainAssetRegistry = new PostgresBrainAssetRegistry(database);
+await materializeUsTrademarkMarkRepresentationBrainAssetLifecycleV1(brainAssetRegistry);
+const usTrademarkMarkRepresentationMethods = new UsTrademarkMarkRepresentationMethodAuthorityV1(
+  brainAssetRegistry
+);
 const runtime = createRuntime({
   authentication,
   accountAccess,
@@ -111,6 +121,7 @@ const runtime = createRuntime({
   methodOutcomeReports,
   methodImprovementAdmissions,
   officialFeeReferences: new PostgresOfficialFeeReferenceStore(database),
+  usTrademarkMarkRepresentationMethods,
   internalServiceSecret: secret
 });
 

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   BrainMethodContractError,
+  parseBrainMethodContractV1,
   parseExecutableMethodPackageV1,
   type ExecutableMethodPackageV1
 } from './brain-method.js';
@@ -120,6 +121,10 @@ function exactKeys(
 
 export function executableMethodPackageFingerprintV1(value: unknown): string {
   return sha256(parseExecutableMethodPackageV1(value));
+}
+
+export function brainMethodFingerprintV1(value: unknown): string {
+  return sha256(parseBrainMethodContractV1(value));
 }
 
 export function prepareExecutableMethodPackageActivationDecisionV1(
