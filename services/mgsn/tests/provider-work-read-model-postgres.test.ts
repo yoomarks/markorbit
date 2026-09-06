@@ -137,7 +137,7 @@ suite('Provider Workspace own-work PostgreSQL projection', () => {
          provider_supply_capability_version,provider_supply_capability_fingerprint_sha256,allocated_by,
          rationale,status,allocation_record,created_at,updated_at
        ) VALUES($1,1,true,$2,$3,1,$4,$5,1,$4,$6,1,$7,1,$4,'private-allocator',
-         'private rationale',$8,'{}'::jsonb,$9,$9)`,
+         'private rationale',$8,$9::jsonb,$10,$10)`,
       [
         allocationId,
         originatingWorkspaceId,
@@ -147,6 +147,9 @@ suite('Provider Workspace own-work PostgreSQL projection', () => {
         input.providerId,
         input.capabilityId,
         input.status ?? 'ACTIVE',
+        JSON.stringify({
+          correlationId: `correlation_provider-work-read-${input.suffix}`
+        }),
         input.updatedAt
       ]
     );
@@ -291,6 +294,10 @@ suite('Provider Workspace own-work PostgreSQL projection', () => {
     const absent = first.items.find((item) => item.responseState.kind === 'KNOWN_ABSENT')!;
 
     expect(absent.returnState.kind).toBe('KNOWN_ABSENT');
+    expect(accepted.actionLineage).toEqual({
+      correlationId: 'correlation_provider-work-read-accepted',
+      actionAuthorityNotGrantedByProjection: true
+    });
     expect(accepted.responseState).toMatchObject({ kind: 'KNOWN_RESPONSE', decision: 'ACCEPTED' });
     expect(accepted.returnState).toMatchObject({
       kind: 'KNOWN_RETURN',
@@ -308,6 +315,29 @@ suite('Provider Workspace own-work PostgreSQL projection', () => {
     expect(JSON.stringify(first)).not.toMatch(
       /private rationale|private-allocator|private acknowledgement|private work claim|Private Provider/
     );
+  });
+
+  it('fails closed when canonical Allocation correlation lineage is unavailable', async () => {
+    const own = await seedProvider('own', providerWorkspaceId);
+    const seeded = await seedAllocation({
+      suffix: 'missing_lineage',
+      ...own,
+      updatedAt: '2026-09-01T10:00:00.000Z'
+    });
+    await database.getPool().query(
+      `UPDATE mgsn_allocations
+       SET allocation_record='{}'::jsonb
+       WHERE allocation_id=$1`,
+      [seeded.allocationId]
+    );
+
+    await expect(service().list(principal())).rejects.toMatchObject({
+      code: 'SOURCE_INCONSISTENT',
+      status: 503
+    });
+    await expect(service().read(principal(), seeded.allocationId as never)).resolves.toMatchObject({
+      decision: 'SOURCE_UNAVAILABLE'
+    });
   });
 
   it('fails closed instead of dropping a malformed exact Service Package lineage', async () => {
