@@ -238,3 +238,20 @@ export function enumArray<const T extends readonly string[]>(
 ): T[number][] {
   return parsedArray(value, field, (item, itemField) => requiredEnum(item, allowed, itemField));
 }
+
+export function requireIdempotency(request: JsonRequest, body: Body): string {
+  const key = request.headers['idempotency-key']?.trim();
+  if (!key)
+    throw new HttpError(
+      400,
+      'IDEMPOTENCY_KEY_REQUIRED',
+      'Idempotency-Key is required for governed-network mutations.'
+    );
+  if (body.idempotencyKey !== undefined && body.idempotencyKey !== key)
+    throw new HttpError(
+      400,
+      'IDEMPOTENCY_KEY_MISMATCH',
+      'Body idempotencyKey must match Idempotency-Key.'
+    );
+  return key;
+}
