@@ -73,6 +73,8 @@ import { PostgresDurablePreparationLockService } from './durable-preparation-loc
 import { createDurablePreparationLockRoutes } from './durable-preparation-lock-http.js';
 import { PostgresProductionIntakeService } from './production-intake.js';
 import { createProductionIntakeRoutes } from './production-intake-http.js';
+import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
+import { createCustomerRelationshipRoutes } from './customer-relationship-http.js';
 import {
   PostgresWorkspaceActionSourceReader,
   WorkspaceActionReadService
@@ -256,6 +258,10 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionIntakeService
   });
+  const customerRelationshipRoutes = createCustomerRelationshipRoutes({
+    internalServiceSecret,
+    store: new PostgresCustomerRelationshipStore(database, pool)
+  });
   const durablePreparationLockService = new PostgresDurablePreparationLockService(database, pool);
   const durablePreparationLockRoutes = createDurablePreparationLockRoutes({
     internalServiceSecret,
@@ -333,6 +339,7 @@ if (fixtureRuntime) {
     extraRoutes: [
       ...durableMilestoneSnapshotRoutes,
       ...productionIntakeRoutes,
+      ...customerRelationshipRoutes,
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,
       ...commercialAdminRoutes,
