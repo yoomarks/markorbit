@@ -228,3 +228,99 @@ fieldset:has(.authorization-acknowledgement) {
     margin-top: var(--mo-space-lg);
   }
 }
+
+.markreg-action-center {
+  display: grid;
+  gap: var(--mo-space-lg);
+  padding-block: var(--mo-space-sm) var(--mo-space-lg);
+  border-block-end: 1px solid var(--mo-border);
+}
+.markreg-action-center-header,
+.markreg-action-card-header,
+.markreg-action-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--mo-space-md);
+}
+.markreg-action-center-kicker,
+.markreg-action-card-currentness,
+.markreg-action-center-generated,
+.markreg-action-card-footer {
+  color: var(--mo-muted);
+  font-size: 0.82rem;
+}
+.markreg-action-center-kicker {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.markreg-action-center-groups,
+.markreg-action-group,
+.markreg-action-card {
+  display: grid;
+  gap: var(--mo-space-md);
+}
+.markreg-action-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.markreg-action-list > li {
+  display: block;
+  min-width: 0;
+  list-style: none;
+}
+.markreg-action-list > li::marker {
+  content: '';
+}
+.markreg-action-card h4,
+.markreg-action-card p {
+  margin-block: 0;
+}
+.markreg-action-card-priority {
+  display: grid;
+  gap: var(--mo-space-xs);
+  padding: var(--mo-space-md);
+  border-radius: var(--mo-radius);
+  background: var(--mo-background);
+}
+.markreg-action-card-context {
+  display: grid;
+  gap: var(--mo-space-xs);
+}
+.markreg-action-card-footer {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.markreg-action-card-footer span {
+  overflow-wrap: anywhere;
+}
+.markreg-action-card-footer a {
+  font-weight: 700;
+}
+.markreg-action-group-empty {
+  margin: 0;
+  color: var(--mo-muted);
+}
+@media (max-width: 640px) {
+  .markreg-action-center {
+    gap: var(--mo-space-md);
+    padding-block-end: var(--mo-space-md);
+  }
+  .markreg-action-center-header,
+  .markreg-action-card-header,
+  .markreg-action-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .markreg-action-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .markreg-action-card-footer a {
+    margin-top: var(--mo-space-xs);
+  }
+}

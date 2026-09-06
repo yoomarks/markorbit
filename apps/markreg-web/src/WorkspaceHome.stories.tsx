@@ -1,7 +1,9 @@
 import type { FormalMatterListResponse } from '@markorbit/contracts';
 import type { Meta, StoryObj } from '@storybook/react';
+import './markreg.css';
 import type { FormalMatterListClient } from './api/formal-matter.js';
 import type { OrderClient, OrderListView, OrderView } from './api/order.js';
+import type { WorkspaceActionCenterView, WorkspaceActionClient } from './api/workspace-action.js';
 import { MarkregWorkspaceHome } from './WorkspaceHome.js';
 
 const order = {
@@ -74,6 +76,36 @@ const matterClient = (items: FormalMatterListResponse['items']): FormalMatterLis
   list: () => Promise.resolve(matterResult(items))
 });
 
+const actionProjection: WorkspaceActionCenterView = {
+  workspaceId: '018f0000-0000-7000-8000-000000000899',
+  generatedAt: '2026-09-06T00:00:00.000Z',
+  truncated: false,
+  needsAttention: [
+    {
+      matterId: matter.formalMatterId,
+      matterVersion: matter.version,
+      trademark: 'ORBIT MARK',
+      applicant: 'Example Holdings LLC',
+      jurisdiction: 'US',
+      currentnessLabel: 'Current owner projection',
+      lifecycleLabel: 'Professional review in progress',
+      lifecycleSummary: 'MarkReg is reviewing the current Matter evidence.',
+      actionTitle: 'Review goods description',
+      actionExplanation: 'Confirm customer-supplied wording before the next protected step.',
+      lastChangedAt: '2026-09-05T12:00:00.000Z'
+    }
+  ],
+  waitingOrInProgress: [],
+  recentlyChanged: []
+};
+const emptyActionProjection: WorkspaceActionCenterView = {
+  ...actionProjection,
+  needsAttention: []
+};
+const actionClient = (projection: WorkspaceActionCenterView): WorkspaceActionClient => ({
+  get: () => Promise.resolve(projection)
+});
+
 const meta = {
   title: 'MarkReg/Workspace Home',
   component: MarkregWorkspaceHome,
@@ -89,13 +121,25 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const WithIndependentMatter: Story = {
-  args: { client: client([order]), matterClient: matterClient([matter]) }
+  args: {
+    client: client([order]),
+    matterClient: matterClient([matter]),
+    actionClient: actionClient(actionProjection)
+  }
 };
 
 export const MatterWithoutOrders: Story = {
-  args: { client: client([]), matterClient: matterClient([matter]) }
+  args: {
+    client: client([]),
+    matterClient: matterClient([matter]),
+    actionClient: actionClient(emptyActionProjection)
+  }
 };
 
 export const EmptyWorkspace: Story = {
-  args: { client: client([]), matterClient: matterClient([]) }
+  args: {
+    client: client([]),
+    matterClient: matterClient([]),
+    actionClient: actionClient(emptyActionProjection)
+  }
 };
