@@ -1,0 +1,42 @@
+name: tmp-890-format-isolated
+
+on:
+  push:
+    branches: [tmp/890-format-isolated-20260906]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Format exact PR file and push only if head is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin integration/provider-web-storybook-browser-880
+          git checkout -B product origin/integration/provider-web-storybook-browser-880
+          test "$(git rev-parse HEAD)" = "f8f386baa2dd969781266b4485d0cdc683855549"
+          pnpm install --frozen-lockfile
+          git restore pnpm-lock.yaml
+          pnpm exec prettier --write scripts/ci-detect-scope.test.mjs
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "scripts/ci-detect-scope.test.mjs"
+          pnpm exec prettier --check scripts/ci-detect-scope.test.mjs
+          git diff --check
+          git add scripts/ci-detect-scope.test.mjs
+          git commit -m 'style(ci): format Provider Web scope test'
+          git push origin HEAD:refs/heads/integration/provider-web-storybook-browser-880
