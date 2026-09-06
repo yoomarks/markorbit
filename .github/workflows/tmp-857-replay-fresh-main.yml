@@ -41,6 +41,7 @@ jobs:
       - name: Format and verify bounded shared-contract diff
         shell: bash
         run: |
+          git restore --worktree pnpm-lock.yaml
           pnpm exec prettier --write \
             packages/contracts/package.json \
             packages/contracts/src/provider-discovery-trust.ts \
