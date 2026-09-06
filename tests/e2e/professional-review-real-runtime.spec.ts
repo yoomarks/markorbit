@@ -142,7 +142,9 @@ test.describe('TASK 024 real durable Professional Review path', () => {
       page.getByText('Ready for next step — no action executed', { exact: true })
     ).toBeVisible();
     await page.goBack();
-    await expect(page.getByText('Formal Matter · immutable creation lineage')).toBeVisible();
+    await expect(
+      page.getByText('Formal Matter · current state and bounded next action')
+    ).toBeVisible();
 
     await page.goto(
       `${lite}/?workspaceId=${scenario.workspaceId}&professionalReviewCaseId=${reviewId}#work-professional-review`
