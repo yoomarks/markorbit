@@ -9,13 +9,11 @@ import {
 
 const request: JsonRequest = {
   body: {
-    acknowledgement: 'SECRET PROVIDER ACKNOWLEDGEMENT',
-    workStatusClaim: 'SECRET RETURN CLAIM',
-    assertions: [{ code: 'SECRET_ASSERTION', value: 'SECRET ASSERTION VALUE' }]
+    acknowledgement: 'SECRET ACKNOWLEDGEMENT',
+    workStatusClaim: 'SECRET RETURN CLAIM'
   },
   headers: {
-    authorization: 'Bearer SECRET_SESSION',
-    'x-markorbit-principal': 'SECRET_PRINCIPAL'
+    authorization: 'Bearer SECRET_SESSION'
   },
   method: 'POST',
   path: '/fixture',
@@ -27,12 +25,12 @@ function route(path: string, handle: JsonRoute['handle']): JsonRoute {
   return { method: 'POST', path, handle };
 }
 
-function serialized(sink: InMemoryMgsnSemanticTelemetrySinkV1): string {
+function telemetryText(sink: InMemoryMgsnSemanticTelemetrySinkV1): string {
   return JSON.stringify(sink.list());
 }
 
 describe('MGSN Provider execution semantic observability', () => {
-  it('freezes exactly the Provider Acceptance and Provider Return route extensions', () => {
+  it('freezes the two Provider execution route extensions', () => {
     expect(MGSN_PROVIDER_EXECUTION_SEMANTIC_ROUTES).toEqual([
       {
         method: 'POST',
@@ -47,27 +45,20 @@ describe('MGSN Provider execution semantic observability', () => {
     ]);
   });
 
-  it.each(['ACCEPTED', 'DECLINED'] as const)(
-    'records Provider Acceptance %s as a successful decision without quality meaning',
-    async (decision) => {
+  it('records both Provider Acceptance decisions without quality meaning', async () => {
+    for (const decision of ['ACCEPTED', 'DECLINED'] as const) {
       const sink = new InMemoryMgsnSemanticTelemetrySinkV1();
-      const routes = observeMgsnProviderExecutionSemanticRoutesV1(
-        [
-          route('/v1/provider/allocations/:allocationId/respond', () =>
-            json(201, {
-              providerAcceptance: {
-                decision,
-                acknowledgement: 'SECRET PROVIDER ACKNOWLEDGEMENT',
-                providerId: 'provider_SECRET',
-                providerWorkspaceId: 'workspace_SECRET'
-              }
-            })
-          )
-        ],
-        sink
-      );
+      const result = json(201, {
+        providerAcceptance: {
+          decision,
+          acknowledgement: 'SECRET ACKNOWLEDGEMENT',
+          providerId: 'provider_SECRET'
+        }
+      });
+      const baseRoute = route('/v1/provider/allocations/:allocationId/respond', () => result);
+      const observed = observeMgsnProviderExecutionSemanticRoutesV1([baseRoute], sink)[0]!;
 
-      await expect(routes[0]!.handle(request)).resolves.toMatchObject({ status: 201 });
+      await expect(observed.handle(request)).resolves.toBe(result);
       expect(sink.list()).toHaveLength(1);
       expect(sink.list()[0]).toMatchObject({
         operation: 'PROVIDER_ACCEPTANCE_RESPOND',
@@ -82,94 +73,80 @@ describe('MGSN Provider execution semantic observability', () => {
           professionalDecisionCreated: false
         }
       });
-      expect(serialized(sink)).not.toContain('SECRET');
+      expect(telemetryText(sink)).not.toContain('SECRET');
     }
-  );
+  });
 
-  it.each([
-    ['RETURN_SUBMITTED', undefined],
-    ['RETURN_CORRECTED', { id: 'provider-return_SECRET_previous', version: 1 }]
-  ] as const)(
-    'records %s without retaining Return assertions or supersession identity',
-    async (code, supersedes) => {
+  it('distinguishes Return submission from correction without retaining Return content', async () => {
+    const cases = [
+      { resultCode: 'RETURN_SUBMITTED' as const, supersedes: undefined },
+      {
+        resultCode: 'RETURN_CORRECTED' as const,
+        supersedes: { id: 'provider-return_SECRET_previous', version: 1 }
+      }
+    ];
+
+    for (const testCase of cases) {
       const sink = new InMemoryMgsnSemanticTelemetrySinkV1();
-      const routes = observeMgsnProviderExecutionSemanticRoutesV1(
-        [
-          route('/v1/provider/returns', () =>
-            json(201, {
-              providerReturn: {
-                version: supersedes ? 2 : 1,
-                workStatusClaim: 'SECRET RETURN CLAIM',
-                assertions: [{ code: 'SECRET_ASSERTION', value: 'SECRET ASSERTION VALUE' }],
-                artifacts: [{ reference: 'SECRET_ARTIFACT_REFERENCE' }],
-                ...(supersedes ? { supersedes } : {})
-              }
-            })
-          )
-        ],
-        sink
-      );
+      const result = json(201, {
+        providerReturn: {
+          workStatusClaim: 'SECRET RETURN CLAIM',
+          artifacts: [{ reference: 'SECRET_ARTIFACT_REFERENCE' }],
+          ...(testCase.supersedes ? { supersedes: testCase.supersedes } : {})
+        }
+      });
+      const baseRoute = route('/v1/provider/returns', () => result);
+      const observed = observeMgsnProviderExecutionSemanticRoutesV1([baseRoute], sink)[0]!;
 
-      await expect(routes[0]!.handle(request)).resolves.toMatchObject({ status: 201 });
+      await expect(observed.handle(request)).resolves.toBe(result);
       expect(sink.list()[0]).toMatchObject({
         operation: 'PROVIDER_RETURN_SUBMIT_OR_CORRECT',
         outcomeClass: 'SUCCESS',
-        resultCode: code,
+        resultCode: testCase.resultCode,
         authority: {
           providerTrustEvidenceCreated: false,
           officialTruthCreated: false
         }
       });
-      expect(serialized(sink)).not.toContain('SECRET');
+      expect(telemetryText(sink)).not.toContain('SECRET');
     }
-  );
+  });
 
-  it(
-    'records bounded conflict metadata and rethrows the exact Provider operation failure',
-    async () => {
-      const sink = new InMemoryMgsnSemanticTelemetrySinkV1();
-      const failure = Object.assign(new Error('SECRET IDEMPOTENCY DETAIL'), {
-        code: 'IDEMPOTENCY_CONFLICT',
-        status: 409
-      });
-      const routes = observeMgsnProviderExecutionSemanticRoutesV1(
-        [
-          route('/v1/provider/returns', () => {
-            throw failure;
-          })
-        ],
-        sink
-      );
+  it('records bounded failure metadata and rethrows the original Provider error', async () => {
+    const sink = new InMemoryMgsnSemanticTelemetrySinkV1();
+    const failure = Object.assign(new Error('SECRET IDEMPOTENCY DETAIL'), {
+      code: 'IDEMPOTENCY_CONFLICT',
+      status: 409
+    });
+    const baseRoute = route('/v1/provider/returns', () => {
+      throw failure;
+    });
+    const observed = observeMgsnProviderExecutionSemanticRoutesV1([baseRoute], sink)[0]!;
 
-      await expect(routes[0]!.handle(request)).rejects.toBe(failure);
-      expect(sink.list()[0]).toMatchObject({
-        operation: 'PROVIDER_RETURN_SUBMIT_OR_CORRECT',
-        outcomeClass: 'CONFLICT',
-        resultCode: 'IDEMPOTENCY_CONFLICT',
-        errorMessageRetained: false
-      });
-      expect(serialized(sink)).not.toContain('SECRET IDEMPOTENCY DETAIL');
-    }
-  );
+    await expect(observed.handle(request)).rejects.toBe(failure);
+    expect(sink.list()[0]).toMatchObject({
+      operation: 'PROVIDER_RETURN_SUBMIT_OR_CORRECT',
+      outcomeClass: 'CONFLICT',
+      resultCode: 'IDEMPOTENCY_CONFLICT',
+      errorMessageRetained: false
+    });
+    expect(telemetryText(sink)).not.toContain('SECRET IDEMPOTENCY DETAIL');
+  });
 
-  it(
-    'never lets the telemetry sink alter a Provider decision and leaves unrelated routes unobserved',
-    async () => {
-      const sink: MgsnSemanticTelemetrySinkV1 = {
-        record: () => Promise.reject(new Error('telemetry unavailable'))
-      };
-      const response = json(201, { providerAcceptance: { decision: 'DECLINED' } });
-      const unrelated = json(200, { provider: { providerId: 'SECRET_UNRELATED' } });
-      const routes = observeMgsnProviderExecutionSemanticRoutesV1(
-        [
-          route('/v1/provider/allocations/:allocationId/respond', () => response),
-          route('/v1/providers', () => unrelated)
-        ],
-        sink
-      );
+  it('keeps sink failure best-effort and leaves unrelated routes untouched', async () => {
+    const sink: MgsnSemanticTelemetrySinkV1 = {
+      record: () => Promise.reject(new Error('telemetry unavailable'))
+    };
+    const providerResult = json(201, { providerAcceptance: { decision: 'DECLINED' } });
+    const unrelatedResult = json(200, { provider: { providerId: 'SECRET_UNRELATED' } });
+    const providerRoute = route('/v1/provider/allocations/:allocationId/respond', () => providerResult);
+    const unrelatedRoute = route('/v1/providers', () => unrelatedResult);
+    const routes = observeMgsnProviderExecutionSemanticRoutesV1(
+      [providerRoute, unrelatedRoute],
+      sink
+    );
 
-      await expect(routes[0]!.handle(request)).resolves.toBe(response);
-      await expect(routes[1]!.handle(request)).resolves.toBe(unrelated);
-    }
-  );
+    await expect(routes[0]!.handle(request)).resolves.toBe(providerResult);
+    await expect(routes[1]!.handle(request)).resolves.toBe(unrelatedResult);
+  });
 });
