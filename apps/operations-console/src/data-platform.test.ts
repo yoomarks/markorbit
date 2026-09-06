@@ -73,7 +73,9 @@ describe('Data Control Center owner-summary presentation', () => {
       loadDataOwnerSummary(vi.fn(() => response({ code: 'PERMISSION_DENIED' }, 403)))
     ).rejects.toThrow('Data owner summary unavailable (403 · PERMISSION_DENIED).');
     await expect(
-      loadDataOwnerSummary(vi.fn(() => response({ ...ownerSummary, health: { status: 'unknown' } })))
+      loadDataOwnerSummary(
+        vi.fn(() => response({ ...ownerSummary, health: { status: 'unknown' } }))
+      )
     ).rejects.toThrow('Data owner summary is malformed and cannot be trusted.');
   });
 

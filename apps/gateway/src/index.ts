@@ -36,6 +36,7 @@ export * from './commercial-admin-mgsn-http.js';
 export * from './mgsn-http.js';
 export * from './product-loop-http.js';
 export * from './data-engine-product-http.js';
+export * from './data-control-plane-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
@@ -59,6 +60,7 @@ import { createGatewayCommercialAdminMgsnRoutes } from './commercial-admin-mgsn-
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
+import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
@@ -446,6 +448,19 @@ export function createRuntime(options: GatewayOptions = {}) {
           ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
           ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
           ...(authenticationClient ? { authenticationClient } : {}),
+          ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+        }),
+        ...createGatewayDataControlPlaneRoutes({
+          ...(dataEngineUrl ? { dataEngineUrl } : {}),
+          ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
+          ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
           ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
         }),
         ...createGatewayCapabilityRoutes({

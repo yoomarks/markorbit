@@ -75,9 +75,9 @@ export function parseDataOwnerSummary(value: unknown): DataOwnerSummary | undefi
 
   if (
     !source ||
-    !nonEmptyString(source.contract_version) ||
+    source.contract_version !== 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1' ||
     !nonEmptyString(source.engine_version) ||
-    !nonEmptyString(source.source_owner) ||
+    source.source_owner !== 'MARKORBIT_DATA_ENGINE' ||
     source.authority !== 'DATA_ENGINE_FACT_READ_MODEL' ||
     source.read_only !== true ||
     !timestamp(source.generated_at) ||
@@ -100,9 +100,9 @@ export function parseDataOwnerSummary(value: unknown): DataOwnerSummary | undefi
     return undefined;
 
   return Object.freeze({
-    contract_version: source.contract_version,
+    contract_version: 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1',
     engine_version: source.engine_version,
-    source_owner: source.source_owner,
+    source_owner: 'MARKORBIT_DATA_ENGINE',
     authority: 'DATA_ENGINE_FACT_READ_MODEL',
     read_only: true,
     generated_at: source.generated_at,
@@ -126,7 +126,9 @@ export function parseDataOwnerSummary(value: unknown): DataOwnerSummary | undefi
   });
 }
 
-export async function loadDataOwnerSummary(fetchImpl: typeof fetch = fetch): Promise<DataOwnerSummary> {
+export async function loadDataOwnerSummary(
+  fetchImpl: typeof fetch = fetch
+): Promise<DataOwnerSummary> {
   const response = await fetchImpl('/api/internal/control-plane/data/summary', {
     method: 'GET',
     credentials: 'include',
@@ -198,9 +200,9 @@ export function DataPlatformWorkspace() {
       {!loading && summary && (
         <>
           <Alert tone="info" title="Data Engine owner-reported dependency health">
-            Owner-reported status: <strong>{summary.health.status}</strong>. This status is scoped only
-            to the Data Engine dependencies represented by its owner projection; it is not an MO
-            platform health score.
+            Owner-reported status: <strong>{summary.health.status}</strong>. This status is scoped
+            only to the Data Engine dependencies represented by its owner projection; it is not an
+            MO platform health score.
           </Alert>
 
           <div className="mo-grid">

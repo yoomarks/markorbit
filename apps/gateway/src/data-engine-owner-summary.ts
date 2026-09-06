@@ -59,11 +59,7 @@ function stateCounts(value: unknown): Readonly<Record<string, number>> | undefin
   const source = record(value);
   if (!source) return undefined;
   const entries = Object.entries(source);
-  if (
-    entries.some(
-      ([key, count]) => key.trim().length === 0 || !nonNegativeSafeInteger(count)
-    )
-  )
+  if (entries.some(([key, count]) => key.trim().length === 0 || !nonNegativeSafeInteger(count)))
     return undefined;
   return Object.freeze(Object.fromEntries(entries) as Record<string, number>);
 }
@@ -133,9 +129,7 @@ export async function readDataEngineOwnerSummary(
   client: DataEngineClient,
   context?: DataEngineRequestContext
 ): Promise<DataEngineOwnerSummary> {
-  const parsed = parseDataEngineOwnerSummary(
-    await client.rawGet('/api/v1/owner-summary', context)
-  );
+  const parsed = parseDataEngineOwnerSummary(await client.rawGet('/api/v1/owner-summary', context));
   if (!parsed)
     throw new DataEngineClientError(
       'DATA_ENGINE_CONTRACT_MISMATCH',

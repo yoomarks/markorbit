@@ -121,10 +121,16 @@ function route(dataFetch: typeof fetch) {
   return found;
 }
 
+function requestBody(init?: RequestInit): string {
+  const body = init?.body;
+  if (typeof body !== 'string') throw new Error('Expected string request body.');
+  return body;
+}
+
 function assertCoreResolver(input: Parameters<typeof fetch>[0], init?: RequestInit) {
   expect(requestUrl(input)).toBe(`${coreUrl}/internal/control-plane/operator-principals/resolve`);
   expect(init?.method).toBe('POST');
-  expect(JSON.parse(String(init?.body))).toEqual({
+  expect(JSON.parse(requestBody(init))).toEqual({
     token: 'browser-session-token-882',
     requiredCapability: 'control-plane:data:read'
   });
@@ -148,7 +154,9 @@ describe('Gateway Data Control Plane owner summary', () => {
     });
     vi.stubGlobal('fetch', coreFetch);
 
-    const dataFetch: typeof fetch = vi.fn((input, init) => {
+    let dataCalls = 0;
+    const dataFetch: typeof fetch = (input, init) => {
+      dataCalls += 1;
       expect(requestUrl(input)).toBe(`${dataEngineUrl}/api/v1/owner-summary`);
       expect(init?.method).toBe('GET');
       const headers = new Headers(init?.headers);
@@ -158,7 +166,7 @@ describe('Gateway Data Control Plane owner summary', () => {
       expect(headers.get('x-markorbit-principal')).toBeNull();
       expect(headers.get('x-markorbit-internal-authorization')).toBeNull();
       return Promise.resolve(dataResponse(ownerSummary));
-    });
+    };
 
     const result = await route(dataFetch).handle(request());
 
@@ -176,11 +184,14 @@ describe('Gateway Data Control Plane owner summary', () => {
     });
     expect(JSON.stringify(result.body)).not.toContain('must-not-leak');
     expect(coreFetch).toHaveBeenCalledTimes(1);
-    expect(dataFetch).toHaveBeenCalledTimes(1);
+    expect(dataCalls).toBe(1);
   });
 
   it('denies a cognitive-only principal before contacting Data Engine', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => coreResponse(cognitiveOnlyPrincipal)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => coreResponse(cognitiveOnlyPrincipal))
+    );
     const dataFetch = vi.fn<typeof fetch>();
 
     const result = await route(dataFetch).handle(request());
@@ -192,7 +203,10 @@ describe('Gateway Data Control Plane owner summary', () => {
 
   it('preserves typed Core Data-grant denial without contacting Data Engine', async () => {
     const denial = { code: 'PERMISSION_DENIED', marker: 'explicit-data-grant-denial' };
-    vi.stubGlobal('fetch', vi.fn(() => coreResponse(denial, 403)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => coreResponse(denial, 403))
+    );
     const dataFetch = vi.fn<typeof fetch>();
 
     const result = await route(dataFetch).handle(request());
@@ -216,7 +230,10 @@ describe('Gateway Data Control Plane owner summary', () => {
   });
 
   it('fails closed when a successful Data Engine response is malformed', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => coreResponse(dataPrincipal)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => coreResponse(dataPrincipal))
+    );
     const dataFetch: typeof fetch = vi.fn(() =>
       Promise.resolve(dataResponse({ ...ownerSummary, read_only: false }))
     );
@@ -228,7 +245,10 @@ describe('Gateway Data Control Plane owner summary', () => {
   });
 
   it('keeps owner non-2xx and transport unavailability explicit', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => coreResponse(dataPrincipal)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => coreResponse(dataPrincipal))
+    );
     const ownerUnavailable: typeof fetch = vi.fn(() =>
       Promise.resolve(
         dataResponse(
