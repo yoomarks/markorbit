@@ -46,7 +46,8 @@ const config: StorybookConfig = {
 export default config;
 """)
 
-Path('apps/provider-web/src/ProviderWorkspaceShell.stories.js').write_text("""import './styles.css';
+Path('apps/provider-web/src/ProviderWorkspaceShell.stories.js').write_text("""import providerWorkspaceHtml from '../index.html?raw';
+import './styles.css';
 
 export default {
   title: 'Provider Web/Infrastructure',
@@ -55,10 +56,11 @@ export default {
 
 export const ShellRegistration = {
   render: () => {
-    const host = document.createElement('div');
-    host.id = 'app';
-    host.dataset.storybookProviderRegistration = 'true';
-    return host;
+    const source = new DOMParser().parseFromString(providerWorkspaceHtml, 'text/html');
+    const app = source.querySelector('#app');
+    if (!(app instanceof HTMLElement)) throw new Error('Provider Workspace story shell is unavailable');
+    app.dataset.storybookProviderRegistration = 'true';
+    return app;
   },
   play: async () => {
     await import('./main.js?storybook-shell-registration');
