@@ -1,12 +1,7 @@
-import {
-  parseInternalWorkspacePrincipal,
-  type MarkOrbitId,
-  type WorkspacePrincipal
-} from '@markorbit/contracts';
+import type { WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   ProviderDiscoveryCandidateId,
-  ProviderDiscoveryRequestId,
-  ProviderDiscoveryRequestReferenceV1
+  ProviderDiscoveryRequestId
 } from '@markorbit/contracts/provider-discovery';
 import type {
   AuthorizeOrReplaceControlledHandoffCommandV1,
@@ -39,7 +34,32 @@ import {
   type GovernedAllocationService
 } from './governed-allocation.js';
 import type { ProviderDiscoveryCurrentResponsibilityService } from './provider-discovery-current-responsibility.js';
-import { ProviderDiscoveryError } from './provider-discovery.js';
+import { createMgsnProviderDiscoveryHttpRoutes } from './governed-network-discovery-http.js';
+import {
+  assertExactTransportShape,
+  bodyOf,
+  enumArray,
+  markOrbitId,
+  nonNegativeInteger,
+  optionalString,
+  optionalTimestamp,
+  objectOf,
+  parsedArray,
+  positiveInteger,
+  prefixedId,
+  rejectTopLevelAuthority,
+  requiredEnum,
+  requiredLiteral,
+  requiredString,
+  sha256,
+  stringArray,
+  timestamp,
+  trustedWorkspacePrincipalFor,
+  versionValue,
+  workspaceUuid,
+  type Body,
+  type TransportShape
+} from './governed-network-http-boundary.js';
 import {
   ProviderSelectionError,
   type ProviderSelectionPrincipal,
@@ -90,71 +110,6 @@ export interface MgsnGovernedNetworkHttpOptions {
   services?: MgsnGovernedNetworkHttpServices;
 }
 
-type Body = Record<string, unknown>;
-
-const forbiddenTopLevelAuthorityFields = new Set([
-  'workspaceId',
-  'actorId',
-  'userId',
-  'membershipId',
-  'principal',
-  'principalReference',
-  'workspaceMembershipReference',
-  'requesterWorkspaceId',
-  'originatingWorkspaceId',
-  'trustedHumanAuthority',
-  'selectionAuthorityReference',
-  'handoffAuthorityReference',
-  'authorityReference',
-  'authorityVersion',
-  'authenticatedAt',
-  'affirmativeHumanActionEvidenceReference'
-]);
-
-function bodyOf(request: JsonRequest): Body {
-  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
-    throw new HttpError(400, 'INVALID_GOVERNED_NETWORK_REQUEST', 'Request body must be an object.');
-  return request.body as Body;
-}
-
-function objectOf(value: unknown, field: string): Body {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new HttpError(400, 'INVALID_GOVERNED_NETWORK_REQUEST', `${field} must be an object.`);
-  return value as Body;
-}
-
-interface TransportShape {
-  readonly [key: string]: null | TransportShape | readonly [TransportShape];
-}
-
-function assertExactTransportShape(value: unknown, shape: TransportShape, field: string): void {
-  const object = objectOf(value, field);
-  const allowed = new Set(Object.keys(shape));
-  const unexpected = Object.keys(object).find((key) => !allowed.has(key));
-  if (unexpected)
-    throw new HttpError(
-      400,
-      'UNEXPECTED_GOVERNED_NETWORK_FIELD',
-      `${field}.${unexpected} is not permitted by the governed-network transport contract.`
-    );
-  for (const [key, nested] of Object.entries(shape)) {
-    const child = object[key];
-    if (nested === null || child === undefined) continue;
-    if (Array.isArray(nested)) {
-      if (!Array.isArray(child))
-        throw new HttpError(
-          400,
-          'INVALID_GOVERNED_NETWORK_REQUEST',
-          `${field}.${key} must be an array.`
-        );
-      for (const [index, item] of child.entries())
-        assertExactTransportShape(item, nested[0] as TransportShape, `${field}.${key}[${index}]`);
-      continue;
-    }
-    assertExactTransportShape(child, nested as TransportShape, `${field}.${key}`);
-  }
-}
-
 const providerSelectionVersionReferenceTransportShape = {
   providerSelectionId: null,
   version: null,
@@ -164,29 +119,6 @@ const providerSelectionVersionReferenceTransportShape = {
 const controlledHandoffVersionReferenceTransportShape = {
   controlledHandoffId: null,
   version: null
-} satisfies TransportShape;
-
-const discoveryRequestTransportShape = {
-  schemaVersion: null,
-  providerDiscoveryRequestId: null,
-  need: {
-    reference: null,
-    version: null,
-    fingerprintSha256: null,
-    jurisdiction: null,
-    serviceType: null
-  },
-  purpose: null,
-  audience: {
-    kind: null,
-    relationshipAuthorityReference: null
-  },
-  contextReference: null,
-  requestedDataClasses: null,
-  requestedFields: null,
-  requestedAt: null,
-  requestFingerprintSha256: null,
-  correlationId: null
 } satisfies TransportShape;
 
 const selectionScopeTransportShape = {
@@ -481,18 +413,6 @@ const governedAllocationTransportShape = {
   correlationId: null
 } satisfies TransportShape;
 
-function rejectTopLevelAuthority(body: Body): void {
-  const field = Object.keys(body).find((candidate) =>
-    forbiddenTopLevelAuthorityFields.has(candidate)
-  );
-  if (field)
-    throw new HttpError(
-      400,
-      'SPOOFED_GOVERNED_NETWORK_AUTHORITY',
-      `${field} cannot be supplied as governed-network authority.`
-    );
-}
-
 function requireIdempotency(request: JsonRequest, body: Body): string {
   const key = request.headers['idempotency-key']?.trim();
   if (!key)
@@ -687,135 +607,6 @@ function handoffAuthority(
   };
 }
 
-const governedSha256Pattern = /^[0-9a-f]{64}$/;
-const governedWorkspaceUuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function invalidGovernedValue(field: string, expectation: string): never {
-  throw new HttpError(400, 'INVALID_GOVERNED_NETWORK_REQUEST', `${field} ${expectation}`);
-}
-
-function requiredString(value: unknown, field: string, maximum = 500): string {
-  if (typeof value !== 'string') return invalidGovernedValue(field, 'must be a string.');
-  const text = value.trim();
-  if (!text || text.length > maximum)
-    return invalidGovernedValue(
-      field,
-      `must be non-empty and no longer than ${maximum} characters.`
-    );
-  return text;
-}
-
-function optionalString(value: unknown, field: string, maximum = 500): string | undefined {
-  return value === undefined ? undefined : requiredString(value, field, maximum);
-}
-
-function requiredLiteral<const T extends string | number | boolean>(
-  value: unknown,
-  expected: T,
-  field: string
-): T {
-  if (value !== expected)
-    return invalidGovernedValue(field, `must equal ${JSON.stringify(expected)}.`);
-  return expected;
-}
-
-function requiredEnum<const T extends readonly string[]>(
-  value: unknown,
-  allowed: T,
-  field: string
-): T[number] {
-  if (typeof value !== 'string' || !allowed.some((candidate) => candidate === value))
-    return invalidGovernedValue(field, `must be one of ${allowed.join(', ')}.`);
-  return value;
-}
-
-function positiveInteger(value: unknown, field: string): number {
-  if (!Number.isInteger(value) || Number(value) < 1)
-    return invalidGovernedValue(field, 'must be a positive integer.');
-  return Number(value);
-}
-
-function nonNegativeInteger(value: unknown, field: string): number {
-  if (!Number.isInteger(value) || Number(value) < 0)
-    return invalidGovernedValue(field, 'must be a non-negative integer.');
-  return Number(value);
-}
-
-function versionValue(value: unknown, field: string): number | string {
-  if (typeof value === 'number') return positiveInteger(value, field);
-  return requiredString(value, field, 200);
-}
-
-function timestamp(value: unknown, field: string): string {
-  const text = requiredString(value, field, 100);
-  if (!Number.isFinite(Date.parse(text)))
-    return invalidGovernedValue(field, 'must be an ISO timestamp.');
-  return text;
-}
-
-function optionalTimestamp(value: unknown, field: string): string | undefined {
-  return value === undefined ? undefined : timestamp(value, field);
-}
-
-function sha256(value: unknown, field: string): string {
-  const text = requiredString(value, field, 64);
-  if (!governedSha256Pattern.test(text))
-    return invalidGovernedValue(field, 'must be a lowercase SHA-256 value.');
-  return text;
-}
-
-function workspaceUuid(value: unknown, field: string): string {
-  const text = requiredString(value, field, 100).toLowerCase();
-  if (!governedWorkspaceUuidPattern.test(text))
-    return invalidGovernedValue(field, 'must be a Core Workspace UUID.');
-  return text;
-}
-
-function prefixedId<T extends string>(value: unknown, prefix: string, field: string): T {
-  const text = requiredString(value, field, 200);
-  if (!text.startsWith(prefix) || text.length === prefix.length)
-    return invalidGovernedValue(field, `must start with ${prefix}.`);
-  return text as T;
-}
-
-function markOrbitId(value: unknown, field: string): MarkOrbitId {
-  const text = requiredString(value, field, 200);
-  const separator = text.indexOf('_');
-  if (separator < 1 || separator === text.length - 1)
-    return invalidGovernedValue(
-      field,
-      'must be a MarkOrbit reference with an underscore separator.'
-    );
-  return text as MarkOrbitId;
-}
-
-function arrayValue(value: unknown, field: string): unknown[] {
-  if (!Array.isArray(value)) return invalidGovernedValue(field, 'must be an array.');
-  if (value.length > 1000) return invalidGovernedValue(field, 'contains too many entries.');
-  return value;
-}
-
-function parsedArray<T>(
-  value: unknown,
-  field: string,
-  parser: (item: unknown, itemField: string) => T
-): T[] {
-  return arrayValue(value, field).map((item, index) => parser(item, `${field}[${index}]`));
-}
-
-function stringArray(value: unknown, field: string): string[] {
-  return parsedArray(value, field, (item, itemField) => requiredString(item, itemField, 500));
-}
-
-function enumArray<const T extends readonly string[]>(
-  value: unknown,
-  allowed: T,
-  field: string
-): T[number][] {
-  return parsedArray(value, field, (item, itemField) => requiredEnum(item, allowed, itemField));
-}
-
 function parseSelectionScope(
   value: unknown,
   field: string
@@ -871,83 +662,6 @@ function parseCurrentSourceVersion(
     ...(effectiveUntil ? { effectiveUntil } : {}),
     checkedAt: timestamp(source.checkedAt, `${field}.checkedAt`),
     authorityState: requiredLiteral(source.authorityState, 'CURRENT', `${field}.authorityState`)
-  };
-}
-
-function parseDiscoveryAudience(
-  value: unknown,
-  field: string
-): ProviderDiscoveryRequestReferenceV1['audience'] {
-  const audience = objectOf(value, field);
-  const kind = requiredEnum(
-    audience.kind,
-    ['TRUSTED_RELATIONSHIP', 'BOUNDED_NETWORK'] as const,
-    `${field}.kind`
-  );
-  if (kind === 'BOUNDED_NETWORK') {
-    if (audience.relationshipAuthorityReference !== undefined)
-      throw new HttpError(
-        400,
-        'UNEXPECTED_GOVERNED_NETWORK_FIELD',
-        `${field}.relationshipAuthorityReference is not permitted for BOUNDED_NETWORK.`
-      );
-    return { kind };
-  }
-  return {
-    kind,
-    relationshipAuthorityReference: requiredString(
-      audience.relationshipAuthorityReference,
-      `${field}.relationshipAuthorityReference`,
-      200
-    )
-  };
-}
-
-function parseDiscoveryRequest(
-  body: Body,
-  requesterWorkspaceId: string
-): ProviderDiscoveryRequestReferenceV1 {
-  const need = objectOf(body.need, 'body.need');
-  return {
-    schemaVersion: requiredLiteral(body.schemaVersion, 1, 'body.schemaVersion'),
-    providerDiscoveryRequestId: prefixedId<ProviderDiscoveryRequestId>(
-      body.providerDiscoveryRequestId,
-      'provider-discovery-request_',
-      'body.providerDiscoveryRequestId'
-    ),
-    requesterWorkspaceId,
-    need: {
-      reference: requiredString(need.reference, 'body.need.reference'),
-      version: versionValue(need.version, 'body.need.version'),
-      fingerprintSha256: sha256(need.fingerprintSha256, 'body.need.fingerprintSha256'),
-      jurisdiction: requiredString(need.jurisdiction, 'body.need.jurisdiction', 100),
-      serviceType: requiredString(need.serviceType, 'body.need.serviceType', 200)
-    },
-    purpose: requiredLiteral(body.purpose, 'PROVIDER_DISCOVERY', 'body.purpose'),
-    audience: parseDiscoveryAudience(body.audience, 'body.audience'),
-    contextReference: requiredString(body.contextReference, 'body.contextReference'),
-    requestedDataClasses: enumArray(
-      body.requestedDataClasses,
-      [
-        'ORGANIZATION_IDENTITY',
-        'PROVIDER_REFERENCE',
-        'SUPPLY_PROFILE',
-        'SERVICE_JURISDICTIONS',
-        'PROVIDER_EVIDENCE_REFERENCE'
-      ] as const,
-      'body.requestedDataClasses'
-    ),
-    requestedFields: enumArray(
-      body.requestedFields,
-      ['displayName', 'providerId', 'serviceTypes', 'jurisdictions', 'evidenceReferences'] as const,
-      'body.requestedFields'
-    ),
-    requestedAt: timestamp(body.requestedAt, 'body.requestedAt'),
-    requestFingerprintSha256: sha256(
-      body.requestFingerprintSha256,
-      'body.requestFingerprintSha256'
-    ),
-    correlationId: markOrbitId(body.correlationId, 'body.correlationId')
   };
 }
 
@@ -1962,7 +1676,6 @@ function parseGovernedAllocationCommand(
 
 function mapDomainError(error: unknown): never {
   if (
-    error instanceof ProviderDiscoveryError ||
     error instanceof ProviderSelectionError ||
     error instanceof ControlledHandoffError ||
     error instanceof GovernedAllocationError
@@ -1985,23 +1698,8 @@ export function createMgsnGovernedNetworkHttpRoutes(
       );
     return options.services;
   };
-  const trustedPrincipalFor = (request: JsonRequest): WorkspacePrincipal => {
-    if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
-      throw new HttpError(
-        401,
-        'UNTRUSTED_INTERNAL_CALLER',
-        'Trusted internal authorization is required.'
-      );
-    try {
-      return parseInternalWorkspacePrincipal(request.headers['x-markorbit-principal']);
-    } catch {
-      throw new HttpError(
-        401,
-        'INVALID_INTERNAL_PRINCIPAL',
-        'A trusted Workspace Principal is required.'
-      );
-    }
-  };
+  const trustedPrincipalFor = (request: JsonRequest): WorkspacePrincipal =>
+    trustedWorkspacePrincipalFor(request, secret);
   const operation = async <T>(work: () => Promise<T>): Promise<T> => {
     try {
       return await work();
@@ -2010,25 +1708,13 @@ export function createMgsnGovernedNetworkHttpRoutes(
     }
   };
 
+  const discoveryOptions = {
+    ...(secret ? { internalServiceSecret: secret } : {}),
+    ...(options.services?.providerDiscovery ? { service: options.services.providerDiscovery } : {})
+  };
+
   return [
-    {
-      method: 'POST',
-      path: '/v1/governed-network/discovery/evaluate',
-      handle: async (request) => {
-        const principal = trustedPrincipalFor(request);
-        const body = bodyOf(request);
-        rejectTopLevelAuthority(body);
-        assertExactTransportShape(body, discoveryRequestTransportShape, 'body');
-        const discoveryRequest = parseDiscoveryRequest(body, principal.workspaceId);
-        const result = await operation(() =>
-          services().providerDiscovery.evaluate(
-            { workspaceId: principal.workspaceId, actorId: principal.userId },
-            discoveryRequest
-          )
-        );
-        return json(200, { providerDiscovery: result });
-      }
-    },
+    ...createMgsnProviderDiscoveryHttpRoutes(discoveryOptions),
     {
       method: 'POST',
       path: '/v1/governed-network/selections',
