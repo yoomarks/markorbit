@@ -45,6 +45,18 @@ jobs:
           git checkout -B target-841 origin/mgsn/phase2-trust-discovery-841-main
           test "$(git rev-parse HEAD)" = "2c3441dc6307da38e3552a111d231eacfd72fc39"
           python /tmp/writer-841.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/mgsn/tests/provider-discovery-trust.test.ts')
+          text = path.read_text()
+          text = text.replace('async function harness(\n', 'function harness(\n', 1)
+          text = text.replace(
+              "    expect(support.currentExposureValidation.decision).toBe(\n      'AUTHORIZED_FOR_BOUNDED_TRUST_EXPLANATION'\n    );\n",
+              "    expect(support.currentExposureValidation).toMatchObject({\n      decision: 'AUTHORIZED_FOR_BOUNDED_TRUST_EXPLANATION'\n    });\n",
+              1,
+          )
+          path.write_text(text)
+          PY
       - run: |
           pnpm install --frozen-lockfile
           git restore --worktree pnpm-lock.yaml
