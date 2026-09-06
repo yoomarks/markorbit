@@ -33,12 +33,62 @@ const dataOwnerSummary = {
     active_count: 1
   }
 };
-
+const knowledgeOwnerHealth = {
+  protocolVersion: '1.0',
+  objectType: 'CONTROL_PLANE_EVIDENCE_SUPPLY_HEALTH_OWNER_RESULT',
+  owner: 'KNOWLEDGE',
+  access: 'READ_ONLY',
+  requiredUpstreamAuthority: 'control-plane:knowledge:read',
+  sourceReadModel: 'evidence-supply-health.v1',
+  workspaceId: 'workspace-916',
+  observedAt: '2026-09-06T14:19:00.000Z',
+  items: [
+    {
+      targetId: 'target-uspto',
+      jurisdiction: 'US',
+      authorityName: 'USPTO',
+      authorityLevel: 'PRIMARY',
+      family: 'TRADEMARK',
+      displayName: 'USPTO trademark evidence',
+      sourceIds: [],
+      state: 'UNKNOWN',
+      reasonCodes: ['NO_ACQUISITION_EVIDENCE'],
+      coverage: { state: 'PARTIAL', reasons: ['No acquisition evidence'] },
+      freshness: { state: 'UNOBSERVED', lastSuccessfulAcquisitionAt: null },
+      schedule: { state: 'UNCONFIGURED' },
+      reliability: { attempts: 0, failed: 0, unrecoveredFailure: false },
+      latency: { windowDays: 30 },
+      changeActivity: { updates30d: 0, lastObservedChangeAt: null },
+      observedAt: '2026-09-06T14:19:00.000Z'
+    }
+  ],
+  summary: {
+    total: 1,
+    byState: { HEALTHY: 0, DEGRADED: 0, STALE: 0, BLOCKED: 0, PARTIAL: 0, UNKNOWN: 1 },
+    coverage: { COMPLETE: 0, PARTIAL: 1, UNKNOWN: 0 },
+    requiringAttention: 1,
+    stale: 0,
+    blocked: 0,
+    recentChanges30d: 0
+  }
+};
 test('MO Control Center exposes truthful governed operator surfaces @visual', async ({
   page
 }, testInfo) => {
   const assertHealthy = watchPage(page);
   let dataOwnerReads = 0;
+  let knowledgeOwnerReads = 0;
+  await page.route(
+    '**/api/internal/control-plane/knowledge/evidence-supply-health',
+    async (route) => {
+      knowledgeOwnerReads += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(knowledgeOwnerHealth)
+      });
+    }
+  );
   await page.route('**/api/internal/control-plane/data/summary', async (route) => {
     dataOwnerReads += 1;
     await route.fulfill({
@@ -46,6 +96,9 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
       contentType: 'application/json',
       body: JSON.stringify(dataOwnerSummary)
     });
+  });
+  await page.addInitScript(() => {
+    sessionStorage.setItem('markorbit-workspace-id', 'workspace-916');
   });
   await page.goto(urls.operations);
   await expect(page.getByText('Internal only')).toBeVisible();
@@ -59,6 +112,18 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   ]) {
     await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   }
+  await expect(page.getByRole('heading', { name: 'Knowledge', exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'No Knowledge owner health loaded. Load owner health to determine current evidence-supply state.'
+    )
+  ).toBeVisible();
+  const loadKnowledgeOwnerHealth = page.getByRole('button', { name: 'Load owner health' });
+  await expect(loadKnowledgeOwnerHealth).toBeVisible();
+  expect(knowledgeOwnerReads).toBe(0);
+  await loadKnowledgeOwnerHealth.click();
+  await expect(page.getByText('Knowledge owner-reported evidence supply health')).toBeVisible();
+  expect(knowledgeOwnerReads).toBe(1);
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await expect(
     page.getByText(
@@ -72,6 +137,7 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   await expect(page.getByText('Data Engine owner-reported dependency health')).toBeVisible();
   expect(dataOwnerReads).toBe(1);
   await expect(page.getByRole('heading', { name: 'Commercial operations' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Knowledge' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Data' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Commercial' })).toBeVisible();
   for (const staleHeading of [
