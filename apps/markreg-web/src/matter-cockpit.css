@@ -1,0 +1,93 @@
+.markreg-truth-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mo-space-sm);
+  margin-block: 0 var(--mo-space-sm);
+}
+
+.markreg-truth-context {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--mo-border);
+  border-radius: 999px;
+  background: var(--mo-background);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.markreg-truth-context-label {
+  font-weight: 700;
+}
+
+.markreg-truth-context-detail {
+  color: var(--mo-muted);
+}
+
+.markreg-truth-context--unavailable-or-stale {
+  border-style: dashed;
+}
+
+.markreg-cockpit-section {
+  display: grid;
+  gap: var(--mo-space-sm);
+  min-width: 0;
+}
+
+.markreg-cockpit-section > h2,
+.markreg-cockpit-section > h3 {
+  margin-block-end: 0;
+}
+
+.markreg-cockpit-authority {
+  margin-block-end: 0;
+}
+
+.markreg-cockpit-provenance,
+.markreg-cockpit-secondary-details {
+  min-width: 0;
+}
+
+.markreg-cockpit-provenance > summary,
+.markreg-cockpit-secondary-details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding-block: var(--mo-space-sm);
+}
+
+.markreg-cockpit-provenance[open] > summary,
+.markreg-cockpit-secondary-details[open] > summary {
+  margin-block-end: var(--mo-space-sm);
+}
+
+.markreg-cockpit-summary {
+  display: grid;
+  gap: var(--mo-space-sm);
+}
+
+.markreg-cockpit-summary > p,
+.markreg-cockpit-summary > small {
+  margin-block: 0;
+}
+
+.markreg-cockpit-technical {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .markreg-truth-row {
+    align-items: flex-start;
+  }
+
+  .markreg-truth-context {
+    border-radius: var(--mo-radius);
+  }
+
+  .markreg-truth-context-detail {
+    flex-basis: 100%;
+  }
+}
