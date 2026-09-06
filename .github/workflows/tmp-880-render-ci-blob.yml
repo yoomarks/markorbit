@@ -1,0 +1,35 @@
+name: tmp-880-render-ci-blob
+
+on:
+  push:
+    branches:
+      - tmp/880-provider-browser-register-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preserve renderer
+        run: cp scripts/tmp-880-render-ci.py /tmp/render-ci.py
+      - name: Render against product branch and publish as ordinary blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name yoomarks
+          git config user.email actions@users.noreply.github.com
+          git fetch origin integration/provider-web-storybook-browser-880 tmp/880-ci-blob-20260906
+          git checkout -B render-880 origin/integration/provider-web-storybook-browser-880
+          python /tmp/render-ci.py
+          git checkout -B publish-880 origin/tmp/880-ci-blob-20260906
+          cp /home/runner/work/markorbit/markorbit/scripts/tmp-880-ci-rendered.yml.txt /tmp/rendered-ci.yml
+          git checkout -- .
+          cp /tmp/rendered-ci.yml scripts/tmp-880-ci-rendered.yml.txt
+          git add scripts/tmp-880-ci-rendered.yml.txt
+          git commit -m 'chore(tmp): publish rendered Provider Web CI blob'
+          git push origin HEAD:refs/heads/tmp/880-ci-blob-20260906
