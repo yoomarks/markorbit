@@ -24,6 +24,7 @@ import {
 } from './outcome-trust-evidence.js';
 import { PostgresOutcomeTrustEvidenceRepository } from './outcome-trust-evidence-postgres.js';
 import { ProviderDiscoveryCurrentResponsibilityService } from './provider-discovery-current-responsibility.js';
+import { ProviderDiscoveryTrustService } from './provider-discovery-trust.js';
 import { PostgresProviderDiscoverySourceRepository } from './provider-discovery-postgres.js';
 import { ProviderDiscoveryService } from './provider-discovery.js';
 import { ProviderRegistryService } from './provider-registry.js';
@@ -91,7 +92,7 @@ export interface DurableMgsnServicesOptions {
 }
 
 export type DurableMgsnServices = MgsnHttpServices & {
-  providerDiscovery: ProviderDiscoveryCurrentResponsibilityService;
+  providerDiscovery: ProviderDiscoveryTrustService;
   providerResponsibility: ProviderResponsibilityService;
   providerSelection: ProviderSelectionService;
   controlledHandoffPreparation: ControlledHandoffPreparationService;
@@ -210,6 +211,19 @@ export function createDurableMgsnServices(
     providerRepository,
     governedProviderWorkRead
   );
+  const outcomeTrustEvidence = new OutcomeTrustEvidenceService(
+    outcomeTrustEvidenceRepository,
+    options.trustEvidenceCurrentAuthoritySource ?? trustEvidenceCurrentAuthority
+  );
+  const currentProviderDiscovery = new ProviderDiscoveryCurrentResponsibilityService(
+    new ProviderDiscoveryService(providerDiscoveryRepository),
+    providerResponsibility
+  );
+  const providerDiscovery = new ProviderDiscoveryTrustService(
+    currentProviderDiscovery,
+    outcomeTrustEvidenceRepository,
+    outcomeTrustEvidence
+  );
   const governedAllocation = new GovernedAllocationService(
     new ExactM4GovernedAllocationPlanner(
       allocationRepository,
@@ -250,19 +264,13 @@ export function createDurableMgsnServices(
       networkParticipationRepository,
       providerRepository
     ),
-    providerDiscovery: new ProviderDiscoveryCurrentResponsibilityService(
-      new ProviderDiscoveryService(providerDiscoveryRepository),
-      providerResponsibility
-    ),
+    providerDiscovery,
     providerResponsibility,
     providerSelection,
     controlledHandoffPreparation,
     controlledHandoff,
     governedAllocation,
-    outcomeTrustEvidence: new OutcomeTrustEvidenceService(
-      outcomeTrustEvidenceRepository,
-      options.trustEvidenceCurrentAuthoritySource ?? trustEvidenceCurrentAuthority
-    ),
+    outcomeTrustEvidence,
     trustedPublicExposure: new TrustedPublicExposureService(
       options.trustedPublicCurrentAuthoritySource ?? unavailableTrustedPublicAuthority
     )
