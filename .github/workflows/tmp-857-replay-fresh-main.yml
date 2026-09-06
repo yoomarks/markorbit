@@ -22,21 +22,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Materialize clean Trust contract diff on fresh main
+      - name: Replay validated clean Trust commit onto latest main
         shell: bash
         run: |
           git config user.name 'yoomarks'
           git config user.email 'actions@users.noreply.github.com'
-          git fetch origin main integration/mgsn-trust-discovery-contract-845 integration/mgsn-trust-discovery-contract-845-main
-          BASE=$(git merge-base origin/main origin/integration/mgsn-trust-discovery-contract-845)
-          git diff --binary "$BASE" origin/integration/mgsn-trust-discovery-contract-845 -- \
-            packages/contracts/package.json \
-            packages/contracts/src/provider-discovery-trust.ts \
-            packages/contracts/tests/provider-discovery-trust.test.ts > /tmp/857.patch
-          test -s /tmp/857.patch
-          git checkout -B integration/mgsn-trust-discovery-contract-845-main origin/integration/mgsn-trust-discovery-contract-845-main
-          test "$(git rev-parse HEAD)" = "9887b7fd6d20b75a1c8fed1817750aa2cb92e38b"
-          git apply --3way /tmp/857.patch
+          git fetch origin main integration/mgsn-trust-discovery-contract-845-main
+          test "$(git rev-parse origin/main)" = "799f2c28cdd2810c84406ede18fa72bb120c9ef6"
+          test "$(git rev-parse origin/integration/mgsn-trust-discovery-contract-845-main)" = "26a76158f52983fc3c3a011a7baea2da7b5aaee7"
+          git checkout -B replay-857 origin/main
+          git cherry-pick 26a76158f52983fc3c3a011a7baea2da7b5aaee7
       - run: pnpm install --frozen-lockfile
       - name: Format and verify bounded shared-contract diff
         shell: bash
@@ -46,21 +41,20 @@ jobs:
             packages/contracts/package.json \
             packages/contracts/src/provider-discovery-trust.ts \
             packages/contracts/tests/provider-discovery-trust.test.ts
-          git diff HEAD --name-only | tee /tmp/changed.txt
+          git diff --name-only origin/main...HEAD | tee /tmp/changed.txt
           test "$(wc -l < /tmp/changed.txt)" -eq 3
           grep -qx 'packages/contracts/package.json' /tmp/changed.txt
           grep -qx 'packages/contracts/src/provider-discovery-trust.ts' /tmp/changed.txt
           grep -qx 'packages/contracts/tests/provider-discovery-trust.test.ts' /tmp/changed.txt
-          git diff HEAD --check
+          git diff --check origin/main...HEAD
       - name: Contracts typecheck
         run: pnpm --filter @markorbit/contracts typecheck
       - name: Contracts tests
         run: pnpm --filter @markorbit/contracts test
       - name: Contracts build
         run: pnpm --filter @markorbit/contracts build
-      - name: Commit and push clean branch
+      - name: Push refreshed clean branch
         shell: bash
         run: |
-          git add packages/contracts/package.json packages/contracts/src/provider-discovery-trust.ts packages/contracts/tests/provider-discovery-trust.test.ts
-          git commit -m 'feat(contracts): bind Trust context to Provider Discovery'
-          git push origin HEAD:integration/mgsn-trust-discovery-contract-845-main
+          git push --force-with-lease=refs/heads/integration/mgsn-trust-discovery-contract-845-main:26a76158f52983fc3c3a011a7baea2da7b5aaee7 \
+            origin HEAD:refs/heads/integration/mgsn-trust-discovery-contract-845-main
