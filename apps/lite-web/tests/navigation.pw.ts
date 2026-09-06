@@ -7,6 +7,29 @@ import {
   opportunity,
   publishPackage
 } from '../src/features/content-studio/fixtures.js';
+import {
+  insightsWorkspaceId,
+  workspaceInsightsFixture
+} from '../src/features/insights/fixtures.js';
+
+function dailyWorkspaceInsightsFixture(
+  preferenceSource: 'EXPLICIT' | 'PRODUCT_FEEDBACK' | 'NONE' | null
+) {
+  return {
+    schemaVersion: 1,
+    workspaceId: insightsWorkspaceId,
+    subjectUserId: '11111111-1111-4111-8111-111111111111',
+    generatedAt: '2026-09-06T11:30:00.000Z',
+    see: { preferenceSource, savedOrbitItemIds: [], orbitItems: [] },
+    create: { contentPicks: [] },
+    move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
+    partial: preferenceSource === null,
+    warnings: preferenceSource === null ? ['SEE_CREATE_UNAVAILABLE'] : [],
+    executionAuthorized: false,
+    externalPublishExecuted: false,
+    officialTruthCreated: false
+  };
+}
 
 test('Workspace Shell exposes five truthful primary destinations on desktop and mobile', async ({
   page
@@ -349,4 +372,66 @@ test('Content Studio records governed package feedback and refreshes durable det
     path: testInfo.outputPath('content-studio-feedback.png'),
     fullPage: true
   });
+});
+
+test('Today shows owner-backed Workspace Insights without adding navigation', async ({
+  page
+}, testInfo) => {
+  const analyticsWorkspaceHeaders: (string | undefined)[] = [];
+  await page.route('**/api/lite/daily-workspace', (route) =>
+    route.fulfill({ json: dailyWorkspaceInsightsFixture('PRODUCT_FEEDBACK') })
+  );
+  await page.route('**/api/lite/analytics/product-loop-conversions', (route) => {
+    analyticsWorkspaceHeaders.push(route.request().headers()['x-markorbit-workspace-id']);
+    return route.fulfill({ json: workspaceInsightsFixture() });
+  });
+
+  await page.goto(`/?workspaceId=${insightsWorkspaceId}#today`);
+  await expect(page.getByRole('heading', { name: 'Workspace Insights' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /product-use feedback/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /2 prepared Publish Packages/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Content progress' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Opportunity progress' })).toBeVisible();
+  await page.getByText('Show conversion context').first().click();
+  await expect(page.getByText('6 / 8 · 75%')).toBeVisible();
+  await expect(
+    page.getByText(/Published, Used and Not used are feedback supplied by the user/)
+  ).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link')).toHaveCount(5);
+  expect(analyticsWorkspaceHeaders).toEqual([insightsWorkspaceId]);
+  await page.screenshot({
+    path: testInfo.outputPath('workspace-insights-desktop.png'),
+    fullPage: true
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'Workspace Insights' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('workspace-insights-mobile-390.png'),
+    fullPage: true
+  });
+});
+
+test('Today Insights keeps unavailable owner truth distinct from zero metrics', async ({
+  page
+}) => {
+  await page.route('**/api/lite/daily-workspace', (route) =>
+    route.fulfill({ json: dailyWorkspaceInsightsFixture(null) })
+  );
+  await page.route('**/api/lite/analytics/product-loop-conversions', (route) =>
+    route.fulfill({
+      status: 503,
+      json: { code: 'PERSISTENCE_UNAVAILABLE', message: 'analytics owner unavailable' }
+    })
+  );
+
+  await page.goto(`/?workspaceId=${insightsWorkspaceId}#today`);
+  await expect(page.getByText('Insights unavailable')).toBeVisible();
+  await expect(page.getByText(/hidden rather than rendered as zero/)).toBeVisible();
+  await expect(page.getByText('Content Opportunities')).toHaveCount(0);
+  await expect(page.getByText(/No preference evidence is currently shaping this view/)).toHaveCount(
+    0
+  );
 });

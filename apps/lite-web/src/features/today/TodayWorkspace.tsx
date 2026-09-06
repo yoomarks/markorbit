@@ -27,6 +27,11 @@ import {
   type TodayProductLoopSnapshot
 } from '../../api/product-loop.js';
 import { updateLiteLocation } from '../../routing/workspace-navigation.js';
+import {
+  WorkspaceInsights,
+  type WorkspacePreferenceSource
+} from '../insights/WorkspaceInsights.js';
+import type { WorkspaceInsightsClient } from '../../api/workspace-insights.js';
 import { projectDailyWorkspacePrimary } from './daily-workspace-primary.js';
 import { TodayCommandCenter } from './TodayCommandCenter.js';
 import { TodayCreateSections } from './TodayCreateSections.js';
@@ -39,6 +44,7 @@ export interface TodayWorkspaceProps {
   workspaceId: string;
   client?: TodayClient;
   dailyClient?: DailyWorkspaceClient;
+  insightsClient?: WorkspaceInsightsClient;
 }
 
 function querySelection(): TodaySelection {
@@ -70,7 +76,8 @@ function setSelection(workspaceId: string, next: Partial<TodaySelection>) {
 export function TodayWorkspace({
   workspaceId,
   client: suppliedTodayClient,
-  dailyClient: suppliedDailyClient
+  dailyClient: suppliedDailyClient,
+  insightsClient: suppliedInsightsClient
 }: TodayWorkspaceProps) {
   const todayClient = useMemo(
     () => suppliedTodayClient ?? createTodayClient(workspaceId),
@@ -82,6 +89,7 @@ export function TodayWorkspace({
   );
   const [today, setToday] = useState<TodayProductLoopSnapshot>();
   const [orbit, setOrbit] = useState<DailyOrbitSnapshot>();
+  const [preferenceSource, setPreferenceSource] = useState<WorkspacePreferenceSource>();
   const [todayError, setTodayError] = useState<TodayHttpError>();
   const [dailyError, setDailyError] = useState<DailyWorkspaceHttpError>();
   const [selection, setCurrentSelection] = useState<TodaySelection>(querySelection);
@@ -100,6 +108,7 @@ export function TodayWorkspace({
   const reload = async () => {
     setTodayError(undefined);
     setDailyError(undefined);
+    setPreferenceSource(undefined);
 
     if (suppliedTodayClient && !suppliedDailyClient) {
       const [todayResult, orbitResult] = await Promise.allSettled([
@@ -113,8 +122,11 @@ export function TodayWorkspace({
             ? todayResult.reason
             : new TodayHttpError(503, 'TODAY_REQUEST_FAILED', 'Lite Today is unavailable.')
         );
-      if (orbitResult.status === 'fulfilled') setOrbit(orbitResult.value);
-      else
+      if (orbitResult.status === 'fulfilled') {
+        setOrbit(orbitResult.value);
+        setPreferenceSource(orbitResult.value.preferenceSource);
+      } else {
+        setPreferenceSource(null);
         setDailyError(
           orbitResult.reason instanceof DailyWorkspaceHttpError
             ? orbitResult.reason
@@ -125,6 +137,7 @@ export function TodayWorkspace({
                 true
               )
         );
+      }
       return;
     }
 
@@ -133,6 +146,7 @@ export function TodayWorkspace({
       const projection = projectDailyWorkspacePrimary(workspace);
       setToday(projection.today);
       setOrbit(projection.orbit);
+      setPreferenceSource(workspace.see.preferenceSource);
     } catch (cause) {
       const error =
         cause instanceof DailyWorkspaceHttpError
@@ -143,6 +157,7 @@ export function TodayWorkspace({
               'Daily Workspace is unavailable.',
               true
             );
+      setPreferenceSource(null);
       setDailyError(error);
       setTodayError(new TodayHttpError(error.status, error.code, error.message));
     }
@@ -575,6 +590,12 @@ export function TodayWorkspace({
       ) : null}
 
       <TodayCommandCenter today={today} orbit={orbit} explicitSelection={querySelection()} />
+
+      <WorkspaceInsights
+        workspaceId={workspaceId}
+        preferenceSource={preferenceSource}
+        {...(suppliedInsightsClient ? { client: suppliedInsightsClient } : {})}
+      />
 
       <details className="daily-section-index">
         <summary>Browse all Today sections</summary>
