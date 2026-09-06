@@ -20,6 +20,11 @@ replace_once(
     '    "lint": "eslint src tests .storybook"\n',
     '    "lint": "eslint src tests .storybook .storybook-provider"\n',
 )
+replace_once(
+    'packages/ui/tsconfig.json',
+    '    ".storybook/**/*.ts"\n',
+    '    ".storybook/**/*.ts",\n    ".storybook-provider/**/*.ts"\n',
+)
 
 replace_once(
     'package.json',
