@@ -45,7 +45,10 @@ export const COMMERCIAL_ADMIN_CAPABILITIES = [
   'commercial-admin:operate'
 ] as const;
 export type CommercialAdminCapability = (typeof COMMERCIAL_ADMIN_CAPABILITIES)[number];
-export const CONTROL_PLANE_CAPABILITIES = ['control-plane:cognitive:read'] as const;
+export const CONTROL_PLANE_CAPABILITIES = [
+  'control-plane:cognitive:read',
+  'control-plane:data:read'
+] as const;
 export type ControlPlaneCapability = (typeof CONTROL_PLANE_CAPABILITIES)[number];
 export const INTERNAL_OPERATOR_CAPABILITIES = [
   ...COMMERCIAL_ADMIN_CAPABILITIES,
