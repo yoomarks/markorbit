@@ -22,15 +22,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Replay validated owner commit onto fresh main
+      - name: Replay validated owner commit onto latest main
         shell: bash
         run: |
           git config user.name 'yoomarks'
           git config user.email 'actions@users.noreply.github.com'
           git fetch origin main mgsn/provider-work-action-lineage-861-main
-          git checkout -B mgsn/provider-work-action-lineage-861-main origin/mgsn/provider-work-action-lineage-861-main
-          test "$(git rev-parse HEAD)" = "9887b7fd6d20b75a1c8fed1817750aa2cb92e38b"
-          git cherry-pick 6b6f0864020d595346cab1b23c8f7b84c73624c6
+          test "$(git rev-parse origin/main)" = "2c22f73c3c498691428e30fbee312efa73c5b2a0"
+          test "$(git rev-parse origin/mgsn/provider-work-action-lineage-861-main)" = "022f6b28bc9ed49422561c72492d08937dc5075a"
+          git checkout -B replay-861 origin/main
+          git cherry-pick 022f6b28bc9ed49422561c72492d08937dc5075a
       - run: pnpm install --frozen-lockfile
       - name: Verify bounded owner diff
         shell: bash
@@ -52,5 +53,8 @@ jobs:
           tests/provider-work-incoming-authority.test.ts
       - name: Typecheck MGSN
         run: pnpm --filter @markorbit/mgsn-service typecheck
-      - name: Push clean owner branch
-        run: git push origin HEAD:mgsn/provider-work-action-lineage-861-main
+      - name: Push refreshed owner branch
+        shell: bash
+        run: |
+          git push --force-with-lease=refs/heads/mgsn/provider-work-action-lineage-861-main:022f6b28bc9ed49422561c72492d08937dc5075a \
+            origin HEAD:refs/heads/mgsn/provider-work-action-lineage-861-main
