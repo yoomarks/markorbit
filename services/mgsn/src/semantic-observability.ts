@@ -154,18 +154,12 @@ export function classifyMgsnSemanticFailure(
     return { outcomeClass: 'CONFLICT', resultCode: 'STALE_OR_VERSION_CONFLICT' };
   if (code.includes('AUTHORITY_UNAVAILABLE'))
     return { outcomeClass: 'UNAVAILABLE', resultCode: 'AUTHORITY_UNAVAILABLE' };
-  if (status === 503)
-    return { outcomeClass: 'UNAVAILABLE', resultCode: 'DEPENDENCY_UNAVAILABLE' };
+  if (status === 503) return { outcomeClass: 'UNAVAILABLE', resultCode: 'DEPENDENCY_UNAVAILABLE' };
   if (code.includes('NOT_FOUND') || status === 404)
     return { outcomeClass: 'DENIED', resultCode: 'NOT_FOUND' };
-  if (
-    code.includes('AUTHORITY_DENIED') ||
-    code.includes('DENIED') ||
-    code.includes('SUSPENDED')
-  )
+  if (code.includes('AUTHORITY_DENIED') || code.includes('DENIED') || code.includes('SUSPENDED'))
     return { outcomeClass: 'DENIED', resultCode: 'CURRENT_AUTHORITY_DENIED' };
-  if (status === 409)
-    return { outcomeClass: 'CONFLICT', resultCode: 'OPERATION_CONFLICT' };
+  if (status === 409) return { outcomeClass: 'CONFLICT', resultCode: 'OPERATION_CONFLICT' };
   if (status !== undefined && status >= 400 && status < 500)
     return { outcomeClass: 'DENIED', resultCode: 'INVALID_OR_FORBIDDEN' };
   return { outcomeClass: 'ERROR', resultCode: 'INTERNAL_ERROR' };
