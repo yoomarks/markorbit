@@ -248,9 +248,7 @@ export function createEnvironmentKnowledgeReadGrantSourceV1(
     const config = parseGrantConfig(value, KNOWLEDGE_READ_CAPABILITY, 'Knowledge');
     return new StaticKnowledgeReadGrantSourceV1(config.grants.map((grant) => grant.userId));
   } catch (error) {
-    return new UnavailableKnowledgeReadGrantSourceV1(
-      error instanceof Error ? error : undefined
-    );
+    return new UnavailableKnowledgeReadGrantSourceV1(error instanceof Error ? error : undefined);
   }
 }
 
