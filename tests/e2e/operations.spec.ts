@@ -38,7 +38,9 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   page
 }, testInfo) => {
   const assertHealthy = watchPage(page);
+  let dataOwnerReads = 0;
   await page.route('**/api/internal/control-plane/data/summary', async (route) => {
+    dataOwnerReads += 1;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -58,7 +60,17 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
     await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   }
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'No Data Engine owner summary loaded. Load owner summary to determine current owner state.'
+    )
+  ).toBeVisible();
+  const loadOwnerSummary = page.getByRole('button', { name: 'Load owner summary' });
+  await expect(loadOwnerSummary).toBeVisible();
+  expect(dataOwnerReads).toBe(0);
+  await loadOwnerSummary.click();
   await expect(page.getByText('Data Engine owner-reported dependency health')).toBeVisible();
+  expect(dataOwnerReads).toBe(1);
   await expect(page.getByRole('heading', { name: 'Commercial operations' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Data' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Commercial' })).toBeVisible();
