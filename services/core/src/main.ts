@@ -28,6 +28,7 @@ import {
   InternalOperatorPrincipalResolverV1
 } from './internal-operator-principal.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
+import { PostgresWorkspaceAdminPortfolioReaderV1 } from './workspace-admin-portfolio.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 import {
@@ -119,6 +120,7 @@ const runtime = createRuntime({
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
   brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),
   internalOperatorPrincipalResolver,
+  workspaceAdminPortfolio: new PostgresWorkspaceAdminPortfolioReaderV1(query),
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
   methodImprovementAdmissions,

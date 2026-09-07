@@ -22,6 +22,8 @@ import { uuidV7 } from './auth.js';
 import { createBrainCognitiveReadRoutesV1 } from './brain-cognitive-read-http.js';
 import { createInternalOperatorPrincipalRoutesV1 } from './internal-operator-principal-http.js';
 import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';
+import { createWorkspaceAdminPortfolioRoutesV1 } from './workspace-admin-portfolio-http.js';
+import type { WorkspaceAdminPortfolioReaderV1 } from './workspace-admin-portfolio.js';
 import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
@@ -78,6 +80,7 @@ export interface CoreRuntimeOptions {
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
   brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;
   internalOperatorPrincipalResolver?: Pick<InternalOperatorPrincipalResolverV1, 'resolve'>;
+  workspaceAdminPortfolio?: Pick<WorkspaceAdminPortfolioReaderV1, 'read'>;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
@@ -121,6 +124,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Brain cognitive reads.');
   if (options.internalOperatorPrincipalResolver && !secret)
     throw new Error('internalServiceSecret is required for Internal Operator resolution.');
+  if (options.workspaceAdminPortfolio && !secret)
+    throw new Error('internalServiceSecret is required for Workspace admin portfolio reads.');
   if (options.methodOutcomeEvidenceAdmissions && !secret)
     throw new Error('internalServiceSecret is required for Method Outcome Evidence admission.');
   if (options.methodOutcomeReports && !secret)
@@ -155,6 +160,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.internalOperatorPrincipalResolver && secret
       ? createInternalOperatorPrincipalRoutesV1({
           resolver: options.internalOperatorPrincipalResolver,
+          internalServiceSecret: secret
+        })
+      : [];
+  const workspaceAdminPortfolioRoutes =
+    options.workspaceAdminPortfolio && secret
+      ? createWorkspaceAdminPortfolioRoutesV1({
+          reader: options.workspaceAdminPortfolio,
           internalServiceSecret: secret
         })
       : [];
@@ -697,6 +709,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   routes.push(
     ...currentWorkspaceAuthorityRoutes,
     ...internalOperatorPrincipalRoutes,
+    ...workspaceAdminPortfolioRoutes,
     ...brainCognitiveReadRoutes,
     ...methodOutcomeEvidenceRoutes,
     ...methodOutcomeReportRoutes,
