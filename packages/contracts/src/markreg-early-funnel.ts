@@ -193,6 +193,46 @@ export interface CreateUserSelectionCommandV1 {
   correlationId: MarkOrbitId;
 }
 
+export type ProductionFilingBasisV1 = 'SECTION_1' | 'SECTION_44';
+export type ProductionFeeFactSourceClassV1 = 'CUSTOMER_SUPPLIED' | 'PROFESSIONALLY_ESTABLISHED';
+
+export interface ProductionFeeFactProvenanceV1 {
+  sourceClass: ProductionFeeFactSourceClassV1;
+  actorId: string;
+  membershipId: string;
+  establishedAt: string;
+}
+
+export interface ProductionFeeFactsV1 {
+  schemaVersion: 1;
+  feeFactsId: MarkOrbitId;
+  workspaceId: string;
+  version: number;
+  currentness: EarlyFunnelCurrentness;
+  intake: Readonly<EarlyFunnelArtifactReferenceV1>;
+  filingBasis: ProductionFilingBasisV1;
+  niceClasses: readonly number[];
+  classCount: number;
+  filingBasisProvenance: Readonly<ProductionFeeFactProvenanceV1>;
+  classSelectionProvenance: Readonly<ProductionFeeFactProvenanceV1>;
+  recordedAt: string;
+  fingerprintSha256: string;
+  authorityConsequences: EarlyFunnelAuthorityConsequencesV1;
+}
+
+/** Trusted Workspace/actor provenance is server-derived and is deliberately absent. */
+export interface CreateProductionFeeFactsCommandV1 {
+  schemaVersion: 1;
+  intakeId: MarkOrbitId;
+  expectedIntakeVersion: number;
+  filingBasis: ProductionFilingBasisV1;
+  niceClasses: readonly number[];
+  filingBasisSourceClass: ProductionFeeFactSourceClassV1;
+  classSelectionSourceClass: ProductionFeeFactSourceClassV1;
+  idempotencyKey: string;
+  correlationId: MarkOrbitId;
+}
+
 export interface ProductionQuoteLineV1 extends QuoteLine {
   sourceReference: {
     sourceId: string;
@@ -330,6 +370,51 @@ function planOption(value: unknown, name: string): PlanOptionCode {
   if (value !== 'A' && value !== 'B' && value !== 'C')
     throw new ContractValidationError(`${name} must be A, B, or C.`);
   return value;
+}
+
+function productionFilingBasis(value: unknown, name: string): ProductionFilingBasisV1 {
+  if (value !== 'SECTION_1' && value !== 'SECTION_44')
+    throw new ContractValidationError(`${name} must be SECTION_1 or SECTION_44.`);
+  return value;
+}
+
+function productionFeeFactSourceClass(
+  value: unknown,
+  name: string
+): ProductionFeeFactSourceClassV1 {
+  if (value !== 'CUSTOMER_SUPPLIED' && value !== 'PROFESSIONALLY_ESTABLISHED')
+    throw new ContractValidationError(`${name} is invalid.`);
+  return value;
+}
+
+function niceClassList(value: unknown, name: string): readonly number[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 45)
+    throw new ContractValidationError(`${name} must contain between 1 and 45 Nice classes.`);
+  const result = value.map((item, index) => {
+    if (!Number.isSafeInteger(item) || (item as number) < 1 || (item as number) > 45)
+      throw new ContractValidationError(`${name}[${index}] must be a Nice class from 1 to 45.`);
+    return item as number;
+  });
+  if (new Set(result).size !== result.length)
+    throw new ContractValidationError(`${name} must not contain duplicate Nice classes.`);
+  for (let index = 1; index < result.length; index += 1) {
+    if (result[index - 1]! >= result[index]!)
+      throw new ContractValidationError(`${name} must be strictly ascending.`);
+  }
+  return result;
+}
+
+function parseProductionFeeFactProvenance(
+  value: unknown,
+  name: string
+): ProductionFeeFactProvenanceV1 {
+  const v = record(value, name);
+  return {
+    sourceClass: productionFeeFactSourceClass(v.sourceClass, `${name}.sourceClass`),
+    actorId: text(v.actorId, `${name}.actorId`),
+    membershipId: text(v.membershipId, `${name}.membershipId`),
+    establishedAt: timestamp(v.establishedAt, `${name}.establishedAt`)
+  };
 }
 
 function rejectAuthorityInput(value: Readonly<Record<string, unknown>>): void {
@@ -608,6 +693,70 @@ export function parseUserSelectionV1(value: unknown): UserSelectionV1 {
     authorityConsequences: parseAuthorityConsequences(
       v.authorityConsequences,
       'selection.authorityConsequences'
+    )
+  };
+}
+
+export function parseCreateProductionFeeFactsCommandV1(
+  value: unknown
+): CreateProductionFeeFactsCommandV1 {
+  const v = record(value, 'command');
+  rejectAuthorityInput(v);
+  for (const forbidden of ['classCount', 'filingBasisProvenance', 'classSelectionProvenance']) {
+    if (Object.hasOwn(v, forbidden))
+      throw new ContractValidationError(`${forbidden} is server-derived and must not be supplied.`);
+  }
+  if (v.schemaVersion !== 1) throw new ContractValidationError('command.schemaVersion must be 1.');
+  return {
+    schemaVersion: 1,
+    intakeId: markOrbitId(v.intakeId, 'command.intakeId'),
+    expectedIntakeVersion: version(v.expectedIntakeVersion, 'command.expectedIntakeVersion'),
+    filingBasis: productionFilingBasis(v.filingBasis, 'command.filingBasis'),
+    niceClasses: niceClassList(v.niceClasses, 'command.niceClasses'),
+    filingBasisSourceClass: productionFeeFactSourceClass(
+      v.filingBasisSourceClass,
+      'command.filingBasisSourceClass'
+    ),
+    classSelectionSourceClass: productionFeeFactSourceClass(
+      v.classSelectionSourceClass,
+      'command.classSelectionSourceClass'
+    ),
+    idempotencyKey: text(v.idempotencyKey, 'command.idempotencyKey'),
+    correlationId: markOrbitId(v.correlationId, 'command.correlationId')
+  };
+}
+
+export function parseProductionFeeFactsV1(value: unknown): ProductionFeeFactsV1 {
+  const v = record(value, 'feeFacts');
+  if (v.schemaVersion !== 1) throw new ContractValidationError('feeFacts.schemaVersion must be 1.');
+  const niceClasses = niceClassList(v.niceClasses, 'feeFacts.niceClasses');
+  if (!Number.isSafeInteger(v.classCount) || v.classCount !== niceClasses.length)
+    throw new ContractValidationError(
+      'feeFacts.classCount must equal the exact Nice class selection count.'
+    );
+  return {
+    schemaVersion: 1,
+    feeFactsId: markOrbitId(v.feeFactsId, 'feeFacts.feeFactsId'),
+    workspaceId: text(v.workspaceId, 'feeFacts.workspaceId'),
+    version: version(v.version, 'feeFacts.version'),
+    currentness: currentness(v.currentness, 'feeFacts.currentness'),
+    intake: parseArtifactReference(v.intake, 'feeFacts.intake'),
+    filingBasis: productionFilingBasis(v.filingBasis, 'feeFacts.filingBasis'),
+    niceClasses,
+    classCount: niceClasses.length,
+    filingBasisProvenance: parseProductionFeeFactProvenance(
+      v.filingBasisProvenance,
+      'feeFacts.filingBasisProvenance'
+    ),
+    classSelectionProvenance: parseProductionFeeFactProvenance(
+      v.classSelectionProvenance,
+      'feeFacts.classSelectionProvenance'
+    ),
+    recordedAt: timestamp(v.recordedAt, 'feeFacts.recordedAt'),
+    fingerprintSha256: sha256(v.fingerprintSha256, 'feeFacts.fingerprintSha256'),
+    authorityConsequences: parseAuthorityConsequences(
+      v.authorityConsequences,
+      'feeFacts.authorityConsequences'
     )
   };
 }

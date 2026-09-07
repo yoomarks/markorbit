@@ -83,6 +83,8 @@ import {
 import { createProductionRecommendationOrchestrationRoutesV1 } from './production-recommendation-orchestration-http.js';
 import { PostgresProductionUserSelectionService } from './production-user-selection.js';
 import { createProductionUserSelectionRoutes } from './production-user-selection-http.js';
+import { PostgresProductionFeeFactsService } from './production-fee-facts.js';
+import { createProductionFeeFactsRoutes } from './production-fee-facts-http.js';
 import { ProductionServicePricingSourceService } from './production-service-pricing-source.js';
 import { createProductionServicePricingSourceRoutes } from './production-service-pricing-source-http.js';
 import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
@@ -296,6 +298,10 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionUserSelectionService
   });
+  const productionFeeFactsRoutes = createProductionFeeFactsRoutes({
+    internalServiceSecret,
+    service: new PostgresProductionFeeFactsService(database, pool)
+  });
   const productionServicePricingSourceRoutes = createProductionServicePricingSourceRoutes({
     internalServiceSecret,
     service: new ProductionServicePricingSourceService(
@@ -387,6 +393,7 @@ if (fixtureRuntime) {
       ...productionRecommendationRoutes,
       ...productionRecommendationOrchestrationRoutes,
       ...productionUserSelectionRoutes,
+      ...productionFeeFactsRoutes,
       ...productionServicePricingSourceRoutes,
       ...customerRelationshipRoutes,
       ...durablePreparationLockRoutes,
