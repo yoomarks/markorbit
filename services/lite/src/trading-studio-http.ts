@@ -132,6 +132,65 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           throw error;
         }
       }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trading/studio-runs/:studioRunId/state',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (request.body !== undefined || Object.keys(request.query).length)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Studio state read accepts only its path identifier.'
+          );
+        try {
+          const run = await options.runs.getLatest(
+            principal.workspaceId,
+            request.params.studioRunId! as TradingStandardStudioRunId
+          );
+          if (!run.directionSet) return json(200, { run, directionSet: null, selection: null });
+          const directionSetReference = run.directionSet;
+          if (
+            !Number.isSafeInteger(directionSetReference.version) ||
+            Number(directionSetReference.version) < 1
+          )
+            throw new HttpError(
+              409,
+              'STUDIO_STATE_VERSION_CONFLICT',
+              'Studio Run does not reference a valid Direction Set version.'
+            );
+          const directionSetVersion = Number(directionSetReference.version);
+          const directionSet = await options.directionSets.getExact(
+            principal.workspaceId,
+            directionSetReference.id,
+            directionSetVersion
+          );
+          const selection = await options.selections.getCurrentForDirectionSet(
+            principal.workspaceId,
+            directionSetReference.id
+          );
+          if (
+            selection &&
+            (selection.directionSet.id !== directionSetReference.id ||
+              selection.directionSet.version !== directionSetVersion)
+          )
+            throw new HttpError(
+              409,
+              'STUDIO_STATE_VERSION_CONFLICT',
+              'Current Selection does not reference the Studio Run exact Direction Set version.'
+            );
+          return json(200, { run, directionSet, selection: selection ?? null });
+        } catch (error) {
+          if (
+            error instanceof TradingStudioRunPersistenceError ||
+            error instanceof TradingDirectionSetPersistenceError ||
+            error instanceof TradingDirectionSelectionPersistenceError
+          )
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
+          throw error;
+        }
+      }
     }
   ];
 }
