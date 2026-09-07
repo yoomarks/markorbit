@@ -76,6 +76,8 @@ import { createProductionIntakeRoutes } from './production-intake-http.js';
 import { HttpCapabilityRecommendationSourceReaderV1 } from './recommendation-source.js';
 import { PostgresProductionRecommendationService } from './production-recommendation.js';
 import { createProductionRecommendationRoutes } from './production-recommendation-http.js';
+import { PostgresProductionUserSelectionService } from './production-user-selection.js';
+import { createProductionUserSelectionRoutes } from './production-user-selection-http.js';
 import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
 import { createCustomerRelationshipRoutes } from './customer-relationship-http.js';
 import {
@@ -270,6 +272,11 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionRecommendationService
   });
+  const productionUserSelectionService = new PostgresProductionUserSelectionService(database, pool);
+  const productionUserSelectionRoutes = createProductionUserSelectionRoutes({
+    internalServiceSecret,
+    service: productionUserSelectionService
+  });
   const customerRelationshipRoutes = createCustomerRelationshipRoutes({
     internalServiceSecret,
     store: new PostgresCustomerRelationshipStore(database, pool)
@@ -352,6 +359,7 @@ if (fixtureRuntime) {
       ...durableMilestoneSnapshotRoutes,
       ...productionIntakeRoutes,
       ...productionRecommendationRoutes,
+      ...productionUserSelectionRoutes,
       ...customerRelationshipRoutes,
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,
