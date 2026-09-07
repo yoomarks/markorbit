@@ -5,7 +5,16 @@ export type TrademarkAssetCommerceProfileId = `trademark-asset-commerce_${string
 export const trademarkAssetSaleIntents = ['NOT_FOR_SALE', 'FOR_SALE'] as const;
 export type TrademarkAssetSaleIntent = (typeof trademarkAssetSaleIntents)[number];
 
-export const trademarkAssetSellerRoles = ['OWNER', 'AUTHORIZED_REPRESENTATIVE'] as const;
+/**
+ * Workspace-declared sell-side relationship. This is commercial context only and does not prove
+ * legal ownership or representation authority.
+ */
+export const trademarkAssetSellerRoles = [
+  'OWNER',
+  'AUTHORIZED_REPRESENTATIVE',
+  'BROKER_REPRESENTATIVE',
+  'OTHER'
+] as const;
 export type TrademarkAssetSellerRole = (typeof trademarkAssetSellerRoles)[number];
 
 export interface TrademarkAssetAskingPrice {
@@ -62,6 +71,7 @@ export interface UpsertTrademarkAssetCommerceProfileInput {
  */
 export const trademarkAssetCommerceAuthority = {
   mayConfigureSaleIntent: true,
+  mayDeclareWorkspaceSellerRelationship: true,
   mayConfigureWorkspaceAskingPrice: true,
   mayConfigureNegotiability: true,
   mayConfigureSaleTerritories: true,

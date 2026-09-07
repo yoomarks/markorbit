@@ -153,7 +153,7 @@ const profile: TrademarkAssetCommerceProfile = {
   askingPrice: { amountMinor: 12500000, currency: 'USD' },
   negotiable: true,
   saleTerritories: ['US', 'CA'],
-  sellerRole: 'OWNER',
+  sellerRole: 'BROKER_REPRESENTATIVE',
   headline: 'Established NORTH STAR brand context',
   sellingPoints: ['Longstanding workspace record', 'Prepared media references'],
   aiTags: ['consumer', 'north-america'],

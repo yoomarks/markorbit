@@ -8,13 +8,19 @@ test('Commerce Profile edit uses the returned fixture truth on desktop and mobil
   await page.goto(story('lite-trademark-asset-sell-side-workspace--existing-commerce-profile'));
   await expect(page.getByRole('heading', { name: 'Commerce Profile' })).toBeVisible();
   await expect(page.getByText(/seller-provided, non-binding context/i)).toBeVisible();
+  await expect(page.getByText('Broker / representative')).toBeVisible();
+  await expect(page.getByText(/not ownership or authority verification/i)).toBeVisible();
 
   await page.getByRole('button', { name: 'Edit sale context' }).click();
+  const sellerRelationship = page.getByRole('combobox', { name: 'Seller relationship' });
+  await expect(sellerRelationship).toHaveValue('BROKER_REPRESENTATIVE');
+  await sellerRelationship.selectOption('OTHER');
   const headline = page.getByRole('textbox', { name: 'Headline' });
   await headline.fill('Unsaved browser draft');
   await page.getByRole('button', { name: 'Save sale context' }).click();
 
   await expect(page.getByText(/saved from server-returned state/i)).toBeVisible();
+  await expect(page.getByText('Broker / representative')).toBeVisible();
   await expect(page.getByText('Established NORTH STAR brand context')).toBeVisible();
   await expect(page.getByText('Unsaved browser draft')).toHaveCount(0);
   expect(await page.locator('body').evaluate((body) => body.scrollWidth <= body.clientWidth)).toBe(

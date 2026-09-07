@@ -62,6 +62,58 @@ describe('TrademarkAssetCommerceProfileSection', () => {
     expect(screen.getByText(/not an offer or valuation/i)).toBeInTheDocument();
   });
 
+  it.each([
+    ['OWNER', 'Owner'],
+    ['AUTHORIZED_REPRESENTATIVE', 'Authorized agent'],
+    ['BROKER_REPRESENTATIVE', 'Broker / representative'],
+    ['OTHER', 'Other relationship']
+  ] as const)(
+    'renders declared %s relationship without implying verification',
+    (sellerRole, label) => {
+      render(
+        <TrademarkAssetCommerceProfileSection
+          assetVersion={3}
+          profile={{ ...profile, sellerRole }}
+          readOnly={false}
+        />
+      );
+
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(screen.getByText(/not ownership or authority verification/i)).toBeInTheDocument();
+    }
+  );
+
+  it('saves the selected relationship through the existing Commerce Profile command', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue({
+      ...profile,
+      sellerRole: 'BROKER_REPRESENTATIVE' as const,
+      version: 2
+    });
+    render(
+      <TrademarkAssetCommerceProfileSection
+        assetVersion={3}
+        profile={profile}
+        readOnly={false}
+        onSave={onSave}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit sale context' }));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Seller relationship' }),
+      'BROKER_REPRESENTATIVE'
+    );
+    await user.click(screen.getByRole('button', { name: 'Save sale context' }));
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ sellerRole: 'BROKER_REPRESENTATIVE' })
+      )
+    );
+    expect(await screen.findByText('Broker / representative')).toBeInTheDocument();
+  });
+
   it('creates a first profile without inventing an existing profile version', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(profile);
