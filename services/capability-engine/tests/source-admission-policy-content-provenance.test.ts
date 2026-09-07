@@ -114,7 +114,7 @@ describe('Capability source-admission policy content provenance', () => {
   });
 
   it('does not manufacture content provenance for the three current CN PILOT policies', () => {
-    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
+    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(5);
     expect(
       currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')
     ).toHaveLength(3);
@@ -122,7 +122,7 @@ describe('Capability source-admission policy content provenance', () => {
       currentCapabilitySourceAdmissionPoliciesV1.filter(
         (entry) => entry.maturityClass === 'PRODUCTION_ADMISSIBLE'
       )
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(currentCapabilitySourceAdmissionPolicyCatalogV1.evaluate(policyInput())).toMatchObject({
       applicability: 'UNSUPPORTED'
     });

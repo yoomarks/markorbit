@@ -35,6 +35,13 @@ import {
   validateUsptoOfficialFeeResolverOutputV1,
   type OfficialFeeReferenceReaderV1
 } from './uspto-official-fee-resolver-pilot.js';
+import {
+  US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_ID,
+  US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE,
+  createUsTrademarkMarkRepresentationStrategyExecutorV1,
+  validateUsTrademarkMarkRepresentationStrategyInputV1,
+  validateUsTrademarkMarkRepresentationStrategyOutputV1
+} from './us-trademark-mark-representation-strategy-source.js';
 
 export const MANAGED_AI_CAPABILITY_INPUT_SCHEMA_ID = 'managed-ai-input.v1' as const;
 export const MANAGED_AI_CAPABILITY_OUTPUT_SCHEMA_ID = 'managed-ai-output.v1' as const;
@@ -42,12 +49,15 @@ export const MANAGED_AI_CAPABILITY_SELECTION_POLICY_VERSION =
   'capability-managed-ai-selection.v1' as const;
 export const USPTO_OFFICIAL_FEE_CAPABILITY_SELECTION_POLICY_VERSION =
   'capability-uspto-official-fee-selection.v1' as const;
+export const US_TRADEMARK_MARK_REPRESENTATION_SELECTION_POLICY_VERSION =
+  'capability-us-trademark-mark-representation-selection.v1' as const;
 
 export interface GovernedProductionRuntimeBootstrapOptionsV1 {
   definitions: RuntimeCapabilityDefinitionResolver;
   implementationProfiles: DurableImplementationProfileRegistryV1;
   managedAiRuntime: ManagedAiRuntimeBindingsV1 | null;
   officialFeeReferences?: Readonly<OfficialFeeReferenceReaderV1> | null;
+  strategySourceEnabled?: boolean;
   internalServiceSecret: string;
 }
 
@@ -55,10 +65,23 @@ class ProductionCapabilityContractValidatorV1 implements CapabilityContractValid
   constructor(
     private readonly side: 'INPUT' | 'OUTPUT',
     private readonly managedAiEnabled: boolean,
-    private readonly officialFeeEnabled: boolean
+    private readonly officialFeeEnabled: boolean,
+    private readonly strategySourceEnabled: boolean
   ) {}
 
   validate(schemaId: string, value: unknown): boolean {
+    if (this.strategySourceEnabled) {
+      if (
+        this.side === 'INPUT' &&
+        schemaId === US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.inputSchemaId
+      )
+        return validateUsTrademarkMarkRepresentationStrategyInputV1(value);
+      if (
+        this.side === 'OUTPUT' &&
+        schemaId === US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.outputSchemaId
+      )
+        return validateUsTrademarkMarkRepresentationStrategyOutputV1(value);
+    }
     if (this.officialFeeEnabled) {
       if (this.side === 'INPUT' && schemaId === USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA)
         return validateUsptoOfficialFeeResolverInputV1(value);
@@ -170,6 +193,7 @@ class ManagedAiCapabilityImplementationExecutorV1 implements CapabilityImplement
 class ProductionCapabilityImplementationExecutorV1 implements CapabilityImplementationExecutor {
   private readonly managedAi?: ManagedAiCapabilityImplementationExecutorV1;
   private readonly officialFee?: CapabilityImplementationExecutor;
+  private readonly strategy?: CapabilityImplementationExecutor;
 
   constructor(options: Readonly<GovernedProductionRuntimeBootstrapOptionsV1>) {
     if (options.managedAiRuntime)
@@ -181,12 +205,21 @@ class ProductionCapabilityImplementationExecutorV1 implements CapabilityImplemen
       this.officialFee = createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1(
         options.officialFeeReferences
       );
+    if (options.strategySourceEnabled)
+      this.strategy = createUsTrademarkMarkRepresentationStrategyExecutorV1();
   }
 
   execute(
     request: Readonly<CapabilityRequestV2>,
     binding: Readonly<ImplementationBinding>
   ): Promise<CapabilityImplementationExecutionResult> {
+    if (
+      this.strategy &&
+      binding.implementation.kind === 'DETERMINISTIC_SERVICE' &&
+      binding.implementation.implementationKey ===
+        US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.implementationKey
+    )
+      return this.strategy.execute(request, binding);
     if (
       this.officialFee &&
       binding.implementation.kind === 'DETERMINISTIC_SERVICE' &&
@@ -227,33 +260,48 @@ function productionSelector(
         ]
       })
     : undefined;
+  const strategy = options.strategySourceEnabled
+    ? new PostgresGovernedImplementationProfileSelectorV1(options.implementationProfiles, {
+        policyVersion: US_TRADEMARK_MARK_REPRESENTATION_SELECTION_POLICY_VERSION,
+        admittedImplementationKinds: ['DETERMINISTIC_SERVICE'],
+        preferredImplementationKeys: [
+          US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.implementationKey
+        ]
+      })
+    : undefined;
   return {
     select: (request, definition) =>
       definition.capabilityId === USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID
         ? (officialFee?.select(request, definition) ?? Promise.resolve(undefined))
-        : (managedAi?.select(request, definition) ?? Promise.resolve(undefined))
+        : definition.capabilityId === US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_ID
+          ? (strategy?.select(request, definition) ?? Promise.resolve(undefined))
+          : (managedAi?.select(request, definition) ?? Promise.resolve(undefined))
   };
 }
 
 export function createGovernedProductionRuntimeV1(
   options: Readonly<GovernedProductionRuntimeBootstrapOptionsV1>
 ): GovernedCapabilityRuntime | null {
-  if (!options.managedAiRuntime && !options.officialFeeReferences) return null;
+  if (!options.managedAiRuntime && !options.officialFeeReferences && !options.strategySourceEnabled)
+    return null;
   const admittedImplementationKinds = new Set<ImplementationProfile['kind']>();
   if (options.managedAiRuntime) admittedImplementationKinds.add('AI_ASSISTED_SERVICE');
   if (options.officialFeeReferences) admittedImplementationKinds.add('DETERMINISTIC_SERVICE');
+  if (options.strategySourceEnabled) admittedImplementationKinds.add('DETERMINISTIC_SERVICE');
   return new GovernedCapabilityRuntime({
     definitions: options.definitions,
     implementations: productionSelector(options),
     inputContracts: new ProductionCapabilityContractValidatorV1(
       'INPUT',
       Boolean(options.managedAiRuntime),
-      Boolean(options.officialFeeReferences)
+      Boolean(options.officialFeeReferences),
+      Boolean(options.strategySourceEnabled)
     ),
     outputContracts: new ProductionCapabilityContractValidatorV1(
       'OUTPUT',
       Boolean(options.managedAiRuntime),
-      Boolean(options.officialFeeReferences)
+      Boolean(options.officialFeeReferences),
+      Boolean(options.strategySourceEnabled)
     ),
     executor: new ProductionCapabilityImplementationExecutorV1(options),
     admittedImplementationKinds

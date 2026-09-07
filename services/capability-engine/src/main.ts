@@ -23,7 +23,12 @@ import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communica
 import { createGmailManagedCommunicationSenderFromEnvironmentV1 } from './managed-communication-gmail-runtime.js';
 import { HttpCoreOfficialFeeReferenceReaderV1 } from './official-fee-reference-http-reader.js';
 import { CapabilityProductionSourceEvidenceReadServiceV1 } from './production-source-evidence-read.js';
-import { createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1 } from './uspto-official-fee-production-source-evidence.js';
+import { CurrentProductionSourceEvidenceAuthorityV1 } from './production-source-evidence-authority.js';
+import { HttpCoreUsTrademarkMarkRepresentationMethodReaderV1 } from './us-trademark-mark-representation-method-http-reader.js';
+import {
+  US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION,
+  US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE
+} from './us-trademark-mark-representation-strategy-source.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -57,6 +62,19 @@ if (milestoneFixtureMode) {
   const pool = database.getPool();
   const registry = new PostgresRuntimeCapabilityRegistry(database, pool);
   const implementationProfiles = new PostgresImplementationProfileRegistryV1(database, pool);
+  await registry.importAccepted({
+    idempotencyKey: 'capability-848-us-trademark-mark-representation-strategy-v1',
+    definition: {
+      sourceAuthority: 'ACCEPTED_CAPABILITY_CANON',
+      capabilityId: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.capabilityId,
+      capabilityVersion: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.capabilityVersion,
+      title: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.title,
+      description: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.description,
+      lineage: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.lineage,
+      canonReference: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.canonReference
+    }
+  });
+  await implementationProfiles.register(US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE);
   const capabilityCognitiveRead = new CapabilityCognitiveReadServiceV1(
     new PostgresCurrentRuntimeCapabilityCatalogV1(pool, registry),
     implementationProfiles
@@ -66,6 +84,10 @@ if (milestoneFixtureMode) {
     internalServiceSecret
   );
   const officialFeeReferences = new HttpCoreOfficialFeeReferenceReaderV1(
+    coreUrl,
+    internalServiceSecret
+  );
+  const strategyMethods = new HttpCoreUsTrademarkMarkRepresentationMethodReaderV1(
     coreUrl,
     internalServiceSecret
   );
@@ -114,6 +136,7 @@ if (milestoneFixtureMode) {
     implementationProfiles,
     managedAiRuntime,
     officialFeeReferences,
+    strategySourceEnabled: true,
     internalServiceSecret
   });
   const replayStore = new PostgresCapabilityRuntimeReplayStoreV1(database, pool);
@@ -129,10 +152,11 @@ if (milestoneFixtureMode) {
       : durableGovernedCapabilityRuntime;
   const productionSourceEvidenceReader = new CapabilityProductionSourceEvidenceReadServiceV1({
     replayStore,
-    evidence: createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1({
+    evidence: new CurrentProductionSourceEvidenceAuthorityV1({
       capabilities: registry,
       implementations: implementationProfiles,
-      references: officialFeeReferences
+      references: officialFeeReferences,
+      methods: strategyMethods
     })
   });
   runtime = createRuntime({

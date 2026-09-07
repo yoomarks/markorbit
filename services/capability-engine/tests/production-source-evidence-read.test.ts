@@ -209,6 +209,7 @@ describe('trusted production source evidence read V1', () => {
     );
     expect(Object.values(first.authority).every((value) => value === false)).toBe(true);
     expect(Object.values(first.source.authority).every((value) => value === false)).toBe(true);
+    expect('recommendationMaterial' in first).toBe(false);
   });
 
   it('fails closed for missing, conflicting, mismatched and in-progress replay identities', async () => {

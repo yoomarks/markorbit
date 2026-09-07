@@ -24,6 +24,10 @@ import {
   USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
   USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE
 } from './uspto-official-fee-resolver-pilot.js';
+import {
+  US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION,
+  US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE
+} from './us-trademark-mark-representation-strategy-binding.js';
 
 export const capabilitySourceMaturityClasses = [
   'PRODUCTION_ADMISSIBLE',
@@ -320,6 +324,27 @@ export const usptoOfficialFeeSourceAdmissionPolicyV2 = Object.freeze({
   referenceCurrentness: 'REQUIRED' as const
 }) satisfies Readonly<CapabilitySourceAdmissionPolicyEntryV1>;
 
+export const usTrademarkMarkRepresentationSourceAdmissionPolicyV1 = Object.freeze({
+  schemaVersion: 1 as const,
+  policyId: 'source-admission-policy.us-trademark-mark-representation-strategy.v1',
+  policyVersion: 1,
+  maturityClass: 'PRODUCTION_ADMISSIBLE' as const,
+  capabilityId: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.capabilityId,
+  capabilityVersion: US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION.capabilityVersion,
+  implementationProfileId:
+    US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.implementationProfileId,
+  implementationProfileVersion: US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.version,
+  implementationKey: US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.implementationKey,
+  inputSchemaId: US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.inputSchemaId,
+  outputSchemaId: US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.outputSchemaId,
+  allowedCallerProducts: [
+    ...US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.allowedCallerProducts
+  ],
+  maximumRiskClass: US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.maximumRiskClass,
+  methodCurrentness: 'REQUIRED' as const,
+  referenceCurrentness: 'REQUIRED' as const
+}) satisfies Readonly<CapabilitySourceAdmissionPolicyEntryV1>;
+
 export const currentCapabilitySourceAdmissionPoliciesV1 = Object.freeze([
   pilotEntry(
     'source-admission-policy.cn-duration-analytical.v1',
@@ -339,7 +364,8 @@ export const currentCapabilitySourceAdmissionPoliciesV1 = Object.freeze([
     CN_PRELIMINARY_PUBLICATION_DISCOVERY_IMPLEMENTATION_PROFILE,
     'Phase 4 objective fact discovery remains a pilot and is not a production Recommendation source by consequence.'
   ),
-  usptoOfficialFeeSourceAdmissionPolicyV2
+  usptoOfficialFeeSourceAdmissionPolicyV2,
+  usTrademarkMarkRepresentationSourceAdmissionPolicyV1
 ]);
 
 export const currentCapabilitySourceAdmissionPolicyCatalogV1 =

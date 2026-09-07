@@ -75,6 +75,18 @@ export interface CapabilityProductionSourceEvidenceReadServiceOptionsV1 {
   readonly evidence: Readonly<CapabilityProductionSourceEvidenceAuthorityV1>;
 }
 
+export interface CapabilityRecommendationSourceMaterialV1 {
+  readonly outputFamilyId: 'us-trademark-mark-representation-strategy';
+  readonly outputFamilyVersion: 1;
+  readonly analyzedInputFingerprintSha256: string;
+  readonly applicability: Readonly<Record<string, unknown>>;
+  readonly method: Readonly<Record<string, unknown>>;
+  readonly reference: Readonly<Record<string, unknown>>;
+  readonly assumptions: readonly string[];
+  readonly limitations: readonly string[];
+  readonly authorityConsequences: Readonly<Record<string, false>>;
+}
+
 export type CapabilityProductionSourceEvidenceReadResultV1 =
   | Readonly<{
       schemaVersion: 1;
@@ -82,6 +94,7 @@ export type CapabilityProductionSourceEvidenceReadResultV1 =
       reference: Readonly<CapabilityProductionSourceExecutionReferenceV1>;
       historical: Readonly<CapabilityProductionSourceHistoricalExecutionV1>;
       source: Readonly<CapabilityProductionSourceExplainabilityV1>;
+      recommendationMaterial?: Readonly<CapabilityRecommendationSourceMaterialV1>;
       authority: Readonly<typeof capabilitySourceAdmissionNoAuthorityConsequences>;
     }>
   | Readonly<{
@@ -136,6 +149,63 @@ function historical(
     capabilityReturnId: execution.returnValue.capabilityReturnId,
     sessionReceiptId: execution.receipt.sessionReceiptId
   };
+}
+
+/** Exact output-family allowlist for consumer-visible Recommendation source material. */
+function recommendationMaterial(
+  execution: Readonly<CapabilityRuntimeExecution>
+): Readonly<CapabilityRecommendationSourceMaterialV1> | undefined {
+  if (
+    execution.request.capabilityId !== 'markreg.us-trademark-mark-representation-strategy-source' ||
+    execution.request.capabilityVersion !== '1.0.0' ||
+    execution.request.outputSchemaId !== 'brain.us-trademark-mark-representation-strategy.v1'
+  ) {
+    return undefined;
+  }
+  const output = execution.returnValue.output;
+  if (!output || typeof output !== 'object' || Array.isArray(output)) return undefined;
+  const value = output as Record<string, unknown>;
+  const applicability = value.applicability;
+  const method = value.method;
+  const reference = value.reference;
+  const authority = value.authorityConsequences;
+  if (
+    value.outputFamilyId !== 'us-trademark-mark-representation-strategy' ||
+    value.outputFamilyVersion !== 1 ||
+    typeof value.analyzedInputFingerprintSha256 !== 'string' ||
+    !SHA256.test(value.analyzedInputFingerprintSha256) ||
+    !applicability ||
+    typeof applicability !== 'object' ||
+    Array.isArray(applicability) ||
+    (applicability as Record<string, unknown>).status !== 'APPLICABLE' ||
+    !method ||
+    typeof method !== 'object' ||
+    Array.isArray(method) ||
+    !reference ||
+    typeof reference !== 'object' ||
+    Array.isArray(reference) ||
+    !Array.isArray(value.assumptions) ||
+    !value.assumptions.every((item) => typeof item === 'string') ||
+    !Array.isArray(value.limitations) ||
+    !value.limitations.every((item) => typeof item === 'string') ||
+    !authority ||
+    typeof authority !== 'object' ||
+    Array.isArray(authority) ||
+    Object.values(authority).some((item) => item !== false)
+  ) {
+    return undefined;
+  }
+  return structuredClone({
+    outputFamilyId: value.outputFamilyId,
+    outputFamilyVersion: value.outputFamilyVersion,
+    analyzedInputFingerprintSha256: value.analyzedInputFingerprintSha256,
+    applicability: applicability as Record<string, unknown>,
+    method: method as Record<string, unknown>,
+    reference: reference as Record<string, unknown>,
+    assumptions: value.assumptions,
+    limitations: value.limitations,
+    authorityConsequences: authority as Record<string, false>
+  });
 }
 
 function commandFromExecution(
@@ -456,12 +526,14 @@ export class CapabilityProductionSourceEvidenceReadServiceV1 {
       };
     }
 
+    const material = recommendationMaterial(replay.execution);
     return Object.freeze({
       schemaVersion: 1,
       status: 'PRODUCTION_ADMISSIBLE',
       reference,
       historical: historical(replay.execution),
       source,
+      ...(material ? { recommendationMaterial: material } : {}),
       authority: capabilitySourceAdmissionNoAuthorityConsequences
     });
   }
