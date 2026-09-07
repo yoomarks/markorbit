@@ -510,6 +510,40 @@ export class PostgresProductionRecommendationService {
     }
   }
 
+  async findCreateReplayForIntake(
+    principal: WorkspacePrincipal,
+    idempotencyKey: string,
+    intakeId: string,
+    intakeVersion: number,
+    intakeFingerprintSha256: string
+  ): Promise<ProductionRecommendationV1 | null> {
+    requirePermission(principal, 'workspace:read');
+    try {
+      const result = await this.query.query(
+        `SELECT response_data FROM markreg_early_funnel_commands
+         WHERE workspace_id=$1 AND command_type='CREATE_RECOMMENDATION' AND idempotency_key=$2`,
+        [principal.workspaceId, idempotencyKey]
+      );
+      if (!result.rowCount) return null;
+      const recommendation = parseProductionRecommendationV1((result.rows[0] as Row).response_data);
+      if (
+        recommendation.workspaceId.toLowerCase() !== principal.workspaceId.toLowerCase() ||
+        recommendation.intake.id !== intakeId ||
+        recommendation.intake.version !== intakeVersion ||
+        recommendation.intake.fingerprintSha256 !== intakeFingerprintSha256
+      ) {
+        throw new ProductionRecommendationError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key is bound to a materially different Production Recommendation request.',
+          409
+        );
+      }
+      return clone(recommendation);
+    } catch (cause) {
+      if (cause instanceof ProductionRecommendationError) throw cause;
+      throw this.persistence(cause);
+    }
+  }
   async get(
     principal: WorkspacePrincipal,
     recommendationId: string

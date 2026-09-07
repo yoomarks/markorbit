@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspacePrincipal } from '@markorbit/contracts';
 import {
   noRecommendationSourceAuthorityConsequences,
@@ -17,6 +17,10 @@ import type {
   RecommendationCapableSourceMaterialV1,
   RecommendationSourceReadResultV1
 } from '../src/recommendation-source.js';
+import {
+  ProductionRecommendationOrchestrationServiceV1,
+  type OrchestrateProductionRecommendationCommandV1
+} from '../src/production-recommendation-orchestration.js';
 import {
   MARKREG_TEST_MIGRATION_NAMESPACE,
   resetAndMigrateMarkRegTestDatabase
@@ -356,6 +360,84 @@ suite('PostgreSQL Production Recommendation', () => {
     }
   });
 
+  it('orchestrates exact Intake and replays from the durable Recommendation receipt without producer reinvocation', async () => {
+    const createdIntake = await intakeService().create(
+      principal(),
+      intakeCommand('intake-orchestration-0948')
+    );
+    const producerReference = sourceReference('orchestration-0948');
+    const read = vi.fn(() =>
+      Promise.resolve({ ...sourceRead(createdIntake.input), producerReference })
+    );
+    const recommendations = new PostgresProductionRecommendationService(
+      database,
+      database.getPool(),
+      { read },
+      () => '2026-09-07T05:03:00.000Z'
+    );
+    const invoke = vi.fn(() => Promise.resolve(producerReference));
+    const intakes = intakeService();
+    const service = new ProductionRecommendationOrchestrationServiceV1({
+      intakes,
+      recommendations,
+      source: { invoke }
+    });
+    const request: OrchestrateProductionRecommendationCommandV1 = {
+      schemaVersion: 1,
+      intakeId: createdIntake.intakeId,
+      expectedIntakeVersion: createdIntake.version,
+      expectedIntakeFingerprintSha256: createdIntake.fingerprintSha256,
+      idempotencyKey: 'recommendation-orchestration-0948',
+      correlationId: 'correlation_task0948_pg'
+    };
+
+    const created = await service.create(principal(), request);
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(await intakes.get(principal(), createdIntake.intakeId)).toMatchObject({
+      version: 2,
+      status: 'RECOMMENDATION_READY'
+    });
+
+    const restartedInvoke = vi.fn(() => Promise.reject(new Error('producer must not replay')));
+    const restarted = new ProductionRecommendationOrchestrationServiceV1({
+      intakes: intakeService(),
+      recommendations: new PostgresProductionRecommendationService(database, database.getPool(), {
+        read: () => Promise.reject(new Error('source evidence must not replay'))
+      }),
+      source: { invoke: restartedInvoke }
+    });
+    expect(await restarted.create(principal(), request)).toEqual(created);
+    expect(restartedInvoke).not.toHaveBeenCalled();
+
+    await expect(
+      restarted.create(principal(), {
+        ...request,
+        idempotencyKey: 'recommendation-orchestration-new-0948'
+      })
+    ).rejects.toMatchObject({ code: 'PRODUCTION_INTAKE_CONFLICT', status: 409 });
+    expect(restartedInvoke).not.toHaveBeenCalled();
+    await expect(restarted.create(principal(otherWorkspaceId), request)).rejects.toMatchObject({
+      code: 'PRODUCTION_INTAKE_NOT_FOUND',
+      status: 404
+    });
+
+    const counts = await database.getPool().query(
+      `SELECT
+        (SELECT count(*)::int FROM markreg_early_funnel_intakes) AS intakes,
+        (SELECT count(*)::int FROM markreg_early_funnel_recommendations) AS recommendations,
+        (SELECT count(*)::int FROM markreg_early_funnel_selections) AS selections,
+        (SELECT count(*)::int FROM markreg_early_funnel_quotes) AS quotes,
+        (SELECT count(*)::int FROM markreg_early_funnel_commands WHERE command_type='CREATE_RECOMMENDATION') AS commands`
+    );
+    expect(counts.rows[0]).toEqual({
+      intakes: 2,
+      recommendations: 1,
+      selections: 0,
+      quotes: 0,
+      commands: 1
+    });
+  });
   it('enforces create/read permissions and maps persistence unavailability', async () => {
     const createdIntake = await intakeService().create(principal(), intakeCommand());
     await expect(

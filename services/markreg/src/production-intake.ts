@@ -214,6 +214,38 @@ export class PostgresProductionIntakeService {
     }
   }
 
+  async getVersion(
+    principal: WorkspacePrincipal,
+    intakeId: string,
+    version: number
+  ): Promise<ProductionIntakeV1> {
+    requirePermission(principal, 'workspace:read');
+    if (!Number.isSafeInteger(version) || version < 1) {
+      throw new ProductionIntakeError(
+        'INVALID_INTAKE_VERSION',
+        'Intake version must be positive.',
+        400
+      );
+    }
+    try {
+      const found = await this.query.query(
+        `SELECT * FROM markreg_early_funnel_intakes
+         WHERE workspace_id=$1 AND intake_id=$2 AND version=$3
+         LIMIT 1`,
+        [principal.workspaceId, intakeId, version]
+      );
+      if (!found.rowCount)
+        throw new ProductionIntakeError(
+          'PRODUCTION_INTAKE_NOT_FOUND',
+          'Production Intake version was not found in this Workspace.',
+          404
+        );
+      return this.view(found.rows[0] as Row);
+    } catch (cause) {
+      if (cause instanceof ProductionIntakeError) throw cause;
+      throw this.persistence(cause);
+    }
+  }
   private async replay(
     client: QueryClient,
     workspaceId: string,
