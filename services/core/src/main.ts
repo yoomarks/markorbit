@@ -24,6 +24,7 @@ import {
   createEnvironmentCognitiveReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentKnowledgeReadGrantSourceV1,
+  createEnvironmentWorkspaceAdminReadGrantSourceV1,
   InternalOperatorPrincipalResolverV1
 } from './internal-operator-principal.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
@@ -86,7 +87,8 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   accountAccess,
   cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1(),
   dataReadGrants: createEnvironmentDataReadGrantSourceV1(),
-  knowledgeReadGrants: createEnvironmentKnowledgeReadGrantSourceV1()
+  knowledgeReadGrants: createEnvironmentKnowledgeReadGrantSourceV1(),
+  workspaceAdminReadGrants: createEnvironmentWorkspaceAdminReadGrantSourceV1()
 });
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)
