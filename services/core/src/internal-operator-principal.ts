@@ -1,7 +1,8 @@
 import {
   AuthenticationError,
   type ControlPlaneCapability,
-  type InternalOperatorPrincipal
+  type InternalOperatorPrincipal,
+  type WorkspaceAdminCapability
 } from '@markorbit/contracts';
 import type { AccountAccessService } from './account-access.js';
 import type { AuthenticationService } from './auth.js';
@@ -9,9 +10,11 @@ import type { AuthenticationService } from './auth.js';
 export const COGNITIVE_READ_GRANTS_ENV = 'MO_COGNITIVE_READ_GRANTS_JSON';
 export const DATA_READ_GRANTS_ENV = 'MO_DATA_READ_GRANTS_JSON';
 export const KNOWLEDGE_READ_GRANTS_ENV = 'MO_KNOWLEDGE_READ_GRANTS_JSON';
+export const WORKSPACE_ADMIN_READ_GRANTS_ENV = 'MO_WORKSPACE_ADMIN_READ_GRANTS_JSON';
 const COGNITIVE_READ_CAPABILITY = 'control-plane:cognitive:read' as const;
 const DATA_READ_CAPABILITY = 'control-plane:data:read' as const;
 const KNOWLEDGE_READ_CAPABILITY = 'control-plane:knowledge:read' as const;
+const WORKSPACE_ADMIN_READ_CAPABILITY = 'workspace-admin:read' as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export class CognitiveReadGrantSourceError extends Error {
@@ -35,6 +38,13 @@ export class KnowledgeReadGrantSourceError extends Error {
   }
 }
 
+export class WorkspaceAdminReadGrantSourceError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'WorkspaceAdminReadGrantSourceError';
+  }
+}
+
 export interface CognitiveReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
@@ -47,9 +57,13 @@ export interface KnowledgeReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
 
+export interface WorkspaceAdminReadGrantSourceV1 {
+  hasGrant(userId: string): Promise<boolean>;
+}
+
 function normalizedUserIds(
   userIds: Iterable<string>,
-  label: 'Cognitive' | 'Data' | 'Knowledge'
+  label: 'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin'
 ): string[] {
   const normalized = [...userIds].map((userId) => userId.trim().toLowerCase());
   const invalid = normalized.some((userId) => !UUID.test(userId));
@@ -63,11 +77,20 @@ function normalizedUserIds(
     if (invalid) throw new DataReadGrantSourceError('Data read grant user identity is malformed.');
     if (duplicated)
       throw new DataReadGrantSourceError('Data read grant user identity is duplicated.');
-  } else {
+  } else if (label === 'Knowledge') {
     if (invalid)
       throw new KnowledgeReadGrantSourceError('Knowledge read grant user identity is malformed.');
     if (duplicated)
       throw new KnowledgeReadGrantSourceError('Knowledge read grant user identity is duplicated.');
+  } else {
+    if (invalid)
+      throw new WorkspaceAdminReadGrantSourceError(
+        'Workspace Admin read grant user identity is malformed.'
+      );
+    if (duplicated)
+      throw new WorkspaceAdminReadGrantSourceError(
+        'Workspace Admin read grant user identity is duplicated.'
+      );
   }
   return normalized;
 }
@@ -101,6 +124,18 @@ export class StaticKnowledgeReadGrantSourceV1 implements KnowledgeReadGrantSourc
 
   constructor(userIds: Iterable<string>) {
     this.userIds = new Set(normalizedUserIds(userIds, 'Knowledge'));
+  }
+
+  hasGrant(userId: string): Promise<boolean> {
+    return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
+  }
+}
+
+export class StaticWorkspaceAdminReadGrantSourceV1 implements WorkspaceAdminReadGrantSourceV1 {
+  private readonly userIds: ReadonlySet<string>;
+
+  constructor(userIds: Iterable<string>) {
+    this.userIds = new Set(normalizedUserIds(userIds, 'Workspace Admin'));
   }
 
   hasGrant(userId: string): Promise<boolean> {
@@ -144,7 +179,21 @@ class UnavailableKnowledgeReadGrantSourceV1 implements KnowledgeReadGrantSourceV
   }
 }
 
-type GrantConfig<TCapability extends ControlPlaneCapability> = {
+class UnavailableWorkspaceAdminReadGrantSourceV1 implements WorkspaceAdminReadGrantSourceV1 {
+  constructor(private readonly cause?: Error) {}
+
+  hasGrant(): Promise<boolean> {
+    return Promise.reject(
+      new WorkspaceAdminReadGrantSourceError('Workspace Admin read grant source is unavailable.', {
+        cause: this.cause
+      })
+    );
+  }
+}
+
+type GrantBackedCapability = ControlPlaneCapability | WorkspaceAdminCapability;
+
+type GrantConfig<TCapability extends GrantBackedCapability> = {
   schemaVersion: 1;
   grants: readonly {
     userId: string;
@@ -152,17 +201,19 @@ type GrantConfig<TCapability extends ControlPlaneCapability> = {
   }[];
 };
 
-function parseGrantConfig<TCapability extends ControlPlaneCapability>(
+function parseGrantConfig<TCapability extends GrantBackedCapability>(
   value: string,
   capability: TCapability,
-  label: 'Cognitive' | 'Data' | 'Knowledge'
+  label: 'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin'
 ): GrantConfig<TCapability> {
   const fail = (message: string, cause?: Error): never => {
     if (label === 'Cognitive')
       throw new CognitiveReadGrantSourceError(message, cause ? { cause } : undefined);
     if (label === 'Data')
       throw new DataReadGrantSourceError(message, cause ? { cause } : undefined);
-    throw new KnowledgeReadGrantSourceError(message, cause ? { cause } : undefined);
+    if (label === 'Knowledge')
+      throw new KnowledgeReadGrantSourceError(message, cause ? { cause } : undefined);
+    throw new WorkspaceAdminReadGrantSourceError(message, cause ? { cause } : undefined);
   };
 
   let parsed: unknown;
@@ -252,12 +303,30 @@ export function createEnvironmentKnowledgeReadGrantSourceV1(
   }
 }
 
+export function createEnvironmentWorkspaceAdminReadGrantSourceV1(
+  value = process.env[WORKSPACE_ADMIN_READ_GRANTS_ENV]
+): WorkspaceAdminReadGrantSourceV1 {
+  if (value === undefined)
+    return new UnavailableWorkspaceAdminReadGrantSourceV1(
+      new Error(`${WORKSPACE_ADMIN_READ_GRANTS_ENV} is not configured.`)
+    );
+  try {
+    const config = parseGrantConfig(value, WORKSPACE_ADMIN_READ_CAPABILITY, 'Workspace Admin');
+    return new StaticWorkspaceAdminReadGrantSourceV1(config.grants.map((grant) => grant.userId));
+  } catch (error) {
+    return new UnavailableWorkspaceAdminReadGrantSourceV1(
+      error instanceof Error ? error : undefined
+    );
+  }
+}
+
 export interface InternalOperatorPrincipalResolverOptionsV1 {
   authentication: Pick<AuthenticationService, 'resolveSession'>;
   accountAccess: Pick<AccountAccessService, 'inspectAccount'>;
   cognitiveReadGrants: Readonly<CognitiveReadGrantSourceV1>;
   dataReadGrants?: Readonly<DataReadGrantSourceV1>;
   knowledgeReadGrants?: Readonly<KnowledgeReadGrantSourceV1>;
+  workspaceAdminReadGrants?: Readonly<WorkspaceAdminReadGrantSourceV1>;
 }
 
 export class InternalOperatorPrincipalResolverV1 {
@@ -265,7 +334,7 @@ export class InternalOperatorPrincipalResolverV1 {
 
   async resolve(
     token: string,
-    requiredCapability: ControlPlaneCapability = COGNITIVE_READ_CAPABILITY
+    requiredCapability: GrantBackedCapability = COGNITIVE_READ_CAPABILITY
   ): Promise<Readonly<InternalOperatorPrincipal>> {
     const session = await this.options.authentication.resolveSession(token);
     const account = await this.options.accountAccess.inspectAccount(session.userId);
@@ -286,7 +355,9 @@ export class InternalOperatorPrincipalResolverV1 {
           ? this.options.dataReadGrants
           : requiredCapability === KNOWLEDGE_READ_CAPABILITY
             ? this.options.knowledgeReadGrants
-            : undefined;
+            : requiredCapability === WORKSPACE_ADMIN_READ_CAPABILITY
+              ? this.options.workspaceAdminReadGrants
+              : undefined;
     if (!source)
       throw new AuthenticationError(
         'AUTHENTICATION_SERVICE_UNAVAILABLE',
@@ -300,7 +371,8 @@ export class InternalOperatorPrincipalResolverV1 {
       if (
         error instanceof CognitiveReadGrantSourceError ||
         error instanceof DataReadGrantSourceError ||
-        error instanceof KnowledgeReadGrantSourceError
+        error instanceof KnowledgeReadGrantSourceError ||
+        error instanceof WorkspaceAdminReadGrantSourceError
       )
         throw new AuthenticationError(
           'AUTHENTICATION_SERVICE_UNAVAILABLE',

@@ -47,6 +47,19 @@ function resolutionRequest(request: JsonRequest): ResolutionRequest {
   };
 }
 
+function workspaceAdminResolutionRequest(request: JsonRequest): string {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const body = request.body as Record<string, unknown>;
+  if (Object.keys(body).length !== 1 || typeof body.token !== 'string' || !body.token)
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Workspace Admin resolution requires exactly one session token.'
+    );
+  return body.token;
+}
+
 function translate(error: unknown): never {
   if (!(error instanceof AuthenticationError)) throw error;
   const status =
@@ -85,6 +98,29 @@ export function createInternalOperatorPrincipalRoutesV1(
               ? await options.resolver.resolve(input.token, input.requiredCapability)
               : await options.resolver.resolve(input.token)
           );
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/super-admin/workspace/operator-principals/resolve',
+      async handle(request) {
+        if (
+          !validateInternalServiceSecret(
+            options.internalServiceSecret,
+            request.headers['x-markorbit-internal-authorization']
+          )
+        )
+          throw new HttpError(
+            401,
+            'INTERNAL_SERVICE_UNAUTHORIZED',
+            'Internal service identity is invalid.'
+          );
+        const token = workspaceAdminResolutionRequest(request);
+        try {
+          return json(200, await options.resolver.resolve(token, 'workspace-admin:read'));
         } catch (error) {
           return translate(error);
         }

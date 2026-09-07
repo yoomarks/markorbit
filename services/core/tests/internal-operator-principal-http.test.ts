@@ -1,7 +1,8 @@
 import {
   AuthenticationError,
   type ControlPlaneCapability,
-  type InternalOperatorPrincipal
+  type InternalOperatorPrincipal,
+  type WorkspaceAdminCapability
 } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
 import { describe, expect, it, vi } from 'vitest';
@@ -23,10 +24,14 @@ const knowledgePrincipal = {
   ...cognitivePrincipal,
   capabilities: ['control-plane:knowledge:read' as const]
 };
+const workspaceAdminPrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['workspace-admin:read' as const]
+};
 
 type ResolverFunction = (
   token: string,
-  requiredCapability?: ControlPlaneCapability
+  requiredCapability?: ControlPlaneCapability | WorkspaceAdminCapability
 ) => Promise<Readonly<InternalOperatorPrincipal>>;
 
 function request(
@@ -50,6 +55,32 @@ function route(resolve: ResolverFunction = vi.fn(() => Promise.resolve(cognitive
       resolver: { resolve },
       internalServiceSecret: secret
     })[0]!
+  };
+}
+
+function workspaceRequest(
+  body: unknown = { token: 'raw-session-token' },
+  includeAuthorization = true
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/internal/super-admin/workspace/operator-principals/resolve',
+    params: {},
+    query: {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
+    body
+  };
+}
+
+function workspaceRoute(
+  resolve: ResolverFunction = vi.fn(() => Promise.resolve(workspaceAdminPrincipal))
+) {
+  return {
+    resolve,
+    route: createInternalOperatorPrincipalRoutesV1({
+      resolver: { resolve },
+      internalServiceSecret: secret
+    })[1]!
   };
 }
 
@@ -92,6 +123,40 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
       )
     ).resolves.toEqual({ status: 200, body: knowledgePrincipal });
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'control-plane:knowledge:read');
+  });
+
+  it('resolves exact Workspace Admin read only through its dedicated internal route', async () => {
+    const resolve = vi.fn(() => Promise.resolve(workspaceAdminPrincipal));
+    const { route: resolverRoute } = workspaceRoute(resolve);
+
+    await expect(resolverRoute.handle(workspaceRequest())).resolves.toEqual({
+      status: 200,
+      body: workspaceAdminPrincipal
+    });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'workspace-admin:read');
+  });
+
+  it.each([
+    { token: 'raw-session-token', requiredCapability: 'control-plane:data:read' },
+    { token: 'raw-session-token', capabilities: ['workspace-admin:read'] },
+    { token: 'raw-session-token', principal: workspaceAdminPrincipal },
+    { token: 'raw-session-token', extra: true }
+  ])('rejects Workspace Admin authority manufacture on the dedicated route', async (body) => {
+    const { resolve, route: resolverRoute } = workspaceRoute();
+    await expect(resolverRoute.handle(workspaceRequest(body))).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST'
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it('requires internal service identity on the dedicated Workspace Admin resolver', async () => {
+    const { resolve, route: resolverRoute } = workspaceRoute();
+    await expect(resolverRoute.handle(workspaceRequest(undefined, false))).rejects.toMatchObject({
+      status: 401,
+      code: 'INTERNAL_SERVICE_UNAUTHORIZED'
+    });
+    expect(resolve).not.toHaveBeenCalled();
   });
 
   it('allows an explicit cognitive read request without changing its authority', async () => {
