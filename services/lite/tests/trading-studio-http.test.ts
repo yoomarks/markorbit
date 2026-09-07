@@ -129,4 +129,66 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     });
     expect(response.body).toEqual({ selection });
   });
+
+  it('composes one internally consistent Studio state snapshot', async () => {
+    const completed = {
+      ...run,
+      version: 2,
+      status: 'COMPLETED' as const,
+      checkpoint: 'COMMERCIAL_DIRECTIONS' as const,
+      aiProfile: { id: 'trading-ai-derived_ai-profile_1' as const, version: 1 },
+      brandDna: { id: 'trading-ai-derived_brand-dna_1' as const, version: 1 },
+      directionSet: { id: 'commercial-direction-set_1' as const, version: 1 },
+      canResume: false,
+      completedAt: '2026-09-07T00:01:00Z'
+    };
+    const directionSet = { commercialDirectionSetId: completed.directionSet.id, version: 1 };
+    const selection = {
+      directionSelectionId: 'trading-direction-selection_1',
+      directionSet: completed.directionSet
+    };
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(completed) },
+      directionSets: { getExact: () => Promise.resolve(directionSet as never) },
+      selections: { getCurrentForDirectionSet: () => Promise.resolve(selection as never) }
+    })[3];
+    if (!found) throw new Error('Studio state route missing.');
+    const response = await found.handle({
+      ...request(),
+      path: `/v1/trading/studio-runs/${run.studioRunId}/state`
+    });
+    expect(response.body).toEqual({ run: completed, directionSet, selection });
+  });
+
+  it('fails closed when current Selection points at another Direction Set version', async () => {
+    const completed = {
+      ...run,
+      status: 'COMPLETED' as const,
+      checkpoint: 'COMMERCIAL_DIRECTIONS' as const,
+      aiProfile: { id: 'trading-ai-derived_ai-profile_1' as const, version: 1 },
+      brandDna: { id: 'trading-ai-derived_brand-dna_1' as const, version: 1 },
+      directionSet: { id: 'commercial-direction-set_1' as const, version: 1 },
+      canResume: false,
+      completedAt: '2026-09-07T00:01:00Z'
+    };
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(completed) },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: {
+        getCurrentForDirectionSet: () =>
+          Promise.resolve({
+            directionSet: { id: completed.directionSet.id, version: 2 }
+          } as never)
+      }
+    })[3];
+    if (!found) throw new Error('Studio state route missing.');
+    await expect(
+      found.handle({
+        ...request(),
+        path: `/v1/trading/studio-runs/${run.studioRunId}/state`
+      })
+    ).rejects.toMatchObject({ status: 409, code: 'STUDIO_STATE_VERSION_CONFLICT' });
+  });
 });
