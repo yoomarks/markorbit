@@ -282,4 +282,45 @@ export class PostgresTradingDirectionSetStore {
       );
     }
   }
+
+  async getExact(
+    workspaceIdValue: string,
+    directionSetIdValue: TradingCommercialDirectionSetId,
+    version: number
+  ): Promise<TradingCommercialDirectionSetV1> {
+    const workspace = workspaceId(workspaceIdValue);
+    const setId = directionSetId(directionSetIdValue);
+    if (!Number.isSafeInteger(version) || version < 1)
+      throw new TradingDirectionSetPersistenceError(
+        'INVALID_INPUT',
+        'Direction Set version must be a positive integer.',
+        400
+      );
+    try {
+      const result = await this.query.query(
+        `SELECT document_json FROM lite_trading_direction_set_versions
+          WHERE workspace_id=$1 AND direction_set_id=$2 AND version=$3`,
+        [workspace, setId, version]
+      );
+      const row = result.rows[0] as Row | undefined;
+      if (!row)
+        throw new TradingDirectionSetPersistenceError(
+          'NOT_FOUND',
+          'Direction Set version was not found.',
+          404
+        );
+      const set = clone(row.document_json as TradingCommercialDirectionSetV1);
+      assertTradingCommercialDirectionSetV1(set);
+      return set;
+    } catch (error) {
+      if (error instanceof TradingDirectionSetPersistenceError) throw error;
+      throw new TradingDirectionSetPersistenceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Direction Set persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
 }

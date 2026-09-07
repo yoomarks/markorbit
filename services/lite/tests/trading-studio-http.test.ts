@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { TradingStudioRunV1 } from '@markorbit/contracts/trading-studio-run';
+import type { TradingCommercialDirectionSetV1 } from '@markorbit/contracts/trading-commercial-direction';
 import { createTradingStudioReadRoutes } from '../src/trading-studio-http.js';
 
 const secret = 'lite-trading-studio-http-secret-0123456789';
@@ -54,10 +55,31 @@ function request(overrides: Record<string, string> = {}) {
 function route() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
-    runs: { getLatest: () => Promise.resolve(run) }
+    runs: { getLatest: () => Promise.resolve(run) },
+    directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) }
   })[0];
   if (!found) throw new Error('Trading Studio read route missing.');
   return found;
+}
+
+function directionRoute() {
+  const directionSet = { commercialDirectionSetId: 'commercial-direction-set_1', version: 2 };
+  const found = createTradingStudioReadRoutes({
+    internalServiceSecret: secret,
+    runs: { getLatest: () => Promise.resolve(run) },
+    directionSets: {
+      getExact: (actualWorkspace, id, version) => {
+        expect([actualWorkspace, id, version]).toEqual([
+          workspaceId,
+          'commercial-direction-set_1',
+          2
+        ]);
+        return Promise.resolve(directionSet as TradingCommercialDirectionSetV1);
+      }
+    }
+  })[1];
+  if (!found) throw new Error('Exact Direction Set route missing.');
+  return { found, directionSet };
 }
 
 describe('Lite Trading Studio read HTTP boundary', () => {
@@ -77,5 +99,15 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     await expect(
       route().handle(request({ 'x-markorbit-principal': encodeInternalWorkspacePrincipal(denied) }))
     ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+  });
+
+  it('loads the exact Direction Set version named by a Studio Run', async () => {
+    const { found, directionSet } = directionRoute();
+    const response = await found.handle({
+      ...request(),
+      path: '/v1/trading/direction-sets/commercial-direction-set_1/versions/2',
+      params: { directionSetId: 'commercial-direction-set_1', version: '2' }
+    });
+    expect(response.body).toEqual({ directionSet });
   });
 });
