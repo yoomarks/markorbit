@@ -1,4 +1,5 @@
 import type { ProductLoopExactReference } from './product-loop.js';
+import type { MarkOrbitId } from './index.js';
 import type { TradingBrandDnaId } from './trading-brand-dna.js';
 import {
   assertTradingAiProvenanceV1,
@@ -58,6 +59,18 @@ export interface TradingCommercialDirectionSetV1 {
   createdAt: string;
 }
 
+/** Trusted server context supplies Workspace and actor authority. */
+export interface RefineTradingCommercialDirectionCommandV1 {
+  schemaVersion: 1;
+  directionSetId: TradingCommercialDirectionSetId;
+  expectedDirectionSetVersion: number;
+  commercialDirectionId: TradingCommercialDirectionId;
+  expectedDirectionVersion: number;
+  refinementBrief: string;
+  idempotencyKey: string;
+  correlationId: MarkOrbitId;
+}
+
 export class TradingCommercialDirectionValidationError extends TypeError {
   constructor(message: string) {
     super(message);
@@ -88,6 +101,17 @@ function hasExactSource(
   return provenance.sourceReferences.some(
     (source) => source.sourceId === reference.id && source.sourceVersion === reference.version
   );
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right)
+    );
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
 }
 
 function assertNoAuthority(consequences: TradingDirectionAuthorityConsequencesV1): void {
@@ -217,4 +241,74 @@ export function assertTradingCommercialDirectionSetV1(
       'A direction set must contain Best Fit, Value Up and Possibility exactly once.'
     );
   timestamp(set.createdAt, 'tradingCommercialDirectionSet.createdAt');
+}
+
+/** Validates a single-candidate refinement without overwriting history or selecting a winner. */
+export function assertTradingCommercialDirectionRefinementV1(
+  command: Readonly<RefineTradingCommercialDirectionCommandV1>,
+  previousSet: Readonly<TradingCommercialDirectionSetV1>,
+  refinedSet: Readonly<TradingCommercialDirectionSetV1>
+): void {
+  if (command.schemaVersion !== 1)
+    throw new TradingCommercialDirectionValidationError(
+      'refinementCommand.schemaVersion must be 1.'
+    );
+  required(command.refinementBrief, 'refinementCommand.refinementBrief');
+  required(command.idempotencyKey, 'refinementCommand.idempotencyKey');
+  required(command.correlationId, 'refinementCommand.correlationId');
+  if (
+    command.directionSetId !== previousSet.commercialDirectionSetId ||
+    command.expectedDirectionSetVersion !== previousSet.version
+  )
+    throw new TradingCommercialDirectionValidationError(
+      'Refinement must target the exact current DirectionSet version.'
+    );
+  const previousDirection = previousSet.directions.find(
+    (direction) =>
+      direction.commercialDirectionId === command.commercialDirectionId &&
+      direction.version === command.expectedDirectionVersion
+  );
+  if (!previousDirection)
+    throw new TradingCommercialDirectionValidationError(
+      'Refinement must target one exact DirectionVersion in the current set.'
+    );
+
+  assertTradingCommercialDirectionSetV1(previousSet);
+  assertTradingCommercialDirectionSetV1(refinedSet);
+  if (
+    refinedSet.commercialDirectionSetId !== previousSet.commercialDirectionSetId ||
+    refinedSet.version !== previousSet.version + 1 ||
+    refinedSet.workspaceId !== previousSet.workspaceId ||
+    !sameReference(refinedSet.studioRun, previousSet.studioRun) ||
+    !sameReference(refinedSet.trademarkAsset, previousSet.trademarkAsset) ||
+    !sameReference(refinedSet.brandDna, previousSet.brandDna)
+  )
+    throw new TradingCommercialDirectionValidationError(
+      'Refinement must create the next DirectionSet version with unchanged source lineage.'
+    );
+
+  for (const before of previousSet.directions) {
+    const after = refinedSet.directions.find(
+      (direction) => direction.commercialDirectionId === before.commercialDirectionId
+    );
+    if (!after)
+      throw new TradingCommercialDirectionValidationError(
+        'Refinement must preserve all three direction identities.'
+      );
+    if (before.commercialDirectionId === command.commercialDirectionId) {
+      if (
+        after.version !== before.version + 1 ||
+        after.previousVersion?.id !== before.commercialDirectionId ||
+        after.previousVersion.version !== before.version ||
+        after.role !== before.role
+      )
+        throw new TradingCommercialDirectionValidationError(
+          'The refined candidate must be the immediate next version with the same semantic role.'
+        );
+    } else if (canonicalJson(after) !== canonicalJson(before)) {
+      throw new TradingCommercialDirectionValidationError(
+        'A refinement may change only the explicitly targeted candidate.'
+      );
+    }
+  }
 }
