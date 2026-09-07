@@ -81,6 +81,50 @@
       "httpIntegrationTestFile": "apps/gateway/tests/production-fee-facts-http.test.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/markreg/production-recommendations",
+      "owner": "markreg",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-production-consumer-http.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/production-recommendations/:recommendationId",
+      "owner": "markreg",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-production-consumer-http.test.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markreg/production-user-selections",
+      "owner": "markreg",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "REQUIRED_FOR_MUTATION",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-production-consumer-http.test.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/markreg/production-user-selections/:selectionId",
+      "owner": "markreg",
+      "namespaceClass": "PRIMARY_PRODUCT_API",
+      "authenticationMode": "COOKIE_AUTHENTICATED",
+      "environmentScope": "ALL_ENVIRONMENTS",
+      "idempotencyRequirement": "NOT_APPLICABLE_READ_ONLY",
+      "authorityConsequenceResponse": "NONE_EXTERNAL",
+      "httpIntegrationTestFile": "apps/gateway/tests/markreg-production-consumer-http.test.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/markreg/formal-matters/:formalMatterId/intelligence",
       "owner": "markreg",

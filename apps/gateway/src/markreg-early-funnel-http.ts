@@ -49,6 +49,47 @@ const productionFeeFactsForbiddenFields = [
   'classSelectionProvenance',
   ...topLevelAuthorityFields
 ] as const;
+const productionConsumerAuthorityFields = [
+  'actor',
+  'principal',
+  'permissions',
+  'role',
+  ...topLevelAuthorityFields
+] as const;
+const productionRecommendationControlFields = [
+  'capabilityId',
+  'capabilityVersion',
+  'callerProduct',
+  'methodId',
+  'methodVersionId',
+  'packageId',
+  'implementation',
+  'implementationKey',
+  'implementationProfileId',
+  'provider',
+  'providerId',
+  'model',
+  'modelId',
+  'inputSchemaId',
+  'outputSchemaId',
+  'riskClass',
+  'producerReference',
+  'sourceEvidenceReadReference'
+] as const;
+const productionRecommendationBrowserFields = new Set([
+  'schemaVersion',
+  'intakeId',
+  'expectedIntakeVersion',
+  'expectedIntakeFingerprintSha256',
+  'idempotencyKey'
+]);
+const productionSelectionBrowserFields = new Set([
+  'schemaVersion',
+  'recommendationId',
+  'expectedRecommendationVersion',
+  'selectedOptionCode',
+  'idempotencyKey'
+]);
 const matterIntelligenceQueryFields = ['page', 'pageSize', 'reviewHistoryLimit'] as const;
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -119,6 +160,48 @@ function rejectProductionFeeFactsSpoof(body: Readonly<Record<string, unknown>>):
     );
 }
 
+function rejectProductionConsumerFields(
+  body: Readonly<Record<string, unknown>>,
+  allowed: ReadonlySet<string>,
+  requestCode: string
+): void {
+  const authority = productionConsumerAuthorityFields.find((field) => Object.hasOwn(body, field));
+  if (authority)
+    throw new HttpError(
+      400,
+      'ACTOR_SPOOF_REJECTED',
+      `${authority} is trusted authority context and must not be supplied by the browser.`
+    );
+  const control = productionRecommendationControlFields.find((field) => Object.hasOwn(body, field));
+  if (control)
+    throw new HttpError(
+      400,
+      'PRODUCER_CONTROL_REJECTED',
+      `${control} is server-governed producer context and must not be supplied by the browser.`
+    );
+  const unsupported = Object.keys(body).filter((field) => !allowed.has(field));
+  if (unsupported.length)
+    throw new HttpError(400, requestCode, `Unsupported browser fields: ${unsupported.join(', ')}.`);
+}
+
+function exactBrowserText(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value || value.trim() !== value)
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must contain exact non-empty text.`);
+  return value;
+}
+
+function exactBrowserVersion(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1)
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive safe integer.`);
+  return Number(value);
+}
+
+function exactBrowserSha256(value: unknown, field: string): string {
+  const text = exactBrowserText(value, field);
+  if (!/^[0-9a-f]{64}$/u.test(text))
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be an exact lowercase SHA-256.`);
+  return text;
+}
 function idempotency(request: JsonRequest, body: Readonly<Record<string, unknown>>): string {
   const key = request.headers['idempotency-key'];
   if (!key || !key.trim())
@@ -383,6 +466,41 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const forwardProductionArtifactRead = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    path: string
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(
+        503,
+        'DOWNSTREAM_UNAVAILABLE',
+        'MarkReg service authentication is unavailable.',
+        true
+      );
+    try {
+      const response = await fetch(`${options.markRegUrl}${path}`, {
+        method: 'GET',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': options.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+          'x-markorbit-workspace-id': principal.workspaceId,
+          ...(request.headers['x-correlation-id']
+            ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+            : {}),
+          ...(request.headers['x-request-id']
+            ? { 'x-request-id': request.headers['x-request-id'] }
+            : {})
+        }
+      });
+      return json(response.status, await response.json());
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
   const forwardFormalMatterRead = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -590,6 +708,127 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     handle: async (request) => {
       const principal = await authenticateRead(request);
       return forwardProductionFeeFactsRead(request, principal);
+    }
+  };
+
+  const productionRecommendationRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/production-recommendations',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectProductionConsumerFields(
+        body,
+        productionRecommendationBrowserFields,
+        'INVALID_PRODUCTION_RECOMMENDATION_REQUEST'
+      );
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticate(request);
+      if (body.schemaVersion !== 1)
+        throw new HttpError(
+          400,
+          'INVALID_PRODUCTION_RECOMMENDATION_REQUEST',
+          'schemaVersion must be 1.'
+        );
+      const command = {
+        schemaVersion: 1,
+        intakeId: exactBrowserText(body.intakeId, 'intakeId'),
+        expectedIntakeVersion: exactBrowserVersion(body.expectedIntakeVersion, 'expectedIntakeVersion'),
+        expectedIntakeFingerprintSha256: exactBrowserSha256(
+          body.expectedIntakeFingerprintSha256,
+          'expectedIntakeFingerprintSha256'
+        ),
+        idempotencyKey: key,
+        correlationId: correlation
+      };
+      return forward(
+        request,
+        principal,
+        '/internal/v1/production-recommendation-orchestrations',
+        command,
+        key,
+        correlation
+      );
+    }
+  };
+
+  const productionRecommendationReadRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/production-recommendations/:recommendationId',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      const recommendationId = encodeURIComponent(
+        exactBrowserText(request.params.recommendationId, 'recommendationId')
+      );
+      return forwardProductionArtifactRead(
+        request,
+        principal,
+        `/internal/v1/production-recommendations/${recommendationId}`
+      );
+    }
+  };
+
+  const productionUserSelectionRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/production-user-selections',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectProductionConsumerFields(
+        body,
+        productionSelectionBrowserFields,
+        'INVALID_PRODUCTION_USER_SELECTION_REQUEST'
+      );
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticate(request);
+      if (body.schemaVersion !== 1)
+        throw new HttpError(
+          400,
+          'INVALID_PRODUCTION_USER_SELECTION_REQUEST',
+          'schemaVersion must be 1.'
+        );
+      const selectedOptionCode = exactBrowserText(body.selectedOptionCode, 'selectedOptionCode');
+      if (!['A', 'B', 'C'].includes(selectedOptionCode))
+        throw new HttpError(
+          400,
+          'INVALID_PRODUCTION_USER_SELECTION_REQUEST',
+          'selectedOptionCode must be A, B, or C.'
+        );
+      const command = {
+        schemaVersion: 1,
+        recommendationId: exactBrowserText(body.recommendationId, 'recommendationId'),
+        expectedRecommendationVersion: exactBrowserVersion(
+          body.expectedRecommendationVersion,
+          'expectedRecommendationVersion'
+        ),
+        selectedOptionCode,
+        idempotencyKey: key,
+        correlationId: correlation
+      };
+      return forward(
+        request,
+        principal,
+        '/internal/v1/production-user-selections',
+        command,
+        key,
+        correlation
+      );
+    }
+  };
+
+  const productionUserSelectionReadRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/production-user-selections/:selectionId',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      const selectionId = encodeURIComponent(
+        exactBrowserText(request.params.selectionId, 'selectionId')
+      );
+      return forwardProductionArtifactRead(
+        request,
+        principal,
+        `/internal/v1/production-user-selections/${selectionId}`
+      );
     }
   };
 
@@ -820,6 +1059,10 @@ const matterDraftRoute: JsonRoute = {
     productionIntakeReadRoute,
     productionFeeFactsRoute,
     productionFeeFactsReadRoute,
+    productionRecommendationRoute,
+    productionRecommendationReadRoute,
+    productionUserSelectionRoute,
+    productionUserSelectionReadRoute,
     intakeRoute,
     quoteRoute,
     confirmationRoute,
