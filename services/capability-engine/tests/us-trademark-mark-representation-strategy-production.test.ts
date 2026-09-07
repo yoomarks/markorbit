@@ -215,6 +215,7 @@ describe('#848 US trademark Recommendation-capable source', () => {
       packageVersion: '2'
     });
     expect(Object.values(result.authority).every((value) => value === false)).toBe(true);
+    expect('officialFeeMaterial' in result).toBe(false);
     expect(
       Object.values(result.recommendationMaterial?.authorityConsequences ?? {}).every(
         (value) => value === false
