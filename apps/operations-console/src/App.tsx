@@ -1,18 +1,11 @@
 import { useState } from 'react';
-import {
-  Alert,
-  AppShell,
-  Button,
-  Card,
-  DataList,
-  PageHeader,
-  SideNavigation,
-  TopBar
-} from '@markorbit/ui';
+import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
 import { CommercialAdminWorkspace } from './commercial-admin.js';
 import { CognitivePlatformWorkspace } from './cognitive-platform.js';
 import { DataPlatformWorkspace } from './data-platform.js';
 import { KnowledgePlatformWorkspace } from './knowledge-platform.js';
+import { SuperAdminDomainLandings } from './super-admin/domain-landings.js';
+import { SuperAdminShell } from './super-admin/shell.js';
 import {
   admitReviewedSource,
   captureEvidenceReviewSource,
@@ -169,34 +162,16 @@ export function OperationsApp() {
     });
 
   return (
-    <AppShell
-      brand="MO Control Center"
-      internalOnly
-      navigation={
-        <SideNavigation
-          items={[
-            { label: 'Overview', href: '#overview', active: true },
-            { label: 'Evidence review', href: '#evidence-review' },
-            { label: 'Lifecycle provenance', href: '#lifecycle-review' },
-            { label: 'Cognitive Platform', href: '#cognitive-platform' },
-            { label: 'Knowledge', href: '#knowledge-platform' },
-            { label: 'Data', href: '#data-platform' },
-            { label: 'Commercial', href: '#commercial-admin' }
-          ]}
-        />
-      }
-      topBar={<TopBar context="Governed internal control plane · Distributed owner truth" />}
-    >
+    <SuperAdminShell>
       <section id="overview">
         <PageHeader
-          title="Control center overview"
-          description="Internal operator entry point for governed operations and owner-routed inspection. Missing sources are never inferred as healthy or empty."
+          title="Super admin overview"
+          description="Internal platform administration entry point for governed operations and owner-routed inspection. Missing sources are never inferred as healthy or empty."
         />
         <Alert tone="info" title="Truthful read plane">
           This overview reports only product/source connectivity that is established by current
           code. It does not claim aggregate service health, failure counts or processing totals
-          because no authoritative Control Center source for those aggregates is currently
-          connected.
+          because no authoritative platform aggregate source is currently connected.
         </Alert>
         <div className="mo-grid">
           <Card>
@@ -249,6 +224,8 @@ export function OperationsApp() {
           </Card>
         </div>
       </section>
+
+      <SuperAdminDomainLandings />
 
       <section id="evidence-review">
         <PageHeader
@@ -618,6 +595,6 @@ export function OperationsApp() {
       <DataPlatformWorkspace />
 
       <CommercialAdminWorkspace />
-    </AppShell>
+    </SuperAdminShell>
   );
 }

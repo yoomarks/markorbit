@@ -1,0 +1,19 @@
+@media (max-width: 760px) {
+  .mo-shell,
+  .mo-shell > aside,
+  .mo-shell__body,
+  .mo-side-nav {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mo-side-nav ul {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .mo-side-nav li {
+    flex: 0 0 auto;
+  }
+}

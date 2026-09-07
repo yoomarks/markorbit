@@ -72,7 +72,7 @@ const knowledgeOwnerHealth = {
     recentChanges30d: 0
   }
 };
-test('MO Control Center exposes truthful governed operator surfaces @visual', async ({
+test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual', async ({
   page
 }, testInfo) => {
   const assertHealthy = watchPage(page);
@@ -102,8 +102,27 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   });
   await page.goto(urls.operations);
   await expect(page.getByText('Internal only')).toBeVisible();
+  await expect(page.getByText('MarkOrbit Super Admin')).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Control center overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Super admin overview' })).toBeVisible();
+  for (const label of [
+    'Overview',
+    'Core',
+    'Workspace',
+    'Brain',
+    'Capability',
+    'MarkReg',
+    'Lite',
+    'MGSN',
+    'Knowledge',
+    'Data Engine',
+    'Execution',
+    'Commercial / Payment',
+    'System',
+    'Governance & Audit'
+  ]) {
+    await expect(page.getByRole('link', { name: label, exact: true })).toBeVisible();
+  }
   for (const heading of [
     'Connected governed surfaces',
     'Aggregate platform health',
@@ -112,6 +131,8 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   ]) {
     await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   }
+  await page.getByRole('link', { name: 'Knowledge', exact: true }).click();
+  await expect(page).toHaveURL(/#knowledge-platform$/);
   await expect(page.getByRole('heading', { name: 'Knowledge', exact: true })).toBeVisible();
   await expect(
     page.getByText(
@@ -124,6 +145,8 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   await loadKnowledgeOwnerHealth.click();
   await expect(page.getByText('Knowledge owner-reported evidence supply health')).toBeVisible();
   expect(knowledgeOwnerReads).toBe(1);
+  await page.getByRole('link', { name: 'Data Engine', exact: true }).click();
+  await expect(page).toHaveURL(/#data-platform$/);
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await expect(
     page.getByText(
@@ -137,9 +160,6 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
   await expect(page.getByText('Data Engine owner-reported dependency health')).toBeVisible();
   expect(dataOwnerReads).toBe(1);
   await expect(page.getByRole('heading', { name: 'Commercial operations' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Knowledge' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Data' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Commercial' })).toBeVisible();
   for (const staleHeading of [
     'Service health',
     'Failed operations',
@@ -149,6 +169,12 @@ test('MO Control Center exposes truthful governed operator surfaces @visual', as
     await expect(page.getByRole('heading', { name: staleHeading })).toHaveCount(0);
   }
   await expect(page.getByText('1,248')).toHaveCount(0);
+  await expect(
+    page.locator('#super-admin-workspace').getByText('Workspace', { exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText('Global Workspace portfolio read is not connected yet.')
+  ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectVisibleFocus(page);
   if (testInfo.project.name.startsWith('desktop')) {
