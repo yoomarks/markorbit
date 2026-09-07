@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import {
+  assertTradingCommercialDirectionRefinementV1,
   assertTradingCommercialDirectionSetV1,
+  type RefineTradingCommercialDirectionCommandV1,
   type TradingCommercialDirectionSetId,
   type TradingCommercialDirectionSetV1
 } from '@markorbit/contracts/trading-commercial-direction';
@@ -77,6 +79,31 @@ export class PostgresTradingDirectionSetStore {
     private readonly query: QueryClient,
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
+
+  async refine(
+    command: Readonly<RefineTradingCommercialDirectionCommandV1>,
+    refinedSet: Readonly<TradingCommercialDirectionSetV1>
+  ): Promise<TradingCommercialDirectionSetV1> {
+    let previousSet: TradingCommercialDirectionSetV1;
+    try {
+      previousSet = await this.getLatest(refinedSet.workspaceId, command.directionSetId);
+      assertTradingCommercialDirectionRefinementV1(command, previousSet, refinedSet);
+    } catch (error) {
+      if (error instanceof TradingDirectionSetPersistenceError) throw error;
+      throw new TradingDirectionSetPersistenceError(
+        'INVALID_INPUT',
+        'Direction refinement validation failed.',
+        400,
+        false,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+    return this.save({
+      directionSet: refinedSet,
+      expectedVersion: command.expectedDirectionSetVersion,
+      idempotencyKey: command.idempotencyKey
+    });
+  }
 
   async save(
     command: Readonly<SaveTradingDirectionSetCommand>
