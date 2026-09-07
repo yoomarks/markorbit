@@ -25,10 +25,12 @@ import {
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentKnowledgeReadGrantSourceV1,
   createEnvironmentWorkspaceAdminReadGrantSourceV1,
+  createEnvironmentWorkspaceAdminManageGrantSourceV1,
   InternalOperatorPrincipalResolverV1
 } from './internal-operator-principal.js';
 import { PostgresKnowledgeReadyPackageContentRepository } from './knowledge-content.js';
 import { PostgresWorkspaceAdminPortfolioReaderV1 } from './workspace-admin-portfolio.js';
+import { PostgresWorkspaceAdminManagementServiceV1 } from './workspace-admin-management.js';
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 import {
@@ -89,7 +91,8 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   cognitiveReadGrants: createEnvironmentCognitiveReadGrantSourceV1(),
   dataReadGrants: createEnvironmentDataReadGrantSourceV1(),
   knowledgeReadGrants: createEnvironmentKnowledgeReadGrantSourceV1(),
-  workspaceAdminReadGrants: createEnvironmentWorkspaceAdminReadGrantSourceV1()
+  workspaceAdminReadGrants: createEnvironmentWorkspaceAdminReadGrantSourceV1(),
+  workspaceAdminManageGrants: createEnvironmentWorkspaceAdminManageGrantSourceV1()
 });
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)
@@ -121,6 +124,7 @@ const runtime = createRuntime({
   brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),
   internalOperatorPrincipalResolver,
   workspaceAdminPortfolio: new PostgresWorkspaceAdminPortfolioReaderV1(query),
+  workspaceAdminManagement: new PostgresWorkspaceAdminManagementServiceV1(database),
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
   methodImprovementAdmissions,

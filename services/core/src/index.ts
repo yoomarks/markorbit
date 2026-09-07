@@ -24,6 +24,8 @@ import { createInternalOperatorPrincipalRoutesV1 } from './internal-operator-pri
 import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';
 import { createWorkspaceAdminPortfolioRoutesV1 } from './workspace-admin-portfolio-http.js';
 import type { WorkspaceAdminPortfolioReaderV1 } from './workspace-admin-portfolio.js';
+import { createWorkspaceAdminManagementRoutesV1 } from './workspace-admin-management-http.js';
+import type { PostgresWorkspaceAdminManagementServiceV1 } from './workspace-admin-management.js';
 import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
@@ -81,6 +83,7 @@ export interface CoreRuntimeOptions {
   brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;
   internalOperatorPrincipalResolver?: Pick<InternalOperatorPrincipalResolverV1, 'resolve'>;
   workspaceAdminPortfolio?: Pick<WorkspaceAdminPortfolioReaderV1, 'read'>;
+  workspaceAdminManagement?: Pick<PostgresWorkspaceAdminManagementServiceV1, 'renameDisplayName'>;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
@@ -126,6 +129,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Internal Operator resolution.');
   if (options.workspaceAdminPortfolio && !secret)
     throw new Error('internalServiceSecret is required for Workspace admin portfolio reads.');
+  if (options.workspaceAdminManagement && !secret)
+    throw new Error('internalServiceSecret is required for Workspace admin management.');
   if (options.methodOutcomeEvidenceAdmissions && !secret)
     throw new Error('internalServiceSecret is required for Method Outcome Evidence admission.');
   if (options.methodOutcomeReports && !secret)
@@ -167,6 +172,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.workspaceAdminPortfolio && secret
       ? createWorkspaceAdminPortfolioRoutesV1({
           reader: options.workspaceAdminPortfolio,
+          internalServiceSecret: secret
+        })
+      : [];
+  const workspaceAdminManagementRoutes =
+    options.workspaceAdminManagement && secret
+      ? createWorkspaceAdminManagementRoutesV1({
+          service: options.workspaceAdminManagement,
           internalServiceSecret: secret
         })
       : [];
@@ -710,6 +722,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     ...currentWorkspaceAuthorityRoutes,
     ...internalOperatorPrincipalRoutes,
     ...workspaceAdminPortfolioRoutes,
+    ...workspaceAdminManagementRoutes,
     ...brainCognitiveReadRoutes,
     ...methodOutcomeEvidenceRoutes,
     ...methodOutcomeReportRoutes,
@@ -729,6 +742,8 @@ export * from './brain-cognitive-read-http.js';
 export * from './brain-cognitive-read-postgres.js';
 export * from './internal-operator-principal.js';
 export * from './internal-operator-principal-http.js';
+export * from './workspace-admin-management.js';
+export * from './workspace-admin-management-http.js';
 export * from './current-workspace-authority.js';
 export * from './current-workspace-authority-http.js';
 export * from './account-access.js';

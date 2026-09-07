@@ -7,6 +7,7 @@
     "core_method_outcome_evidence": "@markorbit/core-service",
     "core_method_improvement": "@markorbit/core-service",
     "core_governed_human_action_receipts": "@markorbit/core-service",
+    "core_workspace_admin_actions": "@markorbit/core-service",
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
     "markreg_formal_matters": "@markorbit/markreg-service",
@@ -155,6 +156,7 @@
     "0098_lite_trading_studio_runs": "@markorbit/lite-service",
     "0099_lite_trading_direction_sets": "@markorbit/lite-service",
     "0100_lite_trading_direction_selections": "@markorbit/lite-service",
-    "0101_lite_trading_direction_selection_heads": "@markorbit/lite-service"
+    "0101_lite_trading_direction_selection_heads": "@markorbit/lite-service",
+    "0102_core_workspace_admin_actions": "@markorbit/core-service"
   }
 }

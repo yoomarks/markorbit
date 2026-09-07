@@ -51,7 +51,10 @@ export const CONTROL_PLANE_CAPABILITIES = [
   'control-plane:knowledge:read'
 ] as const;
 export type ControlPlaneCapability = (typeof CONTROL_PLANE_CAPABILITIES)[number];
-export const WORKSPACE_ADMIN_CAPABILITIES = ['workspace-admin:read'] as const;
+export const WORKSPACE_ADMIN_CAPABILITIES = [
+  'workspace-admin:read',
+  'workspace-admin:manage'
+] as const;
 export type WorkspaceAdminCapability = (typeof WORKSPACE_ADMIN_CAPABILITIES)[number];
 export const INTERNAL_OPERATOR_CAPABILITIES = [
   ...COMMERCIAL_ADMIN_CAPABILITIES,

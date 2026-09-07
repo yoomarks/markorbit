@@ -102,12 +102,27 @@ describe('commercial admin authority contract', () => {
     expect(parsed.capabilities).not.toContain('control-plane:knowledge:read');
   });
 
+  it('round-trips bounded Workspace Admin manage without implying read or other authority', () => {
+    const principal: InternalOperatorPrincipal = {
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: 'session_workspace_admin_manage_1',
+      userId: 'user_workspace_admin_manage_1',
+      capabilities: ['workspace-admin:manage'],
+      sessionExpiresAt: '2099-01-01T00:00:00.000Z'
+    };
+    const parsed = parseInternalOperatorPrincipal(encodeInternalOperatorPrincipal(principal));
+    expect(parsed).toEqual(principal);
+    expect(parsed.capabilities).not.toContain('workspace-admin:read');
+    expect(parsed.capabilities).not.toContain('commercial-admin:operate');
+  });
+
   it('keeps commercial account derivation from automatically granting Control Plane reads', () => {
     const capabilities = commercialAdminCapabilitiesForAccount(account('INTERNAL', 'ACTIVE'));
     expect(capabilities).not.toContain('control-plane:cognitive:read');
     expect(capabilities).not.toContain('control-plane:data:read');
     expect(capabilities).not.toContain('control-plane:knowledge:read');
     expect(capabilities).not.toContain('workspace-admin:read');
+    expect(capabilities).not.toContain('workspace-admin:manage');
   });
 
   it('defines Control Plane operator authority as bounded read-only vocabulary', () => {
@@ -115,6 +130,7 @@ describe('commercial admin authority contract', () => {
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('control-plane:data:read');
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('control-plane:knowledge:read');
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('workspace-admin:read');
+    expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('workspace-admin:manage');
     expect(
       INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
         capability.startsWith('control-plane:cognitive:')
@@ -134,7 +150,7 @@ describe('commercial admin authority contract', () => {
       INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
         capability.startsWith('workspace-admin:')
       )
-    ).toEqual(['workspace-admin:read']);
+    ).toEqual(['workspace-admin:read', 'workspace-admin:manage']);
   });
 
   it.each([
