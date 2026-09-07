@@ -141,4 +141,55 @@ describe('Lite Trading Direction Set persistence', () => {
       })
     ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
   });
+
+  it('persists only the explicitly targeted candidate refinement', async () => {
+    const repository = store();
+    const before = directionSet();
+    await repository.save({
+      directionSet: before,
+      expectedVersion: 0,
+      idempotencyKey: 'create-set'
+    });
+    const target = before.directions[0];
+    const refined: TradingCommercialDirectionSetV1 = {
+      ...before,
+      version: 2,
+      directions: [
+        {
+          ...target,
+          version: 2,
+          previousVersion: { id: target.commercialDirectionId, version: 1 },
+          summary: 'Refined Best Fit.',
+          provenance: {
+            ...target.provenance,
+            derivedObject: { id: target.commercialDirectionId, version: 2 }
+          }
+        },
+        before.directions[1],
+        before.directions[2]
+      ],
+      createdAt: '2026-09-07T00:01:00Z'
+    };
+    const command = {
+      schemaVersion: 1 as const,
+      directionSetId: before.commercialDirectionSetId,
+      expectedDirectionSetVersion: 1,
+      commercialDirectionId: target.commercialDirectionId,
+      expectedDirectionVersion: 1,
+      refinementBrief: 'Refine Best Fit.',
+      idempotencyKey: 'refine-best-fit',
+      correlationId: 'correlation_refine-best-fit' as const
+    };
+    await expect(
+      repository.refine(command, {
+        ...refined,
+        directions: [
+          refined.directions[0],
+          { ...refined.directions[1], summary: 'Unexpected second change.' },
+          refined.directions[2]
+        ]
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    expect(await repository.refine(command, refined)).toEqual(refined);
+  });
 });
