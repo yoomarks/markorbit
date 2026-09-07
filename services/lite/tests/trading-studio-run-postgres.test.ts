@@ -51,7 +51,9 @@ suite('PostgreSQL Lite Trading Studio Run persistence', () => {
     tick = 0;
     await database
       .getPool()
-      .query('TRUNCATE lite_trading_studio_run_versions,lite_trademark_assets CASCADE');
+      .query(
+        'TRUNCATE lite_trading_studio_run_versions,lite_trademark_asset_commands,lite_trademark_assets CASCADE'
+      );
   });
   afterAll(() => database.close());
 
